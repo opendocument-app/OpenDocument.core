@@ -63,6 +63,20 @@ public final class Sheet extends Element {
     setCellStyleNative(handle(), column, row, cellStyle, textStyle);
   }
 
+  /**
+   * {@link #setCellStyle} on every cell of the row, also the ones past what the file states.
+   */
+  public void setRowStyle(int row, TableCellStyle cellStyle, TextStyle textStyle) {
+    setRowStyleNative(handle(), row, cellStyle, textStyle);
+  }
+
+  /**
+   * {@link #setCellStyle} on every cell of the column, also the ones past what the file states.
+   */
+  public void setColumnStyle(int column, TableCellStyle cellStyle, TextStyle textStyle) {
+    setColumnStyleNative(handle(), column, cellStyle, textStyle);
+  }
+
   private native String nameNative(long handle);
 
   private native PageLayout pageLayoutNative(long handle);
@@ -85,4 +99,10 @@ public final class Sheet extends Element {
 
   private native void setCellStyleNative(
       long handle, int column, int row, TableCellStyle cellStyle, TextStyle textStyle);
+
+  private native void setRowStyleNative(
+      long handle, int row, TableCellStyle cellStyle, TextStyle textStyle);
+
+  private native void setColumnStyleNative(
+      long handle, int column, TableCellStyle cellStyle, TextStyle textStyle);
 }

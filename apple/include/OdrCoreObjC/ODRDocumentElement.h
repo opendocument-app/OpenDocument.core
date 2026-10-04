@@ -157,6 +157,18 @@ NS_SWIFT_NAME(Sheet)
                  row:(uint32_t)row
                error:(NSError **)error
     NS_SWIFT_NAME(setStyle(_:textStyle:column:row:));
+/// `setCellStyle` on every cell of the row, also past what the file states.
+- (BOOL)setRowStyle:(ODRTableCellStyle *)cellStyle
+          textStyle:(ODRTextStyle *)textStyle
+              atRow:(uint32_t)row
+              error:(NSError **)error NS_SWIFT_NAME(setStyle(_:textStyle:row:));
+/// `setCellStyle` on every cell of the column, also past what the file
+/// states.
+- (BOOL)setColumnStyle:(ODRTableCellStyle *)cellStyle
+             textStyle:(ODRTextStyle *)textStyle
+              atColumn:(uint32_t)column
+                 error:(NSError **)error
+    NS_SWIFT_NAME(setStyle(_:textStyle:column:));
 @end
 
 /// `odr::SheetCell`.

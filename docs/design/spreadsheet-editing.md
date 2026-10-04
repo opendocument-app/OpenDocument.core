@@ -318,6 +318,11 @@ style, so it keeps what it showed.
 only. The cells past it, and the cells a later write makes, have to take the
 style too.
 
+The sheet editor writes one `setRowStyle` or `setColumnStyle` for a header
+selection, and paints the cells the page has. Coalescing still merges the
+keys of one position, but a style op never merges back past a later one that
+reaches a cell in common, so a cell style after a row style stays after it.
+
 ## Formulas, read side
 
 - `internal/formula` parses `of:=SUM([.A1:.B2])` (`table:formula`) and
@@ -345,5 +350,4 @@ style too.
 - Number formats (`number:number-style`, `numFmt`), dates and booleans as
   their own kinds. This also fixes `.xlsx` serials on the read side.
 - Insert and delete of rows and columns.
-- A style for a whole row or column, so cells past the rendered extent take it.
 - The decimal separator and the document locale are read nowhere.

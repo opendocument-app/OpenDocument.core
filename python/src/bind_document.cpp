@@ -192,7 +192,11 @@ void odr_python::bind_document(py::module_ &m) {
       .def("cell_style", &odr::Sheet::cell_style, py::arg("column"),
            py::arg("row"))
       .def("set_cell_style", &odr::Sheet::set_cell_style, py::arg("column"),
-           py::arg("row"), py::arg("cell_style"), py::arg("text_style"));
+           py::arg("row"), py::arg("cell_style"), py::arg("text_style"))
+      .def("set_row_style", &odr::Sheet::set_row_style, py::arg("row"),
+           py::arg("cell_style"), py::arg("text_style"))
+      .def("set_column_style", &odr::Sheet::set_column_style, py::arg("column"),
+           py::arg("cell_style"), py::arg("text_style"));
 
   bind_element<odr::SheetCell>(m, "SheetCell")
       .def("position", &odr::SheetCell::position)

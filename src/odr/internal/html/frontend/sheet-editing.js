@@ -72,29 +72,57 @@
   var history = [];
   var undone = [];
 
+  var STYLE_OPS = ["setCellStyle", "setRowStyle", "setColumnStyle"];
+
+  /// Whether two style ops reach a cell in common. An absent axis is a whole
+  /// row or column.
+  function overlaps(one, other) {
+    return (
+      (one.column === undefined ||
+        other.column === undefined ||
+        one.column === other.column) &&
+      (one.row === undefined || other.row === undefined || one.row === other.row)
+    );
+  }
+
   /// One op per kind and position: the last value written, and the style
-  /// keys merged with the later ones winning.
+  /// keys merged with the later ones winning. A style op does not merge back
+  /// past a later one that reaches the same cell, so the order survives.
   function coalesced() {
+    var result = [];
     var byKey = new Map();
     for (var i = 0; i < history.length; ++i) {
       var ops = history[i].ops;
       for (var j = 0; j < ops.length; ++j) {
         var op = ops[j];
         var key = op.op + ":" + op.sheet + ":" + op.column + ":" + op.row;
-        var earlier = byKey.get(key);
-        if (op.op === "setCellStyle" && earlier !== undefined) {
-          op = {
-            op: op.op,
-            sheet: op.sheet,
-            column: op.column,
-            row: op.row,
-            style: Object.assign({}, earlier.style, op.style),
-          };
+        var at = byKey.get(key);
+        var styles = STYLE_OPS.indexOf(op.op) !== -1;
+        if (at === undefined) {
+          byKey.set(key, result.length);
+          result.push(op);
+        } else if (styles) {
+          result[at] = Object.assign({}, op, {
+            style: Object.assign({}, result[at].style, op.style),
+          });
+        } else {
+          result[at] = op;
         }
-        byKey.set(key, op);
+        if (styles) {
+          byKey.forEach(function (index, other) {
+            var earlier = result[index];
+            if (
+              other !== key &&
+              STYLE_OPS.indexOf(earlier.op) !== -1 &&
+              overlaps(earlier, op)
+            ) {
+              byKey.delete(other);
+            }
+          });
+        }
       }
     }
-    return Array.from(byKey.values());
+    return result;
   }
 
   /// An undo and a redo are the same move on the page; the log tells them
@@ -921,17 +949,36 @@
     var afters = [];
     var ops = [];
     var rows = new Set();
+    // a header stands for its whole row or column, past the rendered extent
+    var pin = odr.sheet.pinned();
+    if (pin.row === null) {
+      ops.push({
+        op: "setColumnStyle",
+        sheet: sheet,
+        column: pin.column,
+        style: Object.assign({}, style),
+      });
+    } else if (pin.column === null) {
+      ops.push({
+        op: "setRowStyle",
+        sheet: sheet,
+        row: pin.row,
+        style: Object.assign({}, style),
+      });
+    }
     cells.forEach(function (at) {
       befores.push(snapshot(at.cell));
       paintCell(at.cell, style);
       afters.push(snapshot(at.cell));
-      ops.push({
-        op: "setCellStyle",
-        sheet: sheet,
-        column: at.column,
-        row: at.row,
-        style: Object.assign({}, style),
-      });
+      if (pin.row !== null && pin.column !== null) {
+        ops.push({
+          op: "setCellStyle",
+          sheet: sheet,
+          column: at.column,
+          row: at.row,
+          style: Object.assign({}, style),
+        });
+      }
       rows.add(at.row);
     });
     var reflow = function () {

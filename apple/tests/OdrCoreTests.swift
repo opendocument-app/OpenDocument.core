@@ -498,6 +498,26 @@ final class DocumentSaveTests: XCTestCase {
     XCTAssertEqual(text.style.fontWeight?.intValue, FontWeight.bold.rawValue)
   }
 
+  func testSetRowAndColumnStyleReachPastTheCells() throws {
+    let document = try DecodedFile.decode(path: try Fixture.ods())
+      .asDocumentFile().document()
+    let root = try XCTUnwrap(try document.rootElement())
+    let sheet = try XCTUnwrap(root.firstDescendant(ofType: Sheet.self))
+
+    let cellStyle = TableCellStyle()
+    var yellow = ODRColor(red: 255, green: 255, blue: 0, alpha: 255)
+    cellStyle.backgroundColor = NSValue(bytes: &yellow, objCType: "{ODRColor=CCCC}")
+    try sheet.setStyle(cellStyle, textStyle: TextStyle(), row: 40)
+    try sheet.setStyle(cellStyle, textStyle: TextStyle(), column: 30)
+
+    for (column, row) in [(UInt32(0), UInt32(40)), (30, 90)] {
+      var fill = ODRColor()
+      try XCTUnwrap(sheet.style(column: column, row: row).backgroundColor)
+        .getValue(&fill, size: MemoryLayout<ODRColor>.size)
+      XCTAssertEqual([fill.red, fill.green, fill.blue], [255, 255, 0])
+    }
+  }
+
   func testSetCellStyleRefusesWhatNoEngineWrites() throws {
     let document = try DecodedFile.decode(path: try Fixture.ods())
       .asDocumentFile().document()

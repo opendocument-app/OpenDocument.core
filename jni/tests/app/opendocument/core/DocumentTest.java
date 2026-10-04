@@ -286,6 +286,26 @@ class DocumentTest {
   }
 
   @Test
+  void setRowAndColumnStyleReachPastTheCells() throws IOException {
+    Path ods = TestFiles.odsFile(tempDir);
+    Document document = Odr.open(ods.toString()).asDocumentFile().document();
+    Sheet sheet = document.rootElement().firstChild().asSheet();
+
+    TableCellStyle cellStyle = new TableCellStyle();
+    cellStyle.backgroundColor = new Color(255, 255, 0);
+    sheet.setRowStyle(40, cellStyle, new TextStyle());
+    sheet.setColumnStyle(30, cellStyle, new TextStyle());
+
+    Path path = tempDir.resolve("styled.ods");
+    Files.write(path, document.saveToMemory());
+    Document reloaded = Odr.open(path.toString()).asDocumentFile().document();
+    Sheet reloadedSheet = reloaded.rootElement().firstChild().asSheet();
+
+    assertEquals(new Color(255, 255, 0), reloadedSheet.cellStyle(0, 40).backgroundColor);
+    assertEquals(new Color(255, 255, 0), reloadedSheet.cellStyle(30, 90).backgroundColor);
+  }
+
+  @Test
   void setCellStyleRefusesWhatNoEngineWrites() throws IOException {
     Path ods = TestFiles.odsFile(tempDir);
     Document document = Odr.open(ods.toString()).asDocumentFile().document();

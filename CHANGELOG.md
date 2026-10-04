@@ -59,7 +59,11 @@ The release run heads these entries with the version and opens a fresh
 
 - `Sheet::set_row_style` and `Sheet::set_column_style`, and the
   `setRowStyle` and `setColumnStyle` ops, style a whole row or column of an
-  ods or an xlsx, also the cells past what the file states.
+  ods or an xlsx, also the cells past what the file states. The sheet editor
+  writes one of them for a header selection. Bound as `set_row_style` and
+  `set_column_style` in python, `setRowStyle` and `setColumnStyle` in java
+  and npm, and `setStyle(_:textStyle:row:)` and `setStyle(_:textStyle:column:)`
+  in swift.
 - An xlsx cell without its own style shows the style of its row, where the
   row states `customFormat`, else the style of its column.
 

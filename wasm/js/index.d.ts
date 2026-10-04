@@ -244,6 +244,10 @@ export declare class Document {
    * @throws OdrError `invalid_argument` for a property it does not know
    */
   setCellStyle(sheet: number, column: number, row: number, style: CellStyle): this;
+  /** `setCellStyle` on every cell of the row, also past what the file states. */
+  setRowStyle(sheet: number, row: number, style: CellStyle): this;
+  /** `setCellStyle` on every cell of the column, also past what the file states. */
+  setColumnStyle(sheet: number, column: number, style: CellStyle): this;
   /**
    * States `style` on one paragraph and leaves what it does not name. The
    * same object the page's `odr.editing.format` takes.
