@@ -356,3 +356,24 @@ TEST(OdfSheetRows, the_condition_of_a_cell_style_moves) {
             std::string::npos);
   EXPECT_NE(xml.find(R"x(style:base-cell-address="s.A2")x"), std::string::npos);
 }
+
+TEST(OdfSheetRows, a_condition_reads_from_its_first_cell_that_stays) {
+  const Document document = document_of(flat_spreadsheet(table(
+      "s",
+      row(string_cell("a")) + row(string_cell("b")) + row(string_cell("c")) +
+          R"x(<calcext:conditional-formats><calcext:conditional-format)x"
+          R"x( calcext:target-range-address="s.A1:s.A3">)x"
+          R"x(<calcext:condition calcext:value="formula-is([.A1]&gt;[.$B$1])")x"
+          R"x( calcext:base-cell-address="s.A1"/>)x"
+          R"x(</calcext:conditional-format></calcext:conditional-formats>)x")));
+
+  sheet_at(document, 0).delete_rows(0, 1);
+
+  const std::string xml = saved(document);
+  EXPECT_NE(xml.find(R"x(calcext:value="formula-is([.A1]>#REF!)")x"),
+            std::string::npos);
+  EXPECT_NE(xml.find(R"x(calcext:target-range-address="s.A1:s.A2")x"),
+            std::string::npos);
+  EXPECT_NE(xml.find(R"x(calcext:base-cell-address="s.A1")x"),
+            std::string::npos);
+}

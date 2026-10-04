@@ -8,9 +8,11 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <limits>
 #include <optional>
 #include <string_view>
+#include <variant>
 
 #include <pugixml.hpp>
 
@@ -84,12 +86,14 @@ constexpr std::array<std::string_view, 3> base_cell_attributes{
     "table:base-cell-address", "calcext:base-cell-address",
     "style:base-cell-address"};
 
-/// @p text with every bracketed reference in it moved. Nothing where none
-/// moved. A string literal is left alone, and so is a bracket inside a quoted
-/// sheet name.
+/// @p text with every bracketed reference in it shifted by @p shift along the
+/// edited axis, then moved. Nothing where none changed. A string literal is
+/// left alone, and so is a bracket inside a quoted sheet name.
 std::optional<std::string> move_bracketed(const std::string_view text,
                                           const std::string &sheet,
+                                          const std::int64_t shift,
                                           const formula::SheetEdit &edit) {
+  const bool rows = edit.axis == formula::Axis::row;
   std::string result;
   bool moved = false;
   for (std::size_t i = 0; i < text.size();) {
@@ -114,10 +118,15 @@ std::optional<std::string> move_bracketed(const std::string_view text,
       }
     }
     const std::string_view reference = text.substr(i, end + 1 - i);
-    if (std::optional<formula::Node> node =
-            formula::parse(reference, formula::Syntax::opendocument);
-        end < text.size() && node.has_value() &&
-        formula::move_references(*node, edit, sheet)) {
+    std::optional<formula::Node> node =
+        end < text.size()
+            ? formula::parse(reference, formula::Syntax::opendocument)
+            : std::nullopt;
+    if (node.has_value()) {
+      formula::shift(*node, rows ? 0 : shift, rows ? shift : 0);
+    }
+    if (node.has_value() &&
+        (formula::move_references(*node, edit, sheet) || shift != 0)) {
       result += formula::to_string(*node, formula::Syntax::opendocument);
       moved = true;
     } else {
@@ -131,16 +140,6 @@ std::optional<std::string> move_bracketed(const std::string_view text,
   return result;
 }
 
-/// The sheet @p address names, empty where it names none.
-std::string sheet_of(const std::string_view address) {
-  const std::optional<formula::Node> node = formula::parse(
-      "[" + std::string(address) + "]", formula::Syntax::opendocument);
-  if (!node.has_value() || !node->holds<formula::CellReference>()) {
-    return {};
-  }
-  return node->get<formula::CellReference>().sheet.value_or("");
-}
-
 /// Moves the named expressions and the addresses @p node and its subtree
 /// state, the unstated sheet being the table they sit in. A cell's formula is
 /// left to the caller.
@@ -149,13 +148,30 @@ void move_subtree(const pugi::xml_node node, std::string sheet,
   if (std::string_view(node.name()) == "table:table") {
     sheet = node.attribute("table:name").value();
   }
-  // a condition reads relative to its base cell, whose sheet is its own
+  // a condition reads relative to its base cell, whose sheet is its own.
+  // Where a delete removes that cell, it reads from the first one that stays.
   std::string own = sheet;
+  std::int64_t shift = 0;
   for (const std::string_view base : base_cell_attributes) {
-    if (const pugi::xml_attribute address = node.attribute(base.data())) {
-      if (const std::string named = sheet_of(address.value()); !named.empty()) {
-        own = named;
-      }
+    pugi::xml_attribute address = node.attribute(base.data());
+    std::optional<formula::Node> cell =
+        address ? formula::parse("[" + std::string(address.value()) + "]",
+                                 formula::Syntax::opendocument)
+                : std::nullopt;
+    if (!cell.has_value() || !cell->holds<formula::CellReference>()) {
+      continue;
+    }
+    auto &reference = std::get<formula::CellReference>(cell->content);
+    own = reference.sheet.value_or(own);
+    std::optional<formula::Coordinate> &along =
+        edit.axis == formula::Axis::row ? reference.row : reference.column;
+    if (own == edit.sheet && !edit.insert && along.has_value() &&
+        !edit.span(along->index, along->index).has_value()) {
+      shift = std::int64_t{edit.index} + edit.count - along->index;
+      along->index = edit.index + edit.count;
+      const std::string text =
+          formula::to_string(*cell, formula::Syntax::opendocument);
+      address.set_value(text.substr(1, text.size() - 2).c_str());
     }
   }
   for (pugi::xml_attribute attribute : node.attributes()) {
@@ -165,7 +181,7 @@ void move_subtree(const pugi::xml_node node, std::string sheet,
     } else if (std::ranges::find(condition_attributes, name) !=
                condition_attributes.end()) {
       if (const std::optional<std::string> moved =
-              move_bracketed(attribute.value(), own, edit)) {
+              move_bracketed(attribute.value(), own, shift, edit)) {
         attribute.set_value(moved->c_str());
       }
     } else if (std::ranges::find(address_attributes, name) !=
@@ -196,9 +212,10 @@ odf::move_sheet_references(const pugi::xml_node spreadsheet,
   const bool rows = edit.axis == formula::Axis::row;
 
   move_subtree(spreadsheet, "", edit);
-  // a cell style's `style:map` conditions live with the automatic styles
-  move_subtree(spreadsheet.parent().parent().child("office:automatic-styles"),
-               "", edit);
+  // a cell style's `style:map` conditions live with the styles
+  const pugi::xml_node document = spreadsheet.parent().parent();
+  move_subtree(document.child("office:styles"), "", edit);
+  move_subtree(document.child("office:automatic-styles"), "", edit);
 
   std::uint32_t ordinal = 0;
   for (const pugi::xml_node table : spreadsheet.children("table:table")) {
