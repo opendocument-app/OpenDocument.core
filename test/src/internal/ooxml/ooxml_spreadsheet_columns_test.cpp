@@ -269,3 +269,21 @@ TEST(OoxmlSpreadsheetColumns, a_comment_moves_with_its_note) {
   EXPECT_TRUE(
       contains(notes, "<x:Anchor>1, 15, 0, 2, 3, 15, 3, 16</x:Anchor>"));
 }
+
+TEST(OoxmlSpreadsheetColumns, an_excel_2010_extension_moves_with_its_cells) {
+  const Document document = decode(workbook(
+      abc,
+      R"(<extLst><ext uri="{05C60535-1F16-4fd2-B633-F4F36F0B64E0}")"
+      R"( xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main")"
+      R"( xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main">)"
+      R"(<x14:sparklineGroups><x14:sparklineGroup><x14:sparklines>)"
+      R"(<x14:sparkline><xm:f>s!A1:C1</xm:f><xm:sqref>D1</xm:sqref>)"
+      R"(</x14:sparkline></x14:sparklines></x14:sparklineGroup>)"
+      R"(</x14:sparklineGroups></ext></extLst>)"));
+
+  first_sheet(document).insert_columns(1, 1);
+
+  const std::string xml = sheet_xml(document);
+  EXPECT_TRUE(contains(xml, "<xm:f>s!A1:D1</xm:f>"));
+  EXPECT_TRUE(contains(xml, "<xm:sqref>E1</xm:sqref>"));
+}

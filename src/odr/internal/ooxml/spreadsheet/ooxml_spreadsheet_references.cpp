@@ -15,8 +15,10 @@
 #include <optional>
 #include <ranges>
 #include <set>
+#include <span>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include <fmt/format.h>
 #include <fmt/ranges.h>
@@ -62,12 +64,12 @@ void move_text(pugi::xml_node node, const std::optional<std::string> &sheet,
   }
 }
 
-/// Moves the formulas of a rule or a validation, which state their cells as
-/// the first cell of its range sees them. Where a delete removes that cell,
-/// they read as the first cell that stays.
-void move_rule_formulas(const pugi::xml_node node,
-                        const formula::SheetEdit &edit) {
-  const std::string sqref = node.attribute("sqref").value();
+/// Moves @p formulas of a rule or a validation of the edited sheet, which
+/// state their cells as the first cell of @p sqref sees them. Where a delete
+/// removes that cell, they read as the first cell that stays.
+void move_anchored_formulas(const std::string &sqref,
+                            const std::span<const pugi::xml_node> formulas,
+                            const formula::SheetEdit &edit) {
   const std::string first = sqref.substr(0, sqref.find_first_of(" :"));
   if (first.empty()) {
     return;
@@ -80,9 +82,7 @@ void move_rule_formulas(const pugi::xml_node node,
                 ? TablePosition(anchor.column, after)
                 : TablePosition(after, anchor.row);
   }
-  for (const pugi::xpath_node match :
-       node.select_nodes("cfRule/formula | formula1 | formula2")) {
-    const pugi::xml_node text = match.node();
+  for (const pugi::xml_node text : formulas) {
     if (stays == anchor) {
       move_text(text, edit.sheet, edit);
     } else if (const std::optional<formula::Node> expression =
@@ -91,6 +91,103 @@ void move_rule_formulas(const pugi::xml_node node,
       formula::move_references(moved, edit, edit.sheet);
       text.text().set(formula::to_string(moved, syntax).c_str());
     }
+  }
+}
+
+void move_rule_formulas(const pugi::xml_node node,
+                        const formula::SheetEdit &edit) {
+  std::vector<pugi::xml_node> formulas;
+  for (const pugi::xpath_node match :
+       node.select_nodes("cfRule/formula | formula1 | formula2")) {
+    formulas.push_back(match.node());
+  }
+  move_anchored_formulas(node.attribute("sqref").value(), formulas, edit);
+}
+
+/// The descendants of @p node named @p name.
+std::vector<pugi::xml_node> descendants(const pugi::xml_node node,
+                                        const std::string_view name) {
+  std::vector<pugi::xml_node> result;
+  for (pugi::xml_node child : node.children()) {
+    if (child.name() == name) {
+      result.push_back(child);
+    }
+    const std::vector<pugi::xml_node> inner = descendants(child, name);
+    result.insert(result.end(), inner.begin(), inner.end());
+  }
+  return result;
+}
+
+/// Removes @p node, and every parent it leaves without an element up to the
+/// worksheet. A parent stating `count` counts the entries that stay.
+void remove_entry(pugi::xml_node node) {
+  while (node && std::string_view(node.name()) != "worksheet") {
+    pugi::xml_node parent = node.parent();
+    parent.remove_child(node);
+    if (parent.find_child([](const pugi::xml_node child) {
+          return child.type() == pugi::node_element;
+        })) {
+      if (pugi::xml_attribute count = parent.attribute("count")) {
+        count.set_value(static_cast<std::uint32_t>(std::ranges::count_if(
+            parent.children(), [](const pugi::xml_node child) {
+              return child.type() == pugi::node_element;
+            })));
+      }
+      return;
+    }
+    node = parent;
+  }
+}
+
+/// [MS-XLSX] 2.3: the Excel 2010 extensions of a worksheet state their cells
+/// in `xm:sqref` and their formulas in `xm:f`, which may read another sheet.
+/// So each worksheet moves its formulas, and the edited one its cells too.
+void move_extensions(const NamedWorksheet &worksheet, const bool edited,
+                     const formula::SheetEdit &edit) {
+  const pugi::xml_node extensions = worksheet.node.child("extLst");
+  std::vector<pugi::xml_node> lost;
+  // a rule or a validation reads as the first cell of its range
+  for (const std::string_view name :
+       {"x14:conditionalFormatting", "x14:dataValidation"}) {
+    for (const pugi::xml_node rule : descendants(extensions, name)) {
+      const std::vector<pugi::xml_node> formulas = descendants(rule, "xm:f");
+      const pugi::xml_node sqref = rule.child("xm:sqref");
+      if (!edited) {
+        for (const pugi::xml_node text : formulas) {
+          move_text(text, worksheet.name, edit);
+        }
+        continue;
+      }
+      move_anchored_formulas(sqref.text().get(), formulas, edit);
+      if (const std::optional<std::string> moved = formula::move_addresses(
+              sqref.text().get(), edit, edit.sheet, syntax)) {
+        if (moved->empty()) {
+          lost.push_back(rule);
+        } else {
+          sqref.text().set(moved->c_str());
+        }
+      }
+    }
+  }
+  // a sparkline reads its range as it is, and sits in its own cell
+  for (const pugi::xml_node sparkline :
+       descendants(extensions, "x14:sparkline")) {
+    move_text(sparkline.child("xm:f"), worksheet.name, edit);
+    const pugi::xml_node sqref = sparkline.child("xm:sqref");
+    if (!edited) {
+      continue;
+    }
+    if (const std::optional<std::string> moved = formula::move_addresses(
+            sqref.text().get(), edit, edit.sheet, syntax)) {
+      if (moved->empty()) {
+        lost.push_back(sparkline);
+      } else {
+        sqref.text().set(moved->c_str());
+      }
+    }
+  }
+  for (const pugi::xml_node node : lost) {
+    remove_entry(node);
   }
 }
 
@@ -176,6 +273,7 @@ void move_worksheet(const NamedWorksheet &worksheet, const bool edited,
   for (const auto &[unused, members] : groups) {
     move_shared_group(members, worksheet.name, edited, edit);
   }
+  move_extensions(worksheet, edited, edit);
 }
 
 /// ECMA-376 18.6.1: an entry without `i` is on the sheet of the one before.
