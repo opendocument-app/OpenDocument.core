@@ -593,3 +593,29 @@ TEST(CsvDocument, a_date_has_no_csv_spelling) {
   EXPECT_TRUE(document.is_editable());
   EXPECT_TRUE(document.is_savable());
 }
+
+TEST(CsvDocument, a_byte_order_mark_is_kept_or_added) {
+  EXPECT_EQ(edited("\xef\xbb\xbf"
+                   "a,b\n",
+                   ""),
+            "\xef\xbb\xbf"
+            "a,b\n");
+  EXPECT_EQ(edited("caf\xe9,b\n", "",
+                   DecodeOptions::as_csv({.encoding = TextEncoding::iso_8859_1,
+                                          .separator = ','})),
+            "\xef\xbb\xbf"
+            "caf\xc3\xa9,b\n");
+}
+
+TEST(CsvDocument, clearing_the_one_word_makes_a_column_numeric) {
+  const Document document = open(File::from_memory("a,b\nx,1\ny,z\n"),
+                                 DecodeOptions::as_csv({.separator = ','}))
+                                .as_csv_file()
+                                .document();
+  Sheet sheet = (*document.root_element().children().begin()).as_sheet();
+  EXPECT_EQ(sheet.cell(1, 1).value_type(), ValueType::string);
+  sheet.clear_cell(1, 2);
+  EXPECT_EQ(sheet.cell(1, 1).value_type(), ValueType::float_number);
+  sheet.set_cell(1, 0, CellValue("header"));
+  EXPECT_EQ(sheet.cell(1, 1).value_type(), ValueType::float_number);
+}

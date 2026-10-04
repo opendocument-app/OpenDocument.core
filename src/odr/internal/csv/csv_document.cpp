@@ -283,7 +283,11 @@ CsvDocument::CsvDocument(const abstract::File &file,
                          DocumentType::spreadsheet, nullptr),
       m_dialect{dialect}, m_separator_directive{skip_first_line} {
   const std::unique_ptr<std::istream> in = file.stream();
-  std::string text = encoding::to_utf8(util::stream::read(*in), encoding);
+  const std::string bytes = util::stream::read(*in);
+  // Excel reads a csv without one as the system's code page
+  m_byte_order_mark =
+      encoding != TextEncoding::utf8 || bytes.starts_with("\xef\xbb\xbf");
+  std::string text = encoding::to_utf8(bytes, encoding);
 
   const std::size_t first_break = text.find('\n');
   m_line_end = first_break != std::string::npos &&
@@ -385,6 +389,18 @@ void CsvDocument::set_cell(const std::uint32_t column, const std::uint32_t row,
   if (m_numeric_columns.size() < m_dimensions.columns) {
     m_numeric_columns.resize(m_dimensions.columns, false);
   }
+
+  // a header names its column; a value ends a numeric column or keeps one, and
+  // only the other writes need the whole column read again
+  const std::string_view written = fields[column];
+  if (row == 0 ||
+      (!written.empty() && m_numeric_columns[column] && is_number(written))) {
+    return;
+  }
+  if (!written.empty() && !is_number(written)) {
+    m_numeric_columns[column] = false;
+    return;
+  }
   type_column(column);
 }
 
@@ -408,6 +424,9 @@ bool CsvDocument::is_savable(const bool encrypted) const noexcept {
 }
 
 void CsvDocument::save(std::ostream &out) const {
+  if (m_byte_order_mark) {
+    out << "\xef\xbb\xbf";
+  }
   if (m_separator_directive) {
     out << "sep=" << m_dialect.separator << m_line_end;
   }

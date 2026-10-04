@@ -43,13 +43,15 @@ public:
 
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
-  /// UTF-8, whatever the source encoding was, and every field quoted only
-  /// where it has to be.
+  /// UTF-8, whatever the source encoding was, with a byte order mark unless
+  /// the source was UTF-8 without one. A field is quoted only where it has to
+  /// be.
   void save(std::ostream &out) const override;
 
 private:
   Dialect m_dialect;
   bool m_separator_directive{false};
+  bool m_byte_order_mark{false};
   std::string m_line_end;
   bool m_final_line_end{true};
 
