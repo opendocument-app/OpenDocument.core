@@ -326,9 +326,9 @@ functions can grow one step at a time, and no step makes a file worse.
 The corpus test holds this invariant. It evaluates every formula of the
 spreadsheets in `test/data/input` and compares each answer with the result
 the file caches. A difference fails the test, and an absent answer is
-counted, not failed. The corpus states 12125 formulas in 16 files. The most
-frequent functions are `COUNTIF`, `IF`, `SUM`, `ROUND`, `PI`, `SUMPRODUCT`,
-`AVERAGE` and the trigonometric ones.
+counted, not failed. The corpus states 15186 formula cells, as the files
+spell them, in 18 files. `COUNTIF` is by far the most frequent function,
+then `AVERAGE`, `IF`, `SUM`, `ROUND`, `PI` and `SUMPRODUCT`.
 
 ### 30. One value type, and a reference stays a reference
 
@@ -358,8 +358,11 @@ oracle the tests can run, for both formats. An `.ods` states some of the
 settings in `table:calculation-settings`: `table:case-sensitive`,
 `table:use-regular-expressions`, `table:use-wildcards`,
 `table:search-criteria-must-apply-to-whole-cell` and `table:null-date`. The
-evaluator reads them, and uses the defaults of an `.xlsx` where a file
-states none. Where Excel gives another result, a test states the Excel
+evaluator reads them. Where an `.ods` omits one, the ODF default holds, and
+LibreOffice computes so: case-sensitive, regular expressions on, wildcards
+off. An `.xlsx` states none of them and takes Excel's settings, as
+LibreOffice does on import: not case-sensitive, wildcards on, regular
+expressions off. Where Excel gives another result, a test states the Excel
 result in a comment, so a later change can follow Excel.
 
 A function name is English, as both file formats state it. A localized
