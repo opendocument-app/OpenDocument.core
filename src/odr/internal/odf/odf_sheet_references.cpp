@@ -26,8 +26,8 @@ constexpr std::array<std::string_view, 7> address_attributes{
     "table:print-ranges",         "calcext:target-range-address",
     "calcext:base-cell-address"};
 
-/// Whether the edit can change what @p node computes: it reads a removed row,
-/// or a range an insert grows.
+/// Whether the edit can change what @p node computes: it reads a removed row
+/// or column, or a range an insert grows.
 bool touched(const formula::Node &node, const std::string &sheet,
              const formula::SheetEdit &edit) {
   const std::uint64_t end = static_cast<std::uint64_t>(edit.index) + edit.count;
@@ -36,8 +36,11 @@ bool touched(const formula::Node &node, const std::string &sheet,
         extent.sheet.value_or(sheet) != edit.sheet) {
       continue;
     }
-    const std::uint32_t first = extent.range.from().row;
-    const std::uint32_t last = extent.range.to().row;
+    const bool rows = edit.axis == formula::Axis::row;
+    const std::uint32_t first =
+        rows ? extent.range.from().row : extent.range.from().column;
+    const std::uint32_t last =
+        rows ? extent.range.to().row : extent.range.to().column;
     if (edit.insert ? first < edit.index && edit.index <= last &&
                           last != std::numeric_limits<std::uint32_t>::max()
                     : first < end && last >= edit.index) {
@@ -103,8 +106,8 @@ void move_subtree(const pugi::xml_node node, std::string sheet,
 namespace odr::internal {
 
 std::vector<SheetPosition>
-odf::move_row_references(const pugi::xml_node spreadsheet,
-                         const formula::SheetEdit &edit) {
+odf::move_sheet_references(const pugi::xml_node spreadsheet,
+                           const formula::SheetEdit &edit) {
   std::vector<SheetPosition> result;
 
   move_subtree(spreadsheet, "", edit);
@@ -130,10 +133,15 @@ odf::move_row_references(const pugi::xml_node spreadsheet,
             for (std::uint32_t column = column_begin; column < column_end;
                  ++column) {
               // where the cell itself sits after the edit
+              const std::uint32_t along =
+                  edit.axis == formula::Axis::row ? row : column;
               if (!edited) {
                 result.emplace_back(ordinal, column, row);
-              } else if (const auto moved = edit.span(row, row)) {
-                result.emplace_back(ordinal, column, moved->first);
+              } else if (const auto moved = edit.span(along, along)) {
+                result.emplace_back(
+                    ordinal,
+                    edit.axis == formula::Axis::row ? column : moved->first,
+                    edit.axis == formula::Axis::row ? moved->first : row);
               }
             }
           }

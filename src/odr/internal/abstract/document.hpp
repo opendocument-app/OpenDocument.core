@@ -340,6 +340,28 @@ public:
     throw UnsupportedOperation();
   }
 
+  /// The columns from @p column on move right by @p count, and every
+  /// reference to them in the document with them. The new columns are empty.
+  /// @throws UnsupportedOperation where the engine cannot, or the edit would
+  ///         cut a merge or push a stated cell off the grid.
+  virtual void
+  sheet_insert_columns([[maybe_unused]] ElementIdentifier element_id,
+                       [[maybe_unused]] std::uint32_t column,
+                       [[maybe_unused]] std::uint32_t count) const {
+    throw UnsupportedOperation();
+  }
+  /// Removes @p count columns from @p column on, and moves the columns right
+  /// of them and every reference to them left. A reference into the removed
+  /// columns becomes `#REF!`.
+  /// @throws UnsupportedOperation where the engine cannot, or the edit would
+  ///         cut a merge.
+  virtual void
+  sheet_delete_columns([[maybe_unused]] ElementIdentifier element_id,
+                       [[maybe_unused]] std::uint32_t column,
+                       [[maybe_unused]] std::uint32_t count) const {
+    throw UnsupportedOperation();
+  }
+
   [[nodiscard]] virtual TableStyle
   sheet_style(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual TableColumnStyle

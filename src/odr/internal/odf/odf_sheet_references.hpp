@@ -13,13 +13,14 @@ class xml_node;
 namespace odr::internal::odf {
 
 /// Moves every formula and every cell or range address under @p spreadsheet
-/// (`office:spreadsheet`) that names a row of the edited sheet, as
+/// (`office:spreadsheet`) that names a row or a column the edit moves, as
 /// `formula::move_references` does. A formula is written back only where a
 /// reference in it moved.
 /// @return The formula cells whose result the edit can change, by their
-///         position after it: the ones reading a removed row, or a range an
-///         insert grows.
+///         position after it: the ones reading a removed row or column, or a
+///         range an insert grows.
 [[nodiscard]] std::vector<SheetPosition>
-move_row_references(pugi::xml_node spreadsheet, const formula::SheetEdit &edit);
+move_sheet_references(pugi::xml_node spreadsheet,
+                      const formula::SheetEdit &edit);
 
 } // namespace odr::internal::odf

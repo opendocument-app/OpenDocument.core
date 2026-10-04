@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `Sheet::insert_columns(column, count)` and
+  `Sheet::delete_columns(column, count)`, and the `insertColumns` and
+  `deleteColumns` ops, for an ods. Every formula, named range and cell
+  address that names a moved column moves with it, absolute or not, and a
+  reference into a removed column becomes `#REF!`. An edit that cuts a merge
+  refuses with `UnsupportedOperation`.
 - `Sheet::insert_rows` and `Sheet::delete_rows` in every binding:
   `insert_rows` and `delete_rows` in python, `insertRows` and `deleteRows`
   in java, `insertRows(at:count:)` and `deleteRows(at:count:)` in swift, and

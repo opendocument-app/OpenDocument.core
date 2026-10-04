@@ -416,6 +416,17 @@ public:
   /// @throws UnsupportedOperation where the edit would cut a merge.
   void delete_rows(std::uint32_t row, std::uint32_t count) const;
 
+  /// Moves the columns from @p column on right by @p count, and every
+  /// reference to them in the document with them, absolute or not. The new
+  /// columns are empty.
+  /// @throws UnsupportedOperation where the edit would cut a merge or push a
+  ///         stated cell off the grid.
+  void insert_columns(std::uint32_t column, std::uint32_t count) const;
+  /// Removes @p count columns from @p column on, and moves the columns right
+  /// of them left. A reference into the removed columns becomes `#REF!`.
+  /// @throws UnsupportedOperation where the edit would cut a merge.
+  void delete_columns(std::uint32_t column, std::uint32_t count) const;
+
   [[nodiscard]] TableStyle style() const;
   [[nodiscard]] TableColumnStyle column_style(std::uint32_t column) const;
   [[nodiscard]] TableRowStyle row_style(std::uint32_t row) const;
