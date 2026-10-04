@@ -118,4 +118,5 @@ rank in `CT_PPr` (`paragraph_property_order`). Justified is `both`
    on the public `ParagraphStyle`.
 5. Comments and annotations are not modelled.
 6. `append_text` on a table cell writes a `w:r` straight into the `w:tc`,
-   where the schema wants a `w:p`. Nothing calls it on a cell today.
+   where the schema wants a `w:p`. The browser editor appends into a
+   paragraph only, but `Document::append_text` takes any parent.

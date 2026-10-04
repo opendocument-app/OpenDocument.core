@@ -66,8 +66,9 @@ alone proves little.
 
 1. Run `DocumentCreate.*` in `odr_test`.
 2. Load each new and each edited file with LibreOffice `--convert-to pdf`.
-3. Validate each docx and xlsx with the Open XML SDK `OpenXmlValidator`.
-   This checks the parts against the Office schemas.
+3. Validate each docx and xlsx with `OpenXmlValidator` from the
+   `DocumentFormat.OpenXml` NuGet package. This checks the parts against the
+   Office schemas.
 
 ## Open items
 
