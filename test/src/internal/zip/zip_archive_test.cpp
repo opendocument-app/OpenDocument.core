@@ -290,15 +290,15 @@ std::string entry_archive(const std::string &data, const std::uint32_t level) {
 }
 
 struct AllocationProbe {
-  mz_zip_archive &zip;
-  mz_alloc_func original_alloc = zip.m_pAlloc;
-  mz_free_func original_free = zip.m_pFree;
-  void *original_opaque = zip.m_pAlloc_opaque;
-  std::int32_t outstanding = 0;
+  mz_zip_archive *zip{nullptr};
+  mz_alloc_func original_alloc{zip->m_pAlloc};
+  mz_free_func original_free{zip->m_pFree};
+  void *original_opaque{zip->m_pAlloc_opaque};
+  std::int32_t outstanding{0};
 
-  explicit AllocationProbe(mz_zip_archive &archive) : zip(archive) {
-    zip.m_pAlloc_opaque = this;
-    zip.m_pAlloc = [](void *opaque, std::size_t count, std::size_t size) {
+  explicit AllocationProbe(mz_zip_archive *archive) : zip{archive} {
+    zip->m_pAlloc_opaque = this;
+    zip->m_pAlloc = [](void *opaque, std::size_t count, std::size_t size) {
       auto &probe = *static_cast<AllocationProbe *>(opaque);
       void *result = probe.original_alloc(probe.original_opaque, count, size);
       if (result != nullptr) {
@@ -306,7 +306,7 @@ struct AllocationProbe {
       }
       return result;
     };
-    zip.m_pFree = [](void *opaque, void *address) {
+    zip->m_pFree = [](void *opaque, void *address) {
       auto &probe = *static_cast<AllocationProbe *>(opaque);
       if (address != nullptr) {
         --probe.outstanding;
@@ -316,9 +316,9 @@ struct AllocationProbe {
   }
 
   ~AllocationProbe() {
-    zip.m_pAlloc = original_alloc;
-    zip.m_pFree = original_free;
-    zip.m_pAlloc_opaque = original_opaque;
+    zip->m_pAlloc = original_alloc;
+    zip->m_pFree = original_free;
+    zip->m_pAlloc_opaque = original_opaque;
   }
 };
 
@@ -330,7 +330,7 @@ TEST(ZipArchive, extraction_releases_buffers_on_completion_and_early_close) {
       const std::string data(size, 'x');
       const auto zip = std::make_shared<util::Archive>(
           std::make_shared<MemoryFile>(entry_archive(data, level)));
-      AllocationProbe allocations(*zip->zip());
+      AllocationProbe allocations(zip->zip());
       const auto file = zip->begin()->file();
       {
         const auto stream = file->stream();
