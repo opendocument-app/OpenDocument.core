@@ -767,7 +767,7 @@ svm::TextArrayAction svm::read_text_array_action(std::istream &in,
   // grown entry by entry: the declared length is only trustworthy as far as the
   // stream actually reaches
   for (std::uint32_t i = 0; i < dx_array_length; ++i) {
-    std::uint32_t dx;
+    std::int32_t dx;
     read_primitive(in, dx);
     result.dx_array.push_back(dx);
   }

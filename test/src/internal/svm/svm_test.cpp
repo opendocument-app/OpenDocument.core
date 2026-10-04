@@ -1374,3 +1374,27 @@ TEST(SvmToSvg, coordinate_arithmetic_does_not_narrow_or_overflow) {
             svg.find("d=\"M 1500,1500 L 2000,1500 A 500,500"));
   EXPECT_NE(std::string::npos, svg.find(" A 2147.48,0.000001"));
 }
+
+TEST(SvmToSvg, text_advances_count_utf16_units) {
+  const auto draw = [](const bool complete) {
+    SvmBuilder builder;
+    builder.font("f", 10, 0, 0, 0, 0, 0, svm::RTL_TEXTENCODING_UCS2)
+        .action(svm::META_TEXTARRAY_ACTION)
+        .point(20, 0)
+        .ucs2_string(u"x\U0001f600ab")
+        .u16(1)
+        .u16(4)
+        .u32(complete ? 4 : 3)
+        .i32(0)
+        .i32(10)
+        .i32(-5);
+    if (complete) {
+      builder.i32(30);
+    }
+    return translate(builder.end().file());
+  };
+  const std::string svg = draw(true);
+  EXPECT_NE(std::string::npos, svg.find("x=\"20 30 15\""));
+  EXPECT_NE(std::string::npos, svg.find(">\U0001f600ab</text>"));
+  EXPECT_NE(std::string::npos, draw(false).find("x=\"20\""));
+}
