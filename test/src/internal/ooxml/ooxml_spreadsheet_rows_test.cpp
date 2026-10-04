@@ -366,3 +366,48 @@ TEST(OoxmlSpreadsheetRows, a_comment_moves_with_its_note) {
   EXPECT_TRUE(
       contains(notes, "<x:Anchor>1, 15, 1, 2, 3, 15, 4, 16</x:Anchor>"));
 }
+
+TEST(OoxmlSpreadsheetRows, a_rule_and_a_validation_move_their_formulas) {
+  const Document document = decode(workbook(
+      abc, R"(<conditionalFormatting sqref="A1:A3"><cfRule type="expression">)"
+           R"(<formula>$B$1&lt;A1</formula></cfRule></conditionalFormatting>)"
+           R"(<dataValidations count="1"><dataValidation sqref="A2">)"
+           R"(<formula1>$C$5</formula1><formula2>A1</formula2>)"
+           R"(</dataValidation></dataValidations>)"));
+
+  first_sheet(document).insert_rows(0, 1);
+
+  const std::string xml = sheet_xml(document);
+  EXPECT_TRUE(contains(xml, "<formula>$B$2&lt;A2</formula>"));
+  EXPECT_TRUE(
+      contains(xml, "<formula1>$C$6</formula1><formula2>A2</formula2>"));
+}
+
+TEST(OoxmlSpreadsheetRows, a_page_break_moves_and_two_at_one_place_become_one) {
+  const std::string breaks =
+      R"(<rowBreaks count="2" manualBreakCount="2"><brk id="2" man="1"/>)"
+      R"(<brk id="5" man="1"/></rowBreaks>)";
+  const Document moved = decode(workbook(abc, breaks));
+  first_sheet(moved).delete_rows(2, 2);
+  EXPECT_TRUE(contains(sheet_xml(moved),
+                       R"(<brk id="2" man="1"/><brk id="3" man="1"/>)"));
+
+  const Document merged = decode(workbook(abc, breaks));
+  first_sheet(merged).delete_rows(2, 4);
+  EXPECT_TRUE(contains(sheet_xml(merged),
+                       R"(<rowBreaks count="1" manualBreakCount="1">)"
+                       R"(<brk id="2" man="1"/></rowBreaks>)"));
+}
+
+TEST(OoxmlSpreadsheetRows, a_rule_reads_from_its_first_cell_that_stays) {
+  const Document document = decode(workbook(
+      abc,
+      R"(<conditionalFormatting sqref="A1:A3"><cfRule type="expression">)"
+      R"(<formula>$B$1&lt;A1</formula></cfRule></conditionalFormatting>)"));
+
+  first_sheet(document).delete_rows(0, 1);
+
+  const std::string xml = sheet_xml(document);
+  EXPECT_TRUE(contains(xml, R"(<conditionalFormatting sqref="A1:A2">)"));
+  EXPECT_TRUE(contains(xml, "<formula>#REF!&lt;A1</formula>"));
+}

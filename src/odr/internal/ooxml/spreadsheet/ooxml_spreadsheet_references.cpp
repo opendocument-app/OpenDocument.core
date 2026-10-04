@@ -62,6 +62,38 @@ void move_text(pugi::xml_node node, const std::optional<std::string> &sheet,
   }
 }
 
+/// Moves the formulas of a rule or a validation, which state their cells as
+/// the first cell of its range sees them. Where a delete removes that cell,
+/// they read as the first cell that stays.
+void move_rule_formulas(const pugi::xml_node node,
+                        const formula::SheetEdit &edit) {
+  const std::string sqref = node.attribute("sqref").value();
+  const std::string first = sqref.substr(0, sqref.find_first_of(" :"));
+  if (first.empty()) {
+    return;
+  }
+  const TablePosition anchor(first);
+  TablePosition stays = anchor;
+  if (!edit.insert && !move_position(anchor, edit).has_value()) {
+    const std::uint32_t after = edit.index + edit.count;
+    stays = edit.axis == formula::Axis::row
+                ? TablePosition(anchor.column, after)
+                : TablePosition(after, anchor.row);
+  }
+  for (const pugi::xpath_node match :
+       node.select_nodes("cfRule/formula | formula1 | formula2")) {
+    const pugi::xml_node text = match.node();
+    if (stays == anchor) {
+      move_text(text, edit.sheet, edit);
+    } else if (const std::optional<formula::Node> expression =
+                   formula::parse(text.text().get(), syntax)) {
+      formula::Node moved = shifted(*expression, anchor, stays);
+      formula::move_references(moved, edit, edit.sheet);
+      text.text().set(formula::to_string(moved, syntax).c_str());
+    }
+  }
+}
+
 struct Member final {
   pugi::xml_node formula;
   TablePosition position;
@@ -254,6 +286,9 @@ void collect_ranges(const pugi::xml_node node, const formula::SheetEdit &edit,
     if (name == "autoFilter" && edit.axis == formula::Axis::column) {
       move_filter_columns(child, edit);
     }
+    if (name == "conditionalFormatting" || name == "dataValidation") {
+      move_rule_formulas(child, edit);
+    }
     for (const RangeAttribute &range : removable_ranges) {
       pugi::xml_attribute attribute = child.attribute(range.attribute.data());
       if (name != range.element || !attribute) {
@@ -363,6 +398,35 @@ void ooxml::spreadsheet::move_sheet_ranges(const pugi::xml_node worksheet,
       count.set_value(static_cast<std::uint32_t>(
           std::ranges::distance(parent.children(node.name()))));
     }
+  }
+}
+
+void ooxml::spreadsheet::move_breaks(const pugi::xml_node worksheet,
+                                     const formula::SheetEdit &edit) {
+  pugi::xml_node breaks = worksheet.child(
+      edit.axis == formula::Axis::row ? "rowBreaks" : "colBreaks");
+  std::vector<std::uint32_t> seen;
+  for (pugi::xml_node brk = breaks.child("brk"); brk;) {
+    const pugi::xml_node next = brk.next_sibling("brk");
+    const std::uint32_t id = brk.attribute("id").as_uint();
+    const auto span = edit.span(id, id);
+    const std::uint32_t moved = span.has_value() ? span->first : edit.index;
+    if (std::ranges::find(seen, moved) != seen.end()) {
+      breaks.remove_child(brk);
+    } else {
+      seen.push_back(moved);
+      brk.attribute("id").set_value(moved);
+    }
+    brk = next;
+  }
+  if (pugi::xml_attribute count = breaks.attribute("count")) {
+    count.set_value(static_cast<std::uint32_t>(seen.size()));
+  }
+  if (pugi::xml_attribute manual = breaks.attribute("manualBreakCount")) {
+    manual.set_value(static_cast<std::uint32_t>(std::ranges::count_if(
+        breaks.children("brk"), [](const pugi::xml_node brk) {
+          return brk.attribute("man").as_bool();
+        })));
   }
 }
 
