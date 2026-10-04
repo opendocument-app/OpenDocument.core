@@ -7,6 +7,7 @@
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/open_strategy.hpp>
+#include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <istream>
@@ -17,14 +18,6 @@
 namespace odr::internal {
 
 namespace {
-
-/// At most @p size bytes, cut back to what was actually read.
-std::string read_head(std::istream &in, const std::size_t size) {
-  std::string result(size, '\0');
-  in.read(result.data(), static_cast<std::streamsize>(size));
-  result.resize(static_cast<std::size_t>(in.gcount()));
-  return result;
-}
 
 bool match_magic(const std::string &head, const std::string &pattern) {
   const auto bytes = util::string::split(pattern, " ");
@@ -201,7 +194,7 @@ FileType magic::file_type(std::istream &in) {
   // an enhanced metafile names itself at offset 40, so the head has to reach 44
   static constexpr std::size_t head_size = 64;
 
-  return file_type(read_head(in, head_size));
+  return file_type(util::stream::read(in, head_size));
 }
 
 FileType magic::file_type(const abstract::File &file) {

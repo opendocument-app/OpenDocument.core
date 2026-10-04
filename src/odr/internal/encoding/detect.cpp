@@ -1,6 +1,7 @@
 #include <odr/internal/encoding/detect.hpp>
 
 #include <odr/internal/encoding/text_encoding_table.hpp>
+#include <odr/internal/util/stream_util.hpp>
 
 #include <istream>
 #include <string_view>
@@ -49,10 +50,7 @@ bool encoding_holds_nul(const TextEncoding encoding) {
 
 std::string encoding::read_probe(std::istream &in,
                                  const std::size_t max_bytes) {
-  std::string result(max_bytes, '\0');
-  in.read(result.data(), static_cast<std::streamsize>(max_bytes));
-  result.resize(static_cast<std::size_t>(in.gcount()));
-  return result;
+  return util::stream::read(in, max_bytes);
 }
 
 TextEncoding encoding::detect(const std::string_view probe) {

@@ -21,21 +21,17 @@ std::ifstream file::open(const std::string &path) {
 std::size_t file::size(const std::string &path) {
   std::ifstream in = open(path);
   in.seekg(0, std::ios::end);
-  return static_cast<std::size_t>(in.tellg());
+  const auto end = in.tellg();
+  if (end < 0) {
+    throw FileReadError();
+  }
+  return static_cast<std::size_t>(end);
 }
 
 std::string file::read(const std::string &path) {
   std::ifstream in = open(path);
 
-  std::string result;
-
-  in.seekg(0, std::ios::end);
-  result.reserve(in.tellg());
-  in.seekg(0, std::ios::beg);
-
-  result.assign(std::istreambuf_iterator(in), std::istreambuf_iterator<char>());
-
-  return result;
+  return stream::read(in);
 }
 
 void file::pipe(const std::string &path, std::ostream &out) {
@@ -54,11 +50,19 @@ std::ofstream file::create(const std::string &path) {
 void file::write(const std::string &data, const std::string &path) {
   std::ofstream out = create(path);
   out << data;
+  out.close();
+  if (!out) {
+    throw FileWriteError(path);
+  }
 }
 
 void file::write(std::istream &in, const std::string &path) {
   std::ofstream out = create(path);
   stream::pipe(in, out);
+  out.close();
+  if (!out) {
+    throw FileWriteError(path);
+  }
 }
 
 } // namespace odr::internal::util
