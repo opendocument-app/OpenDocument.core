@@ -332,6 +332,62 @@ selection, and paints the cells the page has. Coalescing still merges the
 keys of one position, but a style op never merges back past a later one that
 reaches a cell in common, so a cell style after a row style stays after it.
 
+## Number formats
+
+Status: planned. The steps land as a stack, in this order:
+
+1. The format-code parser and the formatter for numbers.
+2. Dates and times in the formatter.
+3. The xlsx reader shows a cell formatted, and types a date as a date.
+4. The ods writer formats a number written into a cell with a data style.
+5. The sheet editor opens a formatted number on its value.
+
+### 14. One format model, parsed from a format code
+
+`internal/number_format` parses a format code as MS-XLS 2.4.126 states its
+grammar: up to four sections, a condition, a colour, `0`, `#`, `?`, the
+decimal point, grouping and scaling commas, `%`, `E+`, fractions, `@`,
+quoted and escaped literals, `_` and `*`, and the date and time tokens. One
+formatter turns a number and a model into the text a cell shows.
+
+An ods data style (`number:number-style`, `number:currency-style`,
+`number:percentage-style`, `number:date-style`, `number:time-style`,
+`number:boolean-style`, `number:text-style`, with its `style:map`s) is turned
+into a format code first, as LibreOffice does when it exports one. So there is
+one formatter and one set of tests.
+
+**Why not one model per format:** the two languages say the same things, and
+a format code is the smaller of them to write a test in.
+
+The format code spells `.` and `,` whatever the locale; the formatter writes
+them as the format code does. Month and day names are English: no locale
+data ships. A colour is parsed and not shown, and `*` fills nothing.
+
+### 15. A reader formats what the file does not show already
+
+- `.xlsx` states the value alone (`<v>`), so the reader formats it with the
+  cell's `numFmtId`: a built-in one from ECMA-376 18.8.30 in its en-US
+  spelling, or a `numFmt` of `styles.xml`. `CellValue` keeps the number and
+  states the formatted text. A date or time format types the cell
+  `ValueType::date` or `time`, its number the serial, in the 1900 system or
+  in the 1904 one where `workbookPr/@date1904` says so. A boolean shows
+  `TRUE` or `FALSE`.
+- `.ods` states the value and its rendering (`text:p`), so the reader keeps
+  the rendering. The formatter is for the writer: a number written into a cell
+  whose style names a data style gets its `text:p` from the style, not from
+  the typed text. A cell without a data style keeps the typed text.
+
+### 16. The editor opens a formatted number on its value
+
+An editable render states `data-odr-value` on a number cell whose shown text
+is not the plain spelling of its value. The overlay opens on that value, with
+the decimal separator of the locale, and a commit compares numbers, not
+text. So `€1.234,50` opens as `1234,5`, and a commit of it unchanged writes
+nothing.
+
+After a commit the page shows the typed text until the host renders again:
+the formatter runs in C++ only, as the evaluator will (decision 5).
+
 ## Formulas, read side
 
 - `internal/formula` parses `of:=SUM([.A1:.B2])` (`table:formula`) and
@@ -356,7 +412,6 @@ reaches a cell in common, so a cell style after a row style stays after it.
   incremental recompute in topological order with cycles reported, and
   `Document::recalculate(operations)` returning the changed cells. Formula
   input in the editor comes with it.
-- Number formats (`number:number-style`, `numFmt`). `ValueType` already has
-  the date, time and boolean kinds; with the formats an `.xlsx` date serial
-  reads as a date.
+- Number formats, planned above (decisions 14 to 16).
+- A typed date or time in the editor, and the locale's month names.
 - Insert and delete of rows and columns.
