@@ -6,6 +6,7 @@
 #include <odr/odr.hpp>
 
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/common/temporary_file.hpp>
 #include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
@@ -123,6 +124,35 @@ TEST(File, a_file_read_into_memory_keeps_its_name) {
 
   EXPECT_EQ(File(std::make_shared<internal::MemoryFile>(on_disk)).name(),
             "about.odt");
+}
+
+TEST(File, copying_into_memory_uses_one_size_snapshot) {
+  class ChangingFile final : public internal::abstract::File {
+  public:
+    FileLocation location() const noexcept override {
+      return FileLocation::memory;
+    }
+    std::size_t size() const override { return ++size_reads == 1 ? 4 : 2; }
+    std::string name() const override { return "changing"; }
+    std::optional<internal::AbsPath> disk_path() const override { return {}; }
+    std::optional<std::string_view> memory_data() const override { return {}; }
+    std::unique_ptr<std::istream> stream() const override {
+      return std::make_unique<std::istringstream>("data");
+    }
+    mutable std::uint32_t size_reads{0};
+  } source;
+
+  const internal::MemoryFile copy(source);
+  EXPECT_EQ(copy.content(), "data");
+  EXPECT_EQ(source.size_reads, 1);
+}
+
+TEST(File, temporary_copies_preserve_binary_bytes) {
+  const std::string data("a\r\nb\nc\0d", 8);
+  const internal::MemoryFile source(data);
+  const auto copy =
+      internal::TemporaryDiskFileFactory::system_default().copy(source);
+  EXPECT_EQ(internal::MemoryFile(copy).content(), data);
 }
 
 /// A file inside an archive is named by its entry, not by the archive.

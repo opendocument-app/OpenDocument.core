@@ -657,7 +657,7 @@ private:
     while (true) {
       skip_whitespace();
       if (peek() == separator() || peek() == ')') {
-        arguments.push_back(Node{Missing{}});
+        arguments.push_back(Node{Missing{}, {}});
       } else {
         std::optional<Node> argument = expression();
         if (!argument.has_value()) {

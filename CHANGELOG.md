@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- The shared stream helpers stop at failed input and reject extreme seeks,
+  buffered writes report a failed sink, and a temporary copy keeps binary
+  bytes on Windows.
+
 - An inserted or deleted row or column moves the Excel 2010 extensions of an
   xlsx worksheet: an `x14` conditional format, validation and sparkline, and
   sparkline date-axis ranges, and references from other sheets.
