@@ -604,16 +604,19 @@ public:
       append_empty_cells(row_node, sheet.dimensions.columns - stated);
     }
 
+    // a cell stating no style shows the row's default before its column's
+    const char *row_default =
+        row_node.attribute("table:default-cell-style-name").value();
     std::uint32_t column = 0;
     for (pugi::xml_node cell = row_node.first_child(); cell;) {
       const pugi::xml_node next = cell.next_sibling();
       const std::uint32_t repeated =
           cell.attribute("table:number-columns-repeated").as_uint(1);
       if (std::strcmp(cell.name(), "table:table-cell") == 0) {
-        if (const pugi::xml_attribute own =
-                cell.attribute("table:style-name")) {
-          restyle(cell, "table:style-name", own.value(), cell_style,
-                  text_style);
+        if (const pugi::xml_attribute own = cell.attribute("table:style-name");
+            own || *row_default != '\0') {
+          restyle(cell, "table:style-name", own ? own.value() : row_default,
+                  cell_style, text_style);
         } else {
           restyle_by_column(sheet, cell, column, repeated, cell_style,
                             text_style);

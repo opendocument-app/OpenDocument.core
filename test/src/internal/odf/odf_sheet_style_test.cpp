@@ -392,6 +392,24 @@ TEST(OdfSheetStyle, a_row_style_keeps_what_each_cell_showed) {
   EXPECT_EQ(text_style_of(sheet, 1).font_weight, FontWeight::bold);
 }
 
+/// Some producers state a row's default, which a cell without a style of its
+/// own shows before its column's.
+TEST(OdfSheetStyle, a_row_style_keeps_the_default_its_row_states) {
+  std::string source = rows_and_columns();
+  const std::string row = "<table:table-row>";
+  source.replace(source.find(row), row.size(),
+                 R"(<table:table-row table:default-cell-style-name="ce1">)");
+  const Document document = document_of(source);
+  const Sheet sheet = first_sheet(document);
+  EXPECT_EQ(fill_at(sheet, 2, 0), 0xff0000u);
+
+  sheet.set_row_style(0, {}, bold());
+
+  EXPECT_EQ(fill_at(sheet, 1, 0), 0xff0000u);
+  EXPECT_EQ(fill_at(sheet, 2, 0), 0xff0000u);
+  EXPECT_EQ(text_style_of(sheet, 1).font_weight, FontWeight::bold);
+}
+
 TEST(OdfSheetStyle, a_row_style_cuts_a_repeated_row_and_reaches_past_it) {
   const Document document = document_of(rows_and_columns());
   const Sheet sheet = first_sheet(document);
