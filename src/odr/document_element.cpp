@@ -341,8 +341,7 @@ MasterPage TextRoot::first_master_page() const {
   }
   const ElementIdentifier master_page_id =
       m_adapter2->text_root_first_master_page(m_identifier);
-  return {m_adapter, master_page_id,
-          m_adapter->master_page_adapter(master_page_id)};
+  return Element(m_adapter, master_page_id).as_master_page();
 }
 
 std::string Slide::name() const {
@@ -359,8 +358,7 @@ MasterPage Slide::master_page() const {
   }
   const ElementIdentifier master_page_id =
       m_adapter2->slide_master_page(m_identifier);
-  return {m_adapter, master_page_id,
-          m_adapter->master_page_adapter(master_page_id)};
+  return Element(m_adapter, master_page_id).as_master_page();
 }
 
 std::string Sheet::name() const {
@@ -569,8 +567,7 @@ MasterPage Page::master_page() const {
   }
   const ElementIdentifier master_page_id =
       m_adapter2->page_master_page(m_identifier);
-  return {m_adapter, master_page_id,
-          m_adapter->master_page_adapter(master_page_id)};
+  return Element(m_adapter, master_page_id).as_master_page();
 }
 
 PageLayout MasterPage::page_layout() const {
@@ -668,7 +665,7 @@ TableRow Table::first_row() const {
     return {};
   }
   const ElementIdentifier row_id = m_adapter2->table_first_row(m_identifier);
-  return {m_adapter, row_id, m_adapter->table_row_adapter(row_id)};
+  return Element(m_adapter, row_id).as_table_row();
 }
 
 TableColumn Table::first_column() const {
@@ -677,7 +674,7 @@ TableColumn Table::first_column() const {
   }
   const ElementIdentifier column_id =
       m_adapter2->table_first_column(m_identifier);
-  return {m_adapter, column_id, m_adapter->table_column_adapter(column_id)};
+  return Element(m_adapter, column_id).as_table_column();
 }
 
 ElementRange Table::columns() const {

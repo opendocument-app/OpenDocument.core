@@ -250,6 +250,15 @@ TEST(File, default_constructed_reports_unknown_location) {
   EXPECT_THROW(std::ignore = file.stream(), NullPointerError);
 }
 
+TEST(File, opening_or_probing_an_empty_handle_throws) {
+  const File file;
+  EXPECT_THROW(std::ignore = open(file), NullPointerError);
+  EXPECT_THROW(std::ignore = open(file, DecodeOptions::as(FileType::text_file)),
+               NullPointerError);
+  EXPECT_THROW(std::ignore = list_file_types(file), NullPointerError);
+  EXPECT_THROW(std::ignore = mimetype(file), NullPointerError);
+}
+
 TEST(File, disk_file_has_no_memory_data) {
   const File file(std::make_shared<internal::DiskFile>(
       TestData::test_file_path("odr-public/odt/about.odt")));

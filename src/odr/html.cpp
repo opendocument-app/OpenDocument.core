@@ -29,6 +29,13 @@ namespace odr {
 
 namespace {
 
+template <typename T> const T &deref(const std::shared_ptr<T> &impl) {
+  if (impl == nullptr) {
+    throw NullPointerError("HTML handle");
+  }
+  return *impl;
+}
+
 void bring_offline(const HtmlResources &resources,
                    const std::string &output_path) {
   for (const auto &[resource, location] : resources) {
@@ -70,32 +77,34 @@ HtmlPage::HtmlPage(std::string name, std::string path)
 HtmlService::HtmlService() = default;
 
 HtmlService::HtmlService(std::shared_ptr<abstract::HtmlService> impl)
-    : m_impl{std::move(impl)} {}
-
-const HtmlConfig &HtmlService::config() const { return m_impl->config(); }
-
-const HtmlViews &HtmlService::list_views() const {
-  return m_impl->list_views();
+    : m_impl{std::move(impl)} {
+  static_cast<void>(deref(m_impl));
 }
 
-void HtmlService::warmup() const { m_impl->warmup(); }
+const HtmlConfig &HtmlService::config() const { return deref(m_impl).config(); }
+
+const HtmlViews &HtmlService::list_views() const {
+  return deref(m_impl).list_views();
+}
+
+void HtmlService::warmup() const { deref(m_impl).warmup(); }
 
 bool HtmlService::exists(const std::string &path) const {
-  return m_impl->exists(path);
+  return deref(m_impl).exists(path);
 }
 
 std::string HtmlService::mimetype(const std::string &path) const {
-  return m_impl->mimetype(path);
+  return deref(m_impl).mimetype(path);
 }
 
 void HtmlService::write(const std::string &path, std::ostream &out) const {
-  m_impl->write(path, out);
+  deref(m_impl).write(path, out);
 }
 
 HtmlResources HtmlService::write_html(const std::string &path,
                                       std::ostream &out) const {
   internal::html::HtmlWriter writer(out, config());
-  return m_impl->write_html(path, writer);
+  return deref(m_impl).write_html(path, writer);
 }
 
 Html HtmlService::bring_offline(const std::string &output_path) const {
@@ -144,23 +153,25 @@ const std::shared_ptr<abstract::HtmlService> &HtmlService::impl() const {
 HtmlView::HtmlView() = default;
 
 HtmlView::HtmlView(std::shared_ptr<abstract::HtmlView> impl)
-    : m_impl{std::move(impl)} {}
+    : m_impl{std::move(impl)} {
+  static_cast<void>(deref(m_impl));
+}
 
-const std::string &HtmlView::name() const { return m_impl->name(); }
+const std::string &HtmlView::name() const { return deref(m_impl).name(); }
 
-std::size_t HtmlView::index() const { return m_impl->index(); }
+std::size_t HtmlView::index() const { return deref(m_impl).index(); }
 
-const std::string &HtmlView::path() const { return m_impl->path(); }
+const std::string &HtmlView::path() const { return deref(m_impl).path(); }
 
-const HtmlConfig &HtmlView::config() const { return m_impl->config(); }
+const HtmlConfig &HtmlView::config() const { return deref(m_impl).config(); }
 
 const std::optional<HtmlSheetCut> &HtmlView::sheet_cut() const {
-  return m_impl->sheet_cut();
+  return deref(m_impl).sheet_cut();
 }
 
 HtmlResources HtmlView::write_html(std::ostream &out) const {
   internal::html::HtmlWriter writer(out, config());
-  return m_impl->write_html(writer);
+  return deref(m_impl).write_html(writer);
 }
 
 Html HtmlView::bring_offline(const std::string &output_path) const {
@@ -186,28 +197,34 @@ const std::shared_ptr<abstract::HtmlView> &HtmlView::impl() const {
 HtmlResource::HtmlResource() = default;
 
 HtmlResource::HtmlResource(std::shared_ptr<abstract::HtmlResource> impl)
-    : m_impl{std::move(impl)} {}
-
-HtmlResourceType HtmlResource::type() const { return m_impl->type(); }
-
-const std::string &HtmlResource::mime_type() const {
-  return m_impl->mime_type();
+    : m_impl{std::move(impl)} {
+  static_cast<void>(deref(m_impl));
 }
 
-const std::string &HtmlResource::name() const { return m_impl->name(); }
+HtmlResourceType HtmlResource::type() const { return deref(m_impl).type(); }
 
-const std::string &HtmlResource::path() const { return m_impl->path(); }
+const std::string &HtmlResource::mime_type() const {
+  return deref(m_impl).mime_type();
+}
 
-const std::optional<File> &HtmlResource::file() const { return m_impl->file(); }
+const std::string &HtmlResource::name() const { return deref(m_impl).name(); }
 
-bool HtmlResource::is_shipped() const { return m_impl->is_shipped(); }
+const std::string &HtmlResource::path() const { return deref(m_impl).path(); }
 
-bool HtmlResource::is_external() const { return m_impl->is_external(); }
+const std::optional<File> &HtmlResource::file() const {
+  return deref(m_impl).file();
+}
 
-bool HtmlResource::is_accessible() const { return m_impl->is_accessible(); }
+bool HtmlResource::is_shipped() const { return deref(m_impl).is_shipped(); }
+
+bool HtmlResource::is_external() const { return deref(m_impl).is_external(); }
+
+bool HtmlResource::is_accessible() const {
+  return deref(m_impl).is_accessible();
+}
 
 void HtmlResource::write_resource(std::ostream &os) const {
-  m_impl->write_resource(os);
+  deref(m_impl).write_resource(os);
 }
 
 namespace {

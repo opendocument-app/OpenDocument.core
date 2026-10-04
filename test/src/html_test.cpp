@@ -28,6 +28,15 @@ using namespace odr::test;
 
 // A linked stylesheet is of no use to a host serving the service over http if
 // the service cannot answer for the path the markup names.
+TEST(Html, empty_handles_throw_on_access) {
+  EXPECT_THROW(HtmlService().config(), NullPointerError);
+  EXPECT_THROW(HtmlView().name(), NullPointerError);
+  EXPECT_THROW(HtmlResource().type(), NullPointerError);
+  EXPECT_THROW(HtmlService(nullptr), NullPointerError);
+  EXPECT_THROW(HtmlView(nullptr), NullPointerError);
+  EXPECT_THROW(HtmlResource(nullptr), NullPointerError);
+}
+
 TEST(html, linked_resources_are_served) {
   const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
