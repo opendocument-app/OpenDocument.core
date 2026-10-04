@@ -23,6 +23,9 @@ The release run heads these entries with the version and opens a fresh
 - An ods cell takes a written date or time: `office:date-value` or
   `office:time-value`, and the text of its date or time style where it has
   one.
+- An xlsx cell takes a written date or time as a serial of the workbook's
+  date system. A cell without a date or time format gets the built-in 14,
+  20, 21 or 22, as Excel gives one.
 
 - An xlsx cell shows its number formatted, as its `numFmt` or a built-in
   format says, and a date or time format types it `ValueType::date` or
