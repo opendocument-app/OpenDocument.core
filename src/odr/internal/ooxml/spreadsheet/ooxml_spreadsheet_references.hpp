@@ -1,6 +1,10 @@
 #pragma once
 
+#include <odr/table_position.hpp>
+
 #include <odr/internal/formula/formula_ast.hpp>
+
+#include <optional>
 
 #include <string>
 #include <vector>
@@ -15,19 +19,24 @@ struct NamedWorksheet final {
   pugi::xml_node node;
 };
 
+/// Where the cell at @p position of the edited sheet sits after @p edit,
+/// nothing where the edit removes it.
+[[nodiscard]] std::optional<TablePosition>
+move_position(const TablePosition &position, const formula::SheetEdit &edit);
+
 /// Moves every formula of @p worksheets, every defined name of @p workbook and
-/// every entry of @p calc_chain that names a row of the edited sheet, as
+/// every entry of @p calc_chain that the edit moves, as
 /// `formula::move_references` does. A formula is written back only where a
 /// reference in it moved. A shared group whose members would read something
 /// else after the move is written out as one formula per cell
 /// (ECMA-376 18.3.1.40).
 /// @param edited_sheet_id the `sheetId` the calc chain names the edited sheet
 ///        by.
-void move_row_references(pugi::xml_node workbook,
-                         const std::vector<NamedWorksheet> &worksheets,
-                         pugi::xml_node calc_chain,
-                         const std::string &edited_sheet_id,
-                         const formula::SheetEdit &edit);
+void move_workbook_references(pugi::xml_node workbook,
+                              const std::vector<NamedWorksheet> &worksheets,
+                              pugi::xml_node calc_chain,
+                              const std::string &edited_sheet_id,
+                              const formula::SheetEdit &edit);
 
 /// Moves the ranges @p worksheet states besides its cells: conditional
 /// formats, validations, links, the filter, protected ranges, ignored errors
