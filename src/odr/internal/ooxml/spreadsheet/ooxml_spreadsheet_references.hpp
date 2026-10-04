@@ -39,7 +39,7 @@ void move_workbook_references(pugi::xml_node workbook,
                               const formula::SheetEdit &edit);
 
 /// Moves the ranges @p worksheet states besides its cells: conditional
-/// formats and validations with their formulas, links, the filter, protected
+/// formats and validations, links, the filter, protected
 /// ranges, ignored errors and the view, and the columns a filter counts. An
 /// element whose range a delete takes completely goes; the view keeps a cell,
 /// the first one past the removed rows or columns.
@@ -102,6 +102,10 @@ struct TableHeader final {
 /// the part could answer.
 [[nodiscard]] bool cuts_table(pugi::xml_node table,
                               const formula::SheetEdit &edit);
+
+/// Moves references in table formulas, including references to another sheet.
+void move_table_formulas(pugi::xml_node table, const std::string &sheet,
+                         const formula::SheetEdit &edit);
 
 /// Moves @p table, its filter and its formulas with the edit. An inserted
 /// column inside it gets a `tableColumn` with the next free `id` and a name

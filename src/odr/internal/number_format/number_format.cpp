@@ -74,11 +74,6 @@ Decimal round_decimal(const double value, const std::size_t decimals) {
   return result;
 }
 
-bool is_zero(const Decimal &decimal) {
-  return decimal.integer.empty() &&
-         decimal.fraction.find_first_not_of('0') == std::string::npos;
-}
-
 void append_literal(std::vector<Token> &tokens, const std::string &text) {
   if (!tokens.empty() && tokens.back().kind == Kind::literal) {
     tokens.back().text += text;
@@ -536,6 +531,10 @@ std::string format_scientific(const std::vector<Token> &tokens,
     fraction_count += tokens[i].kind == Kind::digit ? 1 : 0;
   }
 
+  const auto mantissa_at = [value](const int power) {
+    return power < -308 ? value * 1e308 / std::pow(10.0, power + 308)
+                        : value / std::pow(10.0, power);
+  };
   int power = 0;
   if (value != 0) {
     power = static_cast<int>(std::floor(std::log10(value)));
@@ -547,13 +546,12 @@ std::string format_scientific(const std::vector<Token> &tokens,
       power -= step - 1;
     }
     // rounding may carry into one more digit, and so into the next power
-    const Decimal decimal =
-        round_decimal(value / std::pow(10.0, power), fraction_count);
+    const Decimal decimal = round_decimal(mantissa_at(power), fraction_count);
     if (decimal.integer.size() > integer_count) {
       power += hashed && step > 1 ? step : 1;
     }
   }
-  const double mantissa = value / std::pow(10.0, power);
+  const double mantissa = mantissa_at(power);
 
   std::string exponent_digits;
   std::size_t end = exponent + 1;
@@ -886,6 +884,9 @@ std::string format_section(const Section &section, const double value,
     }
   }
 
+  if (!std::isfinite(scaled)) {
+    return format_general(value, symbols);
+  }
   if (has(section, Kind::general)) {
     std::string result;
     for (const Token &token : tokens) {
@@ -919,17 +920,6 @@ std::string format_section(const Section &section, const double value,
     return result;
   }
   return format_plain(tokens, 0, tokens.size(), scaled, symbols);
-}
-
-/// Whether @p section rounds @p value to nothing it shows.
-bool shows_zero(const Section &section, const double value) {
-  std::size_t decimals = 0;
-  bool after_point = false;
-  for (const Token &token : section.tokens) {
-    after_point = after_point || token.kind == Kind::point;
-    decimals += after_point && token.kind == Kind::digit ? 1 : 0;
-  }
-  return is_zero(round_decimal(std::abs(value), decimals));
 }
 
 } // namespace
@@ -1018,7 +1008,7 @@ std::string Format::format(const double value, const Epoch epoch,
   if (has(section, Kind::date_time)) {
     // a spreadsheet shows a date before its epoch or after 9999-12-31 as
     // `####`
-    constexpr double last_serial = 2958465;
+    const double last_serial = epoch == Epoch::from_1904 ? 2957003 : 2958465;
     return value < 0 || value >= last_serial + 1
                ? format_general(value, symbols)
                : format_date_time(section.tokens, value, epoch,
@@ -1031,9 +1021,8 @@ std::string Format::format(const double value, const Epoch epoch,
     return format_general(value, symbols);
   }
   std::string result = format_section(section, std::abs(value), symbols);
-  const bool shows_nothing =
-      has(section, Kind::general) ? value == 0 : shows_zero(section, value);
-  if (value < 0 && !negative_section && !shows_nothing) {
+  if (value < 0 && !negative_section &&
+      result != format_section(section, 0, symbols)) {
     result.insert(result.begin(), '-');
   }
   return result;

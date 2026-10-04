@@ -62,6 +62,12 @@
       editor().value = "c";
       editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
       check("a value is still written", ops().length === 1 && ops()[0].op === "setCell");
+      ["2025-01-02", "18:30"].forEach(function (text) {
+        odr.editing.editAt(1, 0);
+        editor().value = text;
+        editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        check("CSV keeps " + text + " as text", ops()[0].value.type === "string" && ops()[0].value.text === text);
+      });
     </script>
   </body>
 </html>

@@ -16,10 +16,11 @@
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/html/image_file.hpp>
 #include <odr/internal/html/style_registry.hpp>
-#include <odr/internal/number_format/number_format.hpp>
 #include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
+
+#include <fmt/format.h>
 
 #include <algorithm>
 #include <limits>
@@ -361,12 +362,12 @@ std::optional<std::string> formatted_value(const CellValue &value,
     return std::nullopt;
   }
   if (value.type() == ValueType::date || value.type() == ValueType::time) {
-    return number_format::format_general(value.number());
+    return fmt::format("{}", value.number());
   }
   if (value.type() != ValueType::float_number) {
     return std::nullopt;
   }
-  std::string plain = number_format::format_general(value.number());
+  std::string plain = fmt::format("{}", value.number());
   if (shown_text(cell) == plain) {
     return std::nullopt;
   }
@@ -805,11 +806,12 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
 
       const CellValue cell_value =
           state.config().editable ? cell.value() : CellValue();
-      // a date's text gives no way back to its value, which a sort needs
+      // a formatted cell's text need not state the number a sort needs
       const std::optional<std::string> value_spelling =
           state.config().editable ? formatted_value(cell_value, cell)
           : cell_value_type == ValueType::date ||
-                  cell_value_type == ValueType::time
+                  cell_value_type == ValueType::time ||
+                  cell_value_type == ValueType::float_number
               ? formatted_value(cell.value(), cell)
               : std::nullopt;
       const char *lock = state.config().editable

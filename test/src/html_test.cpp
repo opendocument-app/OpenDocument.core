@@ -995,13 +995,16 @@ TEST(html, a_formatted_number_states_its_value) {
       R"(<table:table-cell office:value-type="float" office:value="1234.5">)"
       R"(<text:p>1.234,50 €</text:p></table:table-cell>)"
       R"(<table:table-cell office:value-type="float" office:value="7">)"
-      R"(<text:p>7</text:p></table:table-cell>)"));
+      R"(<text:p>7</text:p></table:table-cell>)"
+      R"(<table:table-cell office:value-type="float" office:value="0.6666666666666666">)"
+      R"(<text:p/></table:table-cell>)"));
   const std::string page = render_sheet(file, editing_config());
 
   EXPECT_NE(page.find(R"(data-odr-value="1234.5")"), std::string::npos);
   EXPECT_EQ(page.find(R"(data-odr-value="7")"), std::string::npos);
-  // a sort reads a number off its text, so only the editor needs it
-  EXPECT_EQ(render_sheet(file, HtmlConfig()).find(R"(data-odr-value=")"),
+  EXPECT_NE(page.find(R"(data-odr-value="0.6666666666666666")"),
+            std::string::npos);
+  EXPECT_NE(render_sheet(file, HtmlConfig()).find(R"(data-odr-value="1234.5")"),
             std::string::npos);
 }
 

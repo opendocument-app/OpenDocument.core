@@ -1,5 +1,7 @@
 #include <odr/internal/formula/formula_ast.hpp>
 
+#include <odr/internal/util/string_util.hpp>
+
 #include <limits>
 #include <utility>
 #include <variant>
@@ -44,7 +46,9 @@ std::optional<bool> move_range(CellReference &from, CellReference &to,
       to.sheet.has_value() ? to.sheet : from_sheet;
   if (from.document.has_value() || to.document.has_value() ||
       !(from.*axis).has_value() || !(to.*axis).has_value() ||
-      from_sheet != edit.sheet || to_sheet != edit.sheet) {
+      !from_sheet.has_value() || !to_sheet.has_value() ||
+      !util::string::equals_ignore_case(*from_sheet, edit.sheet) ||
+      !util::string::equals_ignore_case(*to_sheet, edit.sheet)) {
     return false;
   }
   const bool ascending = (from.*axis)->index <= (to.*axis)->index;

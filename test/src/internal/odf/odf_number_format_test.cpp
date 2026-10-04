@@ -44,6 +44,12 @@ TEST(OdfNumberFormat, a_number_style_is_its_placeholders) {
               R"( number:display-factor="1000"/>)"
               R"(<number:text> k</number:text></number:number-style>)"),
       "00.0##,\" k\"");
+  for (const std::string factor : {"100", "inf", "1e999", "0"}) {
+    EXPECT_FALSE(code_of(
+        "<number:number-style><number:number number:decimal-places=\"2\" "
+        "number:display-factor=\"" +
+        factor + "\"/></number:number-style>"));
+  }
 }
 
 TEST(OdfNumberFormat, a_percent_scales_and_a_currency_is_a_literal) {

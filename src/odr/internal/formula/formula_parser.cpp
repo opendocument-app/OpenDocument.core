@@ -4,6 +4,7 @@
 
 #include <odr/internal/common/text_cursor.hpp>
 #include <odr/internal/formula/formula_value.hpp>
+#include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
@@ -11,7 +12,6 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <cstdlib>
 #include <string>
 #include <utility>
 
@@ -415,16 +415,13 @@ private:
         length = exponent;
       }
     }
-    // `strtod` wants a terminator, which the view does not promise
-    const std::string text(rest().substr(0, length));
-    char *end = nullptr;
-    const double value = std::strtod(text.c_str(), &end);
-    // an overflow answers infinity, which no formula spells
-    if (end != text.c_str() + text.size() || !std::isfinite(value)) {
+    const std::optional<double> value =
+        util::number::parse(rest().substr(0, length));
+    if (!value.has_value() || !std::isfinite(*value)) {
       return {};
     }
     advance(length);
-    return make(NumberLiteral{value});
+    return make(NumberLiteral{*value});
   }
 
   /// `[.A1]`, `[Sheet1.A1:.B2]`, `[#REF!]`, `$$Name`, `SUM(`, `TRUE`.

@@ -303,7 +303,10 @@ TEST(OoxmlSpreadsheetRows, the_ranges_of_the_sheet_move) {
       R"(<conditionalFormatting sqref="A1:A3 C2"><cfRule/></conditionalFormatting>)"
       R"(<dataValidations count="2"><dataValidation sqref="A2"/>)"
       R"(<dataValidation sqref="A3"/></dataValidations>)"
-      R"(<hyperlinks><hyperlink ref="A2"/></hyperlinks>)",
+      R"(<hyperlinks><hyperlink ref="A2"/></hyperlinks>)"
+      R"(<autoFilter ref="A2"><sortState ref="A2"><sortCondition ref="A2"/>)"
+      R"(</sortState></autoFilter>)"
+      R"(<sortState ref="A1:A3"><sortCondition ref="A1:A3"/></sortState>)",
       "", "",
       R"(<sheetViews><sheetView><selection activeCell="A2" sqref="A2"/>)"
       R"(</sheetView></sheetViews>)"));
@@ -316,6 +319,10 @@ TEST(OoxmlSpreadsheetRows, the_ranges_of_the_sheet_move) {
       contains(xml, R"(<dataValidations count="1"><dataValidation sqref="A2"/>)"
                     R"(</dataValidations>)"));
   EXPECT_FALSE(contains(xml, "hyperlink"));
+  EXPECT_FALSE(contains(xml, "autoFilter"));
+  EXPECT_TRUE(contains(
+      xml,
+      R"(<sortState ref="A1:A2"><sortCondition ref="A1:A2"/></sortState>)"));
   EXPECT_TRUE(contains(xml, R"(<selection activeCell="A2" sqref="A2"/>)"));
 }
 
@@ -389,6 +396,20 @@ TEST(OoxmlSpreadsheetRows, a_rule_and_a_validation_move_their_formulas) {
   EXPECT_TRUE(contains(xml, "<formula>$B$2&lt;A2</formula>"));
   EXPECT_TRUE(
       contains(xml, "<formula1>$C$6</formula1><formula2>A2</formula2>"));
+}
+
+TEST(OoxmlSpreadsheetRows, rules_on_another_sheet_move_only_their_references) {
+  const Document document = decode(two_sheets(
+      abc, "", "", "",
+      R"(<conditionalFormatting sqref="A1:A3"><cfRule type="expression">)"
+      R"(<formula>S!A1+A1</formula></cfRule></conditionalFormatting>)"
+      R"(<dataValidations count="1"><dataValidation sqref="A1">)"
+      R"(<formula1>s!A3</formula1></dataValidation></dataValidations>)"));
+  first_sheet(document).delete_rows(0, 1);
+  const std::string xml = part_of(document, "/xl/worksheets/sheet2.xml");
+  EXPECT_TRUE(contains(xml, R"(sqref="A1:A3")"));
+  EXPECT_TRUE(contains(xml, "<formula>#REF!+A1</formula>"));
+  EXPECT_TRUE(contains(xml, "<formula1>s!A2</formula1>"));
 }
 
 TEST(OoxmlSpreadsheetRows, a_page_break_moves_and_two_at_one_place_become_one) {

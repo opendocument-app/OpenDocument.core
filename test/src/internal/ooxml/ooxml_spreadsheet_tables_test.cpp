@@ -36,12 +36,16 @@ std::shared_ptr<internal::abstract::File> with_table() {
       zip, "xl/workbook.xml",
       R"(<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" )"
       R"(xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">)"
-      R"(<sheets><sheet name="s" sheetId="1" r:id="rId1"/></sheets></workbook>)");
+      R"(<sheets><sheet name="s" sheetId="1" r:id="rId1"/>)"
+      R"(<sheet name="t" sheetId="2" r:id="rId2"/></sheets></workbook>)");
   insert(
       zip, "xl/_rels/workbook.xml.rels",
       R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
       R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>)"
+      R"(<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>)"
       R"(</Relationships>)");
+  insert(zip, "xl/worksheets/sheet2.xml",
+         "<worksheet><sheetData/></worksheet>");
   insert(
       zip, "xl/styles.xml",
       R"(<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"/>)");
@@ -69,7 +73,8 @@ std::shared_ptr<internal::abstract::File> with_table() {
       R"(<sortState ref="B3:C4"><sortCondition ref="C3:C4"/></sortState>)"
       R"(<tableColumns count="2">)"
       R"(<tableColumn id="1" name="X"/><tableColumn id="2" name="Y">)"
-      R"(<calculatedColumnFormula>B3*2</calculatedColumnFormula></tableColumn>)"
+      R"(<calculatedColumnFormula>B3*2</calculatedColumnFormula>)"
+      R"(<totalsRowFormula>SUM(t!B3:B4)</totalsRowFormula></tableColumn>)"
       R"(</tableColumns></table>)");
 
   std::stringstream out;
@@ -96,6 +101,15 @@ bool contains(const std::string &xml, const std::string &part) {
 }
 
 } // namespace
+
+TEST(OoxmlSpreadsheetTables, a_table_formula_can_read_another_sheet) {
+  const Document document = decode(with_table());
+  first_sheet(document).next_sibling().as_sheet().insert_rows(0, 2);
+  const std::string xml = table_xml(document);
+  EXPECT_TRUE(contains(xml, R"(ref="B2:C4")"));
+  EXPECT_TRUE(contains(xml, "<calculatedColumnFormula>B3*2<"));
+  EXPECT_TRUE(contains(xml, "<totalsRowFormula>SUM(t!B5:B6)<"));
+}
 
 TEST(OoxmlSpreadsheetTables, a_row_inside_a_table_grows_it) {
   const Document document = decode(with_table());

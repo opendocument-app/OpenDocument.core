@@ -5,6 +5,7 @@
 #include <odr/internal/formula/formula_parser.hpp>
 #include <odr/internal/formula/formula_writer.hpp>
 #include <odr/internal/odf/odf_table.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <array>
@@ -44,7 +45,8 @@ bool touched(const formula::Node &node, const std::string &sheet,
   const std::uint64_t end = static_cast<std::uint64_t>(edit.index) + edit.count;
   for (const formula::Extent &extent : formula::references(node).extents) {
     if (extent.document.has_value() ||
-        extent.sheet.value_or(sheet) != edit.sheet) {
+        !util::string::equals_ignore_case(extent.sheet.value_or(sheet),
+                                          edit.sheet)) {
       continue;
     }
     const bool rows = edit.axis == formula::Axis::row;

@@ -22,6 +22,20 @@ The release run heads these entries with the version and opens a fresh
 - A formula nested more than 64 levels deep does not parse, and gets no
   answer. An ods `&` of a boolean follows the LibreOffice in `meta:generator`,
   and an xlsx comparison near the 15th digit gets no answer.
+
+- Spreadsheet structural edits preserve cross-sheet rules and table formulas,
+  case-insensitive sheet references, and ODS conditions in `styles.xml`.
+  Deleting nested XLSX ranges no longer accesses removed XML nodes.
+- Formula parsing and rounding are independent of the host numeric locale;
+  recalculation identifies cycles longer than its recursion limit.
+- Correct negative signs in scaled, percentage and fraction formats, and
+  handle subnormal scientific values and overflowing display scales. Cyclic
+  ODS style inheritance no longer hangs number-format lookup.
+- Hidden and formatted numbers retain their values in HTML editing and
+  sorting. CSV date-like input stays text, and overflowing input stays text.
+- ODS date/time writes preserve fractional seconds and reject out-of-range
+  durations. XLSX rejects nonfinite dates/times before changing a cell.
+
 - `Document::recalculate` in every binding: `recalculate` in python, java,
   npm and swift, and `recalculateWithError:` in objective-c. Each returns the
   changed, circular and unevaluated cells as positions.

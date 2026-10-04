@@ -316,14 +316,15 @@
     if (content === "") {
       return { type: "empty" };
     }
-    if (!quoted && NUMBER.test(content)) {
+    var number = Number(content.replace(DECIMAL, "."));
+    if (!quoted && NUMBER.test(content) && Number.isFinite(number)) {
       return {
         type: "number",
-        number: Number(content.replace(DECIMAL, ".")),
+        number: number,
         text: content,
       };
     }
-    var moment = quoted ? null : readMoment(content);
+    var moment = quoted || !styles ? null : readMoment(content);
     if (moment !== null) {
       moment.text = content;
       return moment;

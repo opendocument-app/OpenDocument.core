@@ -121,6 +121,10 @@ order_of_texts(std::string_view a, std::string_view b, bool case_sensitive);
 /// `approxEqual` and a reading to 15 digits decide apart, it has no answer.
 [[nodiscard]] bool same_number(Dialect dialect, double a, double b);
 
+/// Whether @p text contains wildcard or regular-expression syntax enabled
+/// by the document.
+[[nodiscard]] bool is_pattern(const Call &call, std::string_view text);
+
 /// Whether @p call follows LibreOffice's rules.
 [[nodiscard]] bool is_libreoffice(const Call &call);
 

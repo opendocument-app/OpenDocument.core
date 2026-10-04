@@ -140,4 +140,20 @@ formula::Function formula::find_function(const std::string_view name) {
   return found == functions().end() ? nullptr : found->second;
 }
 
+bool formula::is_pattern(const Call &call, const std::string_view text) {
+  const bool wildcards = !is_libreoffice(call) || call.settings().wildcards;
+  const bool expressions =
+      is_libreoffice(call) && call.settings().regular_expressions;
+  for (const char c : text) {
+    if (wildcards && (c == '*' || c == '?' || c == '~')) {
+      return true;
+    }
+    if (expressions &&
+        std::string_view(".^$*+?()[]{}|\\").find(c) != std::string_view::npos) {
+      return true;
+    }
+  }
+  return false;
+}
+
 } // namespace odr::internal

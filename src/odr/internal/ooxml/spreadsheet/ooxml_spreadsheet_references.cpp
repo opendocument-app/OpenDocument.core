@@ -94,14 +94,20 @@ void move_anchored_formulas(const std::string &sqref,
   }
 }
 
-void move_rule_formulas(const pugi::xml_node node,
-                        const formula::SheetEdit &edit) {
+void move_rule_formulas(const pugi::xml_node node, const std::string &sheet,
+                        const bool edited, const formula::SheetEdit &edit) {
   std::vector<pugi::xml_node> formulas;
   for (const pugi::xpath_node match :
        node.select_nodes("cfRule/formula | formula1 | formula2")) {
     formulas.push_back(match.node());
   }
-  move_anchored_formulas(node.attribute("sqref").value(), formulas, edit);
+  if (edited) {
+    move_anchored_formulas(node.attribute("sqref").value(), formulas, edit);
+  } else {
+    for (const pugi::xml_node text : formulas) {
+      move_text(text, sheet, edit);
+    }
+  }
 }
 
 /// The descendants of @p node named @p name.
@@ -253,6 +259,10 @@ void move_shared_group(const std::vector<Member> &members,
 
 void move_worksheet(const NamedWorksheet &worksheet, const bool edited,
                     const formula::SheetEdit &edit) {
+  for (const pugi::xpath_node match : worksheet.node.select_nodes(
+           "conditionalFormatting | dataValidations/dataValidation")) {
+    move_rule_formulas(match.node(), worksheet.name, edited, edit);
+  }
   std::map<std::string, std::vector<Member>> groups;
   for (const pugi::xml_node row :
        worksheet.node.child("sheetData").children("row")) {
@@ -307,12 +317,13 @@ struct RangeAttribute final {
   std::string_view attribute;
 };
 
-constexpr std::array<RangeAttribute, 7> removable_ranges{{
+constexpr std::array<RangeAttribute, 8> removable_ranges{{
     {"conditionalFormatting", "sqref"},
     {"dataValidation", "sqref"},
     {"hyperlink", "ref"},
     {"autoFilter", "ref"},
     {"sortState", "ref"},
+    {"sortCondition", "ref"},
     {"protectedRange", "sqref"},
     {"ignoredError", "sqref"},
 }};
@@ -388,7 +399,8 @@ pugi::xml_node edited_source(const pugi::xml_node cache,
   const pugi::xml_node source =
       cache.child("cacheSource").child("worksheetSource");
   return source.attribute("ref") && !source.attribute("r:id") &&
-                 source.attribute("sheet").value() == edit.sheet
+                 util::string::equals_ignore_case(
+                     source.attribute("sheet").value(), edit.sheet)
              ? source
              : pugi::xml_node();
 }
@@ -403,9 +415,7 @@ void collect_ranges(const pugi::xml_node node, const formula::SheetEdit &edit,
     if (name == "autoFilter" && edit.axis == formula::Axis::column) {
       move_filter_columns(child, edit);
     }
-    if (name == "conditionalFormatting" || name == "dataValidation") {
-      move_rule_formulas(child, edit);
-    }
+    bool removed = false;
     for (const RangeAttribute &range : removable_ranges) {
       pugi::xml_attribute attribute = child.attribute(range.attribute.data());
       if (name != range.element || !attribute) {
@@ -415,6 +425,7 @@ void collect_ranges(const pugi::xml_node node, const formula::SheetEdit &edit,
               attribute.value(), edit, edit.sheet, syntax)) {
         if (moved->empty()) {
           lost.push_back(child);
+          removed = true;
         } else {
           attribute.set_value(moved->c_str());
         }
@@ -442,7 +453,9 @@ void collect_ranges(const pugi::xml_node node, const formula::SheetEdit &edit,
         top_left && (name == "pane" || name == "sheetView")) {
       top_left.set_value(moved_cell(top_left.value(), edit).c_str());
     }
-    collect_ranges(child, edit, lost);
+    if (!removed) {
+      collect_ranges(child, edit, lost);
+    }
   }
 }
 
@@ -502,6 +515,7 @@ void ooxml::spreadsheet::move_sheet_ranges(const pugi::xml_node worksheet,
   collect_ranges(worksheet, edit, lost);
   for (pugi::xml_node node : lost) {
     pugi::xml_node parent = node.parent();
+    const std::string name = node.name();
     parent.remove_child(node);
     // a list such as `hyperlinks` states one entry at least
     if (parent == worksheet) {
@@ -513,7 +527,7 @@ void ooxml::spreadsheet::move_sheet_ranges(const pugi::xml_node worksheet,
       parent.parent().remove_child(parent);
     } else if (pugi::xml_attribute count = parent.attribute("count")) {
       count.set_value(static_cast<std::uint32_t>(
-          std::ranges::distance(parent.children(node.name()))));
+          std::ranges::distance(parent.children(name.c_str()))));
     }
   }
 }
@@ -728,13 +742,7 @@ ooxml::spreadsheet::move_table(pugi::xml_node table,
           std::ranges::distance(columns.children("tableColumn"))));
     }
   }
-  for (const pugi::xml_node column : columns.children("tableColumn")) {
-    for (const char *name : {"calculatedColumnFormula", "totalsRowFormula"}) {
-      if (const pugi::xml_node formula = column.child(name)) {
-        move_text(formula, edit.sheet, edit);
-      }
-    }
-  }
+  move_table_formulas(table, edit.sheet, edit);
   const pugi::xml_node filter = table.child("autoFilter");
   if (filter && edit.axis == formula::Axis::column) {
     move_filter_columns(filter, edit);
@@ -751,6 +759,19 @@ ooxml::spreadsheet::move_table(pugi::xml_node table,
   move_range(filter, edit);
   move_range(table, edit);
   return result;
+}
+
+void ooxml::spreadsheet::move_table_formulas(const pugi::xml_node table,
+                                             const std::string &sheet,
+                                             const formula::SheetEdit &edit) {
+  for (const pugi::xml_node column :
+       table.child("tableColumns").children("tableColumn")) {
+    for (const char *name : {"calculatedColumnFormula", "totalsRowFormula"}) {
+      if (const pugi::xml_node formula = column.child(name)) {
+        move_text(formula, sheet, edit);
+      }
+    }
+  }
 }
 
 void ooxml::spreadsheet::move_chart(const pugi::xml_node chart,

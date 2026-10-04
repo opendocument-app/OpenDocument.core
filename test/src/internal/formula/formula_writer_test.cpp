@@ -156,6 +156,8 @@ TEST(FormulaWriter, a_row_edit_moves_whole_rows_and_leaves_whole_columns) {
 
 TEST(FormulaWriter, a_row_edit_moves_only_the_edited_sheet) {
   EXPECT_EQ(inserted("Sheet2!A5+A5", 0, 1), "Sheet2!A5+A6");
+  EXPECT_EQ(edited("SUM(SHEET2!A1:A5)", true, 0, 1, Syntax::ooxml, "Sheet2"),
+            "SUM(SHEET2!A2:A6)");
   EXPECT_EQ(edited("Sheet2!A5+A5", true, 0, 1, Syntax::ooxml, "Sheet2"),
             "Sheet2!A6+A5");
   EXPECT_EQ(edited("[1]Sheet2!A5", true, 0, 1, Syntax::ooxml, "Sheet2"),

@@ -104,6 +104,12 @@ public:
     if (const auto known = m_results.find(position); known != m_results.end()) {
       return known->second;
     }
+    if (const auto busy = std::ranges::find(m_ancestors, position);
+        busy != m_ancestors.end()) {
+      m_circular.insert(busy, m_ancestors.end());
+      m_circular.insert(m_stack.begin(), m_stack.end());
+      return std::nullopt;
+    }
     if (const auto busy = std::ranges::find(m_stack, position);
         busy != m_stack.end()) {
       m_circular.insert(busy, m_stack.end());
@@ -116,6 +122,7 @@ public:
     if (m_stack.size() >= depth_limit) {
       if (!m_frontier.has_value()) {
         m_frontier = position;
+        m_frontier_path = m_stack;
       }
       return std::nullopt;
     }
@@ -134,14 +141,25 @@ public:
     return m_circular.contains(position);
   }
 
-  /// The first stale cell the last read left at the depth limit, if any.
-  [[nodiscard]] std::optional<SheetPosition> take_frontier() const {
-    return std::exchange(m_frontier, std::nullopt);
-  }
-
-  /// Gives @p position no result, so no later read computes it again.
-  void settle(const SheetPosition &position) const {
-    m_results.emplace(position, std::nullopt);
+  /// Computes deep chains in bounded chunks, retaining their ancestors for
+  /// cycle detection across the depth limit.
+  std::optional<formula::Value> compute(const SheetPosition &position) const {
+    std::vector<std::pair<SheetPosition, std::size_t>> pending{{position, 0}};
+    while (true) {
+      const std::optional<formula::Value> result = cell(pending.back().first);
+      if (const auto frontier = std::exchange(m_frontier, std::nullopt)) {
+        const std::size_t previous = m_ancestors.size();
+        m_ancestors.insert(m_ancestors.end(), m_frontier_path.begin(),
+                           m_frontier_path.end());
+        pending.emplace_back(*frontier, previous);
+      } else {
+        m_ancestors.resize(pending.back().second);
+        pending.pop_back();
+        if (pending.empty()) {
+          return result;
+        }
+      }
+    }
   }
 
 private:
@@ -168,36 +186,11 @@ private:
   mutable std::unordered_map<SheetPosition, std::optional<formula::Value>>
       m_results;
   mutable std::vector<SheetPosition> m_stack;
+  mutable std::vector<SheetPosition> m_ancestors;
+  mutable std::vector<SheetPosition> m_frontier_path;
   mutable std::unordered_set<SheetPosition> m_circular;
   mutable std::optional<SheetPosition> m_frontier;
 };
-
-/// The value of the stale cell at @p position. Where a read stops at the
-/// depth limit, the cell it stopped at is computed first, then the read again
-/// finds its result. A loop of frontiers is a cycle longer than the limit,
-/// which gets no result.
-std::optional<formula::Value> compute(const StaleCells &cells,
-                                      const SheetPosition &position) {
-  std::vector<SheetPosition> pending{position};
-  while (true) {
-    std::optional<formula::Value> result = cells.cell(pending.back());
-    const std::optional<SheetPosition> frontier = cells.take_frontier();
-    if (!frontier.has_value()) {
-      if (pending.size() == 1) {
-        return result;
-      }
-      pending.pop_back();
-      continue;
-    }
-    if (std::ranges::find(pending, *frontier) != pending.end()) {
-      for (const SheetPosition &cell : pending) {
-        cells.settle(cell);
-      }
-      return std::nullopt;
-    }
-    pending.push_back(*frontier);
-  }
-}
 
 /// @p value as a cell states it. A number is the serial the formula computes
 /// with, which the writer shows by the cell's format.
@@ -342,7 +335,7 @@ internal::recalculate(const abstract::Document &document) {
   computed.reserve(ordered.size());
   for (const SheetPosition &position : ordered) {
     computed.push_back(
-        Computed{position, source.cell(position), compute(cells, position)});
+        Computed{position, source.cell(position), cells.compute(position)});
   }
 
   for (const auto &[position, before, value] : computed) {

@@ -345,7 +345,7 @@ public:
                       const CellValue &value) const override {
     if (value.type() == ValueType::error ||
         ((value.type() == ValueType::date || value.type() == ValueType::time) &&
-         !value.has_number())) {
+         (!value.has_number() || !std::isfinite(value.number())))) {
       throw UnsupportedOperation(); // no form to write it in
     }
     const ElementRegistry::Sheet &sheet =
@@ -435,11 +435,11 @@ public:
       if (number_format_of(cell_id).category() ==
           number_format::Category::number) {
         const std::int64_t seconds =
-            std::llround(std::abs(value.number()) * 86400);
+            std::llround(std::fmod(std::abs(value.number()), 1) * 86400);
         const std::uint32_t id = value.type() == ValueType::time
-                                     ? (seconds >= 86400    ? 46
-                                        : seconds % 60 != 0 ? 21
-                                                            : 20)
+                                     ? (std::abs(value.number()) >= 1 ? 46
+                                        : seconds % 60 != 0           ? 21
+                                                                      : 20)
                                  : seconds % 86400 != 0 ? 22
                                                         : 14;
         restyle_cell(node,
@@ -775,12 +775,20 @@ public:
 
     // a chart on any sheet may read the edited one
     std::vector<pugi::xml_node> charts;
+    std::vector<NamedWorksheet> other_tables;
     try {
       for (ElementIdentifier id =
                element_first_child(m_document->root_element());
            id != null_element_id; id = element_next_sibling(id)) {
         const ElementRegistry::ElementRelations *sheet_relations =
             m_registry->element_relations(id);
+        if (id != element_id) {
+          for (const pugi::xml_node table :
+               m_document->related_parts(sheet_relations->origin, "table")) {
+            other_tables.push_back(
+                {m_registry->sheet_element_at(id).name, table});
+          }
+        }
         const auto target = sheet_relations->relations->find(
             get_node(id).child("drawing").attribute("r:id").value());
         if (target == sheet_relations->relations->end()) {
@@ -869,6 +877,9 @@ public:
     }
     for (const pugi::xml_node cache : caches) {
       move_pivot_cache(cache, edit);
+    }
+    for (const NamedWorksheet &table : other_tables) {
+      move_table_formulas(table.node, table.name, edit);
     }
     std::vector<TableHeader> headers;
     for (const pugi::xml_node table : tables) {

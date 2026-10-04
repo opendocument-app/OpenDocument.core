@@ -174,10 +174,11 @@ void Document::save(std::ostream &out) const {
                           std::make_shared<MemoryFile>(content.str()));
       continue;
     }
-    if (abs_path == Path("/content.xml")) {
+    if (abs_path == Path("/content.xml") || abs_path == Path("/styles.xml")) {
       // TODO stream
       std::stringstream content;
-      m_content_xml.print(content, "", pugi::format_raw);
+      (abs_path == Path("/content.xml") ? m_content_xml : m_styles_xml)
+          .print(content, "", pugi::format_raw);
       auto tmp = std::make_shared<MemoryFile>(content.str());
       archive.insert_file(std::end(archive), rel_path, tmp);
       continue;
@@ -189,6 +190,12 @@ void Document::save(std::ostream &out) const {
 }
 
 pugi::xml_node Document::part(const AbsPath &path) {
+  if (path == Path("/styles.xml")) {
+    return m_styles_xml.document_element();
+  }
+  if (path == Path("/content.xml")) {
+    return m_content_xml.document_element();
+  }
   if (m_files == nullptr || !m_files->is_file(path)) {
     return {};
   }
@@ -396,29 +403,49 @@ std::optional<double> duration_days(std::string_view text) {
   return negative ? -result : result;
 }
 
-/// @p days since 1899-12-30 as an `office:date-value`, with its time where it
-/// has one.
-std::string date_value(const double days) {
-  const std::int64_t seconds = std::llround(days * 86400);
-  const std::int64_t day =
-      seconds >= 0 ? seconds / 86400 : (seconds - 86399) / 86400;
-  const std::int64_t second_of_day = seconds - day * 86400;
-  const auto [year, month, month_day] = number_format::civil_from_days(day);
-  std::string result =
-      fmt::format("{:04d}-{:02d}-{:02d}", year, month, month_day);
-  if (second_of_day != 0) {
-    result += fmt::format("T{:02d}:{:02d}:{:02d}", second_of_day / 3600,
-                          second_of_day / 60 % 60, second_of_day % 60);
+/// Seconds with nanosecond precision, omitting a zero fractional part.
+std::string seconds_value(const std::int64_t nanoseconds) {
+  std::string result = fmt::format("{:02d}", nanoseconds / 1000000000);
+  if (const std::int64_t fraction = nanoseconds % 1000000000; fraction != 0) {
+    std::string digits = fmt::format("{:09d}", fraction);
+    digits.erase(digits.find_last_not_of('0') + 1);
+    result += "." + digits;
   }
   return result;
 }
 
-/// @p days as an `office:time-value`, a duration in hours, minutes and
-/// seconds.
+/// @p days since 1899-12-30 as an `office:date-value`.
+std::string date_value(const double days) {
+  constexpr std::int64_t ticks_per_second = 1000000000;
+  constexpr std::int64_t ticks_per_day = 86400 * ticks_per_second;
+  std::int64_t day = static_cast<std::int64_t>(std::floor(days));
+  const std::int64_t ticks = std::llround((days - static_cast<double>(day)) *
+                                          static_cast<double>(ticks_per_day));
+  day += ticks / ticks_per_day;
+  const std::int64_t time = ticks % ticks_per_day;
+  const std::int64_t seconds = time / ticks_per_second;
+  const auto [year, month, month_day] = number_format::civil_from_days(day);
+  std::string result =
+      fmt::format("{:04d}-{:02d}-{:02d}", year, month, month_day);
+  if (time != 0) {
+    result +=
+        fmt::format("T{:02d}:{:02d}:{}", seconds / 3600, seconds / 60 % 60,
+                    seconds_value(time % (60 * ticks_per_second)));
+  }
+  return result;
+}
+
+/// @p days as an `office:time-value`, preserving fractional seconds.
 std::string time_value(const double days) {
-  const std::int64_t seconds = std::llround(std::abs(days) * 86400);
-  return fmt::format("{}PT{:02d}H{:02d}M{:02d}S", days < 0 ? "-" : "",
-                     seconds / 3600, seconds / 60 % 60, seconds % 60);
+  constexpr std::int64_t ticks_per_second = 1000000000;
+  const double magnitude = std::abs(days);
+  const auto hours = static_cast<std::int64_t>(std::floor(magnitude)) * 24;
+  const std::int64_t ticks =
+      std::llround(std::fmod(magnitude, 1) * 86400 * ticks_per_second);
+  const std::int64_t seconds = ticks / ticks_per_second;
+  return fmt::format("{}PT{:02d}H{:02d}M{}S", days < 0 ? "-" : "",
+                     hours + seconds / 3600, seconds / 60 % 60,
+                     seconds_value(ticks % (60 * ticks_per_second)));
 }
 
 /// Whether the engine has a form to write @p value in.
@@ -435,7 +462,10 @@ bool writable(const CellValue &value) {
            value.number() >= number_format::days_from_civil(1, 1, 1) &&
            value.number() < number_format::days_from_civil(10000, 1, 1);
   case ValueType::time:
-    return value.has_number() && std::isfinite(value.number());
+    return value.has_number() && std::isfinite(value.number()) &&
+           std::abs(value.number()) <
+               static_cast<double>(std::numeric_limits<std::int64_t>::max()) /
+                   86400;
   case ValueType::error:
     return false;
   }
@@ -853,6 +883,10 @@ public:
       }
     }
 
+    if ((typed.type() == ValueType::date || typed.type() == ValueType::time) &&
+        !writable(typed)) {
+      typed = result;
+    }
     std::string text;
     if (const std::optional<std::string> shown =
             shown_value(element_id, cell_id, position, typed)) {
@@ -1304,6 +1338,7 @@ public:
     }
     std::vector<SheetPosition> touched =
         move_sheet_references(spreadsheet, edit);
+    move_object_references(m_document->part(AbsPath("/styles.xml")), edit);
     for (const pugi::xml_node object : objects) {
       move_object_references(object, edit);
     }
