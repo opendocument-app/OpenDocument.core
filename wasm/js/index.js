@@ -134,6 +134,18 @@ export class Document {
     return this;
   }
 
+  // `setCellStyle` on every cell of a row or a column, also past what the
+  // file states.
+  setRowStyle(sheet, row, style) {
+    unwrap(this.#core.setRowStyle(this.#handle, sheet, row, style));
+    return this;
+  }
+
+  setColumnStyle(sheet, column, style) {
+    unwrap(this.#core.setColumnStyle(this.#handle, sheet, column, style));
+    return this;
+  }
+
   // `afterId` of 0 splits before every child.
   splitParagraph(paragraphId, afterId = 0) {
     return unwrap(this.#core.splitParagraph(this.#handle, paragraphId, afterId));

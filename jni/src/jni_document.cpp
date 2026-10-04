@@ -517,6 +517,32 @@ Java_app_opendocument_core_Sheet_setCellStyleNative(JNIEnv *env, jobject,
   });
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_app_opendocument_core_Sheet_setRowStyleNative(JNIEnv *env, jobject,
+                                                   jlong handle, jint row,
+                                                   jobject cell_style,
+                                                   jobject text_style) {
+  guarded(env, [&] {
+    element(handle).as_sheet().set_row_style(
+        static_cast<std::uint32_t>(row),
+        odr_jni::table_cell_style_from_java(env, cell_style),
+        odr_jni::text_style_from_java(env, text_style));
+  });
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_app_opendocument_core_Sheet_setColumnStyleNative(JNIEnv *env, jobject,
+                                                      jlong handle, jint column,
+                                                      jobject cell_style,
+                                                      jobject text_style) {
+  guarded(env, [&] {
+    element(handle).as_sheet().set_column_style(
+        static_cast<std::uint32_t>(column),
+        odr_jni::table_cell_style_from_java(env, cell_style),
+        odr_jni::text_style_from_java(env, text_style));
+  });
+}
+
 // app.opendocument.core.SheetCell
 
 extern "C" JNIEXPORT jobject JNICALL

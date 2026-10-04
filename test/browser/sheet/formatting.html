@@ -259,6 +259,51 @@
       check("a chord typed into a field is the field's", computed(cell(0, 2)).fontStyle !== "italic");
       field.remove();
 
+      note("a whole row or column");
+      function styleOps(kind) {
+        return ops().filter(function (op) {
+          return op.op === kind;
+        });
+      }
+      var cellOps = styleOps("setCellStyle").length;
+      click(document.querySelectorAll(".odr-sheet-row-header")[1]);
+      check("a row header formats", odr.editing.format({ fill: "#00ff00" }) === true);
+      check(
+        "as one op for the row",
+        styleOps("setRowStyle").length === 1 &&
+          styleOps("setRowStyle")[0].row === 1 &&
+          styleOps("setRowStyle")[0].column === undefined &&
+          styleOps("setCellStyle").length === cellOps
+      );
+      check("and paints the cells the page has", computed(cell(2, 1)).backgroundColor === "rgb(0, 255, 0)");
+      click(document.querySelectorAll(".odr-sheet-column-header")[2]);
+      odr.editing.format({ italic: true });
+      check(
+        "a column header as one op for the column",
+        styleOps("setColumnStyle").length === 1 && styleOps("setColumnStyle")[0].column === 2
+      );
+      check("undo takes the column back", odr.editing.undo() === true && styleOps("setColumnStyle").length === 0);
+
+      odr.sheet.pin({ column: 2, row: 1 });
+      odr.editing.format({ fill: "#0000ff" });
+      click(document.querySelectorAll(".odr-sheet-row-header")[1]);
+      odr.editing.format({ fill: "#ff0000" });
+      odr.sheet.pin({ column: 2, row: 1 });
+      odr.editing.format({ bold: true });
+      var order = ops()
+        .filter(function (op) {
+          return op.style !== undefined && op.row === 1 && (op.column === 2 || op.column === undefined);
+        })
+        .map(function (op) {
+          return op.op + (op.style.fill || "") + (op.style.bold ? "bold" : "");
+        })
+        .join(" ");
+      check(
+        "a cell op does not merge back past the row op after it",
+        order === "setCellStylebold setRowStyle#00ff00 setCellStyle#0000ff setRowStyle#ff0000 setCellStylebold",
+        order
+      );
+
       note("align null");
       odr.sheet.pin({ column: 0, row: 2 });
       odr.sheet.select({ column: 2, row: 2 });

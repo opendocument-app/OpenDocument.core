@@ -402,6 +402,28 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
   });
 }
 
+- (BOOL)setRowStyle:(ODRTableCellStyle *)cellStyle
+          textStyle:(ODRTextStyle *)textStyle
+              atRow:(uint32_t)row
+              error:(NSError **)error {
+  return guarded(error, [&] {
+    self.handle.as_sheet().set_row_style(row, [cellStyle handle],
+                                         [textStyle handle]);
+    return YES;
+  });
+}
+
+- (BOOL)setColumnStyle:(ODRTableCellStyle *)cellStyle
+             textStyle:(ODRTextStyle *)textStyle
+              atColumn:(uint32_t)column
+                 error:(NSError **)error {
+  return guarded(error, [&] {
+    self.handle.as_sheet().set_column_style(column, [cellStyle handle],
+                                            [textStyle handle]);
+    return YES;
+  });
+}
+
 @end
 
 @implementation ODRSheetCell

@@ -109,6 +109,22 @@ describe('edit', () => {
     }
   });
 
+  it('styles a whole row and a whole column', () => {
+    const doc = odr.open(minimalOds('hello'));
+    try {
+      doc.setRowStyle(0, 0, { bold: true }).setColumnStyle(0, 3, { fill: '#00ff00' });
+      const reopened = odr.open(doc.save());
+      try {
+        assert.match(reopened.render(0).html, /font-weight:bold/);
+      } finally {
+        reopened.close();
+      }
+      assert.throws(() => doc.setRowStyle(0, 0, 'bold'), OdrError);
+    } finally {
+      doc.close();
+    }
+  });
+
   it('refuses a cell style it cannot write', () => {
     const doc = odr.open(minimalOds('hello'));
     try {
