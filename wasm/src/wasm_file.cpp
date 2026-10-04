@@ -7,6 +7,7 @@
 
 #include <emscripten/bind.h>
 
+#include <cstdint>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -39,7 +40,7 @@ emscripten::val detect(const std::string &bytes, std::string name) {
 
     emscripten::val types = emscripten::val::array();
     for (const FileType type : odr::list_file_types(file, logger)) {
-      types.call<void>("push", static_cast<int>(type));
+      types.call<void>("push", static_cast<std::int32_t>(type));
     }
 
     emscripten::val result = emscripten::val::object();
@@ -59,7 +60,7 @@ emscripten::val open(const std::string &bytes, std::string name,
 }
 
 emscripten::val open_as(const std::string &bytes, std::string name,
-                        const int as, const emscripten::val &config) {
+                        const std::int32_t as, const emscripten::val &config) {
   return guarded([&] {
     return opened(odr::open(from_bytes(bytes, std::move(name)),
                             DecodeOptions::as(static_cast<FileType>(as)),
@@ -70,7 +71,7 @@ emscripten::val open_as(const std::string &bytes, std::string name,
 
 /// A new document opened from its saved bytes, so that its session holds a
 /// file as the session of `open` does.
-emscripten::val create(const int type, const emscripten::val &config) {
+emscripten::val create(const std::int32_t type, const emscripten::val &config) {
   return guarded([&] {
     const auto file_type = static_cast<FileType>(type);
     return opened(odr::open(odr::create_document(file_type).save_to_memory(),
@@ -121,8 +122,8 @@ emscripten::val file_name(const Handle handle) {
 
 emscripten::val file_type(const Handle handle) {
   return guarded([&] {
-    return ok(
-        emscripten::val(static_cast<int>(session(handle).file.file_type())));
+    return ok(emscripten::val(
+        static_cast<std::int32_t>(session(handle).file.file_type())));
   });
 }
 

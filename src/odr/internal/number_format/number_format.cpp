@@ -36,13 +36,13 @@ Decimal round_decimal(const double value, const std::size_t decimals) {
   // `d.dddddddddddddde±x`: 15 significant digits
   const std::string spelled = fmt::format("{:.14e}", value);
   std::string digits = spelled.substr(0, 1) + spelled.substr(2, 14);
-  int point = std::stoi(spelled.substr(spelled.find('e') + 1)) + 1;
+  std::int32_t point = std::stoi(spelled.substr(spelled.find('e') + 1)) + 1;
 
-  const long cut = point + static_cast<long>(decimals);
+  const std::int64_t cut = point + static_cast<std::int64_t>(decimals);
   if (cut < 0) {
     return result;
   }
-  if (cut < static_cast<long>(digits.size())) {
+  if (cut < static_cast<std::int64_t>(digits.size())) {
     const bool up = digits[static_cast<std::size_t>(cut)] >= '5';
     digits.resize(static_cast<std::size_t>(cut));
     if (up) {
@@ -59,14 +59,14 @@ Decimal round_decimal(const double value, const std::size_t decimals) {
     }
   }
 
-  for (long i = 0; i < point; ++i) {
-    result.integer += i < static_cast<long>(digits.size())
+  for (std::int64_t i = 0; i < point; ++i) {
+    result.integer += i < static_cast<std::int64_t>(digits.size())
                           ? digits[static_cast<std::size_t>(i)]
                           : '0';
   }
   for (std::size_t i = 0; i < decimals; ++i) {
-    const long at = point + static_cast<long>(i);
-    if (at >= 0 && at < static_cast<long>(digits.size())) {
+    const std::int64_t at = point + static_cast<std::int64_t>(i);
+    if (at >= 0 && at < static_cast<std::int64_t>(digits.size())) {
       result.fraction[i] = digits[static_cast<std::size_t>(at)];
     }
   }
@@ -531,16 +531,17 @@ std::string format_scientific(const std::vector<Token> &tokens,
     fraction_count += tokens[i].kind == Kind::digit ? 1 : 0;
   }
 
-  const auto mantissa_at = [value](const int power) {
+  const auto mantissa_at = [value](const std::int32_t power) {
     return power < -308 ? value * 1e308 / std::pow(10.0, power + 308)
                         : value / std::pow(10.0, power);
   };
-  int power = 0;
+  std::int32_t power = 0;
   if (value != 0) {
-    power = static_cast<int>(std::floor(std::log10(value)));
-    const int step = static_cast<int>(integer_count);
+    power = static_cast<std::int32_t>(std::floor(std::log10(value)));
+    const std::int32_t step = static_cast<std::int32_t>(integer_count);
     if (hashed && step > 1) {
-      power = static_cast<int>(std::floor(static_cast<double>(power) / step)) *
+      power = static_cast<std::int32_t>(
+                  std::floor(static_cast<double>(power) / step)) *
               step;
     } else {
       power -= step - 1;
@@ -1074,7 +1075,8 @@ std::string number_format::format_general(const double value,
     return text;
   };
   if (magnitude >= 1e-10 && magnitude < 1e15) {
-    const int power = static_cast<int>(std::floor(std::log10(magnitude)));
+    const std::int32_t power =
+        static_cast<std::int32_t>(std::floor(std::log10(magnitude)));
     const auto decimals = static_cast<std::size_t>(std::max(0, 14 - power));
     const Decimal decimal = round_decimal(magnitude, decimals);
     return sign + trimmed((decimal.integer.empty() ? "0" : decimal.integer) +
@@ -1082,7 +1084,7 @@ std::string number_format::format_general(const double value,
   }
   const std::string spelled = fmt::format("{:.14e}", magnitude);
   const std::size_t e = spelled.find('e');
-  const int power = std::stoi(spelled.substr(e + 1));
+  const std::int32_t power = std::stoi(spelled.substr(e + 1));
   return sign + trimmed(spelled.substr(0, e)) + "E" + (power < 0 ? "-" : "+") +
          fmt::format("{:02d}", std::abs(power));
 }

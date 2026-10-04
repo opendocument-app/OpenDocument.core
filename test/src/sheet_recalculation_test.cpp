@@ -12,6 +12,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -163,7 +164,7 @@ TEST(SheetRecalculation, a_range_reads_the_stale_cells_it_holds) {
 
 TEST(SheetRecalculation, a_running_total_down_a_column) {
   std::string rows = row(number("1"));
-  for (int i = 2; i <= 2000; ++i) {
+  for (std::uint32_t i = 2; i <= 2000; ++i) {
     rows += row(uncomputed("of:=[.A" + std::to_string(i - 1) + "]+1"));
   }
   const Document document = ods(rows);
@@ -174,7 +175,7 @@ TEST(SheetRecalculation, a_running_total_down_a_column) {
 
 TEST(SheetRecalculation, a_chain_up_a_column_past_the_depth_limit) {
   std::string rows;
-  for (int i = 1; i < 1100; ++i) {
+  for (std::uint32_t i = 1; i < 1100; ++i) {
     rows += row(uncomputed("of:=[.A" + std::to_string(i + 1) + "]+1"));
   }
   rows += row(number("1"));
@@ -186,7 +187,7 @@ TEST(SheetRecalculation, a_chain_up_a_column_past_the_depth_limit) {
 
 TEST(SheetRecalculation, a_cycle_longer_than_the_depth_limit_gets_no_result) {
   std::string rows = row(uncomputed("of:=[.A2]+1"));
-  for (int i = 2; i <= 201; ++i) {
+  for (std::uint32_t i = 2; i <= 201; ++i) {
     rows += row(
         uncomputed("of:=[.A" + std::to_string(i == 201 ? 2 : i + 1) + "]+1"));
   }

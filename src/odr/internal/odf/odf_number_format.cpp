@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <utility>
 #include <vector>
@@ -24,8 +25,9 @@ bool is_long(const pugi::xml_node node) {
   return std::strcmp(node.attribute("number:style").value(), "long") == 0;
 }
 
-std::string repeated(const char c, const int count) {
-  return std::string(static_cast<std::size_t>(std::max(count, 0)), c);
+std::string repeated(const char c, const std::int32_t count) {
+  return std::string(static_cast<std::size_t>(std::max<std::int32_t>(count, 0)),
+                     c);
 }
 
 /// `number:number`: no `number:decimal-places` and no grouping is `General`,
@@ -42,10 +44,11 @@ std::optional<std::string> number_code(const pugi::xml_node node) {
   if (!decimals_attribute && !grouping) {
     return *factor == 1 ? std::optional<std::string>("General") : std::nullopt;
   }
-  const int decimals = decimals_attribute.as_int();
-  const int min_decimals =
+  const std::int32_t decimals = decimals_attribute.as_int();
+  const std::int32_t min_decimals =
       node.attribute("number:min-decimal-places").as_int(decimals);
-  const int min_integer = node.attribute("number:min-integer-digits").as_int(1);
+  const std::int32_t min_integer =
+      node.attribute("number:min-integer-digits").as_int(1);
 
   // a comma between integer placeholders groups the whole integer
   const std::string zeros =
@@ -82,7 +85,8 @@ std::optional<std::string> section_code(const pugi::xml_node style) {
       }
       result += *code;
     } else if (name == "number:scientific-number") {
-      const int decimals = child.attribute("number:decimal-places").as_int();
+      const std::int32_t decimals =
+          child.attribute("number:decimal-places").as_int();
       result +=
           repeated('0', child.attribute("number:min-integer-digits").as_int(1));
       if (decimals > 0) {
@@ -148,7 +152,7 @@ std::optional<std::string> section_code(const pugi::xml_node style) {
       result += is_long(child) ? "mm" : "m";
     } else if (name == "number:seconds") {
       result += is_long(child) ? "ss" : "s";
-      if (const int decimals =
+      if (const std::int32_t decimals =
               child.attribute("number:decimal-places").as_int();
           decimals > 0) {
         result += "." + repeated('0', decimals);

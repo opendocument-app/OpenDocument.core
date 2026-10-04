@@ -3,6 +3,8 @@
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string>
 
@@ -414,7 +416,7 @@ TEST(FormulaParser, the_odf_reference_operators_parse) {
 }
 
 TEST(FormulaParser, a_formula_nests_64_levels_at_most) {
-  const auto nested = [](const int depth) {
+  const auto nested = [](const std::size_t depth) {
     return parse("=" + std::string(depth, '(') + "1" + std::string(depth, ')'),
                  Syntax::ooxml);
   };
