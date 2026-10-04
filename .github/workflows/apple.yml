@@ -47,8 +47,10 @@ jobs:
       full: ${{ steps.pick.outputs.full }}
     steps:
       - id: pick
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          if [ "${{ github.event_name }}" = push ] && [ "${{ github.ref }}" != refs/heads/main ] && [ -z "${{ inputs.version }}" ]; then
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" != refs/heads/main ] && [ -z "$INPUT_VERSION" ]; then
             echo 'profiles=["apple-ios-armv8","apple-macos-armv8"]' >> "$GITHUB_OUTPUT"
             echo 'full=false' >> "$GITHUB_OUTPUT"
           else
@@ -119,7 +121,9 @@ jobs:
       # checksum does not exist yet, and would change the binary if it did.
       - name: release version
         if: inputs.version
-        run: echo "ODR_GIT_HEAD=${{ inputs.version }}" >> "$GITHUB_ENV"
+        env:
+          ODR_GIT_HEAD: ${{ inputs.version }}
+        run: echo "ODR_GIT_HEAD=$ODR_GIT_HEAD" >> "$GITHUB_ENV"
 
       - name: build
         run: python apple/build_xcframework.py slice --profile ${{ matrix.profile }}

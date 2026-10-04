@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Release automation preserves literal asset paths and rejects malformed
+  version overrides before changing package metadata.
+
 - Java dependent handles reject calls after their owner is explicitly closed.
   Document edits also keep argument wrappers alive through native calls.
 

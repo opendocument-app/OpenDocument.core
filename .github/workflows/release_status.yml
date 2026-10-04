@@ -39,7 +39,8 @@ jobs:
       - name: watch the fan-out
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
         run: |
           scripts/release_status.py \
-            --tag "${{ inputs.tag || github.event.release.tag_name }}" \
-            --self-run-id "${{ github.run_id }}"
+            --tag "$RELEASE_TAG" \
+            --self-run-id "$GITHUB_RUN_ID"

@@ -184,7 +184,8 @@ jobs:
       - name: upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload '${{ github.event.release.tag_name }}' dist/* --repo '${{ github.repository }}'
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" dist/* --repo "$GITHUB_REPOSITORY"
 
   # Uses PyPI trusted publishing (OIDC, no token): the `pyodr` project on PyPI
   # must list this repo + workflow + the `pypi` environment as a publisher.

@@ -61,9 +61,9 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
         run: |
           if [ "${{ github.event_name }}" = release ]; then
-            echo "REVISION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
+            echo "REVISION=${GITHUB_REF_NAME:1}" >> "$GITHUB_ENV"
           else
-            echo "REVISION=${INPUT_VERSION}" >> $GITHUB_ENV
+            echo "REVISION=${INPUT_VERSION}" >> "$GITHUB_ENV"
           fi
 
       - name: publish to github packages

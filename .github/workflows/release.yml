@@ -1,18 +1,7 @@
 name: release
 
-# Dispatch this against main, publish the draft it leaves behind.
-#
-# To patch an older line, branch off the *tag* — `git branch release/v6.1.X
-# v6.1.0` — and dispatch against that: the version is derived against the
-# nearest reachable tag.
-#
-# A tag push cannot be the trigger: the tag has to land on the stamp commit
-# this run makes.
-#
-# The release is drafted, never published. GitHub creates the tag only on
-# publish, so the tag can land on a commit made during the run. Publishing has
-# to stay a human action anyway: a release created by `GITHUB_TOKEN` raises no
-# `release: published`, which is what conan, maven and android hang off.
+# Draft from main or release/*; publish manually to trigger package workflows.
+# Publication creates the tag on the stamp commit. See AGENTS.md for the release flow.
 on:
   workflow_dispatch:
     inputs:
@@ -65,10 +54,19 @@ jobs:
       - name: install git-cliff
         run: pip install git-cliff==2.13.1
 
+      - name: check release helpers
+        run: python -m unittest discover -s scripts/tests
+
       - name: derive the version from the commits
         id: derive
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
         run: |
-          VERSION=$(scripts/release.py version ${{ inputs.version && format('--version {0}', inputs.version) || '' }})
+          args=()
+          if [ -n "$REQUESTED_VERSION" ]; then
+            args+=(--version "$REQUESTED_VERSION")
+          fi
+          VERSION=$(scripts/release.py version "${args[@]}")
           echo "cutting $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
@@ -134,14 +132,6 @@ jobs:
           merge-multiple: true
         continue-on-error: true
 
-      - name: collect assets
-        id: assets
-        run: |
-          mkdir -p "${{ runner.temp }}/assets"
-          ARGS=$(find "${{ runner.temp }}/assets" -type f | sed 's|^|--asset |' | tr '\n' ' ')
-          echo "args=${ARGS}" >> "$GITHUB_OUTPUT"
-          echo "assets: ${ARGS:-none}"
-
       # Whatever the release has to record about itself is written into the tree
       # here; `stamp` commits all of it as one commit.
       #
@@ -178,12 +168,17 @@ jobs:
       - name: draft the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
-          scripts/release.py publish \
-            --version "$VERSION" \
-            --notes "${{ runner.temp }}/notes.md" \
-            ${{ steps.assets.outputs.args }} \
-            ${{ inputs.dry_run && '--dry-run' || '' }}
+          args=(--version "$VERSION" --notes "$RUNNER_TEMP/notes.md")
+          mkdir -p "$RUNNER_TEMP/assets"
+          while IFS= read -r -d '' asset; do
+            args+=(--asset "$asset")
+          done < <(find "$RUNNER_TEMP/assets" -type f -print0)
+          if [ "$DRY_RUN" = true ]; then
+            args+=(--dry-run)
+          fi
+          scripts/release.py publish "${args[@]}"
 
       - name: summary
         run: |
