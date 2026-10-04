@@ -225,8 +225,8 @@ void odr_python::bind_file(py::module_ &m) {
       .def_readwrite("edit", &odr::FileTypeCapabilities::edit)
       .def_readwrite("save", &odr::FileTypeCapabilities::save)
       .def_readwrite("encrypt", &odr::FileTypeCapabilities::encrypt)
-      .def_readwrite("create", &odr::FileTypeCapabilities::create)
-      .def_readwrite("annotate", &odr::FileTypeCapabilities::annotate);
+      .def_readwrite("annotate", &odr::FileTypeCapabilities::annotate)
+      .def_readwrite("create", &odr::FileTypeCapabilities::create);
 
   py::class_<odr::File>(m, "File")
       .def(py::init<>())

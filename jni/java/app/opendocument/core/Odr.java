@@ -141,8 +141,9 @@ public final class Odr {
   }
 
   /**
-   * A new document of {@code type}, with one empty paragraph or one empty sheet. Throws for a type
-   * whose {@link FileTypeCapabilities#create} is false.
+   * A new document of {@code type}, with one empty paragraph or one empty sheet.
+   *
+   * @throws OdrException.UnsupportedFileType if {@link FileTypeCapabilities#create} is false
    */
   public static Document createDocument(FileType type) {
     return new Document(createDocumentNative(type.toNative()));

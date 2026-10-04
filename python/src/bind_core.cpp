@@ -205,5 +205,6 @@ void odr_python::bind_functions(py::module_ &m) {
 
   m.def("create_document", &odr::create_document, py::arg("type"),
         "A new document of the type, with one empty paragraph or one empty "
-        "sheet. Raises for a type whose capabilities do not state `create`.");
+        "sheet. Raises `UnsupportedFileTypeError` for a type whose "
+        "capabilities do not state `create`.");
 }
