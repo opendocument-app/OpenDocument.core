@@ -87,7 +87,7 @@ struct Value;
 struct Matrix final {
   std::uint32_t columns{0};
   std::uint32_t rows{0};
-  std::vector<Value> cells{};
+  std::vector<Value> cells;
 
   friend bool operator==(const Matrix &, const Matrix &);
 };
