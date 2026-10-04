@@ -329,3 +329,47 @@ TEST(OldMs, doc_character_formatting) {
   EXPECT_EQ(paragraphs[0].as_paragraph().text_style().font_size,
             Measure("10pt"));
 }
+
+TEST(OldMs, doc_fib_versions_respect_counted_arrays) {
+  namespace word = internal::oldms::text;
+  const auto parse = [](const std::string &bytes) {
+    std::istringstream in(bytes + "NEXT");
+    word::ParsedFib fib{};
+    word::read(in, fib);
+    EXPECT_EQ(in.peek(), 'N');
+    EXPECT_EQ(fib.fibRgFcLcb.clx.fc, 123);
+    EXPECT_EQ(fib.fibRgFcLcb.clx.lcb, 456);
+    return fib;
+  };
+  const std::string base = make_fib(7, {123, 456}, {}, {});
+  EXPECT_EQ(parse(base).ccpText(), 7);
+  std::string extended = base;
+  extended[152] =
+      95; // cbRgFcLcb: two unused FcLcb entries after the common prefix.
+  extended.insert(extended.size() - 2, 16, '\0');
+  EXPECT_EQ(parse(extended).ccpText(), 7);
+  for (const std::uint16_t version :
+       {word::nFib2000, word::nFib2002, word::nFib2003, word::nFib2007}) {
+    std::string bytes = base.substr(0, base.size() - 2);
+    const std::uint16_t words = version == word::nFib2007 ? 5 : 2;
+    append_u16(bytes, words);
+    append_u16(bytes, version);
+    bytes.append((words - 1) * 2, '\0');
+    EXPECT_EQ(parse(bytes).nFibNew, version);
+  }
+  std::string future = base;
+  future[2] = '\x13';
+  future[3] = '\x01';
+  EXPECT_FALSE(parse(future).nFibNew.has_value());
+
+  std::string undersized = base.substr(0, base.size() - 2);
+  append_u16(undersized, 1);
+  append_u16(undersized, word::nFib2007);
+  undersized.append(8,
+                    '\0'); // Bytes after the declared array cannot satisfy it.
+  EXPECT_THROW(parse(undersized), std::runtime_error);
+  std::string invalid = base;
+  invalid[0] = 0;
+  EXPECT_THROW(parse(invalid), std::runtime_error);
+  EXPECT_THROW(parse(make_fib(0x80000000u, {}, {}, {})), std::runtime_error);
+}

@@ -17,7 +17,7 @@ text.
 
 | File (`oldms/text/`) | Role |
 |---|---|
-| `doc_structs.hpp` | `#pragma pack(1)` PODs (`FibBase`, the `FibRgFcLcb97` to `FibRgFcLcb2007` chain, `Sprm`, `FcCompressed`, `Pcd`, `PnFkpChpx`, `FfnFixed`), `PlcMap` (`PlcPcdMap`, `PlcBteChpxMap`), `ParsedFib`, the character SPRM opcodes |
+| `doc_structs.hpp` | `#pragma pack(1)` PODs (`FibBase`, `FibRgFcLcb97`, `Sprm`, `FcCompressed`, `Pcd`, `PnFkpChpx`, `FfnFixed`), `PlcMap` (`PlcPcdMap`, `PlcBteChpxMap`), `ParsedFib`, the character SPRM opcodes |
 | `doc_io.{hpp,cpp}` | `read(...)` over `std::istream`: variable-length FIB, Clx walk, string decoding, `uncompress_char` |
 | `doc_helper.{hpp,cpp}` | `CharacterIndex` (decoded piece table) and `read_character_index`; `CharacterRuns` (fc-keyed style-index runs) and `read_character_runs` |
 | `doc_style.{hpp,cpp}` | `StyleRegistry` (resolved `TextStyle`s by index, font-name store), `apply_character_sprms`, `read_font_names` (SttbfFfn) |
@@ -35,14 +35,12 @@ body with headers, footnotes and annotations, and the FIB's `ccp*` counts
 partition the CP space. The parser takes the first `ccpText` CPs by clamping
 each piece to the remaining budget.
 
-**Self-describing FIB read.** `read(ParsedFib&)` trusts the on-disk counts,
-reads what the module models and ignores the surplus. Version dispatch picks
-the `FibRgFcLcb*` layout by `nFib` (`nFib97` 0x00C1, `nFib2000` 0x00D9,
-`nFib2002` 0x0101, `nFib2003` 0x010C, `nFib2007` 0x0112). A newer `nFib` uses
-the 2007 layout. The `FcLcb` block is copied clamped to
-`min(sizeof(layout), cbRgFcLcb·8)`, so extra entries are ignored and a shorter
-block leaves the rest zero. `clx` sits in the `FibRgFcLcb97` base, so it is
-always covered.
+**Self-describing FIB read.** Counts bound each FIB array. The parser keeps the
+`FibRgFcLcb97` prefix by value; later versions append entries that it does not
+use. A shorter block zero-fills missing entries. `cswNew` bounds the version
+extension, whose unused fields are skipped. Known versions are validated;
+a future base `nFib` may still use the common prefix. No versioned object is
+allocated or deleted through a non-virtual base.
 
 **Piece table.** The `PlcPcd` is `n+1` ascending CP boundaries followed by `n`
 `Pcd`s. `PlcPcdMap` is a zero-copy view over the raw bytes. Each `Pcd`'s
@@ -101,8 +99,8 @@ are dropped.
 - `html_output_test` compares the real `.doc` fixtures against the reference
   output. There is no assertion-based test over a real fixture.
 
-Not tested: FIB robustness (negative `ccpText`, newer-than-2007 fallback) and
-`page_break` emission.
+FIB versions, counted extensions, and negative `ccpText` have synthetic coverage.
+`page_break` emission still lacks a focused test.
 
 ## Binary format reference (FIB)
 
