@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- OOXML parts consistently resolve absolute package targets. Optional relationships
+  skip external or invalid paths. DOCX opens without styles, and PPTX retains a
+  slide’s own background when it has no layout relationship.
+
 - PPTX text edits preserve one text node per DrawingML run, including tabs.
   Insertion copies run properties; unsupported containers and slide removal refuse.
 

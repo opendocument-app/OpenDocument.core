@@ -105,6 +105,15 @@ TEST(ooxml_util, an_absolute_relationship_target_names_a_part_from_the_root) {
 TEST(ooxml_util, a_relationship_target_that_names_nothing_resolves_to_nothing) {
   EXPECT_FALSE(
       layout_of(relationships_of(relationship(layout_type, ""))).has_value());
+  EXPECT_FALSE(
+      layout_of(relationships_of(relationship(layout_type, "/../../x.xml")))
+          .has_value());
+  EXPECT_FALSE(
+      layout_of(
+          relationships_of(
+              R"(<Relationship Id="rId1" Type=")" + std::string(layout_type) +
+              R"(" Target="/ppt/slides/external.xml" TargetMode="External"/>)"))
+          .has_value());
   // climbing out of the package
   EXPECT_FALSE(
       layout_of(relationships_of(relationship(layout_type, "../../../x.xml")))

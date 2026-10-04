@@ -919,7 +919,9 @@ Document docx_of(const std::string &paragraphs) {
 
 /// The smallest pptx that opens: one slide, one shape, its text body holding
 /// @p paragraphs.
-Document pptx_of(const std::string &paragraphs) {
+Document pptx_of(const std::string &paragraphs,
+                 const std::string &background = "",
+                 const std::string &target = "slides/slide1.xml") {
   return package_of(
       {{"ppt/presentation.xml",
         R"(<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" )"
@@ -927,13 +929,16 @@ Document pptx_of(const std::string &paragraphs) {
         R"(<p:sldIdLst><p:sldId id="256" r:id="rId1"/></p:sldIdLst></p:presentation>)"},
        {"ppt/_rels/presentation.xml.rels",
         R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
-        R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>)"
-        R"(</Relationships>)"},
+        R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target=")" +
+            target +
+            R"("/>)"
+            R"(</Relationships>)"},
        {"ppt/slides/slide1.xml",
         R"(<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" )"
         R"(xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">)"
-        R"(<p:cSld><p:spTree><p:sp><p:txBody>)" +
-            paragraphs + R"(</p:txBody></p:sp></p:spTree></p:cSld></p:sld>)"}});
+        R"(<p:cSld>)" +
+            background + R"(<p:spTree><p:sp><p:txBody>)" + paragraphs +
+            R"(</p:txBody></p:sp></p:spTree></p:cSld></p:sld>)"}});
 }
 
 /// The @p ordinal -th element of @p type anywhere in @p document.
@@ -1625,4 +1630,35 @@ TEST(DocumentEdit, pptx_rejects_unsupported_containers_and_slide_removal) {
   EXPECT_THROW(document.remove(nth_of_type(document, ElementType::slide, 0)),
                UnsupportedOperation);
   EXPECT_EQ(part_of(document, "ppt/slides/slide1.xml"), before);
+}
+
+TEST(DocumentEdit,
+     ooxml_package_parts_allow_absolute_targets_and_missing_styles) {
+  const Document presentation = pptx_of(
+      pptx_paragraphs,
+      R"(<p:bg><p:bgPr><a:solidFill><a:srgbClr val="123456"/></a:solidFill></p:bgPr></p:bg>)",
+      "/ppt/slides/slide1.xml");
+  const auto background = nth_of_type(presentation, ElementType::slide, 0)
+                              .as_slide()
+                              .page_layout()
+                              .background_color;
+  ASSERT_TRUE(background);
+  EXPECT_EQ(background->rgb(), 0x123456U);
+  EXPECT_EQ(text_of(reopened(presentation).root_element()), "oneplain");
+
+  const Document document = package_of(
+      {{"word/document.xml",
+        R"(<w:document><w:body><w:p><w:r><w:t>unstyled</w:t></w:r></w:p></w:body></w:document>)"}});
+  EXPECT_EQ(nth_run(document, 0).as_text().style().font_size, Measure("12pt"));
+  EXPECT_EQ(text_of(reopened(document).root_element()), "unstyled");
+
+  const Document workbook = package_of(
+      {{"xl/workbook.xml",
+        R"(<workbook><sheets><sheet name="s" sheetId="1" r:id="rId1"/></sheets></workbook>)"},
+       {"xl/_rels/workbook.xml.rels",
+        R"(<Relationships><Relationship Id="rId1" Target="/xl/worksheets/sheet1.xml"/></Relationships>)"},
+       {"xl/styles.xml", "<styleSheet/>"},
+       {"xl/worksheets/sheet1.xml",
+        R"(<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>cell</t></is></c></row></sheetData></worksheet>)"}});
+  EXPECT_EQ(first_sheet(reopened(workbook)).cell(0, 0).value().text(), "cell");
 }

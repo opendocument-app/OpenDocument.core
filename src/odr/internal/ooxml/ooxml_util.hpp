@@ -85,6 +85,9 @@ std::optional<std::string> read_border_node(pugi::xml_node);
 /// The four sides of a `w:tblBorders`/`w:tcBorders`.
 DirectionalStyle<std::string> read_borders_node(pugi::xml_node);
 
+/// Resolves a package target against its source part; rejects an empty target.
+AbsPath resolve_part_path(const AbsPath &source, std::string_view target);
+
 using Relations = std::unordered_map<std::string, std::string>;
 using XmlDocumentsAndRelations =
     std::unordered_map<AbsPath, std::pair<pugi::xml_document, Relations>>;
