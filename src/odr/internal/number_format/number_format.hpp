@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -10,21 +11,27 @@ namespace odr::internal::number_format {
 /// One piece of a section of a format code.
 struct Token final {
   enum class Kind {
-    literal,  ///< text shown as it is
-    digit,    ///< `0`, `#` or `?`, in `placeholder`
-    point,    ///< the decimal point
-    comma,    ///< grouping or scaling, as its place decides
-    percent,  ///< `%`, which also scales by 100
-    exponent, ///< `E+` or `E-`; `plus` says which
-    slash,    ///< the bar of a fraction
-    text,     ///< `@`, the text of a text value
-    general,  ///< `General`
+    literal,   ///< text shown as it is
+    digit,     ///< `0`, `#` or `?`, in `placeholder`
+    point,     ///< the decimal point
+    comma,     ///< grouping or scaling, as its place decides
+    percent,   ///< `%`, which also scales by 100
+    exponent,  ///< `E+` or `E-`; `plus` says which
+    slash,     ///< the bar of a fraction
+    text,      ///< `@`, the text of a text value
+    general,   ///< `General`
+    date_time, ///< a part of a date or a time, in `unit` and `width`
   };
 
   Kind kind{Kind::literal};
-  std::string text{};    ///< the literal
+  std::string text{};    ///< the literal, or how `AM/PM` is spelled
   char placeholder{'0'}; ///< the digit placeholder
   bool plus{false};      ///< `E+` rather than `E-`
+  /// `y`, `M` (month), `d`, `h`, `m` (minute), `s`, `f` (a fraction of a
+  /// second) or `a` (`AM/PM`, `A/P`).
+  char unit{'\0'};
+  std::size_t width{0}; ///< how many letters, or digits of a fraction
+  bool elapsed{false};  ///< `[h]`, `[m]` or `[s]`: not wrapped at a day
 };
 
 /// `[<op><number>]` ahead of a section.
@@ -49,6 +56,12 @@ struct Section final {
   std::optional<Condition> condition{};
 };
 
+/// Where a date serial counts from: `workbookPr/@date1904` picks 1904.
+enum class Epoch { from_1900, from_1904 };
+
+/// What the first section of a format shows a number as.
+enum class Category { number, date, time };
+
 /// @brief A number format, parsed from a format code as MS-XLS 2.4.126 states
 /// its grammar.
 ///
@@ -61,10 +74,14 @@ public:
   /// @throws std::invalid_argument where @p code is no format code.
   explicit Format(std::string_view code);
 
-  /// The text a cell holding @p value shows.
-  [[nodiscard]] std::string format(double value) const;
+  /// The text a cell holding @p value shows. A date or time section reads it
+  /// as a serial counted from @p epoch.
+  [[nodiscard]] std::string format(double value,
+                                   Epoch epoch = Epoch::from_1900) const;
   /// The text a cell holding the text @p value shows.
   [[nodiscard]] std::string format(std::string_view value) const;
+
+  [[nodiscard]] Category category() const;
 
 private:
   std::vector<Section> m_sections;

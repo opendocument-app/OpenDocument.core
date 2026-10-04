@@ -111,3 +111,44 @@ TEST(NumberFormat, a_malformed_code_is_refused) {
   EXPECT_THROW(Format("[>"), std::invalid_argument);
   EXPECT_THROW(Format("0;0;0;0;0"), std::invalid_argument);
 }
+
+TEST(NumberFormat, a_date_counts_its_days_from_1900) {
+  EXPECT_EQ(shown("yyyy-mm-dd", 45658), "2025-01-01");
+  EXPECT_EQ(shown("m/d/yy", 45658.75), "1/1/25");
+  EXPECT_EQ(shown("d mmm yyyy", 61), "1 Mar 1900");
+  EXPECT_EQ(shown("yyyy-mm-dd", 60), "1900-02-29");
+  EXPECT_EQ(shown("yyyy-mm-dd", 59), "1900-02-28");
+  EXPECT_EQ(shown("yyyy-mm-dd", 1), "1900-01-01");
+  EXPECT_EQ(shown("dddd, mmmm d", 45658), "Wednesday, January 1");
+  EXPECT_EQ(shown("ddd mmmmm", 45658), "Wed J");
+  EXPECT_EQ(Format("yyyy-mm-dd").format(0, Epoch::from_1904), "1904-01-01");
+  EXPECT_EQ(Format("dddd").format(0, Epoch::from_1904), "Friday");
+}
+
+TEST(NumberFormat, a_time_is_the_fraction_of_a_day) {
+  EXPECT_EQ(shown("hh:mm:ss", 0.75), "18:00:00");
+  EXPECT_EQ(shown("h:mm AM/PM", 0.75), "6:00 PM");
+  EXPECT_EQ(shown("h:mm am/pm", 0.25), "6:00 am");
+  EXPECT_EQ(shown("h A/P", 0), "12 A");
+  EXPECT_EQ(shown("mm:ss.00", 1.5 / 86400), "00:01.50");
+  EXPECT_EQ(shown("[h]:mm", 1.5), "36:00");
+  EXPECT_EQ(shown("[mm]:ss", 0.5 / 24), "30:00");
+  EXPECT_EQ(shown("hh:mm", 0.99999999), "00:00");
+  EXPECT_EQ(shown("yyyy-mm-dd hh:mm", 45658.99999999), "2025-01-02 00:00");
+}
+
+TEST(NumberFormat, m_is_a_minute_next_to_an_hour_or_a_second) {
+  EXPECT_EQ(shown("h:m", 0.5 + 5.0 / 1440), "12:5");
+  EXPECT_EQ(shown("m:ss", 65.0 / 86400), "1:05");
+  EXPECT_EQ(shown("m/d", 45658), "1/1");
+}
+
+TEST(NumberFormat, a_format_says_whether_it_shows_a_date) {
+  EXPECT_EQ(Format("yyyy-mm-dd").category(), Category::date);
+  EXPECT_EQ(Format("[$-409]h:mm AM/PM;@").category(), Category::time);
+  EXPECT_EQ(Format("0.00").category(), Category::number);
+  EXPECT_EQ(Format().category(), Category::number);
+  EXPECT_EQ(shown("yyyy-mm-dd", -1), "-1");
+  EXPECT_EQ(shown("yyyy-mm-dd", 2958465), "9999-12-31");
+  EXPECT_EQ(shown("yyyy-mm-dd", 1e12), "1000000000000");
+}
