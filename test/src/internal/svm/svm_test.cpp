@@ -9,10 +9,12 @@
 #include <test_util.hpp>
 
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -1206,4 +1208,57 @@ TEST(SvmToSvg, a_complex_poly_polygon_replaces_its_polygon) {
                     .file());
 
   EXPECT_NE(std::string::npos, svg.find("d=\"M 0,0 C 5,0 5,5 0,5 Z\""));
+}
+
+TEST(SvmFile, primitive_reads_preserve_values_and_normalize_booleans) {
+  std::istringstream short_input(std::string(1, '\1'));
+  std::uint32_t value = 42;
+  EXPECT_THROW(svm::read_primitive(short_input, value), odr::MalformedSvmFile);
+  EXPECT_EQ(value, 42);
+  std::istringstream flags(std::string(1, '\xff'));
+  bool flag = false;
+  svm::read_primitive(flags, flag);
+  EXPECT_TRUE(flag);
+}
+
+TEST(SvmFile, bitmap_headers_and_dimensions_are_bounded) {
+  const auto bitmap = [](const std::uint32_t header_size,
+                         const std::int32_t width, const std::int32_t height) {
+    const std::string file = SvmBuilder()
+                                 .u16(0x4d42)
+                                 .u32(54)
+                                 .u16(0)
+                                 .u16(0)
+                                 .u32(54)
+                                 .u32(header_size)
+                                 .i32(width)
+                                 .i32(height)
+                                 .u16(1)
+                                 .u16(24)
+                                 .u32(0)
+                                 .u32(4)
+                                 .u32(0)
+                                 .u32(0)
+                                 .u32(0)
+                                 .u32(0)
+                                 .u32(0)
+                                 .file();
+    return file.substr(SvmBuilder().file().size());
+  };
+  for (const auto &[header, width, height] :
+       {std::tuple<std::uint32_t, std::int32_t, std::int32_t>{13, 1, 1},
+        {39, 1, 1},
+        {40, 1, std::numeric_limits<std::int32_t>::min()},
+        {40, 0, 1},
+        {40, -1, 1},
+        {40, 1, 0},
+        {40, std::numeric_limits<std::int32_t>::max(),
+         std::numeric_limits<std::int32_t>::max()}}) {
+    std::istringstream input(bitmap(header, width, height));
+    EXPECT_THROW(std::ignore = svm::read_dib(input, 58), odr::MalformedSvmFile);
+  }
+  std::istringstream input(bitmap(40, 1, 1));
+  EXPECT_THROW(std::ignore = svm::read_dib(input, 57), odr::MalformedSvmFile);
+  std::istringstream valid(bitmap(40, 1, -1));
+  EXPECT_EQ(svm::read_dib(valid, 58).mime_type, "image/png");
 }
