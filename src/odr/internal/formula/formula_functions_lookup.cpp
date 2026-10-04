@@ -317,7 +317,8 @@ constexpr std::size_t cell_limit = 1 << 22;
 /// Calls @p visit with the position of every cell that meets all
 /// @p conditions.
 template <typename Visit>
-void each_match(const std::vector<Condition> &conditions, const Visit &visit) {
+void each_match(const std::span<const Condition> conditions,
+                const Visit &visit) {
   const Cells &shape = conditions.front().cells;
   if (std::size_t{shape.columns} * shape.rows > cell_limit) {
     throw NoAnswer{};
@@ -350,7 +351,7 @@ template <std::size_t most> Value count_if(const Call &call) {
 /// The sum of @p values at the positions that meet @p conditions, or their
 /// average where @p average. A text and an empty cell add nothing, an error
 /// is the result.
-Value matched(const Call &call, const std::vector<Condition> &conditions,
+Value matched(const Call &call, const std::span<const Condition> conditions,
               const Cells &values, const bool average) {
   std::vector<double> numbers;
   std::set<ErrorType> errors;
