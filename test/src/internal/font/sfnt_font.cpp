@@ -5,7 +5,9 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -311,4 +313,73 @@ TEST(SfntFont, write_pads_a_short_hmtx) {
   }
   EXPECT_EQ(hmtx_length, 2 * 4 + 3 * 2);
   EXPECT_EQ(SfntFont(written).advance_width(4), 600);
+}
+
+TEST(SfntFont, rejects_table_ranges_and_invalid_headers) {
+  EXPECT_THROW(SfntFont(std::string(12, '\0')), std::runtime_error);
+  std::string collection("ttcf");
+  collection.resize(16, '\0');
+  EXPECT_THROW(SfntFont{collection}, std::runtime_error);
+
+  std::string bytes = sample_font(cmap_table(3, 1, cmap_format4('A', 3)));
+  bs::write_u32_be(bytes, 24, static_cast<std::uint32_t>(bytes.size()));
+  EXPECT_THROW(SfntFont{bytes}, std::runtime_error);
+  std::string head = head_table();
+  bs::write_u16_be(head, 18, 0);
+  EXPECT_THROW(SfntFont(build_sfnt({{"head", head}})), std::runtime_error);
+  std::string name = name_table("A");
+  bs::write_u16_be(name, 14, 4);
+  EXPECT_THROW(SfntFont(build_sfnt({{"name", name}})), std::runtime_error);
+  bs::write_u16_be(name, 14, 1);
+  EXPECT_THROW(SfntFont(build_sfnt({{"name", name}})), std::runtime_error);
+}
+
+TEST(SfntFont, rejects_invalid_cmap_groups_before_expanding_them) {
+  const std::string valid = cmap_format12(0x1f600, 2);
+  const std::array<std::pair<std::size_t, std::uint32_t>, 5> patches{
+      {{20, std::numeric_limits<std::uint32_t>::max()},
+       {20, 0x1f5ff},
+       {24, 0xFFFF},
+       {12, 2},
+       {4, 16}}};
+  for (const auto &[offset, value] : patches) {
+    std::string subtable = valid;
+    bs::write_u32_be(subtable, offset, value);
+    EXPECT_THROW(SfntFont(sample_font(cmap_table(3, 10, subtable))),
+                 std::exception);
+  }
+  std::string overlapping = valid;
+  overlapping += valid.substr(16);
+  bs::write_u32_be(overlapping, 4,
+                   static_cast<std::uint32_t>(overlapping.size()));
+  bs::write_u32_be(overlapping, 12, 2);
+  EXPECT_THROW(SfntFont(sample_font(cmap_table(3, 10, overlapping))),
+               std::runtime_error);
+
+  std::string short_subtable = cmap_format4('A', 3);
+  bs::write_u16_be(short_subtable, 2, 16);
+  EXPECT_THROW(SfntFont(sample_font(cmap_table(3, 1, short_subtable))),
+               std::exception);
+  short_subtable = cmap_format4('A', 3);
+  bs::write_u16_be(short_subtable, 6, 3);
+  EXPECT_THROW(SfntFont(sample_font(cmap_table(3, 1, short_subtable))),
+               std::runtime_error);
+}
+
+TEST(SfntFont, unsupported_cmap_does_not_hide_a_supported_one) {
+  std::string cmap;
+  bs::put_u16_be(cmap, 0);
+  bs::put_u16_be(cmap, 2);
+  bs::put_u16_be(cmap, 0);
+  bs::put_u16_be(cmap, 6); // Unicode full repertoire, unsupported format 13.
+  bs::put_u32_be(cmap, 20);
+  bs::put_u16_be(cmap, 3);
+  bs::put_u16_be(cmap, 1);
+  bs::put_u32_be(cmap, 22);
+  bs::put_u16_be(cmap, 13);
+  std::string supported = cmap_format4('A', 3);
+  bs::write_u16_be(supported, 30, 0xFFFF); // The terminator offset is unused.
+  cmap += supported;
+  const SfntFont font(sample_font(cmap));
+  EXPECT_EQ(font.glyph_for_code_point('B'), 2);
 }

@@ -19,6 +19,15 @@ namespace bs = util::byte_string;
 
 namespace {
 
+std::string_view checked_slice(const std::string_view bytes,
+                               const std::size_t offset,
+                               const std::size_t length) {
+  if (offset > bytes.size() || length > bytes.size() - offset) {
+    throw std::runtime_error("sfnt: table range exceeds its container");
+  }
+  return bytes.substr(offset, length);
+}
+
 // The enumerators below are the on-disk codes (OpenType spec).
 
 /// `cmap`/`name` platform IDs.
@@ -106,6 +115,9 @@ struct NameEntry {
 /// included, into UTF-8. @p d is exactly the string's bytes.
 [[nodiscard]] std::string read_utf16be(const std::string_view d) {
   const std::size_t len = d.size();
+  if (len % 2 != 0) {
+    throw std::runtime_error("sfnt: odd UTF-16 name length");
+  }
   std::string out;
   for (std::size_t i = 0; i + 1 < len; i += 2) {
     char32_t cp = bs::read_u16_be(d.substr(i));
@@ -133,8 +145,8 @@ struct NameEntry {
 
 /// Preference among `cmap` subtables: Unicode full > Unicode BMP > symbol >
 /// Mac.
-[[nodiscard]] int cmap_score(const PlatformId platform,
-                             const std::uint16_t encoding) {
+[[nodiscard]] std::uint32_t cmap_score(const PlatformId platform,
+                                       const std::uint16_t encoding) {
   switch (platform) {
   case PlatformId::windows:
     switch (static_cast<WindowsEncoding>(encoding)) {
@@ -197,6 +209,10 @@ void SfntFont::parse() {
 
   std::uint32_t sfnt_offset = 0;
   if (d.substr(0, 4) == "ttcf") {
+    const std::uint32_t count = bs::read_u32_be(d.substr(8));
+    if (count == 0 || count > (d.size() - 12) / 4) {
+      throw std::runtime_error("sfnt: invalid collection directory");
+    }
     // TrueType Collection: read the first member's offset table.
     sfnt_offset = bs::read_u32_be(d.substr(12));
   }
@@ -210,13 +226,19 @@ void SfntFont::parse() {
 }
 
 std::string_view SfntFont::table_data(const Table table) const {
-  return std::string_view{m_data}.substr(table.offset, table.length);
+  return checked_slice(m_data, table.offset, table.length);
 }
 
 void SfntFont::read_directory(const std::string_view sfnt) {
+  if (sfnt.size() < 12 || !is_sfnt(sfnt) || sfnt.substr(0, 4) == "ttcf") {
+    throw std::runtime_error("sfnt: invalid offset table");
+  }
   m_format = sfnt.substr(0, 4) == "OTTO" ? FontFormat::opentype_cff
                                          : FontFormat::truetype;
   const std::uint16_t num_tables = bs::read_u16_be(sfnt.substr(4));
+  if (num_tables > (sfnt.size() - 12) / 16) {
+    throw std::runtime_error("sfnt: truncated table directory");
+  }
 
   // Past the 12 byte offset table, each directory entry is 16 bytes: tag(4),
   // checkSum(4), offset(4), length(4).
@@ -225,7 +247,9 @@ void SfntFont::read_directory(const std::string_view sfnt) {
     std::string tag{sfnt.substr(entry, 4)};
     const std::uint32_t offset = bs::read_u32_be(sfnt.substr(entry + 8));
     const std::uint32_t length = bs::read_u32_be(sfnt.substr(entry + 12));
-    m_tables.emplace(std::move(tag), Table{offset, length});
+    if (!m_tables.emplace(std::move(tag), Table{offset, length}).second) {
+      throw std::runtime_error("sfnt: duplicate table tag");
+    }
   }
 }
 
@@ -236,6 +260,9 @@ void SfntFont::read_head() {
   }
   const std::string_view t = table_data(*head);
   m_units_per_em = bs::read_u16_be(t.substr(18));
+  if (m_units_per_em == 0) {
+    throw std::runtime_error("sfnt: zero units per em");
+  }
   m_bbox = read_bbox(t.substr(36));
 }
 
@@ -291,13 +318,20 @@ void SfntFont::read_cmap() {
                WindowsEncoding::symbol;
   });
 
-  const auto best_entry =
-      std::ranges::max_element(entries, {}, [](const CmapEntry &entry) {
-        return cmap_score(entry.platform, entry.encoding);
-      });
+  const auto score = [t](const CmapEntry &entry) -> std::uint32_t {
+    switch (static_cast<CmapFormat>(bs::read_u16_be(t.substr(entry.offset)))) {
+    case CmapFormat::byte_encoding:
+    case CmapFormat::segment_mapping:
+    case CmapFormat::trimmed_mapping:
+    case CmapFormat::segmented_coverage:
+      return cmap_score(entry.platform, entry.encoding);
+    default:
+      return 0;
+    }
+  };
+  const auto best_entry = std::ranges::max_element(entries, {}, score);
 
-  if (best_entry != entries.end() &&
-      cmap_score(best_entry->platform, best_entry->encoding) > 0) {
+  if (best_entry != entries.end() && score(*best_entry) > 0) {
     // The encoding record's offset is relative to the start of the `cmap`
     // table.
     read_cmap_subtable(t.substr(best_entry->offset));
@@ -315,7 +349,12 @@ void SfntFont::update_reverse() {
   }
 }
 
-void SfntFont::read_cmap_subtable(const std::string_view s) {
+void SfntFont::read_cmap_subtable(std::string_view s) {
+  const auto format = static_cast<CmapFormat>(bs::read_u16_be(s));
+  const std::size_t length = format == CmapFormat::segmented_coverage
+                                 ? bs::read_u32_be(s.substr(4))
+                                 : bs::read_u16_be(s.substr(2));
+  s = checked_slice(s, 0, length);
   const auto map = [this](const char32_t code, const std::uint16_t glyph) {
     if (glyph == 0) {
       return;
@@ -333,7 +372,7 @@ void SfntFont::read_cmap_subtable(const std::string_view s) {
     return out;
   };
 
-  switch (static_cast<CmapFormat>(bs::read_u16_be(s))) {
+  switch (format) {
   case CmapFormat::byte_encoding: {
     // format(0), length(2), language(4), then a 256-byte glyphIdArray(6).
     for (std::uint32_t code = 0; code < 256; ++code) {
@@ -345,8 +384,11 @@ void SfntFont::read_cmap_subtable(const std::string_view s) {
     // format(0), length(2), language(4), segCountX2(6), 3 search hints(8..12),
     // then the parallel segs-sized arrays endCode(14), reservedPad, startCode,
     // idDelta, idRangeOffset.
-    const std::uint16_t length = bs::read_u16_be(s.substr(2));
-    const std::size_t segs = bs::read_u16_be(s.substr(6)) / 2U;
+    const std::uint16_t seg_count_x2 = bs::read_u16_be(s.substr(6));
+    const std::size_t segs = seg_count_x2 / 2U;
+    if (segs == 0 || seg_count_x2 % 2 != 0) {
+      throw std::runtime_error("sfnt: invalid cmap segment count");
+    }
     const std::vector<std::uint16_t> end_codes =
         read_u16_vector(s.substr(14), segs);
     const std::vector<std::uint16_t> start_codes =
@@ -368,6 +410,10 @@ void SfntFont::read_cmap_subtable(const std::string_view s) {
       const std::uint16_t end = end_codes.at(seg);
       const std::uint16_t delta = id_deltas.at(seg);
       const std::uint16_t range = id_range_offsets.at(seg);
+      if (start > end || (seg > 0 && start <= end_codes[seg - 1]) ||
+          (start != 0xFFFF && range % 2 != 0)) {
+        throw std::runtime_error("sfnt: invalid cmap segment");
+      }
       for (std::uint32_t code = start; code <= end && code != 0xffff; ++code) {
         std::uint16_t glyph = 0;
         if (range == 0) {
@@ -392,6 +438,9 @@ void SfntFont::read_cmap_subtable(const std::string_view s) {
     // glyphIdArray(10).
     const std::uint16_t first = bs::read_u16_be(s.substr(6));
     const std::uint16_t entries = bs::read_u16_be(s.substr(8));
+    if (std::uint32_t{first} + entries > 0x10000) {
+      throw std::runtime_error("sfnt: cmap format 6 exceeds the BMP");
+    }
     for (std::uint16_t i = 0; i < entries; ++i) {
       map(first + i,
           bs::read_u16_be(s.substr(10 + static_cast<std::size_t>(i) * 2)));
@@ -402,11 +451,20 @@ void SfntFont::read_cmap_subtable(const std::string_view s) {
     // format(0), reserved(2), length(4), language(8), numGroups(12), then the
     // groups(16), each a 12-byte startCharCode/endCharCode/startGlyphID.
     const std::uint32_t groups = bs::read_u32_be(s.substr(12));
+    if (groups > (s.size() - 16) / 12) {
+      throw std::runtime_error("sfnt: truncated cmap groups");
+    }
+    std::uint32_t previous_end = 0;
     for (std::uint32_t g = 0; g < groups; ++g) {
       const std::size_t base = 16 + static_cast<std::size_t>(g) * 12;
       const std::uint32_t start = bs::read_u32_be(s.substr(base));
       const std::uint32_t end = bs::read_u32_be(s.substr(base + 4));
       const std::uint32_t start_glyph = bs::read_u32_be(s.substr(base + 8));
+      if (start > end || end > 0x10FFFF || (g > 0 && start <= previous_end) ||
+          start_glyph > 0xFFFF || end - start > 0xFFFF - start_glyph) {
+        throw std::runtime_error("sfnt: invalid cmap format 12 group");
+      }
+      previous_end = end;
       for (std::uint32_t code = start; code <= end; ++code) {
         map(code, static_cast<std::uint16_t>(start_glyph + (code - start)));
       }
@@ -435,14 +493,14 @@ void SfntFont::read_name() {
         read_name_entry(t.substr(6 + static_cast<std::size_t>(i) * 12)));
   }
 
-  const auto score_entry = [](const NameEntry &entry) {
+  const auto score_entry = [](const NameEntry &entry) -> std::uint32_t {
     // Only the full (4) and PostScript (6) names are usable; everything else
     // scores below the empty default so it is never selected.
     if (entry.name_id != NameId::full && entry.name_id != NameId::postscript) {
       return 0;
     }
-    const int score = (entry.name_id == NameId::postscript ? 10 : 0) +
-                      (entry.utf16() ? 2 : 1);
+    const std::uint32_t score = (entry.name_id == NameId::postscript ? 10 : 0) +
+                                (entry.utf16() ? 2 : 1);
     return score;
   };
 
@@ -450,7 +508,8 @@ void SfntFont::read_name() {
 
   if (best_entry != entries.end() && score_entry(*best_entry) > 0) {
     // name_local_offset is relative to the string storage (string_offset).
-    const std::string_view value = t.substr(
+    const std::string_view value = checked_slice(
+        t,
         static_cast<std::size_t>(string_offset) + best_entry->name_local_offset,
         best_entry->name_length);
     m_name = best_entry->utf16() ? read_utf16be(value) : read_latin1(value);
@@ -511,7 +570,7 @@ std::string SfntFont::write() const {
     if (tag == "cmap" || !is_kept_table(tag)) {
       continue;
     }
-    std::string data = m_data.substr(location.offset, location.length);
+    std::string data(table_data(location));
     if (tag == "hmtx") {
       // OTS rejects an `hmtx` shorter than `hhea` and `maxp` say.
       const std::size_t side_bearings =
