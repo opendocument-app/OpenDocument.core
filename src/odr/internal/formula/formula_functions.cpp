@@ -82,6 +82,18 @@ double formula::number_argument(const Call &call, const std::size_t index) {
   return std::get<double>(number);
 }
 
+bool formula::same_number(const Dialect dialect, const double a,
+                          const double b) {
+  const bool approximately = approximately_equal(a, b);
+  if (dialect == Dialect::libreoffice || a == b) {
+    return approximately;
+  }
+  if (approximately != (snapped(a, 15) == snapped(b, 15))) {
+    throw NoAnswer{};
+  }
+  return approximately;
+}
+
 bool formula::is_libreoffice(const Call &call) {
   return call.settings().dialect == Dialect::libreoffice;
 }

@@ -37,6 +37,10 @@ struct Settings final {
   /// The first year a two-digit year of an `.ods` stands for: with 1930,
   /// `30` is 1930 and `29` is 2029.
   std::int64_t null_year{1930};
+  /// Whether `&` spells a boolean of an `.ods` as `TRUE`, not as `1`. The
+  /// LibreOffice that computed the file decides: 27.2 spells it `TRUE`.
+  /// Nothing where the file does not say which LibreOffice that was.
+  std::optional<bool> boolean_word{};
 
   /// The serial a formula computes with for @p days since 1899-12-30.
   [[nodiscard]] double serial(double days) const;

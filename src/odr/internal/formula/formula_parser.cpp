@@ -10,6 +10,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <string>
 #include <utility>
@@ -112,7 +113,25 @@ public:
   }
 
 private:
+  /// The most levels a formula nests: a group, an argument, a sign. It
+  /// bounds the stack of the parse and of the evaluation; Excel writes at
+  /// most 64 levels of functions.
+  static constexpr std::uint32_t depth_limit = 64;
+
   Syntax m_syntax{Syntax::ooxml};
+  std::uint32_t m_depth{0};
+
+  /// @p production one level deeper, nothing past the depth limit.
+  template <typename Production>
+  [[nodiscard]] std::optional<Node> nested(const Production &production) {
+    if (m_depth >= depth_limit) {
+      return {};
+    }
+    ++m_depth;
+    std::optional<Node> node = production();
+    --m_depth;
+    return node;
+  }
 
   [[nodiscard]] std::string_view take_name() {
     return take_while(is_name_char);
@@ -123,7 +142,9 @@ private:
     return m_syntax == Syntax::opendocument ? ';' : ',';
   }
 
-  [[nodiscard]] std::optional<Node> expression() { return comparison(); }
+  [[nodiscard]] std::optional<Node> expression() {
+    return nested([this] { return comparison(); });
+  }
 
   [[nodiscard]] std::optional<Node> comparison() {
     std::optional<Node> left = concatenation();
@@ -208,7 +229,7 @@ private:
       const UnaryOperator op =
           peek() == '-' ? UnaryOperator::minus : UnaryOperator::plus;
       advance(1);
-      std::optional<Node> operand = unary();
+      std::optional<Node> operand = nested([this] { return unary(); });
       if (!operand.has_value()) {
         return {};
       }

@@ -7,6 +7,7 @@
 #include <odr/internal/formula/formula_value.hpp>
 
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string_view>
 
@@ -29,6 +30,14 @@ public:
   /// The columns and rows of @p sheet up to the last one stating content. A
   /// whole column (`A:A`) reaches to the last row of it.
   [[nodiscard]] virtual TableDimensions extent(std::uint32_t sheet) const = 0;
+  /// Calls @p visit with every cell of @p area that states something, row by
+  /// row, with what it holds, nothing for a cell without an answer. An empty
+  /// cell may be left out, and so may the positions past the extent of the
+  /// sheet. By default, every position up to the extent is read.
+  virtual void for_each_cell(
+      const Area &area,
+      const std::function<void(const SheetPosition &,
+                               const std::optional<Value> &)> &visit) const;
   /// What @p name stands for in a formula on @p sheet: a name local to the
   /// sheet, else one of the whole document, read without case. Nothing where
   /// the document defines none, or one that does not parse.

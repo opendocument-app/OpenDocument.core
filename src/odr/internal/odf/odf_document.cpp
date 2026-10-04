@@ -250,6 +250,38 @@ void remove_value_attributes(pugi::xml_node node) {
 
 /// [ODF 1.2] 19.385 `office:value-type`. A cell stating neither a type nor
 /// any content is empty, which a cell holding an empty text is not.
+/// Whether the LibreOffice that @p generator names spells a boolean as
+/// `TRUE` in `&`: from 27.2 on (its commit 5663da9fa7). Nothing for another
+/// application, or for a build of 27.2 before its release, which may not.
+std::optional<bool> boolean_word_of(std::string_view generator) {
+  for (const std::string_view name : {"LibreOffice/", "LibreOfficeDev/"}) {
+    if (!generator.starts_with(name)) {
+      continue;
+    }
+    generator.remove_prefix(name.size());
+    std::uint32_t major = 0;
+    std::uint32_t minor = 0;
+    const auto [dot, major_error] = std::from_chars(
+        generator.data(), generator.data() + generator.size(), major);
+    if (major_error != std::errc{} ||
+        dot == generator.data() + generator.size() || *dot != '.' ||
+        std::from_chars(dot + 1, generator.data() + generator.size(), minor)
+                .ec != std::errc{}) {
+      return std::nullopt;
+    }
+    if (major < 27 || (major == 27 && minor < 2)) {
+      return false;
+    }
+    const std::string_view version = generator.substr(0, generator.find('$'));
+    if (major == 27 && minor == 2 &&
+        version.find("alpha") != std::string_view::npos) {
+      return std::nullopt;
+    }
+    return true;
+  }
+  return std::nullopt;
+}
+
 ValueType value_type_of(const pugi::xml_node node) {
   // LibreOffice states an error a formula computed as a text of its spelling
   if (std::strcmp("error", node.attribute("calcext:value-type").value()) == 0) {
@@ -681,6 +713,24 @@ public:
       }
       row = run.end;
     }
+  }
+  bool
+  sheet_visit_cells(const ElementIdentifier element_id,
+                    const abstract::SheetCellVisitor &visitor) const override {
+    const ElementRegistry::Sheet &sheet =
+        m_registry->sheet_element_at(element_id);
+    std::uint32_t row = 0;
+    for (const ElementRegistry::Sheet::Row &run : sheet.rows) {
+      for (const ElementRegistry::Sheet::Cell &cell : sheet.row_cells(run)) {
+        if (cell.element_id != null_element_id) {
+          visitor(cell.begin, row,
+                  TableDimensions(run.end - row, cell.end - cell.begin),
+                  cell.element_id);
+        }
+      }
+      row = run.end;
+    }
+    return true;
   }
   /// [ODF 1.2] 19.385: the value is an attribute and the `text:p` under the
   /// cell shows it, so both are written or the file contradicts itself.
@@ -2690,6 +2740,16 @@ formula::Settings Document::formula_settings() const {
                         .value())) {
     result.null_date = static_cast<std::int64_t>(*days);
   }
+  // [ODF 1.2] 4.3.2.1 `meta:generator`, the application that computed the
+  // cached results
+  pugi::xml_document meta_xml;
+  pugi::xml_node meta = m_content_xml.document_element().child("office:meta");
+  if (!meta && m_files != nullptr && m_files->is_file(AbsPath("/meta.xml"))) {
+    meta_xml = xml::parse(*m_files, AbsPath("/meta.xml"));
+    meta = meta_xml.document_element().child("office:meta");
+  }
+  result.boolean_word =
+      boolean_word_of(meta.child("meta:generator").text().get());
   return result;
 }
 
