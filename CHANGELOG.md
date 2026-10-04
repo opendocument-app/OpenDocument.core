@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `Sheet::insert_rows` and `Sheet::delete_rows` in every binding:
+  `insert_rows` and `delete_rows` in python, `insertRows` and `deleteRows`
+  in java, `insertRows(at:count:)` and `deleteRows(at:count:)` in swift, and
+  `Document.insertRows(sheet, row, count)` and `deleteRows` in npm.
 - The sheet editor inserts and deletes rows: `odr.editing.insertRows("above"
   | "below")` inserts as many rows as the selection spans, and
   `odr.editing.deleteRows()` removes them, each one undo step. Ctrl or Cmd

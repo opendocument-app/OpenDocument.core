@@ -190,6 +190,29 @@ emscripten::val set_column_style(const Handle handle, const double sheet,
       index_field("sheet", sheet) + "," + index_field("column", column), style);
 }
 
+/// `insertRows` or `deleteRows`, replayed through the envelope.
+emscripten::val edit_rows(const Handle handle, const std::string &op,
+                          const double sheet, const double row,
+                          const double count) {
+  return guarded([&] {
+    document_of(session(handle))
+        .edit(R"({"version":2,"ops":[{"op":")" + op + R"(",)" +
+              index_field("sheet", sheet) + "," + index_field("row", row) +
+              "," + index_field("count", count) + "}]}");
+    return ok();
+  });
+}
+
+emscripten::val insert_rows(const Handle handle, const double sheet,
+                            const double row, const double count) {
+  return edit_rows(handle, "insertRows", sheet, row, count);
+}
+
+emscripten::val delete_rows(const Handle handle, const double sheet,
+                            const double row, const double count) {
+  return edit_rows(handle, "deleteRows", sheet, row, count);
+}
+
 /// @p after of 0 is `null_element_id`: split before every child.
 emscripten::val split_paragraph(const Handle handle, const double paragraph,
                                 const double after) {
@@ -263,6 +286,8 @@ EMSCRIPTEN_BINDINGS(odr_document) {
   emscripten::function("setCellStyle", &odr::wasm::set_cell_style);
   emscripten::function("setRowStyle", &odr::wasm::set_row_style);
   emscripten::function("setColumnStyle", &odr::wasm::set_column_style);
+  emscripten::function("insertRows", &odr::wasm::insert_rows);
+  emscripten::function("deleteRows", &odr::wasm::delete_rows);
   emscripten::function("setParagraphStyle", &odr::wasm::set_paragraph_style);
   emscripten::function("splitParagraph", &odr::wasm::split_paragraph);
   emscripten::function("mergeParagraphWithNext",

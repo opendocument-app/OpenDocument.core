@@ -290,6 +290,25 @@ def test_locale_is_the_language_of_the_default_style(ods_path, tmp_path):
     assert pyodr.open(str(path)).as_document_file().document().locale() == "de-DE"
 
 
+def test_insert_and_delete_rows_move_the_cells(ods_path, tmp_path):
+    document = pyodr.open(str(ods_path)).as_document_file().document()
+    sheet = next(iter(document.root_element().children())).as_sheet()
+    text = walk_text(sheet.cell(0, 0))
+    assert text
+
+    sheet.insert_rows(0, 2)
+
+    path = tmp_path / "rows.ods"
+    path.write_bytes(document.save_to_memory())
+    reloaded = pyodr.open(str(path)).as_document_file().document()
+    reloaded_sheet = next(iter(reloaded.root_element().children())).as_sheet()
+    assert walk_text(reloaded_sheet.cell(0, 0)) == []
+    assert walk_text(reloaded_sheet.cell(0, 2)) == text
+
+    reloaded_sheet.delete_rows(0, 2)
+    assert walk_text(reloaded_sheet.cell(0, 0)) == text
+
+
 def test_set_cell_style_refuses_what_no_engine_writes(ods_path):
     document = pyodr.open(str(ods_path)).as_document_file().document()
     sheet = next(iter(document.root_element().children())).as_sheet()

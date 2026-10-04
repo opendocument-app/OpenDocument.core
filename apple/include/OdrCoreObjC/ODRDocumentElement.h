@@ -169,6 +169,16 @@ NS_SWIFT_NAME(Sheet)
               atColumn:(uint32_t)column
                  error:(NSError **)error
     NS_SWIFT_NAME(setStyle(_:textStyle:column:));
+/// Moves the rows from `row` on down by `count`, and every reference to them
+/// in the document with them. The new rows are empty.
+- (BOOL)insertRowsAt:(uint32_t)row
+               count:(uint32_t)count
+               error:(NSError **)error NS_SWIFT_NAME(insertRows(at:count:));
+/// Removes `count` rows from `row` on, and moves the rows below up. A
+/// reference into the removed rows becomes `#REF!`.
+- (BOOL)deleteRowsAt:(uint32_t)row
+               count:(uint32_t)count
+               error:(NSError **)error NS_SWIFT_NAME(deleteRows(at:count:));
 @end
 
 /// `odr::SheetCell`.

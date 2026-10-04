@@ -151,6 +151,16 @@ export class Document {
     return this;
   }
 
+  insertRows(sheet, row, count) {
+    unwrap(this.#core.insertRows(this.#handle, sheet, row, count));
+    return this;
+  }
+
+  deleteRows(sheet, row, count) {
+    unwrap(this.#core.deleteRows(this.#handle, sheet, row, count));
+    return this;
+  }
+
   // `afterId` of 0 splits before every child.
   splitParagraph(paragraphId, afterId = 0) {
     return unwrap(this.#core.splitParagraph(this.#handle, paragraphId, afterId));

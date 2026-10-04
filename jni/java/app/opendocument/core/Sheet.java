@@ -77,6 +77,22 @@ public final class Sheet extends Element {
     setColumnStyleNative(handle(), column, cellStyle, textStyle);
   }
 
+  /**
+   * Moves the rows from {@code row} on down by {@code count}, and every reference to them in the
+   * document with them. The new rows are empty.
+   */
+  public void insertRows(int row, int count) {
+    insertRowsNative(handle(), row, count);
+  }
+
+  /**
+   * Removes {@code count} rows from {@code row} on, and moves the rows below up. A reference into
+   * the removed rows becomes {@code #REF!}.
+   */
+  public void deleteRows(int row, int count) {
+    deleteRowsNative(handle(), row, count);
+  }
+
   private native String nameNative(long handle);
 
   private native PageLayout pageLayoutNative(long handle);
@@ -105,4 +121,8 @@ public final class Sheet extends Element {
 
   private native void setColumnStyleNative(
       long handle, int column, TableCellStyle cellStyle, TextStyle textStyle);
+
+  private native void insertRowsNative(long handle, int row, int count);
+
+  private native void deleteRowsNative(long handle, int row, int count);
 }
