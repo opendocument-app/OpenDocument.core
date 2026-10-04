@@ -36,13 +36,13 @@ Decimal round_decimal(const double value, const std::size_t decimals) {
   // `d.dddddddddddddde±x`: 15 significant digits
   const std::string spelled = fmt::format("{:.14e}", value);
   std::string digits = spelled.substr(0, 1) + spelled.substr(2, 14);
-  int point = std::stoi(spelled.substr(spelled.find('e') + 1)) + 1;
+  std::int32_t point = std::stoi(spelled.substr(spelled.find('e') + 1)) + 1;
 
-  const long cut = point + static_cast<long>(decimals);
+  const std::int64_t cut = point + static_cast<std::int64_t>(decimals);
   if (cut < 0) {
     return result;
   }
-  if (cut < static_cast<long>(digits.size())) {
+  if (cut < static_cast<std::int64_t>(digits.size())) {
     const bool up = digits[static_cast<std::size_t>(cut)] >= '5';
     digits.resize(static_cast<std::size_t>(cut));
     if (up) {
@@ -59,24 +59,19 @@ Decimal round_decimal(const double value, const std::size_t decimals) {
     }
   }
 
-  for (long i = 0; i < point; ++i) {
-    result.integer += i < static_cast<long>(digits.size())
+  for (std::int64_t i = 0; i < point; ++i) {
+    result.integer += i < static_cast<std::int64_t>(digits.size())
                           ? digits[static_cast<std::size_t>(i)]
                           : '0';
   }
   for (std::size_t i = 0; i < decimals; ++i) {
-    const long at = point + static_cast<long>(i);
-    if (at >= 0 && at < static_cast<long>(digits.size())) {
+    const std::int64_t at = point + static_cast<std::int64_t>(i);
+    if (at >= 0 && at < static_cast<std::int64_t>(digits.size())) {
       result.fraction[i] = digits[static_cast<std::size_t>(at)];
     }
   }
   result.integer.erase(0, result.integer.find_first_not_of('0'));
   return result;
-}
-
-bool is_zero(const Decimal &decimal) {
-  return decimal.integer.empty() &&
-         decimal.fraction.find_first_not_of('0') == std::string::npos;
 }
 
 void append_literal(std::vector<Token> &tokens, const std::string &text) {
@@ -536,24 +531,28 @@ std::string format_scientific(const std::vector<Token> &tokens,
     fraction_count += tokens[i].kind == Kind::digit ? 1 : 0;
   }
 
-  int power = 0;
+  const auto mantissa_at = [value](const std::int32_t power) {
+    return power < -308 ? value * 1e308 / std::pow(10.0, power + 308)
+                        : value / std::pow(10.0, power);
+  };
+  std::int32_t power = 0;
   if (value != 0) {
-    power = static_cast<int>(std::floor(std::log10(value)));
-    const int step = static_cast<int>(integer_count);
+    power = static_cast<std::int32_t>(std::floor(std::log10(value)));
+    const std::int32_t step = static_cast<std::int32_t>(integer_count);
     if (hashed && step > 1) {
-      power = static_cast<int>(std::floor(static_cast<double>(power) / step)) *
+      power = static_cast<std::int32_t>(
+                  std::floor(static_cast<double>(power) / step)) *
               step;
     } else {
       power -= step - 1;
     }
     // rounding may carry into one more digit, and so into the next power
-    const Decimal decimal =
-        round_decimal(value / std::pow(10.0, power), fraction_count);
+    const Decimal decimal = round_decimal(mantissa_at(power), fraction_count);
     if (decimal.integer.size() > integer_count) {
       power += hashed && step > 1 ? step : 1;
     }
   }
-  const double mantissa = value / std::pow(10.0, power);
+  const double mantissa = mantissa_at(power);
 
   std::string exponent_digits;
   std::size_t end = exponent + 1;
@@ -886,6 +885,9 @@ std::string format_section(const Section &section, const double value,
     }
   }
 
+  if (!std::isfinite(scaled)) {
+    return format_general(value, symbols);
+  }
   if (has(section, Kind::general)) {
     std::string result;
     for (const Token &token : tokens) {
@@ -919,17 +921,6 @@ std::string format_section(const Section &section, const double value,
     return result;
   }
   return format_plain(tokens, 0, tokens.size(), scaled, symbols);
-}
-
-/// Whether @p section rounds @p value to nothing it shows.
-bool shows_zero(const Section &section, const double value) {
-  std::size_t decimals = 0;
-  bool after_point = false;
-  for (const Token &token : section.tokens) {
-    after_point = after_point || token.kind == Kind::point;
-    decimals += after_point && token.kind == Kind::digit ? 1 : 0;
-  }
-  return is_zero(round_decimal(std::abs(value), decimals));
 }
 
 } // namespace
@@ -1016,9 +1007,8 @@ std::string Format::format(const double value, const Epoch epoch,
 
   const Section &section = m_sections[chosen];
   if (has(section, Kind::date_time)) {
-    // a spreadsheet shows a date before its epoch or after 9999-12-31 as
-    // `####`
-    constexpr double last_serial = 2958465;
+    // Out-of-range calendar dates fall back to General.
+    const double last_serial = epoch == Epoch::from_1904 ? 2957003 : 2958465;
     return value < 0 || value >= last_serial + 1
                ? format_general(value, symbols)
                : format_date_time(section.tokens, value, epoch,
@@ -1031,9 +1021,8 @@ std::string Format::format(const double value, const Epoch epoch,
     return format_general(value, symbols);
   }
   std::string result = format_section(section, std::abs(value), symbols);
-  const bool shows_nothing =
-      has(section, Kind::general) ? value == 0 : shows_zero(section, value);
-  if (value < 0 && !negative_section && !shows_nothing) {
+  if (value < 0 && !negative_section &&
+      result != format_section(section, 0, symbols)) {
     result.insert(result.begin(), '-');
   }
   return result;
@@ -1086,7 +1075,8 @@ std::string number_format::format_general(const double value,
     return text;
   };
   if (magnitude >= 1e-10 && magnitude < 1e15) {
-    const int power = static_cast<int>(std::floor(std::log10(magnitude)));
+    const std::int32_t power =
+        static_cast<std::int32_t>(std::floor(std::log10(magnitude)));
     const auto decimals = static_cast<std::size_t>(std::max(0, 14 - power));
     const Decimal decimal = round_decimal(magnitude, decimals);
     return sign + trimmed((decimal.integer.empty() ? "0" : decimal.integer) +
@@ -1094,7 +1084,7 @@ std::string number_format::format_general(const double value,
   }
   const std::string spelled = fmt::format("{:.14e}", magnitude);
   const std::size_t e = spelled.find('e');
-  const int power = std::stoi(spelled.substr(e + 1));
+  const std::int32_t power = std::stoi(spelled.substr(e + 1));
   return sign + trimmed(spelled.substr(0, e)) + "E" + (power < 0 ? "-" : "+") +
          fmt::format("{:02d}", std::abs(power));
 }

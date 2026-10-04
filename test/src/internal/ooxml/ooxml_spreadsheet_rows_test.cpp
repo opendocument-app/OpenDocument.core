@@ -303,7 +303,10 @@ TEST(OoxmlSpreadsheetRows, the_ranges_of_the_sheet_move) {
       R"(<conditionalFormatting sqref="A1:A3 C2"><cfRule/></conditionalFormatting>)"
       R"(<dataValidations count="2"><dataValidation sqref="A2"/>)"
       R"(<dataValidation sqref="A3"/></dataValidations>)"
-      R"(<hyperlinks><hyperlink ref="A2"/></hyperlinks>)",
+      R"(<hyperlinks><hyperlink ref="A2"/></hyperlinks>)"
+      R"(<autoFilter ref="A2"><sortState ref="A2"><sortCondition ref="A2"/>)"
+      R"(</sortState></autoFilter>)"
+      R"(<sortState ref="A1:A3"><sortCondition ref="A1:A3"/></sortState>)",
       "", "",
       R"(<sheetViews><sheetView><selection activeCell="A2" sqref="A2"/>)"
       R"(</sheetView></sheetViews>)"));
@@ -316,6 +319,10 @@ TEST(OoxmlSpreadsheetRows, the_ranges_of_the_sheet_move) {
       contains(xml, R"(<dataValidations count="1"><dataValidation sqref="A2"/>)"
                     R"(</dataValidations>)"));
   EXPECT_FALSE(contains(xml, "hyperlink"));
+  EXPECT_FALSE(contains(xml, "autoFilter"));
+  EXPECT_TRUE(contains(
+      xml,
+      R"(<sortState ref="A1:A2"><sortCondition ref="A1:A2"/></sortState>)"));
   EXPECT_TRUE(contains(xml, R"(<selection activeCell="A2" sqref="A2"/>)"));
 }
 
@@ -391,6 +398,20 @@ TEST(OoxmlSpreadsheetRows, a_rule_and_a_validation_move_their_formulas) {
       contains(xml, "<formula1>$C$6</formula1><formula2>A2</formula2>"));
 }
 
+TEST(OoxmlSpreadsheetRows, rules_on_another_sheet_move_only_their_references) {
+  const Document document = decode(two_sheets(
+      abc, "", "", "",
+      R"(<conditionalFormatting sqref="A1:A3"><cfRule type="expression">)"
+      R"(<formula>S!A1+A1</formula></cfRule></conditionalFormatting>)"
+      R"(<dataValidations count="1"><dataValidation sqref="A1">)"
+      R"(<formula1>s!A3</formula1></dataValidation></dataValidations>)"));
+  first_sheet(document).delete_rows(0, 1);
+  const std::string xml = part_of(document, "/xl/worksheets/sheet2.xml");
+  EXPECT_TRUE(contains(xml, R"(sqref="A1:A3")"));
+  EXPECT_TRUE(contains(xml, "<formula>#REF!+A1</formula>"));
+  EXPECT_TRUE(contains(xml, "<formula1>s!A2</formula1>"));
+}
+
 TEST(OoxmlSpreadsheetRows, a_page_break_moves_and_two_at_one_place_become_one) {
   const std::string breaks =
       R"(<rowBreaks count="2" manualBreakCount="2"><brk id="2" man="1"/>)"
@@ -439,7 +460,8 @@ constexpr const char *rule_and_sparkline =
     R"(<x14:dataValidations count="1"><x14:dataValidation>)"
     R"(<x14:formula1><xm:f>$C$5</xm:f></x14:formula1><xm:sqref>A2</xm:sqref>)"
     R"(</x14:dataValidation></x14:dataValidations>)"
-    R"(<x14:sparklineGroups><x14:sparklineGroup><x14:sparklines>)"
+    R"(<x14:sparklineGroups><x14:sparklineGroup dateAxis="1">)"
+    R"(<xm:f>s!C1:C3</xm:f><x14:sparklines>)"
     R"(<x14:sparkline><xm:f>s!A1:A3</xm:f><xm:sqref>B1</xm:sqref>)"
     R"(</x14:sparkline></x14:sparklines></x14:sparklineGroup>)"
     R"(</x14:sparklineGroups>)";
@@ -459,6 +481,7 @@ TEST(OoxmlSpreadsheetRows, an_excel_2010_extension_moves_with_its_cells) {
   EXPECT_TRUE(contains(xml, "<xm:sqref>A3</xm:sqref>"));
   EXPECT_TRUE(contains(xml, "<xm:f>s!A2:A4</xm:f>"));
   EXPECT_TRUE(contains(xml, "<xm:sqref>B2</xm:sqref>"));
+  EXPECT_TRUE(contains(xml, "<xm:f>s!C2:C4</xm:f>"));
 }
 
 TEST(OoxmlSpreadsheetRows, an_excel_2010_extension_goes_with_its_cells) {
@@ -481,11 +504,14 @@ TEST(OoxmlSpreadsheetRows, an_extension_on_another_sheet_moves_what_it_reads) {
           R"(<x14:conditionalFormattings><x14:conditionalFormatting>)"
           R"(<x14:cfRule type="expression"><xm:f>s!$A$1&lt;A1</xm:f>)"
           R"(</x14:cfRule><xm:sqref>A1:A3</xm:sqref>)"
-          R"(</x14:conditionalFormatting></x14:conditionalFormattings>)")));
+          R"(</x14:conditionalFormatting></x14:conditionalFormattings>)" +
+          std::string(rule_and_sparkline))));
 
   first_sheet(document).insert_rows(0, 1);
 
   const std::string xml = part_of(document, "/xl/worksheets/sheet2.xml");
   EXPECT_TRUE(contains(xml, "<xm:f>s!$A$2&lt;A1</xm:f>"));
+  EXPECT_TRUE(contains(xml, "<xm:f>s!C2:C4</xm:f>"));
+  EXPECT_TRUE(contains(xml, "<xm:sqref>B1</xm:sqref>"));
   EXPECT_TRUE(contains(xml, "<xm:sqref>A1:A3</xm:sqref>"));
 }

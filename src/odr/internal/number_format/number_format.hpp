@@ -95,10 +95,8 @@ struct Symbols final {
 /// What the first section of a format shows a number as.
 enum class Category { number, date, time };
 
-/// @brief A number format, parsed from a format code as MS-XLS 2.4.126 states
-/// its grammar.
-///
-/// A colour is parsed and not shown, and `*` fills nothing.
+/// A parsed MS-XLS 2.4.126 format. Colors are retained but not rendered; `*`
+/// adds no fill.
 class Format final {
 public:
   /// `General`.

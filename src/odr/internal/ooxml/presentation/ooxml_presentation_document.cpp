@@ -387,10 +387,8 @@ public:
     return new_id;
   }
 
-  /// An `a:t` sits in an `a:r`, so a parent that is no run gets a new one,
-  /// ahead of the `a:endParaRPr` that the schema puts last. The run takes a
-  /// copy of that `a:endParaRPr` as its `a:rPr`, as PowerPoint does for
-  /// typed text: both are a `CT_TextCharacterProperties`.
+  /// Creates a missing `a:r` before `a:endParaRPr`, copying its text
+  /// properties as PowerPoint does for typed text.
   [[nodiscard]] ElementIdentifier
   element_append_text(const ElementIdentifier element_id,
                       const std::string &text) const override {

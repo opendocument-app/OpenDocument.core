@@ -41,10 +41,9 @@ public:
   void save(std::ostream &out) const override;
   void save(std::ostream &out, const char *password) const override;
 
-  /// The root of the xml part at @p path, read on first use and written back
-  /// by `save`: the `content.xml` of an embedded object, say. Null where the
-  /// package has none, or the document is flat.
-  /// @throws std::exception where the part does not parse.
+  /// Loads and caches the XML part at @p path for `save`; null if absent or
+  /// flat.
+  /// @throws std::exception if the part cannot be parsed.
   [[nodiscard]] pugi::xml_node part(const AbsPath &path);
 
 private:

@@ -20,12 +20,8 @@ struct SheetRecalculation final {
   std::vector<SheetPosition> unevaluated;
 };
 
-/// Computes the stale formula cells of @p document and writes each result
-/// into the file (decision 32 of `docs/design/spreadsheet-editing.md`). A
-/// cell is stale where an edit since the last recalculation reaches it,
-/// where it caches no result, or where it reads what no position names: a
-/// name, a volatile function, a reference over several sheets. A structural
-/// edit makes every formula stale.
+/// Recalculates stale formulas and writes their results. See decision 32 in
+/// `docs/design/spreadsheet-editing.md` for invalidation rules.
 SheetRecalculation recalculate(const abstract::Document &document);
 
 /// Whether an edit since the last recalculation left a formula stale.

@@ -680,9 +680,10 @@ TEST(OdfSheetWrite, a_number_takes_the_data_style_of_its_cell) {
       R"(</number:currency-style></office:styles>)"
       R"(<office:automatic-styles><style:style style:name="ce1")"
       R"( style:family="table-cell" style:data-style-name="N1"/>)"
+      R"(<style:style style:name="ce2" style:family="table-cell" style:parent-style-name="ce2"/>)"
       R"(</office:automatic-styles><office:body><office:spreadsheet>)"
       R"(<table:table table:name="s"><table:table-row>)"
-      R"(<table:table-cell table:style-name="ce1"/><table:table-cell/>)"
+      R"(<table:table-cell table:style-name="ce1"/><table:table-cell table:style-name="ce2"/>)"
       R"(</table:table-row></table:table></office:spreadsheet></office:body>)"
       R"(</office:document>)");
   const Sheet sheet = first_sheet(document);
@@ -757,6 +758,13 @@ TEST(OdfSheetWrite, a_date_and_a_time_are_written) {
             std::string::npos);
   EXPECT_DOUBLE_EQ(sheet.cell(1, 0).value().number(), 45659.75);
   EXPECT_DOUBLE_EQ(sheet.cell(2, 0).value().number(), 18.5 / 24);
+  const double fraction = 0.125 / 86400;
+  sheet.set_cell(1, 0,
+                 CellValue(ValueType::date).with_number(45659 + fraction));
+  sheet.set_cell(2, 0, CellValue(ValueType::time).with_number(-fraction));
+  EXPECT_DOUBLE_EQ(sheet.cell(1, 0).value().number(), 45659 + fraction);
+  EXPECT_NEAR(sheet.cell(2, 0).value().number(), -fraction, 1e-14);
+  EXPECT_NE(saved_of(document).find("-PT00H00M00.125S"), std::string::npos);
 }
 
 TEST(OdfSheetWrite, a_date_takes_the_date_style_of_its_cell) {
@@ -810,13 +818,19 @@ TEST(OdfSheetWrite, a_date_takes_the_names_of_its_style_language) {
 TEST(OdfSheetWrite, a_date_without_its_number_refuses) {
   const Document document = dated_sheet();
 
+  EXPECT_THROW(first_sheet(document).set_cell(
+                   2, 0, CellValue(ValueType::time).with_number(1e300)),
+               UnsupportedOperation);
   EXPECT_THROW(first_sheet(document).set_cell(1, 0, CellValue(ValueType::date)),
                UnsupportedOperation);
 }
 
-TEST(OdfSheetWrite, a_date_past_9999_or_an_infinite_time_refuses) {
+TEST(OdfSheetWrite, a_date_or_a_time_out_of_range_refuses) {
   const Document document = dated_sheet();
 
+  EXPECT_THROW(first_sheet(document).set_cell(
+                   2, 0, CellValue(ValueType::time).with_number(1e300)),
+               UnsupportedOperation);
   EXPECT_THROW(first_sheet(document).set_cell(
                    1, 0, CellValue(ValueType::date).with_number(3e6)),
                UnsupportedOperation);

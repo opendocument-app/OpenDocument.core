@@ -169,25 +169,6 @@ Value repeat(const Call &call) {
   return text_value(result);
 }
 
-/// Whether @p text holds a character a search pattern reads as more than
-/// itself: a wildcard, and in LibreOffice the characters of a regular
-/// expression where the document turns them on.
-bool is_pattern(const Call &call, const std::u16string &text) {
-  const bool wildcards = !is_libreoffice(call) || call.settings().wildcards;
-  const bool expressions =
-      is_libreoffice(call) && call.settings().regular_expressions;
-  for (const char16_t c : text) {
-    if (wildcards && (c == u'*' || c == u'?' || c == u'~')) {
-      return true;
-    }
-    if (expressions && std::u16string_view(u".^$*+?()[]{}|\\").find(c) !=
-                           std::u16string_view::npos) {
-      return true;
-    }
-  }
-  return false;
-}
-
 /// `FIND` and `SEARCH`: the position of the first match from the start on,
 /// counted from 1. `SEARCH` ignores case.
 template <bool ignore_case> Value find(const Call &call) {
@@ -205,7 +186,7 @@ template <bool ignore_case> Value find(const Call &call) {
   std::u16string pattern = needle;
   std::u16string text = haystack;
   if (ignore_case) {
-    if (is_pattern(call, needle)) {
+    if (is_pattern(call, utf8_of(needle))) {
       throw NoAnswer{};
     }
     const std::optional<std::u16string> lower_needle = to_lower(needle);

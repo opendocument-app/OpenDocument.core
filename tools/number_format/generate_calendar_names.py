@@ -1,15 +1,7 @@
 #!/usr/bin/env python3
-"""Generates the month and day names in `internal/number_format`.
+"""Generates calendar names from LibreOffice CSV probes for symbols_of locales.
 
-LibreOffice is the reference for what a date style shows, so the names are
-the ones it renders: a sheet of probe cells, one data style per language and
-shape, goes through `soffice --convert-to csv`, and the csv holds the names.
-A language that LibreOffice renders in English is left out.
-
-The languages are the ones `number_format::symbols_of` knows.
-
-Regenerate with:
-
+Skips languages that fall back to English. Regenerate with:
     python3 tools/number_format/generate_calendar_names.py [path/to/soffice]
 """
 

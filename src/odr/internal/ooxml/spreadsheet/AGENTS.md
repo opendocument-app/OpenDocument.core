@@ -58,7 +58,9 @@ registry a fresh text element. The elements that read the old children keep
 their ids and stop being reachable. A shared string is never written back into
 `sharedStrings.xml`, because every cell indexing that entry would change with
 it, so the cell becomes `t="inlineStr"`. A covered cell, a cell holding an
-`f`, and a date, time or error value throw `UnsupportedOperation`.
+`f`, an error value, or a date/time without a finite number throws
+`UnsupportedOperation`. Dates and times write serials and receive a default
+date/time format when the existing format is numeric.
 
 **A cell style is a new `xf`, never an edit of the one the cell names.**
 `sheet_set_cell_style` starts from the cell's `s`, else its row's where the
@@ -78,8 +80,8 @@ insert touches one entry. A covered position refuses first. That check reads
 **`save` writes the parts it can have changed**, every worksheet and
 `workbook.xml`, and byte-copies the rest. pugixml does not parse the xml
 declaration, so `save` writes one itself. Every save sets
-`calcPr/@fullCalcOnLoad` ([ECMA-376] 18.2.2), because nothing here computes a
-formula.
+`calcPr/@fullCalcOnLoad` ([ECMA-376] 18.2.2) so the reader refreshes formulas
+the evaluator cannot compute.
 
 ## Module layout
 
@@ -92,13 +94,14 @@ formula.
 
 ## Open work
 
-1. Formulas are read and not evaluated. The cached `<v>` shows. An array
-   formula's members (`t="array"`) carry no `<f>`, so they report none. A
-   date is its serial number until number formats are read.
+1. Formula evaluation is partial. `Document::recalculate` computes supported
+   stale formulas, and saving after an edit invokes it. Unsupported and array
+   formulas retain their cached results. Number formats supply displayed
+   numbers, dates and times.
 2. `sheet_content` ignores the requested range and returns the full
    `<dimension>`.
 3. No `cellStyleXfs` inheritance. Borders render as `0.75pt solid` whatever
    the style. Cell `protection` is read and dropped.
-4. `sheet_set_cell` writes a number, a string or a boolean. `text_set_content`
+4. `sheet_set_cell` writes numbers, strings, booleans, dates and times. `text_set_content`
    throws `UnsupportedOperation`. A `<hyperlink>` is not modelled, so
    `link_href` is empty. Comments are not modelled.

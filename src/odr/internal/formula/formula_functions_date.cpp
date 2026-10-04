@@ -49,10 +49,8 @@ std::pair<std::int64_t, std::uint32_t> month_of(const std::int64_t months) {
   return {year, static_cast<std::uint32_t>(months - year * 12 + 1)};
 }
 
-/// The days since 1899-12-30 of the day @p serial falls on. A serial a
-/// moment before midnight is the next day where its time rounds to the
-/// second, and which one the applications take is not documented, so it has
-/// no answer.
+/// Converts @p serial to days since 1899-12-30. Refuses times near midnight
+/// whose rounding may change the date.
 std::int64_t day_of(const Call &call, const double serial) {
   const bool excel_1900 =
       !is_libreoffice(call) &&

@@ -77,33 +77,27 @@ public final class Sheet extends Element {
     setColumnStyleNative(handle(), column, cellStyle, textStyle);
   }
 
-  /**
-   * Moves the rows from {@code row} on down by {@code count}, and every reference to them in the
-   * document with them. The new rows are empty.
-   */
+  /** Inserts {@code count} empty rows at {@code row}, shifting cells and references. */
   public void insertRows(int row, int count) {
     insertRowsNative(handle(), row, count);
   }
 
   /**
-   * Removes {@code count} rows from {@code row} on, and moves the rows below up. A reference into
-   * the removed rows becomes {@code #REF!}.
+   * Deletes {@code count} rows at {@code row}, shifting cells and references
+   * up. Deleted references become {@code #REF!}.
    */
   public void deleteRows(int row, int count) {
     deleteRowsNative(handle(), row, count);
   }
 
-  /**
-   * Moves the columns from {@code column} on right by {@code count}, and every reference to them
-   * in the document with them. The new columns are empty.
-   */
+  /** Inserts {@code count} empty columns at {@code column}, shifting cells and references. */
   public void insertColumns(int column, int count) {
     insertColumnsNative(handle(), column, count);
   }
 
   /**
-   * Removes {@code count} columns from {@code column} on, and moves the columns right of them
-   * left. A reference into the removed columns becomes {@code #REF!}.
+   * Deletes {@code count} columns at {@code column}, shifting cells and
+   * references left. Deleted references become {@code #REF!}.
    */
   public void deleteColumns(int column, int count) {
     deleteColumnsNative(handle(), column, count);

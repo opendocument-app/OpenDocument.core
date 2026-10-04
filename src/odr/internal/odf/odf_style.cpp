@@ -683,8 +683,9 @@ StyleRegistry::data_style_node(const std::string_view name) const {
 }
 
 pugi::xml_node StyleRegistry::cell_data_style(const char *style_name) const {
+  std::size_t remaining = m_index_style.size();
   for (std::string name = style_name != nullptr ? style_name : "";
-       !name.empty();) {
+       !name.empty() && remaining > 0; --remaining) {
     const auto it = m_index_style.find(name);
     if (it == std::end(m_index_style)) {
       break;

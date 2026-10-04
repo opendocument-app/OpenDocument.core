@@ -12,6 +12,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -98,14 +99,6 @@ TEST(SheetRecalculation, an_edit_computes_what_reads_it) {
   EXPECT_EQ(value_at(document, 1, 0).text(), "10");
   EXPECT_EQ(value_at(document, 2, 0).number(), 11);
   EXPECT_EQ(value_at(document, 1, 0).formula(), "of:=[.A1]*2");
-}
-
-TEST(SheetRecalculation, a_second_recalculation_finds_nothing_stale) {
-  const Document document =
-      ods(row(number("1") + computed("of:=[.A1]*2", "2")));
-  first_sheet(document).set_cell(0, 0, CellValue(5));
-  EXPECT_EQ(document.recalculate().changed().size(), 1);
-
   EXPECT_TRUE(document.recalculate().changed().empty());
 }
 
@@ -171,7 +164,7 @@ TEST(SheetRecalculation, a_range_reads_the_stale_cells_it_holds) {
 
 TEST(SheetRecalculation, a_running_total_down_a_column) {
   std::string rows = row(number("1"));
-  for (int i = 2; i <= 2000; ++i) {
+  for (std::uint32_t i = 2; i <= 2000; ++i) {
     rows += row(uncomputed("of:=[.A" + std::to_string(i - 1) + "]+1"));
   }
   const Document document = ods(rows);
@@ -182,7 +175,7 @@ TEST(SheetRecalculation, a_running_total_down_a_column) {
 
 TEST(SheetRecalculation, a_chain_up_a_column_past_the_depth_limit) {
   std::string rows;
-  for (int i = 1; i < 1100; ++i) {
+  for (std::uint32_t i = 1; i < 1100; ++i) {
     rows += row(uncomputed("of:=[.A" + std::to_string(i + 1) + "]+1"));
   }
   rows += row(number("1"));
@@ -193,15 +186,17 @@ TEST(SheetRecalculation, a_chain_up_a_column_past_the_depth_limit) {
 }
 
 TEST(SheetRecalculation, a_cycle_longer_than_the_depth_limit_gets_no_result) {
-  std::string rows;
-  for (int i = 1; i <= 200; ++i) {
-    rows += row(uncomputed("of:=[.A" + std::to_string(i % 200 + 1) + "]+1"));
+  std::string rows = row(uncomputed("of:=[.A2]+1"));
+  for (std::uint32_t i = 2; i <= 201; ++i) {
+    rows += row(
+        uncomputed("of:=[.A" + std::to_string(i == 201 ? 2 : i + 1) + "]+1"));
   }
   const Document document = ods(rows);
 
   const Recalculation result = document.recalculate();
   EXPECT_TRUE(result.changed().empty());
-  EXPECT_EQ(result.circular().size() + result.unevaluated().size(), 200);
+  EXPECT_EQ(result.circular().size(), 200);
+  EXPECT_EQ(spelled(result.unevaluated()), (std::vector<std::string>{"0!A1"}));
 }
 
 TEST(SheetRecalculation, a_structural_edit_makes_every_formula_stale) {

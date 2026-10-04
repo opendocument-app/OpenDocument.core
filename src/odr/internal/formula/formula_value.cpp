@@ -1,12 +1,12 @@
 #include <odr/internal/formula/formula_value.hpp>
 
+#include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <fmt/format.h>
 
 #include <algorithm>
 #include <cmath>
-#include <cstdlib>
 #include <utility>
 
 namespace odr::internal::formula {
@@ -57,10 +57,8 @@ std::optional<double> plain_number(const std::string_view text) {
   if (at != text.size()) {
     return std::nullopt;
   }
-  // `strtod` wants a terminator, which the view does not promise
-  const std::string terminated(text);
-  const double value = std::strtod(terminated.c_str(), nullptr);
-  if (!std::isfinite(value)) {
+  const std::optional<double> value = util::number::parse(text);
+  if (!value.has_value() || !std::isfinite(*value)) {
     return std::nullopt;
   }
   return value;
@@ -111,7 +109,7 @@ double formula::snapped(const double x, const std::int32_t digits) {
   if (x == 0 || !std::isfinite(x)) {
     return x;
   }
-  return std::strtod(fmt::format("{:.{}g}", x, digits).c_str(), nullptr);
+  return util::number::parse(fmt::format("{:.{}g}", x, digits)).value_or(x);
 }
 
 bool formula::nearly_cancels(const double sum, const double largest) {

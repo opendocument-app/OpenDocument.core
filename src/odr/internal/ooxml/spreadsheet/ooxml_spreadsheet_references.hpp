@@ -24,38 +24,27 @@ struct NamedWorksheet final {
 [[nodiscard]] std::optional<TablePosition>
 move_position(const TablePosition &position, const formula::SheetEdit &edit);
 
-/// Moves every formula of @p worksheets, every defined name of @p workbook and
-/// every entry of @p calc_chain that the edit moves, as
-/// `formula::move_references` does. A formula is written back only where a
-/// reference in it moved. A shared group whose members would read something
-/// else after the move is written out as one formula per cell
-/// (ECMA-376 18.3.1.40).
-/// @param edited_sheet_id the `sheetId` the calc chain names the edited sheet
-///        by.
+/// Moves worksheet formulas, defined names and the calc chain. Expands shared
+/// groups if shifting would change their meaning (ECMA-376 18.3.1.40).
+/// @param edited_sheet_id The edited sheetId used by the calc chain.
 void move_workbook_references(pugi::xml_node workbook,
                               const std::vector<NamedWorksheet> &worksheets,
                               pugi::xml_node calc_chain,
                               const std::string &edited_sheet_id,
                               const formula::SheetEdit &edit);
 
-/// Moves the ranges @p worksheet states besides its cells: conditional
-/// formats and validations with their formulas, links, the filter, protected
-/// ranges, ignored errors and the view, and the columns a filter counts. An
-/// element whose range a delete takes completely goes; the view keeps a cell,
-/// the first one past the removed rows or columns.
+/// Moves worksheet ranges and filter columns; removes entries whose ranges
+/// are deleted. Views retain the first surviving cell.
 void move_sheet_ranges(pugi::xml_node worksheet,
                        const formula::SheetEdit &edit);
 
-/// Moves the page breaks of @p worksheet along the edit's axis
-/// (`rowBreaks`, `colBreaks`). A break names the first row or column of the
-/// next page; one inside removed rows or columns goes to the edge of the ones
-/// that stay, and two at one place become one.
+/// Moves page breaks, clamping deleted positions to the first surviving row
+/// or column and merging duplicates.
 void move_breaks(pugi::xml_node worksheet, const formula::SheetEdit &edit);
 
-/// Moves the anchors of @p drawing (`xdr:wsDr`) as Excel moves a drawing
-/// with its cells: a `twoCell` anchor moves each corner, a `oneCell` one moves
-/// its box, an `absolute` one stays (ECMA-376 20.5.2.33). A corner inside the
-/// removed rows or columns goes to the edge of the ones that stay.
+/// Moves drawing anchors with cells (ECMA-376 20.5.2.33): both corners for
+/// `twoCell`, the box for `oneCell`, neither for `absolute`. Deleted corners
+/// clamp to surviving edges.
 void move_drawing(pugi::xml_node drawing, const formula::SheetEdit &edit);
 
 /// Moves the comments of @p comments (`comments`) and @p threaded
@@ -64,9 +53,8 @@ void move_drawing(pugi::xml_node drawing, const formula::SheetEdit &edit);
 void move_comments(pugi::xml_node comments, pugi::xml_node threaded,
                    pugi::xml_node vml, const formula::SheetEdit &edit);
 
-/// Moves the ranges @p chart (`c:chartSpace`) reads: every `c:f` of it, a
-/// formula naming its sheet. The values it caches stay: a reader draws from
-/// the cells.
+/// Moves chart `c:f` ranges; cached values remain until a reader refreshes
+/// them.
 void move_chart(pugi::xml_node chart, const formula::SheetEdit &edit);
 
 /// Whether @p ref, a cell or a range of the edited sheet, reaches over an
@@ -97,17 +85,19 @@ struct TableHeader final {
   std::string name;
 };
 
-/// Whether the edit would remove the header row, the totals row or every
-/// column of @p table (`table`, ECMA-376 18.5.1.2), which only a removal of
-/// the part could answer.
+/// Detects deletion of a table header, totals row or all columns, which
+/// requires removing the part (ECMA-376 18.5.1.2).
 [[nodiscard]] bool cuts_table(pugi::xml_node table,
                               const formula::SheetEdit &edit);
 
-/// Moves @p table, its filter and its formulas with the edit. An inserted
-/// column inside it gets a `tableColumn` with the next free `id` and a name
-/// no other column has, and a removed one loses its `tableColumn`.
-/// @return The header cells of the inserted columns, which have to state
-///         their names: Excel repairs a table whose header cells differ.
+/// Moves references in table formulas, including references to another sheet.
+void move_table_formulas(pugi::xml_node table, const std::string &sheet,
+                         const formula::SheetEdit &edit);
+
+/// Moves the table, filter and formulas; adds unique IDs/names for new
+/// columns and removes deleted ones.
+/// @return New header cells, whose text must match the column names to avoid
+/// Excel repairs.
 [[nodiscard]] std::vector<TableHeader>
 move_table(pugi::xml_node table, const formula::SheetEdit &edit);
 

@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <clocale>
 #include <cmath>
 #include <numbers>
 #include <optional>
@@ -129,6 +130,17 @@ TEST(FormulaFunctionsMath, a_number_at_the_edge_of_a_rounding_has_no_answer) {
   EXPECT_EQ(xlsx("=INT(0.1*3*10)"), number(3));
   EXPECT_EQ(xlsx("=MOD(3,0.1)"), std::nullopt);
   EXPECT_EQ(xlsx("=MOD(-3,2)"), number(1));
+}
+
+TEST(FormulaFunctionsMath, rounding_does_not_use_the_host_numeric_locale) {
+  const std::string previous = std::setlocale(LC_NUMERIC, nullptr);
+  if (std::setlocale(LC_NUMERIC, "de_DE.UTF-8") == nullptr &&
+      std::setlocale(LC_NUMERIC, "de_DE.utf8") == nullptr) {
+    GTEST_SKIP() << "German numeric locale is not installed";
+  }
+  const auto result = ods("=ROUND(2.675;2)");
+  std::setlocale(LC_NUMERIC, previous.c_str());
+  EXPECT_EQ(result, number(2.68));
 }
 
 TEST(FormulaFunctionsMath, a_remainder_takes_the_sign_of_the_divisor) {

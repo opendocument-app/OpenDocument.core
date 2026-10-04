@@ -34,7 +34,7 @@ NS_SWIFT_NAME(Recalculation)
 @property(nonatomic, readonly) NSArray<ODRSheetPosition *> *changed;
 /// The cells of a cycle, which have no result.
 @property(nonatomic, readonly) NSArray<ODRSheetPosition *> *circular;
-/// The stale formula cells nothing here computes.
+/// Stale formula cells the evaluator cannot resolve.
 @property(nonatomic, readonly) NSArray<ODRSheetPosition *> *unevaluated;
 
 @end
@@ -72,8 +72,8 @@ NS_SWIFT_NAME(Document)
 - (BOOL)edit:(NSString *)operations
        error:(NSError **)error NS_SWIFT_NAME(edit(operations:));
 
-/// Computes the stale formula cells and writes each result into the
-/// document. A save does so first where an edit left one stale.
+/// Recalculates stale formulas and stores their results; save does this after
+/// edits.
 - (nullable ODRRecalculation *)recalculateWithError:(NSError **)error
     NS_SWIFT_NAME(recalculate());
 

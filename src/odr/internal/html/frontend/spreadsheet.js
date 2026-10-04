@@ -519,9 +519,6 @@
       return null;
     }
     var text = textOf(cell);
-    if (text === "") {
-      return { type: "empty" };
-    }
     var kind = cell.classList.contains("odr-value-type-float")
       ? "number"
       : cell.classList.contains("odr-value-type-date")
@@ -535,11 +532,11 @@
       var stated = cell.getAttribute("data-odr-value");
       var number =
         stated !== null ? Number(stated) : kind === "number" ? toNumber(text) : NaN;
-      if (!isNaN(number)) {
+      if (Number.isFinite(number)) {
         return { type: kind, number: number, text: text };
       }
     }
-    return { type: "string", text: text };
+    return text === "" ? { type: "empty" } : { type: "string", text: text };
   }
 
   // The expression a formula cell computes, as the file spells it. Null for a
@@ -636,10 +633,8 @@
     changed();
   }
 
-  // @p count empty rows from @p row on, the rows below moved down. A new
-  // cell takes no style: the page cannot know what its column's default
-  // resolves to. Null where the edge would cut a merge, or lies past the
-  // rendered rows.
+  // Inserts @p count unstyled rows at @p row. Returns null if the edit cuts a
+  // merge or lies past the rendered rows.
   function insertRows(row, count) {
     if (row > lastRow() + 1 || spanReaches(row)) {
       return null;
@@ -1017,7 +1012,7 @@
   function keyOf(row, index) {
     var cell = row.children[index];
     var text = cell === undefined ? "" : cell.textContent.trim();
-    if (text === "") {
+    if (cell === undefined) {
       return { rank: BLANK, value: 0 };
     }
     // a date, a time and a formatted number state their value
@@ -1028,7 +1023,9 @@
         : cell.classList.contains("odr-value-type-float")
           ? toNumber(text)
           : NaN;
-    return isNaN(value) ? { rank: TEXT, value: text } : { rank: NUMBER, value: value };
+    return Number.isFinite(value)
+      ? { rank: NUMBER, value: value }
+      : { rank: text === "" ? BLANK : TEXT, value: text };
   }
 
   function reorder(rows) {

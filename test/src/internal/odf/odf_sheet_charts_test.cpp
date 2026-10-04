@@ -54,6 +54,12 @@ std::string with_chart() {
       R"(</table:table-cell></table:table-row></table:table>)"
       R"(</office:spreadsheet></office:body></office:document-content>)");
   insert(
+      zip, "styles.xml",
+      R"(<office:document-styles><office:styles><style:style style:name="ce1")"
+      R"( style:family="table-cell"><style:map style:condition="cell-content()&gt;[.B3]")"
+      R"( style:apply-style-name="Default" style:base-cell-address="Výplaty.A3"/>)"
+      R"(</style:style></office:styles></office:document-styles>)");
+  insert(
       zip, "Object 1/content.xml",
       R"(<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" )"
       R"(xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" )"
@@ -102,6 +108,9 @@ TEST(OdfSheetCharts, a_row_edit_moves_the_ranges_a_chart_reads) {
 
   first_sheet(document).insert_rows(1, 1);
 
+  const std::string styles = part_of(document, "/styles.xml");
+  EXPECT_NE(styles.find("cell-content()>[.B4]"), std::string::npos);
+  EXPECT_NE(styles.find("'Výplaty'.A4"), std::string::npos);
   const std::string chart = part_of(document, "/Object 1/content.xml");
   EXPECT_NE(
       chart.find(R"(table:cell-range-address="'Výplaty'.A1:'Výplaty'.A4")"),
@@ -136,6 +145,9 @@ TEST(OdfSheetCharts, a_column_edit_moves_them_too) {
 
   first_sheet(document).insert_columns(0, 1);
 
+  const std::string styles = part_of(document, "/styles.xml");
+  EXPECT_NE(styles.find("cell-content()>[.C3]"), std::string::npos);
+  EXPECT_NE(styles.find("'Výplaty'.B3"), std::string::npos);
   const std::string chart = part_of(document, "/Object 1/content.xml");
   EXPECT_NE(
       chart.find(

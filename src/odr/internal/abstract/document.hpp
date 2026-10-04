@@ -263,10 +263,8 @@ public:
   page_name(ElementIdentifier element_id) const = 0;
 };
 
-/// What a formula cell states: the position the file states it at, the
-/// columns and rows it stands for (a repeat of it, or the range of an array
-/// formula), whether it is an array formula, and the expression in the
-/// engine's own syntax.
+/// A formula's position, repeated or array extent, array flag and expression
+/// in the engine's syntax.
 using SheetFormulaVisitor = std::function<void(
     std::uint32_t column, std::uint32_t row, const TableDimensions &span,
     bool array, const std::string &formula)>;
@@ -323,12 +321,10 @@ public:
   virtual void sheet_set_cell(ElementIdentifier element_id,
                               std::uint32_t column, std::uint32_t row,
                               const CellValue &value) const = 0;
-  /// Writes @p result as what the formula at (@p column, @p row) computes,
-  /// and keeps the formula. A number is shown by the cell's format. An
-  /// unknown result says the cached one is stale: an engine drops it, or
-  /// keeps it where the file asks a reader to compute on load.
-  /// @throws UnsupportedOperation where the engine cannot write, or the cell
-  ///         holds no formula, or one a repeat stands for.
+  /// Writes a formatted result without replacing the formula. An unknown
+  /// result invalidates the cache or requests recalculation on load.
+  /// @throws UnsupportedOperation if writing is unsupported or the cell has
+  /// no formula or is repeated.
   virtual void
   sheet_set_result([[maybe_unused]] ElementIdentifier element_id,
                    [[maybe_unused]] std::uint32_t column,
@@ -364,40 +360,36 @@ public:
     throw UnsupportedOperation();
   }
 
-  /// Moves the rows from @p row on down by @p count, and every reference to
-  /// them in the document with them. The new rows are empty.
-  /// @throws UnsupportedOperation where the engine cannot, or the edit would
-  ///         cut a merge or push a stated cell off the grid.
+  /// Inserts @p count empty rows at @p row, shifting cells and references.
+  /// @throws UnsupportedOperation if unsupported, cutting a merge or pushing
+  /// a cell off the grid.
   virtual void sheet_insert_rows([[maybe_unused]] ElementIdentifier element_id,
                                  [[maybe_unused]] std::uint32_t row,
                                  [[maybe_unused]] std::uint32_t count) const {
     throw UnsupportedOperation();
   }
-  /// Removes @p count rows from @p row on, and moves the rows below and every
-  /// reference to them up. A reference into the removed rows becomes `#REF!`.
-  /// @throws UnsupportedOperation where the engine cannot, or the edit would
-  ///         cut a merge.
+  /// Deletes @p count rows at @p row, shifting cells and references up.
+  /// References to deleted cells become `#REF!`.
+  /// @throws UnsupportedOperation if unsupported or cutting a merge.
   virtual void sheet_delete_rows([[maybe_unused]] ElementIdentifier element_id,
                                  [[maybe_unused]] std::uint32_t row,
                                  [[maybe_unused]] std::uint32_t count) const {
     throw UnsupportedOperation();
   }
 
-  /// The columns from @p column on move right by @p count, and every
-  /// reference to them in the document with them. The new columns are empty.
-  /// @throws UnsupportedOperation where the engine cannot, or the edit would
-  ///         cut a merge or push a stated cell off the grid.
+  /// Inserts @p count empty columns at @p column, shifting cells and
+  /// references.
+  /// @throws UnsupportedOperation if unsupported, cutting a merge or pushing
+  /// a cell off the grid.
   virtual void
   sheet_insert_columns([[maybe_unused]] ElementIdentifier element_id,
                        [[maybe_unused]] std::uint32_t column,
                        [[maybe_unused]] std::uint32_t count) const {
     throw UnsupportedOperation();
   }
-  /// Removes @p count columns from @p column on, and moves the columns right
-  /// of them and every reference to them left. A reference into the removed
-  /// columns becomes `#REF!`.
-  /// @throws UnsupportedOperation where the engine cannot, or the edit would
-  ///         cut a merge.
+  /// Deletes @p count columns at @p column, shifting cells and references
+  /// left. References to deleted cells become `#REF!`.
+  /// @throws UnsupportedOperation if unsupported or cutting a merge.
   virtual void
   sheet_delete_columns([[maybe_unused]] ElementIdentifier element_id,
                        [[maybe_unused]] std::uint32_t column,

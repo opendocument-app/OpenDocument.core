@@ -4,6 +4,7 @@
 
 #include <odr/internal/common/text_cursor.hpp>
 #include <odr/internal/formula/formula_value.hpp>
+#include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
@@ -11,7 +12,6 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <cstdlib>
 #include <string>
 #include <utility>
 
@@ -75,11 +75,27 @@ std::optional<CellReference> take_coordinates(std::string_view &text,
   return reference;
 }
 
-Node make(Node::Content content, std::vector<Node> children = {}) {
+/// Bounds parser recursion and AST depth, including flat operator chains.
+constexpr std::uint32_t depth_limit = 64;
+
+bool within_depth(const Node &node, const std::uint32_t remaining) {
+  return remaining != 0 &&
+         std::ranges::all_of(node.children, [remaining](const Node &child) {
+           return within_depth(child, remaining - 1);
+         });
+}
+
+std::optional<Node> make(Node::Content content,
+                         std::vector<Node> children = {}) {
+  if (!std::ranges::all_of(children, [](const Node &child) {
+        return within_depth(child, depth_limit - 1);
+      })) {
+    return {};
+  }
   return Node{std::move(content), std::move(children)};
 }
 
-Node make_unary(const UnaryOperator op, Node operand) {
+std::optional<Node> make_unary(const UnaryOperator op, Node operand) {
   std::vector<Node> children;
   children.push_back(std::move(operand));
   return make(UnaryOperation{op}, std::move(children));
@@ -113,11 +129,6 @@ public:
   }
 
 private:
-  /// The most levels a formula nests: a group, an argument, a sign. It
-  /// bounds the stack of the parse and of the evaluation; Excel writes at
-  /// most 64 levels of functions.
-  static constexpr std::uint32_t depth_limit = 64;
-
   Syntax m_syntax{Syntax::ooxml};
   std::uint32_t m_depth{0};
 
@@ -415,16 +426,13 @@ private:
         length = exponent;
       }
     }
-    // `strtod` wants a terminator, which the view does not promise
-    const std::string text(rest().substr(0, length));
-    char *end = nullptr;
-    const double value = std::strtod(text.c_str(), &end);
-    // an overflow answers infinity, which no formula spells
-    if (end != text.c_str() + text.size() || !std::isfinite(value)) {
+    const std::optional<double> value =
+        util::number::parse(rest().substr(0, length));
+    if (!value.has_value() || !std::isfinite(*value)) {
       return {};
     }
     advance(length);
-    return make(NumberLiteral{value});
+    return make(NumberLiteral{*value});
   }
 
   /// `[.A1]`, `[Sheet1.A1:.B2]`, `[#REF!]`, `$$Name`, `SUM(`, `TRUE`.
@@ -649,7 +657,7 @@ private:
     while (true) {
       skip_whitespace();
       if (peek() == separator() || peek() == ')') {
-        arguments.push_back(make(Missing{}));
+        arguments.push_back(Node{Missing{}});
       } else {
         std::optional<Node> argument = expression();
         if (!argument.has_value()) {

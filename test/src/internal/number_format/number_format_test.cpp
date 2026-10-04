@@ -48,12 +48,16 @@ TEST(NumberFormat, a_comma_groups_or_scales) {
   EXPECT_EQ(shown("0,", 12345), "12");
   EXPECT_EQ(shown("#,##0,,", 1234567890), "1,235");
   EXPECT_EQ(shown("0.0,,\"M\"", 2500000), "2.5M");
+  EXPECT_EQ(shown("0,", -1), "0");
 }
 
 TEST(NumberFormat, a_percent_scales_by_a_hundred) {
   EXPECT_EQ(shown("0%", 0.25), "25%");
   EXPECT_EQ(shown("0.00%", 0.12345), "12.35%");
   EXPECT_EQ(shown("General%", 0.25), "25%");
+  EXPECT_EQ(shown("0%", -0.01), "-1%");
+  EXPECT_EQ(shown("0%", -0.001), "0%");
+  EXPECT_EQ(shown("0%", 1e308), shown("General", 1e308));
 }
 
 TEST(NumberFormat, literals_stay_where_the_code_puts_them) {
@@ -74,6 +78,7 @@ TEST(NumberFormat, sections_split_by_sign) {
   EXPECT_EQ(shown(code, 0), "zero");
   EXPECT_EQ(shown("0;-0;;@", 0), "");
   EXPECT_EQ(shown(";;;", 5), "");
+  EXPECT_EQ(shown(";;;", -5), "");
 }
 
 TEST(NumberFormat, a_condition_picks_its_section) {
@@ -90,6 +95,9 @@ TEST(NumberFormat, scientific_notation) {
   EXPECT_EQ(shown("##0.0E+0", 12345), "12.3E+3");
   EXPECT_EQ(shown("0.0E+0", 9.99), "1.0E+1");
   EXPECT_EQ(shown("##0.0E+0", 999.99), "1.0E+3");
+  EXPECT_EQ(shown("0.00E+00", -0.000123), "-1.23E-04");
+  EXPECT_EQ(shown("0.00E+00", std::numeric_limits<double>::denorm_min()),
+            "4.94E-324");
 }
 
 TEST(NumberFormat, fractions) {
@@ -97,6 +105,7 @@ TEST(NumberFormat, fractions) {
   EXPECT_EQ(shown("# ?\?/??", 3.14159), "3 14/99");
   EXPECT_EQ(shown("?/8", 0.375), "3/8");
   EXPECT_EQ(shown("# ?/?", 2), "2    ");
+  EXPECT_EQ(shown("?/8", -0.375), "-3/8");
 }
 
 TEST(NumberFormat, a_text_section_takes_text) {
@@ -151,6 +160,9 @@ TEST(NumberFormat, a_format_says_whether_it_shows_a_date) {
   EXPECT_EQ(Format().category(), Category::number);
   EXPECT_EQ(shown("yyyy-mm-dd", -1), "-1");
   EXPECT_EQ(shown("yyyy-mm-dd", 2958465), "9999-12-31");
+  EXPECT_EQ(Format("yyyy-mm-dd").format(2957003, Epoch::from_1904),
+            "9999-12-31");
+  EXPECT_EQ(Format("yyyy-mm-dd").format(2957004, Epoch::from_1904), "2957004");
   EXPECT_EQ(shown("yyyy-mm-dd", 1e12), "1000000000000");
 }
 

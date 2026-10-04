@@ -61,6 +61,8 @@
       check("and the cell shows what was typed", value.text === "1,5");
       value = type("-1,25e2");
       check("with a sign and an exponent", value.type === "number" && value.number === -125);
+      value = type("1e999");
+      check("an overflowing number remains text", value.type === "string" && value.text === "1e999");
       value = type("1.5");
       check("a point is not", value.type === "string" && value.text === "1.5");
 
@@ -73,7 +75,8 @@
       check("a string that reads as a number here opens quoted", editor().value === "'2,5");
       editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
 
-      check("a formatted number reads as its value", odr.sheet.valueAt(0, 2).number === 1234.5);
+      odr.sheet.cellAt(0, 2).textContent = "";
+      check("a hidden number reads as its value", odr.sheet.valueAt(0, 2).number === 1234.5);
       odr.editing.editAt(0, 2);
       check("and opens on it, in the locale's spelling", editor().value === "1234,5");
       var before = JSON.parse(odr.editing.getOperations()).ops.length;

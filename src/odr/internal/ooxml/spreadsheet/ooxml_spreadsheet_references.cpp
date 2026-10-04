@@ -64,9 +64,8 @@ void move_text(pugi::xml_node node, const std::optional<std::string> &sheet,
   }
 }
 
-/// Moves @p formulas of a rule or a validation of the edited sheet, which
-/// state their cells as the first cell of @p sqref sees them. Where a delete
-/// removes that cell, they read as the first cell that stays.
+/// Moves rule formulas relative to the first cell of @p sqref. If that cell
+/// is deleted, rebases them on the first surviving cell.
 void move_anchored_formulas(const std::string &sqref,
                             const std::span<const pugi::xml_node> formulas,
                             const formula::SheetEdit &edit) {
@@ -94,14 +93,20 @@ void move_anchored_formulas(const std::string &sqref,
   }
 }
 
-void move_rule_formulas(const pugi::xml_node node,
-                        const formula::SheetEdit &edit) {
+void move_rule_formulas(const pugi::xml_node node, const std::string &sheet,
+                        const bool edited, const formula::SheetEdit &edit) {
   std::vector<pugi::xml_node> formulas;
   for (const pugi::xpath_node match :
        node.select_nodes("cfRule/formula | formula1 | formula2")) {
     formulas.push_back(match.node());
   }
-  move_anchored_formulas(node.attribute("sqref").value(), formulas, edit);
+  if (edited) {
+    move_anchored_formulas(node.attribute("sqref").value(), formulas, edit);
+  } else {
+    for (const pugi::xml_node text : formulas) {
+      move_text(text, sheet, edit);
+    }
+  }
 }
 
 /// The descendants of @p node named @p name.
@@ -123,7 +128,13 @@ std::vector<pugi::xml_node> descendants(const pugi::xml_node node,
 void remove_entry(pugi::xml_node node) {
   while (node && std::string_view(node.name()) != "worksheet") {
     pugi::xml_node parent = node.parent();
+    const bool sparklines = std::string_view(node.name()) == "x14:sparklines";
     parent.remove_child(node);
+    // A group without sparklines is invalid ([MS-XLSX] 2.6.7).
+    if (sparklines) {
+      node = parent;
+      continue;
+    }
     if (parent.find_child([](const pugi::xml_node child) {
           return child.type() == pugi::node_element;
         })) {
@@ -139,9 +150,8 @@ void remove_entry(pugi::xml_node node) {
   }
 }
 
-/// [MS-XLSX] 2.3: the Excel 2010 extensions of a worksheet state their cells
-/// in `xm:sqref` and their formulas in `xm:f`, which may read another sheet.
-/// So each worksheet moves its formulas, and the edited one its cells too.
+/// [MS-XLSX] 2.3: moves extension formulas on every sheet and `xm:sqref`
+/// locations on the edited sheet.
 void move_extensions(const NamedWorksheet &worksheet, const bool edited,
                      const formula::SheetEdit &edit) {
   const pugi::xml_node extensions = worksheet.node.child("extLst");
@@ -168,6 +178,12 @@ void move_extensions(const NamedWorksheet &worksheet, const bool edited,
         }
       }
     }
+  }
+  // [MS-XLSX] 2.6.7: a group's date-axis range is independent of its
+  // sparklines.
+  for (const pugi::xml_node group :
+       descendants(extensions, "x14:sparklineGroup")) {
+    move_text(group.child("xm:f"), worksheet.name, edit);
   }
   // a sparkline reads its range as it is, and sits in its own cell
   for (const pugi::xml_node sparkline :
@@ -253,6 +269,10 @@ void move_shared_group(const std::vector<Member> &members,
 
 void move_worksheet(const NamedWorksheet &worksheet, const bool edited,
                     const formula::SheetEdit &edit) {
+  for (const pugi::xpath_node match : worksheet.node.select_nodes(
+           "conditionalFormatting | dataValidations/dataValidation")) {
+    move_rule_formulas(match.node(), worksheet.name, edited, edit);
+  }
   std::map<std::string, std::vector<Member>> groups;
   for (const pugi::xml_node row :
        worksheet.node.child("sheetData").children("row")) {
@@ -307,12 +327,13 @@ struct RangeAttribute final {
   std::string_view attribute;
 };
 
-constexpr std::array<RangeAttribute, 7> removable_ranges{{
+constexpr std::array<RangeAttribute, 8> removable_ranges{{
     {"conditionalFormatting", "sqref"},
     {"dataValidation", "sqref"},
     {"hyperlink", "ref"},
     {"autoFilter", "ref"},
     {"sortState", "ref"},
+    {"sortCondition", "ref"},
     {"protectedRange", "sqref"},
     {"ignoredError", "sqref"},
 }};
@@ -388,7 +409,8 @@ pugi::xml_node edited_source(const pugi::xml_node cache,
   const pugi::xml_node source =
       cache.child("cacheSource").child("worksheetSource");
   return source.attribute("ref") && !source.attribute("r:id") &&
-                 source.attribute("sheet").value() == edit.sheet
+                 util::string::equals_ignore_case(
+                     source.attribute("sheet").value(), edit.sheet)
              ? source
              : pugi::xml_node();
 }
@@ -403,9 +425,7 @@ void collect_ranges(const pugi::xml_node node, const formula::SheetEdit &edit,
     if (name == "autoFilter" && edit.axis == formula::Axis::column) {
       move_filter_columns(child, edit);
     }
-    if (name == "conditionalFormatting" || name == "dataValidation") {
-      move_rule_formulas(child, edit);
-    }
+    bool removed = false;
     for (const RangeAttribute &range : removable_ranges) {
       pugi::xml_attribute attribute = child.attribute(range.attribute.data());
       if (name != range.element || !attribute) {
@@ -415,6 +435,7 @@ void collect_ranges(const pugi::xml_node node, const formula::SheetEdit &edit,
               attribute.value(), edit, edit.sheet, syntax)) {
         if (moved->empty()) {
           lost.push_back(child);
+          removed = true;
         } else {
           attribute.set_value(moved->c_str());
         }
@@ -442,7 +463,9 @@ void collect_ranges(const pugi::xml_node node, const formula::SheetEdit &edit,
         top_left && (name == "pane" || name == "sheetView")) {
       top_left.set_value(moved_cell(top_left.value(), edit).c_str());
     }
-    collect_ranges(child, edit, lost);
+    if (!removed) {
+      collect_ranges(child, edit, lost);
+    }
   }
 }
 
@@ -502,6 +525,7 @@ void ooxml::spreadsheet::move_sheet_ranges(const pugi::xml_node worksheet,
   collect_ranges(worksheet, edit, lost);
   for (pugi::xml_node node : lost) {
     pugi::xml_node parent = node.parent();
+    const std::string name = node.name();
     parent.remove_child(node);
     // a list such as `hyperlinks` states one entry at least
     if (parent == worksheet) {
@@ -513,7 +537,7 @@ void ooxml::spreadsheet::move_sheet_ranges(const pugi::xml_node worksheet,
       parent.parent().remove_child(parent);
     } else if (pugi::xml_attribute count = parent.attribute("count")) {
       count.set_value(static_cast<std::uint32_t>(
-          std::ranges::distance(parent.children(node.name()))));
+          std::ranges::distance(parent.children(name.c_str()))));
     }
   }
 }
@@ -728,13 +752,7 @@ ooxml::spreadsheet::move_table(pugi::xml_node table,
           std::ranges::distance(columns.children("tableColumn"))));
     }
   }
-  for (const pugi::xml_node column : columns.children("tableColumn")) {
-    for (const char *name : {"calculatedColumnFormula", "totalsRowFormula"}) {
-      if (const pugi::xml_node formula = column.child(name)) {
-        move_text(formula, edit.sheet, edit);
-      }
-    }
-  }
+  move_table_formulas(table, edit.sheet, edit);
   const pugi::xml_node filter = table.child("autoFilter");
   if (filter && edit.axis == formula::Axis::column) {
     move_filter_columns(filter, edit);
@@ -751,6 +769,19 @@ ooxml::spreadsheet::move_table(pugi::xml_node table,
   move_range(filter, edit);
   move_range(table, edit);
   return result;
+}
+
+void ooxml::spreadsheet::move_table_formulas(const pugi::xml_node table,
+                                             const std::string &sheet,
+                                             const formula::SheetEdit &edit) {
+  for (const pugi::xml_node column :
+       table.child("tableColumns").children("tableColumn")) {
+    for (const char *name : {"calculatedColumnFormula", "totalsRowFormula"}) {
+      if (const pugi::xml_node formula = column.child(name)) {
+        move_text(formula, sheet, edit);
+      }
+    }
+  }
 }
 
 void ooxml::spreadsheet::move_chart(const pugi::xml_node chart,

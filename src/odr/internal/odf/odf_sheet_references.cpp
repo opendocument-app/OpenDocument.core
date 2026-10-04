@@ -5,6 +5,7 @@
 #include <odr/internal/formula/formula_parser.hpp>
 #include <odr/internal/formula/formula_writer.hpp>
 #include <odr/internal/odf/odf_table.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <array>
@@ -44,7 +45,8 @@ bool touched(const formula::Node &node, const std::string &sheet,
   const std::uint64_t end = static_cast<std::uint64_t>(edit.index) + edit.count;
   for (const formula::Extent &extent : formula::references(node).extents) {
     if (extent.document.has_value() ||
-        extent.sheet.value_or(sheet) != edit.sheet) {
+        !util::string::equals_ignore_case(extent.sheet.value_or(sheet),
+                                          edit.sheet)) {
       continue;
     }
     const bool rows = edit.axis == formula::Axis::row;
@@ -83,9 +85,8 @@ bool move_formula(pugi::xml_attribute attribute, const std::string &sheet,
   return result;
 }
 
-/// The attributes stating a condition, whose references sit in brackets
-/// inside an expression that is no formula: `formula-is([.A1]>5)`,
-/// `of:cell-content-is-between(1;[.B1])`, `cell-content()>[.C1]`.
+/// Attributes containing bracketed references inside conditions, e.g.
+/// `formula-is([.A1]>5)`.
 constexpr std::array<std::string_view, 3> condition_attributes{
     "calcext:value", "table:condition", "style:condition"};
 
@@ -95,9 +96,8 @@ constexpr std::array<std::string_view, 3> base_cell_attributes{
     "table:base-cell-address", "calcext:base-cell-address",
     "style:base-cell-address"};
 
-/// @p text with every bracketed reference in it shifted by @p shift along the
-/// edited axis, then moved. Nothing where none changed. A string literal is
-/// left alone, and so is a bracket inside a quoted sheet name.
+/// Shifts and moves bracketed references, preserving quoted strings and sheet
+/// names. Returns null if unchanged.
 std::optional<std::string> move_bracketed(const std::string_view text,
                                           const std::string &sheet,
                                           const std::int64_t shift,
@@ -149,9 +149,8 @@ std::optional<std::string> move_bracketed(const std::string_view text,
   return result;
 }
 
-/// Moves the named expressions and the addresses @p node and its subtree
-/// state, the unstated sheet being the table they sit in. A cell's formula is
-/// left to the caller.
+/// Moves named expressions and addresses in the subtree, resolving unstated
+/// sheets from the enclosing table. The caller handles cell formulas.
 void move_subtree(const pugi::xml_node node, std::string sheet,
                   const formula::SheetEdit &edit) {
   if (std::string_view(node.name()) == "table:table") {

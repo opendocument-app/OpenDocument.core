@@ -5,7 +5,6 @@
 #include <array>
 #include <cmath>
 #include <optional>
-#include <set>
 #include <span>
 #include <string>
 #include <string_view>
@@ -23,25 +22,6 @@ Value as_dialect(const Call &call, const Value &value) {
     return Value{*boolean ? 1.0 : 0.0};
   }
   return value;
-}
-
-/// Whether @p text holds a character a criterion or a lookup reads as more
-/// than itself: a wildcard in Excel and where an ods turns them on, the
-/// characters of a regular expression where an ods turns those on.
-bool is_pattern(const Call &call, const std::string_view text) {
-  const bool wildcards = !is_libreoffice(call) || call.settings().wildcards;
-  const bool expressions =
-      is_libreoffice(call) && call.settings().regular_expressions;
-  for (const char c : text) {
-    if (wildcards && (c == '*' || c == '?' || c == '~')) {
-      return true;
-    }
-    if (expressions &&
-        std::string_view(".^$*+?()[]{}|\\").find(c) != std::string_view::npos) {
-      return true;
-    }
-  }
-  return false;
 }
 
 /// Whether two texts are one without case, as a criterion and a lookup
@@ -314,10 +294,8 @@ std::vector<Condition> conditions(const Call &call, const std::size_t first) {
 /// The most positions the conditions of one call test.
 constexpr std::size_t cell_limit = 1 << 22;
 
-/// Calls @p visit with the position of every cell that meets all
-/// @p conditions. Where every condition takes an empty cell, a whole column
-/// matches the cells past the extent of its sheet too, which are not read,
-/// so it has no answer.
+/// Visits cells matching all @p conditions. Refuses unbounded ranges when
+/// empty cells beyond the sheet extent would also match.
 template <typename Visit>
 void each_match(const std::span<const Condition> conditions,
                 const Visit &visit) {
@@ -363,21 +341,18 @@ template <std::size_t most> Value count_if(const Call &call) {
 Value matched(const Call &call, const std::span<const Condition> conditions,
               const Cells &values, const bool average) {
   std::vector<double> numbers;
-  std::set<ErrorType> errors;
+  Errors errors;
   each_match(
       conditions, [&](const std::uint32_t column, const std::uint32_t row) {
         const Value value = as_dialect(call, values.at(column, row));
         if (const auto *number = std::get_if<double>(&value.content)) {
           numbers.push_back(*number);
         } else if (const auto *error = std::get_if<ErrorType>(&value.content)) {
-          errors.insert(*error);
+          errors.add(*error);
         }
       });
-  if (errors.size() > 1) {
-    throw NoAnswer{};
-  }
-  if (!errors.empty()) {
-    throw ErrorResult{*errors.begin()};
+  if (const auto error = errors.first()) {
+    throw ErrorResult{*error};
   }
   if (average && numbers.empty()) {
     return Value{ErrorType::division};
@@ -463,11 +438,9 @@ Value wanted_of(const Call &call, const std::size_t index) {
   return wanted;
 }
 
-/// The position of @p wanted along a line of @p count cells, read by
-/// @p cell_at. An exact lookup takes the first match. An approximate one
-/// takes the last number not past @p wanted, where every cell is a number in
-/// ascending order and the one found is not repeated; anything else is for
-/// the binary search of the application, which the two do apart.
+/// Finds the first exact match, or the last number <= @p wanted. Approximate
+/// lookup requires ascending numbers and a unique match; other cases depend
+/// on application-specific binary search.
 template <typename CellAt>
 std::optional<std::uint32_t>
 position_of(const Call &call, const Value &wanted, const std::uint32_t count,

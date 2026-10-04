@@ -1,6 +1,10 @@
 #include <odr/internal/odf/odf_number_format.hpp>
 
+#include <odr/internal/util/number_util.hpp>
+
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <utility>
 #include <vector>
@@ -21,23 +25,30 @@ bool is_long(const pugi::xml_node node) {
   return std::strcmp(node.attribute("number:style").value(), "long") == 0;
 }
 
-std::string repeated(const char c, const int count) {
-  return std::string(static_cast<std::size_t>(std::max(count, 0)), c);
+std::string repeated(const char c, const std::int32_t count) {
+  return std::string(static_cast<std::size_t>(std::max<std::int32_t>(count, 0)),
+                     c);
 }
 
 /// `number:number`: no `number:decimal-places` and no grouping is `General`,
 /// as LibreOffice reads it.
-std::string number_code(const pugi::xml_node node) {
+std::optional<std::string> number_code(const pugi::xml_node node) {
+  const std::optional<double> factor = util::number::parse(
+      node.attribute("number:display-factor").as_string("1"));
+  if (!factor.has_value() || !std::isfinite(*factor) || *factor <= 0) {
+    return std::nullopt;
+  }
   const pugi::xml_attribute decimals_attribute =
       node.attribute("number:decimal-places");
   const bool grouping = node.attribute("number:grouping").as_bool();
   if (!decimals_attribute && !grouping) {
-    return "General";
+    return *factor == 1 ? std::optional<std::string>("General") : std::nullopt;
   }
-  const int decimals = decimals_attribute.as_int();
-  const int min_decimals =
+  const std::int32_t decimals = decimals_attribute.as_int();
+  const std::int32_t min_decimals =
       node.attribute("number:min-decimal-places").as_int(decimals);
-  const int min_integer = node.attribute("number:min-integer-digits").as_int(1);
+  const std::int32_t min_integer =
+      node.attribute("number:min-integer-digits").as_int(1);
 
   // a comma between integer placeholders groups the whole integer
   const std::string zeros =
@@ -48,11 +59,12 @@ std::string number_code(const pugi::xml_node node) {
               repeated('#', decimals - min_decimals);
   }
   // a factor of 1000 is one scaling comma
-  const double factor = node.attribute("number:display-factor").as_double(1);
-  for (double f = factor; f >= 1000; f /= 1000) {
+  double remaining = *factor;
+  while (remaining >= 1000) {
     result += ',';
+    remaining /= 1000;
   }
-  return result;
+  return remaining == 1 ? std::optional(result) : std::nullopt;
 }
 
 /// The code of one data style, its maps left out. Nothing where a part has no
@@ -67,9 +79,14 @@ std::optional<std::string> section_code(const pugi::xml_node style) {
   for (const pugi::xml_node child : style.children()) {
     const std::string_view name = child.name();
     if (name == "number:number") {
-      result += number_code(child);
+      const auto code = number_code(child);
+      if (!code.has_value()) {
+        return std::nullopt;
+      }
+      result += *code;
     } else if (name == "number:scientific-number") {
-      const int decimals = child.attribute("number:decimal-places").as_int();
+      const std::int32_t decimals =
+          child.attribute("number:decimal-places").as_int();
       result +=
           repeated('0', child.attribute("number:min-integer-digits").as_int(1));
       if (decimals > 0) {
@@ -135,7 +152,7 @@ std::optional<std::string> section_code(const pugi::xml_node style) {
       result += is_long(child) ? "mm" : "m";
     } else if (name == "number:seconds") {
       result += is_long(child) ? "ss" : "s";
-      if (const int decimals =
+      if (const std::int32_t decimals =
               child.attribute("number:decimal-places").as_int();
           decimals > 0) {
         result += "." + repeated('0', decimals);

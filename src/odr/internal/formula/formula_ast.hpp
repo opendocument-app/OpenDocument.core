@@ -187,21 +187,16 @@ struct SheetEdit final {
   std::uint32_t count{0};
   bool insert{true};
 
-  /// Where the rows or columns @p first to @p last of the edited sheet go.
-  /// An insert moves each one at or past `index` on by `count`. A delete
-  /// moves each one past the removed ones back, and one inside them to the
-  /// edge of the ones that stay. Nothing where all of them are removed or one
-  /// leaves the grid.
+  /// Maps the inclusive span [@p first, @p last] through the edit, clipping
+  /// deleted edges. Null if fully deleted or moved off-grid.
   [[nodiscard]] std::optional<std::pair<std::uint32_t, std::uint32_t>>
   span(std::uint32_t first, std::uint32_t last) const;
 };
 
-/// Moves every reference in @p node along the edited axis of the edited
-/// sheet as @p edit moves the cells, an absolute (`$`) coordinate too. An
-/// unstated sheet is @p sheet, and none is never the edited one. A reference
-/// into another document or over several sheets stays, one stating no
-/// coordinate on the axis (`A:A` for rows) stays, and one all inside removed
-/// rows or columns becomes `#REF!`. True where anything moved.
+/// Moves references, including absolute coordinates; unstated sheets use @p
+/// sheet. Deleted references become `#REF!`. External, 3D and references
+/// without the edited axis stay unchanged. Returns whether any reference
+/// changed.
 bool move_references(Node &node, const SheetEdit &edit,
                      const std::optional<std::string> &sheet);
 
