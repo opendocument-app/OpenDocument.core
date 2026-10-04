@@ -177,13 +177,12 @@ void collect_cell(const Call &call, const Value &value, Collected &into,
   }
 }
 
-/// The numbers of the arguments from @p first on, as `SUM` reads them. An
+/// The numbers of the first @p count arguments, as `SUM` reads them. An
 /// argument stated directly adds a boolean too, and in Excel a text that
 /// reads as a number.
-Collected collect(const Call &call, const std::size_t first = 0,
-                  const std::size_t last = std::size_t(-1)) {
+Collected collect(const Call &call, const std::size_t count) {
   Collected result;
-  for (std::size_t i = first; i < std::min(call.size(), last); ++i) {
+  for (std::size_t i = 0; i < count; ++i) {
     if (call.missing(i)) {
       throw NoAnswer{};
     }
@@ -225,6 +224,8 @@ Collected collect(const Call &call, const std::size_t first = 0,
   }
   return result;
 }
+
+Collected collect(const Call &call) { return collect(call, call.size()); }
 
 /// A sum as LibreOffice's `KahanSum` adds it (`sc/inc/kahan.hxx`): a
 /// Neumaier sum that holds the last number back, and gives 0 where that
@@ -268,7 +269,7 @@ private:
   }
 };
 
-double kahan_sum(const std::vector<double> &numbers) {
+double kahan_sum(const std::span<const double> numbers) {
   KahanSum sum;
   for (const double number : numbers) {
     sum.add(number);
@@ -278,7 +279,7 @@ double kahan_sum(const std::vector<double> &numbers) {
 
 /// The sum of @p numbers. LibreOffice makes a sum that cancels 0, Excel does
 /// not, so a sum that nearly cancels has no answer there.
-Value sum_of(const Call &call, const std::vector<double> &numbers) {
+Value sum_of(const Call &call, const std::span<const double> numbers) {
   if (is_libreoffice(call)) {
     return checked(kahan_sum(numbers));
   }
@@ -388,7 +389,7 @@ Value median(const Call &call) {
 /// fraction of k up, Excel's rule for one is not documented.
 template <bool largest> Value kth(const Call &call) {
   expect_arguments(call, 2, 2);
-  Collected collected = collect(call, 0, 1);
+  Collected collected = collect(call, 1);
   if (const std::optional<Value> refused = no_numbers(call, collected)) {
     return *refused;
   }
