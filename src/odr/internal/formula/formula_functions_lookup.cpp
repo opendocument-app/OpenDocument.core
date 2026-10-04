@@ -2,6 +2,7 @@
 #include <odr/internal/formula/formula_text.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <optional>
 #include <set>
@@ -14,10 +15,6 @@
 namespace odr::internal::formula {
 
 namespace {
-
-bool is_libreoffice(const Call &call) {
-  return call.settings().dialect == Dialect::libreoffice;
-}
 
 /// @p value with a boolean as the number LibreOffice states it as.
 Value as_dialect(const Call &call, const Value &value) {
@@ -83,9 +80,9 @@ public:
   [[nodiscard]] Value at(const std::uint32_t column,
                          const std::uint32_t row) const {
     if (m_area.has_value()) {
-      return m_call->cell(SheetPosition(m_area->sheet,
-                                        m_area->range.from().column + column,
-                                        m_area->range.from().row + row));
+      return m_call->cell_value(
+          SheetPosition(m_area->sheet, m_area->range.from().column + column,
+                        m_area->range.from().row + row));
     }
     return m_matrix.cells[std::size_t{row} * m_matrix.columns + column];
   }
@@ -305,15 +302,16 @@ std::vector<Condition> conditions(const Call &call, const std::size_t first) {
                                Criterion(call, call.scalar(i + 1))});
     if (result.back().cells.columns != result.front().cells.columns ||
         result.back().cells.rows != result.front().cells.rows) {
-      throw ErrorResult{refused(call, ErrorType::value).get<ErrorType>()};
+      if (is_libreoffice(call)) {
+        throw NoAnswer{};
+      }
+      throw ErrorResult{ErrorType::value};
     }
   }
   return result;
 }
 
-/// The cells past the extent of a sheet read as empty, so a range of a whole
-/// column is not read cell by cell where every condition rejects an empty
-/// cell.
+/// The most positions the conditions of one call test.
 constexpr std::size_t cell_limit = 1 << 22;
 
 /// Calls @p visit with the position of every cell that meets all
@@ -340,51 +338,45 @@ void each_match(const std::vector<Condition> &conditions, const Visit &visit) {
   }
 }
 
-Value count_if(const Call &call) {
-  expect_arguments(call, 2, 2);
+/// `COUNTIF` and `COUNTIFS`, which take up to @p most arguments.
+template <std::size_t most> Value count_if(const Call &call) {
+  expect_arguments(call, 2, most);
   double result = 0;
   each_match(conditions(call, 0),
              [&](std::uint32_t, std::uint32_t) { ++result; });
   return Value{result};
 }
 
-Value count_ifs(const Call &call) {
-  expect_arguments(call, 2, 254);
-  double result = 0;
-  each_match(conditions(call, 0),
-             [&](std::uint32_t, std::uint32_t) { ++result; });
-  return Value{result};
-}
-
-/// The numbers of @p values at the positions that meet @p conditions. A
-/// text and an empty cell add nothing, an error is the result.
-struct Matched final {
-  double sum{0};
-  double count{0};
-};
-
-Matched matched(const Call &call, const std::vector<Condition> &conditions,
-                const Cells &values) {
-  Matched result;
+/// The sum of @p values at the positions that meet @p conditions, or their
+/// average where @p average. A text and an empty cell add nothing, an error
+/// is the result.
+Value matched(const Call &call, const std::vector<Condition> &conditions,
+              const Cells &values, const bool average) {
+  std::vector<double> numbers;
   std::set<ErrorType> errors;
-  each_match(conditions, [&](const std::uint32_t column,
-                             const std::uint32_t row) {
-    const Value value = as_dialect(call, values.at(column, row));
-    if (const auto *number = std::get_if<double>(&value.content)) {
-      result.sum = is_libreoffice(call) ? approximate_add(result.sum, *number)
-                                        : result.sum + *number;
-      ++result.count;
-    } else if (const auto *error = std::get_if<ErrorType>(&value.content)) {
-      errors.insert(*error);
-    }
-  });
+  each_match(
+      conditions, [&](const std::uint32_t column, const std::uint32_t row) {
+        const Value value = as_dialect(call, values.at(column, row));
+        if (const auto *number = std::get_if<double>(&value.content)) {
+          numbers.push_back(*number);
+        } else if (const auto *error = std::get_if<ErrorType>(&value.content)) {
+          errors.insert(*error);
+        }
+      });
   if (errors.size() > 1) {
     throw NoAnswer{};
   }
   if (!errors.empty()) {
     throw ErrorResult{*errors.begin()};
   }
-  return result;
+  if (average && numbers.empty()) {
+    return Value{ErrorType::division};
+  }
+  const Value sum = sum_of(call, numbers);
+  if (!average || !sum.holds<double>()) {
+    return sum;
+  }
+  return Value{sum.get<double>() / static_cast<double>(numbers.size())};
 }
 
 /// The range a `SUMIF` adds: the one it names, of the size of the range it
@@ -409,14 +401,7 @@ template <bool average> Value sum_if(const Call &call) {
   const std::vector<Condition> tested{
       Condition{Cells(call, call.value(0)), Criterion(call, call.scalar(1))}};
   const Cells values = sum_range(call, tested.front().cells, 2);
-  const Matched result = matched(call, tested, values);
-  if (!average) {
-    return Value{result.sum};
-  }
-  if (result.count == 0) {
-    return Value{ErrorType::division};
-  }
-  return Value{result.sum / result.count};
+  return matched(call, tested, values, average);
 }
 
 template <bool average> Value sum_ifs(const Call &call) {
@@ -427,14 +412,7 @@ template <bool average> Value sum_ifs(const Call &call) {
       values.rows != tested.front().cells.rows) {
     return refused(call, ErrorType::value);
   }
-  const Matched result = matched(call, tested, values);
-  if (!average) {
-    return Value{result.sum};
-  }
-  if (result.count == 0) {
-    return Value{ErrorType::division};
-  }
-  return Value{result.sum / result.count};
+  return matched(call, tested, values, average);
 }
 
 /// Whether a cell is the value a lookup asks for: a number the same number,
@@ -660,21 +638,21 @@ template <bool of_rows> Value size(const Call &call) {
   return Value{static_cast<double>(of_rows ? cells.rows : cells.columns)};
 }
 
-constexpr FunctionEntry entries[] = {
-    {"AVERAGEIF", sum_if<true>},
-    {"AVERAGEIFS", sum_ifs<true>},
-    {"COLUMN", position<false>},
-    {"COLUMNS", size<false>},
-    {"COUNTIF", count_if},
-    {"COUNTIFS", count_ifs},
-    {"HLOOKUP", lookup<false>},
-    {"INDEX", index},
-    {"MATCH", match},
-    {"ROW", position<true>},
-    {"ROWS", size<true>},
-    {"SUMIF", sum_if<false>},
-    {"SUMIFS", sum_ifs<false>},
-    {"VLOOKUP", lookup<true>},
+constexpr std::array entries{
+    FunctionEntry{"AVERAGEIF", sum_if<true>},
+    FunctionEntry{"AVERAGEIFS", sum_ifs<true>},
+    FunctionEntry{"COLUMN", position<false>},
+    FunctionEntry{"COLUMNS", size<false>},
+    FunctionEntry{"COUNTIF", count_if<2>},
+    FunctionEntry{"COUNTIFS", count_if<254>},
+    FunctionEntry{"HLOOKUP", lookup<false>},
+    FunctionEntry{"INDEX", index},
+    FunctionEntry{"MATCH", match},
+    FunctionEntry{"ROW", position<true>},
+    FunctionEntry{"ROWS", size<true>},
+    FunctionEntry{"SUMIF", sum_if<false>},
+    FunctionEntry{"SUMIFS", sum_ifs<false>},
+    FunctionEntry{"VLOOKUP", lookup<true>},
 };
 
 } // namespace

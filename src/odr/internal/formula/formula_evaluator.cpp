@@ -136,7 +136,7 @@ public:
 
   /// The cell at @p position, without reading one past the extent of its
   /// sheet, which is empty.
-  [[nodiscard]] Value cell(const SheetPosition &position) const {
+  [[nodiscard]] Value cell_value(const SheetPosition &position) const {
     const TableDimensions extent = m_source->extent(position.sheet);
     if (position.cell.row >= extent.rows ||
         position.cell.column >= extent.columns) {
@@ -735,8 +735,8 @@ void Call::for_each(const Reference &reference,
   m_evaluator->for_each(reference, visit);
 }
 
-Value Call::cell(const SheetPosition &position) const {
-  return m_evaluator->cell(position);
+Value Call::cell_value(const SheetPosition &position) const {
+  return m_evaluator->cell_value(position);
 }
 
 Number Call::number(const Value &value) const {

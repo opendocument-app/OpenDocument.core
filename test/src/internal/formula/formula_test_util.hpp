@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <map>
 #include <optional>
 #include <set>
@@ -74,7 +75,7 @@ inline Cells cells() {
 /// `ü` and `Sp ` with a space.
 inline Cells criteria_cells() {
   Cells result;
-  const Value column[] = {Value{std::string("Sp")},
+  const std::array column{Value{std::string("Sp")},
                           Value{std::string("sp")},
                           Value{std::string("Sa")},
                           Value{std::string("x Sp")},
@@ -88,7 +89,7 @@ inline Cells criteria_cells() {
                           Value{std::string("Ü")},
                           Value{std::string("ü")},
                           Value{std::string("Sp ")}};
-  for (std::uint32_t row = 0; row < std::size(column); ++row) {
+  for (std::uint32_t row = 0; row < column.size(); ++row) {
     if (!column[row].holds<Empty>()) {
       result.values[SheetPosition(0, 0, row)] = column[row];
     }

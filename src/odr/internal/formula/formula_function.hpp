@@ -55,7 +55,7 @@ public:
 
   /// What the cell at @p position holds. A cell past the extent of its
   /// sheet is empty.
-  [[nodiscard]] Value cell(const SheetPosition &position) const;
+  [[nodiscard]] Value cell_value(const SheetPosition &position) const;
 
   [[nodiscard]] Number number(const Value &value) const;
   [[nodiscard]] Text text(const Value &value) const;
@@ -87,6 +87,10 @@ order_of_texts(std::string_view a, std::string_view b, bool case_sensitive);
 /// @throws NoAnswer where the case of a letter cannot be folded.
 [[nodiscard]] bool equal_texts(std::string_view a, std::string_view b,
                                bool case_sensitive);
+
+/// The sum of @p numbers: as LibreOffice's `KahanSum` adds them, and in
+/// Excel exact, with no answer where it nearly cancels.
+[[nodiscard]] Value sum_of(const Call &call, std::span<const double> numbers);
 
 /// `x^y`, which LibreOffice and Excel compute apart at 0 and below.
 [[nodiscard]] Value power(double x, double y, Dialect dialect);

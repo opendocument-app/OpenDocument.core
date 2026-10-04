@@ -87,6 +87,12 @@ TEST(FormulaFunctionsLookup, a_conditional_sum_and_average) {
             number(2));
 }
 
+TEST(FormulaFunctionsLookup, a_conditional_sum_adds_as_sum_does) {
+  // LibreOffice's `KahanSum`; adding left to right gives 0.5
+  EXPECT_EQ(plain("=SUMIF({1;1;1;1};1;{1;1E20;-1E20;0.5})"), number(1.5));
+  EXPECT_EQ(xlsx("=SUMIF({1,1,1},1,{0.1,0.2,-0.3})"), std::nullopt);
+}
+
 TEST(FormulaFunctionsLookup, ranges_of_two_sizes_follow_the_dialect) {
   // LibreOffice: Err:502
   EXPECT_EQ(current(R"(=COUNTIFS([.A1:.A14];"Sp";[.A1:.A13];"<>"))"),

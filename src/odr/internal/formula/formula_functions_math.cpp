@@ -255,24 +255,6 @@ double kahan_sum(const std::span<const double> numbers) {
   return sum.get();
 }
 
-/// The sum of @p numbers. LibreOffice makes a sum that cancels 0, Excel does
-/// not, so a sum that nearly cancels has no answer there.
-Value sum_of(const Call &call, const std::span<const double> numbers) {
-  if (is_libreoffice(call)) {
-    return checked(kahan_sum(numbers));
-  }
-  double total = 0;
-  double largest = 0;
-  for (const double number : numbers) {
-    total += number;
-    largest = std::max(largest, std::abs(number));
-  }
-  if (nearly_cancels(total, largest)) {
-    throw NoAnswer{};
-  }
-  return checked(total);
-}
-
 Value sum(const Call &call) {
   const Collected collected = collect(call);
   if (collected.error.has_value()) {
@@ -774,6 +756,22 @@ constexpr std::array entries{
 };
 
 } // namespace
+
+Value sum_of(const Call &call, const std::span<const double> numbers) {
+  if (is_libreoffice(call)) {
+    return checked(kahan_sum(numbers));
+  }
+  double total = 0;
+  double largest = 0;
+  for (const double number : numbers) {
+    total += number;
+    largest = std::max(largest, std::abs(number));
+  }
+  if (nearly_cancels(total, largest)) {
+    throw NoAnswer{};
+  }
+  return checked(total);
+}
 
 std::span<const FunctionEntry> math_functions() { return entries; }
 
