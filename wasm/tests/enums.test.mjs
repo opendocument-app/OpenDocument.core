@@ -101,5 +101,6 @@ describe('enums', () => {
     assert.equal(enums.ErrorCode.range, 1008);
     assert.equal(enums.ErrorCode.unnameableEdit, 1009);
     assert.equal(enums.ErrorCode.outOfScope, 1010);
+    assert.equal(enums.ErrorCode.sheetCut, 1011);
   });
 });

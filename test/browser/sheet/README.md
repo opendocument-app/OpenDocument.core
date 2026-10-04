@@ -12,6 +12,7 @@ open http://localhost:8732/sorting.html
 open http://localhost:8732/editing.html
 open http://localhost:8732/keyboard.html
 open http://localhost:8732/formatting.html
+open http://localhost:8732/cut.html
 ```
 
 `serve` serves `document.css`, `spreadsheet.css`, `editing.js`,
@@ -50,6 +51,8 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
   header; a fill with the dark colour `html::dark_fill` computes; the text
   keys over a cell that writes its string straight in and one whose run the
   file styled; the ops, one undo step per gesture, and the chords.
+- `cut.html`: a sheet the limits cut. Enabling the mode and a move past the
+  rendered extent refuse with `sheetCut`; the edge of the sheet itself does not.
 - `sorting.html`: the same questions after the sort control moved every row.
   Nothing is merged, because a merged sheet gets no sort control. A row is
   found by its label, not by its position.

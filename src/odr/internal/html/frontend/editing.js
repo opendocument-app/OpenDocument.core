@@ -30,6 +30,7 @@
     range: "an edit cannot reach over a picture or a table",
     unnameableEdit: "an edit landed where no operation can name it",
     outOfScope: "the edit reaches past what this page offers",
+    sheetCut: "the sheet reaches past what this page renders",
   };
 
   /// Falls back to `readOnly` for a reason no script here states.

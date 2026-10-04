@@ -11,6 +11,15 @@
   var odr = (window.odr = window.odr || {});
 
   var sheet = Number(table.getAttribute("data-odr-sheet") || 0);
+  // The extent of the whole sheet, stated only where the page renders less.
+  var cut = (function () {
+    var stated = table.getAttribute("data-odr-cut");
+    if (stated === null) {
+      return null;
+    }
+    var extent = stated.split(",").map(Number);
+    return { columns: extent[0], rows: extent[1] };
+  })();
 
   var outlined = null;
   var outlinedTimer = 0;
@@ -36,6 +45,26 @@
   function refuse(reason, column, row) {
     outline(odr.sheet.cellAt(column, row));
     odr.editing.refuse(reason, { sheet: sheet, column: column, row: row });
+  }
+
+  /// Refuses a move to a position the sheet has and the page does not.
+  function refuseCut(column, row) {
+    if (
+      cut !== null &&
+      column >= 0 &&
+      row >= 0 &&
+      column < cut.columns &&
+      row < cut.rows &&
+      odr.sheet.cellAt(column, row) === null
+    ) {
+      odr.editing.refuse("sheetCut", {
+        sheet: sheet,
+        column: column,
+        row: row,
+        columns: cut.columns,
+        rows: cut.rows,
+      });
+    }
   }
 
   var overlay = null;
@@ -348,6 +377,7 @@
     write(at.column, at.row, parse(text));
     if (!odr.sheet.pin({ column: at.column + columns, row: at.row + rows })) {
       odr.sheet.pin({ column: at.column, row: at.row });
+      refuseCut(at.column + columns, at.row + rows);
     }
     return true;
   }
@@ -407,11 +437,14 @@
     var step =
       arrows[event.key] ||
       (event.key === "Tab" ? [event.shiftKey ? -1 : 1, 0] : null);
-    if (event.shiftKey && arrows[event.key] !== undefined) {
-      var to = odr.sheet.selection().focus;
-      odr.sheet.select({ column: to.column + step[0], row: to.row + step[1] });
-    } else if (step !== null) {
-      odr.sheet.pin({ column: at.column + step[0], row: at.row + step[1] });
+    if (step !== null) {
+      // shift with an arrow moves the focus, anything else the pin
+      var widens = event.shiftKey && arrows[event.key] !== undefined;
+      var from = widens ? odr.sheet.selection().focus : at;
+      var to = { column: from.column + step[0], row: from.row + step[1] };
+      if (!(widens ? odr.sheet.select(to) : odr.sheet.pin(to))) {
+        refuseCut(to.column, to.row);
+      }
     } else if (event.key === "Enter" || event.key === "F2") {
       edit(at.column, at.row, null);
     } else if (event.key === "Delete" || event.key === "Backspace") {
@@ -955,6 +988,13 @@
     toggle: toggle,
     enable: function () {
       reportSelection(true);
+      if (cut !== null) {
+        odr.editing.refuse("sheetCut", {
+          sheet: sheet,
+          columns: cut.columns,
+          rows: cut.rows,
+        });
+      }
     },
     committed: function () {
       history = [];

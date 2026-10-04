@@ -19,5 +19,6 @@ serve(
         "editing.html",
         "keyboard.html",
         "formatting.html",
+        "cut.html",
     ),
 )
