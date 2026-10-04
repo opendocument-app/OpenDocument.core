@@ -16,6 +16,7 @@
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/html/image_file.hpp>
 #include <odr/internal/html/style_registry.hpp>
+#include <odr/internal/number_format/number_format.hpp>
 #include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
@@ -340,6 +341,29 @@ bool holds_plain_cell(const ElementRange &children) {
     return paragraph.type() == ElementType::paragraph &&
            holds_plain_runs(paragraph.children());
   });
+}
+
+/// The text of the runs under @p element.
+std::string shown_text(const Element &element) {
+  std::string result;
+  for (const Element child : element.children()) {
+    result += child.type() == ElementType::text ? child.as_text().content()
+                                                : shown_text(child);
+  }
+  return result;
+}
+
+/// The number the editor opens a cell on, where the cell shows it formatted.
+std::optional<std::string> formatted_value(const CellValue &value,
+                                           const SheetCell &cell) {
+  if (value.type() != ValueType::float_number || !value.has_number()) {
+    return std::nullopt;
+  }
+  std::string plain = number_format::format_general(value.number());
+  if (shown_text(cell) == plain) {
+    return std::nullopt;
+  }
+  return plain;
 }
 
 /// Its place among the document's sheets, which is how an op names one.
@@ -774,6 +798,9 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
 
       const CellValue cell_value =
           state.config().editable ? cell.value() : CellValue();
+      const std::optional<std::string> value_spelling =
+          state.config().editable ? formatted_value(cell_value, cell)
+                                  : std::nullopt;
       const char *lock = state.config().editable
                              ? cell_lock(cell_value, cell, anchors_shapes)
                              : nullptr;
@@ -806,6 +833,9 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                 }
                 if (!reads.empty()) {
                   clb("data-odr-reads", reads);
+                }
+                if (value_spelling.has_value()) {
+                  clb("data-odr-value", *value_spelling);
                 }
               })
               .set_style(

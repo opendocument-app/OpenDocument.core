@@ -176,13 +176,16 @@
     return { type: "string", text: content };
   }
 
-  /// What the editor opens on: a string that would not read back as itself
-  /// gets the `'` that keeps it one.
+  /// What the editor opens on: a formatted number its value, and a string
+  /// that would not read back as itself the `'` that keeps it one.
   function spell(value) {
     if (value.type === "empty") {
       return "";
     }
     var text = value.text;
+    if (value.type === "number" && !same(parse(text), value)) {
+      return String(value.number).replace(".", DECIMAL);
+    }
     if (
       value.type === "string" &&
       (text.charAt(0) === "=" || !same(parse(text), value))
@@ -192,10 +195,14 @@
     return text;
   }
 
+  /// Two numbers are the same where their values are, whatever the text.
   function same(one, other) {
     return (
       one.type === other.type &&
-      (one.type === "empty" || one.text === other.text)
+      (one.type === "empty" ||
+        (one.type === "number"
+          ? one.number === other.number
+          : one.text === other.text))
     );
   }
 

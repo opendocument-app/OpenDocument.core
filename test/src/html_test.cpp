@@ -990,6 +990,19 @@ TEST(html, an_editable_sheet_states_its_locale) {
             std::string::npos);
 }
 
+TEST(html, a_formatted_number_states_its_value) {
+  const std::string page = render_sheet(
+      fods_file(fods_row(
+          R"(<table:table-cell office:value-type="float" office:value="1234.5">)"
+          R"(<text:p>1.234,50 €</text:p></table:table-cell>)"
+          R"(<table:table-cell office:value-type="float" office:value="7">)"
+          R"(<text:p>7</text:p></table:table-cell>)")),
+      editing_config());
+
+  EXPECT_NE(page.find(R"(data-odr-value="1234.5")"), std::string::npos);
+  EXPECT_EQ(page.find(R"(data-odr-value="7")"), std::string::npos);
+}
+
 TEST(html, an_editable_csv_states_that_it_takes_no_style) {
   HtmlConfig config;
   config.editable = true;
