@@ -370,6 +370,16 @@ void Document::edit(const std::string_view operations,
       continue;
     }
 
+    if (name == "insertRows" || name == "deleteRows") {
+      const Sheet sheet =
+          sheet_at(root_element(), operation.at("sheet").get<std::uint32_t>());
+      const auto row = operation.at("row").get<std::uint32_t>();
+      const auto count = operation.at("count").get<std::uint32_t>();
+      name == "insertRows" ? sheet.insert_rows(row, count)
+                           : sheet.delete_rows(row, count);
+      continue;
+    }
+
     if (name == "setText") {
       text_of(operation, "id")
           .set_content(operation.at("text").get<std::string>());

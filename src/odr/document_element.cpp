@@ -475,6 +475,22 @@ void Sheet::set_column_style(const std::uint32_t column,
                                      text_style);
 }
 
+void Sheet::insert_rows(const std::uint32_t row,
+                        const std::uint32_t count) const {
+  if (!exists_() || count == 0) {
+    return;
+  }
+  m_adapter2->sheet_insert_rows(m_identifier, row, count);
+}
+
+void Sheet::delete_rows(const std::uint32_t row,
+                        const std::uint32_t count) const {
+  if (!exists_() || count == 0) {
+    return;
+  }
+  m_adapter2->sheet_delete_rows(m_identifier, row, count);
+}
+
 TableStyle Sheet::style() const {
   return exists_() ? m_adapter2->sheet_style(m_identifier) : TableStyle();
 }

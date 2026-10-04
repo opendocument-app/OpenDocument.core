@@ -20,6 +20,11 @@ enum class Syntax {
 /// where it states none, or drops the expression at parse time (`.xls`).
 [[nodiscard]] std::optional<Syntax> syntax_of(FileType file_type);
 
+/// @p formula without the `of:=` a `table:formula` carries, or the `=` both
+/// syntaxes may. The prefix is the producer's namespace, so it is whatever
+/// name it declared.
+[[nodiscard]] std::string_view strip_prefix(std::string_view formula);
+
 /// Parses @p formula, with or without the `of:=` prefix. Nothing where it does
 /// not parse, so a caller reads no reference out of a formula it cannot read.
 [[nodiscard]] std::optional<Node> parse(std::string_view formula,

@@ -56,6 +56,10 @@ const SheetDependencies &Document::sheet_dependencies() const {
   return *m_sheet_dependencies;
 }
 
+void Document::drop_sheet_dependencies() const noexcept {
+  m_sheet_dependencies.reset();
+}
+
 bool Document::is_decrypted() const noexcept {
   return m_encryption_state == EncryptionState::decrypted;
 }

@@ -43,6 +43,9 @@ public:
   element_adapter() const override;
 
   [[nodiscard]] const SheetDependencies &sheet_dependencies() const final;
+  /// Drops the graph, so the next question builds it off the formulas as they
+  /// are now: a structural edit moves them.
+  void drop_sheet_dependencies() const noexcept;
 
   /// Decoded from a package that was password-encrypted. `save` has no
   /// encryption to put back, so a savable engine refuses one.

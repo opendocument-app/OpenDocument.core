@@ -321,6 +321,25 @@ public:
     throw UnsupportedOperation();
   }
 
+  /// Moves the rows from @p row on down by @p count, and every reference to
+  /// them in the document with them. The new rows are empty.
+  /// @throws UnsupportedOperation where the engine cannot, or the edit would
+  ///         cut a merge or push a stated cell off the grid.
+  virtual void sheet_insert_rows([[maybe_unused]] ElementIdentifier element_id,
+                                 [[maybe_unused]] std::uint32_t row,
+                                 [[maybe_unused]] std::uint32_t count) const {
+    throw UnsupportedOperation();
+  }
+  /// Removes @p count rows from @p row on, and moves the rows below and every
+  /// reference to them up. A reference into the removed rows becomes `#REF!`.
+  /// @throws UnsupportedOperation where the engine cannot, or the edit would
+  ///         cut a merge.
+  virtual void sheet_delete_rows([[maybe_unused]] ElementIdentifier element_id,
+                                 [[maybe_unused]] std::uint32_t row,
+                                 [[maybe_unused]] std::uint32_t count) const {
+    throw UnsupportedOperation();
+  }
+
   [[nodiscard]] virtual TableStyle
   sheet_style(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual TableColumnStyle

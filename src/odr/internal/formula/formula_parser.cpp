@@ -661,9 +661,13 @@ private:
   }
 };
 
-/// The `of:` a `table:formula` carries, and the `=` both may. The prefix is
-/// the producer's namespace, so it is whatever name it declared.
-std::string_view strip_prefix(std::string_view formula) {
+} // namespace
+
+} // namespace odr::internal::formula
+
+namespace odr::internal {
+
+std::string_view formula::strip_prefix(std::string_view formula) {
   if (const std::size_t assign = formula.find(":=");
       assign != std::string_view::npos &&
       std::ranges::all_of(formula.substr(0, assign), [](const char c) {
@@ -677,12 +681,6 @@ std::string_view strip_prefix(std::string_view formula) {
   }
   return formula;
 }
-
-} // namespace
-
-} // namespace odr::internal::formula
-
-namespace odr::internal {
 
 std::optional<formula::Syntax> formula::syntax_of(const FileType file_type) {
   switch (file_type) {

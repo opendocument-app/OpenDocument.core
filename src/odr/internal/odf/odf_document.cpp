@@ -17,6 +17,7 @@
 #include <odr/internal/odf/odf_list.hpp>
 #include <odr/internal/odf/odf_number_format.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
+#include <odr/internal/odf/odf_sheet_references.hpp>
 #include <odr/internal/odf/odf_table.hpp>
 #include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
@@ -30,6 +31,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <mutex>
 #include <ostream>
 #include <span>
@@ -844,6 +846,177 @@ public:
     reindex_sheet(*m_registry, element_id);
   }
 
+  /// The rows from @p row on move down, and so does every reference to them
+  /// on every sheet. A trailing run of empty rows gives up as many, so the
+  /// extent stays.
+  void sheet_insert_rows(const ElementIdentifier element_id,
+                         const std::uint32_t row,
+                         const std::uint32_t count) const override {
+    const pugi::xml_node sheet_node = get_node(element_id);
+    const std::vector<RowRun> runs = row_runs(sheet_node);
+    if (merge_reaches_over(runs, row)) {
+      throw UnsupportedOperation();
+    }
+    const RowRun *trailing = !runs.empty() && states_nothing(runs.back().node)
+                                 ? &runs.back()
+                                 : nullptr;
+    const std::uint32_t stated_end = trailing != nullptr ? trailing->begin
+                                     : runs.empty()      ? 0
+                                                         : runs.back().end;
+    const std::uint64_t moved_end = std::uint64_t{stated_end} + count;
+    if (row < stated_end && moved_end > row_limit) {
+      throw UnsupportedOperation();
+    }
+
+    const std::vector<SheetPosition> touched = move_row_references(
+        sheet_node.parent(),
+        {.sheet = sheet_name(element_id), .row = row, .count = count});
+
+    if (row < stated_end) {
+      const pugi::xml_node at = cut_rows_at(sheet_node, row);
+      const pugi::xml_node added =
+          at.parent().insert_child_before("table:table-row", at);
+      set_repeat(added, "table:number-rows-repeated", count);
+      append_empty_cells(
+          added, m_registry->sheet_element_at(element_id).dimensions.columns);
+      if (trailing != nullptr) {
+        const std::uint32_t kept = trailing->end - trailing->begin;
+        if (kept > count) {
+          set_repeat(trailing->node, "table:number-rows-repeated",
+                     kept - count);
+        } else {
+          remove_row(trailing->node);
+        }
+      }
+    }
+
+    reindex_sheet(*m_registry, element_id);
+    drop_moved_results(touched);
+  }
+
+  /// The rows from @p row on are removed, and the rows below and every
+  /// reference to them move up.
+  void sheet_delete_rows(const ElementIdentifier element_id,
+                         const std::uint32_t row,
+                         const std::uint32_t count) const override {
+    const pugi::xml_node sheet_node = get_node(element_id);
+    const std::vector<RowRun> runs = row_runs(sheet_node);
+    const std::uint32_t end = static_cast<std::uint32_t>(
+        std::min<std::uint64_t>(static_cast<std::uint64_t>(row) + count,
+                                std::numeric_limits<std::uint32_t>::max()));
+    if (merge_reaches_over(runs, row) || merge_reaches_over(runs, end)) {
+      throw UnsupportedOperation();
+    }
+
+    const std::vector<SheetPosition> touched = move_row_references(
+        sheet_node.parent(), {.sheet = sheet_name(element_id),
+                              .row = row,
+                              .count = count,
+                              .insert = false});
+
+    if (const std::uint32_t rows_end = runs.empty() ? 0 : runs.back().end;
+        row < rows_end) {
+      // the far end first: the cut at `row` then reads the runs as they are
+      if (end < rows_end) {
+        cut_rows_at(sheet_node, end);
+      }
+      cut_rows_at(sheet_node, row);
+      for (const RowRun &run : row_runs(sheet_node)) {
+        if (run.begin >= row && run.begin < end) {
+          remove_row(run.node);
+        }
+      }
+    }
+
+    reindex_sheet(*m_registry, element_id);
+    drop_moved_results(touched);
+  }
+
+  /// The rows of a LibreOffice sheet; ODF states no grid.
+  static constexpr std::uint32_t row_limit = 1048576;
+
+  /// A `table:table-row` and the rows it stands for.
+  struct RowRun final {
+    pugi::xml_node node;
+    std::uint32_t begin{0};
+    std::uint32_t end{0};
+  };
+
+  static std::vector<RowRun> row_runs(const pugi::xml_node sheet_node) {
+    std::vector<RowRun> result;
+    std::uint32_t row = 0;
+    for_each_table_row(sheet_node, [&](const pugi::xml_node node) {
+      const std::uint32_t end =
+          row + node.attribute("table:number-rows-repeated").as_uint(1);
+      result.push_back({.node = node, .begin = row, .end = end});
+      row = end;
+    });
+    return result;
+  }
+
+  /// Whether a span starting above @p row reaches it ([ODF 1.2] 19.643).
+  static bool merge_reaches_over(const std::vector<RowRun> &runs,
+                                 const std::uint32_t row) {
+    for (const RowRun &run : runs) {
+      if (run.begin >= row) {
+        break;
+      }
+      for (const pugi::xml_node cell : run.node.children("table:table-cell")) {
+        if (run.begin + cell.attribute("table:number-rows-spanned").as_uint(1) >
+            row) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Whether @p row states no more than styles.
+  static bool states_nothing(const pugi::xml_node row) {
+    for (const pugi::xml_node cell : row.children()) {
+      if (cell.first_child() || cell.attribute("office:value-type") ||
+          cell.attribute("table:formula") ||
+          cell.attribute("table:number-rows-spanned").as_uint(1) > 1 ||
+          cell.attribute("table:number-columns-spanned").as_uint(1) > 1) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// The row node whose run starts at @p row, cut out of the run @p row falls
+  /// inside. Null past the stated rows. The caller reindexes.
+  static pugi::xml_node cut_rows_at(const pugi::xml_node sheet_node,
+                                    const std::uint32_t row) {
+    for (const RowRun &run : row_runs(sheet_node)) {
+      if (row >= run.end) {
+        continue;
+      }
+      if (run.begin < row) {
+        set_repeat(run.node.parent().insert_copy_before(run.node, run.node),
+                   "table:number-rows-repeated", row - run.begin);
+        set_repeat(run.node, "table:number-rows-repeated", run.end - row);
+      }
+      return run.node;
+    }
+    return {};
+  }
+
+  /// Removes @p row, and a grouping element it leaves empty.
+  static void remove_row(pugi::xml_node row) {
+    for (pugi::xml_node parent = row.parent();;) {
+      parent.remove_child(row);
+      if (std::string_view(parent.name()) == "table:table" ||
+          parent.find_child([](const pugi::xml_node child) {
+            return child.type() == pugi::node_element;
+          })) {
+        return;
+      }
+      row = parent;
+      parent = row.parent();
+    }
+  }
+
   /// Points @p attribute of @p node at @p base with the delta applied.
   void restyle(pugi::xml_node node, const char *attribute, const char *base,
                const TableCellStyle &cell_style,
@@ -937,22 +1110,34 @@ public:
                           const std::uint32_t column,
                           const std::uint32_t row) const {
     const std::vector<ElementIdentifier> sheets = sheets_();
-    const auto written = std::ranges::find(sheets, sheet_id);
-    if (written == sheets.end()) {
-      return;
+    if (const auto written = std::ranges::find(sheets, sheet_id);
+        written != sheets.end()) {
+      drop_results(m_document->sheet_dependencies().dependents(
+          {SheetPosition(static_cast<std::uint32_t>(written - sheets.begin()),
+                         TablePosition(column, row))}));
     }
+  }
 
-    const SheetPosition position(
-        static_cast<std::uint32_t>(written - sheets.begin()),
-        TablePosition(column, row));
-    for (const SheetPosition &stale :
-         m_document->sheet_dependencies().dependents({position})) {
-      if (stale.sheet >= sheets.size()) {
+  /// After a structural edit: the graph is read again off the moved formulas,
+  /// and the formulas at @p touched lose their result with every one reading
+  /// them.
+  void drop_moved_results(std::vector<SheetPosition> touched) const {
+    m_document->drop_sheet_dependencies();
+    const std::vector<SheetPosition> dependents =
+        m_document->sheet_dependencies().dependents(touched);
+    touched.insert(touched.end(), dependents.begin(), dependents.end());
+    drop_results(touched);
+  }
+
+  void drop_results(const std::vector<SheetPosition> &positions) const {
+    const std::vector<ElementIdentifier> sheets = sheets_();
+    for (const SheetPosition &position : positions) {
+      if (position.sheet >= sheets.size()) {
         continue;
       }
       if (const ElementRegistry::Sheet::Cell *cell =
-              m_registry->sheet_element_at(sheets[stale.sheet])
-                  .cell(stale.cell.column, stale.cell.row);
+              m_registry->sheet_element_at(sheets[position.sheet])
+                  .cell(position.cell.column, position.cell.row);
           cell != nullptr) {
         drop_cell_result(*cell);
       }

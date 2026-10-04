@@ -406,6 +406,16 @@ public:
   void set_column_style(std::uint32_t column, const TableCellStyle &cell_style,
                         const TextStyle &text_style) const;
 
+  /// Moves the rows from @p row on down by @p count, and every reference to
+  /// them in the document with them, absolute or not. The new rows are empty.
+  /// @throws UnsupportedOperation where the edit would cut a merge or push a
+  ///         stated cell off the grid.
+  void insert_rows(std::uint32_t row, std::uint32_t count) const;
+  /// Removes @p count rows from @p row on, and moves the rows below up. A
+  /// reference into the removed rows becomes `#REF!`.
+  /// @throws UnsupportedOperation where the edit would cut a merge.
+  void delete_rows(std::uint32_t row, std::uint32_t count) const;
+
   [[nodiscard]] TableStyle style() const;
   [[nodiscard]] TableColumnStyle column_style(std::uint32_t column) const;
   [[nodiscard]] TableRowStyle row_style(std::uint32_t row) const;
