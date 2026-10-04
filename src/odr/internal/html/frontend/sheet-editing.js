@@ -311,6 +311,15 @@
     overlay.style.fontSize = style.fontSize;
     overlay.style.fontStyle = style.fontStyle;
     overlay.style.fontWeight = style.fontWeight;
+    grow();
+  }
+
+  /// A line typed past the cell's height makes the overlay taller.
+  function grow() {
+    var cell = odr.sheet.cellAt(editingAt.column, editingAt.row);
+    overlay.style.height = cell.offsetHeight + "px";
+    overlay.style.height =
+      Math.max(cell.offsetHeight, overlay.scrollHeight) + "px";
   }
 
   /// Opens the editor over a cell, holding @p typed or the cell's own string.
@@ -329,13 +338,14 @@
 
     var value = odr.sheet.valueAt(column, row);
     editingAt = { column: column, row: row };
-    overlay = document.createElement("input");
-    overlay.type = "text";
+    overlay = document.createElement("textarea");
     overlay.className = "odr-sheet-editor";
     overlay.value = typed !== null ? typed : spell(value);
     place(cell);
     document.body.appendChild(overlay);
+    grow();
     overlay.addEventListener("keydown", overlayKey);
+    overlay.addEventListener("input", grow);
     overlay.addEventListener("blur", finish);
     overlay.focus();
     if (typed === null) {
@@ -389,6 +399,18 @@
     event.stopPropagation();
     if (event.key === "Escape") {
       close();
+    } else if (
+      event.key === "Enter" &&
+      (event.altKey || event.ctrlKey || event.metaKey)
+    ) {
+      // a line break, as Alt+Enter in Excel and Ctrl+Enter in Calc
+      overlay.setRangeText(
+        "\n",
+        overlay.selectionStart,
+        overlay.selectionEnd,
+        "end"
+      );
+      grow();
     } else if (event.key === "Enter") {
       commit(0, event.shiftKey ? -1 : 1);
     } else if (event.key === "Tab") {

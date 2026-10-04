@@ -87,12 +87,15 @@ decode of the same file.
 `odr.editing.enable()` and `disable()` switch the mode without a second
 translate. The page carries only what the browser cannot work out itself:
 `data-odr-lock` on a cell that refuses a write, with its reason (`formula`,
-`rich` for several paragraphs, a link or a line break, `shapes` where the
-cell is nothing but its anchored drawings), and `data-odr-editable` on
+`rich` for a link or anything else past text and line breaks, `shapes` where
+the cell is nothing but its anchored drawings), and `data-odr-editable` on
 `<body>`. Every other cell is editable, an empty one included.
 
 The editor is an overlay the script places over the cell, so the sheet's DOM
-stays untouched until the commit patches the cell.
+stays untouched until the commit patches the cell. The overlay is a
+`textarea`: Alt or Ctrl with Enter breaks a line, as in Excel and Calc, and
+the value states it as `\n`. `.ods` writes a `text:p` per line, and `.xlsx`
+keeps the `\n` and turns `wrapText` on, as LibreOffice's export does.
 
 **Why:** a `td` holds wrappers and shapes, so a static `contenteditable` is
 the wrong tool. Refusal is an event, not a silent no-op: a click on a locked
@@ -308,6 +311,6 @@ undo step.
   input in the editor comes with it.
 - Number formats (`number:number-style`, `numFmt`), dates and booleans as
   their own kinds. This also fixes `.xlsx` serials on the read side.
-- Multi-line cells, insert and delete of rows and columns.
+- Insert and delete of rows and columns.
 - A style for a whole row or column, so cells past the rendered extent take it.
 - The decimal separator and the document locale are read nowhere.

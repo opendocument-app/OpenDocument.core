@@ -493,13 +493,32 @@
     return box;
   }
 
+  // The text of a cell as an op states it: a line per block and per break.
+  function textOf(node) {
+    var text = "";
+    var blocks = 0;
+    for (var child = node.firstChild; child !== null; child = child.nextSibling) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        text += child.nodeValue;
+      } else if (child.tagName === "BR") {
+        text += "\n";
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        if (child.tagName === "X-P" && blocks++ > 0) {
+          text += "\n";
+        }
+        text += textOf(child);
+      }
+    }
+    return text;
+  }
+
   // What the page shows at a position, shaped the way an op states a value.
   function valueAt(column, row) {
     var cell = cellAt(column, row);
     if (cell === null) {
       return null;
     }
-    var text = cell.textContent;
+    var text = textOf(cell);
     if (text === "") {
       return { type: "empty" };
     }
@@ -528,6 +547,14 @@
     }
     lower();
     var run = runOf(cell);
+    var blocks = cell.querySelectorAll(":scope > x-p");
+    if (run === null && blocks.length === cell.childElementCount) {
+      // the lines go into the first block, as the file writes them
+      for (var i = 1; i < blocks.length; ++i) {
+        blocks[i].remove();
+      }
+      run = runOf(cell);
+    }
     if (run === null) {
       return false;
     }

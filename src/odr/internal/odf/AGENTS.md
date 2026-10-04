@@ -142,9 +142,10 @@ unknown mimetype are tolerated.
   rendering of it. It writes through the run the cell holds, so the run keeps
   its style, and replaces the runs of a paragraph that holds several.
   `text_run_of` descends through a single span before it looks for the run,
-  the same walk `spreadsheet.js::runOf` makes over the page. A cell that holds
-  a formula, a link, a line break or several paragraphs refuses. Refusals are
-  decided before any node is cut.
+  the same walk `spreadsheet.js::runOf` makes over the page. A value of
+  several lines writes a `text:p` per line, as LibreOffice does; the later
+  ones copy the first one's paragraph style. A cell that holds a formula or a
+  link refuses. Refusals are decided before any node is cut.
 - **A cell style.** `sheet_set_cell_style` claims the cell as a value write
   does and points `table:style-name` at a fresh automatic style `ce<n>`
   (`StyleRegistry::create_cell_style`): a copy of the automatic style the

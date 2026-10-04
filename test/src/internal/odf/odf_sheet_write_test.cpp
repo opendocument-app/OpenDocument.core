@@ -520,24 +520,39 @@ TEST(OdfSheetWrite, a_cell_holding_a_link_refuses_to_be_written) {
   EXPECT_THROW(sheet.set_cell(0, 0, CellValue("y")), UnsupportedOperation);
 }
 
-/// A line break is a second line, which one run cannot hold.
-TEST(OdfSheetWrite, a_cell_holding_a_line_break_refuses_to_be_written) {
-  const Document document =
-      document_of(flat_sheet(R"(<table:table-cell office:value-type="string">)"
-                             R"(<text:p>a<text:line-break/>b</text:p>)"
-                             R"(</table:table-cell>)"));
-  const Sheet sheet = first_sheet(document);
+/// As LibreOffice writes a cell of several lines: a `text:p` per line.
+TEST(OdfSheetWrite, a_line_break_writes_a_paragraph) {
+  const Document document = document_of(flat_sheet(
+      R"(<table:table-cell office:value-type="string">)"
+      R"(<text:p text:style-name="P1"><text:span text:style-name="T1">a)"
+      R"(</text:span></text:p></table:table-cell>)"));
 
-  EXPECT_THROW(sheet.set_cell(0, 0, CellValue("y")), UnsupportedOperation);
+  first_sheet(document).set_cell(0, 0, CellValue("x\n\nz"));
+
+  std::ostringstream saved;
+  document.save(saved);
+  EXPECT_NE(saved.str().find(R"(<text:p text:style-name="P1">)"
+                             R"(<text:span text:style-name="T1">x</text:span>)"
+                             R"(</text:p><text:p text:style-name="P1"/>)"
+                             R"(<text:p text:style-name="P1">z</text:p>)"),
+            std::string::npos)
+      << saved.str();
 }
 
-TEST(OdfSheetWrite, a_cell_of_several_paragraphs_refuses_to_be_written) {
+TEST(OdfSheetWrite, a_cell_of_several_lines_is_written) {
   const Document document = document_of(
       flat_sheet(R"(<table:table-cell office:value-type="string">)"
-                 R"(<text:p>a</text:p><text:p>b</text:p></table:table-cell>)"));
+                 R"(<text:p>a</text:p><text:p>b<text:line-break/>c</text:p>)"
+                 R"(</table:table-cell>)"));
   const Sheet sheet = first_sheet(document);
 
-  EXPECT_THROW(sheet.set_cell(0, 0, CellValue("y")), UnsupportedOperation);
+  sheet.set_cell(0, 0, CellValue("y"));
+
+  std::ostringstream saved;
+  document.save(saved);
+  EXPECT_NE(saved.str().find(R"(<text:p>y</text:p></table:table-cell>)"),
+            std::string::npos)
+      << saved.str();
 }
 
 /// A blank cell that carries a style is written as an empty `text:p`, which is
