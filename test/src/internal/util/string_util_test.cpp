@@ -2,8 +2,11 @@
 
 #include <gtest/gtest.h>
 
+#include <clocale>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
+#include <stdexcept>
 #include <string_view>
 #include <tuple>
 #include <vector>
@@ -148,6 +151,23 @@ TEST(string_util, to_lower) {
   EXPECT_EQ(to_lower("ÄÖÜ"), "ÄÖÜ");
 }
 
+TEST(string_util, ascii_classes_ignore_the_host_locale) {
+  const std::string previous = std::setlocale(LC_CTYPE, nullptr);
+  if (std::setlocale(LC_CTYPE, "tr_TR.ISO8859-9") == nullptr &&
+      std::setlocale(LC_CTYPE, "tr_TR.UTF-8") == nullptr) {
+    GTEST_SKIP() << "Turkish locale unavailable";
+  }
+  EXPECT_EQ(to_lower('I'), 'i');
+  EXPECT_EQ(to_upper('i'), 'I');
+  for (std::uint32_t byte = 128; byte <= 255; ++byte) {
+    const char c = static_cast<char>(byte);
+    EXPECT_EQ(to_lower(c), c);
+    EXPECT_EQ(to_upper(c), c);
+    EXPECT_FALSE(is_ascii_whitespace(c));
+  }
+  std::setlocale(LC_CTYPE, previous.c_str());
+}
+
 TEST(string_util, equals_ignore_case) {
   EXPECT_TRUE(equals_ignore_case("script", "SCRIPT"));
   EXPECT_TRUE(equals_ignore_case("", ""));
@@ -167,6 +187,9 @@ TEST(string_util, starts_with_ignore_case) {
 }
 
 TEST(string_util, find_ignore_case) {
+  EXPECT_EQ(find_ignore_case("abc", "", 2), 2);
+  EXPECT_EQ(find_ignore_case("", ""), 0);
+  EXPECT_EQ(find_ignore_case("abc", "", 4), std::string_view::npos);
   EXPECT_EQ(find_ignore_case("a @IMPORT b", "@import"), 2);
   EXPECT_EQ(find_ignore_case("abc", "d"), std::string_view::npos);
 
@@ -177,6 +200,25 @@ TEST(string_util, find_ignore_case) {
 
   // `from` past the end is not an out-of-range read.
   EXPECT_EQ(find_ignore_case("abc", "a", 99), std::string_view::npos);
+}
+
+TEST(string_util, replacement_and_repetition_boundaries) {
+  std::string text = "abcabc";
+  replace_all(text, "ab", "x");
+  EXPECT_EQ(text, "xcxc");
+  EXPECT_THROW(replace_all(text, "", "x"), std::invalid_argument);
+  EXPECT_EQ(text, "xcxc");
+  EXPECT_EQ(repeat("ab", 3), "ababab");
+  EXPECT_EQ(repeat("ab", 0), "");
+  EXPECT_EQ(repeat("", std::numeric_limits<std::size_t>::max()), "");
+  EXPECT_THROW(repeat("ab", std::numeric_limits<std::size_t>::max()),
+               std::length_error);
+}
+
+TEST(string_util, utf8_length_checks_incomplete_sequences) {
+  EXPECT_EQ(utf8_length("a\xf0\x9f\x98\x80z"), 3);
+  EXPECT_ANY_THROW(utf8_length("\xf0\x9f"));
+  EXPECT_ANY_THROW(utf8_length("\x80"));
 }
 
 namespace {

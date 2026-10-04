@@ -62,6 +62,7 @@ std::string_view rtrim_view(std::string_view s,
 std::string_view trim_view(std::string_view s,
                            CharPredicate is_whitespace = is_ascii_whitespace);
 
+/// Replaces each occurrence; an empty @p search throws `std::invalid_argument`.
 void replace_all(std::string &string, const std::string &search,
                  const std::string &replace);
 

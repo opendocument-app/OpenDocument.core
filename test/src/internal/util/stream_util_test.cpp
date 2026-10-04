@@ -1,4 +1,5 @@
 #include <odr/internal/util/byte_stream_util.hpp>
+#include <odr/internal/util/byte_string.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <ios>
@@ -10,6 +11,21 @@
 #include <gtest/gtest.h>
 
 using namespace odr::internal::util;
+
+TEST(ByteString, patch_offsets_are_checked_before_addition) {
+  std::string bytes(4, '\0');
+  byte_string::write_u32_be(bytes, 0, 0x12345678);
+  EXPECT_EQ(bytes, "\x12\x34\x56\x78");
+  byte_string::write_u16_be(bytes, 2, 0xabcd);
+  EXPECT_EQ(bytes, "\x12\x34\xab\xcd");
+  for (const std::size_t offset :
+       {std::size_t{4}, std::numeric_limits<std::size_t>::max()}) {
+    EXPECT_THROW(byte_string::write_u16_be(bytes, offset, 0),
+                 std::runtime_error);
+    EXPECT_THROW(byte_string::write_u32_be(bytes, offset, 0),
+                 std::runtime_error);
+  }
+}
 
 // A `ViewStream` is seekable: pdf object streams address their members by
 // absolute position rather than reading them in order.
