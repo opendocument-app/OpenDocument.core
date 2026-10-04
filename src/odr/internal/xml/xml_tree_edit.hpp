@@ -48,8 +48,10 @@ public:
   /// Removes @p element_id and its subtree; it keeps its id and stops being
   /// reachable.
   void remove(const ElementIdentifier element_id) const {
-    remove_nodes(node_span(element_id));
+    const NodeSpan span = node_span(element_id);
     m_registry->unlink_child(element_id);
+    m_registry->invalidate(element_id);
+    remove_nodes(span);
   }
 
   /// Splits @p element_id after @p after_id - one of its descendants, or null

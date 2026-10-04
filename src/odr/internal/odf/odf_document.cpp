@@ -2450,15 +2450,9 @@ private:
       return text_id;
     }
 
-    // several runs: the elements over the old children keep their ids and stop
-    // being reachable
     pugi::xml_node holder_node = get_node(holder_id);
-    while (const pugi::xml_node child = holder_node.first_child()) {
-      holder_node.remove_child(child);
-    }
-    ElementRegistry::Element &holder = m_registry->element_at(holder_id);
-    holder.first_child_id = null_element_id;
-    holder.last_child_id = null_element_id;
+    m_registry->invalidate_children(holder_id);
+    holder_node.remove_children();
 
     const pugi::xml_node text_node =
         holder_node.append_child(pugi::xml_node_type::node_pcdata);

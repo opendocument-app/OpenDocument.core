@@ -111,10 +111,32 @@ public:
     return id;
   }
 
-  [[nodiscard]] auto &element_at(this auto &self, const ElementIdentifier id) {
+  [[nodiscard]] ElementIdentifier checked_id(this const auto &self,
+                                             const ElementIdentifier id) {
     const ElementIdentifier index = self.resolve_id(id);
     self.check_element_id(index);
-    return self.m_elements[index - 1];
+    return index;
+  }
+
+  [[nodiscard]] auto &element_at(this auto &self, const ElementIdentifier id) {
+    return self.m_elements[self.checked_id(id) - 1];
+  }
+
+  /// Retires an element and its descendants without reusing their ids.
+  void invalidate(this auto &self, const ElementIdentifier id) {
+    self.element_at(id).type = ElementType::none;
+    self.m_has_removed = true;
+  }
+
+  void invalidate_children(this auto &self, const ElementIdentifier id) {
+    Element &parent = self.element_at(id);
+    for (ElementIdentifier child = parent.first_child_id;
+         child != null_element_id;) {
+      const ElementIdentifier next = self.element_at(child).next_sibling_id;
+      self.invalidate(child);
+      child = next;
+    }
+    parent.first_child_id = parent.last_child_id = null_element_id;
   }
 
   void append_child(const ElementIdentifier parent_id,
@@ -246,9 +268,20 @@ protected:
       throw std::out_of_range(
           "ElementRegistry::check_element_id: identifier out of range");
     }
+    if (m_has_removed) {
+      for (ElementIdentifier at = id; at != null_element_id;
+           at = m_elements[at - 1].parent_id) {
+        if (m_elements[at - 1].type == ElementType::none) {
+          throw std::out_of_range("element has been removed");
+        }
+      }
+    }
   }
 
   std::deque<Element> m_elements;
+
+private:
+  bool m_has_removed{false};
 };
 
 } // namespace odr::internal

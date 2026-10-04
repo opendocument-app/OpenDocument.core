@@ -108,15 +108,15 @@ public:
 
   [[nodiscard]] auto &sheet_element_at(this auto &self,
                                        const ElementIdentifier id) {
-    return self.m_sheets.at(id);
+    return self.m_sheets.at(self.checked_id(id));
   }
   [[nodiscard]] auto &sheet_cell_element_at(this auto &self,
                                             const ElementIdentifier id) {
-    return self.m_sheet_cells.at(id);
+    return self.m_sheet_cells.at(self.checked_id(id));
   }
 
   [[nodiscard]] const Text &text_element_at(const ElementIdentifier id) const {
-    return m_texts.at(id);
+    return m_texts.at(checked_id(id));
   }
 
   [[nodiscard]] const ElementRelations *

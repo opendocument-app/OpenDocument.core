@@ -177,7 +177,8 @@ unknown mimetype are tolerated.
   and saving after an edit invokes it. Unsupported formulas remain empty.
 - **Removed nodes leave tombstones.** Where a write rebuilds a paragraph, the
   old children leave the DOM, and their elements keep their ids and become
-  unreachable. Their `pugi::xml_node` dangles from then on.
+  unreachable. Access through a retired element or its descendants throws
+  before reading its old DOM nodes.
 
 ## Module layout
 

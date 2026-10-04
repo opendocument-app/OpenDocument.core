@@ -368,15 +368,9 @@ public:
 
     pugi::xml_node node = get_node(cell_id);
 
-    // the elements over the old children keep their ids and stop being
-    // reachable
-    while (const pugi::xml_node child = node.first_child()) {
-      node.remove_child(child);
-    }
+    m_registry->invalidate_children(cell_id);
+    node.remove_children();
     node.remove_attribute("t");
-    ElementRegistry::Element &cell_element = m_registry->element_at(cell_id);
-    cell_element.first_child_id = null_element_id;
-    cell_element.last_child_id = null_element_id;
 
     switch (value.type()) {
     case ValueType::unknown:
@@ -470,15 +464,13 @@ public:
     }
     const ElementIdentifier cell_id = cell->element_id;
     pugi::xml_node node = get_node(cell_id);
+    m_registry->invalidate_children(cell_id);
     for (const char *stated : {"v", "is"}) {
       while (const pugi::xml_node child = node.child(stated)) {
         node.remove_child(child);
       }
     }
     node.remove_attribute("t");
-    ElementRegistry::Element &cell_element = m_registry->element_at(cell_id);
-    cell_element.first_child_id = null_element_id;
-    cell_element.last_child_id = null_element_id;
 
     std::string text;
     switch (result.type()) {

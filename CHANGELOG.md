@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Explicit XML element removal and cell-text replacement retire old handles
+  before freeing nodes. Removing a root refuses before changing the DOM.
+
 - CFB validates header fields, directory names, and mini-stream bounds. Version
   3 files tolerate the uninitialized high size word allowed by the format.
 

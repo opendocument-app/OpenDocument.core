@@ -1515,3 +1515,21 @@ TEST(DocumentEdit, pptx_an_align_relative_to_the_direction_refuses) {
   EXPECT_EQ(part_of(document, "ppt/slides/slide1.xml").find("a:pPr"),
             std::string::npos);
 }
+
+TEST(DocumentEdit, removed_subtrees_reject_retained_handles) {
+  for (const Document &document :
+       {two_paragraph_text(), docx_of(docx_paragraphs),
+        pptx_of(pptx_paragraphs)}) {
+    const std::string before = text_of(document.root_element());
+    EXPECT_THROW(document.remove(document.root_element()),
+                 std::invalid_argument);
+    EXPECT_EQ(text_of(document.root_element()), before);
+    const Text text = nth_run(document, 0).as_text();
+    const Element parent = text.parent();
+    document.remove(parent);
+    EXPECT_THROW((void)text.content(), std::out_of_range);
+    EXPECT_THROW((void)text.style(), std::out_of_range);
+    EXPECT_THROW((void)parent.first_child(), std::out_of_range);
+    EXPECT_NO_THROW((void)text_of(document.root_element()));
+  }
+}
