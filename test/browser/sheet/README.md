@@ -15,6 +15,7 @@ open http://localhost:8732/formatting.html
 open http://localhost:8732/cut.html
 open http://localhost:8732/csv.html
 open http://localhost:8732/lines.html
+open http://localhost:8732/locale.html
 ```
 
 `serve` serves `document.css`, `spreadsheet.css`, `editing.js`,
@@ -61,6 +62,8 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
 - `lines.html`: cells of several lines, as two `text:p` and as a `<br>`. The
   overlay holds the lines, Alt or Ctrl with Enter breaks one, and Enter
   commits.
+- `locale.html`: a page that states `data-odr-locale="de-DE"`. A typed
+  number takes the comma of the locale, and a point makes a string.
 - `sorting.html`: the same questions after the sort control moved every row.
   Nothing is merged, because a merged sheet gets no sort control. A row is
   found by its label, not by its position.

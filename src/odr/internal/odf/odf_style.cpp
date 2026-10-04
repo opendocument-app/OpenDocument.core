@@ -674,6 +674,12 @@ void StyleRegistry::generate_styles_() {
   }
 }
 
+pugi::xml_node
+StyleRegistry::default_style_node(const std::string &family) const {
+  const auto it = m_index_default_style.find(family);
+  return it == std::end(m_index_default_style) ? pugi::xml_node() : it->second;
+}
+
 Style *StyleRegistry::generate_default_style_(const std::string &name,
                                               const pugi::xml_node node) {
   std::unique_ptr<Style> &style = m_default_styles[name];

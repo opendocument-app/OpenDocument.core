@@ -473,3 +473,24 @@ TEST(OdfSheetStyle, the_ops_name_a_row_and_a_column) {
                                    {}),
                UnsupportedOperation);
 }
+
+TEST(OdfSheetStyle, the_default_style_states_the_locale) {
+  const auto locale_of = [](const std::string &properties) {
+    return document_of(
+               flat_sheet(string_cell("a"), "",
+                          R"(<style:default-style style:family="table-cell">)"
+                          R"(<style:text-properties )" +
+                              properties + "/></style:default-style>"))
+        .locale();
+  };
+
+  EXPECT_EQ(locale_of(R"(fo:language="de" fo:country="DE")"), "de-DE");
+  EXPECT_EQ(locale_of(R"(fo:language="sr" fo:script="Latn" fo:country="RS")"),
+            "sr-Latn-RS");
+  EXPECT_EQ(locale_of(R"(fo:language="fr" fo:country="none")"), "fr");
+  EXPECT_EQ(locale_of(R"(fo:language="zxx" fo:country="none")"), std::nullopt);
+  EXPECT_EQ(locale_of(R"(fo:language="qlt" fo:country="ES")"
+                      R"( style:rfc-language-tag="ca-ES-valencia")"),
+            "ca-ES-valencia");
+  EXPECT_EQ(locale_of(""), std::nullopt);
+}

@@ -22,5 +22,6 @@ serve(
         "cut.html",
         "csv.html",
         "lines.html",
+        "locale.html",
     ),
 )

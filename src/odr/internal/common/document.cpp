@@ -17,6 +17,8 @@ Document::~Document() = default;
 
 bool Document::is_editable() const noexcept { return false; }
 
+std::optional<std::string> Document::locale() const { return std::nullopt; }
+
 bool Document::is_savable(const bool /*encrypted*/) const noexcept {
   return false;
 }

@@ -244,6 +244,12 @@ void write_body_begin(const Document &document, const WritingState &state) {
               if (document.file_type() == FileType::comma_separated_values) {
                 clb("data-odr-sheet-styles", "false");
               }
+              // the decimal separator a typed number is read with
+              if (const std::optional<std::string> locale = document.locale();
+                  locale.has_value() &&
+                  document.document_type() == DocumentType::spreadsheet) {
+                clb("data-odr-locale", *locale);
+              }
             }
             // not an editing fact: a read-only sheet has a pin to clear
             clb("data-odr-keyboard", keyboard_classes(state.config()));
