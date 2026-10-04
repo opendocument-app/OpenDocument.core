@@ -271,6 +271,12 @@ using SheetFormulaVisitor = std::function<void(
     std::uint32_t column, std::uint32_t row, const TableDimensions &span,
     bool array, const std::string &formula)>;
 
+/// A cell the file states, as the parser indexed it: its position, the
+/// columns and rows a repeat of it stands for, and its element.
+using SheetCellVisitor = std::function<void(
+    std::uint32_t column, std::uint32_t row, const TableDimensions &repeated,
+    ElementIdentifier cell)>;
+
 class SheetAdapter {
 public:
   virtual ~SheetAdapter() = default;
@@ -300,6 +306,14 @@ public:
   virtual void sheet_visit_formulas(
       [[maybe_unused]] const ElementIdentifier element_id,
       [[maybe_unused]] const SheetFormulaVisitor &visitor) const {}
+
+  /// Calls @p visitor for every cell the file states, a repeat once, in no
+  /// set order. False where the engine visits none.
+  virtual bool
+  sheet_visit_cells([[maybe_unused]] const ElementIdentifier element_id,
+                    [[maybe_unused]] const SheetCellVisitor &visitor) const {
+    return false;
+  }
 
   /// Writes @p value into the cell at (@p column, @p row). A value stating
   /// nothing clears it.

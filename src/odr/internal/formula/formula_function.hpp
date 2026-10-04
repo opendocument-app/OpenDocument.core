@@ -116,6 +116,11 @@ order_of_texts(std::string_view a, std::string_view b, bool case_sensitive);
 /// `x^y`, which LibreOffice and Excel compute apart at 0 and below.
 [[nodiscard]] Value power(double x, double y, Dialect dialect);
 
+/// Whether @p a and @p b are one number in @p dialect: LibreOffice decides
+/// as `approxEqual`. Excel's tolerance is not documented, so where
+/// `approxEqual` and a reading to 15 digits decide apart, it has no answer.
+[[nodiscard]] bool same_number(Dialect dialect, double a, double b);
+
 /// Whether @p call follows LibreOffice's rules.
 [[nodiscard]] bool is_libreoffice(const Call &call);
 

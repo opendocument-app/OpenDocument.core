@@ -14,6 +14,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <utility>
 
 using namespace odr;
@@ -21,12 +22,14 @@ using namespace odr::test::ooxml;
 
 namespace {
 
-/// Two sheets, `s` and `t`, with @p calc_chain as `calcChain.xml` and
-/// @p defined_names after the sheets of `workbook.xml`.
+/// Two sheets, `s` and `t`, with @p calc_chain as `calcChain.xml`,
+/// @p defined_names after the sheets of `workbook.xml`, and @p t_extra after
+/// the `sheetData` of `t`.
 std::shared_ptr<internal::abstract::File>
 two_sheets(const std::string &s_data, const std::string &t_data,
            const std::string &calc_chain = "",
-           const std::string &defined_names = "") {
+           const std::string &defined_names = "",
+           const std::string &t_extra = "") {
   internal::zip::ZipArchive zip;
   insert(
       zip, "[Content_Types].xml",
@@ -55,14 +58,14 @@ two_sheets(const std::string &s_data, const std::string &t_data,
   insert(
       zip, "xl/styles.xml",
       R"(<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"/>)");
-  for (const auto &[path, data] :
-       {std::pair("xl/worksheets/sheet1.xml", s_data),
-        std::pair("xl/worksheets/sheet2.xml", t_data)}) {
+  for (const auto &[path, data, extra] :
+       {std::tuple("xl/worksheets/sheet1.xml", s_data, std::string()),
+        std::tuple("xl/worksheets/sheet2.xml", t_data, t_extra)}) {
     insert(
         zip, path,
         R"(<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">)"
         R"(<sheetData>)" +
-            data + R"(</sheetData></worksheet>)");
+            data + R"(</sheetData>)" + extra + R"(</worksheet>)");
   }
   if (!calc_chain.empty()) {
     insert(
@@ -415,4 +418,74 @@ TEST(OoxmlSpreadsheetRows, a_rule_reads_from_its_first_cell_that_stays) {
   const std::string xml = sheet_xml(document);
   EXPECT_TRUE(contains(xml, R"(<conditionalFormatting sqref="A1:A2">)"));
   EXPECT_TRUE(contains(xml, "<formula>#REF!&lt;A1</formula>"));
+}
+
+namespace {
+
+/// The `extLst` of a worksheet holding @p extensions, in the namespaces
+/// Excel writes them with.
+std::string extensions(const std::string &extensions) {
+  return R"(<extLst><ext uri="{78C0D931-6437-407d-A8EE-F0AAD7539E65}")"
+         R"( xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main")"
+         R"( xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main">)" +
+         extensions + R"(</ext></extLst>)";
+}
+
+constexpr const char *rule_and_sparkline =
+    R"(<x14:conditionalFormattings><x14:conditionalFormatting>)"
+    R"(<x14:cfRule type="expression"><xm:f>$B$1&lt;A1</xm:f></x14:cfRule>)"
+    R"(<xm:sqref>A1:A3</xm:sqref></x14:conditionalFormatting>)"
+    R"(</x14:conditionalFormattings>)"
+    R"(<x14:dataValidations count="1"><x14:dataValidation>)"
+    R"(<x14:formula1><xm:f>$C$5</xm:f></x14:formula1><xm:sqref>A2</xm:sqref>)"
+    R"(</x14:dataValidation></x14:dataValidations>)"
+    R"(<x14:sparklineGroups><x14:sparklineGroup><x14:sparklines>)"
+    R"(<x14:sparkline><xm:f>s!A1:A3</xm:f><xm:sqref>B1</xm:sqref>)"
+    R"(</x14:sparkline></x14:sparklines></x14:sparklineGroup>)"
+    R"(</x14:sparklineGroups>)";
+
+} // namespace
+
+TEST(OoxmlSpreadsheetRows, an_excel_2010_extension_moves_with_its_cells) {
+  const Document document =
+      decode(workbook(abc, extensions(rule_and_sparkline)));
+
+  first_sheet(document).insert_rows(0, 1);
+
+  const std::string xml = sheet_xml(document);
+  EXPECT_TRUE(contains(xml, "<xm:f>$B$2&lt;A2</xm:f>"));
+  EXPECT_TRUE(contains(xml, "<xm:sqref>A2:A4</xm:sqref>"));
+  EXPECT_TRUE(contains(xml, "<xm:f>$C$6</xm:f>"));
+  EXPECT_TRUE(contains(xml, "<xm:sqref>A3</xm:sqref>"));
+  EXPECT_TRUE(contains(xml, "<xm:f>s!A2:A4</xm:f>"));
+  EXPECT_TRUE(contains(xml, "<xm:sqref>B2</xm:sqref>"));
+}
+
+TEST(OoxmlSpreadsheetRows, an_excel_2010_extension_goes_with_its_cells) {
+  const Document document =
+      decode(workbook(abc, extensions(rule_and_sparkline)));
+
+  first_sheet(document).delete_rows(0, 3);
+
+  const std::string xml = sheet_xml(document);
+  EXPECT_FALSE(contains(xml, "x14:conditionalFormatting"));
+  EXPECT_FALSE(contains(xml, "x14:sparkline"));
+  EXPECT_FALSE(contains(xml, "x14:dataValidation"));
+  EXPECT_FALSE(contains(xml, "extLst"));
+}
+
+TEST(OoxmlSpreadsheetRows, an_extension_on_another_sheet_moves_what_it_reads) {
+  const Document document = decode(two_sheets(
+      abc, "", "", "",
+      extensions(
+          R"(<x14:conditionalFormattings><x14:conditionalFormatting>)"
+          R"(<x14:cfRule type="expression"><xm:f>s!$A$1&lt;A1</xm:f>)"
+          R"(</x14:cfRule><xm:sqref>A1:A3</xm:sqref>)"
+          R"(</x14:conditionalFormatting></x14:conditionalFormattings>)")));
+
+  first_sheet(document).insert_rows(0, 1);
+
+  const std::string xml = part_of(document, "/xl/worksheets/sheet2.xml");
+  EXPECT_TRUE(contains(xml, "<xm:f>s!$A$2&lt;A1</xm:f>"));
+  EXPECT_TRUE(contains(xml, "<xm:sqref>A1:A3</xm:sqref>"));
 }

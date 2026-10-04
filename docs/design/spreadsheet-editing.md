@@ -271,6 +271,9 @@ and the commits name. Git holds the full text of each decision.
   - XLSX page breaks, the ranges of xlsx and ods charts, and the source and
     the place of an xlsx pivot table. An edit that cuts a pivot table, or
     removes all of its source, refuses. A source in another workbook stays.
+  - The Excel 2010 extensions of an xlsx worksheet: an `x14` conditional
+    format, validation and sparkline. A rule on another sheet moves the
+    references it reads in the edited one.
 - **Formula evaluation** (decisions 29 to 33).
   - `formula::evaluate` gives a value or no answer, never a wrong value. An
     `.ods` follows LibreOffice and reads `table:calculation-settings`. An
@@ -282,6 +285,14 @@ and the commits name. Git holds the full text of each decision.
     reference or an array. A reference stays one until a function reads it.
     An error propagates left to right. Two numbers are equal where they agree
     to about 15 significant digits, and an `.ods` sum adds as `KahanSum`.
+    Where Excel's undocumented tolerance and a reading to 15 digits decide
+    apart, an `.xlsx` comparison has no answer.
+  - A range reads only the cells its sheet states, through
+    `SheetAdapter::sheet_visit_cells`, so a repeated `.ods` run reads its
+    value once. A formula nests 64 levels at most, as Excel writes them.
+  - An `.ods` spells a boolean in `&` as the LibreOffice in its
+    `meta:generator` does: `1` before 27.2, `TRUE` from it, and no answer
+    for another application.
   - 116 functions of mathematics, logic, information, text, lookup, the
     conditional aggregates and dates, and the names a document defines. An
     array formula, a volatile function, a reference into another document
@@ -314,29 +325,9 @@ and the commits name. Git holds the full text of each decision.
 
 ## Open work
 
-- **The Excel 2010 extensions of an xlsx worksheet do not move.** A
-  worksheet can state, in its `extLst`, an `x14:conditionalFormatting` (a
-  data bar with a negative fill, or a rule that reads another sheet), an
-  `x14:dataValidation` (a list from another sheet), and an
-  `x14:sparklineGroup`. They state their ranges in `xm:sqref` and their
-  formulas in `xm:f`. After a structural edit they stay at their old cells.
-  No spreadsheet in `test/data/input` states one. The fix moves `xm:sqref`
-  as `sqref` and `xm:f` as a rule formula, with the code of decision 28.
-- **A range is read one cell at a time.** `formula::CellSource` has no read
-  of a whole range, so the cells of a repeated `.ods` run are read one by
-  one, and a whole column reads every cell up to the extent of its sheet.
-  The corpus evaluates in seconds, so it has not mattered yet.
-- **Excel's tolerance in a comparison is not documented.** Both dialects
-  compare two numbers as LibreOffice's `approxEqual` does. A pair that
-  Excel decides apart near the 15th digit gets the LibreOffice answer.
-- **The parser has no limit on nesting.** A formula nested some thousand
-  levels deep can overflow the stack in the parser or the evaluator. Excel
-  writes 64 levels of functions at most, so no file of Excel reaches it.
-- **LibreOffice may change how `&` spells a boolean.** Its master branch
-  formats a boolean operand of `&` as `TRUE` or `FALSE`
-  (`PopOperandStringForConcat`). The LibreOffice dialect gives `1` and `0`,
-  as the LibreOffice that the tests ran gives. When a release ships the
-  change, a boolean in a concatenation of an `.ods` gets no answer.
+- **A structural edit leaves a formula that does not parse as it is.** That
+  includes a formula nested past 64 levels. The edit should refuse instead,
+  so that no reference ends up wrong.
 - **Live results in the page.** The page has no evaluator, so it marks the
   formula cells stale until something computes them. There are four ways to
   compute them while the user edits:

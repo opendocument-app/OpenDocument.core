@@ -158,6 +158,17 @@ TEST(SheetRecalculation, what_the_evaluator_does_not_know_stays_without_one) {
   EXPECT_EQ(value_at(document, 2, 0).type(), ValueType::unknown);
 }
 
+TEST(SheetRecalculation, a_range_reads_the_stale_cells_it_holds) {
+  const Document document =
+      ods(row(number("1")) + row(computed("of:=[.A1]*2", "2")) +
+          row(computed("of:=SUM([.A1:.A2])", "3")));
+
+  first_sheet(document).set_cell(0, 0, CellValue(5));
+  document.recalculate();
+
+  EXPECT_EQ(value_at(document, 0, 2).number(), 15);
+}
+
 TEST(SheetRecalculation, a_running_total_down_a_column) {
   std::string rows = row(number("1"));
   for (int i = 2; i <= 2000; ++i) {

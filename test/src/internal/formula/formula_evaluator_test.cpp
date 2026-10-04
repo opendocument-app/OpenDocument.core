@@ -207,3 +207,25 @@ TEST(FormulaEvaluator, a_whole_column_reaches_past_the_extent_of_its_sheet) {
   EXPECT_EQ(xlsx("=t!A:A"), number(0));
   EXPECT_EQ(xlsx("=SUM(t!A:A)"), number(5));
 }
+
+TEST(FormulaEvaluator, a_libreoffice_boolean_in_a_join_follows_its_version) {
+  const auto joined = [](const std::optional<bool> boolean_word) {
+    return evaluated(R"(=TRUE()&"")", Syntax::opendocument,
+                     Settings{.dialect = Dialect::libreoffice,
+                              .boolean_word = boolean_word});
+  };
+  EXPECT_EQ(joined(false), text("1"));
+  EXPECT_EQ(joined(true), text("TRUE"));
+  EXPECT_EQ(joined(std::nullopt), std::nullopt);
+  // CONCATENATE spells it as a number in every version
+  EXPECT_EQ(evaluated(R"(=CONCATENATE(TRUE();""))", Syntax::opendocument,
+                      Settings{.dialect = Dialect::libreoffice}),
+            text("1"));
+}
+
+TEST(FormulaEvaluator, an_excel_comparison_near_the_15th_digit_has_no_answer) {
+  // approxEqual decides apart, and the 15 digits a cell shows are the same
+  EXPECT_EQ(xlsx("=1+4E-15=1"), std::nullopt);
+  EXPECT_EQ(ods("=1+4E-15=1"), boolean(false));
+  EXPECT_EQ(xlsx("=0.1+0.2=0.3"), boolean(true));
+}

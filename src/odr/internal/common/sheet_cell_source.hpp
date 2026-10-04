@@ -9,6 +9,7 @@
 #include <odr/internal/formula/formula_value.hpp>
 
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -32,6 +33,11 @@ public:
   [[nodiscard]] std::optional<formula::Value>
   cell(const SheetPosition &position) const override;
   [[nodiscard]] TableDimensions extent(std::uint32_t sheet) const override;
+  void
+  for_each_cell(const formula::Area &area,
+                const std::function<void(const SheetPosition &,
+                                         const std::optional<formula::Value> &)>
+                    &visit) const override;
   [[nodiscard]] std::optional<formula::Node>
   name(std::string_view name, std::uint32_t sheet) const override;
 
@@ -41,6 +47,26 @@ public:
   [[nodiscard]] const std::vector<Sheet> &sheets() const noexcept;
 
 private:
+  /// A run of cells one row band states alike: the columns, and what each
+  /// cell holds.
+  struct CellRun final {
+    std::uint32_t first_column{0};
+    std::uint32_t end_column{0};
+    std::optional<formula::Value> value{};
+  };
+  /// Rows that state their cells alike: a repeated row, or a single one.
+  struct RowBand final {
+    std::uint32_t first_row{0};
+    std::uint32_t end_row{0};
+    std::vector<CellRun> cells{};
+  };
+
+  /// The bands of @p sheet in reading order, nothing where its engine visits
+  /// no cells.
+  [[nodiscard]] const std::optional<std::vector<RowBand>> &
+  bands(std::uint32_t sheet) const;
+
+  const abstract::ElementAdapter *m_adapter{nullptr};
   std::vector<Sheet> m_sheets;
   /// The sheets by their name in lower case.
   std::unordered_map<std::string, std::uint32_t> m_by_name;
@@ -51,6 +77,8 @@ private:
   mutable std::unordered_map<SheetPosition, std::optional<formula::Value>>
       m_cells;
   mutable std::unordered_map<std::uint32_t, TableDimensions> m_extents;
+  mutable std::unordered_map<std::uint32_t, std::optional<std::vector<RowBand>>>
+      m_bands;
 };
 
 } // namespace odr::internal

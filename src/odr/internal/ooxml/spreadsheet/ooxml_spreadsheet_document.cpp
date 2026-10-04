@@ -327,6 +327,16 @@ public:
       }
     }
   }
+  bool
+  sheet_visit_cells(const ElementIdentifier element_id,
+                    const abstract::SheetCellVisitor &visitor) const override {
+    for (const auto &[position, cell] :
+         m_registry->sheet_element_at(element_id).cells) {
+      visitor(position.column, position.row, TableDimensions(1, 1),
+              cell.element_id);
+    }
+    return true;
+  }
   /// ECMA-376 18.3.1.4: a cell states its value as `v`, or as the text under
   /// `is` with `t="inlineStr"`. A written string goes inline - rewriting the
   /// shared entry would rewrite every other cell indexing it.

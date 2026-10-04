@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- An inserted or deleted row or column moves the Excel 2010 extensions of an
+  xlsx worksheet: an `x14` conditional format, validation and sparkline, and
+  the references a rule on another sheet reads in the edited one.
+- A formula nested more than 64 levels deep does not parse, and gets no
+  answer. An ods `&` of a boolean follows the LibreOffice in `meta:generator`,
+  and an xlsx comparison near the 15th digit gets no answer.
 - `Document::recalculate` in every binding: `recalculate` in python, java,
   npm and swift, and `recalculateWithError:` in objective-c. Each returns the
   changed, circular and unevaluated cells as positions.

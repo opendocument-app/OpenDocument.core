@@ -233,7 +233,7 @@ private:
   order_with(const Value &value) const {
     if (m_number.has_value()) {
       if (const auto *number = std::get_if<double>(&value.content)) {
-        if (approximately_equal(*number, *m_number)) {
+        if (same_number(m_call->settings().dialect, *number, *m_number)) {
           return std::strong_ordering::equal;
         }
         return *number < *m_number ? std::strong_ordering::less
@@ -262,7 +262,8 @@ private:
         return std::nullopt;
       }
       if (read.has_value() && std::holds_alternative<double>(*read) &&
-          approximately_equal(std::get<double>(*read), *m_number)) {
+          same_number(m_call->settings().dialect, std::get<double>(*read),
+                      *m_number)) {
         return std::strong_ordering::equal;
       }
       return std::nullopt;
@@ -434,7 +435,7 @@ bool is_lookup_match(const Call &call, const Value &wanted,
   const Value value = as_dialect(call, stated);
   if (const auto *number = std::get_if<double>(&wanted.content)) {
     return value.holds<double>() &&
-           approximately_equal(value.get<double>(), *number);
+           same_number(call.settings().dialect, value.get<double>(), *number);
   }
   if (const auto *text = std::get_if<std::string>(&wanted.content)) {
     return value.holds<std::string>() &&
@@ -495,7 +496,8 @@ position_of(const Call &call, const Value &wanted, const std::uint32_t count,
         found == static_cast<std::uint32_t>(i - 1)) {
       throw NoAnswer{};
     }
-    if (*cell <= *number || approximately_equal(*cell, *number)) {
+    if (*cell <= *number ||
+        same_number(call.settings().dialect, *cell, *number)) {
       found = i;
     }
     previous = *cell;

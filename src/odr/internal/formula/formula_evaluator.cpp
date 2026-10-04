@@ -102,21 +102,13 @@ public:
                 const std::function<void(const SheetPosition &, const Value &)>
                     &visit) const {
     for (const Area &area : reference.areas) {
-      const TableDimensions extent = m_source->extent(area.sheet);
-      if (extent.rows == 0 || extent.columns == 0) {
-        continue;
-      }
-      const std::uint32_t last_row =
-          std::min(area.range.to().row, extent.rows - 1);
-      const std::uint32_t last_column =
-          std::min(area.range.to().column, extent.columns - 1);
-      for (std::uint32_t row = area.range.from().row; row <= last_row; ++row) {
-        for (std::uint32_t column = area.range.from().column;
-             column <= last_column; ++column) {
-          const SheetPosition position(area.sheet, column, row);
-          visit(position, read(position));
+      m_source->for_each_cell(area, [&](const SheetPosition &position,
+                                        const std::optional<Value> &value) {
+        if (!value.has_value()) {
+          throw NoAnswer{};
         }
-      }
+        visit(position, *value);
+      });
     }
   }
 
@@ -598,6 +590,24 @@ private:
   }
 
   [[nodiscard]] Value concatenate(const Value &a, const Value &b) const {
+    if (m_settings->dialect == Dialect::libreoffice &&
+        (a.holds<bool>() || b.holds<bool>())) {
+      if (!m_settings->boolean_word.has_value()) {
+        throw NoAnswer{};
+      }
+      if (*m_settings->boolean_word) {
+        const auto word = [](const Value &value) {
+          return value.holds<bool>()
+                     ? Value{std::string(value.get<bool>() ? "TRUE" : "FALSE")}
+                     : value;
+        };
+        return concatenate_texts(word(a), word(b));
+      }
+    }
+    return concatenate_texts(a, b);
+  }
+
+  [[nodiscard]] Value concatenate_texts(const Value &a, const Value &b) const {
     const Text left = text(a);
     if (const auto *error = std::get_if<ErrorType>(&left)) {
       return Value{*error};
@@ -662,7 +672,8 @@ private:
       if (a.holds<double>()) {
         const double x = a.get<double>();
         const double y = b.get<double>();
-        order = approximately_equal(x, y) ? std::strong_ordering::equal
+        order = same_number(m_settings->dialect, x, y)
+                    ? std::strong_ordering::equal
                 : x <=> y == std::partial_ordering::less
                     ? std::strong_ordering::less
                     : std::strong_ordering::greater;
@@ -792,6 +803,26 @@ formula::Value formula::power(const double x, const double y,
     return Value{ErrorType::number};
   }
   return Value{result};
+}
+
+void formula::CellSource::for_each_cell(
+    const Area &area,
+    const std::function<void(const SheetPosition &,
+                             const std::optional<Value> &)> &visit) const {
+  const TableDimensions extent = this->extent(area.sheet);
+  if (extent.rows == 0 || extent.columns == 0) {
+    return;
+  }
+  const std::uint32_t last_row = std::min(area.range.to().row, extent.rows - 1);
+  const std::uint32_t last_column =
+      std::min(area.range.to().column, extent.columns - 1);
+  for (std::uint32_t row = area.range.from().row; row <= last_row; ++row) {
+    for (std::uint32_t column = area.range.from().column; column <= last_column;
+         ++column) {
+      const SheetPosition position(area.sheet, column, row);
+      visit(position, cell(position));
+    }
+  }
 }
 
 std::strong_ordering formula::order_of_texts(const std::string_view a,

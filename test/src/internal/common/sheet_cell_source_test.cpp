@@ -207,3 +207,55 @@ TEST(SheetCellSource, an_xlsx_name_states_its_sheet_by_index) {
   ASSERT_TRUE(rate.has_value());
   EXPECT_EQ(rate->get<formula::NumberLiteral>().value, 0.5);
 }
+
+TEST(SheetCellSource, the_generator_of_an_ods_decides_a_boolean_in_a_join) {
+  const auto boolean_word = [](const std::string &meta) {
+    const std::shared_ptr<abstract::Document> document =
+        decode(std::make_shared<MemoryFile>(
+            R"(<?xml version="1.0" encoding="UTF-8"?>)"
+            R"(<office:document office:mimetype=")"
+            R"(application/vnd.oasis.opendocument.spreadsheet">)" +
+            meta +
+            R"(<office:body><office:spreadsheet><table:table table:name="s">)"
+            R"(</table:table></office:spreadsheet></office:body>)"
+            R"(</office:document>)"));
+    return SheetCellSource(*document).settings().boolean_word;
+  };
+  const auto generator = [](const std::string &name) {
+    return "<office:meta><meta:generator>" + name +
+           "</meta:generator></office:meta>";
+  };
+  EXPECT_EQ(boolean_word(generator("LibreOffice/26.8.1.2$Linux_X86_64")),
+            false);
+  EXPECT_EQ(boolean_word(generator("LibreOffice/27.2.0.3$Linux_X86_64")), true);
+  EXPECT_EQ(boolean_word(generator("LibreOfficeDev/27.2.0.0.alpha0$Linux")),
+            std::nullopt);
+  EXPECT_EQ(boolean_word(generator("MicrosoftOffice/16.00$Windows_X86_64")),
+            std::nullopt);
+  EXPECT_EQ(boolean_word(""), std::nullopt);
+}
+
+TEST(SheetCellSource, a_range_reads_what_its_cells_read) {
+  const std::shared_ptr<abstract::Document> document = ods(
+      row(R"(<table:table-cell table:number-columns-repeated="3")"
+          R"( office:value-type="float" office:value="2">)"
+          R"(<text:p>2</text:p></table:table-cell><table:table-cell/>)"
+          R"(<table:table-cell office:value-type="string"><text:p>x</text:p>)"
+          R"(</table:table-cell>)") +
+      R"(<table:table-row table:number-rows-repeated="2">)"
+      R"(<table:table-cell/><table:table-cell office:value-type="float")"
+      R"( office:value="5"><text:p>5</text:p></table:table-cell>)"
+      R"(</table:table-row>)");
+  const SheetCellSource source(*document);
+
+  std::vector<std::string> visited;
+  source.for_each_cell(
+      formula::Area{0, TableRange({0, 0}, {4, 2})},
+      [&](const SheetPosition &position, const std::optional<Value> &value) {
+        ASSERT_TRUE(value.has_value());
+        EXPECT_EQ(source.cell(position), value) << position.to_string();
+        visited.push_back(position.to_string());
+      });
+  EXPECT_EQ(visited, (std::vector<std::string>{"0!A1", "0!B1", "0!C1", "0!E1",
+                                               "0!B2", "0!B3"}));
+}

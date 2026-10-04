@@ -127,14 +127,16 @@ inline std::optional<Value> evaluated(const std::string &formula,
   return evaluate(*node, formula_cell, source, settings);
 }
 
-/// As LibreOffice computes a formula of an `.ods` that states no settings.
+/// As LibreOffice computes a formula of an `.ods` that states no settings:
+/// a LibreOffice before 27.2, which the probes ran.
 inline std::optional<Value> ods(const std::string &formula,
                                 const Cells &source = cells()) {
   return evaluated(formula, Syntax::opendocument,
                    Settings{.dialect = Dialect::libreoffice,
                             .case_sensitive = true,
                             .wildcards = false,
-                            .regular_expressions = true},
+                            .regular_expressions = true,
+                            .boolean_word = false},
                    source);
 }
 

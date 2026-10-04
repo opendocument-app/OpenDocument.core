@@ -64,11 +64,27 @@ public:
   StaleCells(const SheetCellSource *base,
              const std::unordered_map<SheetPosition, Formula> *formulas,
              std::unordered_set<SheetPosition> stale)
-      : m_base{base}, m_formulas{formulas}, m_stale{std::move(stale)} {}
+      : m_base{base}, m_formulas{formulas}, m_stale{std::move(stale)},
+        m_stale_ordered(m_stale.begin(), m_stale.end()) {
+    std::ranges::sort(m_stale_ordered);
+  }
 
   [[nodiscard]] std::optional<std::uint32_t>
   sheet(const std::string_view name) const override {
     return m_base->sheet(name);
+  }
+  /// A stale cell is computed where its position is read, so an area holding
+  /// one is read position by position.
+  void
+  for_each_cell(const formula::Area &area,
+                const std::function<void(const SheetPosition &,
+                                         const std::optional<formula::Value> &)>
+                    &visit) const override {
+    if (holds_stale(area)) {
+      CellSource::for_each_cell(area, visit);
+    } else {
+      m_base->for_each_cell(area, visit);
+    }
   }
   [[nodiscard]] TableDimensions
   extent(const std::uint32_t sheet) const override {
@@ -129,9 +145,26 @@ public:
   }
 
 private:
+  [[nodiscard]] bool holds_stale(const formula::Area &area) const {
+    const TablePosition &from = area.range.from();
+    const TablePosition &to = area.range.to();
+    for (auto it = std::ranges::lower_bound(
+             m_stale_ordered, SheetPosition(area.sheet, 0, from.row));
+         it != m_stale_ordered.end() && it->sheet == area.sheet &&
+         it->cell.row <= to.row;
+         ++it) {
+      if (it->cell.column >= from.column && it->cell.column <= to.column) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   const SheetCellSource *m_base{nullptr};
   const std::unordered_map<SheetPosition, Formula> *m_formulas{nullptr};
   std::unordered_set<SheetPosition> m_stale;
+  /// The stale positions in reading order.
+  std::vector<SheetPosition> m_stale_ordered;
   mutable std::unordered_map<SheetPosition, std::optional<formula::Value>>
       m_results;
   mutable std::vector<SheetPosition> m_stack;
