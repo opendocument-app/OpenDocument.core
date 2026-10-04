@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- AES-GCM decryption returns the exact plaintext, without a zero-filled suffix.
+
 - ZIP entry streams release their extraction buffers and reject truncated or
   CRC-corrupt data. Failed archive saves also release writer state.
 

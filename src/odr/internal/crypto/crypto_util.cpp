@@ -205,9 +205,8 @@ std::string util::decrypt_aes_gcm(const std::string_view key,
     throw std::runtime_error("IV mismatch");
   }
 
-  std::string result(input.size(), '\0');
-
   const std::size_t cipher_size = input.size() - iv_size - mac_size;
+  std::string result(cipher_size, '\0');
   auto *message = reinterpret_cast<byte *>(result.data());
   const auto *mac =
       reinterpret_cast<const byte *>(input.data() + input.size() - mac_size);
