@@ -39,6 +39,7 @@ struct Blank final {
   std::string_view mimetype;
   std::string_view font_face_decls;
   std::string_view styles;
+  std::string_view master_page;
   std::string_view page_layout;
   std::string_view body;
 };
@@ -50,16 +51,36 @@ constexpr Blank text{
     .styles =
         R"(<style:default-style style:family="paragraph"><style:text-properties style:font-name="Liberation Serif" fo:font-size="12pt"/></style:default-style>)"
         R"(<style:style style:name="Standard" style:family="paragraph" style:class="text"/>)",
+    .master_page = "Standard",
     .page_layout =
         R"(<style:page-layout-properties fo:page-width="21cm" fo:page-height="29.7cm" style:print-orientation="portrait" fo:margin-top="2cm" fo:margin-bottom="2cm" fo:margin-left="2cm" fo:margin-right="2cm" style:writing-mode="lr-tb"/>)",
     .body =
         R"(<office:text><text:p text:style-name="Standard"/></office:text>)",
 };
 
+constexpr Blank spreadsheet{
+    .mimetype = "application/vnd.oasis.opendocument.spreadsheet",
+    .font_face_decls =
+        R"(<style:font-face style:name="Liberation Sans" svg:font-family="'Liberation Sans'" style:font-family-generic="swiss" style:font-pitch="variable"/>)",
+    .styles =
+        R"(<style:default-style style:family="table-cell"><style:text-properties style:font-name="Liberation Sans" fo:font-size="10pt"/></style:default-style>)"
+        R"(<style:style style:name="Default" style:family="table-cell"/>)",
+    .master_page = "Default",
+    .page_layout =
+        R"(<style:page-layout-properties fo:page-width="21cm" fo:page-height="29.7cm" style:print-orientation="portrait" fo:margin-top="2cm" fo:margin-bottom="2cm" fo:margin-left="2cm" fo:margin-right="2cm" style:writing-mode="lr-tb"/>)",
+    // ODF 1.3 part 3, 9.1.2: a table holds at least one column and one row
+    .body = R"(<office:spreadsheet><table:table table:name="Sheet1">)"
+            R"(<table:table-column table:default-cell-style-name="Default"/>)"
+            R"(<table:table-row><table:table-cell/></table:table-row>)"
+            R"(</table:table></office:spreadsheet>)",
+};
+
 const Blank &find_blank(const FileType type) {
   switch (type) {
   case FileType::opendocument_text:
     return text;
+  case FileType::opendocument_spreadsheet:
+    return spreadsheet;
   default:
     throw UnsupportedFileType(type);
   }
@@ -103,10 +124,11 @@ std::string styles(const Blank &blank) {
   result +=
       R"(</office:styles><office:automatic-styles><style:page-layout style:name="pm1">)";
   result += blank.page_layout;
-  result +=
-      "</style:page-layout></office:automatic-styles>"
-      R"(<office:master-styles><style:master-page style:name="Standard" style:page-layout-name="pm1"/></office:master-styles>)"
-      "</office:document-styles>";
+  result += "</style:page-layout></office:automatic-styles>"
+            R"(<office:master-styles><style:master-page style:name=")";
+  result += blank.master_page;
+  result += R"(" style:page-layout-name="pm1"/></office:master-styles>)"
+            "</office:document-styles>";
   return result;
 }
 

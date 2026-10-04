@@ -2,6 +2,7 @@
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+#include <odr/html.hpp>
 #include <odr/odr.hpp>
 #include <odr/style.hpp>
 
@@ -54,6 +55,23 @@ TEST(DocumentCreate, makes_every_type_with_the_capability) {
         << file_type_to_string(type);
     EXPECT_TRUE(document.is_editable()) << file_type_to_string(type);
     EXPECT_TRUE(document.is_savable()) << file_type_to_string(type);
+  }
+}
+
+TEST(DocumentCreate, renders_every_type_to_html) {
+  for (const FileType type : all_file_types()) {
+    if (!capabilities_by_file_type(type).create) {
+      continue;
+    }
+    const Document document = create_document(type);
+    HtmlConfig config;
+    config.editable = true;
+    const HtmlService service = html::translate(document, config);
+
+    std::ostringstream out;
+    service.list_views().at(0).write_html(out);
+    EXPECT_NE(out.str().find("data-odr-id"), std::string::npos)
+        << file_type_to_string(type);
   }
 }
 
@@ -115,4 +133,29 @@ TEST(DocumentCreate, is_the_same_bytes_on_every_call) {
     create_document(type).save(second);
     EXPECT_EQ(first.str(), second.str()) << file_type_to_string(type);
   }
+}
+
+TEST(DocumentCreate, ods_holds_one_empty_sheet) {
+  const Document document = create_document(FileType::opendocument_spreadsheet);
+
+  const std::vector<Element> sheets = children(document.root_element());
+  ASSERT_EQ(sheets.size(), 1);
+  ASSERT_EQ(sheets[0].type(), ElementType::sheet);
+  const Sheet sheet = sheets[0].as_sheet();
+  EXPECT_EQ(sheet.name(), "Sheet1");
+  EXPECT_EQ(sheet.cell(0, 0).value_type(), ValueType::unknown);
+}
+
+TEST(DocumentCreate, ods_takes_an_edit_and_keeps_it_through_a_save) {
+  const Document document = create_document(FileType::opendocument_spreadsheet);
+  const Sheet sheet = (*document.root_element().children().begin()).as_sheet();
+
+  sheet.set_cell(0, 0, CellValue("hello"));
+  sheet.set_cell(2, 4, CellValue(12.5));
+
+  const Document saved = reopen(document);
+  const Sheet saved_sheet =
+      (*saved.root_element().children().begin()).as_sheet();
+  EXPECT_EQ(saved_sheet.cell(0, 0).value().text(), "hello");
+  EXPECT_EQ(saved_sheet.cell(2, 4).value().number(), 12.5);
 }
