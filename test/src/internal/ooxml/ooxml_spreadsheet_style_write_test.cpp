@@ -266,3 +266,136 @@ TEST(OoxmlSpreadsheetStyleWrite, a_line_break_makes_the_cell_wrap) {
   EXPECT_EQ(sheet.cell_style(0, 0).wrap_text, true);
   EXPECT_NE(sheet.cell_style(1, 0).wrap_text, true);
 }
+
+namespace {
+
+/// `A1` red on its own, `B1` red through column B, and `A3`.
+Document rows_and_columns() {
+  return decode(workbook(
+      R"(<row r="1"><c r="A1" s="1" t="inlineStr"><is><t>a</t></is></c>)"
+      R"(<c r="B1" t="inlineStr"><is><t>b</t></is></c></row>)"
+      R"(<row r="3"><c r="A3" t="inlineStr"><is><t>x</t></is></c></row>)",
+      "", "", "", R"(<cols><col min="2" max="2" width="9" style="1"/></cols>)",
+      red_styles));
+}
+
+std::string sheet_of(const Document &document) {
+  std::ostringstream xml;
+  xml << reopened(document)
+             .as_filesystem()
+             .open("/xl/worksheets/sheet1.xml")
+             .stream()
+             ->rdbuf();
+  return xml.str();
+}
+
+} // namespace
+
+TEST(OoxmlSpreadsheetStyleWrite, a_row_style_keeps_what_each_cell_showed) {
+  const Document document = rows_and_columns();
+
+  first_sheet(document).set_row_style(0, {}, bold());
+
+  const Document saved = reopened(document);
+  const Sheet sheet = first_sheet(saved);
+  EXPECT_EQ(fill_at(sheet, 0, 0), 0xff0000u);
+  EXPECT_EQ(fill_at(sheet, 1, 0), 0xff0000u);
+  EXPECT_EQ(text_style_at(sheet, 0).font_weight, FontWeight::bold);
+  EXPECT_EQ(text_style_at(sheet, 1).font_weight, FontWeight::bold);
+  EXPECT_NE(sheet_of(document).find(R"(customFormat="1")"), std::string::npos);
+}
+
+TEST(OoxmlSpreadsheetStyleWrite, a_row_style_reaches_past_the_cells) {
+  const Document document = rows_and_columns();
+
+  first_sheet(document).set_row_style(1, fill(0x00ff00_rgb), {});
+
+  const Document saved = reopened(document);
+  const Sheet sheet = first_sheet(saved);
+  EXPECT_EQ(fill_at(sheet, 0, 1), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 1, 1), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 5, 1), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 0, 2), std::nullopt);
+  EXPECT_EQ(fill_at(sheet, 1, 2), 0xff0000u);
+}
+
+/// A row's format hides its column's where the row states no `c`, so the
+/// crossing gets one.
+TEST(OoxmlSpreadsheetStyleWrite, a_row_style_keeps_a_styled_column) {
+  const Document document = rows_and_columns();
+
+  first_sheet(document).set_row_style(1, {}, bold());
+
+  const Document saved = reopened(document);
+  const Sheet sheet = first_sheet(saved);
+  EXPECT_EQ(fill_at(sheet, 1, 1), 0xff0000u);
+  EXPECT_EQ(fill_at(sheet, 0, 1), std::nullopt);
+}
+
+TEST(OoxmlSpreadsheetStyleWrite, a_column_style_reaches_every_row) {
+  const Document document = rows_and_columns();
+
+  first_sheet(document).set_column_style(0, fill(0x00ff00_rgb), {});
+  first_sheet(document).set_column_style(1, {}, bold());
+
+  const Document saved = reopened(document);
+  const Sheet sheet = first_sheet(saved);
+  EXPECT_EQ(fill_at(sheet, 0, 0), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 0, 2), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 0, 100), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 1, 100), 0xff0000u);
+  EXPECT_EQ(text_style_at(sheet, 1).font_weight, FontWeight::bold);
+}
+
+TEST(OoxmlSpreadsheetStyleWrite, a_column_without_a_col_gets_one_of_its_own) {
+  const Document document = rows_and_columns();
+
+  first_sheet(document).set_row_style(0, {}, bold());
+  first_sheet(document).set_column_style(3, fill(0x00ff00_rgb), {});
+
+  const Document saved = reopened(document);
+  const Sheet sheet = first_sheet(saved);
+  EXPECT_EQ(fill_at(sheet, 3, 50), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 2, 50), std::nullopt);
+  // row 1 formats itself, so its crossing states a `c`
+  EXPECT_EQ(fill_at(sheet, 3, 0), 0x00ff00u);
+  EXPECT_NE(sheet_of(document).find(R"(<col min="2" max="2" width="9")"),
+            std::string::npos);
+  EXPECT_NE(sheet_of(document).find(R"(width="8.43" min="4" max="4")"),
+            std::string::npos);
+}
+
+TEST(OoxmlSpreadsheetStyleWrite, a_col_of_several_columns_is_cut) {
+  const Document document = decode(workbook(
+      one_string, "", "", "",
+      R"(<cols><col min="1" max="5" width="12" customWidth="1"/></cols>)"));
+
+  first_sheet(document).set_column_style(2, fill(0x00ff00_rgb), {});
+
+  const std::string xml = sheet_of(document);
+  EXPECT_NE(xml.find(R"(<col min="1" max="2" width="12" customWidth="1"/>)"),
+            std::string::npos)
+      << xml;
+  EXPECT_NE(xml.find(R"(<col min="4" max="5" width="12" customWidth="1"/>)"),
+            std::string::npos);
+  const Document saved = reopened(document);
+  const Sheet sheet = first_sheet(saved);
+  EXPECT_EQ(fill_at(sheet, 2, 9), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 1, 9), std::nullopt);
+  EXPECT_EQ(fill_at(sheet, 3, 9), std::nullopt);
+}
+
+TEST(OoxmlSpreadsheetStyleWrite, the_ops_name_a_row_and_a_column) {
+  const Document document = rows_and_columns();
+
+  document.edit(R"({"version": 2, "ops": [)"
+                R"({"op": "setRowStyle", "sheet": 0, "row": 2,)"
+                R"( "style": {"fill": "#00ff00"}},)"
+                R"({"op": "setColumnStyle", "sheet": 0, "column": 4,)"
+                R"( "style": {"fill": "#0000ff"}}]})");
+
+  const Document saved = reopened(document);
+  const Sheet sheet = first_sheet(saved);
+  EXPECT_EQ(fill_at(sheet, 0, 2), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 4, 7), 0x0000ffu);
+}
