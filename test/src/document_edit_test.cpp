@@ -17,6 +17,7 @@
 
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
+#include <pugixml.hpp>
 
 #include <cstdint>
 #include <memory>
@@ -1585,4 +1586,43 @@ TEST(DocumentEdit, docx_appends_only_to_inline_containers) {
   EXPECT_EQ(part_of(document, "word/document.xml"), before);
   (void)document.append_text(nth_paragraph(document, 0), "two");
   EXPECT_EQ(text_of(reopened(document).root_element()), "onetwo");
+}
+
+TEST(DocumentEdit, pptx_text_edits_keep_one_text_node_per_run) {
+  const Document document = pptx_of(pptx_paragraphs);
+  const Text anchor = nth_run(document, 0).as_text();
+  anchor.set_content("one  two\tthree");
+  const Text before = document.insert_text_before(anchor, "before");
+  const Text after = document.insert_text_after(anchor, "after");
+  (void)document.append_text(after.parent(), "appended");
+  EXPECT_EQ(before.style().font_style, FontStyle::italic);
+  EXPECT_EQ(after.style().font_style, FontStyle::italic);
+  EXPECT_EQ(text_of(document.root_element()),
+            "beforeone  two\tthreeafterappendedplain");
+  (void)document.split_paragraph(nth_paragraph(document, 0).as_paragraph(),
+                                 anchor);
+  document.remove(after);
+  EXPECT_THROW((void)after.content(), std::out_of_range);
+  pugi::xml_document xml;
+  ASSERT_TRUE(
+      xml.load_string(part_of(document, "ppt/slides/slide1.xml").c_str()));
+  EXPECT_EQ(xml.select_nodes("//a:tab").size(), 0);
+  for (const auto run : xml.select_nodes("//a:r")) {
+    EXPECT_EQ(run.node().select_nodes("a:t").size(), 1);
+  }
+  EXPECT_EQ(text_of(reopened(document).root_element()),
+            "beforeone  two\tthreeappendedplain");
+}
+
+TEST(DocumentEdit, pptx_rejects_unsupported_containers_and_slide_removal) {
+  const Document document = pptx_of(pptx_paragraphs);
+  const std::string before = part_of(document, "ppt/slides/slide1.xml");
+  EXPECT_THROW((void)document.append_text(document.root_element(), "bad"),
+               UnsupportedOperation);
+  EXPECT_THROW((void)document.append_text(
+                   nth_of_type(document, ElementType::frame, 0), "bad"),
+               UnsupportedOperation);
+  EXPECT_THROW(document.remove(nth_of_type(document, ElementType::slide, 0)),
+               UnsupportedOperation);
+  EXPECT_EQ(part_of(document, "ppt/slides/slide1.xml"), before);
 }

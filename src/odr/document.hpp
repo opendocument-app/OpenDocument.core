@@ -99,14 +99,13 @@ public:
   /// Removes @p element and its subtree; its identifier stays taken.
   void remove(const Element &element) const;
 
-  /// A run beside @p anchor, in the same parent, so it takes the same style.
+  /// A run beside @p anchor with the same style; may create a format wrapper.
   [[nodiscard]] Text insert_text_before(const Text &anchor,
                                         const std::string &text) const;
   [[nodiscard]] Text insert_text_after(const Text &anchor,
                                        const std::string &text) const;
 
-  /// A run as the last child of @p parent. What a paragraph holding no run at
-  /// all is typed into.
+  /// Appends text to a supported container, creating format wrappers as needed.
   [[nodiscard]] Text append_text(const Element &parent,
                                  const std::string &text) const;
 

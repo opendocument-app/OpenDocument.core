@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PPTX text edits preserve one text node per DrawingML run, including tabs.
+  Insertion copies run properties; unsupported containers and slide removal refuse.
+
 - Standard OOXML encryption rejects unsupported algorithms, inconsistent verifier
   fields, and plaintext sizes larger than the encrypted package.
 

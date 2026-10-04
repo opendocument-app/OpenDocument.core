@@ -64,6 +64,12 @@ xml::NodeSpan ooxml::write_text_nodes(pugi::xml_node parent,
         .set(token.c_str());
   };
 
+  // [ECMA-376] A.4.1: DrawingML runs contain one text node, including tabs.
+  if (prefix == "a") {
+    insert_text(text);
+    return span;
+  }
+
   for (const xml::StringToken &token : xml::tokenize_text(text)) {
     switch (token.type) {
     case xml::StringToken::Type::none:
