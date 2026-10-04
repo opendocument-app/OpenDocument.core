@@ -5,6 +5,7 @@
 #include <odr/internal/common/table_range.hpp>
 #include <odr/internal/formula/formula_parser.hpp>
 #include <odr/internal/formula/formula_writer.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <array>
@@ -13,6 +14,7 @@
 #include <map>
 #include <optional>
 #include <ranges>
+#include <set>
 #include <string_view>
 #include <utility>
 
@@ -223,6 +225,22 @@ void move_filter_columns(pugi::xml_node filter,
       filter.remove_child(column);
     }
     column = next;
+  }
+}
+
+/// Moves the `ref` of @p node, and removes the node where the edit takes it.
+void move_range(pugi::xml_node node, const formula::SheetEdit &edit) {
+  pugi::xml_attribute ref = node.attribute("ref");
+  if (!ref) {
+    return;
+  }
+  if (const std::optional<std::string> moved =
+          formula::move_addresses(ref.value(), edit, edit.sheet, syntax)) {
+    if (moved->empty()) {
+      node.parent().remove_child(node);
+    } else {
+      ref.set_value(moved->c_str());
+    }
   }
 }
 
@@ -460,21 +478,21 @@ TableRange table_range(const pugi::xml_node table) {
 
 bool ooxml::spreadsheet::cuts_table(const pugi::xml_node table,
                                     const formula::SheetEdit &edit) {
-  if (edit.insert) {
-    return false;
-  }
   const TableRange range = table_range(table);
-  const auto removed = [&](const std::uint32_t index) {
-    return index >= edit.index &&
-           std::uint64_t{index} < std::uint64_t{edit.index} + edit.count;
+  const auto removed = [&](const std::uint32_t first,
+                           const std::uint32_t last) {
+    return !edit.span(first, last).has_value();
   };
   if (edit.axis == formula::Axis::column) {
-    return !edit.span(range.from().column, range.to().column).has_value();
+    return removed(range.from().column, range.to().column);
   }
-  return (table.attribute("headerRowCount").as_uint(1) > 0 &&
-          removed(range.from().row)) ||
+  const std::uint32_t top = range.from().row;
+  const std::uint32_t bottom = range.to().row;
+  return removed(top, bottom) ||
+         (table.attribute("headerRowCount").as_uint(1) > 0 &&
+          removed(top, top)) ||
          (table.attribute("totalsRowCount").as_uint(0) > 0 &&
-          removed(range.to().row));
+          removed(bottom, bottom));
 }
 
 std::vector<ooxml::spreadsheet::TableHeader>
@@ -489,10 +507,10 @@ ooxml::spreadsheet::move_table(pugi::xml_node table,
     const std::uint32_t last = range.to().column;
     if (edit.insert && first < edit.index && edit.index <= last) {
       std::uint32_t id = 0;
-      std::vector<std::string> names;
+      std::set<std::string> names; // excel compares them ignoring case
       for (const pugi::xml_node column : columns.children("tableColumn")) {
         id = std::max(id, column.attribute("id").as_uint());
-        names.emplace_back(column.attribute("name").value());
+        names.insert(util::string::to_lower(column.attribute("name").value()));
       }
       pugi::xml_node next = columns.child("tableColumn");
       for (std::uint32_t at = first; at < edit.index; ++at) {
@@ -503,8 +521,7 @@ ooxml::spreadsheet::move_table(pugi::xml_node table,
         std::string name;
         do {
           name = "Column" + std::to_string(suffix++);
-        } while (std::ranges::find(names, name) != names.end());
-        names.push_back(name);
+        } while (!names.insert(util::string::to_lower(name)).second);
         pugi::xml_node column =
             next ? columns.insert_child_before("tableColumn", next)
                  : columns.append_child("tableColumn");
@@ -519,8 +536,7 @@ ooxml::spreadsheet::move_table(pugi::xml_node table,
       std::uint32_t at = first;
       for (pugi::xml_node column = columns.child("tableColumn"); column; ++at) {
         const pugi::xml_node next = column.next_sibling("tableColumn");
-        if (at >= edit.index &&
-            std::uint64_t{at} < std::uint64_t{edit.index} + edit.count) {
+        if (!edit.span(at, at).has_value()) {
           columns.remove_child(column);
         }
         column = next;
@@ -538,20 +554,21 @@ ooxml::spreadsheet::move_table(pugi::xml_node table,
       }
     }
   }
-  if (pugi::xml_node filter = table.child("autoFilter");
-      filter && edit.axis == formula::Axis::column) {
+  const pugi::xml_node filter = table.child("autoFilter");
+  if (filter && edit.axis == formula::Axis::column) {
     move_filter_columns(filter, edit);
   }
-  for (pugi::xml_node node :
-       {table, table.child("autoFilter"), table.child("sortState"),
-        table.child("autoFilter").child("sortState")}) {
-    if (pugi::xml_attribute ref = node.attribute("ref")) {
-      if (const std::optional<std::string> moved =
-              formula::move_addresses(ref.value(), edit, edit.sheet, syntax)) {
-        ref.set_value(moved->c_str());
-      }
+  for (const pugi::xml_node sort :
+       {filter.child("sortState"), table.child("sortState")}) {
+    for (pugi::xml_node condition = sort.child("sortCondition"); condition;) {
+      const pugi::xml_node next = condition.next_sibling("sortCondition");
+      move_range(condition, edit);
+      condition = next;
     }
+    move_range(sort, edit);
   }
+  move_range(filter, edit);
+  move_range(table, edit);
   return result;
 }
 

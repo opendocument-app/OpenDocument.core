@@ -631,7 +631,9 @@ public:
       threaded = m_document->related_part(relations.origin, "threadedComment");
       for (const pugi::xml_node part :
            sheet_node.child("tableParts").children("tablePart")) {
-        tables.push_back(related(part));
+        if (const pugi::xml_node table = related(part)) {
+          tables.push_back(table);
+        }
       }
     } catch (const std::exception &) {
       throw UnsupportedOperation(); // a part that does not parse, as VML may

@@ -19,7 +19,7 @@ using namespace odr::test::ooxml;
 namespace {
 
 /// Sheet `s` holds a table over B2:C4: a header row `X`, `Y` and two rows of
-/// numbers, its `Y` column computed.
+/// numbers, its `Y` column computed and sorted.
 std::shared_ptr<internal::abstract::File> with_table() {
   internal::zip::ZipArchive zip;
   insert(
@@ -65,7 +65,9 @@ std::shared_ptr<internal::abstract::File> with_table() {
       zip, "xl/tables/table1.xml",
       R"(<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" )"
       R"(id="1" name="T" displayName="T" ref="B2:C4">)"
-      R"(<autoFilter ref="B2:C4"/><tableColumns count="2">)"
+      R"(<autoFilter ref="B2:C4"/>)"
+      R"(<sortState ref="B3:C4"><sortCondition ref="C3:C4"/></sortState>)"
+      R"(<tableColumns count="2">)"
       R"(<tableColumn id="1" name="X"/><tableColumn id="2" name="Y">)"
       R"(<calculatedColumnFormula>B3*2</calculatedColumnFormula></tableColumn>)"
       R"(</tableColumns></table>)");
@@ -135,6 +137,8 @@ TEST(OoxmlSpreadsheetTables, a_column_inside_a_table_gets_a_named_column) {
   const std::string xml = table_xml(document);
   EXPECT_TRUE(contains(xml, R"(ref="B2:D4")"));
   EXPECT_TRUE(
+      contains(xml, R"(<sortState ref="B3:D4"><sortCondition ref="D3:D4"/>)"));
+  EXPECT_TRUE(
       contains(xml, R"(<tableColumns count="3"><tableColumn id="1" name="X"/>)"
                     R"(<tableColumn id="3" name="Column1"/>)"
                     R"(<tableColumn id="2" name="Y">)"));
@@ -151,6 +155,8 @@ TEST(OoxmlSpreadsheetTables, a_removed_column_loses_its_table_column) {
 
   const std::string xml = table_xml(document);
   EXPECT_TRUE(contains(xml, R"(ref="B2:B4")"));
+  EXPECT_TRUE(
+      contains(xml, R"(<sortState ref="B3:B4"><sortCondition ref="B3:B4"/>)"));
   EXPECT_TRUE(contains(
       xml, R"(<tableColumns count="1"><tableColumn id="2" name="Y">)"));
   EXPECT_TRUE(contains(xml, "<calculatedColumnFormula>#REF!*2<"));
