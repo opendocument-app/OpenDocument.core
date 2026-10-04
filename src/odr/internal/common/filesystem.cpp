@@ -12,6 +12,7 @@
 #include <fstream>
 #include <map>
 #include <ranges>
+#include <stdexcept>
 #include <system_error>
 
 namespace odr::internal {

@@ -9,8 +9,10 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <filesystem>
 #include <memory>
 #include <string>
+#include <system_error>
 #include <vector>
 
 using namespace odr::internal;
