@@ -17,8 +17,8 @@ namespace odr::internal::formula {
 /// @p edit as @ref move_references moves a reference, the unstated sheet being
 /// @p sheet. An address all inside removed rows or columns is left out. Nothing
 /// where none moved. An opendocument address is a reference without its
-/// brackets
-/// ([ODF 1.2] 9.2.5), an ooxml one a `sqref` item (ECMA-376 18.18.76).
+/// brackets ([ODF 1.2] 9.2.5), an ooxml one a `sqref` item (ECMA-376
+/// 18.18.76).
 [[nodiscard]] std::optional<std::string>
 move_addresses(std::string_view list, const SheetEdit &edit,
                const std::optional<std::string> &sheet, Syntax syntax);

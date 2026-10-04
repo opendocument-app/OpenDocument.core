@@ -35,22 +35,28 @@ std::string moved(const std::string &text, const std::int64_t columns,
   return to_string(*node, Syntax::ooxml);
 }
 
+std::string edited(const std::string &text, const SheetEdit &edit,
+                   const Syntax syntax = Syntax::ooxml) {
+  std::optional<Node> node = parse(text, syntax);
+  if (!node.has_value()) {
+    return "<no parse>";
+  }
+  const bool moved = move_references(*node, edit, "here");
+  return (moved ? "" : "unmoved ") + to_string(*node, syntax);
+}
+
 /// @p text after an edit of the rows of the formula's own sheet, or of the
 /// one @p sheet names.
 std::string edited(const std::string &text, const bool insert,
                    const std::uint32_t row, const std::uint32_t count,
                    const Syntax syntax = Syntax::ooxml,
                    const std::optional<std::string> &sheet = std::nullopt) {
-  std::optional<Node> node = parse(text, syntax);
-  if (!node.has_value()) {
-    return "<no parse>";
-  }
-  const SheetEdit edit{.sheet = sheet.value_or("here"),
-                       .index = row,
-                       .count = count,
-                       .insert = insert};
-  const bool moved = move_references(*node, edit, "here");
-  return (moved ? "" : "unmoved ") + to_string(*node, syntax);
+  return edited(text,
+                {.sheet = sheet.value_or("here"),
+                 .index = row,
+                 .count = count,
+                 .insert = insert},
+                syntax);
 }
 
 std::string inserted(const std::string &text, const std::uint32_t row,
@@ -65,17 +71,11 @@ std::string deleted(const std::string &text, const std::uint32_t row,
 
 std::string columns(const std::string &text, const bool insert,
                     const std::uint32_t column, const std::uint32_t count) {
-  std::optional<Node> node = parse(text, Syntax::ooxml);
-  if (!node.has_value()) {
-    return "<no parse>";
-  }
-  const SheetEdit edit{.sheet = "here",
+  return edited(text, {.sheet = "here",
                        .axis = Axis::column,
                        .index = column,
                        .count = count,
-                       .insert = insert};
-  return (move_references(*node, edit, "here") ? "" : "unmoved ") +
-         to_string(*node, Syntax::ooxml);
+                       .insert = insert});
 }
 
 } // namespace
