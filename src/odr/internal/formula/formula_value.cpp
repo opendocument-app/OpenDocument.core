@@ -93,6 +93,17 @@ bool formula::approximately_equal(const double a, const double b) {
          difference < std::abs(b) * tolerance;
 }
 
+double formula::approximate_add(const double a, const double b) {
+  if ((a < 0) != (b < 0) && approximately_equal(a, -b)) {
+    return 0;
+  }
+  return a + b;
+}
+
+bool formula::nearly_cancels(const double sum, const double largest) {
+  return sum != 0 && std::abs(sum) < largest * 1e-12;
+}
+
 std::optional<formula::Number>
 formula::number_of_text(const std::string_view text) {
   std::string_view trimmed = text;

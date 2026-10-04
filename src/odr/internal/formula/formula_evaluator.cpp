@@ -94,22 +94,6 @@ bool equal_texts(const std::string_view a, const std::string_view b,
   return false;
 }
 
-/// The function a name stands for once the prefix of its format is gone.
-std::string canonical_name(std::string_view name) {
-  for (const std::string_view prefix :
-       {"_xlfn._xlws.", "_xlfn.", "_xlws.", "com.microsoft.", "org.openoffice.",
-        "org.libreoffice."}) {
-    if (name.size() > prefix.size() &&
-        str::equals_ignore_case(name.substr(0, prefix.size()), prefix)) {
-      name.remove_prefix(prefix.size());
-      break;
-    }
-  }
-  std::string result(name);
-  std::ranges::transform(result, result.begin(), str::to_upper);
-  return result;
-}
-
 } // namespace
 
 /// Evaluates the nodes of one formula. A reference stays one until an
@@ -142,6 +126,17 @@ public:
       return matrix->cells.front();
     }
     return value;
+  }
+
+  /// @p node evaluated in an array context, as `SUMPRODUCT` reads its
+  /// arguments: an operator reads every cell of a range, not the one the
+  /// formula crosses. The result is an array.
+  [[nodiscard]] Matrix array(const Node &node) {
+    const bool outer = m_array;
+    m_array = true;
+    Value result = value(node);
+    m_array = outer;
+    return matrix_of(std::move(result));
   }
 
   [[nodiscard]] Value read(const SheetPosition &position) const {
@@ -231,6 +226,42 @@ private:
   SheetPosition m_cell;
   /// The node of the whole formula.
   const Node *m_root{nullptr};
+  /// Whether an operator reads a range as an array of its cells.
+  bool m_array{false};
+
+  /// The most cells an array context reads out of one range.
+  static constexpr std::size_t array_limit = 1 << 20;
+
+  /// @p value as an array: the cells of a range, an array, or one value.
+  [[nodiscard]] Matrix matrix_of(Value value) const {
+    if (auto *matrix = std::get_if<Matrix>(&value.content)) {
+      return std::move(*matrix);
+    }
+    const auto *reference = std::get_if<Reference>(&value.content);
+    if (reference == nullptr) {
+      return Matrix{1, 1, {std::move(value)}};
+    }
+    if (reference->areas.size() != 1) {
+      throw NoAnswer{};
+    }
+    const Area &area = reference->areas.front();
+    const std::uint32_t columns =
+        area.range.to().column - area.range.from().column + 1;
+    const std::uint32_t rows = area.range.to().row - area.range.from().row + 1;
+    if (std::size_t{columns} * rows > array_limit) {
+      throw NoAnswer{};
+    }
+    Matrix result{columns, rows, {}};
+    result.cells.reserve(std::size_t{columns} * rows);
+    for (std::uint32_t row = 0; row < rows; ++row) {
+      for (std::uint32_t column = 0; column < columns; ++column) {
+        result.cells.push_back(
+            read(SheetPosition(area.sheet, area.range.from().column + column,
+                               area.range.from().row + row)));
+      }
+    }
+    return result;
+  }
 
   [[nodiscard]] Value value_of(const NumberLiteral &literal, const Node &) {
     return Value{literal.value};
@@ -259,7 +290,9 @@ private:
 
   [[nodiscard]] Value value_of(const FunctionCall &call, const Node &node) {
     const Function function = find_function(call.name);
-    if (function == nullptr) {
+    // a function in an array context maps over the array, which none here
+    // does yet
+    if (function == nullptr || m_array) {
       throw NoAnswer{};
     }
     return function(Call(this, &node));
@@ -436,6 +469,11 @@ private:
   template <typename Operation>
   [[nodiscard]] Value elementwise(const Value &a, const Value &b,
                                   const Operation &operation) const {
+    if (m_array && (a.holds<Reference>() || b.holds<Reference>())) {
+      return elementwise(a.holds<Reference>() ? Value{matrix_of(a)} : a,
+                         b.holds<Reference>() ? Value{matrix_of(b)} : b,
+                         operation);
+    }
     const auto *left = std::get_if<Matrix>(&a.content);
     const auto *right = std::get_if<Matrix>(&b.content);
     if (left == nullptr && right == nullptr) {
@@ -521,7 +559,7 @@ private:
       result = x / y;
       break;
     case BinaryOperator::power:
-      return power(x, y);
+      return power(x, y, m_settings->dialect);
     default:
       throw NoAnswer{};
     }
@@ -542,34 +580,12 @@ private:
       return result;
     }
     if (m_settings->dialect == Dialect::libreoffice) {
-      return approximately_equal(a, -b) ? 0 : result;
+      return approximate_add(a, b);
     }
-    if (last && std::abs(result) < std::max(std::abs(a), std::abs(b)) * 1e-12) {
+    if (last && nearly_cancels(result, std::max(std::abs(a), std::abs(b)))) {
       throw NoAnswer{};
     }
     return result;
-  }
-
-  [[nodiscard]] Value power(const double x, const double y) const {
-    const bool libreoffice = m_settings->dialect == Dialect::libreoffice;
-    if (x == 0 && y == 0) {
-      return libreoffice ? Value{1.0} : Value{ErrorType::number};
-    }
-    if (x == 0 && y < 0) {
-      return Value{libreoffice ? ErrorType::number : ErrorType::division};
-    }
-    if (x < 0 && y != std::trunc(y)) {
-      // LibreOffice takes an odd root of a negative number, Excel does not
-      if (libreoffice) {
-        throw NoAnswer{};
-      }
-      return Value{ErrorType::number};
-    }
-    const double result = std::pow(x, y);
-    if (!std::isfinite(result)) {
-      return Value{ErrorType::number};
-    }
-    return Value{result};
   }
 
   [[nodiscard]] Value concatenate(const Value &a, const Value &b) const {
@@ -689,6 +705,13 @@ Value Call::scalar(const std::size_t index) const {
   return m_evaluator->scalar(value(index));
 }
 
+Matrix Call::array(const std::size_t index) const {
+  if (index >= size()) {
+    return Matrix{1, 1, {Value{Empty{}}}};
+  }
+  return m_evaluator->array(m_node->children[index]);
+}
+
 void Call::for_each(const Reference &reference,
                     const std::function<void(const SheetPosition &,
                                              const Value &)> &visit) const {
@@ -709,18 +732,27 @@ const SheetPosition &Call::cell() const { return m_evaluator->cell(); }
 
 namespace odr::internal {
 
-formula::Function formula::find_function(const std::string_view name) {
-  const std::string canonical = canonical_name(name);
-  if (canonical == "TRUE") {
-    return [](const Call &) { return Value{true}; };
+formula::Value formula::power(const double x, const double y,
+                              const Dialect dialect) {
+  const bool libreoffice = dialect == Dialect::libreoffice;
+  if (x == 0 && y == 0) {
+    return libreoffice ? Value{1.0} : Value{ErrorType::number};
   }
-  if (canonical == "FALSE") {
-    return [](const Call &) { return Value{false}; };
+  if (x == 0 && y < 0) {
+    return Value{libreoffice ? ErrorType::number : ErrorType::division};
   }
-  if (canonical == "NA") {
-    return [](const Call &) { return Value{ErrorType::not_available}; };
+  if (x < 0 && y != std::trunc(y)) {
+    // LibreOffice takes an odd root of a negative number, Excel does not
+    if (libreoffice) {
+      throw NoAnswer{};
+    }
+    return Value{ErrorType::number};
   }
-  return nullptr;
+  const double result = std::pow(x, y);
+  if (!std::isfinite(result)) {
+    return Value{ErrorType::number};
+  }
+  return Value{result};
 }
 
 std::optional<formula::Value> formula::evaluate(const Node &node,

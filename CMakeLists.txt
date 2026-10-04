@@ -194,6 +194,8 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/formula/formula_ast.cpp"
         "src/odr/internal/formula/formula_dependencies.cpp"
         "src/odr/internal/formula/formula_evaluator.cpp"
+        "src/odr/internal/formula/formula_functions.cpp"
+        "src/odr/internal/formula/formula_functions_math.cpp"
         "src/odr/internal/formula/formula_parser.cpp"
         "src/odr/internal/formula/formula_value.cpp"
         "src/odr/internal/formula/formula_writer.cpp"

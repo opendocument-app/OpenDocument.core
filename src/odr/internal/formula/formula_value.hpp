@@ -104,6 +104,14 @@ using Text = std::variant<std::string, ErrorType>;
 /// they agree to about 15 significant digits.
 [[nodiscard]] bool approximately_equal(double a, double b);
 
+/// `a + b`, and 0 where the two cancel to within the precision of a sheet,
+/// as LibreOffice's `rtl::math::approxAdd` does: `0.1+0.2-0.3` is 0.
+[[nodiscard]] double approximate_add(double a, double b);
+
+/// Whether @p sum is so near 0 against @p largest, the largest magnitude it
+/// adds, that Excel may make it 0. Excel does not document how near.
+[[nodiscard]] bool nearly_cancels(double sum, double largest);
+
 /// The number a text reads as in arithmetic. `#VALUE!` where the text holds no
 /// digit, and nothing where it holds one in a form whose reading depends on
 /// the locale: a currency, a date, a grouped number.

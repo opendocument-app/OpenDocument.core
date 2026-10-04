@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -33,6 +34,9 @@ public:
   /// Argument @p index read as one value: a range gives the cell the
   /// formula's row or column crosses, an array its first element.
   [[nodiscard]] Value scalar(std::size_t index) const;
+  /// Argument @p index read in an array context, as `SUMPRODUCT` reads it:
+  /// an operator reads every cell of a range.
+  [[nodiscard]] Matrix array(std::size_t index) const;
 
   /// Calls @p visit for every cell of @p reference up to the extent of its
   /// sheet, row by row, with what the cell holds.
@@ -53,6 +57,18 @@ private:
 };
 
 using Function = Value (*)(const Call &call);
+
+/// A function as a formula names it, without the prefix of its format.
+struct FunctionEntry final {
+  std::string_view name;
+  Function function{nullptr};
+};
+
+/// `x^y`, which LibreOffice and Excel compute apart at 0 and below.
+[[nodiscard]] Value power(double x, double y, Dialect dialect);
+
+/// The functions of mathematics and aggregation: `SUM`, `ROUND`, `SIN`.
+[[nodiscard]] std::span<const FunctionEntry> math_functions();
 
 /// The function a formula names as @p name, with or without the prefix a
 /// format writes in front of it (`_xlfn.`, `COM.MICROSOFT.`). Nothing for one
