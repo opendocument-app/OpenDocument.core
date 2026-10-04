@@ -3,6 +3,7 @@
 #include <odr/internal/util/byte_util.hpp>
 
 #include <algorithm>
+#include <array>
 #include <iostream>
 #include <stdexcept>
 

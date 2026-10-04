@@ -16,10 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- File copies use one size snapshot, and shared stream readers handle failed
-  input, empty views and extreme seeks safely. Buffered writes report sink
-  failures, chunked binary reads propagate stream exceptions safely, and
-  temporary copies preserve binary bytes on Windows.
+- The shared stream helpers stop at failed input and reject extreme seeks,
+  buffered writes report a failed sink, and a temporary copy keeps binary
+  bytes on Windows.
 
 - An inserted or deleted row or column moves the Excel 2010 extensions of an
   xlsx worksheet: an `x14` conditional format, validation and sparkline, and

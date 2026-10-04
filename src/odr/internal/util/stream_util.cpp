@@ -126,7 +126,7 @@ class ViewStreamBuf : public std::streambuf {
 public:
   explicit ViewStreamBuf(std::string_view view) {
     // the get area is never written through
-    auto *begin = view.empty() ? &m_empty : const_cast<char *>(view.data());
+    auto *begin = const_cast<char *>(view.data());
     setg(begin, begin, begin + view.size());
   }
 
@@ -159,9 +159,6 @@ protected:
                    const std::ios_base::openmode which) override {
     return seekoff(pos, std::ios_base::beg, which);
   }
-
-private:
-  char m_empty{};
 };
 
 } // namespace
@@ -185,11 +182,11 @@ std::streamsize DeferredBuffer::xsputn(const char *data,
                                        const std::streamsize size) {
   if (m_released) {
     m_out->write(data, size);
-    return *m_out ? size : 0;
-  }
-  m_held.append(data, static_cast<std::size_t>(size));
-  if (m_held.size() > m_cap) {
-    release();
+  } else {
+    m_held.append(data, static_cast<std::size_t>(size));
+    if (m_held.size() > m_cap) {
+      release();
+    }
   }
   return *m_out ? size : 0;
 }
