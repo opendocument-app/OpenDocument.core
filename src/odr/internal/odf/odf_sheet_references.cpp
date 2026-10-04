@@ -22,11 +22,20 @@ namespace {
 
 /// The attributes stating a cell or range address, or a list of them
 /// ([ODF 1.2] 9.2.5, 18.584, 19.587).
-constexpr std::array<std::string_view, 8> address_attributes{
-    "table:cell-range-address",   "table:base-cell-address",
-    "table:target-range-address", "table:end-cell-address",
-    "table:print-ranges",         "calcext:target-range-address",
-    "calcext:base-cell-address",  "style:base-cell-address"};
+constexpr std::array<std::string_view, 13> address_attributes{
+    "table:cell-range-address",
+    "table:base-cell-address",
+    "table:target-range-address",
+    "table:end-cell-address",
+    "table:print-ranges",
+    "calcext:target-range-address",
+    "calcext:base-cell-address",
+    "style:base-cell-address",
+    "draw:notify-on-update-of-ranges",
+    "chart:values-cell-range-address",
+    "chart:label-cell-address",
+    "chart:error-lower-range",
+    "chart:error-upper-range"};
 
 /// Whether the edit can change what @p node computes: it reads a removed row
 /// or column, or a range an insert grows.
@@ -148,6 +157,11 @@ void move_subtree(const pugi::xml_node node, std::string sheet,
   if (std::string_view(node.name()) == "table:table") {
     sheet = node.attribute("table:name").value();
   }
+  // an embedded object other than a chart reads its own sheets
+  if (std::string_view(node.name()) == "office:document" &&
+      !node.child("office:body").child("office:chart")) {
+    return;
+  }
   // a condition reads relative to its base cell, whose sheet is its own.
   // Where a delete removes that cell, it reads from the first one that stays.
   std::string own = sheet;
@@ -256,6 +270,11 @@ odf::move_sheet_references(const pugi::xml_node spreadsheet,
   }
 
   return result;
+}
+
+void odf::move_object_references(const pugi::xml_node object,
+                                 const formula::SheetEdit &edit) {
+  move_subtree(object, "", edit);
 }
 
 } // namespace odr::internal

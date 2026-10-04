@@ -377,3 +377,31 @@ TEST(OdfSheetRows, a_condition_reads_from_its_first_cell_that_stays) {
   EXPECT_NE(xml.find(R"x(calcext:base-cell-address="s.A1")x"),
             std::string::npos);
 }
+
+TEST(OdfSheetRows, an_inline_chart_moves_and_an_inline_spreadsheet_stays) {
+  const auto object = [](const std::string &body) {
+    return R"x(<table:table-cell><draw:frame><draw:object><office:document>)x"
+           R"x(<office:body>)x" +
+           body +
+           R"x(</office:body></office:document></draw:object>)x"
+           R"x(</draw:frame></table:table-cell>)x";
+  };
+  const Document document = document_of(flat_spreadsheet(table(
+      "s",
+      row(object(
+              R"x(<office:chart><chart:chart><chart:plot-area>)x"
+              R"x(<chart:series chart:values-cell-range-address="s.A1:s.A3"/>)x"
+              R"x(</chart:plot-area></chart:chart></office:chart>)x") +
+          object(R"x(<office:spreadsheet><table:named-expressions>)x"
+                 R"x(<table:named-range table:name="n")x"
+                 R"x( table:cell-range-address="s.A1:s.A3"/>)x"
+                 R"x(</table:named-expressions></office:spreadsheet>)x")))));
+
+  sheet_at(document, 0).insert_rows(0, 1);
+
+  const std::string xml = saved(document);
+  EXPECT_NE(xml.find(R"x(chart:values-cell-range-address="s.A2:s.A4")x"),
+            std::string::npos);
+  EXPECT_NE(xml.find(R"x(table:cell-range-address="s.A1:s.A3")x"),
+            std::string::npos);
+}
