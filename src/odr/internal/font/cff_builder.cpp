@@ -1,11 +1,20 @@
 #include <odr/internal/font/cff_builder.hpp>
 
+#include <odr/internal/font/cff_standard_strings.hpp>
 #include <odr/internal/util/byte_string.hpp>
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
+#include <limits>
 #include <ranges>
+#include <stdexcept>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
+
+#include <fmt/format.h>
 
 namespace odr::internal::font::cff {
 
@@ -35,6 +44,44 @@ void dict_int(std::string &s, const std::int32_t v) {
   }
 }
 
+void dict_number(std::string &out, const double value) {
+  if (!std::isfinite(value)) {
+    throw std::runtime_error("cff: non-finite DICT operand");
+  }
+  if (value == std::trunc(value) &&
+      value >= std::numeric_limits<std::int32_t>::min() &&
+      value <= std::numeric_limits<std::int32_t>::max()) {
+    dict_int(out, static_cast<std::int32_t>(value));
+    return;
+  }
+  const std::string text = fmt::format("{:.17g}", value);
+  std::vector<std::uint8_t> nibbles;
+  for (std::size_t i = 0; i < text.size(); ++i) {
+    const char c = text[i];
+    if (c == '.') {
+      nibbles.push_back(0xA);
+    } else if (c == '-') {
+      nibbles.push_back(0xE);
+    } else if (c == 'e') {
+      const bool negative = text[i + 1] == '-';
+      nibbles.push_back(negative ? 0xC : 0xB);
+      if (negative || text[i + 1] == '+') {
+        ++i;
+      }
+    } else {
+      nibbles.push_back(static_cast<std::uint8_t>(c - '0'));
+    }
+  }
+  nibbles.push_back(0xF);
+  if (nibbles.size() % 2 != 0) {
+    nibbles.push_back(0xF);
+  }
+  out += static_cast<char>(30);
+  for (std::size_t i = 0; i < nibbles.size(); i += 2) {
+    out += static_cast<char>((nibbles[i] << 4) | nibbles[i + 1]);
+  }
+}
+
 /// A CFF DICT integer in the fixed 5-byte form (`29 + int32`), so an operand
 /// whose value (an offset) is not yet known can be sized before it is filled.
 void dict_int_fixed(std::string &s, const std::int32_t v) {
@@ -56,6 +103,9 @@ void dict_operator(std::string &s, const std::int32_t op) {
 
 /// Serialize a CFF INDEX from its members.
 std::string build_index(const std::vector<std::string> &members) {
+  if (!std::in_range<std::uint16_t>(members.size())) {
+    throw std::runtime_error("cff: too many INDEX members");
+  }
   std::string out;
   util::byte_string::put_u16_be(out,
                                 static_cast<std::uint16_t>(members.size()));
@@ -64,6 +114,9 @@ std::string build_index(const std::vector<std::string> &members) {
   }
   std::uint32_t total = 1;
   for (const std::string &m : members) {
+    if (m.size() > std::numeric_limits<std::uint32_t>::max() - total) {
+      throw std::runtime_error("cff: INDEX exceeds 32-bit offsets");
+    }
     total += static_cast<std::uint32_t>(m.size());
   }
   const std::uint8_t off_size = total <= 0xff       ? 1
@@ -98,6 +151,10 @@ std::string cff::build_cff(const std::string_view name,
                            const std::span<const BuilderGlyph> glyphs,
                            const double default_width,
                            const double nominal_width, const FontBBox bbox) {
+  if (glyphs.empty() || glyphs.size() > 65000 ||
+      glyphs.front().name != ".notdef") {
+    throw std::runtime_error("cff: invalid name-keyed glyph set");
+  }
   // CharStrings INDEX (one Type2 charstring per glyph).
   std::vector<std::string> charstrings;
   charstrings.reserve(glyphs.size());
@@ -106,27 +163,32 @@ std::string cff::build_cff(const std::string_view name,
   }
   const std::string charstrings_index = build_index(charstrings);
 
-  // String INDEX: every glyph name gets a custom SID (391 + position). Glyph 0
-  // is the implicit `.notdef` (SID 0), so its name is not stored; the charset
-  // lists SIDs for glyphs 1..n-1.
-  const std::string string_index =
-      build_index(glyphs | std::views::drop(1) |
-                  std::views::transform(&BuilderGlyph::name) |
-                  std::ranges::to<std::vector<std::string>>());
-
-  // Format-0 charset: SID per glyph 1..n-1.
-  std::string charset;
-  charset += static_cast<char>(0); // format 0
-  for (std::size_t i = 1; i < glyphs.size(); ++i) {
-    util::byte_string::put_u16_be(charset,
-                                  static_cast<std::uint16_t>(391 + (i - 1)));
+  std::vector<std::string> strings;
+  std::unordered_set<std::string_view> names{".notdef"};
+  std::string charset(1, '\0'); // format 0, with implicit .notdef
+  for (const BuilderGlyph &glyph : glyphs | std::views::drop(1)) {
+    if (!names.insert(glyph.name).second) {
+      throw std::runtime_error("cff: duplicate glyph name");
+    }
+    const auto standard = std::ranges::find(cff_standard_strings, glyph.name);
+    std::size_t sid =
+        static_cast<std::size_t>(standard - cff_standard_strings.begin());
+    if (standard == cff_standard_strings.end()) {
+      sid = cff_standard_strings_size + strings.size();
+      if (sid >= 65000) {
+        throw std::runtime_error("cff: too many custom strings");
+      }
+      strings.push_back(glyph.name);
+    }
+    util::byte_string::put_u16_be(charset, static_cast<std::uint16_t>(sid));
   }
+  const std::string string_index = build_index(strings);
 
   // Private DICT: defaultWidthX (20), nominalWidthX (21).
   std::string private_dict;
-  dict_int(private_dict, static_cast<std::int32_t>(default_width));
+  dict_number(private_dict, default_width);
   dict_operator(private_dict, 20);
-  dict_int(private_dict, static_cast<std::int32_t>(nominal_width));
+  dict_number(private_dict, nominal_width);
   dict_operator(private_dict, 21);
 
   const std::string name_index =
@@ -155,16 +217,19 @@ std::string cff::build_cff(const std::string_view name,
   };
 
   const std::string top_dict_probe = build_index({top_dict(0, 0, 0)});
-  constexpr std::uint32_t header_size = 4;
-  const auto prefix = static_cast<std::uint32_t>(
-      header_size + name_index.size() + top_dict_probe.size() +
-      string_index.size() + global_subrs.size());
-  // Layout after the prefix: CharStrings, charset, Private.
-  const std::uint32_t charstrings_off = prefix;
-  const std::uint32_t charset_off =
-      charstrings_off + static_cast<std::uint32_t>(charstrings_index.size());
-  const std::uint32_t private_off =
-      charset_off + static_cast<std::uint32_t>(charset.size());
+  constexpr std::uint64_t header_size = 4;
+  const std::uint64_t prefix = header_size + name_index.size() +
+                               top_dict_probe.size() + string_index.size() +
+                               global_subrs.size();
+  const std::uint64_t charset_start = prefix + charstrings_index.size();
+  const std::uint64_t private_start = charset_start + charset.size();
+  if (private_start + private_dict.size() >
+      std::numeric_limits<std::int32_t>::max()) {
+    throw std::runtime_error("cff: output exceeds signed DICT offsets");
+  }
+  const auto charstrings_off = static_cast<std::uint32_t>(prefix);
+  const auto charset_off = static_cast<std::uint32_t>(charset_start);
+  const auto private_off = static_cast<std::uint32_t>(private_start);
 
   const std::string top_dict_index =
       build_index({top_dict(charset_off, charstrings_off, private_off)});

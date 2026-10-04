@@ -527,7 +527,7 @@ CffFont::sid_for_string(const std::string_view string) const {
   return std::nullopt;
 }
 
-std::optional<std::int32_t>
+std::optional<double>
 CffFont::charstring_width(const std::uint16_t glyph) const {
   if (glyph >= m_charstrings.size()) {
     return std::nullopt;
@@ -598,9 +598,7 @@ CffFont::charstring_width(const std::uint16_t glyph) const {
         // Any other operator before a width-bearing one: no explicit width.
         return std::nullopt;
       }
-      return width_possible
-                 ? std::optional<std::int32_t>(static_cast<std::int32_t>(first))
-                 : std::nullopt;
+      return width_possible ? std::optional<double>(first) : std::nullopt;
     }
   }
   return std::nullopt;
@@ -626,7 +624,7 @@ FontBBox CffFont::bounding_box() const noexcept { return m_bbox; }
 
 std::uint16_t CffFont::advance_width(const std::uint16_t glyph) const {
   const Widths &widths = widths_for_glyph(glyph);
-  const std::optional<std::int32_t> width = charstring_width(glyph);
+  const std::optional<double> width = charstring_width(glyph);
   const double advance =
       width.has_value() ? widths.nominal_width + *width : widths.default_width;
   // An advance is a uFWord; clamping keeps a hostile Private DICT out of the

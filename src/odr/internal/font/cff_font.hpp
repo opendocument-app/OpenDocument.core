@@ -105,7 +105,7 @@ private:
   sid_for_string(std::string_view string) const;
   /// Extract the optional leading width from glyph @p glyph's Type2 charstring,
   /// in design units; `nullopt` when the charstring carries no explicit width.
-  [[nodiscard]] std::optional<std::int32_t>
+  [[nodiscard]] std::optional<double>
   charstring_width(std::uint16_t glyph) const;
 
   std::string m_data;

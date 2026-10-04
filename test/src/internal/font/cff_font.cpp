@@ -12,6 +12,7 @@
 #include <array>
 #include <clocale>
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -619,4 +620,53 @@ TEST(CffFontTest, FontDictionarySelectionToleratesQuirkyRanges) {
   }
   EXPECT_EQ(CffFont(font_bytes(std::string("\0\0\x01\0", 4))).advance_width(1),
             0);
+}
+
+TEST(CffFontTest, BuilderPreservesFractionalWidthsAndReusesStandardNames) {
+  const std::vector<BuilderGlyph> glyphs{
+      {".notdef", "\x0e"},
+      {"A", std::string("\xff\0\0\x80\0\x0e", 6)}}; // explicit width 0.5
+  const std::string bytes =
+      odr::internal::font::cff::build_cff("Widths", glyphs, 25.75, 100.75, {});
+  const CffFont font(bytes);
+  EXPECT_EQ(font.advance_width(0), 25);
+  EXPECT_EQ(font.advance_width(1), 101);
+  EXPECT_EQ(font.glyph_name(1), "A");
+  const std::size_t name_index_end = 4 + build_index({"Widths"}).size();
+  const auto offset_size = static_cast<std::uint8_t>(bytes[name_index_end + 2]);
+  const std::size_t top_dict_end =
+      name_index_end + 3 + 2 * offset_size - 1 +
+      bs::read_uint_be(
+          std::string_view(bytes).substr(name_index_end + 3 + offset_size),
+          offset_size);
+  EXPECT_EQ(bs::read_u16_be(std::string_view(bytes).substr(top_dict_end)),
+            0); // no custom names
+  for (const auto &[width, expected] :
+       std::array<std::pair<double, std::uint16_t>, 3>{
+           {{1e20, 65535}, {1e-20, 0}, {-0.5, 0}}}) {
+    const CffFont sized(
+        odr::internal::font::cff::build_cff("Widths", glyphs, width, 0, {}));
+    EXPECT_EQ(sized.advance_width(0), expected);
+  }
+  for (const double invalid : {std::numeric_limits<double>::infinity(),
+                               std::numeric_limits<double>::quiet_NaN()}) {
+    EXPECT_THROW((void)odr::internal::font::cff::build_cff("Widths", glyphs,
+                                                           invalid, 0, {}),
+                 std::runtime_error);
+  }
+}
+
+TEST(CffFontTest, BuilderRejectsInvalidGlyphSets) {
+  using odr::internal::font::cff::build_cff;
+  EXPECT_THROW((void)build_cff("Empty", {}, 0, 0, {}), std::runtime_error);
+  const std::vector<BuilderGlyph> missing{{"A", "\x0e"}};
+  EXPECT_THROW((void)build_cff("Missing", missing, 0, 0, {}),
+               std::runtime_error);
+  const std::vector<BuilderGlyph> duplicate{
+      {".notdef", "\x0e"}, {"A", "\x0e"}, {"A", "\x0e"}};
+  EXPECT_THROW((void)build_cff("Duplicate", duplicate, 0, 0, {}),
+               std::runtime_error);
+  const std::vector<BuilderGlyph> too_many(65001);
+  EXPECT_THROW((void)build_cff("TooMany", too_many, 0, 0, {}),
+               std::runtime_error);
 }
