@@ -33,6 +33,9 @@ The release run heads these entries with the version and opens a fresh
   of the paragraph mark (`w:pPr/w:rPr`, `a:endParaRPr`), as Word and
   PowerPoint do. Before, it fell back to the default style.
 
+- The sheet editor opens a string cell that reads as a number, or starts with
+  `'` or `=`, with a leading `'`, so a commit keeps it a string.
+
 ## v7.4.0 - 2026-10-03
 
 - `PdfFile::permissions` reports the permission bits of an encrypted pdf, in

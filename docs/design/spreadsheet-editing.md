@@ -105,7 +105,9 @@ position map and the `setCell` op.
 
 A strict grammar parses the typed string: optional sign, digits, one `.`,
 optional exponent is a number. Anything else is a string. A leading `'` forces
-a string. `=` is refused with `formulaInput` until the evaluator exists.
+a string, and the editor opens a string cell with one where the grammar would
+read it otherwise. `=` is refused with `formulaInput` until the evaluator
+exists.
 
 **Why:** the file states the type per cell (`office:value-type`, `c/@t`) and
 changes it freely, so a cell has no fixed type. A number cell writes
@@ -307,4 +309,3 @@ undo step.
 - Sheets past `spreadsheet_limit` or `spreadsheet_cell_limit` are not in the
   page; the mode should say so where a view reports a `sheet_cut`.
 - The decimal separator and the document locale are read nowhere.
-- A written string cell that looks numeric becomes a number; `'` is the escape.

@@ -176,6 +176,13 @@
         "and the position still names one op",
         ops().length === 1 && ops()[0].value.type === "string" && ops()[0].value.text === "12"
       );
+      odr.editing.editAt(0, 3);
+      check("a string that reads as a number opens with its quote", editor().value === "'12");
+      press(editor(), "Enter");
+      check(
+        "so committing it unchanged keeps it a string",
+        !cell(0, 3).classList.contains("odr-value-type-float") && ops()[0].value.type === "string"
+      );
 
       odr.editing.editAt(0, 3);
       editor().value = "done";

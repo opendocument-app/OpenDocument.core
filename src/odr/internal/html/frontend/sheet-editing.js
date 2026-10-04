@@ -94,6 +94,22 @@
     return { type: "string", text: content };
   }
 
+  /// What the editor opens on: a string that would not read back as itself
+  /// gets the `'` that keeps it one.
+  function spell(value) {
+    if (value.type === "empty") {
+      return "";
+    }
+    var text = value.text;
+    if (
+      value.type === "string" &&
+      (text.charAt(0) === "=" || !same(parse(text), value))
+    ) {
+      return "'" + text;
+    }
+    return text;
+  }
+
   function same(one, other) {
     return (
       one.type === other.type &&
@@ -287,8 +303,7 @@
     overlay = document.createElement("input");
     overlay.type = "text";
     overlay.className = "odr-sheet-editor";
-    overlay.value =
-      typed !== null ? typed : value.type === "empty" ? "" : value.text;
+    overlay.value = typed !== null ? typed : spell(value);
     place(cell);
     document.body.appendChild(overlay);
     overlay.addEventListener("keydown", overlayKey);
