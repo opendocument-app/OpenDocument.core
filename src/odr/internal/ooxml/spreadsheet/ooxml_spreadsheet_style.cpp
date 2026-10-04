@@ -500,7 +500,7 @@ StyleRegistry::number_format(const std::uint32_t i) const {
             {10, "0.00%"},
             {11, "0.00E+00"},
             {12, "# ?/?"},
-            {13, "# ??/??"},
+            {13, "# ?\?/??"},
             {14, "mm-dd-yy"},
             {15, "d-mmm-yy"},
             {16, "d-mmm"},
