@@ -1068,6 +1068,35 @@ TEST(DocumentEdit, docx_a_mark_survives_a_save) {
             FontWeight::normal);
 }
 
+TEST(DocumentEdit, docx_text_typed_into_an_empty_paragraph_gets_a_w_r) {
+  const Document document = docx_of(R"(<w:p/>)");
+  const Element paragraph = nth_of_type(document, ElementType::paragraph, 0);
+
+  document.edit(ops(R"({"op":"insertText","parent":)" + id_of(paragraph) +
+                    R"(,"text":"typed","id":-1},)" +
+                    R"({"op":"setTextStyle","id":-1,"style":{"bold":true}})"));
+
+  EXPECT_NE(part_of(document, "word/document.xml")
+                .find(R"(<w:p><w:r><w:rPr><w:b/><w:bCs/></w:rPr>)"
+                      R"(<w:t>typed</w:t></w:r></w:p>)"),
+            std::string::npos);
+  EXPECT_EQ(nth_run(reopened(document), 0).as_text().content(), "typed");
+}
+
+TEST(DocumentEdit, pptx_text_typed_into_an_empty_paragraph_gets_an_a_r) {
+  const Document document = pptx_of(R"(<a:p><a:endParaRPr lang="en"/></a:p>)");
+  const Element paragraph = nth_of_type(document, ElementType::paragraph, 0);
+
+  document.edit(ops(R"({"op":"insertText","parent":)" + id_of(paragraph) +
+                    R"(,"text":"typed","id":-1},)" +
+                    R"({"op":"setTextStyle","id":-1,"style":{"bold":true}})"));
+
+  EXPECT_NE(part_of(document, "ppt/slides/slide1.xml")
+                .find(R"(<a:p><a:r><a:rPr b="1"/><a:t>typed</a:t></a:r>)"
+                      R"(<a:endParaRPr lang="en"/></a:p>)"),
+            std::string::npos);
+}
+
 TEST(DocumentEdit, pptx_a_mark_writes_the_attributes_of_a_rPr) {
   const Document document = pptx_of(pptx_paragraphs);
   const Element run = nth_run(document, 0);

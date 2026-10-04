@@ -25,6 +25,10 @@ The release run heads these entries with the version and opens a fresh
   java, `ODRDocument createWithFileType:error:` in objective-c and
   `odr.create` in npm.
 
+- Text typed into an empty paragraph of a docx or pptx gets a run of its own.
+  Before, the text sat straight in the paragraph, where Word, PowerPoint and
+  LibreOffice do not show it, and a format on it refused.
+
 ## v7.4.0 - 2026-10-03
 
 - `PdfFile::permissions` reports the permission bits of an encrypted pdf, in

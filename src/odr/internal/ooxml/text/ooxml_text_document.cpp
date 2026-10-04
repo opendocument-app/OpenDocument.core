@@ -464,14 +464,23 @@ public:
     return new_id;
   }
 
+  /// [ECMA-376] Part 1 17.3.3.31: a `w:t` sits in a `w:r`, so a parent that
+  /// is no run gets a new one.
   [[nodiscard]] ElementIdentifier
   element_append_text(const ElementIdentifier element_id,
                       const std::string &text) const override {
-    pugi::xml_node node = get_node(element_id);
-    const NodeSpan span = write_text_nodes(node, {}, text, "w");
+    ElementIdentifier run_id = element_id;
+    if (element_type(element_id) != ElementType::span) {
+      const auto &[new_run_id, unused_run] = m_registry->create_element(
+          ElementType::span, get_node(element_id).append_child("w:r"));
+      m_registry->append_child(element_id, new_run_id);
+      run_id = new_run_id;
+    }
+
+    const NodeSpan span = write_text_nodes(get_node(run_id), {}, text, "w");
     const auto &[new_id, unused_element, unused_text] =
         m_registry->create_text_element(span.first, span.last);
-    m_registry->append_child(element_id, new_id);
+    m_registry->append_child(run_id, new_id);
     return new_id;
   }
 
