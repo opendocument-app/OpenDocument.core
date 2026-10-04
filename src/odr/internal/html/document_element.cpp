@@ -583,23 +583,29 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   const std::unordered_map<std::string, std::uint32_t> ordinals_by_name =
       syntax.has_value() ? sheet_ordinals_by_name(sheet)
                          : std::unordered_map<std::string, std::uint32_t>();
+  const std::optional<HtmlSheetCut> cut =
+      state.config().editable ? sheet_cut(sheet, state.config()) : std::nullopt;
 
   state.out().write_element_begin(
-      "table", HtmlElementOptions()
-                   .set_class("odr-sheet")
-                   .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
-                     // every op names its sheet, and a view holds only one
-                     clb("data-odr-sheet", std::to_string(ordinal));
-                   })
-                   .set_style([&]() -> std::optional<HtmlWritable> {
-                     if (!print_fit.has_value()) {
-                       return std::nullopt;
-                     }
-                     // `Measure` renders no exponent form
-                     return "--odr-print-fit:" +
-                            Measure(*print_fit, DynamicUnit()).to_string() +
-                            ";";
-                   }()));
+      "table",
+      HtmlElementOptions()
+          .set_class("odr-sheet")
+          .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
+            // every op names its sheet, and a view holds only one
+            clb("data-odr-sheet", std::to_string(ordinal));
+            if (cut.has_value()) {
+              clb("data-odr-cut", std::to_string(cut->content.columns) + "," +
+                                      std::to_string(cut->content.rows));
+            }
+          })
+          .set_style([&]() -> std::optional<HtmlWritable> {
+            if (!print_fit.has_value()) {
+              return std::nullopt;
+            }
+            // `Measure` renders no exponent form
+            return "--odr-print-fit:" +
+                   Measure(*print_fit, DynamicUnit()).to_string() + ";";
+          }()));
 
   state.out().write_element_begin("col",
                                   HtmlElementOptions()

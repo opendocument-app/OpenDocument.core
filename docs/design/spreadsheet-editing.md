@@ -97,6 +97,11 @@ stays untouched until the commit patches the cell.
 the wrong tool. Refusal is an event, not a silent no-op: a click on a locked
 cell outlines it and calls `odr.onEditRefused` (decision 7).
 
+A sheet that `spreadsheet_limit` or `spreadsheet_cell_limit` cut states its
+whole extent in `data-odr-cut`. Enabling the mode refuses with `sheetCut` and
+that extent, and so does a move past the rendered extent, with the position it
+aimed at.
+
 The mode itself is generic and lives in `editing.js` (`editing.md` decisions
 9 to 12). What stays here is the sheet's own: the overlay, the locks, the
 position map and the `setCell` op.
@@ -306,6 +311,4 @@ undo step.
 - `align` back to the alignment by value type: `TableCellStyle` has no value
   that says it.
 - `.csv` save.
-- Sheets past `spreadsheet_limit` or `spreadsheet_cell_limit` are not in the
-  page; the mode should say so where a view reports a `sheet_cut`.
 - The decimal separator and the document locale are read nowhere.

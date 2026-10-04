@@ -949,6 +949,24 @@ TEST(html, a_sheet_cut_by_the_rectangle_reports_what_it_left_out) {
   EXPECT_EQ(cut->rendered.columns, 4);
 }
 
+TEST(html, an_editable_cut_sheet_states_its_whole_extent) {
+  HtmlConfig config;
+  config.spreadsheet_limit = TableDimensions(3, 4);
+  config.spreadsheet_cell_limit = std::nullopt;
+
+  const auto page = [&config](const DecodedFile &file) {
+    std::ostringstream out;
+    view_at(html::translate(file, config), "sheet0.html").write_html(out);
+    return std::move(out).str();
+  };
+
+  EXPECT_EQ(page(csv_file(10, 6)).find(R"(data-odr-cut=")"), std::string::npos);
+  config.editable = true;
+  EXPECT_NE(page(csv_file(10, 6)).find(R"(data-odr-cut="6,10")"),
+            std::string::npos);
+  EXPECT_EQ(page(csv_file(3, 4)).find(R"(data-odr-cut=")"), std::string::npos);
+}
+
 // The rows a sheet keeps follow how wide it turns out to be.
 TEST(html, the_cell_budget_bounds_the_rows_by_the_width) {
   HtmlConfig config;

@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet cut checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <!-- Two rows and two columns of a sheet three columns wide and five rows
+       high, as `translate_sheet` writes one the limits cut. -->
+  <body
+    class="odr-body odr-gridlines-soft"
+    data-odr-editable="true"
+    data-odr-keyboard="navigation shortcuts"
+  >
+    <table class="odr-sheet" data-odr-sheet="1" data-odr-cut="3,5">
+      <col class="odr-sheet-gutter" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <thead>
+        <tr>
+          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+          <th class="odr-sheet-column-header">A</th>
+          <th class="odr-sheet-column-header">B</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="odr-sheet-row-header">1</th>
+          <td style="max-width:0;white-space:nowrap">one</td>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">2</th>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="report"></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var refusals = [];
+      odr.onEditRefused = function (event) {
+        refusals.push(event);
+      };
+      function editor() {
+        return document.querySelector(".odr-sheet-editor");
+      }
+      function press(target, key, modifiers) {
+        modifiers = modifiers || {};
+        target.dispatchEvent(
+          new KeyboardEvent("keydown", { key: key, shiftKey: !!modifiers.shift, bubbles: true })
+        );
+      }
+      function last() {
+        return refusals[refusals.length - 1];
+      }
+
+      check("the mode turns on", odr.editing.enable() === true);
+      check(
+        "and says the sheet goes on past the page",
+        refusals.length === 1 &&
+          last().reason === "sheetCut" &&
+          last().code === 1011 &&
+          last().sheet === 1 &&
+          last().columns === 3 &&
+          last().rows === 5 &&
+          last().column === undefined
+      );
+
+      odr.sheet.pin({ column: 0, row: 1 });
+      press(document.body, "ArrowDown");
+      check("an arrow past the last row keeps the pin", odr.sheet.pinned().row === 1);
+      check(
+        "and is refused at the position it aimed at",
+        refusals.length === 2 && last().reason === "sheetCut" && last().column === 0 && last().row === 2
+      );
+
+      odr.sheet.pin({ column: 1, row: 0 });
+      press(document.body, "ArrowRight", { shift: true });
+      check("a shift arrow past the last column too", refusals.length === 3 && last().column === 2 && last().row === 0);
+
+      odr.editing.editAt(1, 1);
+      editor().value = "x";
+      press(editor(), "Enter");
+      check("a commit writes, and the move after it is refused", refusals.length === 4 && last().row === 2);
+
+      odr.sheet.pin({ column: 0, row: 0 });
+      press(document.body, "ArrowUp");
+      check("the edge of the sheet itself refuses nothing", refusals.length === 4);
+    </script>
+  </body>
+</html>

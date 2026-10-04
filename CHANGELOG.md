@@ -36,6 +36,11 @@ The release run heads these entries with the version and opens a fresh
 - The sheet editor opens a string cell that reads as a number, or starts with
   `'` or `=`, with a leading `'`, so a commit keeps it a string.
 
+- The sheet editor refuses with `ErrorCode::edit_sheet_cut` (1011,
+  `sheetCut`) when the mode turns on over a sheet the spreadsheet limits cut,
+  and when a move goes past the rendered extent. The event carries the whole
+  extent as `columns` and `rows`.
+
 ## v7.4.0 - 2026-10-03
 
 - `PdfFile::permissions` reports the permission bits of an encrypted pdf, in
