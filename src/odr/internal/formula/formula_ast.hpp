@@ -173,27 +173,36 @@ struct Node final {
 /// absolute (`$`) axis stays, and one moved off the grid becomes `#REF!`.
 void shift(Node &node, std::int64_t columns, std::int64_t rows);
 
-/// Rows inserted into or removed from one sheet.
-struct RowEdit final {
+/// The axis a structural edit inserts or removes along.
+enum class Axis {
+  column,
+  row,
+};
+
+/// Rows or columns inserted into or removed from one sheet.
+struct SheetEdit final {
   std::string sheet{}; ///< the name a reference spells the edited sheet by
-  std::uint32_t row{0};
+  Axis axis{Axis::row};
+  std::uint32_t index{0}; ///< the first row or column inserted or removed
   std::uint32_t count{0};
   bool insert{true};
 
-  /// Where the rows @p first to @p last of the edited sheet go. An insert
-  /// moves each one at or past `row` down. A delete moves each one past the
-  /// removed rows up, and one inside them to the edge of the rows that stay.
-  /// Nothing where all of them are removed or one leaves the grid.
+  /// Where the rows or columns @p first to @p last of the edited sheet go.
+  /// An insert moves each one at or past `index` on by `count`. A delete
+  /// moves each one past the removed ones back, and one inside them to the
+  /// edge of the ones that stay. Nothing where all of them are removed or one
+  /// leaves the grid.
   [[nodiscard]] std::optional<std::pair<std::uint32_t, std::uint32_t>>
   span(std::uint32_t first, std::uint32_t last) const;
 };
 
-/// Moves every reference in @p node to a row of the edited sheet as @p edit
-/// moves the cells, an absolute (`$`) axis too. An unstated sheet is
-/// @p sheet, and none is never the edited one. A reference into another
-/// document or over several sheets stays, and one all inside removed rows
-/// becomes `#REF!`. True where anything moved.
-bool move_rows(Node &node, const RowEdit &edit,
-               const std::optional<std::string> &sheet);
+/// Moves every reference in @p node along the edited axis of the edited
+/// sheet as @p edit moves the cells, an absolute (`$`) coordinate too. An
+/// unstated sheet is @p sheet, and none is never the edited one. A reference
+/// into another document or over several sheets stays, one stating no
+/// coordinate on the axis (`A:A` for rows) stays, and one all inside removed
+/// rows or columns becomes `#REF!`. True where anything moved.
+bool move_references(Node &node, const SheetEdit &edit,
+                     const std::optional<std::string> &sheet);
 
 } // namespace odr::internal::formula

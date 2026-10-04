@@ -870,7 +870,7 @@ public:
 
     const std::vector<SheetPosition> touched = move_row_references(
         sheet_node.parent(),
-        {.sheet = sheet_name(element_id), .row = row, .count = count});
+        {.sheet = sheet_name(element_id), .index = row, .count = count});
 
     if (row < stated_end) {
       const pugi::xml_node at = cut_rows_at(sheet_node, row);
@@ -910,7 +910,7 @@ public:
 
     const std::vector<SheetPosition> touched = move_row_references(
         sheet_node.parent(), {.sheet = sheet_name(element_id),
-                              .row = row,
+                              .index = row,
                               .count = count,
                               .insert = false});
 

@@ -29,32 +29,34 @@ constexpr std::int64_t index_limit = std::numeric_limits<std::uint32_t>::max();
          shift_coordinate(cell.row, rows);
 }
 
-/// Moves the rows of two corners as one span, so a delete cutting a range
-/// shrinks it. A cell is a range of one corner. Whether anything moved,
-/// nothing where the reference is lost.
+/// Moves the coordinates of two corners on the edited axis as one span, so a
+/// delete cutting a range shrinks it. A cell is a range of one corner.
+/// Whether anything moved, nothing where the reference is lost.
 std::optional<bool> move_range(CellReference &from, CellReference &to,
-                               const RowEdit &edit,
+                               const SheetEdit &edit,
                                const std::optional<std::string> &sheet) {
+  std::optional<Coordinate> CellReference::*const axis =
+      edit.axis == Axis::row ? &CellReference::row : &CellReference::column;
   // the second corner's unstated sheet is the first's
   const std::optional<std::string> &from_sheet =
       from.sheet.has_value() ? from.sheet : sheet;
   const std::optional<std::string> &to_sheet =
       to.sheet.has_value() ? to.sheet : from_sheet;
   if (from.document.has_value() || to.document.has_value() ||
-      !from.row.has_value() || !to.row.has_value() ||
+      !(from.*axis).has_value() || !(to.*axis).has_value() ||
       from_sheet != edit.sheet || to_sheet != edit.sheet) {
     return false;
   }
-  const bool ascending = from.row->index <= to.row->index;
-  Coordinate &first = ascending ? *from.row : *to.row;
-  Coordinate &last = ascending ? *to.row : *from.row;
-  const auto rows = edit.span(first.index, last.index);
-  if (!rows.has_value()) {
+  const bool ascending = (from.*axis)->index <= (to.*axis)->index;
+  Coordinate &first = ascending ? *(from.*axis) : *(to.*axis);
+  Coordinate &last = ascending ? *(to.*axis) : *(from.*axis);
+  const auto span = edit.span(first.index, last.index);
+  if (!span.has_value()) {
     return std::nullopt;
   }
-  const bool moved = rows->first != first.index || rows->second != last.index;
-  first.index = rows->first;
-  last.index = rows->second;
+  const bool moved = span->first != first.index || span->second != last.index;
+  first.index = span->first;
+  last.index = span->second;
   return moved;
 }
 
@@ -82,31 +84,32 @@ void formula::shift(Node &node, const std::int64_t columns,
 }
 
 std::optional<std::pair<std::uint32_t, std::uint32_t>>
-formula::RowEdit::span(const std::uint32_t first,
-                       const std::uint32_t last) const {
-  const std::uint64_t end = static_cast<std::uint64_t>(row) + count;
+formula::SheetEdit::span(const std::uint32_t first,
+                         const std::uint32_t last) const {
+  const std::uint64_t end = static_cast<std::uint64_t>(index) + count;
   if (insert) {
-    if (last >= row && static_cast<std::int64_t>(last) + count > index_limit) {
+    if (last >= index &&
+        static_cast<std::int64_t>(last) + count > index_limit) {
       return std::nullopt;
     }
-    const auto at = [&](const std::uint32_t index) {
-      return index < row ? index : index + count;
+    const auto at = [&](const std::uint32_t coordinate) {
+      return coordinate < index ? coordinate : coordinate + count;
     };
     return std::pair(at(first), at(last));
   }
-  if (first >= row && last < end) {
+  if (first >= index && last < end) {
     return std::nullopt;
   }
-  return std::pair(first < row   ? first
-                   : first < end ? row
+  return std::pair(first < index ? first
+                   : first < end ? index
                                  : first - count,
-                   last < row   ? last
-                   : last < end ? row - 1
+                   last < index ? last
+                   : last < end ? index - 1
                                 : last - count);
 }
 
-bool formula::move_rows(Node &node, const RowEdit &edit,
-                        const std::optional<std::string> &sheet) {
+bool formula::move_references(Node &node, const SheetEdit &edit,
+                              const std::optional<std::string> &sheet) {
   CellReference *from = nullptr;
   CellReference *to = nullptr;
   if (auto *cell = std::get_if<CellReference>(&node.content)) {
@@ -137,7 +140,7 @@ bool formula::move_rows(Node &node, const RowEdit &edit,
   }
   bool moved = false;
   for (Node &child : node.children) {
-    moved = move_rows(child, edit, sheet) || moved;
+    moved = move_references(child, edit, sheet) || moved;
   }
   return moved;
 }
