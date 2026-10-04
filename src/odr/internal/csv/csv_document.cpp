@@ -242,11 +242,6 @@ public:
     return std::string(
         m_document->cell(column_of(element_id), row_of(element_id)));
   }
-  void
-  text_set_content([[maybe_unused]] const ElementIdentifier element_id,
-                   [[maybe_unused]] const std::string &text) const override {
-    throw UnsupportedOperation();
-  }
   [[nodiscard]] TextStyle text_style(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};

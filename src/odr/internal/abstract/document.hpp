@@ -492,8 +492,11 @@ public:
 
   [[nodiscard]] virtual std::string
   text_content(ElementIdentifier element_id) const = 0;
-  virtual void text_set_content(ElementIdentifier element_id,
-                                const std::string &text) const = 0;
+  virtual void
+  text_set_content([[maybe_unused]] const ElementIdentifier element_id,
+                   [[maybe_unused]] const std::string &text) const {
+    throw UnsupportedOperation();
+  }
 
   /// A run beside @p element_id, in the same parent, so it takes the same
   /// style.

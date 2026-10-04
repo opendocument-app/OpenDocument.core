@@ -1291,14 +1291,6 @@ public:
     }
     return result;
   }
-  /// A cell's value goes in through `sheet_set_cell`; a run inside one is not
-  /// writable. Refusing beats the silent no-op this was: the document declares
-  /// `edit`, so a caller has no other way to learn nothing happened.
-  void
-  text_set_content([[maybe_unused]] const ElementIdentifier element_id,
-                   [[maybe_unused]] const std::string &text) const override {
-    throw UnsupportedOperation();
-  }
   [[nodiscard]] TextStyle
   text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;

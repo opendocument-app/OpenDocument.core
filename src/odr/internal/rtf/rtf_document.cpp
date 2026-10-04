@@ -1,6 +1,5 @@
 #include <odr/internal/rtf/rtf_document.hpp>
 
-#include <odr/exceptions.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/abstract/document.hpp>
@@ -76,12 +75,6 @@ public:
   [[nodiscard]] std::string
   text_content(const ElementIdentifier element_id) const override {
     return m_registry->text_element_at(element_id).text;
-  }
-  void text_set_content(const ElementIdentifier element_id,
-                        const std::string &text) const override {
-    (void)element_id;
-    (void)text;
-    throw UnsupportedOperation();
   }
   [[nodiscard]] TextStyle
   text_style(const ElementIdentifier element_id) const override {
