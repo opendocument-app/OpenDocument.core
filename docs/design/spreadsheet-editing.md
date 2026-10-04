@@ -643,6 +643,62 @@ the page, or take them out, and state the column letters again. A sort
 follows its column, and an edge inside a `colspan` refuses. The log and the
 stale marks treat a column op as decision 24 treats a row op.
 
+## What else a structural edit moves
+
+Status: planned. The steps land as a stack, in this order:
+
+1. The tables of an `.xlsx` (`xl/tables/`).
+2. The formulas of an xlsx conditional format and validation, and the page
+   breaks of an xlsx.
+3. The conditions of an `.ods`: conditional formats, validations and the
+   `style:map` of a cell style.
+4. The ranges an xlsx chart reads.
+5. The ranges an ods chart reads, in the chart's own part.
+6. The source and the place of an xlsx pivot table.
+
+Until a step lands, the edit leaves what it names where it was, as decision
+22 states.
+
+### 28. A structural edit moves every range the file states
+
+- **An xlsx table** states its range, with the header row and a totals
+  row, in `ref`, and a filter of its own. Both move as a range does. An
+  insert inside the table grows it, so a new column gets a `tableColumn`
+  with the next free `id` and a name no other column has (`Column1`, and so
+  on), and the header cell above it gets that name, because Excel repairs a
+  table whose header cells differ from its column names. A delete removes
+  the `tableColumn` of a removed column. An edit that removes the header row,
+  the totals row or the whole table refuses, because the table part, its
+  relationship and its content type would have to go too. A calculated
+  column formula moves as a cell's formula does.
+- **A formula of a conditional format or a validation** states its cells as
+  the first cell of the range sees them. A structural edit moves that cell
+  and the cells it reads alike, so the formula moves as a cell's formula
+  does. An xlsx states it in `cfRule/formula`, `formula1` and `formula2`.
+  An ods states it inside a condition (`formula-is([.A1]>5)`,
+  `of:cell-content-is-between(1;[.B1])`), so every bracketed reference of
+  the condition moves.
+- **A page break** (`rowBreaks`, `colBreaks`) names the first row or column
+  of the next page, and moves as a cell does. A break inside removed rows
+  goes to the edge of the ones that stay, and two breaks at one place become
+  one.
+- **A chart** states the ranges it reads as formulas (`c:f`) in an xlsx
+  chart part, and as addresses in an ods chart's own `content.xml`
+  (`chart:values-cell-range-address` and the like) and in the
+  `draw:notify-on-update-of-ranges` of its frame. They move as any address
+  does, on whichever sheet the chart sits. The values a chart caches stay:
+  a reader draws from the cells.
+- **An xlsx pivot table** reads `worksheetSource/@ref` of its cache, which
+  moves where it names the edited sheet. Its place on a sheet,
+  `location/@ref`, moves too, and an edit cutting it refuses, as Excel
+  refuses to change part of a pivot table. An ods pivot table states its
+  source and its target as addresses, which already move.
+
+**Why refuse a cut table and pivot table rather than remove them:** removing
+a part means editing the package's relationships and content types, which no
+writer here does yet, and a refusal tells the user what a silent removal would
+not.
+
 ## Formulas, read side
 
 - `internal/formula` parses `of:=SUM([.A1:.B2])` (`table:formula`) and
@@ -667,6 +723,4 @@ stale marks treat a column op as decision 24 treats a row op.
   incremental recompute in topological order with cycles reported, and
   `Document::recalculate(operations)` returning the changed cells. Formula
   input in the editor comes with it.
-- The formulas inside a conditional format or a validation condition, the
-  ranges a chart reads, a pivot table's source, an xlsx table and the page
-  breaks of an xlsx, which a structural edit leaves where they were.
+- What else a structural edit moves, planned above (decision 28).
