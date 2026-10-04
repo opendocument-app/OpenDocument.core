@@ -39,17 +39,10 @@ std::string number_code(const pugi::xml_node node) {
       node.attribute("number:min-decimal-places").as_int(decimals);
   const int min_integer = node.attribute("number:min-integer-digits").as_int(1);
 
-  std::string integer;
-  if (grouping) {
-    integer = repeated('#', 4 - std::min(min_integer, 4)) +
-              repeated('0', std::min(min_integer, 4));
-    integer.insert(integer.size() - 3, ",");
-    integer.insert(0, repeated('0', min_integer - 4));
-  } else {
-    integer = min_integer == 0 ? "#" : repeated('0', min_integer);
-  }
-
-  std::string result = integer;
+  // a comma between integer placeholders groups the whole integer
+  const std::string zeros =
+      min_integer == 0 ? std::string("#") : repeated('0', min_integer);
+  std::string result = grouping ? "#,##" + zeros : zeros;
   if (decimals > 0) {
     result += "." + repeated('0', min_decimals) +
               repeated('#', decimals - min_decimals);

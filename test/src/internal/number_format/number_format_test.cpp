@@ -53,6 +53,7 @@ TEST(NumberFormat, a_comma_groups_or_scales) {
 TEST(NumberFormat, a_percent_scales_by_a_hundred) {
   EXPECT_EQ(shown("0%", 0.25), "25%");
   EXPECT_EQ(shown("0.00%", 0.12345), "12.35%");
+  EXPECT_EQ(shown("General%", 0.25), "25%");
 }
 
 TEST(NumberFormat, literals_stay_where_the_code_puts_them) {

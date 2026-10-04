@@ -818,21 +818,22 @@ std::string format_date_time(const std::vector<Token> &tokens,
 std::string format_section(const Section &section, const double value,
                            const Symbols &symbols) {
   const std::vector<Token> &tokens = section.tokens;
-  if (has(section, Kind::general)) {
-    std::string result;
-    for (const Token &token : tokens) {
-      result += token.kind == Kind::general   ? format_general(value, symbols)
-                : token.kind == Kind::literal ? token.text
-                                              : std::string();
-    }
-    return result;
-  }
-
   double scaled = value;
   for (const Token &token : tokens) {
     if (token.kind == Kind::percent) {
       scaled *= 100;
     }
+  }
+
+  if (has(section, Kind::general)) {
+    std::string result;
+    for (const Token &token : tokens) {
+      result += token.kind == Kind::general   ? format_general(scaled, symbols)
+                : token.kind == Kind::literal ? token.text
+                : token.kind == Kind::percent ? "%"
+                                              : "";
+    }
+    return result;
   }
 
   for (std::size_t i = 0; i < tokens.size(); ++i) {
