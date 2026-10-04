@@ -14,7 +14,7 @@ namespace {
 std::uint32_t read_little_endian(const std::string_view in,
                                  const std::size_t position,
                                  const std::size_t size) {
-  if (position + size > in.size()) {
+  if (position > in.size() || size > in.size() - position) {
     throw std::runtime_error("iwork: snappy block ends mid-tag");
   }
   return util::byte::from_little_endian<std::uint32_t>(in.substr(position),
@@ -31,6 +31,9 @@ std::uint32_t read_uncompressed_length(const std::string_view in,
           "iwork: snappy length varint does not terminate");
     }
     const auto byte = static_cast<std::uint8_t>(in[position++]);
+    if (shift == 28 && byte > 0x0f) {
+      throw std::runtime_error("iwork: snappy length varint overflows");
+    }
     result |= static_cast<std::uint32_t>(byte & 0x7f) << shift;
     if ((byte & 0x80) == 0) {
       return result;
@@ -52,8 +55,9 @@ std::string iwork::snappy_decompress_block(const std::string_view compressed) {
   // the declared length is the file's word, so the allocation is capped by
   // what the block could hold rather than by what it claims
   std::string result;
-  result.reserve(std::min<std::size_t>(uncompressed_length,
-                                       max_expansion * compressed.size()));
+  result.reserve(compressed.size() > uncompressed_length / max_expansion
+                     ? uncompressed_length
+                     : compressed.size() * max_expansion);
 
   const auto check_fits = [&](const std::size_t length) {
     if (length > uncompressed_length - result.size()) {
@@ -66,7 +70,7 @@ std::string iwork::snappy_decompress_block(const std::string_view compressed) {
 
     if ((tag & 0x03) == 0) {
       // literal: the length is in the tag, or in the bytes following it
-      std::size_t length = tag >> 2;
+      std::uint64_t length = tag >> 2;
       if (length >= 60) {
         const std::size_t length_size = length - 59;
         length = read_little_endian(compressed, position, length_size);
@@ -74,7 +78,7 @@ std::string iwork::snappy_decompress_block(const std::string_view compressed) {
       }
       ++length;
 
-      if (position + length > compressed.size()) {
+      if (length > compressed.size() - position) {
         throw std::runtime_error("iwork: snappy literal runs past the block");
       }
       check_fits(length);
@@ -119,7 +123,7 @@ std::string iwork::iwa_decompress(const std::string_view framed) {
 
   std::size_t position = 0;
   while (position < framed.size()) {
-    if (position + 4 > framed.size()) {
+    if (framed.size() - position < 4) {
       throw std::runtime_error("iwork: iwa block header is cut off");
     }
     if (framed[position] != '\0') {
@@ -128,7 +132,7 @@ std::string iwork::iwa_decompress(const std::string_view framed) {
     const std::uint32_t length = read_little_endian(framed, position + 1, 3);
     position += 4;
 
-    if (position + length > framed.size()) {
+    if (length > framed.size() - position) {
       throw std::runtime_error("iwork: iwa block runs past the file");
     }
     result += snappy_decompress_block(framed.substr(position, length));

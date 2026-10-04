@@ -53,7 +53,9 @@ TEST(ProtobufMessage, largest_varint) {
   EXPECT_EQ(message.number_field(1), std::numeric_limits<std::uint64_t>::max());
 }
 
-TEST(ProtobufMessage, varint_does_not_terminate) {
+TEST(ProtobufMessage, malformed_varint) {
+  EXPECT_ANY_THROW(
+      parse(key(1, WireType::varint) + std::string(9, '\x80') + '\x02'));
   EXPECT_ANY_THROW(parse(key(1, WireType::varint) + std::string(11, '\xff')));
 }
 
@@ -143,4 +145,15 @@ TEST(ReadVarint, advances_past_the_field) {
   EXPECT_EQ(position, 2);
   EXPECT_EQ(read_varint(data, position), 1);
   EXPECT_EQ(position, 3);
+}
+
+TEST(ProtobufMessage, invalid_field_tags) {
+  for (const std::uint64_t tag :
+       {std::uint64_t{14}, std::uint64_t{15}, std::uint64_t{1} << 32,
+        (std::uint64_t{1} << 35) | 8}) {
+    EXPECT_ANY_THROW(parse(varint(tag) + varint(1)));
+  }
+  const std::string largest =
+      varint(std::uint64_t{0x1fffffff} << 3) + varint(1);
+  EXPECT_EQ(Message(largest).number_field(0x1fffffff), 1);
 }

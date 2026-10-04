@@ -11,16 +11,17 @@ namespace odr::internal::iwork {
 class Budget final {
 public:
   void spend_element() {
-    if (++m_elements > element_limit) {
+    if (m_elements == element_limit) {
       throw std::runtime_error("iwork: document holds too many elements");
     }
+    ++m_elements;
   }
 
   void spend_text(const std::size_t bytes) {
-    m_text += bytes;
-    if (m_text > text_limit) {
+    if (bytes > text_limit - m_text) {
       throw std::runtime_error("iwork: document holds too much text");
     }
+    m_text += bytes;
   }
 
 private:

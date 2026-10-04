@@ -11,7 +11,7 @@ namespace {
 
 std::uint64_t read_fixed(const std::string_view in, std::size_t &position,
                          const std::size_t size) {
-  if (position + size > in.size()) {
+  if (position > in.size() || size > in.size() - position) {
     throw std::runtime_error("iwork: protobuf fixed field is cut off");
   }
   const std::uint64_t result =
@@ -28,10 +28,10 @@ Message::Message(const std::string_view bytes) {
   while (position < bytes.size()) {
     const std::uint64_t key = read_varint(bytes, position);
     const auto wire_type = static_cast<WireType>(key & 0x07);
-    const auto number = static_cast<std::uint32_t>(key >> 3);
-    if (number == 0) {
-      throw std::runtime_error("iwork: protobuf field number zero");
+    if ((key >> 3) == 0 || (key >> 3) > 0x1fffffff) {
+      throw std::runtime_error("iwork: invalid protobuf field number");
     }
+    const auto number = static_cast<std::uint32_t>(key >> 3);
 
     Field field;
     field.number = number;
@@ -58,6 +58,8 @@ Message::Message(const std::string_view bytes) {
     case WireType::start_group:
     case WireType::end_group:
       throw std::runtime_error("iwork: protobuf group field");
+    default:
+      throw std::runtime_error("iwork: invalid protobuf wire type");
     }
 
     m_fields.push_back(field);
@@ -124,6 +126,9 @@ std::uint64_t iwork::read_varint(const std::string_view in,
       throw std::runtime_error("iwork: protobuf varint does not terminate");
     }
     const auto byte = static_cast<std::uint8_t>(in[position++]);
+    if (shift == 63 && byte > 1) {
+      throw std::runtime_error("iwork: protobuf varint overflows");
+    }
     result |= static_cast<std::uint64_t>(byte & 0x7f) << shift;
     if ((byte & 0x80) == 0) {
       return result;

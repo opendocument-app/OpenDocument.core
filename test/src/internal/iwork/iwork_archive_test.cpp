@@ -1,10 +1,12 @@
 #include <odr/internal/iwork/iwork_archive.hpp>
+#include <odr/internal/iwork/iwork_budget.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 
 #include <internal/iwork/iwork_test_util.hpp>
 
+#include <limits>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -79,6 +81,10 @@ TEST(ReadObjects, archive_info_runs_past_the_component) {
 }
 
 TEST(ReadObjects, payload_runs_past_the_component) {
+  EXPECT_ANY_THROW(
+      std::ignore = read_objects(object(
+          1, {{10000, std::numeric_limits<std::size_t>::max()}, {10000, 1}},
+          "")));
   const std::string data = object(1, {{10000, 500}}, "hello");
   EXPECT_ANY_THROW(std::ignore = read_objects(data));
 }
@@ -169,4 +175,24 @@ TEST(IworkPackage, component_file_is_missing) {
 
   Package package(*files);
   EXPECT_ANY_THROW(package.component("Document"));
+}
+
+TEST(ReadObjects, wide_unknown_types_do_not_alias_known_types) {
+  constexpr std::uint64_t type = (std::uint64_t{1} << 32) + 10000;
+  const std::string info =
+      number_field(1, 1) +
+      message_field(2, number_field(1, type) + number_field(3, 0));
+  const std::string data = builder::varint(info.size()) + info;
+  const auto objects = read_objects(data);
+  ASSERT_EQ(objects.size(), 1);
+  EXPECT_EQ(objects[0].type, type);
+}
+
+TEST(IworkBudget, overflow_does_not_reset_text_usage) {
+  Budget budget;
+  budget.spend_text(1);
+  EXPECT_THROW(budget.spend_text(std::numeric_limits<std::size_t>::max()),
+               std::runtime_error);
+  budget.spend_text(64 * 1024 * 1024 - 1);
+  EXPECT_THROW(budget.spend_text(1), std::runtime_error);
 }
