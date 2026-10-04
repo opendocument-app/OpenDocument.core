@@ -8,9 +8,11 @@
   </head>
   <body class="odr-body odr-gridlines-soft" data-odr-editable="true" data-odr-keyboard="navigation shortcuts">
     <!-- A sheet with no merge, which is the only kind offered a sort control.
-         Column B is ordered so that sorting it moves every row. -->
+         Column B is ordered so that sorting it moves every row, and column D
+         holds dates whose text sorts in another order than their value. -->
     <table class="odr-sheet" data-odr-sheet="0">
       <col class="odr-sheet-gutter" />
+      <col />
       <col />
       <col />
       <col />
@@ -20,6 +22,7 @@
           <th class="odr-sheet-column-header">A</th>
           <th class="odr-sheet-column-header">B</th>
           <th class="odr-sheet-column-header">C</th>
+          <th class="odr-sheet-column-header">D</th>
         </tr>
       </thead>
       <tbody>
@@ -28,30 +31,35 @@
           <td>r0</td>
           <td class="odr-value-type-float">0</td>
           <td>x0</td>
+          <td class="odr-value-type-date" data-odr-value="45659">02.01.2025</td>
         </tr>
         <tr>
           <th class="odr-sheet-row-header">2</th>
           <td>r1</td>
           <td class="odr-value-type-float">2</td>
           <td>x1</td>
+          <td class="odr-value-type-date" data-odr-value="45636">10.12.2024</td>
         </tr>
         <tr>
           <th class="odr-sheet-row-header">3</th>
           <td>r2</td>
           <td class="odr-value-type-float">4</td>
           <td>x2</td>
+          <td class="odr-value-type-date" data-odr-value="45731">15.03.2025</td>
         </tr>
         <tr>
           <th class="odr-sheet-row-header">4</th>
           <td>r3</td>
           <td class="odr-value-type-float">1</td>
           <td>x3</td>
+          <td class="odr-value-type-date" data-odr-value="46023">01.01.2026</td>
         </tr>
         <tr>
           <th class="odr-sheet-row-header">5</th>
           <td>r4</td>
           <td class="odr-value-type-float">3</td>
           <td>x4</td>
+          <td class="odr-value-type-date" data-odr-value="45716">28.02.2025</td>
         </tr>
       </tbody>
     </table>
@@ -117,6 +125,9 @@
       check("a third click puts the file's order back", labels() === "12345");
       var restored = positions();
       check("with the positions intact" + (restored.length ? ": " + restored : ""), restored.length === 0);
+
+      click(document.querySelectorAll(".odr-sheet-sort")[3]);
+      check("a date column sorts by the value, not the text", labels() === "21534");
     </script>
   </body>
 </html>
