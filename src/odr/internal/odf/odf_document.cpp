@@ -333,6 +333,31 @@ std::optional<double> duration_days(std::string_view text) {
   return negative ? -result : result;
 }
 
+/// @p days since 1899-12-30 as an `office:date-value`, with its time where it
+/// has one.
+std::string date_value(const double days) {
+  const std::int64_t seconds = std::llround(days * 86400);
+  const std::int64_t day =
+      seconds >= 0 ? seconds / 86400 : (seconds - 86399) / 86400;
+  const std::int64_t second_of_day = seconds - day * 86400;
+  const auto [year, month, month_day] = number_format::civil_from_days(day);
+  std::string result =
+      fmt::format("{:04d}-{:02d}-{:02d}", year, month, month_day);
+  if (second_of_day != 0) {
+    result += fmt::format("T{:02d}:{:02d}:{:02d}", second_of_day / 3600,
+                          second_of_day / 60 % 60, second_of_day % 60);
+  }
+  return result;
+}
+
+/// @p days as an `office:time-value`, a duration in hours, minutes and
+/// seconds.
+std::string time_value(const double days) {
+  const std::int64_t seconds = std::llround(std::abs(days) * 86400);
+  return fmt::format("{}PT{:02d}H{:02d}M{:02d}S", days < 0 ? "-" : "",
+                     seconds / 3600, seconds / 60 % 60, seconds % 60);
+}
+
 /// Whether the engine has a form to write @p value in.
 bool writable(const CellValue &value) {
   switch (value.type()) {
@@ -343,6 +368,7 @@ bool writable(const CellValue &value) {
     return true;
   case ValueType::date:
   case ValueType::time:
+    return value.has_number();
   case ValueType::error:
     return false;
   }
@@ -649,11 +675,9 @@ public:
     }
 
     pugi::xml_node node = get_node(cell_id);
-    std::string text = value.has_text() ? value.text() : "";
-    if (value.type() == ValueType::float_number) {
-      text = shown_number(element_id, cell_id, {column, row}, value.number())
-                 .value_or(text);
-    }
+    const std::string text =
+        shown_value(element_id, cell_id, {column, row}, value)
+            .value_or(value.has_text() ? value.text() : "");
     write_lines(cell_id, text);
 
     remove_value_attributes(node);
@@ -676,9 +700,17 @@ public:
                                                                : "false");
       break;
     case ValueType::date:
+      node.append_attribute("office:value-type").set_value("date");
+      node.append_attribute("office:date-value")
+          .set_value(date_value(value.number()).c_str());
+      break;
     case ValueType::time:
+      node.append_attribute("office:value-type").set_value("time");
+      node.append_attribute("office:time-value")
+          .set_value(time_value(value.number()).c_str());
+      break;
     case ValueType::error:
-      throw UnsupportedOperation(); // `writable` refused these above
+      throw UnsupportedOperation(); // `writable` refused it above
     }
 
     drop_stale_results(element_id, column, row);
@@ -1966,13 +1998,17 @@ private:
     return {};
   }
 
-  /// What the cell's data style shows for @p number, in the style's language
-  /// or the document's. Nothing where the style says no number format: the
-  /// typed text stays then.
+  /// What the cell's data style shows for @p value, a number or a date or a
+  /// time, in the style's language or the document's. Nothing where the style
+  /// is not of the value's kind: the typed text stays then.
   [[nodiscard]] std::optional<std::string>
-  shown_number(const ElementIdentifier sheet_id,
-               const ElementIdentifier cell_id, const TablePosition &position,
-               const double number) const {
+  shown_value(const ElementIdentifier sheet_id, const ElementIdentifier cell_id,
+              const TablePosition &position, const CellValue &value) const {
+    const bool dated =
+        value.type() == ValueType::date || value.type() == ValueType::time;
+    if (value.type() != ValueType::float_number && !dated) {
+      return std::nullopt;
+    }
     const StyleRegistry &styles = m_document->style_registry();
     const pugi::xml_node data_style =
         styles.cell_data_style(cell_style_name(sheet_id, cell_id, position));
@@ -1988,11 +2024,17 @@ private:
     }
     try {
       const number_format::Format format(*code);
-      if (format.category() != number_format::Category::number) {
+      if ((format.category() != number_format::Category::number) != dated) {
         return std::nullopt;
       }
+      // a time of day has no date to move onto the 1900 system
+      const bool day_part =
+          value.type() == ValueType::date && value.number() >= 1;
       return format.format(
-          number, number_format::Epoch::from_1900,
+          day_part ? number_format::serial_from_days(
+                         value.number(), number_format::Epoch::from_1900)
+                   : value.number(),
+          number_format::Epoch::from_1900,
           number_format::symbols_of(
               data_style_locale(data_style)
                   .value_or(m_document->locale().value_or(""))));

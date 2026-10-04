@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <vector>
 
 namespace odr::internal::number_format {
@@ -63,6 +64,10 @@ enum class Epoch { from_1900, from_1904 };
 /// The days from 1899-12-30 to the civil date, negative before it.
 [[nodiscard]] std::int64_t
 days_from_civil(std::int64_t year, std::uint32_t month, std::uint32_t day);
+
+/// The civil date @p days after 1899-12-30, as year, month and day.
+[[nodiscard]] std::tuple<std::int64_t, std::uint32_t, std::uint32_t>
+civil_from_days(std::int64_t days);
 
 /// A serial counted from @p epoch as days since 1899-12-30. The 1900 system
 /// counts 1900-02-29, which never was, so a serial before 61 is one day more.

@@ -1049,6 +1049,11 @@ std::int64_t number_format::days_from_civil(std::int64_t year,
   return era * 146097 + static_cast<std::int64_t>(day_of_era) - 719468 + 25569;
 }
 
+std::tuple<std::int64_t, std::uint32_t, std::uint32_t>
+number_format::civil_from_days(const std::int64_t days) {
+  return civil(days - 25569);
+}
+
 double number_format::days_from_serial(const double serial, const Epoch epoch) {
   if (epoch == Epoch::from_1904) {
     return serial + 1462;
