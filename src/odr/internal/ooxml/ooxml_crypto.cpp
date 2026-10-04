@@ -18,7 +18,9 @@ ECMA376Standard::ECMA376Standard(const EncryptionHeader &encryption_header,
                                  std::string encrypted_verifier_hash)
     : m_encryption_header{encryption_header},
       m_encryption_verifier{encryption_verifier},
-      m_encrypted_verifier_hash{std::move(encrypted_verifier_hash)} {}
+      m_encrypted_verifier_hash{std::move(encrypted_verifier_hash)} {
+  validate_();
+}
 
 ECMA376Standard::ECMA376Standard(const std::string_view encryption_info) {
   util::byte_string::Reader reader(encryption_info);
@@ -32,23 +34,33 @@ ECMA376Standard::ECMA376Standard(const std::string_view encryption_info) {
   if (standard_header.encryption_header_size < sizeof(EncryptionHeader)) {
     throw std::runtime_error("bad ooxml crypto header size");
   }
-  const std::size_t encryption_header_begin = reader.position();
   reader.read(m_encryption_header);
-  reader.seek(encryption_header_begin + standard_header.encryption_header_size);
+  reader.skip(standard_header.encryption_header_size -
+              sizeof(EncryptionHeader));
 
   reader.read(m_encryption_verifier);
 
   m_encrypted_verifier_hash = reader.rest();
+  validate_();
+}
+
+void ECMA376Standard::validate_() const {
+  // [MS-OFFCRYPTO] 2.3.4.5 and 2.3.4.9.
+  const auto &header = m_encryption_header;
+  if ((header.flags & 0x3cU) != 0x24U || header.alg_id < 0x660eU ||
+      header.alg_id > 0x6610U || header.alg_id_hash != 0x8004U ||
+      header.key_size != 128U + (header.alg_id - 0x660eU) * 64U) {
+    throw MsUnsupportedCryptoAlgorithm();
+  }
+  if (header.size_extra != 0 || m_encryption_verifier.salt_size != 16 ||
+      m_encryption_verifier.verifier_hash_size != 20 ||
+      m_encrypted_verifier_hash.size() != 32) {
+    throw std::runtime_error("bad ooxml crypto verifier");
+  }
 }
 
 std::string ECMA376Standard::derive_key(const std::string_view password) const {
-  // https://msdn.microsoft.com/en-us/library/dd925430(v=office.12).aspx
-
-  // [MS-OFFCRYPTO] 2.3.3: `salt_size` is fixed at the size of the salt field.
-  if (m_encryption_verifier.salt_size != sizeof(m_encryption_verifier.salt)) {
-    throw std::runtime_error("bad ooxml crypto salt size");
-  }
-
+  // [MS-OFFCRYPTO] 2.3.4.7.
   std::string hash;
   {
     const std::u16string password_u16 =
@@ -58,11 +70,11 @@ std::string ECMA376Standard::derive_key(const std::string_view password) const {
         2 * password_u16.size());
 
     hash = internal::crypto::util::sha1(
-        std::string(m_encryption_verifier.salt,
+        std::string(m_encryption_verifier.salt.data(),
                     m_encryption_verifier.salt_size) +
         password_u16_bytes);
     std::string ibytes(4, ' ');
-    for (std::uint32_t i = 0; i < ITER_COUNT; ++i) {
+    for (std::uint32_t i = 0; i < iteration_count; ++i) {
       util::byte::to_little_endian(i, ibytes);
       std::string ih = ibytes;
       ih += hash;
@@ -94,10 +106,10 @@ std::string ECMA376Standard::derive_key(const std::string_view password) const {
 }
 
 bool ECMA376Standard::verify(const std::string_view key) const {
-  // https://msdn.microsoft.com/en-us/library/dd926426(v=office.12).aspx
+  // [MS-OFFCRYPTO] 2.3.4.9.
 
   const std::string verifier = internal::crypto::util::decrypt_aes_ecb(
-      key, std::string_view(m_encryption_verifier.encrypted_verifier,
+      key, std::string_view(m_encryption_verifier.encrypted_verifier.data(),
                             sizeof(m_encryption_verifier.encrypted_verifier)));
   const std::string hash = internal::crypto::util::sha1(verifier);
   const std::string verifier_hash =
@@ -113,8 +125,13 @@ std::string ECMA376Standard::decrypt(const std::string_view encrypted_package,
   // [MS-OFFCRYPTO] 2.3.4.4: the stream opens with the plaintext size.
   const auto total_size = reader.read<std::uint64_t>();
 
-  return internal::crypto::util::decrypt_aes_ecb(key, reader.rest())
-      .substr(0, total_size);
+  if (total_size > reader.remaining()) {
+    throw std::runtime_error("truncated ooxml encrypted package");
+  }
+  std::string result =
+      internal::crypto::util::decrypt_aes_ecb(key, reader.rest());
+  result.resize(static_cast<std::size_t>(total_size));
+  return result;
 }
 
 Util::Util(const std::string_view encryption_info) {
