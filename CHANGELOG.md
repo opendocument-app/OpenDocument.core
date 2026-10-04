@@ -30,6 +30,8 @@ The release run heads these entries with the version and opens a fresh
   numeric order (`1/2/2025` in `en-US`, `2.1.2025` in `de-DE`), with
   `AM`/`PM`. A date or time cell opens on its value and states its kind in
   `odr-value-type-date` or the new `odr-value-type-time`.
+- A sheet sorts a date or time column by the value, not by the shown text.
+  A date or time cell states `data-odr-value` in a read-only render too.
 
 - An xlsx cell shows its number formatted, as its `numFmt` or a built-in
   format says, and a date or time format types it `ValueType::date` or

@@ -716,7 +716,7 @@
   var sortedColumn = -1;
   var sortedDirection = 0;
 
-  // Only the rendered text is in the markup, not the number behind it. The last
+  // A plain number states no value, only its rendered text. The last
   // separator is the decimal one, which settles 1,234.56 against 1.234,56.
   function toNumber(text) {
     var cleaned = text.replace(/[^0-9,.eE+-]/g, "");
@@ -740,13 +740,15 @@
     if (text === "") {
       return { rank: BLANK, value: 0 };
     }
-    if (cell.classList.contains("odr-value-type-float")) {
-      var value = toNumber(text);
-      if (!isNaN(value)) {
-        return { rank: NUMBER, value: value };
-      }
-    }
-    return { rank: TEXT, value: text };
+    // a date, a time and a formatted number state their value
+    var stated = cell.getAttribute("data-odr-value");
+    var value =
+      stated !== null
+        ? Number(stated)
+        : cell.classList.contains("odr-value-type-float")
+          ? toNumber(text)
+          : NaN;
+    return isNaN(value) ? { rank: TEXT, value: text } : { rank: NUMBER, value: value };
   }
 
   function reorder(rows) {

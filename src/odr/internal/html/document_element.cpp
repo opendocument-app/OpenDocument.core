@@ -353,8 +353,8 @@ std::string shown_text(const Element &element) {
   return result;
 }
 
-/// The number the editor opens a cell on, where the cell shows it formatted:
-/// a date and a time always.
+/// The number the editor opens a cell on and a sort orders it by, where the
+/// cell shows it formatted: a date and a time always.
 std::optional<std::string> formatted_value(const CellValue &value,
                                            const SheetCell &cell) {
   if (!value.has_number()) {
@@ -805,9 +805,13 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
 
       const CellValue cell_value =
           state.config().editable ? cell.value() : CellValue();
+      // a date's text gives no way back to its value, which a sort needs
       const std::optional<std::string> value_spelling =
           state.config().editable ? formatted_value(cell_value, cell)
-                                  : std::nullopt;
+          : cell_value_type == ValueType::date ||
+                  cell_value_type == ValueType::time
+              ? formatted_value(cell.value(), cell)
+              : std::nullopt;
       const char *lock = state.config().editable
                              ? cell_lock(cell_value, cell, anchors_shapes)
                              : nullptr;
