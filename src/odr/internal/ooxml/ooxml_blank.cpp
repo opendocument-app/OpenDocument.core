@@ -22,6 +22,14 @@ struct Part final {
   std::string_view content;
 };
 
+constexpr Part app_part{
+    "docProps/app.xml",
+    R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>)"
+    R"(<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">)"
+    R"(<Application>odr</Application>)"
+    R"(</Properties>)",
+};
+
 constexpr std::array document_parts{
     Part{
         "[Content_Types].xml",
@@ -43,13 +51,7 @@ constexpr std::array document_parts{
         R"(<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>)"
         R"(</Relationships>)",
     },
-    Part{
-        "docProps/app.xml",
-        R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>)"
-        R"(<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">)"
-        R"(<Application>odr</Application>)"
-        R"(</Properties>)",
-    },
+    app_part,
     Part{
         "word/_rels/document.xml.rels",
         R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>)"
@@ -114,13 +116,7 @@ constexpr std::array workbook_parts{
         R"(<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>)"
         R"(</Relationships>)",
     },
-    Part{
-        "docProps/app.xml",
-        R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>)"
-        R"(<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">)"
-        R"(<Application>odr</Application>)"
-        R"(</Properties>)",
-    },
+    app_part,
     Part{
         "xl/_rels/workbook.xml.rels",
         R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>)"

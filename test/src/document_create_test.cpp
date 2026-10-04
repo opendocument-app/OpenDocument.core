@@ -37,6 +37,15 @@ std::string text_of(const Element &element) {
   return result;
 }
 
+/// The first run below @p element, at any depth.
+Text first_text(const Element &element) {
+  Element result = element;
+  while (result && result.type() != ElementType::text) {
+    result = result.first_child();
+  }
+  return result.as_text();
+}
+
 Document reopen(const Document &document) {
   return open(document.save_to_memory(),
               DecodeOptions::as(document.file_type()))
@@ -230,6 +239,9 @@ TEST(DocumentCreate, xlsx_takes_an_edit_and_keeps_it_through_a_save) {
 
   sheet.set_cell(0, 0, CellValue("hello"));
   sheet.set_cell(2, 4, CellValue(12.5));
+  TextStyle bold;
+  bold.font_weight = FontWeight::bold;
+  sheet.set_cell_style(0, 0, {}, bold);
 
   const Document saved = reopen(document);
   const Sheet saved_sheet =
@@ -238,4 +250,6 @@ TEST(DocumentCreate, xlsx_takes_an_edit_and_keeps_it_through_a_save) {
   EXPECT_EQ(saved_sheet.cell(2, 4).value().number(), 12.5);
   EXPECT_EQ(saved_sheet.dimensions().rows, 5);
   EXPECT_EQ(saved_sheet.dimensions().columns, 3);
+  EXPECT_EQ(first_text(saved_sheet.cell(0, 0)).style().font_weight,
+            FontWeight::bold);
 }
