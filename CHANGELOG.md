@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- CFF font parsing bounds INDEX, dictionary and glyph reads, validates offsets
+  before conversion, and reads decimal operands independently of the host locale.
+
 - SFNT output uses format 12 for large character maps and U+FFFF mappings,
   writes Unicode font names correctly, and validates table and name sizes.
   Synthesized PostScript names now obey OpenType character and length limits.
