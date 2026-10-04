@@ -311,4 +311,47 @@ describe('edit', () => {
       doc.close();
     }
   });
+
+  it('creates a document of every type that states create', () => {
+    for (const { fileType, capabilities } of odr.fileTypes()) {
+      if (!capabilities.create) {
+        continue;
+      }
+      const doc = odr.create(fileType);
+      try {
+        assert.equal(doc.fileType, fileType);
+        assert.equal(doc.isEditable(), true);
+      } finally {
+        doc.close();
+      }
+    }
+  });
+
+  it('refuses to create a type that cannot be created', () => {
+    assert.throws(() => odr.create(odr.enums.FileType.pptx), (error) => {
+      assert.ok(error instanceof OdrError);
+      assert.equal(error.name, 'UnsupportedFileType');
+      return true;
+    });
+  });
+
+  it('types into a created document and saves it', () => {
+    const doc = odr.create(odr.enums.FileType.odt, { editable: true });
+    try {
+      const id = firstEditableParagraphId(doc.render(0).html);
+      doc.edit(JSON.stringify({
+        version: 2,
+        ops: [{ op: 'insertText', parent: id, text: 'typed in the browser', id: -1 }],
+      }));
+
+      const reopened = odr.open(doc.save());
+      try {
+        assert.match(reopened.render(0).html, /typed in the browser/);
+      } finally {
+        reopened.close();
+      }
+    } finally {
+      doc.close();
+    }
+  });
 });

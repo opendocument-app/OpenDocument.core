@@ -605,7 +605,7 @@ jobject
 make_file_type_capabilities(JNIEnv *env,
                             const odr::FileTypeCapabilities &capabilities) {
   return new_object(env, "app/opendocument/core/FileTypeCapabilities",
-                    "(ZZZZZZZZZ)V",
+                    "(ZZZZZZZZZZ)V",
                     static_cast<jboolean>(capabilities.detect_by_content),
                     static_cast<jboolean>(capabilities.open),
                     static_cast<jboolean>(capabilities.decrypt),
@@ -614,7 +614,8 @@ make_file_type_capabilities(JNIEnv *env,
                     static_cast<jboolean>(capabilities.edit),
                     static_cast<jboolean>(capabilities.save),
                     static_cast<jboolean>(capabilities.encrypt),
-                    static_cast<jboolean>(capabilities.annotate));
+                    static_cast<jboolean>(capabilities.annotate),
+                    static_cast<jboolean>(capabilities.create));
 }
 
 jobject make_pdf_permissions(JNIEnv *env,

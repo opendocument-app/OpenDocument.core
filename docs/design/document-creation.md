@@ -4,7 +4,8 @@ How the library makes a new document of a file type that it can edit. The
 editors are in [`editing.md`](editing.md), and creation reuses them unchanged:
 a new document is an ordinary `Document`.
 
-Status: planned. The stages are at the end.
+Status: landed for odt, ods, docx and xlsx, in every binding. Presentations
+and drawings are open, see [Out of scope](#out-of-scope).
 
 ## Problem
 

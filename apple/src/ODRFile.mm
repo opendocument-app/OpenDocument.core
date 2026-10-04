@@ -168,6 +168,7 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
   result->_save = handle.save ? YES : NO;
   result->_encrypt = handle.encrypt ? YES : NO;
   result->_annotate = handle.annotate ? YES : NO;
+  result->_create = handle.create ? YES : NO;
   return result;
 }
 

@@ -13,6 +13,12 @@ NS_SWIFT_NAME(Document)
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;
 
+/// A new document of `type`, with one empty paragraph or one empty sheet.
+/// Fails for a type whose capabilities do not state `create`.
++ (nullable instancetype)createWithFileType:(ODRFileType)type
+                                      error:(NSError **)error
+    NS_SWIFT_NAME(create(fileType:));
+
 @property(nonatomic, readonly) ODRFileType fileType;
 @property(nonatomic, readonly) ODRDocumentType documentType;
 

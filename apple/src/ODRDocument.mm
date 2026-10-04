@@ -5,6 +5,7 @@
 
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
+#include <odr/odr.hpp>
 
 #include <optional>
 #include <sstream>
@@ -31,6 +32,15 @@ using odr::apple::to_string;
 
 - (const odr::Document &)handle {
   return *_handle;
+}
+
++ (nullable instancetype)createWithFileType:(ODRFileType)type
+                                      error:(NSError **)error {
+  return guarded(error, [&]() -> ODRDocument * {
+    return
+        [ODRDocument documentWithHandle:odr::create_document(
+                                            static_cast<odr::FileType>(type))];
+  });
 }
 
 - (ODRFileType)fileType {
