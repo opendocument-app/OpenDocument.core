@@ -18,8 +18,9 @@ void check(const Dialect dialect) {
   if (dialect.separator == dialect.quote) {
     throw std::invalid_argument("csv separator equals its quote");
   }
-  if (dialect.separator == '\n' || dialect.separator == '\r') {
-    throw std::invalid_argument("csv separator is a line break");
+  if (dialect.separator == '\n' || dialect.separator == '\r' ||
+      dialect.quote == '\n' || dialect.quote == '\r') {
+    throw std::invalid_argument("csv delimiter is a line break");
   }
 }
 
@@ -33,6 +34,7 @@ CsvFile::CsvFile(std::shared_ptr<text::TextFile> file)
   }
   m_dialect = probe.dialect;
   m_separator_directive = probe.separator_directive;
+  check(m_dialect);
 }
 
 CsvFile::CsvFile(std::shared_ptr<abstract::File> file,
@@ -47,6 +49,9 @@ CsvFile::CsvFile(std::shared_ptr<abstract::File> file,
   if (options.separator.has_value()) {
     m_dialect.separator = *options.separator;
     check(m_dialect);
+    const Probe probe =
+        csv::probe(*m_file->file(), m_file->encoding(), m_dialect.quote);
+    m_separator_directive = probe.separator_directive;
     return;
   }
 

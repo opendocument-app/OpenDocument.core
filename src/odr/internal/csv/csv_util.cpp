@@ -226,9 +226,15 @@ bool csv::RecordReader::read(std::vector<std::string> &fields) {
     } else if (c == m_dialect.separator) {
       end_field();
       started = true;
-    } else if (c == '\r') {
-      // CRLF, and a lone CR
-    } else if (c == '\n') {
+    } else if (c == '\r' || c == '\n') {
+      const std::size_t start = m_position;
+      if (c == '\r' && m_position + 1 < m_text.size() &&
+          m_text[m_position + 1] == '\n') {
+        ++m_position;
+      }
+      if (m_line_end.empty()) {
+        m_line_end = m_text.substr(start, m_position - start + 1);
+      }
       if (!started) {
         continue; // empty line
       }
@@ -254,6 +260,10 @@ bool csv::RecordReader::read(std::vector<std::string> &fields) {
 }
 
 bool csv::RecordReader::unterminated() const noexcept { return m_unterminated; }
+
+std::string_view csv::RecordReader::line_end() const noexcept {
+  return m_line_end;
+}
 
 csv::Probe csv::probe(const std::string_view text, const bool complete,
                       const char quote) {

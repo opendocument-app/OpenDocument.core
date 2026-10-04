@@ -14,8 +14,10 @@
 
 #include <algorithm>
 #include <istream>
+#include <limits>
 #include <memory>
 #include <ostream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -40,8 +42,18 @@ constexpr std::uint64_t column_mask = (std::uint64_t{1} << row_shift) - 1;
 constexpr std::uint64_t row_mask =
     (std::uint64_t{1} << (kind_shift - row_shift)) - 1;
 
+constexpr std::uint32_t max_columns = std::uint32_t{1} << row_shift;
+constexpr std::uint32_t max_rows = std::numeric_limits<std::uint32_t>::max();
+
+void check_position(const std::uint32_t column, const std::uint32_t row) {
+  if (column >= max_columns || row >= max_rows) {
+    throw std::out_of_range("csv position out of range");
+  }
+}
+
 ElementIdentifier make_id(const Kind kind, const std::uint32_t column = 0,
                           const std::uint32_t row = 0) {
+  check_position(column, row);
   return static_cast<std::uint64_t>(kind) << kind_shift |
          (static_cast<std::uint64_t>(row) & row_mask) << row_shift |
          (static_cast<std::uint64_t>(column) & column_mask);
@@ -69,11 +81,16 @@ public:
 
   [[nodiscard]] ElementType
   element_type(const ElementIdentifier element_id) const override {
+    const auto coordinates =
+        element_id & ((std::uint64_t{1} << kind_shift) - 1);
+    if ((coordinates >> row_shift) >= max_rows) {
+      return ElementType::none;
+    }
     switch (kind_of(element_id)) {
     case Kind::root:
-      return ElementType::root;
+      return coordinates == 0 ? ElementType::root : ElementType::none;
     case Kind::sheet:
-      return ElementType::sheet;
+      return coordinates == 0 ? ElementType::sheet : ElementType::none;
     case Kind::cell:
       return ElementType::sheet_cell;
     case Kind::text:
@@ -304,32 +321,23 @@ CsvDocument::CsvDocument(const abstract::File &file,
       encoding != TextEncoding::utf8 || bytes.starts_with("\xef\xbb\xbf");
   std::string text = encoding::to_utf8(bytes, encoding);
 
-  const std::size_t first_break = text.find('\n');
-  m_line_end = first_break != std::string::npos &&
-                       (first_break == 0 || text[first_break - 1] != '\r')
-                   ? "\n"
-                   : "\r\n";
   m_final_line_end = text.empty() || text.back() == '\n' || text.back() == '\r';
 
-  std::string_view remainder = text;
-  if (skip_first_line) {
-    if (const std::size_t body = remainder.find_first_not_of(
-            "\r\n", remainder.find_first_of("\r\n"));
-        body != std::string_view::npos) {
-      remainder = remainder.substr(body);
-    } else {
-      remainder = {};
-    }
-  }
-
-  RecordReader reader(remainder, dialect);
+  RecordReader reader(text, dialect);
   std::vector<std::string> fields;
+  if (skip_first_line) {
+    reader.read(fields);
+  }
   std::uint32_t columns = 0;
   while (reader.read(fields)) {
+    if (fields.size() > max_columns || m_rows.size() >= max_rows) {
+      throw std::length_error("csv dimensions out of range");
+    }
     columns = std::max(columns, static_cast<std::uint32_t>(fields.size()));
     m_rows.push_back(fields);
   }
 
+  m_line_end = reader.line_end().empty() ? "\r\n" : reader.line_end();
   m_dimensions = {static_cast<std::uint32_t>(m_rows.size()), columns};
 
   // Walks the fields that exist rather than the rectangle they span: one wide
@@ -390,6 +398,7 @@ ValueType CsvDocument::value_type(const std::uint32_t column,
 
 void CsvDocument::set_cell(const std::uint32_t column, const std::uint32_t row,
                            std::string text) {
+  check_position(column, row);
   if (row >= m_rows.size()) {
     m_rows.resize(row + 1);
   }
@@ -424,6 +433,9 @@ void CsvDocument::insert_rows(const std::uint32_t row,
   if (row >= m_rows.size()) {
     return;
   }
+  if (count > max_rows - m_dimensions.rows) {
+    throw std::length_error("csv row count out of range");
+  }
   // a field per column, as the lines around it state
   m_rows.insert(m_rows.begin() + row, count,
                 std::vector<std::string>(m_dimensions.columns));
@@ -438,8 +450,7 @@ void CsvDocument::delete_rows(const std::uint32_t row,
   }
   m_rows.erase(m_rows.begin() + row,
                m_rows.begin() +
-                   std::min<std::size_t>(static_cast<std::size_t>(row) + count,
-                                         m_rows.size()));
+                   (row + std::min<std::size_t>(count, m_rows.size() - row)));
   m_dimensions.rows = static_cast<std::uint32_t>(m_rows.size());
   type_columns();
 }
@@ -448,6 +459,9 @@ void CsvDocument::insert_columns(const std::uint32_t column,
                                  const std::uint32_t count) {
   if (column >= m_dimensions.columns) {
     return;
+  }
+  if (count > max_columns - m_dimensions.columns) {
+    throw std::length_error("csv column count out of range");
   }
   for (std::vector<std::string> &fields : m_rows) {
     if (column < fields.size()) {

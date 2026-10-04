@@ -35,11 +35,15 @@ public:
   /// Whether the text ran out inside a quoted field.
   [[nodiscard]] bool unterminated() const noexcept;
 
+  /// The first record delimiter, excluding line breaks inside fields.
+  [[nodiscard]] std::string_view line_end() const noexcept;
+
 private:
   std::string_view m_text;
   Dialect m_dialect;
   std::size_t m_position{0};
   bool m_unterminated{false};
+  std::string_view m_line_end;
 };
 
 /// What a probe made of a file's opening bytes.
