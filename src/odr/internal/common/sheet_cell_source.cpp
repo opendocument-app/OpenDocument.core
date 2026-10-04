@@ -157,4 +157,8 @@ const formula::Settings &SheetCellSource::settings() const noexcept {
   return m_settings;
 }
 
+const std::vector<Sheet> &SheetCellSource::sheets() const noexcept {
+  return m_sheets;
+}
+
 } // namespace odr::internal

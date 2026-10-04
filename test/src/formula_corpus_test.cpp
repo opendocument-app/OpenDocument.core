@@ -93,8 +93,13 @@ void evaluate_file(const TestFile &file, Tally &tally) {
     }
     adapter->sheet_adapter(sheet)->sheet_visit_formulas(
         sheet, [&](const std::uint32_t column, const std::uint32_t row,
-                   const TableDimensions &, const std::string &text) {
+                   const TableDimensions &, const bool array,
+                   const std::string &text) {
           ++tally.formulas;
+          // decision 29: an array formula has no answer
+          if (array) {
+            return;
+          }
           const SheetPosition position(index, column, row);
           const std::optional<formula::Node> node =
               formula::parse(text, *syntax);

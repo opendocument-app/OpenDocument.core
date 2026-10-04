@@ -666,9 +666,17 @@ public:
       for (const ElementRegistry::Sheet::Cell &cell : sheet.row_cells(run)) {
         if (const pugi::xml_attribute formula =
                 cell.node.attribute("table:formula")) {
-          visitor(cell.begin, row,
-                  TableDimensions(run.end - row, cell.end - cell.begin),
-                  formula.value());
+          // [ODF 1.2] 19.684: an array formula states the range it fills
+          const pugi::xml_attribute matrix_columns =
+              cell.node.attribute("table:number-matrix-columns-spanned");
+          const TableDimensions span =
+              matrix_columns
+                  ? TableDimensions(
+                        cell.node.attribute("table:number-matrix-rows-spanned")
+                            .as_uint(1),
+                        matrix_columns.as_uint(1))
+                  : TableDimensions(run.end - row, cell.end - cell.begin);
+          visitor(cell.begin, row, span, bool(matrix_columns), formula.value());
         }
       }
       row = run.end;

@@ -309,7 +309,17 @@ public:
     for (const auto &[position, cell] :
          m_registry->sheet_element_at(element_id).cells) {
       if (const pugi::xml_node formula = cell.node.child("f")) {
-        visitor(position.column, position.row, TableDimensions(1, 1),
+        // ECMA-376 18.3.1.40: an array formula states the range it fills
+        const bool array =
+            std::string_view(formula.attribute("t").value()) == "array";
+        TableDimensions span(1, 1);
+        if (const std::string ref = formula.attribute("ref").value();
+            array && ref.find(':') != std::string::npos) {
+          const TableRange range(ref);
+          span = TableDimensions(range.to().row - range.from().row + 1,
+                                 range.to().column - range.from().column + 1);
+        }
+        visitor(position.column, position.row, span, array,
                 formula_expression(cell.element_id, formula));
       }
     }

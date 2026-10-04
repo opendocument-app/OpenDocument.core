@@ -169,6 +169,30 @@ TEST(SheetRecalculation, a_running_total_down_a_column) {
   EXPECT_EQ(value_at(document, 0, 1999).number(), 2000);
 }
 
+TEST(SheetRecalculation, a_chain_up_a_column_past_the_depth_limit) {
+  std::string rows;
+  for (int i = 1; i < 1100; ++i) {
+    rows += row(uncomputed("of:=[.A" + std::to_string(i + 1) + "]+1"));
+  }
+  rows += row(number("1"));
+  const Document document = ods(rows);
+
+  EXPECT_EQ(document.recalculate().changed().size(), 1099);
+  EXPECT_EQ(value_at(document, 0, 0).number(), 1100);
+}
+
+TEST(SheetRecalculation, a_cycle_longer_than_the_depth_limit_gets_no_result) {
+  std::string rows;
+  for (int i = 1; i <= 200; ++i) {
+    rows += row(uncomputed("of:=[.A" + std::to_string(i % 200 + 1) + "]+1"));
+  }
+  const Document document = ods(rows);
+
+  const Recalculation result = document.recalculate();
+  EXPECT_TRUE(result.changed().empty());
+  EXPECT_EQ(result.circular().size() + result.unevaluated().size(), 200);
+}
+
 TEST(SheetRecalculation, a_structural_edit_makes_every_formula_stale) {
   const Document document =
       ods(row(number("1") + computed("of:=[.A1]*2", "7")));
@@ -209,6 +233,43 @@ TEST(SheetRecalculation, an_xlsx_result_replaces_the_stale_one) {
   const Document saved = reloaded(document);
   EXPECT_EQ(value_at(saved, 1, 0).number(), 6);
   EXPECT_EQ(value_at(saved, 2, 0).text(), "x3");
+}
+
+TEST(SheetRecalculation, an_array_formula_gets_no_result) {
+  const Document document = decode(test::ooxml::workbook(
+      R"(<row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>3</v></c>)"
+      R"(<c r="C1"><f t="array" ref="C1">SUM(A1:A2*B1:B2)</f><v>11</v></c>)"
+      R"(<c r="D1"><f>C1+1</f><v>12</v></c></row>)"
+      R"(<row r="2"><c r="A2"><v>2</v></c><c r="B2"><v>4</v></c></row>)"));
+
+  first_sheet(document).set_cell(0, 0, CellValue(2));
+  const Recalculation result = document.recalculate();
+
+  // computed as a plain formula, it reads A1*B1: 6
+  EXPECT_TRUE(result.changed().empty());
+  EXPECT_EQ(spelled(result.unevaluated()),
+            (std::vector<std::string>{"0!C1", "0!D1"}));
+  EXPECT_EQ(value_at(document, 2, 0).number(), 11);
+}
+
+TEST(SheetRecalculation, a_cell_an_array_formula_spans_is_stale_with_it) {
+  const Document document = ods(
+      row(number("1") +
+          R"(<table:table-cell table:formula="of:=[.A1:.A2]*2")"
+          R"( table:number-matrix-columns-spanned="1")"
+          R"( table:number-matrix-rows-spanned="2" office:value-type="float")"
+          R"( office:value="2"><text:p>2</text:p></table:table-cell>)") +
+      row(number("2") +
+          R"(<table:covered-table-cell office:value-type="float")"
+          R"( office:value="4"><text:p>4</text:p></table:covered-table-cell>)" +
+          computed("of:=[.B2]+1", "5")));
+
+  first_sheet(document).set_cell(0, 1, CellValue(10));
+  const Recalculation result = document.recalculate();
+
+  EXPECT_TRUE(result.changed().empty());
+  EXPECT_EQ(spelled(result.unevaluated()),
+            (std::vector<std::string>{"0!B1", "0!C2"}));
 }
 
 TEST(SheetRecalculation, an_unedited_document_keeps_its_results) {

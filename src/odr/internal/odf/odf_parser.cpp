@@ -179,11 +179,25 @@ void index_sheet_rows(ElementRegistry &registry,
 
     sheet.register_row(cursor.row(), rows_repeated, row_node);
 
-    // TODO covered cells
-    for (const pugi::xml_node cell_node :
-         row_node.children("table:table-cell")) {
+    // the column a cell node starts at, counting every cell node of the row
+    std::uint32_t stated_column = 0;
+    for (const pugi::xml_node cell_node : row_node.children()) {
+      const std::string_view kind = cell_node.name();
       const std::uint32_t columns_repeated =
           cell_node.attribute("table:number-columns-repeated").as_uint(1);
+      if (kind == "table:covered-table-cell") {
+        // a span accounts for the cell it covers, an array formula's range
+        // does not ([ODF 1.2] 19.684)
+        if (cursor.column() <= stated_column) {
+          cursor.add_cell(1, 1, columns_repeated);
+        }
+        stated_column += columns_repeated;
+        continue;
+      }
+      if (kind != "table:table-cell") {
+        continue;
+      }
+      stated_column += columns_repeated;
       const std::uint32_t colspan =
           cell_node.attribute("table:number-columns-spanned").as_uint(1);
       const std::uint32_t rowspan =

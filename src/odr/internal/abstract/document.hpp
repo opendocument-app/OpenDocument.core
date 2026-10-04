@@ -264,11 +264,12 @@ public:
 };
 
 /// What a formula cell states: the position the file states it at, the
-/// columns and rows a repeat of it stands for, and the expression in the
+/// columns and rows it stands for (a repeat of it, or the range of an array
+/// formula), whether it is an array formula, and the expression in the
 /// engine's own syntax.
 using SheetFormulaVisitor = std::function<void(
-    std::uint32_t column, std::uint32_t row, const TableDimensions &repeated,
-    const std::string &formula)>;
+    std::uint32_t column, std::uint32_t row, const TableDimensions &span,
+    bool array, const std::string &formula)>;
 
 class SheetAdapter {
 public:
