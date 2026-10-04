@@ -19,6 +19,8 @@
   formatted by position, and the formula plan.
 - [Plain-text editing design](txt-editing.md): the editor of the plain-text
   view. One `setContent` op.
+- [Document creation design](document-creation.md): a new odt, ods, docx or
+  xlsx, generated in code and opened through the read path.
 
 ## Diagrams
 
