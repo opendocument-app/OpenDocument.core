@@ -25,6 +25,18 @@ std::vector<Element> children(const Element &element) {
   return result;
 }
 
+/// The text of every run below @p element, at any depth.
+std::string text_of(const Element &element) {
+  if (element.type() == ElementType::text) {
+    return element.as_text().content();
+  }
+  std::string result;
+  for (const Element child : element.children()) {
+    result += text_of(child);
+  }
+  return result;
+}
+
 Document reopen(const Document &document) {
   return open(document.save_to_memory(),
               DecodeOptions::as(document.file_type()))
@@ -160,4 +172,43 @@ TEST(DocumentCreate, ods_takes_an_edit_and_keeps_it_through_a_save) {
   EXPECT_EQ(saved_sheet.cell(2, 4).value().number(), 12.5);
   EXPECT_EQ(saved_sheet.dimensions().rows, 5);
   EXPECT_EQ(saved_sheet.dimensions().columns, 3);
+}
+
+TEST(DocumentCreate, docx_holds_one_empty_paragraph) {
+  const Document document = create_document(FileType::office_open_xml_document);
+
+  const std::vector<Element> body = children(document.root_element());
+  ASSERT_EQ(body.size(), 1);
+  ASSERT_EQ(body[0].type(), ElementType::paragraph);
+  EXPECT_TRUE(children(body[0]).empty());
+
+  const TextStyle style = body[0].as_paragraph().text_style();
+  EXPECT_EQ(style.font_name, "Calibri");
+  EXPECT_EQ(style.font_size->to_string(), "11pt");
+}
+
+TEST(DocumentCreate, docx_page_is_a4) {
+  const Document document = create_document(FileType::office_open_xml_document);
+
+  const PageLayout layout =
+      document.root_element().as_text_root().page_layout();
+  EXPECT_EQ(layout.width->to_string(), "8.268056in");
+  EXPECT_EQ(layout.height->to_string(), "11.69306in");
+  EXPECT_EQ(layout.margin.left->to_string(), "1in");
+}
+
+TEST(DocumentCreate, docx_takes_an_edit_and_keeps_it_through_a_save) {
+  const Document document = create_document(FileType::office_open_xml_document);
+  const Paragraph first =
+      (*document.root_element().children().begin()).as_paragraph();
+
+  std::ignore = document.append_text(first, "hello");
+  const Paragraph second = document.insert_paragraph_after(first);
+  std::ignore = document.append_text(second, "world");
+
+  const Document saved = reopen(document);
+  const std::vector<Element> body = children(saved.root_element());
+  ASSERT_EQ(body.size(), 2);
+  EXPECT_EQ(text_of(body[0]), "hello");
+  EXPECT_EQ(text_of(body[1]), "world");
 }
