@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- ZIP entry streams release their extraction buffers and reject truncated or
+  CRC-corrupt data. Failed archive saves also release writer state.
+
 - The shared stream helpers stop at failed input and reject extreme seeks,
   buffered writes report a failed sink, and a temporary copy keeps binary
   bytes on Windows.

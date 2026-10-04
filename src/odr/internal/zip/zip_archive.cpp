@@ -79,6 +79,11 @@ std::shared_ptr<abstract::Filesystem> ZipArchive::as_filesystem() const {
 
 namespace {
 
+struct Writer {
+  mz_zip_archive archive{};
+  ~Writer() { mz_zip_end(&archive); }
+};
+
 struct WriteSink {
   std::ostream *out{};
   std::streamoff base{};
@@ -94,7 +99,8 @@ void ZipArchive::save(std::ostream &out) const {
   // miniz addresses the output by absolute offset and rewrites local headers.
   WriteSink sink{&out, static_cast<std::streamoff>(out.tellp())};
 
-  mz_zip_archive archive{};
+  Writer writer;
+  auto &archive = writer.archive;
   archive.m_pIO_opaque = &sink;
   archive.m_pWrite = [](void *opaque, const std::uint64_t offset,
                         const void *buffer, const std::size_t size) {
@@ -140,10 +146,6 @@ void ZipArchive::save(std::ostream &out) const {
   }
 
   state = mz_zip_writer_finalize_archive(&archive);
-  if (!state) {
-    throw MinizSaveError(archive);
-  }
-  state = mz_zip_writer_end(&archive);
   if (!state) {
     throw MinizSaveError(archive);
   }

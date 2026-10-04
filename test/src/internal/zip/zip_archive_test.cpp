@@ -16,6 +16,7 @@
 #include <fstream>
 #include <iterator>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <thread>
 #include <vector>
@@ -275,4 +276,94 @@ TEST(ZipArchive, save_sizes_local_headers) {
   }
 
   EXPECT_EQ(3, entries);
+}
+
+namespace {
+
+std::string entry_archive(const std::string &data, const std::uint32_t level) {
+  ZipArchive zip;
+  zip.insert_file(zip.end(), RelPath("entry"),
+                  std::make_shared<MemoryFile>(data), level);
+  std::ostringstream out;
+  zip.save(out);
+  return out.str();
+}
+
+struct AllocationProbe {
+  mz_zip_archive *zip{nullptr};
+  mz_alloc_func original_alloc{zip->m_pAlloc};
+  mz_free_func original_free{zip->m_pFree};
+  void *original_opaque{zip->m_pAlloc_opaque};
+  std::int32_t outstanding{0};
+
+  explicit AllocationProbe(mz_zip_archive *archive) : zip{archive} {
+    zip->m_pAlloc_opaque = this;
+    zip->m_pAlloc = [](void *opaque, std::size_t count, std::size_t size) {
+      auto &probe = *static_cast<AllocationProbe *>(opaque);
+      void *result = probe.original_alloc(probe.original_opaque, count, size);
+      if (result != nullptr) {
+        ++probe.outstanding;
+      }
+      return result;
+    };
+    zip->m_pFree = [](void *opaque, void *address) {
+      auto &probe = *static_cast<AllocationProbe *>(opaque);
+      if (address != nullptr) {
+        --probe.outstanding;
+      }
+      probe.original_free(probe.original_opaque, address);
+    };
+  }
+
+  ~AllocationProbe() {
+    zip->m_pAlloc = original_alloc;
+    zip->m_pFree = original_free;
+    zip->m_pAlloc_opaque = original_opaque;
+  }
+};
+
+} // namespace
+
+TEST(ZipArchive, extraction_releases_buffers_on_completion_and_early_close) {
+  for (const std::uint32_t level : {0U, 6U}) {
+    for (const std::size_t size : {0U, 32768U, 70000U}) {
+      const std::string data(size, 'x');
+      const auto zip = std::make_shared<util::Archive>(
+          std::make_shared<MemoryFile>(entry_archive(data, level)));
+      AllocationProbe allocations(zip->zip());
+      const auto file = zip->begin()->file();
+      {
+        const auto stream = file->stream();
+        stream->get();
+      }
+      EXPECT_EQ(allocations.outstanding, 0);
+      EXPECT_EQ(MemoryFile(*file).content(), data);
+      EXPECT_EQ(allocations.outstanding, 0);
+    }
+  }
+}
+
+TEST(ZipArchive, exact_size_reads_reject_bad_crc_and_truncated_data) {
+  for (const std::uint32_t level : {0U, 6U}) {
+    const auto good = entry_archive(std::string(8192, 'x'), level);
+    const auto central = good.find("PK\x01\x02");
+    ASSERT_NE(central, std::string::npos);
+    // APPNOTE.TXT 4.3.12: CRC-32 at 16, uncompressed size at 24.
+    for (const std::size_t field : {16U, 24U}) {
+      auto bytes = good;
+      bytes[central + field] ^= 1;
+      const auto zip =
+          std::make_shared<util::Archive>(std::make_shared<MemoryFile>(bytes));
+      EXPECT_THROW(MemoryFile(*zip->begin()->file()), FileReadError);
+    }
+  }
+}
+
+TEST(ZipArchive, failed_output_reports_save_errors) {
+  ZipArchive zip;
+  zip.insert_file(zip.end(), RelPath("entry"),
+                  std::make_shared<MemoryFile>("data"));
+  std::ostringstream out;
+  out.setstate(std::ios::badbit);
+  EXPECT_ANY_THROW(zip.save(out));
 }
