@@ -18,12 +18,12 @@ The release run heads these entries with the version and opens a fresh
 
 - `Sheet::insert_columns(column, count)` and
   `Sheet::delete_columns(column, count)`, and the `insertColumns` and
-  `deleteColumns` ops, for an ods and an xlsx. Every formula, named range
-  and cell address that names a moved column moves with it, absolute or not,
-  and a reference into a removed column becomes `#REF!`. The conditional
-  formats, validations, links, filter, view, drawings and comments of an xlsx
-  move too. An edit that cuts a merge, or an insert that pushes a cell past
-  column 16384, refuses with `UnsupportedOperation`.
+  `deleteColumns` ops, for an ods, an xlsx and a csv. Every formula, named
+  range and cell address that names a moved column moves with it, absolute
+  or not, and a reference into a removed column becomes `#REF!`. The
+  conditional formats, validations, links, filter, view, drawings and
+  comments of an xlsx move too. An edit that cuts a merge, or an insert that
+  pushes a cell past column 16384, refuses with `UnsupportedOperation`.
 - `Sheet::insert_rows` and `Sheet::delete_rows` in every binding:
   `insert_rows` and `delete_rows` in python, `insertRows` and `deleteRows`
   in java, `insertRows(at:count:)` and `deleteRows(at:count:)` in swift, and

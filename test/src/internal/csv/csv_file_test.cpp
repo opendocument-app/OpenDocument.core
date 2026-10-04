@@ -652,3 +652,32 @@ TEST(CsvDocument, a_header_moved_by_an_edit_types_its_column_again) {
   EXPECT_EQ(sheet.cell(1, 1).value_type(), ValueType::float_number);
   EXPECT_EQ(sheet.cell(0, 1).value().text(), "x");
 }
+
+TEST(CsvDocument, an_insert_puts_empty_fields_into_every_line) {
+  EXPECT_EQ(edited("a,b\n1,2\n3\n",
+                   R"({"op":"insertColumns","sheet":0,"column":1,"count":2})"),
+            "a,,,b\n1,,,2\n3\n");
+  EXPECT_EQ(edited("a,b\n",
+                   R"({"op":"insertColumns","sheet":0,"column":5,"count":1})"),
+            "a,b\n");
+}
+
+TEST(CsvDocument, a_delete_takes_fields_away) {
+  EXPECT_EQ(edited("a,b,c\n1,2,3\n4\n",
+                   R"({"op":"deleteColumns","sheet":0,"column":0,"count":2})"),
+            "c\n3\n\"\"\n");
+}
+
+TEST(CsvDocument, a_column_edit_keeps_the_numbers_of_a_column) {
+  const Document document = open(File::from_memory("a,b\nx,1\ny,2\n"),
+                                 DecodeOptions::as_csv({.separator = ','}))
+                                .as_csv_file()
+                                .document();
+  Sheet sheet = (*document.root_element().children().begin()).as_sheet();
+  sheet.insert_columns(0, 1);
+  EXPECT_EQ(sheet.dimensions().columns, 3);
+  EXPECT_EQ(sheet.cell(2, 1).value_type(), ValueType::float_number);
+  sheet.delete_columns(0, 2);
+  EXPECT_EQ(sheet.cell(0, 1).value_type(), ValueType::float_number);
+  EXPECT_EQ(sheet.dimensions().columns, 1);
+}

@@ -45,6 +45,10 @@ public:
   void insert_rows(std::uint32_t row, std::uint32_t count);
   /// Takes the lines from @p row on away, @p count of them at most.
   void delete_rows(std::uint32_t row, std::uint32_t count);
+  /// Puts @p count empty fields before @p column, in every line reaching it.
+  void insert_columns(std::uint32_t column, std::uint32_t count);
+  /// Takes the fields from @p column on away, @p count of them at most.
+  void delete_columns(std::uint32_t column, std::uint32_t count);
 
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
