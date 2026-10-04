@@ -266,7 +266,7 @@
       check("a number cell takes center", computed(cell(0, 2)).textAlign === "center");
       check("null is an alignment the op carries", odr.editing.format({ align: null }) === true);
       check("a number goes right again", computed(cell(0, 2)).textAlign === "right");
-      check("a string left", computed(cell(1, 2)).textAlign === "left");
+      check("a string at its start, which is the right in a right-to-left sheet", computed(cell(1, 2)).textAlign === "start");
       check(
         "and the op says null",
         ops().filter(function (op) {
