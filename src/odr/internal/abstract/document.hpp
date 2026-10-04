@@ -263,10 +263,13 @@ public:
   page_name(ElementIdentifier element_id) const = 0;
 };
 
-/// What a formula cell states: the position the file states it at, and the
-/// expression in the engine's own syntax.
+/// What a formula cell states: the position the file states it at, the
+/// columns and rows it stands for (a repeat of it, or the range of an array
+/// formula), whether it is an array formula, and the expression in the
+/// engine's own syntax.
 using SheetFormulaVisitor = std::function<void(
-    std::uint32_t column, std::uint32_t row, const std::string &formula)>;
+    std::uint32_t column, std::uint32_t row, const TableDimensions &span,
+    bool array, const std::string &formula)>;
 
 class SheetAdapter {
 public:
@@ -306,6 +309,17 @@ public:
   virtual void sheet_set_cell(ElementIdentifier element_id,
                               std::uint32_t column, std::uint32_t row,
                               const CellValue &value) const = 0;
+  /// Writes @p result as what the formula at (@p column, @p row) computes,
+  /// and keeps the formula. A number is shown by the cell's format.
+  /// @throws UnsupportedOperation where the engine cannot write, or the cell
+  ///         holds no formula, or one a repeat stands for.
+  virtual void
+  sheet_set_result([[maybe_unused]] ElementIdentifier element_id,
+                   [[maybe_unused]] std::uint32_t column,
+                   [[maybe_unused]] std::uint32_t row,
+                   [[maybe_unused]] const CellValue &result) const {
+    throw UnsupportedOperation();
+  }
   /// States the set fields of @p cell_style and @p text_style on the cell at
   /// (@p column, @p row) and leaves the rest. The cell's content is untouched.
   virtual void

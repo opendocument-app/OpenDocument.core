@@ -746,7 +746,12 @@ constexpr std::array entries{
 
 } // namespace
 
-Value sum_of(const Call &call, const std::span<const double> numbers) {
+} // namespace odr::internal::formula
+
+namespace odr::internal {
+
+formula::Value formula::sum_of(const Call &call,
+                               const std::span<const double> numbers) {
   if (is_libreoffice(call)) {
     return checked(kahan_sum(numbers));
   }
@@ -762,6 +767,8 @@ Value sum_of(const Call &call, const std::span<const double> numbers) {
   return checked(total);
 }
 
-std::span<const FunctionEntry> math_functions() { return entries; }
+std::span<const formula::FunctionEntry> formula::math_functions() {
+  return entries;
+}
 
-} // namespace odr::internal::formula
+} // namespace odr::internal

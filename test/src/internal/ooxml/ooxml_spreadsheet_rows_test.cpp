@@ -160,8 +160,10 @@ TEST(OoxmlSpreadsheetRows, a_formula_moves_with_the_cells_it_reads) {
 
   first_sheet(document).insert_rows(1, 1);
 
-  EXPECT_TRUE(contains(sheet_xml(document),
-                       R"(<c r="B5"><f>SUM(A1:A4)+$A$4</f><v>1</v></c>)"));
+  // the save computes the result again: the text `c` adds up to an error
+  EXPECT_TRUE(
+      contains(sheet_xml(document),
+               R"(<c r="B5" t="e"><f>SUM(A1:A4)+$A$4</f><v>#VALUE!</v></c>)"));
 }
 
 TEST(OoxmlSpreadsheetRows, a_deleted_reference_becomes_an_error) {
@@ -170,7 +172,9 @@ TEST(OoxmlSpreadsheetRows, a_deleted_reference_becomes_an_error) {
 
   first_sheet(document).delete_rows(1, 1);
 
-  EXPECT_TRUE(contains(sheet_xml(document), R"(<c r="B3"><f>#REF!*2</f>)"));
+  // the save computes the error
+  EXPECT_TRUE(contains(sheet_xml(document),
+                       R"(<c r="B3" t="e"><f>#REF!*2</f><v>#REF!</v></c>)"));
 }
 
 TEST(OoxmlSpreadsheetRows, a_formula_on_another_sheet_moves_where_it_names_it) {
@@ -207,8 +211,8 @@ TEST(OoxmlSpreadsheetRows, a_shared_group_the_move_breaks_is_written_out) {
   sheet.insert_rows(2, 1);
 
   const std::string xml = sheet_xml(document);
-  EXPECT_TRUE(contains(xml, R"(<c r="B2"><f>A6*2</f></c>)"));
-  EXPECT_TRUE(contains(xml, R"(<c r="B4"><f>A7*2</f></c>)"));
+  EXPECT_TRUE(contains(xml, R"(<c r="B2"><f>A6*2</f><v>0</v></c>)"));
+  EXPECT_TRUE(contains(xml, R"(<c r="B4"><f>A7*2</f><v>0</v></c>)"));
   EXPECT_EQ(sheet.cell(1, 3).value().formula(), "A7*2");
 }
 
@@ -219,7 +223,8 @@ TEST(OoxmlSpreadsheetRows, a_shared_group_losing_its_master_is_written_out) {
 
   first_sheet(document).delete_rows(1, 1);
 
-  EXPECT_TRUE(contains(sheet_xml(document), R"(<c r="B2"><f>A2*2</f></c>)"));
+  EXPECT_TRUE(
+      contains(sheet_xml(document), R"(<c r="B2"><f>A2*2</f><v>0</v></c>)"));
 }
 
 TEST(OoxmlSpreadsheetRows, a_merge_moves_and_one_the_edit_cuts_refuses) {

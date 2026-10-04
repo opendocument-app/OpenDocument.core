@@ -171,11 +171,13 @@ TEST(OdfSheetRows, a_formula_moves_with_the_cells_it_reads) {
 
   sheet.insert_rows(1, 1);
 
+  // a reference that only moved still reads the same value
+  EXPECT_EQ(sheet.cell(1, 0).value().number(), 1);
+  // the save computes the result again: `c` and `a` add up to an error
   const std::string xml = saved(document);
   EXPECT_NE(xml.find(R"(table:formula="of:=[.A4]+[.$A$1]")"),
             std::string::npos);
-  // a reference that only moved still reads the same value
-  EXPECT_NE(xml.find(R"(office:value="1")"), std::string::npos);
+  EXPECT_NE(xml.find(R"(calcext:value-type="error")"), std::string::npos);
 }
 
 TEST(OdfSheetRows, a_range_an_insert_grows_loses_its_result) {
@@ -186,11 +188,12 @@ TEST(OdfSheetRows, a_range_an_insert_grows_loses_its_result) {
 
   sheet.insert_rows(1, 1);
 
+  EXPECT_FALSE(sheet.cell(1, 0).value().has_number());
+  // the save computes it again
   const std::string xml = saved(document);
   EXPECT_NE(xml.find(R"x(table:formula="of:=ROWS([.A1:.A4])")x"),
             std::string::npos);
-  EXPECT_EQ(xml.find(R"(office:value="1")"), std::string::npos);
-  EXPECT_FALSE(sheet.cell(1, 0).value().has_number());
+  EXPECT_NE(xml.find(R"(office:value="4")"), std::string::npos);
 }
 
 TEST(OdfSheetRows, what_reads_a_repeat_of_a_formula_loses_its_result) {

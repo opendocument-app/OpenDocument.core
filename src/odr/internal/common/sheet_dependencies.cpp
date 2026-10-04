@@ -45,8 +45,9 @@ SheetDependencies SheetDependencies::of(const abstract::Document &document) {
   for (std::uint32_t index = 0; index < sheets.size(); ++index) {
     const ElementIdentifier sheet_id = sheets[index];
     adapter->sheet_adapter(sheet_id)->sheet_visit_formulas(
-        sheet_id, [&](const std::uint32_t column, const std::uint32_t row,
-                      const std::string &formula) {
+        sheet_id,
+        [&](const std::uint32_t column, const std::uint32_t row,
+            const TableDimensions &, bool, const std::string &formula) {
           if (!formula.empty()) {
             result.add_formula_(SheetPosition(index, column, row), formula,
                                 *syntax, by_name);

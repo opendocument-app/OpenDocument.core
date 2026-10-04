@@ -65,6 +65,25 @@ void Document::drop_sheet_dependencies() const noexcept {
   m_sheet_dependencies.reset();
 }
 
+void Document::note_written(const ElementIdentifier sheet,
+                            const TablePosition &position) const {
+  m_written.emplace_back(sheet, position);
+}
+
+void Document::note_moved() const noexcept { m_moved = true; }
+
+const std::vector<std::pair<ElementIdentifier, TablePosition>> &
+Document::written() const noexcept {
+  return m_written;
+}
+
+bool Document::moved() const noexcept { return m_moved; }
+
+void Document::forget_edits() const noexcept {
+  m_written.clear();
+  m_moved = false;
+}
+
 bool Document::is_decrypted() const noexcept {
   return m_encryption_state == EncryptionState::decrypted;
 }

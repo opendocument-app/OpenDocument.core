@@ -268,6 +268,12 @@ constexpr std::array entries{
 
 } // namespace
 
-std::span<const FunctionEntry> logic_functions() { return entries; }
-
 } // namespace odr::internal::formula
+
+namespace odr::internal {
+
+std::span<const formula::FunctionEntry> formula::logic_functions() {
+  return entries;
+}
+
+} // namespace odr::internal

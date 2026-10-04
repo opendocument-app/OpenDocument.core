@@ -666,7 +666,17 @@ public:
       for (const ElementRegistry::Sheet::Cell &cell : sheet.row_cells(run)) {
         if (const pugi::xml_attribute formula =
                 cell.node.attribute("table:formula")) {
-          visitor(cell.begin, row, formula.value());
+          // [ODF 1.2] 19.684: an array formula states the range it fills
+          const pugi::xml_attribute matrix_columns =
+              cell.node.attribute("table:number-matrix-columns-spanned");
+          const TableDimensions span =
+              matrix_columns
+                  ? TableDimensions(
+                        cell.node.attribute("table:number-matrix-rows-spanned")
+                            .as_uint(1),
+                        matrix_columns.as_uint(1))
+                  : TableDimensions(run.end - row, cell.end - cell.begin);
+          visitor(cell.begin, row, span, bool(matrix_columns), formula.value());
         }
       }
       row = run.end;
@@ -747,6 +757,106 @@ public:
     }
 
     drop_stale_results(element_id, column, row);
+    m_document->note_written(element_id, TablePosition(column, row));
+  }
+
+  /// [ODF 1.2] 19.385: the result is the value attributes and the `text:p`,
+  /// as for a value. A number takes the type the cell's data style shows it
+  /// as: a date, a time, or a number. LibreOffice states an error as a text
+  /// of its spelling, typed by `calcext:value-type`.
+  void sheet_set_result(const ElementIdentifier element_id,
+                        const std::uint32_t column, const std::uint32_t row,
+                        const CellValue &result) const override {
+    const ElementRegistry::Sheet::Cell *cell =
+        m_registry->sheet_element_at(element_id).cell(column, row);
+    if (cell == nullptr || cell->element_id == null_element_id ||
+        !cell->node.attribute("table:formula") ||
+        m_registry->sheet_cell_element_at(cell->element_id).is_repeated) {
+      throw UnsupportedOperation();
+    }
+    const ElementIdentifier cell_id = cell->element_id;
+    const TablePosition position(column, row);
+
+    CellValue typed = result;
+    if (result.type() == ValueType::float_number) {
+      switch (data_category(element_id, cell_id, position)
+                  .value_or(number_format::Category::number)) {
+      case number_format::Category::date:
+        typed = CellValue(ValueType::date)
+                    .with_number(
+                        m_document->formula_settings().days(result.number()));
+        break;
+      case number_format::Category::time:
+        typed = CellValue(ValueType::time).with_number(result.number());
+        break;
+      case number_format::Category::number:
+        break;
+      }
+    }
+
+    std::string text;
+    if (const std::optional<std::string> shown =
+            shown_value(element_id, cell_id, position, typed)) {
+      text = *shown;
+    } else if (typed.type() == ValueType::boolean) {
+      text = typed.number() != 0 ? "TRUE" : "FALSE";
+    } else if (typed.has_number()) {
+      text = number_format::Format().format(
+          typed.number(), number_format::Epoch::from_1900,
+          number_format::symbols_of(m_document->locale().value_or("")));
+    } else if (typed.has_text()) {
+      text = typed.text();
+    }
+    write_lines(cell_id, text);
+
+    pugi::xml_node node = get_node(cell_id);
+    remove_value_attributes(node);
+    const auto type = [&](const char *value_type) {
+      node.append_attribute("office:value-type").set_value(value_type);
+    };
+    switch (typed.type()) {
+    case ValueType::unknown:
+      break;
+    case ValueType::string:
+      type("string");
+      node.append_attribute("office:string-value").set_value(text.c_str());
+      break;
+    case ValueType::float_number:
+      type("float");
+      node.append_attribute("office:value")
+          .set_value(fmt::format("{}", typed.number()).c_str());
+      break;
+    case ValueType::boolean:
+      type("boolean");
+      node.append_attribute("office:boolean-value")
+          .set_value(typed.number() != 0 ? "true" : "false");
+      break;
+    case ValueType::date:
+      type("date");
+      node.append_attribute("office:date-value")
+          .set_value(date_value(typed.number()).c_str());
+      break;
+    case ValueType::time:
+      type("time");
+      node.append_attribute("office:time-value")
+          .set_value(time_value(typed.number()).c_str());
+      break;
+    case ValueType::error: {
+      node.append_attribute("office:value-type").set_value("string");
+      node.append_attribute("office:string-value").set_value("");
+      // an older file declares no `calcext`, which the attribute needs
+      pugi::xml_node root = node;
+      while (root.parent().type() == pugi::node_element) {
+        root = root.parent();
+      }
+      if (!root.attribute("xmlns:calcext")) {
+        root.append_attribute("xmlns:calcext")
+            .set_value("urn:org:documentfoundation:names:experimental:calc:"
+                       "xmlns:calcext:1.0");
+      }
+      node.append_attribute("calcext:value-type").set_value("error");
+    } break;
+    }
   }
 
   void sheet_set_cell_style(const ElementIdentifier element_id,
@@ -1355,6 +1465,7 @@ public:
   /// them.
   void drop_moved_results(std::vector<SheetPosition> touched) const {
     m_document->drop_sheet_dependencies();
+    m_document->note_moved();
     const std::vector<SheetPosition> dependents =
         m_document->sheet_dependencies().dependents(touched);
     touched.insert(touched.end(), dependents.begin(), dependents.end());
@@ -2418,6 +2529,32 @@ private:
       }
     }
     return {};
+  }
+
+  /// What the cell's data style shows a number as. Nothing where the cell
+  /// has no data style, or one whose code does not parse.
+  [[nodiscard]] std::optional<number_format::Category>
+  data_category(const ElementIdentifier sheet_id,
+                const ElementIdentifier cell_id,
+                const TablePosition &position) const {
+    const StyleRegistry &styles = m_document->style_registry();
+    const pugi::xml_node data_style =
+        styles.cell_data_style(cell_style_name(sheet_id, cell_id, position));
+    if (!data_style) {
+      return std::nullopt;
+    }
+    const std::optional<std::string> code =
+        format_code(data_style, [&styles](const std::string_view name) {
+          return styles.data_style_node(name);
+        });
+    if (!code) {
+      return std::nullopt;
+    }
+    try {
+      return number_format::Format(*code).category();
+    } catch (const std::invalid_argument &) {
+      return std::nullopt;
+    }
   }
 
   /// What the cell's data style shows for @p value, a number or a date or a

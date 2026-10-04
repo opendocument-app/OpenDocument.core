@@ -27,6 +27,31 @@ class Filesystem;
 class Paragraph;
 class Text;
 
+/// What @ref Document::recalculate did. Each list is sorted by sheet, then
+/// in reading order.
+class Recalculation final {
+public:
+  Recalculation() noexcept = default;
+  Recalculation(std::vector<SheetPosition> changed,
+                std::vector<SheetPosition> circular,
+                std::vector<SheetPosition> unevaluated) noexcept;
+
+  /// The formula cells whose result changed, or that had none before.
+  [[nodiscard]] const std::vector<SheetPosition> &changed() const noexcept;
+  /// The cells of a cycle: each reads itself, and none has a result.
+  [[nodiscard]] const std::vector<SheetPosition> &circular() const noexcept;
+  /// The stale formula cells nothing here computes: a function the evaluator
+  /// does not know, a volatile one, or a value the applications compute
+  /// apart. An ods states no result for one, and an xlsx keeps the one it
+  /// had and asks a reader to compute it on load.
+  [[nodiscard]] const std::vector<SheetPosition> &unevaluated() const noexcept;
+
+private:
+  std::vector<SheetPosition> m_changed;
+  std::vector<SheetPosition> m_circular;
+  std::vector<SheetPosition> m_unevaluated;
+};
+
 /// Represents a document.
 class Document final {
 public:
@@ -131,6 +156,15 @@ public:
   /// may read any position, so a caller that must be right assumes it does.
   [[nodiscard]] std::vector<SheetPosition> unresolved_formulas() const;
 
+  /// Computes the stale formula cells and writes each result into the
+  /// document: the cells an edit since the last recalculation reaches, the
+  /// ones that state no result, and the ones whose reads no position names.
+  /// A structural edit makes every formula stale. A save recalculates first
+  /// where an edit left a formula stale.
+  /// @throws UnsupportedOperation where the sheets repeat more formula cells
+  ///         than a recalculation reads.
+  Recalculation recalculate() const;
+
   /// @}
 
   /// The files the document is packaged from; empty for a document that is
@@ -139,6 +173,10 @@ public:
 
 private:
   std::shared_ptr<internal::abstract::Document> m_impl;
+
+  /// Recalculates where an edit left a formula stale, so a saved file states
+  /// the results it can.
+  void recalculate_edits_() const;
 
   /// @p element 's identifier, checked to be one this document holds.
   [[nodiscard]] ElementIdentifier check_(const Element &element) const;

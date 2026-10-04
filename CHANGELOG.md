@@ -16,6 +16,17 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `Document::recalculate` computes the stale formula cells of an ods and an
+  xlsx and writes each result into the document. It returns the cells whose
+  result changed, the cells of a cycle, and the cells nothing here computes.
+  A save recalculates first where an edit left a formula stale, so a saved
+  ods states the results it can, and a saved xlsx no longer shows a stale
+  result in a reader that does not compute. A cell the evaluator has no
+  answer for stays as before: an ods states no result, and an xlsx asks a
+  reader to compute it on load. An array formula gets no result, as the
+  evaluator does not compute one.
+- A cell after a `table:covered-table-cell` of an ods array formula reads at
+  its own column. Before, every cell after one moved a column to the left.
 - A sheet cell that states no value reads as `ValueType::unknown` in an ods
   and an xlsx, as a cell the file does not state does. A cell holding an
   empty text stays a string. An ods error a formula computed reads as

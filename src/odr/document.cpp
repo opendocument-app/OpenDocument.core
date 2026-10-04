@@ -11,6 +11,7 @@
 #include <odr/style.hpp>
 
 #include <odr/internal/common/sheet_dependencies.hpp>
+#include <odr/internal/common/sheet_recalculation.hpp>
 #include <odr/internal/util/file_util.hpp>
 
 #include <algorithm>
@@ -51,6 +52,7 @@ void Document::save(const std::string &path) const {
   if (!m_impl->is_savable(false)) {
     throw UnsupportedOperation();
   }
+  recalculate_edits_();
   std::ofstream out = internal::util::file::create(path);
   m_impl->save(out);
 }
@@ -60,6 +62,7 @@ void Document::save(const std::string &path,
   if (!m_impl->is_savable(true)) {
     throw UnsupportedOperation();
   }
+  recalculate_edits_();
   std::ofstream out = internal::util::file::create(path);
   m_impl->save(out, password.c_str());
 }
@@ -68,6 +71,7 @@ void Document::save(std::ostream &out) const {
   if (!m_impl->is_savable(false)) {
     throw UnsupportedOperation();
   }
+  recalculate_edits_();
   m_impl->save(out);
 }
 
@@ -75,6 +79,7 @@ void Document::save(std::ostream &out, const std::string &password) const {
   if (!m_impl->is_savable(true)) {
     throw UnsupportedOperation();
   }
+  recalculate_edits_();
   m_impl->save(out, password.c_str());
 }
 
@@ -584,6 +589,36 @@ Document::dependents(const std::vector<SheetPosition> &positions) const {
 
 std::vector<SheetPosition> Document::unresolved_formulas() const {
   return m_impl->sheet_dependencies().unresolved();
+}
+
+Recalculation Document::recalculate() const {
+  internal::SheetRecalculation result = internal::recalculate(*m_impl);
+  return Recalculation(std::move(result.changed), std::move(result.circular),
+                       std::move(result.unevaluated));
+}
+
+void Document::recalculate_edits_() const {
+  if (internal::is_edited(*m_impl)) {
+    recalculate();
+  }
+}
+
+Recalculation::Recalculation(std::vector<SheetPosition> changed,
+                             std::vector<SheetPosition> circular,
+                             std::vector<SheetPosition> unevaluated) noexcept
+    : m_changed{std::move(changed)}, m_circular{std::move(circular)},
+      m_unevaluated{std::move(unevaluated)} {}
+
+const std::vector<SheetPosition> &Recalculation::changed() const noexcept {
+  return m_changed;
+}
+
+const std::vector<SheetPosition> &Recalculation::circular() const noexcept {
+  return m_circular;
+}
+
+const std::vector<SheetPosition> &Recalculation::unevaluated() const noexcept {
+  return m_unevaluated;
 }
 
 Filesystem Document::as_filesystem() const {
