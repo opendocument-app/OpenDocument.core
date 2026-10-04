@@ -186,7 +186,7 @@ constexpr std::array<RangeAttribute, 7> removable_ranges{{
 }};
 
 /// The cell @p address names after the edit, the first one past the removed
-/// rows where a delete takes it.
+/// rows or columns where a delete takes it.
 std::string moved_cell(const std::string &address,
                        const formula::SheetEdit &edit) {
   const TablePosition position(address);
