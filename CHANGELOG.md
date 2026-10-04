@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Legacy Office reports unencrypted documents as decodable and derives metadata
+  from the shared file-type table.
+
 - Legacy Excel rejects truncated BIFF records and a wrong substream type. It
   drops cells outside the BIFF8 grid, and numbers ignore the host locale.
 

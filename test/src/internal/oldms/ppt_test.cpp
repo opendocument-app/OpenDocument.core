@@ -131,6 +131,8 @@ TEST(OldMs, ppt_empty) {
   EXPECT_EQ(document_file.file_type(),
             FileType::legacy_powerpoint_presentation);
 
+  EXPECT_TRUE(document_file.is_decodable());
+
   const Document document = document_file.document();
   EXPECT_EQ(document.document_type(), DocumentType::presentation);
 

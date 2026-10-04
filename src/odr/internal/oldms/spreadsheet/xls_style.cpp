@@ -60,10 +60,9 @@ font_at(const std::span<const StyleRegistry::Font> fonts,
 
 } // namespace
 
-StyleRegistry::StyleRegistry(std::vector<Font> fonts,
+StyleRegistry::StyleRegistry(const std::span<const Font> fonts,
                              const std::span<const XfBody> xfs,
-                             const std::span<const LongRgb> palette)
-    : m_fonts{std::move(fonts)} {
+                             const std::span<const LongRgb> palette) {
   if (!palette.empty() && palette.size() != palette_color_count) {
     throw std::invalid_argument("StyleRegistry: unexpected palette size");
   }
@@ -73,7 +72,7 @@ StyleRegistry::StyleRegistry(std::vector<Font> fonts,
   for (const XfBody &xf : xfs) {
     ResolvedStyle &style = m_cell_styles.emplace_back();
 
-    const Font &font = font_at(m_fonts, xf.ifnt);
+    const Font &font = font_at(fonts, xf.ifnt);
     TextStyle &text = style.text_style;
     text.font_name = font.name;
     if (font.fixed.dyHeight != 0) {

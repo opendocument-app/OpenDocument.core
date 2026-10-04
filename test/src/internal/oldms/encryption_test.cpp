@@ -91,6 +91,11 @@ std::string workbook_stream(const bool encrypted) {
 } // namespace
 
 TEST(OldMsEncryption, doc_reports_the_encrypted_flag) {
+  const LegacyMicrosoftFile clear(std::make_shared<VirtualFilesystem>(
+      filesystem_of("/WordDocument", word_document_stream(false))));
+  EXPECT_TRUE(clear.is_decodable());
+  EXPECT_EQ(clear.mimetype(), "application/msword");
+  EXPECT_EQ(clear.document_type(), DocumentType::text);
   EXPECT_EQ(text::password_encrypted(
                 filesystem_of("/WordDocument", word_document_stream(true))),
             true);
@@ -152,6 +157,7 @@ TEST(OldMsEncryption, an_unreadable_stream_leaves_the_state_unknown) {
   EXPECT_EQ(file.file_type(), FileType::legacy_word_document);
   EXPECT_FALSE(file.password_encrypted());
   EXPECT_EQ(file.encryption_state(), EncryptionState::unknown);
+  EXPECT_TRUE(file.is_decodable());
 }
 
 /// The file that reported the issue: it threw
@@ -162,6 +168,7 @@ TEST(OldMsEncryption, an_encrypted_doc_surfaces_as_encrypted) {
 
   EXPECT_EQ(file.file_type(), FileType::legacy_word_document);
   EXPECT_TRUE(file.password_encrypted());
+  EXPECT_FALSE(file.is_decodable());
   EXPECT_EQ(file.encryption_state(), EncryptionState::encrypted);
   EXPECT_THROW(static_cast<void>(file.as_document_file().document()),
                FileEncryptedError);

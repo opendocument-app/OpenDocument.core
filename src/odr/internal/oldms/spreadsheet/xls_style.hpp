@@ -23,17 +23,13 @@ public:
   StyleRegistry() = default;
   /// `palette` is the Palette record's `palette_color_count` colors, or empty
   /// when the record is absent (the spec's default palette applies).
-  StyleRegistry(std::vector<Font> fonts, std::span<const XfBody> xfs,
+  StyleRegistry(std::span<const Font> fonts, std::span<const XfBody> xfs,
                 std::span<const LongRgb> palette);
 
-  /// The resolved style of an XF record, by XF index (a cell's ixfe): the
-  /// text (font) side and the cell (fill) side. Throws if the index has no
-  /// XF record.
+  /// Font and cell style by XF index; throws for an unknown index.
   [[nodiscard]] const ResolvedStyle &cell_style(std::uint16_t ixfe) const;
 
 private:
-  /// The fonts the XF records index.
-  std::vector<Font> m_fonts;
   std::vector<ResolvedStyle> m_cell_styles;
 };
 
