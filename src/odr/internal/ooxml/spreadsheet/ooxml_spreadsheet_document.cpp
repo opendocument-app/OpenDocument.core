@@ -148,6 +148,10 @@ pugi::xml_node Document::part(const AbsPath &path) {
   return root;
 }
 
+const Relations &Document::relations_of(const AbsPath &path) const {
+  return m_xml_documents_and_relations.at(path).second;
+}
+
 pugi::xml_node Document::related_part(const AbsPath &origin,
                                       const std::string_view type) {
   const std::optional<AbsPath> path =
@@ -642,6 +646,38 @@ public:
       throw UnsupportedOperation();
     }
 
+    // a chart on any sheet may read the edited one
+    std::vector<pugi::xml_node> charts;
+    try {
+      for (ElementIdentifier id =
+               element_first_child(m_document->root_element());
+           id != null_element_id; id = element_next_sibling(id)) {
+        const ElementRegistry::ElementRelations *sheet_relations =
+            m_registry->element_relations(id);
+        const auto target = sheet_relations->relations->find(
+            get_node(id).child("drawing").attribute("r:id").value());
+        if (target == sheet_relations->relations->end()) {
+          continue;
+        }
+        const AbsPath drawing_path =
+            sheet_relations->origin.parent().join(RelPath(target->second));
+        const pugi::xml_node drawing_root = m_document->part(drawing_path);
+        const Relations &drawing_relations =
+            m_document->relations_of(drawing_path);
+        for (const pugi::xpath_node chart :
+             drawing_root.select_nodes("//*[local-name()='chart']")) {
+          if (const auto chart_target = drawing_relations.find(
+                  chart.node().attribute("r:id").value());
+              chart_target != drawing_relations.end()) {
+            charts.push_back(m_document->part(
+                drawing_path.parent().join(RelPath(chart_target->second))));
+          }
+        }
+      }
+    } catch (const std::exception &) {
+      throw UnsupportedOperation();
+    }
+
     std::vector<ElementIdentifier> sheet_ids;
     std::vector<NamedWorksheet> worksheets;
     std::string sheet_id;
@@ -698,6 +734,9 @@ public:
     move_breaks(sheet_node, edit);
     move_drawing(drawing, edit);
     move_comments(comments, threaded, notes, edit);
+    for (const pugi::xml_node chart : charts) {
+      move_chart(chart, edit);
+    }
     std::vector<TableHeader> headers;
     for (const pugi::xml_node table : tables) {
       std::ranges::move(move_table(table, edit), std::back_inserter(headers));

@@ -33,6 +33,8 @@ public:
   /// back by `save`. Null where the package has none.
   /// @throws std::exception where the part does not parse.
   [[nodiscard]] pugi::xml_node part(const AbsPath &path);
+  /// The relationships of the part at @p path, which @ref part read.
+  [[nodiscard]] const Relations &relations_of(const AbsPath &path) const;
   /// @ref part for the one a relationship of @p type leads to from @p origin.
   [[nodiscard]] pugi::xml_node related_part(const AbsPath &origin,
                                             std::string_view type);

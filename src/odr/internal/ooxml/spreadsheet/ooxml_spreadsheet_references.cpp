@@ -589,4 +589,12 @@ ooxml::spreadsheet::move_table(pugi::xml_node table,
   return result;
 }
 
+void ooxml::spreadsheet::move_chart(const pugi::xml_node chart,
+                                    const formula::SheetEdit &edit) {
+  for (const pugi::xpath_node formula :
+       chart.select_nodes("//*[local-name()='f']")) {
+    move_text(formula.node(), std::nullopt, edit);
+  }
+}
+
 } // namespace odr::internal
