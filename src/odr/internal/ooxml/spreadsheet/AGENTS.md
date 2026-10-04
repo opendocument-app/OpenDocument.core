@@ -7,8 +7,9 @@ The design of the xlsx module. The feature checklist is in
 
 Scope: read `xl/workbook.xml`, its sheets, the shared strings and the drawings
 into the abstract model, one table per sheet. Cell styles resolve from the
-styles part that the workbook relationships name, normally `xl/styles.xml`.
-Write a cell value and a cell style, and save.
+styles part that the workbook relationships name, normally `xl/styles.xml`. A
+workbook without one gets an empty styles part, which a save writes with its
+relationship and content type. Write a cell value and a cell style, and save.
 
 ## Design decisions
 
@@ -70,7 +71,9 @@ copies that `xf` and its `font`, applies the delta, and appends a `font`, a
 `fill` and an `xf` only where no equal one exists, with `applyFont`,
 `applyFill` and `applyAlignment` set. A `font` keeps the child order of
 `CT_Font`. An empty `styleSheet` first gets the entries every `xf` needs.
-`styles.xml` is a written part, so every save writes it from its dom.
+The styles part is written from its DOM on save. If absent, the constructor
+creates it and registers its relationship and content type. Save writes cached
+parts even when they were not in the original package.
 
 A position the file states no `c` for is stated by `insert_cell`: the `c` goes
 into its row in column order, a missing `row` into `sheetData` in row order,

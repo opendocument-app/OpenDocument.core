@@ -71,11 +71,16 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
           .as_bool()) {
     m_epoch = number_format::Epoch::from_1904;
   }
-  const AbsPath styles_path =
-      parse_relationship_target(*m_files, workbook_path, "styles")
-          .value_or(AbsPath("/xl/styles.xml"));
-  const auto [styles_xml, _] = parse_xml_(styles_path);
-  m_written_parts.push_back(styles_path);
+  const std::optional<AbsPath> styles_target =
+      parse_relationship_target(*m_files, workbook_path, "styles");
+  const AbsPath styles_path = styles_target.value_or(AbsPath("/xl/styles.xml"));
+  pugi::xml_node styles_root;
+  if (styles_target || m_files->is_file(styles_path)) {
+    styles_root = parse_xml_(styles_path).first.document_element();
+    m_written_parts.push_back(styles_path);
+  } else {
+    styles_root = create_styles_();
+  }
 
   for (pugi::xml_node sheet_node :
        workbook_xml.document_element().child("sheets").children("sheet")) {
@@ -111,7 +116,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
       theme_path && m_files->is_file(*theme_path)) {
     theme_root = parse_xml_(*theme_path).first.document_element();
   }
-  m_style_registry = StyleRegistry(styles_xml.document_element(), theme_root);
+  m_style_registry = StyleRegistry(styles_root, theme_root);
 
   const ParseContext parse_context(workbook_path, workbook_relations,
                                    m_xml_documents_and_relations,
@@ -207,8 +212,7 @@ void Document::save(std::ostream &out) const {
     throw UnsupportedOperation();
   }
 
-  // ECMA-376 18.2.2: nothing here computes a formula, so every save asks the
-  // reader to recompute what this one may have invalidated
+  // ECMA-376 18.2.2: refresh formulas the evaluator cannot compute.
   pugi::xml_node calc_node = calc_pr(workbook());
   calc_node.remove_attribute("fullCalcOnLoad");
   calc_node.append_attribute("fullCalcOnLoad").set_value("1");
@@ -216,27 +220,26 @@ void Document::save(std::ostream &out) const {
   // TODO this would decrypt/inflate and encrypt/deflate again
   zip::ZipArchive archive;
 
+  for (const AbsPath &path : m_written_parts) {
+    std::ostringstream content;
+    content << R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>)";
+    m_xml_documents_and_relations.at(path).first.print(content, "",
+                                                       pugi::format_raw);
+    archive.insert_file(std::end(archive), path.rebase(AbsPath("/")),
+                        std::make_shared<MemoryFile>(content.str()));
+  }
   for (auto walker = m_files->file_walker(AbsPath("/")); !walker->end();
        walker->next()) {
-    const AbsPath &abs_path = walker->path();
-    RelPath rel_path = abs_path.rebase(AbsPath("/"));
+    const AbsPath &path = walker->path();
+    if (std::ranges::find(m_written_parts, path) != m_written_parts.end()) {
+      continue;
+    }
+    const RelPath relative = path.rebase(AbsPath("/"));
     if (walker->is_directory()) {
-      archive.insert_directory(std::end(archive), rel_path);
-      continue;
+      archive.insert_directory(std::end(archive), relative);
+    } else {
+      archive.insert_file(std::end(archive), relative, m_files->open(path));
     }
-    if (std::ranges::find(m_written_parts, abs_path) !=
-        std::end(m_written_parts)) {
-      // TODO stream
-      std::stringstream content;
-      // pugixml is never asked to parse the declaration, so it writes none back
-      content << R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>)";
-      m_xml_documents_and_relations.at(abs_path).first.print(content, "",
-                                                             pugi::format_raw);
-      auto tmp = std::make_shared<MemoryFile>(content.str());
-      archive.insert_file(std::end(archive), rel_path, tmp);
-      continue;
-    }
-    archive.insert_file(std::end(archive), rel_path, m_files->open(abs_path));
   }
 
   archive.save(out);
@@ -254,6 +257,49 @@ Document::parse_xml_(const AbsPath &path) {
   auto [it, _] = m_xml_documents_and_relations.emplace(
       path, std::make_pair(std::move(document), std::move(relations)));
   return {it->second.first, it->second.second};
+}
+
+pugi::xml_node Document::create_styles_() {
+  const auto ensure_part = [&](const AbsPath &path, const char *name,
+                               const char *xmlns) {
+    if (const pugi::xml_node existing = part(path)) {
+      return existing;
+    }
+    pugi::xml_node root =
+        m_xml_documents_and_relations[path].first.append_child(name);
+    root.append_attribute("xmlns").set_value(xmlns);
+    m_written_parts.push_back(path);
+    return root;
+  };
+  const pugi::xml_node styles =
+      ensure_part(AbsPath("/xl/styles.xml"), "styleSheet",
+                  "http://schemas.openxmlformats.org/spreadsheetml/2006/main");
+  pugi::xml_node relationships = ensure_part(
+      AbsPath("/xl/_rels/workbook.xml.rels"), "Relationships",
+      "http://schemas.openxmlformats.org/package/2006/relationships");
+  std::string id = "odrStyles";
+  while (relationships.find_child_by_attribute("Id", id.c_str())) {
+    id += '_';
+  }
+  pugi::xml_node relationship = relationships.append_child("Relationship");
+  relationship.append_attribute("Id").set_value(id.c_str());
+  relationship.append_attribute("Type").set_value(
+      "http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
+      "styles");
+  relationship.append_attribute("Target").set_value("styles.xml");
+  pugi::xml_node types = ensure_part(
+      AbsPath("/[Content_Types].xml"), "Types",
+      "http://schemas.openxmlformats.org/package/2006/content-types");
+  pugi::xml_node type =
+      types.find_child_by_attribute("Override", "PartName", "/xl/styles.xml");
+  if (!type) {
+    type = types.append_child("Override");
+    type.append_attribute("PartName").set_value("/xl/styles.xml");
+  }
+  xml::set_attribute(
+      type, "ContentType",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml");
+  return styles;
 }
 
 namespace {

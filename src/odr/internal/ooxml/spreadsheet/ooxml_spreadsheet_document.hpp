@@ -62,6 +62,8 @@ private:
   StyleRegistry m_style_registry;
   number_format::Epoch m_epoch{number_format::Epoch::from_1900};
 
+  pugi::xml_node create_styles_();
+
   std::pair<pugi::xml_document &, Relations &> parse_xml_(const AbsPath &path);
 };
 
