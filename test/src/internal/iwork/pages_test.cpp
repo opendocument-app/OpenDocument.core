@@ -209,12 +209,14 @@ TEST(Iwork, pages_run_table_points_past_the_text) {
   EXPECT_ANY_THROW(std::ignore = pages_document("abc", {{0, 9}}));
 }
 
-TEST(Iwork, pages_text_ends_mid_character) {
-  EXPECT_ANY_THROW(std::ignore = pages_document("a\xe2\x80", {{0, 3}}));
-}
-
-TEST(Iwork, pages_text_is_not_utf8) {
-  EXPECT_ANY_THROW(std::ignore = pages_document("\x80x", {{0, 1}}));
+TEST(Iwork, pages_rejects_invalid_utf8_anywhere_in_the_storage) {
+  for (const std::string text : {"a\xe2\x80", "\x80x", "ok\n\x80"}) {
+    EXPECT_THROW(std::ignore = pages_document(text, {{0}}), std::runtime_error);
+    EXPECT_THROW(std::ignore = pages_document(text, std::nullopt),
+                 std::runtime_error);
+    EXPECT_THROW(std::ignore = pages_document(text, {{0, 3}}),
+                 std::runtime_error);
+  }
 }
 
 // `U+2028` breaks a line inside a paragraph rather than starting a new one.
