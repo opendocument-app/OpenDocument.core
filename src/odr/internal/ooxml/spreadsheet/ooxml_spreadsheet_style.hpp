@@ -1,10 +1,12 @@
 #pragma once
 
 #include <odr/internal/common/style.hpp>
+#include <odr/internal/number_format/number_format.hpp>
 
 #include <cstdint>
 
 #include <optional>
+#include <unordered_map>
 #include <vector>
 
 #include <pugixml.hpp>
@@ -18,6 +20,10 @@ public:
   StyleRegistry(pugi::xml_node styles_root, pugi::xml_node theme_root);
 
   [[nodiscard]] ResolvedStyle cell_style(std::uint32_t i) const;
+  /// The number format `cellXfs` index @p i names: a `numFmt`, else a
+  /// built-in one of ECMA-376 18.8.30, else `General`.
+  [[nodiscard]] const number_format::Format &
+  number_format(std::uint32_t i) const;
 
   /// The `cellXfs` index of @p base with the delta applied. An equal `xf`,
   /// `font` or `fill` is reused, else one is appended.
@@ -35,6 +41,7 @@ private:
   std::vector<pugi::xml_node> m_fills_index;
   std::vector<pugi::xml_node> m_cell_masters_index;
   std::vector<pugi::xml_node> m_cell_formats_index;
+  std::unordered_map<std::uint32_t, number_format::Format> m_number_formats;
 
   void generate_indices_(pugi::xml_node styles_root);
 

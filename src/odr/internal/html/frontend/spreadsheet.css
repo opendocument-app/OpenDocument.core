@@ -36,7 +36,7 @@ body{margin:0;background:var(--odr-sheet-canvas)}
    The writer indents nothing inside a cell. Important over the `white-space`
    shorthand of a cell's own style, which would collapse it again. */
 .odr-sheet td{white-space-collapse:preserve!important;tab-size:.5in;--odr-align-by-type:start}
-.odr-sheet td.odr-value-type-float{text-align:right;--odr-align-by-type:right}
+.odr-sheet td:is(.odr-value-type-float,.odr-value-type-date){text-align:right;--odr-align-by-type:right}
 /* `background-image` layers over the document's own cell background instead of
    replacing it, and leaves `box-shadow` to the ruler. */
 .odr-sheet tbody tr:hover>*{background-image:linear-gradient(var(--odr-sheet-wash),var(--odr-sheet-wash))}

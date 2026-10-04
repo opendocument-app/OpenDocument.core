@@ -8,8 +8,11 @@
 #include <cstdlib>
 #include <span>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_map>
+#include <utility>
 
 #include <fmt/format.h>
 
@@ -460,6 +463,71 @@ void StyleRegistry::generate_indices_(const pugi::xml_node styles_root) {
   for (const pugi::xml_node cell_format : styles_root.child("cellXfs")) {
     m_cell_formats_index.push_back(cell_format);
   }
+
+  m_number_formats.clear();
+  for (const pugi::xml_node format : styles_root.child("numFmts")) {
+    try {
+      m_number_formats.emplace(
+          format.attribute("numFmtId").as_uint(),
+          number_format::Format(format.attribute("formatCode").value()));
+    } catch (const std::invalid_argument &) {
+      // a code this cannot read shows its value as `General` does
+    }
+  }
+}
+
+const number_format::Format &
+StyleRegistry::number_format(const std::uint32_t i) const {
+  const std::uint32_t id =
+      i < m_cell_formats_index.size()
+          ? m_cell_formats_index[i].attribute("numFmtId").as_uint()
+          : 0;
+  if (const auto it = m_number_formats.find(id);
+      it != std::end(m_number_formats)) {
+    return it->second;
+  }
+  // ECMA-376 18.8.30, in its en-US spelling; the ids it leaves to a locale
+  // show as `General`
+  static const std::unordered_map<std::uint32_t, number_format::Format>
+      built_in = [] {
+        std::unordered_map<std::uint32_t, number_format::Format> result;
+        const std::array<std::pair<std::uint32_t, const char *>, 27> codes{{
+            {1, "0"},
+            {2, "0.00"},
+            {3, "#,##0"},
+            {4, "#,##0.00"},
+            {9, "0%"},
+            {10, "0.00%"},
+            {11, "0.00E+00"},
+            {12, "# ?/?"},
+            {13, "# ??/??"},
+            {14, "mm-dd-yy"},
+            {15, "d-mmm-yy"},
+            {16, "d-mmm"},
+            {17, "mmm-yy"},
+            {18, "h:mm AM/PM"},
+            {19, "h:mm:ss AM/PM"},
+            {20, "h:mm"},
+            {21, "h:mm:ss"},
+            {22, "m/d/yy h:mm"},
+            {37, "#,##0 ;(#,##0)"},
+            {38, "#,##0 ;[Red](#,##0)"},
+            {39, "#,##0.00;(#,##0.00)"},
+            {40, "#,##0.00;[Red](#,##0.00)"},
+            {45, "mm:ss"},
+            {46, "[h]:mm:ss"},
+            {47, "mmss.0"},
+            {48, "##0.0E+0"},
+            {49, "@"},
+        }};
+        for (const auto &[code_id, code] : codes) {
+          result.emplace(code_id, number_format::Format(code));
+        }
+        return result;
+      }();
+  static const number_format::Format general;
+  const auto it = built_in.find(id);
+  return it != std::end(built_in) ? it->second : general;
 }
 
 } // namespace odr::internal::ooxml::spreadsheet

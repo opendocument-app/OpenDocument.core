@@ -60,6 +60,12 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
   const AbsPath workbook_path("/xl/workbook.xml");
   const auto [workbook_xml, workbook_relations] = parse_xml_(workbook_path);
   m_written_parts.push_back(workbook_path);
+  if (workbook_xml.document_element()
+          .child("workbookPr")
+          .attribute("date1904")
+          .as_bool()) {
+    m_epoch = number_format::Epoch::from_1904;
+  }
   const AbsPath styles_path("/xl/styles.xml");
   const auto [styles_xml, _] = parse_xml_(styles_path);
   m_written_parts.push_back(styles_path);
@@ -115,6 +121,8 @@ const StyleRegistry &Document::style_registry() const {
 }
 
 StyleRegistry &Document::style_registry() { return m_style_registry; }
+
+number_format::Epoch Document::epoch() const { return m_epoch; }
 
 bool Document::is_editable() const noexcept { return true; }
 
@@ -471,6 +479,29 @@ public:
             .c_str());
   }
 
+  /// The number format the cell @p cell_id shows its value in.
+  [[nodiscard]] const number_format::Format &
+  number_format_of(const ElementIdentifier cell_id) const {
+    const pugi::xml_node node = get_node(cell_id);
+    const pugi::xml_node column_node =
+        m_registry->sheet_element_at(element_parent(cell_id))
+            .column_node(
+                m_registry->sheet_cell_element_at(cell_id).position.column);
+    return m_document->style_registry().number_format(
+        shown_format(node, node.parent(), column_node).value_or(0));
+  }
+
+  /// What the cell shows for @p number: `TRUE` or `FALSE` for a boolean, the
+  /// number formatted otherwise.
+  [[nodiscard]] std::string shown_value(const ElementIdentifier cell_id,
+                                        const pugi::xml_node cell,
+                                        const double number) const {
+    if (std::string_view(cell.attribute("t").value()) == "b") {
+      return number != 0 ? "TRUE" : "FALSE";
+    }
+    return number_format_of(cell_id).format(number, m_document->epoch());
+  }
+
   /// A position without `s` shows its row's `s` where the row states
   /// `customFormat`, else its column's `style`, as LibreOffice reads it;
   /// 18.3.1.4 alone would default `s` to 0. None where nothing states one.
@@ -608,6 +639,14 @@ public:
       return ValueType::string;
     }
     if (node.child("v")) {
+      switch (number_format_of(element_id).category()) {
+      case number_format::Category::date:
+        return ValueType::date;
+      case number_format::Category::time:
+        return ValueType::time;
+      case number_format::Category::number:
+        break;
+      }
       return ValueType::float_number;
     }
     return ValueType::string;
@@ -620,10 +659,12 @@ public:
 
     CellValue result = CellValue(sheet_cell_value_type(element_id));
     if (result.type() == ValueType::float_number ||
+        result.type() == ValueType::date || result.type() == ValueType::time ||
         result.type() == ValueType::boolean) {
       if (const std::optional<double> number =
               util::number::parse(node.child("v").text().get())) {
-        result = result.with_number(*number);
+        result = result.with_number(*number).with_text(
+            shown_value(element_id, node, *number));
       }
     }
     if (const pugi::xml_node formula = node.child("f")) {
@@ -695,6 +736,18 @@ public:
 
     const pugi::xml_node first = get_node(element_id);
     const pugi::xml_node last = text_element.last;
+
+    // the `v` of a number states its value, and the cell shows it formatted
+    if (const pugi::xml_node cell = first.parent();
+        std::string_view(first.name()) == "v" &&
+        (std::string_view(cell.attribute("t").value()).empty() ||
+         std::string_view(cell.attribute("t").value()) == "n" ||
+         std::string_view(cell.attribute("t").value()) == "b")) {
+      if (const std::optional<double> number =
+              util::number::parse(first.text().get())) {
+        return shown_value(element_parent(element_id), cell, *number);
+      }
+    }
 
     std::string result;
     for (pugi::xml_node node = first; node != last.next_sibling();
