@@ -59,14 +59,23 @@ struct Section final {
 /// Where a date serial counts from: `workbookPr/@date1904` picks 1904.
 enum class Epoch { from_1900, from_1904 };
 
+/// The signs a locale writes a number with, where the code spells `.` and `,`.
+struct Symbols final {
+  std::string decimal{"."};
+  std::string group{","};
+};
+
+/// The symbols of the BCP 47 tag @p locale, from a small table of languages;
+/// one it does not name writes `.` and `,`.
+[[nodiscard]] Symbols symbols_of(std::string_view locale);
+
 /// What the first section of a format shows a number as.
 enum class Category { number, date, time };
 
 /// @brief A number format, parsed from a format code as MS-XLS 2.4.126 states
 /// its grammar.
 ///
-/// `.` and `,` are written as the code spells them, whatever the locale. A
-/// colour is parsed and not shown, and `*` fills nothing.
+/// A colour is parsed and not shown, and `*` fills nothing.
 class Format final {
 public:
   /// `General`.
@@ -74,10 +83,11 @@ public:
   /// @throws std::invalid_argument where @p code is no format code.
   explicit Format(std::string_view code);
 
-  /// The text a cell holding @p value shows. A date or time section reads it
-  /// as a serial counted from @p epoch.
-  [[nodiscard]] std::string format(double value,
-                                   Epoch epoch = Epoch::from_1900) const;
+  /// The text a cell holding @p value shows, with @p symbols for the point
+  /// and the grouping comma. A date or time section reads it as a serial
+  /// counted from @p epoch.
+  [[nodiscard]] std::string format(double value, Epoch epoch = Epoch::from_1900,
+                                   const Symbols &symbols = {}) const;
   /// The text a cell holding the text @p value shows.
   [[nodiscard]] std::string format(std::string_view value) const;
 
@@ -89,6 +99,7 @@ private:
 
 /// `General`: up to 15 significant digits, in scientific notation outside
 /// [1e-10, 1e15).
-[[nodiscard]] std::string format_general(double value);
+[[nodiscard]] std::string format_general(double value,
+                                         const Symbols &symbols = {});
 
 } // namespace odr::internal::number_format

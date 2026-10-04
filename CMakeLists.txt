@@ -243,6 +243,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/odf/odf_list.cpp"
         "src/odr/internal/odf/odf_manifest.cpp"
         "src/odr/internal/odf/odf_meta.cpp"
+        "src/odr/internal/odf/odf_number_format.cpp"
         "src/odr/internal/odf/odf_parser.cpp"
         "src/odr/internal/odf/odf_style.cpp"
         "src/odr/internal/odf/odf_table.cpp"

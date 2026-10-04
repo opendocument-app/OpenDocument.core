@@ -152,3 +152,21 @@ TEST(NumberFormat, a_format_says_whether_it_shows_a_date) {
   EXPECT_EQ(shown("yyyy-mm-dd", 2958465), "9999-12-31");
   EXPECT_EQ(shown("yyyy-mm-dd", 1e12), "1000000000000");
 }
+
+TEST(NumberFormat, a_locale_writes_its_own_point_and_grouping) {
+  const Symbols german = symbols_of("de-DE");
+  EXPECT_EQ(Format("#,##0.00").format(1234.5, Epoch::from_1900, german),
+            "1.234,50");
+  EXPECT_EQ(Format().format(1.5, Epoch::from_1900, german), "1,5");
+  EXPECT_EQ(Format("0.00E+00").format(12345, Epoch::from_1900, german),
+            "1,23E+04");
+  EXPECT_EQ(Format("#,##0").format(1234, Epoch::from_1900, symbols_of("fr-FR")),
+            "1 234");
+  EXPECT_EQ(
+      Format("#,##0.0").format(1234.5, Epoch::from_1900, symbols_of("de-CH")),
+      "1’234.5");
+  EXPECT_EQ(symbols_of("en-US").decimal, ".");
+  EXPECT_EQ(symbols_of("ja").group, ",");
+  EXPECT_EQ(symbols_of("es-MX").decimal, ".");
+  EXPECT_EQ(symbols_of("pt-BR").group, ".");
+}

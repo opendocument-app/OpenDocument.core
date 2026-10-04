@@ -10,10 +10,12 @@
 #include <odr/internal/common/sheet_dependencies.hpp>
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/number_format/number_format.hpp>
 #include <odr/internal/odf/odf_chart.hpp>
 #include <odr/internal/odf/odf_element_registry.hpp>
 #include <odr/internal/odf/odf_geometry.hpp>
 #include <odr/internal/odf/odf_list.hpp>
+#include <odr/internal/odf/odf_number_format.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
 #include <odr/internal/odf/odf_table.hpp>
 #include <odr/internal/util/number_util.hpp>
@@ -555,7 +557,12 @@ public:
     }
 
     pugi::xml_node node = get_node(cell_id);
-    write_lines(cell_id, value.has_text() ? value.text() : "");
+    std::string text = value.has_text() ? value.text() : "";
+    if (value.type() == ValueType::float_number) {
+      text = shown_number(element_id, cell_id, {column, row}, value.number())
+                 .value_or(text);
+    }
+    write_lines(cell_id, text);
 
     remove_value_attributes(node);
 
@@ -1861,6 +1868,41 @@ private:
       }
     }
     return {};
+  }
+
+  /// What the cell's data style shows for @p number, in the style's language
+  /// or the document's. Nothing where the style says no number format: the
+  /// typed text stays then.
+  [[nodiscard]] std::optional<std::string>
+  shown_number(const ElementIdentifier sheet_id,
+               const ElementIdentifier cell_id, const TablePosition &position,
+               const double number) const {
+    const StyleRegistry &styles = m_document->style_registry();
+    const pugi::xml_node data_style =
+        styles.cell_data_style(cell_style_name(sheet_id, cell_id, position));
+    if (!data_style) {
+      return std::nullopt;
+    }
+    const std::optional<std::string> code =
+        format_code(data_style, [&styles](const std::string_view name) {
+          return styles.data_style_node(name);
+        });
+    if (!code) {
+      return std::nullopt;
+    }
+    try {
+      const number_format::Format format(*code);
+      if (format.category() != number_format::Category::number) {
+        return std::nullopt;
+      }
+      return format.format(
+          number, number_format::Epoch::from_1900,
+          number_format::symbols_of(
+              data_style_locale(data_style)
+                  .value_or(m_document->locale().value_or(""))));
+    } catch (const std::invalid_argument &) {
+      return std::nullopt;
+    }
   }
 
   /// The style the cell shows: its own, else its row's or its column's

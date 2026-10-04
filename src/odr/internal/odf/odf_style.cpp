@@ -648,6 +648,8 @@ void StyleRegistry::generate_indices_(const pugi::xml_node node) {
       m_index_default_style[e.attribute("style:family").value()] = e;
     } else if (name == "style:style") {
       m_index_style[e.attribute("style:name").value()] = e;
+    } else if (name.starts_with("number:") && name.ends_with("-style")) {
+      m_index_data_style[e.attribute("style:name").value()] = e;
     } else if (name == "text:list-style") {
       m_index_list_style[e.attribute("style:name").value()] = e;
     } else if (name == "text:outline-style") {
@@ -672,6 +674,30 @@ void StyleRegistry::generate_styles_() {
   for (const auto &[name, node] : m_index_style) {
     generate_style_(name, node);
   }
+}
+
+pugi::xml_node
+StyleRegistry::data_style_node(const std::string_view name) const {
+  const auto it = m_index_data_style.find(std::string(name));
+  return it == std::end(m_index_data_style) ? pugi::xml_node() : it->second;
+}
+
+pugi::xml_node StyleRegistry::cell_data_style(const char *style_name) const {
+  for (std::string name = style_name != nullptr ? style_name : "";
+       !name.empty();) {
+    const auto it = m_index_style.find(name);
+    if (it == std::end(m_index_style)) {
+      break;
+    }
+    if (const pugi::xml_attribute data_style =
+            it->second.attribute("style:data-style-name")) {
+      return data_style_node(data_style.value());
+    }
+    name = it->second.attribute("style:parent-style-name").value();
+  }
+  return data_style_node(default_style_node("table-cell")
+                             .attribute("style:data-style-name")
+                             .value());
 }
 
 pugi::xml_node

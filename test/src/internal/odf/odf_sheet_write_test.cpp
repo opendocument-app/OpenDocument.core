@@ -663,3 +663,36 @@ TEST(OdfSheetWrite, a_date_a_time_and_an_error_refuse_to_be_written) {
   }
   EXPECT_EQ(sheet.cell(0, 0).value().text(), "old");
 }
+
+/// A number written into a cell with a data style shows as the style says,
+/// in the style's language.
+TEST(OdfSheetWrite, a_number_takes_the_data_style_of_its_cell) {
+  const Document document = document_of(
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.spreadsheet">)"
+      R"(<office:styles><number:currency-style style:name="N1")"
+      R"( number:language="de" number:country="DE">)"
+      R"(<number:number number:decimal-places="2" number:min-integer-digits="1")"
+      R"( number:grouping="true"/><number:text> </number:text>)"
+      R"(<number:currency-symbol>€</number:currency-symbol>)"
+      R"(</number:currency-style></office:styles>)"
+      R"(<office:automatic-styles><style:style style:name="ce1")"
+      R"( style:family="table-cell" style:data-style-name="N1"/>)"
+      R"(</office:automatic-styles><office:body><office:spreadsheet>)"
+      R"(<table:table table:name="s"><table:table-row>)"
+      R"(<table:table-cell table:style-name="ce1"/><table:table-cell/>)"
+      R"(</table:table-row></table:table></office:spreadsheet></office:body>)"
+      R"(</office:document>)");
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(0, 0, CellValue(1234.5, "1234,5"));
+  sheet.set_cell(1, 0, CellValue(1234.5, "1234,5"));
+
+  std::ostringstream saved;
+  document.save(saved);
+  EXPECT_NE(saved.str().find("<text:p>1.234,50 €</text:p>"), std::string::npos)
+      << saved.str();
+  EXPECT_NE(saved.str().find("<text:p>1234,5</text:p>"), std::string::npos);
+  EXPECT_NE(saved.str().find(R"(office:value="1234.5")"), std::string::npos);
+}
