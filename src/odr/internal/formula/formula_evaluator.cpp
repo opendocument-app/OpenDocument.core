@@ -17,6 +17,15 @@ namespace str = util::string;
 
 namespace {
 
+/// Checks array size before narrowing or allocating, including on 32-bit hosts.
+std::size_t array_size(const std::uint64_t columns, const std::uint64_t rows) {
+  constexpr std::uint64_t limit = 1 << 20;
+  if (columns > limit || rows > limit || columns * rows > limit) {
+    throw NoAnswer{};
+  }
+  return static_cast<std::size_t>(columns * rows);
+}
+
 /// The last index of an axis that states @p count positions.
 std::uint32_t last_of(const std::uint32_t count) {
   return count == 0 ? 0 : count - 1;
@@ -176,9 +185,6 @@ private:
   /// The most names one inside the other, so a name that names itself ends.
   static constexpr std::uint32_t name_limit = 16;
 
-  /// The most cells an array context reads out of one range.
-  static constexpr std::size_t array_limit = 1 << 20;
-
   /// @p value as an array: the cells of a range, an array, or one value.
   [[nodiscard]] Matrix matrix_of(Value value) const {
     if (auto *matrix = std::get_if<Matrix>(&value.content)) {
@@ -196,14 +202,15 @@ private:
     if (area.whole_columns || area.whole_rows) {
       throw NoAnswer{};
     }
-    const std::uint32_t columns =
-        area.range.to().column - area.range.from().column + 1;
-    const std::uint32_t rows = area.range.to().row - area.range.from().row + 1;
-    if (std::size_t{columns} * rows > array_limit) {
-      throw NoAnswer{};
-    }
-    Matrix result{columns, rows, {}};
-    result.cells.reserve(std::size_t{columns} * rows);
+    const std::uint64_t columns =
+        std::uint64_t{area.range.to().column} - area.range.from().column + 1;
+    const std::uint64_t rows =
+        std::uint64_t{area.range.to().row} - area.range.from().row + 1;
+    const std::size_t count = array_size(columns, rows);
+    Matrix result{static_cast<std::uint32_t>(columns),
+                  static_cast<std::uint32_t>(rows),
+                  {}};
+    result.cells.reserve(count);
     for (std::uint32_t row = 0; row < rows; ++row) {
       for (std::uint32_t column = 0; column < columns; ++column) {
         result.cells.push_back(
@@ -285,7 +292,11 @@ private:
 
   [[nodiscard]] Value value_of(const ArrayLiteral &array, const Node &node) {
     Matrix matrix{array.columns, array.rows, {}};
-    matrix.cells.reserve(node.children.size());
+    const std::size_t count = array_size(array.columns, array.rows);
+    if (count != node.children.size()) {
+      throw NoAnswer{};
+    }
+    matrix.cells.reserve(count);
     for (const Node &child : node.children) {
       matrix.cells.push_back(scalar(value(child)));
     }
@@ -493,15 +504,12 @@ private:
       if (c >= matrix->columns || r >= matrix->rows) {
         return Value{ErrorType::not_available};
       }
-      return matrix->cells[r * matrix->columns + c];
+      return matrix->cells[std::size_t{r} * matrix->columns + c];
     };
     Matrix result{std::max(columns_of(left), columns_of(right)),
                   std::max(rows_of(left), rows_of(right)),
                   {}};
-    if (std::size_t{result.columns} * result.rows > array_limit) {
-      throw NoAnswer{};
-    }
-    result.cells.reserve(std::size_t{result.columns} * result.rows);
+    result.cells.reserve(array_size(result.columns, result.rows));
     for (std::uint32_t row = 0; row < result.rows; ++row) {
       for (std::uint32_t column = 0; column < result.columns; ++column) {
         result.cells.push_back(operation(element(a, left, column, row),
