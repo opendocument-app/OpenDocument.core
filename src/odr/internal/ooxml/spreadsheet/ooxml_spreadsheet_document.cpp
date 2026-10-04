@@ -663,13 +663,13 @@ public:
         result.type() == ValueType::boolean) {
       if (const std::optional<double> number =
               util::number::parse(node.child("v").text().get())) {
-        // a date states days since 1899-12-30, whatever the workbook counts
-        const bool dated = result.type() == ValueType::date ||
-                           result.type() == ValueType::time;
+        // a date states days since 1899-12-30, whatever the workbook counts;
+        // a time is a duration, which no epoch moves
         result = result
-                     .with_number(dated ? number_format::days_from_serial(
-                                              *number, m_document->epoch())
-                                        : *number)
+                     .with_number(result.type() == ValueType::date
+                                      ? number_format::days_from_serial(
+                                            *number, m_document->epoch())
+                                      : *number)
                      .with_text(shown_value(element_id, node, *number));
       }
     }

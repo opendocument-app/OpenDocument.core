@@ -203,6 +203,7 @@ TEST(OoxmlSpreadsheetValue, a_date_format_types_a_date) {
   EXPECT_DOUBLE_EQ(date.number(), 45658);
   EXPECT_EQ(date.text(), "01-01-25");
   EXPECT_EQ(sheet.cell(3, 0).value().type(), ValueType::time);
+  EXPECT_DOUBLE_EQ(sheet.cell(3, 0).value().number(), 0.75);
   EXPECT_EQ(sheet.cell(2, 0).value().type(), ValueType::float_number);
 }
 
