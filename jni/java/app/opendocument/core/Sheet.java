@@ -93,6 +93,22 @@ public final class Sheet extends Element {
     deleteRowsNative(handle(), row, count);
   }
 
+  /**
+   * Moves the columns from {@code column} on right by {@code count}, and every reference to them
+   * in the document with them. The new columns are empty.
+   */
+  public void insertColumns(int column, int count) {
+    insertColumnsNative(handle(), column, count);
+  }
+
+  /**
+   * Removes {@code count} columns from {@code column} on, and moves the columns right of them
+   * left. A reference into the removed columns becomes {@code #REF!}.
+   */
+  public void deleteColumns(int column, int count) {
+    deleteColumnsNative(handle(), column, count);
+  }
+
   private native String nameNative(long handle);
 
   private native PageLayout pageLayoutNative(long handle);
@@ -125,4 +141,8 @@ public final class Sheet extends Element {
   private native void insertRowsNative(long handle, int row, int count);
 
   private native void deleteRowsNative(long handle, int row, int count);
+
+  private native void insertColumnsNative(long handle, int column, int count);
+
+  private native void deleteColumnsNative(long handle, int column, int count);
 }

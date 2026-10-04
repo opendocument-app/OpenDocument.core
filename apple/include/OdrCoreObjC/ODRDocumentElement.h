@@ -179,6 +179,18 @@ NS_SWIFT_NAME(Sheet)
 - (BOOL)deleteRowsAt:(uint32_t)row
                count:(uint32_t)count
                error:(NSError **)error NS_SWIFT_NAME(deleteRows(at:count:));
+/// Moves the columns from `column` on right by `count`, and every reference
+/// to them in the document with them. The new columns are empty.
+- (BOOL)insertColumnsAt:(uint32_t)column
+                  count:(uint32_t)count
+                  error:(NSError **)error
+    NS_SWIFT_NAME(insertColumns(at:count:));
+/// Removes `count` columns from `column` on, and moves the columns right of
+/// them left. A reference into the removed columns becomes `#REF!`.
+- (BOOL)deleteColumnsAt:(uint32_t)column
+                  count:(uint32_t)count
+                  error:(NSError **)error
+    NS_SWIFT_NAME(deleteColumns(at:count:));
 @end
 
 /// `odr::SheetCell`.

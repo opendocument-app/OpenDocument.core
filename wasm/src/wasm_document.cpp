@@ -190,14 +190,15 @@ emscripten::val set_column_style(const Handle handle, const double sheet,
       index_field("sheet", sheet) + "," + index_field("column", column), style);
 }
 
-/// `insertRows` or `deleteRows`, replayed through the envelope.
-emscripten::val edit_rows(const Handle handle, const std::string &op,
-                          const double sheet, const double row,
-                          const double count) {
+/// A row or column op, @p axis naming its index, replayed through the
+/// envelope.
+emscripten::val edit_structure(const Handle handle, const std::string &op,
+                               const std::string &axis, const double sheet,
+                               const double index, const double count) {
   return guarded([&] {
     document_of(session(handle))
         .edit(R"({"version":2,"ops":[{"op":")" + op + R"(",)" +
-              index_field("sheet", sheet) + "," + index_field("row", row) +
+              index_field("sheet", sheet) + "," + index_field(axis, index) +
               "," + index_field("count", count) + "}]}");
     return ok();
   });
@@ -205,12 +206,24 @@ emscripten::val edit_rows(const Handle handle, const std::string &op,
 
 emscripten::val insert_rows(const Handle handle, const double sheet,
                             const double row, const double count) {
-  return edit_rows(handle, "insertRows", sheet, row, count);
+  return edit_structure(handle, "insertRows", "row", sheet, row, count);
 }
 
 emscripten::val delete_rows(const Handle handle, const double sheet,
                             const double row, const double count) {
-  return edit_rows(handle, "deleteRows", sheet, row, count);
+  return edit_structure(handle, "deleteRows", "row", sheet, row, count);
+}
+
+emscripten::val insert_columns(const Handle handle, const double sheet,
+                               const double column, const double count) {
+  return edit_structure(handle, "insertColumns", "column", sheet, column,
+                        count);
+}
+
+emscripten::val delete_columns(const Handle handle, const double sheet,
+                               const double column, const double count) {
+  return edit_structure(handle, "deleteColumns", "column", sheet, column,
+                        count);
 }
 
 /// @p after of 0 is `null_element_id`: split before every child.
@@ -288,6 +301,8 @@ EMSCRIPTEN_BINDINGS(odr_document) {
   emscripten::function("setColumnStyle", &odr::wasm::set_column_style);
   emscripten::function("insertRows", &odr::wasm::insert_rows);
   emscripten::function("deleteRows", &odr::wasm::delete_rows);
+  emscripten::function("insertColumns", &odr::wasm::insert_columns);
+  emscripten::function("deleteColumns", &odr::wasm::delete_columns);
   emscripten::function("setParagraphStyle", &odr::wasm::set_paragraph_style);
   emscripten::function("splitParagraph", &odr::wasm::split_paragraph);
   emscripten::function("mergeParagraphWithNext",

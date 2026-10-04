@@ -156,6 +156,28 @@ describe('edit', () => {
     }
   });
 
+  it('inserts and deletes columns', () => {
+    const doc = odr.open(minimalOds('hello'));
+    try {
+      doc.insertColumns(0, 0, 2);
+      const reopened = odr.open(doc.save());
+      try {
+        assert.match(reopened.render(0).html, /<th[^>]*>1<\/th>(<td[^>]*><\/td>){2}<td[^>]*>hello/);
+      } finally {
+        reopened.close();
+      }
+      doc.deleteColumns(0, 0, 2);
+      const back = odr.open(doc.save());
+      try {
+        assert.match(back.render(0).html, /<th[^>]*>1<\/th><td[^>]*>hello/);
+      } finally {
+        back.close();
+      }
+    } finally {
+      doc.close();
+    }
+  });
+
   it('refuses a cell style it cannot write', () => {
     const doc = odr.open(minimalOds('hello'));
     try {

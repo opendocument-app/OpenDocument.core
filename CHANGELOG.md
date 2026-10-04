@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `Sheet::insert_columns` and `Sheet::delete_columns` in every binding:
+  `insert_columns` and `delete_columns` in python, `insertColumns` and
+  `deleteColumns` in java, `insertColumns(at:count:)` and
+  `deleteColumns(at:count:)` in swift, and
+  `Document.insertColumns(sheet, column, count)` and `deleteColumns` in npm.
 - The sheet editor inserts and deletes columns:
   `odr.editing.insertColumns("left" | "right")` inserts as many columns as
   the selection spans, and `odr.editing.deleteColumns()` removes them, each

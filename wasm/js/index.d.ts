@@ -255,6 +255,7 @@ export declare class Document {
    * Moves the rows from `row` on down by `count`, and every reference to them
    * in the document with them. The new rows are empty.
    * @throws OdrError `unsupported_operation` where the edit would cut a merge
+   *         or push a stated cell off the grid
    */
   insertRows(sheet: number, row: number, count: number): this;
   /**
@@ -263,6 +264,19 @@ export declare class Document {
    * @throws OdrError `unsupported_operation` where the edit would cut a merge
    */
   deleteRows(sheet: number, row: number, count: number): this;
+  /**
+   * Moves the columns from `column` on right by `count`, and every reference
+   * to them in the document with them. The new columns are empty.
+   * @throws OdrError `unsupported_operation` where the edit would cut a merge
+   *         or push a stated cell off the grid
+   */
+  insertColumns(sheet: number, column: number, count: number): this;
+  /**
+   * Removes `count` columns from `column` on, and moves the columns right of
+   * them left. A reference into the removed columns becomes `#REF!`.
+   * @throws OdrError `unsupported_operation` where the edit would cut a merge
+   */
+  deleteColumns(sheet: number, column: number, count: number): this;
   /**
    * States `style` on one paragraph and leaves what it does not name. The
    * same object the page's `odr.editing.format` takes.

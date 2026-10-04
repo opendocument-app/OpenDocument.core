@@ -572,6 +572,26 @@ Java_app_opendocument_core_Sheet_deleteRowsNative(JNIEnv *env, jobject,
   });
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_app_opendocument_core_Sheet_insertColumnsNative(JNIEnv *env, jobject,
+                                                     jlong handle, jint column,
+                                                     jint count) {
+  guarded(env, [&] {
+    element(handle).as_sheet().insert_columns(
+        static_cast<std::uint32_t>(column), static_cast<std::uint32_t>(count));
+  });
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_app_opendocument_core_Sheet_deleteColumnsNative(JNIEnv *env, jobject,
+                                                     jlong handle, jint column,
+                                                     jint count) {
+  guarded(env, [&] {
+    element(handle).as_sheet().delete_columns(
+        static_cast<std::uint32_t>(column), static_cast<std::uint32_t>(count));
+  });
+}
+
 // app.opendocument.core.SheetCell
 
 extern "C" JNIEXPORT jobject JNICALL

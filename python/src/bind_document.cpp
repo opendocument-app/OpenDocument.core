@@ -200,6 +200,10 @@ void odr_python::bind_document(py::module_ &m) {
       .def("insert_rows", &odr::Sheet::insert_rows, py::arg("row"),
            py::arg("count"))
       .def("delete_rows", &odr::Sheet::delete_rows, py::arg("row"),
+           py::arg("count"))
+      .def("insert_columns", &odr::Sheet::insert_columns, py::arg("column"),
+           py::arg("count"))
+      .def("delete_columns", &odr::Sheet::delete_columns, py::arg("column"),
            py::arg("count"));
 
   bind_element<odr::SheetCell>(m, "SheetCell")

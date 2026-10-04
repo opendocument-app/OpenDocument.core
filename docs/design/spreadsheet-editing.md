@@ -36,7 +36,7 @@ text never had.
 | Formulas | `internal/formula/` parses OpenFormula and OOXML into one AST, writes it back, and shifts it for an ooxml shared formula |
 | Number formats | `internal/number_format/` parses a format code and formats a number with it; `odf/odf_number_format.cpp` turns an ods data style into a format code |
 | Dependencies | `internal::SheetDependencies`, built off the decoded document and again after a row edit. `Document::dependents` and `Document::unresolved_formulas` expose it |
-| Row edits | `formula::RowEdit` and `formula::move_rows` move a reference, `formula::move_row_addresses` an address list. `odf_sheet_references.cpp` and `ooxml_spreadsheet_references.cpp` walk what each file addresses |
+| Row and column edits | `formula::SheetEdit` and `formula::move_references` move a reference along either axis, `formula::move_addresses` an address list. `odf_sheet_references.cpp` and `ooxml_spreadsheet_references.cpp` walk what each file addresses |
 | Stale results | An odf write drops the cached result of every dependent (`drop_stale_results`). An ooxml write keeps them, because every save sets `fullCalcOnLoad` |
 | Browser: sheet script | `html/frontend/spreadsheet.js` owns pin, raise, sort and the position map, and publishes `odr.sheet` |
 | Browser: the mode | `html/frontend/editing.js` owns `odr.editing`, the refusals, the log and the `odr.on*` callbacks |
@@ -575,7 +575,7 @@ spelling of its formula in the page until the host renders again.
 
 ## Inserted and deleted columns
 
-Status: planned. The steps land as a stack, in this order:
+Status: landed. The steps landed as a stack, in this order:
 
 1. `internal/formula` moves a reference along either axis, with one edit
    type for rows and columns.
@@ -667,7 +667,6 @@ stale marks treat a column op as decision 24 treats a row op.
   incremental recompute in topological order with cycles reported, and
   `Document::recalculate(operations)` returning the changed cells. Formula
   input in the editor comes with it.
-- Inserted and deleted columns, planned above (decisions 25 to 27).
 - The formulas inside a conditional format or a validation condition, the
   ranges a chart reads, a pivot table's source, an xlsx table and the page
   breaks of an xlsx, which a structural edit leaves where they were.
