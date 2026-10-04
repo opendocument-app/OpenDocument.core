@@ -60,7 +60,8 @@ public:
   /// `{"version": 2, "ops": [{"op": "setCell", "sheet": 0, "column": 1,
   /// "row": 2, "value": {"type": "number", "number": 12.5, "text": "12.5"}}]}`.
   /// A value is typed `number`, `string` or `empty`. `insertRows` and
-  /// `deleteRows` name a sheet, a `row` and a `count`. `setText` and
+  /// `deleteRows` name a sheet, a `row` and a `count`, `insertColumns` and
+  /// `deleteColumns` a sheet, a `column` and a `count`. `setText` and
   /// `setTextStyle` and `setParagraphStyle` name an element by the `id` the
   /// render wrote into the page instead (`docs/design/document-editing.md`).
   /// Editing a single element in process is @ref Text::set_content,

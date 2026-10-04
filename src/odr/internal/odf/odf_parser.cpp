@@ -453,6 +453,7 @@ void odf::reindex_sheet(ElementRegistry &registry,
     sheet.register_column(column, repeated, column_node);
     column += repeated;
   });
+  sheet.dimensions.columns = column;
 
   sheet.rows.clear();
   sheet.cells.clear();

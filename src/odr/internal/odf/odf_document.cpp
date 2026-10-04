@@ -31,6 +31,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <limits>
 #include <mutex>
 #include <ostream>
@@ -846,6 +847,17 @@ public:
     reindex_sheet(*m_registry, element_id);
   }
 
+  /// A row, a cell or a column declaration, and the positions it stands for.
+  struct Run final {
+    pugi::xml_node node;
+    std::uint32_t begin{0};
+    std::uint32_t end{0};
+  };
+
+  static constexpr const char *rows_repeated = "table:number-rows-repeated";
+  static constexpr const char *columns_repeated =
+      "table:number-columns-repeated";
+
   /// The rows from @p row on move down, and so does every reference to them
   /// on every sheet. A trailing run of empty rows gives up as many, so the
   /// extent stays.
@@ -853,13 +865,13 @@ public:
                          const std::uint32_t row,
                          const std::uint32_t count) const override {
     const pugi::xml_node sheet_node = get_node(element_id);
-    const std::vector<RowRun> runs = row_runs(sheet_node);
+    const std::vector<Run> runs = row_runs(sheet_node);
     if (merge_reaches_over(runs, row)) {
       throw UnsupportedOperation();
     }
-    const RowRun *trailing = !runs.empty() && states_nothing(runs.back().node)
-                                 ? &runs.back()
-                                 : nullptr;
+    const Run *trailing = !runs.empty() && row_states_nothing(runs.back().node)
+                              ? &runs.back()
+                              : nullptr;
     const std::uint32_t stated_end = trailing != nullptr ? trailing->begin
                                      : runs.empty()      ? 0
                                                          : runs.back().end;
@@ -868,24 +880,23 @@ public:
       throw UnsupportedOperation();
     }
 
-    const std::vector<SheetPosition> touched = move_row_references(
+    const std::vector<SheetPosition> touched = move_sheet_references(
         sheet_node.parent(),
         {.sheet = sheet_name(element_id), .index = row, .count = count});
 
     if (row < stated_end) {
-      const pugi::xml_node at = cut_rows_at(sheet_node, row);
+      const pugi::xml_node at = cut(row_runs(sheet_node), row, rows_repeated);
       const pugi::xml_node added =
           at.parent().insert_child_before("table:table-row", at);
-      set_repeat(added, "table:number-rows-repeated", count);
+      set_repeat(added, rows_repeated, count);
       append_empty_cells(
           added, m_registry->sheet_element_at(element_id).dimensions.columns);
       if (trailing != nullptr) {
         const std::uint32_t kept = trailing->end - trailing->begin;
         if (kept > count) {
-          set_repeat(trailing->node, "table:number-rows-repeated",
-                     kept - count);
+          set_repeat(trailing->node, rows_repeated, kept - count);
         } else {
-          remove_row(trailing->node);
+          remove_run(trailing->node);
         }
       }
     }
@@ -900,7 +911,7 @@ public:
                          const std::uint32_t row,
                          const std::uint32_t count) const override {
     const pugi::xml_node sheet_node = get_node(element_id);
-    const std::vector<RowRun> runs = row_runs(sheet_node);
+    const std::vector<Run> runs = row_runs(sheet_node);
     const std::uint32_t end = static_cast<std::uint32_t>(
         std::min<std::uint64_t>(static_cast<std::uint64_t>(row) + count,
                                 std::numeric_limits<std::uint32_t>::max()));
@@ -908,7 +919,7 @@ public:
       throw UnsupportedOperation();
     }
 
-    const std::vector<SheetPosition> touched = move_row_references(
+    const std::vector<SheetPosition> touched = move_sheet_references(
         sheet_node.parent(), {.sheet = sheet_name(element_id),
                               .index = row,
                               .count = count,
@@ -918,12 +929,12 @@ public:
         row < rows_end) {
       // the far end first: the cut at `row` then reads the runs as they are
       if (end < rows_end) {
-        cut_rows_at(sheet_node, end);
+        cut(row_runs(sheet_node), end, rows_repeated);
       }
-      cut_rows_at(sheet_node, row);
-      for (const RowRun &run : row_runs(sheet_node)) {
+      cut(row_runs(sheet_node), row, rows_repeated);
+      for (const Run &run : row_runs(sheet_node)) {
         if (run.begin >= row && run.begin < end) {
-          remove_row(run.node);
+          remove_run(run.node);
         }
       }
     }
@@ -932,18 +943,154 @@ public:
     drop_moved_results(touched);
   }
 
+  /// Every row is cut at @p column and gets as many empty cells there, and so
+  /// are the column declarations. A row, or the declarations, ending in a run
+  /// that states nothing gives up as many, so the extent stays.
+  void sheet_insert_columns(const ElementIdentifier element_id,
+                            const std::uint32_t column,
+                            const std::uint32_t count) const override {
+    const pugi::xml_node sheet_node = get_node(element_id);
+    const std::vector<Run> rows = row_runs(sheet_node);
+    std::uint32_t stated_end = 0;
+    for (const Run &row : rows) {
+      const std::vector<Run> cells = cell_runs(row.node);
+      if (span_reaches(cells, column)) {
+        throw UnsupportedOperation();
+      }
+      for (const Run &cell : cells) {
+        if (!states_nothing(cell.node)) {
+          stated_end = std::max(stated_end, cell.end);
+        }
+      }
+    }
+    if (column < stated_end &&
+        std::uint64_t{stated_end} + count > column_limit) {
+      throw UnsupportedOperation();
+    }
+
+    const std::vector<SheetPosition> touched = move_sheet_references(
+        sheet_node.parent(), {.sheet = sheet_name(element_id),
+                              .axis = formula::Axis::column,
+                              .index = column,
+                              .count = count});
+
+    for (const Run &row : rows) {
+      insert_run(cell_runs(row.node), "table:table-cell", column, count);
+    }
+    insert_run(column_runs(sheet_node), "table:table-column", column, count);
+
+    reindex_sheet(*m_registry, element_id);
+    drop_moved_results(touched);
+  }
+
+  /// Every row loses its cells from @p column on, and the declarations lose
+  /// theirs.
+  void sheet_delete_columns(const ElementIdentifier element_id,
+                            const std::uint32_t column,
+                            const std::uint32_t count) const override {
+    const pugi::xml_node sheet_node = get_node(element_id);
+    const std::vector<Run> rows = row_runs(sheet_node);
+    const std::uint32_t end = static_cast<std::uint32_t>(
+        std::min<std::uint64_t>(std::uint64_t{column} + count,
+                                std::numeric_limits<std::uint32_t>::max()));
+    for (const Run &row : rows) {
+      const std::vector<Run> cells = cell_runs(row.node);
+      if (span_reaches(cells, column) || span_reaches(cells, end)) {
+        throw UnsupportedOperation();
+      }
+    }
+
+    const std::vector<SheetPosition> touched = move_sheet_references(
+        sheet_node.parent(), {.sheet = sheet_name(element_id),
+                              .axis = formula::Axis::column,
+                              .index = column,
+                              .count = count,
+                              .insert = false});
+
+    for (const Run &row : rows) {
+      pugi::xml_node row_node = row.node;
+      for (const Run &cell :
+           cut_out([&] { return cell_runs(row_node); }, column, end)) {
+        row_node.remove_child(cell.node);
+      }
+      // a row states one cell at least ([ODF 1.2] 9.1.3)
+      if (cell_runs(row_node).empty()) {
+        append_empty_cells(row_node, 1);
+      }
+    }
+    for (const Run &declaration :
+         cut_out([&] { return column_runs(sheet_node); }, column, end)) {
+      remove_run(declaration.node);
+    }
+    if (column_runs(sheet_node).empty()) {
+      insert_ordered(sheet_node, "table:table-column", after_columns);
+    }
+
+    reindex_sheet(*m_registry, element_id);
+    drop_moved_results(touched);
+  }
+
+  /// The columns of a LibreOffice sheet, which keeps a cell in `XFD` and drops
+  /// one past it.
+  static constexpr std::uint32_t column_limit = 16384;
+
+  /// Puts a run of @p count plain @p name nodes at @p at, where @p runs reach
+  /// it. A last run stating nothing gives up as many, so the extent stays.
+  static void insert_run(const std::vector<Run> &runs, const char *name,
+                         const std::uint32_t at, const std::uint32_t count) {
+    const pugi::xml_node next = cut(runs, at, columns_repeated);
+    if (!next) {
+      return;
+    }
+    set_repeat(next.parent().insert_child_before(name, next), columns_repeated,
+               count);
+    // a cut keeps the last node last
+    const pugi::xml_node last = runs.back().node;
+    if (!states_nothing(last)) {
+      return;
+    }
+    if (const std::uint32_t kept = last.attribute(columns_repeated).as_uint(1);
+        kept > count) {
+      set_repeat(last, columns_repeated, kept - count);
+    } else {
+      remove_run(last);
+    }
+  }
+
+  /// The runs between @p at and @p end, cut out of the ones reaching over
+  /// either, for the caller to remove.
+  static std::vector<Run> cut_out(const std::function<std::vector<Run>()> &runs,
+                                  const std::uint32_t at,
+                                  const std::uint32_t end) {
+    // the far end first: the cut at `at` then reads the runs as they are
+    cut(runs(), end, columns_repeated);
+    cut(runs(), at, columns_repeated);
+    std::vector<Run> result;
+    for (const Run &run : runs()) {
+      if (run.begin >= at && run.begin < end) {
+        result.push_back(run);
+      }
+    }
+    return result;
+  }
+
+  /// Whether a `table:number-columns-spanned` starting left of @p column
+  /// reaches it.
+  static bool span_reaches(const std::vector<Run> &cells,
+                           const std::uint32_t column) {
+    return std::ranges::any_of(cells, [&](const Run &cell) {
+      return cell.begin < column &&
+             cell.begin + cell.node.attribute("table:number-columns-spanned")
+                              .as_uint(1) >
+                 column;
+    });
+  }
+
   /// The rows of a LibreOffice sheet; ODF states no grid.
   static constexpr std::uint32_t row_limit = 1048576;
 
-  /// A `table:table-row` and the rows it stands for.
-  struct RowRun final {
-    pugi::xml_node node;
-    std::uint32_t begin{0};
-    std::uint32_t end{0};
-  };
-
-  static std::vector<RowRun> row_runs(const pugi::xml_node sheet_node) {
-    std::vector<RowRun> result;
+  static std::vector<Run> row_runs(const pugi::xml_node sheet_node) {
+    std::vector<Run> result;
     std::uint32_t row = 0;
     for_each_table_row(sheet_node, [&](const pugi::xml_node node) {
       const std::uint32_t end =
@@ -954,10 +1101,38 @@ public:
     return result;
   }
 
-  /// Whether a span starting above @p row reaches it ([ODF 1.2] 19.643).
-  static bool merge_reaches_over(const std::vector<RowRun> &runs,
+  static std::vector<Run> column_runs(const pugi::xml_node sheet_node) {
+    std::vector<Run> result;
+    std::uint32_t column = 0;
+    for_each_table_column(sheet_node, [&](const pugi::xml_node node) {
+      const std::uint32_t end =
+          column + node.attribute(columns_repeated).as_uint(1);
+      result.push_back({.node = node, .begin = column, .end = end});
+      column = end;
+    });
+    return result;
+  }
+
+  /// The cells of @p row, a covered one too, since it holds a position.
+  static std::vector<Run> cell_runs(const pugi::xml_node row) {
+    std::vector<Run> result;
+    std::uint32_t column = 0;
+    for (const pugi::xml_node node : row.children()) {
+      if (node.type() != pugi::node_element) {
+        continue;
+      }
+      const std::uint32_t end =
+          column + node.attribute(columns_repeated).as_uint(1);
+      result.push_back({.node = node, .begin = column, .end = end});
+      column = end;
+    }
+    return result;
+  }
+
+  /// Whether a `table:number-rows-spanned` starting above @p row reaches it.
+  static bool merge_reaches_over(const std::vector<Run> &runs,
                                  const std::uint32_t row) {
-    for (const RowRun &run : runs) {
+    for (const Run &run : runs) {
       if (run.begin >= row) {
         break;
       }
@@ -971,49 +1146,51 @@ public:
     return false;
   }
 
-  /// Whether @p row states no more than styles.
-  static bool states_nothing(const pugi::xml_node row) {
-    for (const pugi::xml_node cell : row.children()) {
-      if (cell.first_child() || cell.attribute("office:value-type") ||
-          cell.attribute("table:formula") ||
-          cell.attribute("table:number-rows-spanned").as_uint(1) > 1 ||
-          cell.attribute("table:number-columns-spanned").as_uint(1) > 1) {
-        return false;
-      }
-    }
-    return true;
+  /// Whether @p cell states no more than a style.
+  static bool states_nothing(const pugi::xml_node cell) {
+    return !cell.first_child() && !cell.attribute("office:value-type") &&
+           !cell.attribute("table:formula") &&
+           cell.attribute("table:number-rows-spanned").as_uint(1) <= 1 &&
+           cell.attribute("table:number-columns-spanned").as_uint(1) <= 1;
   }
 
-  /// The row node whose run starts at @p row, cut out of the run @p row falls
-  /// inside. Null past the stated rows. The caller reindexes.
-  static pugi::xml_node cut_rows_at(const pugi::xml_node sheet_node,
-                                    const std::uint32_t row) {
-    for (const RowRun &run : row_runs(sheet_node)) {
-      if (row >= run.end) {
+  /// Whether @p row states no more than styles.
+  static bool row_states_nothing(const pugi::xml_node row) {
+    return std::ranges::all_of(cell_runs(row), [](const Run &run) {
+      return states_nothing(run.node);
+    });
+  }
+
+  /// The node whose run starts at @p at, cut out of the run @p at falls
+  /// inside. Null past the runs. The caller reindexes.
+  static pugi::xml_node cut(const std::vector<Run> &runs,
+                            const std::uint32_t at, const char *repeated) {
+    for (const Run &run : runs) {
+      if (at >= run.end) {
         continue;
       }
-      if (run.begin < row) {
+      if (run.begin < at) {
         set_repeat(run.node.parent().insert_copy_before(run.node, run.node),
-                   "table:number-rows-repeated", row - run.begin);
-        set_repeat(run.node, "table:number-rows-repeated", run.end - row);
+                   repeated, at - run.begin);
+        set_repeat(run.node, repeated, run.end - at);
       }
       return run.node;
     }
     return {};
   }
 
-  /// Removes @p row, and a grouping element it leaves empty.
-  static void remove_row(pugi::xml_node row) {
-    for (pugi::xml_node parent = row.parent();;) {
-      parent.remove_child(row);
+  /// Removes @p node, and a grouping element it leaves empty.
+  static void remove_run(pugi::xml_node node) {
+    for (pugi::xml_node parent = node.parent();;) {
+      parent.remove_child(node);
       if (std::string_view(parent.name()) == "table:table" ||
           parent.find_child([](const pugi::xml_node child) {
             return child.type() == pugi::node_element;
           })) {
         return;
       }
-      row = parent;
-      parent = row.parent();
+      node = parent;
+      parent = node.parent();
     }
   }
 

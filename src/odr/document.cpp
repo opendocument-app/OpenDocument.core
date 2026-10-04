@@ -380,6 +380,16 @@ void Document::edit(const std::string_view operations,
       continue;
     }
 
+    if (name == "insertColumns" || name == "deleteColumns") {
+      const Sheet sheet =
+          sheet_at(root_element(), operation.at("sheet").get<std::uint32_t>());
+      const auto column = operation.at("column").get<std::uint32_t>();
+      const auto count = operation.at("count").get<std::uint32_t>();
+      name == "insertColumns" ? sheet.insert_columns(column, count)
+                              : sheet.delete_columns(column, count);
+      continue;
+    }
+
     if (name == "setText") {
       text_of(operation, "id")
           .set_content(operation.at("text").get<std::string>());
