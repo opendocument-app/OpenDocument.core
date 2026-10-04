@@ -17,7 +17,8 @@ using namespace odr::test::ooxml;
 
 namespace {
 
-/// Sheet `s` with a chart drawing `A1:A3` against `B1:B3`, titled by `C1`.
+/// Sheet `s` with data, and sheet `t` with a chart drawing `s!A1:A3` against
+/// `s!B1:B3`, titled by `s!C1`.
 std::shared_ptr<internal::abstract::File> with_chart() {
   internal::zip::ZipArchive zip;
   insert(
@@ -34,11 +35,13 @@ std::shared_ptr<internal::abstract::File> with_chart() {
       zip, "xl/workbook.xml",
       R"(<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" )"
       R"(xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">)"
-      R"(<sheets><sheet name="s" sheetId="1" r:id="rId1"/></sheets></workbook>)");
+      R"(<sheets><sheet name="s" sheetId="1" r:id="rId1"/>)"
+      R"(<sheet name="t" sheetId="2" r:id="rId2"/></sheets></workbook>)");
   insert(
       zip, "xl/_rels/workbook.xml.rels",
       R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
       R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>)"
+      R"(<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>)"
       R"(</Relationships>)");
   insert(
       zip, "xl/styles.xml",
@@ -48,9 +51,14 @@ std::shared_ptr<internal::abstract::File> with_chart() {
       R"(<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" )"
       R"(xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">)"
       R"(<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>)"
-      R"(<drawing r:id="rId1"/></worksheet>)");
+      R"(</worksheet>)");
   insert(
-      zip, "xl/worksheets/_rels/sheet1.xml.rels",
+      zip, "xl/worksheets/sheet2.xml",
+      R"(<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" )"
+      R"(xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">)"
+      R"(<sheetData/><drawing r:id="rId1"/></worksheet>)");
+  insert(
+      zip, "xl/worksheets/_rels/sheet2.xml.rels",
       R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
       R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>)"
       R"(</Relationships>)");

@@ -65,8 +65,8 @@ void move_comments(pugi::xml_node comments, pugi::xml_node threaded,
                    pugi::xml_node vml, const formula::SheetEdit &edit);
 
 /// Moves the ranges @p chart (`c:chartSpace`) reads: every `c:f` of it, a
-/// formula naming its sheet. The values it caches stay: a
-/// reader draws from the cells.
+/// formula naming its sheet. The values it caches stay: a reader draws from
+/// the cells.
 void move_chart(pugi::xml_node chart, const formula::SheetEdit &edit);
 
 /// A header cell an inserted table column needs, and the name it states.
