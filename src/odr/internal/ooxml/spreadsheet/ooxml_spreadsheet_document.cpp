@@ -683,11 +683,9 @@ public:
       move_columns(sheet_node, sheet, edit);
     }
 
-    if (rows_edited) {
-      move_sheet_ranges(sheet_node, edit);
-      move_drawing(drawing, edit);
-      move_comments(comments, threaded, notes, edit);
-    }
+    move_sheet_ranges(sheet_node, edit);
+    move_drawing(drawing, edit);
+    move_comments(comments, threaded, notes, edit);
 
     if (pugi::xml_node merges = sheet_node.child("mergeCells")) {
       for (pugi::xml_node merge = merges.child("mergeCell"); merge;) {

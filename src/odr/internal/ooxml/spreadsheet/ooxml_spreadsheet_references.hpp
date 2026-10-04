@@ -40,20 +40,21 @@ void move_workbook_references(pugi::xml_node workbook,
 
 /// Moves the ranges @p worksheet states besides its cells: conditional
 /// formats, validations, links, the filter, protected ranges, ignored errors
-/// and the view. An element whose range a delete takes completely goes; the
-/// view keeps a cell, the first one past the removed rows.
+/// and the view, and the columns a filter counts. An element whose range a
+/// delete takes completely goes; the view keeps a cell, the first one past
+/// the removed rows or columns.
 void move_sheet_ranges(pugi::xml_node worksheet,
                        const formula::SheetEdit &edit);
 
 /// Moves the anchors of @p drawing (`xdr:wsDr`) as Excel moves a drawing
 /// with its cells: a `twoCell` anchor moves each corner, a `oneCell` one moves
 /// its box, an `absolute` one stays (ECMA-376 20.5.2.33). A corner inside the
-/// removed rows goes to the edge of the rows that stay.
+/// removed rows or columns goes to the edge of the ones that stay.
 void move_drawing(pugi::xml_node drawing, const formula::SheetEdit &edit);
 
 /// Moves the comments of @p comments (`comments`) and @p threaded
 /// (`ThreadedComments`) and the notes of @p vml that show them. A comment in a
-/// removed row goes, with its note.
+/// removed row or column goes, with its note.
 void move_comments(pugi::xml_node comments, pugi::xml_node threaded,
                    pugi::xml_node vml, const formula::SheetEdit &edit);
 
