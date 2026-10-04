@@ -4,20 +4,18 @@
 
 #include <string>
 
-/// Reading an iWork document back out, for the tests that assert what one
-/// decodes to. The sibling `iwork_test_util.hpp` assembles the input; this
-/// reads the output.
+/// Helpers for inspecting decoded iWork test documents.
 namespace odr::test::iwork {
 
-/// The text of one element, a line break reading as a newline and a paragraph
-/// boundary as well. The engine emits a `line_break` only where a storage
-/// carried a line separator inside a paragraph, so both really are newlines.
+/// Joins paragraphs and line breaks with newlines, preserving empty paragraphs.
 inline std::string element_text(const Element element) {
   std::string result;
+  bool first = true;
   for (const Element paragraph : element.children()) {
-    if (!result.empty()) {
+    if (!first) {
       result += '\n';
     }
+    first = false;
     for (const Element child : paragraph.children()) {
       if (child.type() == ElementType::line_break) {
         result += '\n';

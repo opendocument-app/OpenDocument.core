@@ -33,6 +33,15 @@ namespace iwork = odr::internal::iwork;
 
 namespace {
 
+std::string decimal(const std::string &hex) {
+  std::string bytes;
+  for (std::size_t i = 0; i < hex.size(); i += 2) {
+    bytes.push_back(
+        static_cast<char>(std::stoul(hex.substr(i, 2), nullptr, 16)));
+  }
+  return iwork::decimal128_to_string(bytes);
+}
+
 /// A sheet's content extent, row by row.
 std::vector<std::vector<std::string>> grid(const Sheet sheet) {
   const TableDimensions content = sheet.content({});
@@ -115,9 +124,7 @@ TEST(IworkNumbers, empty) {
   EXPECT_EQ(sheet.content({}).columns, 0);
 }
 
-// A Numbers sheet holds many tables and our `Sheet` is one grid, so each
-// table is a sheet of its own rather than only the first one surviving.
-TEST(IworkNumbers, one_sheet_per_table) {
+TEST(IworkNumbers, fixture_tables_preserve_shape_values_and_types) {
   const DocumentFile document_file =
       open(TestData::test_file_path(
                "odr-public/numbers/style-various-1.numbers"),
@@ -128,15 +135,6 @@ TEST(IworkNumbers, one_sheet_per_table) {
   EXPECT_EQ(sheet_names(document.root_element()),
             (std::vector<std::string>{"Sales – Quarterly", "Sales – Wide",
                                       "Types – Values"}));
-}
-
-TEST(IworkNumbers, cell_values) {
-  const DocumentFile document_file =
-      open(TestData::test_file_path(
-               "odr-public/numbers/style-various-1.numbers"),
-           {}, Logger::null())
-          .as_document_file();
-  const Document document = document_file.document();
 
   EXPECT_EQ(grid(sheet_at(document.root_element(), 0)),
             (std::vector<std::vector<std::string>>{
@@ -147,36 +145,16 @@ TEST(IworkNumbers, cell_values) {
                 // `CalculationEngine.iwa` is not read
                 {"Total", "2250.5", "0.1875"},
             }));
-}
 
-// Rows and columns cannot be confused: this table is three rows of six
-// columns, and holds cells only at its corners.
-TEST(IworkNumbers, a_table_wider_than_it_is_tall) {
-  const DocumentFile document_file =
-      open(TestData::test_file_path(
-               "odr-public/numbers/style-various-1.numbers"),
-           {}, Logger::null())
-          .as_document_file();
-  const Document document = document_file.document();
+  const Sheet wide = sheet_at(document.root_element(), 1);
+  EXPECT_EQ(wide.dimensions().rows, 3);
+  EXPECT_EQ(wide.dimensions().columns, 6);
 
-  const Sheet sheet = sheet_at(document.root_element(), 1);
-  EXPECT_EQ(sheet.dimensions().rows, 3);
-  EXPECT_EQ(sheet.dimensions().columns, 6);
-
-  EXPECT_EQ(grid(sheet), (std::vector<std::vector<std::string>>{
-                             {"a", "", "", "", "", "f"},
-                             {"", "", "", "", "", ""},
-                             {"bottom left", "", "", "", "", "bottom right"},
-                         }));
-}
-
-TEST(IworkNumbers, every_cell_type_the_fixtures_hold) {
-  const DocumentFile document_file =
-      open(TestData::test_file_path(
-               "odr-public/numbers/style-various-1.numbers"),
-           {}, Logger::null())
-          .as_document_file();
-  const Document document = document_file.document();
+  EXPECT_EQ(grid(wide), (std::vector<std::vector<std::string>>{
+                            {"a", "", "", "", "", "f"},
+                            {"", "", "", "", "", ""},
+                            {"bottom left", "", "", "", "", "bottom right"},
+                        }));
 
   EXPECT_EQ(grid(sheet_at(document.root_element(), 2)),
             (std::vector<std::vector<std::string>>{
@@ -192,37 +170,19 @@ TEST(IworkNumbers, every_cell_type_the_fixtures_hold) {
                 {"percent", "0.075"},
                 {"two lines", "line one\nline two"},
             }));
-}
 
-// A number cell is right-aligned by the renderer; nothing else is.
-TEST(IworkNumbers, only_a_number_reports_a_float_value_type) {
-  const DocumentFile document_file =
-      open(TestData::test_file_path(
-               "odr-public/numbers/style-various-1.numbers"),
-           {}, Logger::null())
-          .as_document_file();
-  const Document document = document_file.document();
-  const Sheet sheet = sheet_at(document.root_element(), 2);
+  const Sheet values = sheet_at(document.root_element(), 2);
 
-  EXPECT_EQ(sheet.cell(1, 2).value_type(), ValueType::float_number);
-  EXPECT_EQ(sheet.cell(1, 1).value_type(), ValueType::string);
-  EXPECT_EQ(sheet.cell(1, 4).value_type(), ValueType::string);
+  EXPECT_EQ(values.cell(1, 2).value_type(), ValueType::float_number);
+  EXPECT_EQ(values.cell(1, 1).value_type(), ValueType::string);
+  EXPECT_EQ(values.cell(1, 4).value_type(), ValueType::string);
   // a position the tile carries no cell for
-  EXPECT_EQ(sheet.cell(1, 6).value_type(), ValueType::unknown);
+  EXPECT_EQ(values.cell(1, 6).value_type(), ValueType::unknown);
 }
 
 // A spreadsheet value is a decimal by construction, which is why Apple stores
 // one; going through a `double` would put back the rounding it avoids.
 TEST(IworkDecimal128, reads_the_values_the_fixtures_hold) {
-  const auto decimal = [](const std::string &hex) {
-    std::string bytes;
-    for (std::size_t i = 0; i < hex.size(); i += 2) {
-      bytes.push_back(
-          static_cast<char>(std::stoul(hex.substr(i, 2), nullptr, 16)));
-    }
-    return iwork::decimal128_to_string(bytes);
-  };
-
   EXPECT_EQ(decimal("e8030000000000000000000000004030"), "1000");
   EXPECT_EQ(decimal("7d000000000000000000000000003a30"), "0.125");
   EXPECT_EQ(decimal("d9300000000000000000000000003e30"), "1250.5");
@@ -233,19 +193,8 @@ TEST(IworkDecimal128, reads_the_values_the_fixtures_hold) {
   EXPECT_EQ(decimal("00000000000000000000000000004030"), "0");
 }
 
-// IEEE 754 leaves a coefficient above 10^34 non-canonical and reads it as
-// zero, and the same combination field is how an infinity or a NaN is written
-// — none of which a cell should render as a number.
+// Non-canonical coefficients and special values follow the zero fallback.
 TEST(IworkDecimal128, a_non_canonical_combination_field_reads_as_zero) {
-  const auto decimal = [](const std::string &hex) {
-    std::string bytes;
-    for (std::size_t i = 0; i < hex.size(); i += 2) {
-      bytes.push_back(
-          static_cast<char>(std::stoul(hex.substr(i, 2), nullptr, 16)));
-    }
-    return iwork::decimal128_to_string(bytes);
-  };
-
   // +infinity: the top bits of the last byte select the combination field
   EXPECT_EQ(decimal("00000000000000000000000000000078"), "0");
   // The ordinary coefficient form also has a non-canonical range.
@@ -272,9 +221,7 @@ TEST(IworkDate, reads_seconds_since_2001) {
   EXPECT_EQ(iwork::date_to_string(970912655999), "+032767-12-31T23:59:59Z");
 }
 
-// A cell carries its seconds as a raw double, so the value is the file's word:
-// one no calendar can name is read as no date rather than cast into undefined
-// behaviour.
+// Out-of-range instants must not reach the calendar conversion.
 TEST(IworkDate, a_value_no_calendar_can_name_is_no_date) {
   EXPECT_EQ(iwork::date_to_string(std::numeric_limits<double>::quiet_NaN()),
             "");
@@ -299,10 +246,8 @@ TEST(IworkDuration, a_value_no_count_can_hold_is_no_duration) {
   EXPECT_EQ(iwork::duration_to_string(1e300), "");
 }
 
-// The decision stage 6 rests on: a record declaring an encoding we have not
-// mapped reads as an **empty** cell rather than a wrong one. Both bytes that
-// can say so — the version and the type — take the same way out, and the
-// control is the same record with the version this reader was written against.
+// Unknown cell versions and types are empty; the known encoding remains
+// readable.
 TEST(IworkNumbers, a_record_we_have_not_mapped_is_an_empty_cell) {
   constexpr std::uint32_t decimal = iwork::cell::flag::decimal;
   // decimal128 `42`
@@ -339,9 +284,7 @@ TEST(IworkNumbers, a_record_we_have_not_mapped_is_an_empty_cell) {
   EXPECT_EQ(builder::element_text(cell(other_type)), "");
 }
 
-// The framing below a cell is the file's word about its own bytes, so a row
-// that contradicts itself is a broken file rather than a shape we have not
-// seen — the one place the tile reader throws instead of skipping.
+// Invalid offsets are broken framing, even for an unrecognized cell.
 TEST(IworkNumbers, a_row_that_contradicts_its_own_offsets_throws) {
   EXPECT_THROW(std::ignore = numbers_document(
                    {.rows = 1,
@@ -411,9 +354,7 @@ TEST(IworkNumbers, a_field_that_is_not_the_message_it_should_be_throws) {
       throws("malformed data list"));
 }
 
-// A tile list may name one tile any number of times, and `Package::object`
-// hands every repeat back from its cache — so the cells a repeat appends are
-// spent as they are produced rather than once the model is complete.
+// Repeated cached tiles still spend the decode budget.
 TEST(IworkNumbers, a_repeated_tile_is_capped_by_the_cells_it_carries) {
   const std::string record = builder::cell_record(
       iwork::cell::type::string, iwork::cell::flag::string_key,
