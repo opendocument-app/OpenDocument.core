@@ -220,6 +220,18 @@ TEST(OoxmlSpreadsheetValue, date1904_counts_from_1904) {
   EXPECT_DOUBLE_EQ(sheet.cell(1, 0).value().number(), 45658 + 1462);
 }
 
+TEST(OoxmlSpreadsheetValue, a_date_takes_the_names_of_its_format_language) {
+  const std::string styles =
+      std::string(number_styles)
+          .replace(std::string(number_styles).find("#,##0.00"), 8,
+                   "[$-419]d mmmm yyyy");
+  const Document document =
+      decode(workbook(R"(<row r="1"><c r="A1" s="1"><v>45731</v></c></row>)",
+                      "", "", "", "", styles));
+
+  EXPECT_EQ(shown_at(first_sheet(document), 0), "15 марта 2025");
+}
+
 namespace {
 
 Document saved_and_reopened(const Document &document) {

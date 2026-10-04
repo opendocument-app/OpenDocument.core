@@ -190,6 +190,27 @@ TEST(NumberFormat, a_locale_writes_its_own_month_and_day_names) {
   EXPECT_EQ(shown_in("dddd, mmmm d", "ja"), "Saturday, March 15");
 }
 
+/// What LibreOffice shows for the same code in an xlsx.
+TEST(NumberFormat, a_locale_id_names_the_months_and_days) {
+  const auto shown_in = [](const std::string_view code,
+                           const Symbols &symbols = {}) {
+    // 2025-03-15, a Saturday
+    return Format(code).format(45731, Epoch::from_1900, symbols);
+  };
+  EXPECT_EQ(shown_in("[$-419]d mmmm yyyy"), "15 марта 2025");
+  EXPECT_EQ(shown_in("[$-419]mmmm"), "Март");
+  EXPECT_EQ(shown_in("[$-407]dddd, d. mmmm"), "Samstag, 15. März");
+  EXPECT_EQ(shown_in("[$-40C]ddd d mmm"), "sam. 15 mars");
+  EXPECT_EQ(shown_in("[$-415]d mmmm"), "15 marca");
+  EXPECT_EQ(shown_in("[$-0414]mmmm"), "mars");
+  // the upper bits pick a calendar and digits, not a language
+  EXPECT_EQ(shown_in("[$-1010409]mmmm"), "March");
+  EXPECT_EQ(shown_in("[$-F800]mmmm"), "March");
+  // the code's language beats the locale's, and leaves the signs alone
+  EXPECT_EQ(shown_in("[$-419]mmmm", symbols_of("de-DE")), "Март");
+  EXPECT_EQ(Format("[$€-407]#,##0.00").format(1234.5), "€1,234.50");
+}
+
 TEST(NumberFormat, a_serial_is_days_since_1899_12_30) {
   EXPECT_EQ(days_from_civil(1899, 12, 30), 0);
   EXPECT_EQ(days_from_civil(2025, 1, 1), 45658);

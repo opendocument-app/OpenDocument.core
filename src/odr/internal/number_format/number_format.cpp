@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <charconv>
 #include <cmath>
 #include <cstdint>
 #include <stdexcept>
@@ -86,6 +87,48 @@ void append_literal(std::vector<Token> &tokens, const std::string &text) {
   }
 }
 
+/// The names of @p language, or null where the table has none.
+const CalendarNames *names_of(const std::string_view language) {
+  // `no` is Norwegian, which is written as Bokmål
+  const std::string_view key = language == "no" ? "nb" : language;
+  const auto found =
+      std::ranges::find(calendar_names, key, &CalendarNames::language);
+  return found != std::end(calendar_names) ? &*found : nullptr;
+}
+
+/// The language of the Windows locale id @p lcid (MS-LCID), where the table
+/// of names has it; empty otherwise.
+std::string_view language_of(const std::uint32_t lcid) {
+  // one primary language id that holds several languages or scripts
+  switch (lcid) {
+  case 0x041a:
+  case 0x101a:
+    return "hr";
+  case 0x0c1a:
+  case 0x281a:
+    return "sr"; // the table holds Serbian in Cyrillic
+  case 0x141a:
+    return "bs";
+  case 0x0414:
+    return "nb";
+  case 0x0814:
+    return "nn";
+  default:
+    break;
+  }
+  constexpr std::array<std::pair<std::uint32_t, std::string_view>, 29> primary{
+      {{0x02, "bg"}, {0x03, "ca"}, {0x05, "cs"}, {0x06, "da"}, {0x07, "de"},
+       {0x08, "el"}, {0x09, "en"}, {0x0a, "es"}, {0x0b, "fi"}, {0x0c, "fr"},
+       {0x0e, "hu"}, {0x10, "it"}, {0x13, "nl"}, {0x15, "pl"}, {0x16, "pt"},
+       {0x18, "ro"}, {0x19, "ru"}, {0x1b, "sk"}, {0x1d, "sv"}, {0x1f, "tr"},
+       {0x21, "id"}, {0x22, "uk"}, {0x23, "be"}, {0x24, "sl"}, {0x25, "et"},
+       {0x26, "lv"}, {0x27, "lt"}, {0x2a, "vi"}, {0x3f, "kk"}}};
+  const auto found =
+      std::ranges::find(primary, lcid & 0x3ff,
+                        &std::pair<std::uint32_t, std::string_view>::first);
+  return found != std::end(primary) ? found->second : std::string_view();
+}
+
 /// The content of `[…]`: a condition, a currency or locale, or a colour.
 void parse_bracket(const std::string_view content, Section &section) {
   if (content.empty()) {
@@ -119,10 +162,21 @@ void parse_bracket(const std::string_view content, Section &section) {
     return;
   }
   if (content.front() == '$') {
-    // `[$€-407]`: the symbol is shown, the locale is not
-    const std::string_view symbol = content.substr(1, content.find('-') - 1);
+    // `[$€-407]`: the symbol is shown, and the locale id, in hex, names the
+    // months and days; the upper bits pick a calendar and digits
+    const std::size_t dash = content.find('-');
+    const std::string_view symbol = content.substr(1, dash - 1);
     if (!symbol.empty()) {
       append_literal(section.tokens, std::string(symbol));
+    }
+    const std::string_view id = dash == std::string_view::npos
+                                    ? std::string_view()
+                                    : content.substr(dash + 1);
+    std::uint32_t lcid = 0;
+    if (const auto [end, error] =
+            std::from_chars(id.data(), id.data() + id.size(), lcid, 16);
+        !id.empty() && error == std::errc() && end == id.data() + id.size()) {
+      section.names = names_of(language_of(lcid & 0xffff));
     }
     return;
   }
@@ -968,7 +1022,8 @@ std::string Format::format(const double value, const Epoch epoch,
     return value < 0 || value >= last_serial + 1
                ? format_general(value, symbols)
                : format_date_time(section.tokens, value, epoch,
-                                  symbols.names != nullptr
+                                  section.names != nullptr ? *section.names
+                                  : symbols.names != nullptr
                                       ? *symbols.names
                                       : calendar_names.front());
   }
@@ -1107,13 +1162,7 @@ number_format::symbols_of(const std::string_view locale) {
     result.decimal = ",";
     result.group = language == "fr" ? "\u202f" : "\u00a0";
   }
-  // `no` is Norwegian, which is written as Bokmål
-  const std::string_view names = language == "no" ? "nb" : language;
-  if (const auto found =
-          std::ranges::find(calendar_names, names, &CalendarNames::language);
-      found != std::end(calendar_names)) {
-    result.names = &*found;
-  }
+  result.names = names_of(language);
   return result;
 }
 
