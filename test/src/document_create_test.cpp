@@ -212,3 +212,30 @@ TEST(DocumentCreate, docx_takes_an_edit_and_keeps_it_through_a_save) {
   EXPECT_EQ(text_of(body[0]), "hello");
   EXPECT_EQ(text_of(body[1]), "world");
 }
+
+TEST(DocumentCreate, xlsx_holds_one_empty_sheet) {
+  const Document document = create_document(FileType::office_open_xml_workbook);
+
+  const std::vector<Element> sheets = children(document.root_element());
+  ASSERT_EQ(sheets.size(), 1);
+  ASSERT_EQ(sheets[0].type(), ElementType::sheet);
+  const Sheet sheet = sheets[0].as_sheet();
+  EXPECT_EQ(sheet.name(), "Sheet1");
+  EXPECT_EQ(sheet.cell(0, 0).value_type(), ValueType::unknown);
+}
+
+TEST(DocumentCreate, xlsx_takes_an_edit_and_keeps_it_through_a_save) {
+  const Document document = create_document(FileType::office_open_xml_workbook);
+  const Sheet sheet = (*document.root_element().children().begin()).as_sheet();
+
+  sheet.set_cell(0, 0, CellValue("hello"));
+  sheet.set_cell(2, 4, CellValue(12.5));
+
+  const Document saved = reopen(document);
+  const Sheet saved_sheet =
+      (*saved.root_element().children().begin()).as_sheet();
+  EXPECT_EQ(saved_sheet.cell(0, 0).value().text(), "hello");
+  EXPECT_EQ(saved_sheet.cell(2, 4).value().number(), 12.5);
+  EXPECT_EQ(saved_sheet.dimensions().rows, 5);
+  EXPECT_EQ(saved_sheet.dimensions().columns, 3);
+}

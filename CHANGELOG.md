@@ -18,9 +18,9 @@ The release run heads these entries with the version and opens a fresh
 
 - `odr::create_document(FileType)` makes a new odt with one empty paragraph,
   an A4 page and Liberation Serif 12pt, a new ods with one empty sheet
-  `Sheet1` and Liberation Sans 10pt, or a new docx with one empty paragraph,
-  an A4 page and Calibri 11pt. `FileTypeCapabilities::create` names the types
-  it can make.
+  `Sheet1` and Liberation Sans 10pt, a new docx with one empty paragraph, an
+  A4 page and Calibri 11pt, or a new xlsx with one empty sheet `Sheet1` and
+  Calibri 11pt. `FileTypeCapabilities::create` names the types it can make.
 
 ## v7.4.0 - 2026-10-03
 
