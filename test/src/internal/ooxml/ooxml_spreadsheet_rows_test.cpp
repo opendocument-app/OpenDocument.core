@@ -398,3 +398,16 @@ TEST(OoxmlSpreadsheetRows, a_page_break_moves_and_two_at_one_place_become_one) {
                        R"(<rowBreaks count="1" manualBreakCount="1">)"
                        R"(<brk id="2" man="1"/></rowBreaks>)"));
 }
+
+TEST(OoxmlSpreadsheetRows, a_rule_reads_from_its_first_cell_that_stays) {
+  const Document document = decode(workbook(
+      abc,
+      R"(<conditionalFormatting sqref="A1:A3"><cfRule type="expression">)"
+      R"(<formula>$B$1&lt;A1</formula></cfRule></conditionalFormatting>)"));
+
+  first_sheet(document).delete_rows(0, 1);
+
+  const std::string xml = sheet_xml(document);
+  EXPECT_TRUE(contains(xml, R"(<conditionalFormatting sqref="A1:A2">)"));
+  EXPECT_TRUE(contains(xml, "<formula>#REF!&lt;A1</formula>"));
+}

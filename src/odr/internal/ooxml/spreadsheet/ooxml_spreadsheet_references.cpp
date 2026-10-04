@@ -62,6 +62,38 @@ void move_text(pugi::xml_node node, const std::optional<std::string> &sheet,
   }
 }
 
+/// Moves the formulas of a rule or a validation, which state their cells as
+/// the first cell of its range sees them. Where a delete removes that cell,
+/// they read as the first cell that stays.
+void move_rule_formulas(const pugi::xml_node node,
+                        const formula::SheetEdit &edit) {
+  const std::string sqref = node.attribute("sqref").value();
+  const std::string first = sqref.substr(0, sqref.find_first_of(" :"));
+  if (first.empty()) {
+    return;
+  }
+  const TablePosition anchor(first);
+  TablePosition stays = anchor;
+  if (!edit.insert && !move_position(anchor, edit).has_value()) {
+    const std::uint32_t after = edit.index + edit.count;
+    stays = edit.axis == formula::Axis::row
+                ? TablePosition(anchor.column, after)
+                : TablePosition(after, anchor.row);
+  }
+  for (const pugi::xpath_node match :
+       node.select_nodes("cfRule/formula | formula1 | formula2")) {
+    const pugi::xml_node text = match.node();
+    if (stays == anchor) {
+      move_text(text, edit.sheet, edit);
+    } else if (const std::optional<formula::Node> expression =
+                   formula::parse(text.text().get(), syntax)) {
+      formula::Node moved = shifted(*expression, anchor, stays);
+      formula::move_references(moved, edit, edit.sheet);
+      text.text().set(formula::to_string(moved, syntax).c_str());
+    }
+  }
+}
+
 struct Member final {
   pugi::xml_node formula;
   TablePosition position;
@@ -254,10 +286,8 @@ void collect_ranges(const pugi::xml_node node, const formula::SheetEdit &edit,
     if (name == "autoFilter" && edit.axis == formula::Axis::column) {
       move_filter_columns(child, edit);
     }
-    // a rule or a validation states its cells as the first cell of its range
-    // sees them, and the edit moves both alike
-    if (name == "formula" || name == "formula1" || name == "formula2") {
-      move_text(child, edit.sheet, edit);
+    if (name == "conditionalFormatting" || name == "dataValidation") {
+      move_rule_formulas(child, edit);
     }
     for (const RangeAttribute &range : removable_ranges) {
       pugi::xml_attribute attribute = child.attribute(range.attribute.data());
