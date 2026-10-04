@@ -20,5 +20,6 @@ serve(
         "keyboard.html",
         "formatting.html",
         "cut.html",
+        "csv.html",
     ),
 )

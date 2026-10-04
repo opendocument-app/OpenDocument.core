@@ -967,6 +967,18 @@ TEST(html, an_editable_cut_sheet_states_its_whole_extent) {
   EXPECT_EQ(page(csv_file(3, 4)).find(R"(data-odr-cut=")"), std::string::npos);
 }
 
+TEST(html, an_editable_csv_states_that_it_takes_no_style) {
+  HtmlConfig config;
+  config.editable = true;
+  std::ostringstream out;
+  view_at(html::translate(csv_file(2, 2), config), "sheet0.html")
+      .write_html(out);
+
+  EXPECT_NE(out.str().find(R"(data-odr-editable="true")"), std::string::npos);
+  EXPECT_NE(out.str().find(R"(data-odr-sheet-styles="false")"),
+            std::string::npos);
+}
+
 // The rows a sheet keeps follow how wide it turns out to be.
 TEST(html, the_cell_budget_bounds_the_rows_by_the_width) {
   HtmlConfig config;

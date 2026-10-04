@@ -18,7 +18,8 @@ and [OpenDocument.ios](https://github.com/opendocument-app/OpenDocument.ios).
 | rtf | yes | no | Body text only. |
 | md | yes | no | CommonMark plus GitHub extensions. No raw html, images or horizontal rules. Detected by name only, so open it as `FileType::markdown`. |
 | txt | yes | yes | |
-| csv, json, xml | yes | no | |
+| csv | yes | yes | Cell values only. Saves as UTF-8. |
+| json, xml | yes | no | |
 | zip, cfb | yes | no | Archive listing. |
 | png, gif, jpeg, bmp, webp, tiff, heif, avif, jxl, ico, svg, svm | yes | no | Images. |
 | ttf, otf | yes | no | Font specimen page. |

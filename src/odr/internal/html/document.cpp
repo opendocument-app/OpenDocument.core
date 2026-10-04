@@ -241,6 +241,9 @@ void write_body_begin(const Document &document, const WritingState &state) {
                 clb("data-odr-sheet-edit-on-click",
                     *on_click ? "true" : "false");
               }
+              if (document.file_type() == FileType::comma_separated_values) {
+                clb("data-odr-sheet-styles", "false");
+              }
             }
             // not an editing fact: a read-only sheet has a pin to clear
             clb("data-odr-keyboard", keyboard_classes(state.config()));

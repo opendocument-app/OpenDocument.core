@@ -41,6 +41,10 @@ The release run heads these entries with the version and opens a fresh
   and when a move goes past the rendered extent. The event carries the whole
   extent as `columns` and `rows`.
 
+- A csv is editable and savable: `Sheet::set_cell` and the `setCell` op
+  write a value, and `Document::save` writes the file as UTF-8. A cell style
+  is refused, in the API and in the sheet editor.
+
 ## v7.4.0 - 2026-10-03
 
 - `PdfFile::permissions` reports the permission bits of an encrypted pdf, in
