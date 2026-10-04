@@ -86,6 +86,28 @@ TEST(Stream, delimiter_reads_preserve_failed_input) {
   EXPECT_EQ(stream::read_until(in, ';', true), "second;");
 }
 
+TEST(Stream, copying_reports_input_and_output_failures) {
+  std::istringstream in(std::string(4097, 'x'));
+  std::ostringstream out;
+  stream::pipe(in, out);
+  EXPECT_EQ(out.str(), std::string(4097, 'x'));
+
+  in.clear();
+  in.seekg(0);
+  out.setstate(std::ios::badbit);
+  EXPECT_THROW(stream::pipe(in, out), std::ios_base::failure);
+
+  in.setstate(std::ios::badbit);
+  EXPECT_THROW(stream::read(in), std::ios_base::failure);
+  EXPECT_THROW(stream::read(in, 1), std::ios_base::failure);
+
+  class FailingBuffer final : public std::streambuf {
+    int_type underflow() override { throw std::runtime_error("read failure"); }
+  } buffer;
+  std::istream broken(&buffer);
+  EXPECT_THROW(stream::read(broken), std::ios_base::failure);
+}
+
 TEST(ByteStream, length_prefixed_reads_handle_chunks_and_stream_exceptions) {
   const std::string data(4097, 'x');
   std::istringstream in(data);

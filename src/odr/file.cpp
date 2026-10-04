@@ -346,8 +346,7 @@ void TextFile::save(const std::string &path) const {
   if (!is_savable()) {
     throw UnsupportedOperation();
   }
-  std::ofstream out = internal::util::file::create(path);
-  out << text();
+  internal::util::file::write(text(), path);
 }
 
 void TextFile::save(std::ostream &out) const {

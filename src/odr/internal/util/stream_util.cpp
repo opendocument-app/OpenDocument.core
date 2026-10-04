@@ -1,7 +1,7 @@
 #include <odr/internal/util/stream_util.hpp>
 
 #include <array>
-#include <iterator>
+#include <limits>
 #include <sstream>
 #include <streambuf>
 
@@ -12,12 +12,21 @@ using int_type = std::streambuf::int_type;
 static constexpr int_type eof = std::streambuf::traits_type::eof();
 
 std::string stream::read(std::istream &in) {
-  return {std::istreambuf_iterator(in), {}};
+  std::ostringstream out;
+  pipe(in, out);
+  return std::move(out).str();
 }
 
 std::string stream::read(std::istream &in, const std::size_t size) {
+  if (size >
+      static_cast<std::size_t>(std::numeric_limits<std::streamsize>::max())) {
+    throw std::length_error("stream read is too large");
+  }
   std::string result(size, '\0');
   in.read(result.data(), static_cast<std::streamsize>(size));
+  if (in.bad() || (in.fail() && !in.eof())) {
+    throw std::ios_base::failure("stream read failed");
+  }
   result.resize(static_cast<std::size_t>(in.gcount()));
   return result;
 }
@@ -29,11 +38,17 @@ void stream::pipe(std::istream &in, std::ostream &out) {
 
   while (true) {
     in.read(buffer.data(), BUFFER_SIZE);
+    if (in.bad() || (in.fail() && !in.eof())) {
+      throw std::ios_base::failure("stream read failed");
+    }
     const auto read = in.gcount();
     if (read == 0) {
       break;
     }
     out.write(buffer.data(), read);
+    if (!out) {
+      throw std::ios_base::failure("stream write failed");
+    }
   }
 }
 

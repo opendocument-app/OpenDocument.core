@@ -6,6 +6,7 @@
 #include <odr/odr.hpp>
 
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/common/random.hpp>
 #include <odr/internal/common/temporary_file.hpp>
 #include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
@@ -153,6 +154,29 @@ TEST(File, temporary_copies_preserve_binary_bytes) {
   const auto copy =
       internal::TemporaryDiskFileFactory::system_default().copy(source);
   EXPECT_EQ(internal::MemoryFile(copy).content(), data);
+}
+
+TEST(File, text_can_be_saved_over_its_disk_source) {
+  std::istringstream source("original text\n");
+  const auto temporary =
+      internal::TemporaryDiskFileFactory::system_default().copy(source);
+  const std::string path = temporary.disk_path()->string();
+  const TextFile text =
+      open(path, DecodeOptions::as(FileType::text_file)).as_text_file();
+  text.save(path);
+  EXPECT_EQ(internal::util::file::read(path), "original text\n");
+}
+
+TEST(File, failed_temporary_copies_leave_no_file) {
+  const internal::AbsPath directory(std::filesystem::temp_directory_path());
+  const std::string name = "odr-failed-copy-" + internal::random_string(12);
+  const internal::TemporaryDiskFileFactory factory(directory,
+                                                   [name] { return name; });
+  std::istringstream source("bytes");
+  source.setstate(std::ios::badbit);
+  EXPECT_THROW(std::ignore = factory.copy(source), std::ios_base::failure);
+  EXPECT_FALSE(
+      std::filesystem::exists(directory.join(internal::RelPath(name)).path()));
 }
 
 /// A file inside an archive is named by its entry, not by the archive.

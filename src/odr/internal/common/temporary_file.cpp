@@ -1,5 +1,7 @@
 #include <odr/internal/common/temporary_file.hpp>
 
+#include <odr/exceptions.hpp>
+
 #include <odr/internal/common/random.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
@@ -87,14 +89,26 @@ TemporaryDiskFile TemporaryDiskFileFactory::copy(std::istream &in) const {
     if (!file.is_open()) {
       file.clear();
       file.open(file_path.string(), std::ios_base::out | std::ios_base::binary);
+      if (!file.is_open()) {
+        throw FileWriteError(file_path.string());
+      }
       break;
     }
 
     file.close();
   }
 
-  util::stream::pipe(in, file);
-  file.close();
+  try {
+    util::stream::pipe(in, file);
+    file.close();
+    if (!file) {
+      throw FileWriteError(file_path.string());
+    }
+  } catch (...) {
+    file.close();
+    remove_quietly(file_path);
+    throw;
+  }
 
   return TemporaryDiskFile(file_path);
 }
