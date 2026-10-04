@@ -3,6 +3,7 @@
 #include <odr/internal/util/number_util.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <cstdint>
@@ -126,10 +127,38 @@ void parse_bracket(const std::string_view content, Section &section) {
     return;
   }
   const char first = static_cast<char>(std::tolower(content.front()));
-  if (first == 'h' || first == 'm' || first == 's') {
-    throw std::invalid_argument("elapsed time is not supported");
+  if ((first == 'h' || first == 'm' || first == 's') &&
+      std::ranges::all_of(content, [first](const char c) {
+        return std::tolower(c) == first;
+      })) {
+    section.tokens.push_back({.kind = Kind::date_time,
+                              .unit = first,
+                              .width = content.size(),
+                              .elapsed = true});
+    return;
   }
   // a colour, `[DBNum1]` and the like change nothing here
+}
+
+/// `m` and `mm` are minutes after an hour or before a second, months
+/// otherwise.
+void resolve_minutes(Section &section) {
+  std::vector<Token *> parts;
+  for (Token &token : section.tokens) {
+    if (token.kind == Kind::date_time && token.unit != 'a' &&
+        token.unit != 'f') {
+      parts.push_back(&token);
+    }
+  }
+  for (std::size_t k = 0; k < parts.size(); ++k) {
+    if (parts[k]->unit != 'M' || parts[k]->width > 2) {
+      continue;
+    }
+    if ((k > 0 && parts[k - 1]->unit == 'h') ||
+        (k + 1 < parts.size() && parts[k + 1]->unit == 's')) {
+      parts[k]->unit = 'm';
+    }
+  }
 }
 
 std::vector<Section> parse_code(const std::string_view code) {
@@ -176,7 +205,18 @@ std::vector<Section> parse_code(const std::string_view code) {
       tokens.push_back({.kind = Kind::digit, .placeholder = c});
       break;
     case '.':
-      tokens.push_back({.kind = Kind::point});
+      if (!tokens.empty() && tokens.back().kind == Kind::date_time &&
+          tokens.back().unit == 's' && i + 1 < code.size() &&
+          code[i + 1] == '0') {
+        std::size_t width = 0;
+        for (; i + 1 < code.size() && code[i + 1] == '0'; ++i) {
+          ++width;
+        }
+        tokens.push_back(
+            {.kind = Kind::date_time, .unit = 'f', .width = width});
+      } else {
+        tokens.push_back({.kind = Kind::point});
+      }
       break;
     case ',':
       tokens.push_back({.kind = Kind::comma});
@@ -220,12 +260,43 @@ std::vector<Section> parse_code(const std::string_view code) {
     case 'h':
     case 'H':
     case 's':
-    case 'S':
-      throw std::invalid_argument("dates and times are not supported");
+    case 'S': {
+      const char letter = static_cast<char>(std::tolower(c));
+      std::size_t width = 1;
+      for (; i + 1 < code.size() && std::tolower(code[i + 1]) == letter; ++i) {
+        ++width;
+      }
+      // `m` is the month until `resolve_minutes` says otherwise
+      tokens.push_back({.kind = Kind::date_time,
+                        .unit = letter == 'm' ? 'M' : letter,
+                        .width = width});
+    } break;
+    case 'A':
+    case 'a': {
+      const auto spelled = [&](const std::string_view word) {
+        return code.size() - i >= word.size() &&
+               std::ranges::equal(code.substr(i, word.size()), word,
+                                  [](const char a, const char b) {
+                                    return std::tolower(a) == b;
+                                  });
+      };
+      const std::size_t length = spelled("am/pm") ? 5 : spelled("a/p") ? 3 : 0;
+      if (length == 0) {
+        append_literal(tokens, std::string(1, c));
+        break;
+      }
+      tokens.push_back({.kind = Kind::date_time,
+                        .text = std::string(code.substr(i, length)),
+                        .unit = 'a'});
+      i += length - 1;
+    } break;
     default:
       append_literal(tokens, std::string(1, c));
       break;
     }
+  }
+  for (Section &section : sections) {
+    resolve_minutes(section);
   }
   return sections;
 }
@@ -603,6 +674,145 @@ std::string format_fraction(const std::vector<Token> &tokens,
   return result;
 }
 
+/// The civil date @p days after 1970-01-01, as Howard Hinnant's
+/// `civil_from_days` computes it.
+std::tuple<std::int64_t, unsigned, unsigned> civil(std::int64_t days) {
+  days += 719468;
+  const std::int64_t era = (days >= 0 ? days : days - 146096) / 146097;
+  const auto day_of_era = static_cast<unsigned>(days - era * 146097);
+  const unsigned year_of_era = (day_of_era - day_of_era / 1460 +
+                                day_of_era / 36524 - day_of_era / 146096) /
+                               365;
+  const unsigned day_of_year =
+      day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+  const unsigned shifted_month = (5 * day_of_year + 2) / 153;
+  const unsigned day = day_of_year - (153 * shifted_month + 2) / 5 + 1;
+  const unsigned month =
+      shifted_month < 10 ? shifted_month + 3 : shifted_month - 9;
+  const std::int64_t year =
+      static_cast<std::int64_t>(year_of_era) + era * 400 + (month <= 2 ? 1 : 0);
+  return {year, month, day};
+}
+
+constexpr std::array<std::string_view, 12> month_names{
+    "January", "February", "March",     "April",   "May",      "June",
+    "July",    "August",   "September", "October", "November", "December"};
+constexpr std::array<std::string_view, 7> day_names{
+    "Sunday",   "Monday", "Tuesday", "Wednesday",
+    "Thursday", "Friday", "Saturday"};
+
+std::string padded(const std::int64_t value, const std::size_t width) {
+  std::string digits = std::to_string(value);
+  if (digits.size() < width) {
+    digits.insert(0, width - digits.size(), '0');
+  }
+  return digits;
+}
+
+/// @p value as a date serial: whole days counted from @p epoch, and the time
+/// of day in its fraction.
+std::string format_date_time(const std::vector<Token> &tokens,
+                             const double value, const Epoch epoch) {
+  std::size_t fraction_width = 0;
+  bool twelve_hours = false;
+  for (const Token &token : tokens) {
+    if (token.kind == Kind::date_time && token.unit == 'f') {
+      fraction_width =
+          std::max(fraction_width, std::min<std::size_t>(token.width, 3));
+    }
+    twelve_hours =
+        twelve_hours || (token.kind == Kind::date_time && token.unit == 'a');
+  }
+  const auto scale = static_cast<std::int64_t>(
+      std::pow(10.0, static_cast<double>(fraction_width)));
+  const std::int64_t ticks =
+      std::llround(value * 86400.0 * static_cast<double>(scale));
+  const std::int64_t day = ticks / (86400 * scale);
+  const std::int64_t second_of_day = ticks % (86400 * scale) / scale;
+  const std::int64_t fraction = ticks % scale;
+  const std::int64_t hour = second_of_day / 3600;
+
+  // 1900 counts 1900-02-29, which never was, as day 60, so its weekdays only
+  // agree with the calendar from day 61 on
+  std::int64_t year = 1900;
+  unsigned month = 2;
+  unsigned month_day = 29;
+  std::int64_t weekday = 0;
+  if (epoch == Epoch::from_1904) {
+    std::tie(year, month, month_day) = civil(day - 24107);
+    weekday = ((day - 24107) % 7 + 11) % 7;
+  } else {
+    if (day != 60) {
+      std::tie(year, month, month_day) =
+          civil(day - (day < 60 ? 25568 : 25569));
+    }
+    weekday = (day + 6) % 7;
+  }
+
+  std::string result;
+  for (const Token &token : tokens) {
+    // the separators of a date are its literals
+    if (token.kind == Kind::literal) {
+      result += token.text;
+    } else if (token.kind == Kind::slash) {
+      result += '/';
+    } else if (token.kind == Kind::comma) {
+      result += ',';
+    } else if (token.kind == Kind::point) {
+      result += '.';
+    }
+    if (token.kind != Kind::date_time) {
+      continue;
+    }
+    switch (token.unit) {
+    case 'y':
+      result += token.width <= 2 ? padded(year % 100, 2) : padded(year, 4);
+      break;
+    case 'M':
+      result +=
+          token.width <= 2   ? padded(month, token.width)
+          : token.width == 3 ? std::string(month_names[month - 1].substr(0, 3))
+          : token.width == 4 ? std::string(month_names[month - 1])
+                             : std::string(month_names[month - 1].substr(0, 1));
+      break;
+    case 'd':
+      result +=
+          token.width <= 2 ? padded(month_day, token.width)
+          : token.width == 3
+              ? std::string(
+                    day_names[static_cast<std::size_t>(weekday)].substr(0, 3))
+              : std::string(day_names[static_cast<std::size_t>(weekday)]);
+      break;
+    case 'h':
+      result += padded(token.elapsed  ? ticks / (3600 * scale)
+                       : twelve_hours ? (hour % 12 == 0 ? 12 : hour % 12)
+                                      : hour,
+                       token.width);
+      break;
+    case 'm':
+      result +=
+          padded(token.elapsed ? ticks / (60 * scale) : second_of_day / 60 % 60,
+                 token.width);
+      break;
+    case 's':
+      result += padded(token.elapsed ? ticks / scale : second_of_day % 60,
+                       token.width);
+      break;
+    case 'f':
+      result += '.' + padded(fraction, fraction_width).substr(0, token.width);
+      break;
+    case 'a': {
+      const bool morning = hour < 12;
+      result += token.text.size() == 5 ? token.text.substr(morning ? 0 : 3, 2)
+                                       : token.text.substr(morning ? 0 : 2, 1);
+    } break;
+    default:
+      break;
+    }
+  }
+  return result;
+}
+
 std::string format_section(const Section &section, const double value) {
   const std::vector<Token> &tokens = section.tokens;
   if (has(section, Kind::general)) {
@@ -685,7 +895,21 @@ Format::Format(const std::string_view code) : m_sections{parse_code(code)} {
   }
 }
 
-std::string Format::format(const double value) const {
+Category Format::category() const {
+  Category result = Category::number;
+  for (const Token &token : m_sections.front().tokens) {
+    if (token.kind != Kind::date_time) {
+      continue;
+    }
+    if (token.unit == 'y' || token.unit == 'M' || token.unit == 'd') {
+      return Category::date;
+    }
+    result = Category::time;
+  }
+  return result;
+}
+
+std::string Format::format(const double value, const Epoch epoch) const {
   if (!std::isfinite(value)) {
     return format_general(value);
   }
@@ -725,6 +949,11 @@ std::string Format::format(const double value) const {
   }
 
   const Section &section = m_sections[chosen];
+  if (has(section, Kind::date_time)) {
+    // a spreadsheet shows a date before its epoch as `####`
+    return value < 0 ? format_general(value)
+                     : format_date_time(section.tokens, value, epoch);
+  }
   if (has(section, Kind::text) && !has(section, Kind::digit)) {
     return format_general(value);
   }
