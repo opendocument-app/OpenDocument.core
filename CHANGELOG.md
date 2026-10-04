@@ -32,6 +32,9 @@ The release run heads these entries with the version and opens a fresh
   `odr-value-type-date` or the new `odr-value-type-time`.
 - A sheet sorts a date or time column by the value, not by the shown text.
   A date or time cell states `data-odr-value` in a read-only render too.
+- A date written into an ods cell shows the month and day names of its data
+  style's language, as LibreOffice shows them: `15 марта` in a Russian
+  `D MMMM` cell.
 
 - An xlsx cell shows its number formatted, as its `numFmt` or a built-in
   format says, and a date or time format types it `ValueType::date` or

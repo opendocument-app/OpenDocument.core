@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/internal/number_format/calendar_names.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -75,14 +77,16 @@ civil_from_days(std::int64_t days);
 /// The serial @p epoch counts for @p days since 1899-12-30.
 [[nodiscard]] double serial_from_days(double days, Epoch epoch);
 
-/// The signs a locale writes a number with, where the code spells `.` and `,`.
+/// The signs a locale writes a number with, where the code spells `.` and `,`,
+/// and the names it writes a date with.
 struct Symbols final {
   std::string decimal{"."};
   std::string group{","};
+  const CalendarNames *names{nullptr}; ///< English where it is null
 };
 
 /// The symbols of the BCP 47 tag @p locale, from a small table of languages;
-/// one it does not name writes `.` and `,`.
+/// one it does not name writes `.` and `,` and English names.
 [[nodiscard]] Symbols symbols_of(std::string_view locale);
 
 /// What the first section of a format shows a number as.
@@ -99,9 +103,9 @@ public:
   /// @throws std::invalid_argument where @p code is no format code.
   explicit Format(std::string_view code);
 
-  /// The text a cell holding @p value shows, with @p symbols for the point
-  /// and the grouping comma. A date or time section reads it as a serial
-  /// counted from @p epoch.
+  /// The text a cell holding @p value shows, with @p symbols for the point,
+  /// the grouping comma and the names of a date. A date or time section reads
+  /// it as a serial counted from @p epoch.
   [[nodiscard]] std::string format(double value, Epoch epoch = Epoch::from_1900,
                                    const Symbols &symbols = {}) const;
   /// The text a cell holding the text @p value shows.

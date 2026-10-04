@@ -697,12 +697,14 @@ civil(std::int64_t days) {
   return {year, month, day};
 }
 
-constexpr std::array<std::string_view, 12> month_names{
-    "January", "February", "March",     "April",   "May",      "June",
-    "July",    "August",   "September", "October", "November", "December"};
-constexpr std::array<std::string_view, 7> day_names{
-    "Sunday",   "Monday", "Tuesday", "Wednesday",
-    "Thursday", "Friday", "Saturday"};
+/// The first letter of @p text, which is UTF-8.
+std::string_view first_letter(const std::string_view text) {
+  std::size_t length = 1;
+  while (length < text.size() && (text[length] & 0xc0) == 0x80) {
+    ++length;
+  }
+  return text.substr(0, length);
+}
 
 std::string padded(const std::int64_t value, const std::size_t width) {
   std::string digits = std::to_string(value);
@@ -715,7 +717,8 @@ std::string padded(const std::int64_t value, const std::size_t width) {
 /// @p value as a date serial: whole days counted from @p epoch, and the time
 /// of day in its fraction.
 std::string format_date_time(const std::vector<Token> &tokens,
-                             const double value, const Epoch epoch) {
+                             const double value, const Epoch epoch,
+                             const CalendarNames &names) {
   std::size_t fraction_width = 0;
   bool twelve_hours = false;
   for (const Token &token : tokens) {
@@ -753,6 +756,7 @@ std::string format_date_time(const std::vector<Token> &tokens,
   }
 
   std::string result;
+  bool after_day = false;
   for (const Token &token : tokens) {
     // the separators of a date are its literals
     if (token.kind == Kind::literal) {
@@ -772,19 +776,21 @@ std::string format_date_time(const std::vector<Token> &tokens,
       result += token.width <= 2 ? padded(year % 100, 2) : padded(year, 4);
       break;
     case 'M':
-      result +=
-          token.width <= 2   ? padded(month, token.width)
-          : token.width == 3 ? std::string(month_names[month - 1].substr(0, 3))
-          : token.width == 4 ? std::string(month_names[month - 1])
-                             : std::string(month_names[month - 1].substr(0, 1));
+      // a month after its day is declined where the language does that
+      result += token.width <= 2   ? padded(month, token.width)
+                : token.width == 3 ? std::string(names.short_months[month - 1])
+                : token.width == 4
+                    ? std::string(after_day ? names.months_after_day[month - 1]
+                                            : names.months[month - 1])
+                    : std::string(first_letter(names.months[month - 1]));
       break;
     case 'd':
+      after_day = after_day || token.width <= 2;
       result +=
           token.width <= 2 ? padded(month_day, token.width)
           : token.width == 3
-              ? std::string(
-                    day_names[static_cast<std::size_t>(weekday)].substr(0, 3))
-              : std::string(day_names[static_cast<std::size_t>(weekday)]);
+              ? std::string(names.short_days[static_cast<std::size_t>(weekday)])
+              : std::string(names.days[static_cast<std::size_t>(weekday)]);
       break;
     case 'h':
       result += padded(token.elapsed  ? ticks / (3600 * scale)
@@ -961,7 +967,10 @@ std::string Format::format(const double value, const Epoch epoch,
     constexpr double last_serial = 2958465;
     return value < 0 || value >= last_serial + 1
                ? format_general(value, symbols)
-               : format_date_time(section.tokens, value, epoch);
+               : format_date_time(section.tokens, value, epoch,
+                                  symbols.names != nullptr
+                                      ? *symbols.names
+                                      : calendar_names.front());
   }
   if (has(section, Kind::text) && !has(section, Kind::digit)) {
     return format_general(value, symbols);
@@ -1081,23 +1090,31 @@ number_format::symbols_of(const std::string_view locale) {
   constexpr std::array<std::string_view, 18> space_group{
       "fr", "ru", "pl", "cs", "sk", "sv", "fi", "nb", "nn",
       "no", "uk", "hu", "bg", "lt", "lv", "et", "be", "kk"};
+  Symbols result;
   if ((language == "de" || language == "it") &&
       (region == "CH" || region == "LI")) {
-    return {".", "\u2019"};
+    result.group = "\u2019";
+  } else if (language == "pt" && region == "PT") {
+    result.decimal = ",";
+    result.group = "\u00a0";
+  } else if (std::ranges::find(point_group, language) !=
+                 std::end(point_group) &&
+             !(language == "es" && (region == "MX" || region == "US"))) {
+    result.decimal = ",";
+    result.group = ".";
+  } else if (std::ranges::find(space_group, language) !=
+             std::end(space_group)) {
+    result.decimal = ",";
+    result.group = language == "fr" ? "\u202f" : "\u00a0";
   }
-  if (language == "es" && (region == "MX" || region == "US")) {
-    return {".", ","};
+  // `no` is Norwegian, which is written as Bokmål
+  const std::string_view names = language == "no" ? "nb" : language;
+  if (const auto found =
+          std::ranges::find(calendar_names, names, &CalendarNames::language);
+      found != std::end(calendar_names)) {
+    result.names = &*found;
   }
-  if (language == "pt" && region == "PT") {
-    return {",", "\u00a0"};
-  }
-  if (std::ranges::find(point_group, language) != std::end(point_group)) {
-    return {",", "."};
-  }
-  if (std::ranges::find(space_group, language) != std::end(space_group)) {
-    return {",", language == "fr" ? "\u202f" : "\u00a0"};
-  }
-  return {};
+  return result;
 }
 
 } // namespace odr::internal

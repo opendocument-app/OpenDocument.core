@@ -361,8 +361,13 @@ one formatter and one set of tests.
 a format code is the smaller of them to write a test in.
 
 The format code spells `.` and `,` whatever the locale; the formatter writes
-them as the format code does. Month and day names are English: no locale
-data ships. A colour is parsed and not shown, and `*` fills nothing.
+the locale's signs for them, from a small table of languages. The month and
+day names come from a table of the same languages, which
+`tools/number_format/generate_calendar_names.py` makes from what LibreOffice
+shows. A full month name after a day takes the form the language declines it
+to, `15 марта` against `Март`. LibreOffice also declines a month before a day
+in some languages, and the table does not hold that form. A colour is parsed
+and not shown, and `*` fills nothing.
 
 ### 15. A reader formats what the file does not show already
 
@@ -440,7 +445,8 @@ An editable render states `data-odr-value` on a date or time cell, so the
 editor opens the cell on the locale's spelling of its serial, and a commit of
 it unchanged writes nothing.
 
-Month and day names stay English in what C++ formats: no locale data ships.
+A date written into an ods cell takes the month and day names of its data
+style's language (decision 14). An xlsx date shows English names.
 
 ## Formulas, read side
 
@@ -466,5 +472,6 @@ Month and day names stay English in what C++ formats: no locale data ships.
   incremental recompute in topological order with cycles reported, and
   `Document::recalculate(operations)` returning the changed cells. Formula
   input in the editor comes with it.
-- The locale's month and day names in a formatted date.
+- The language an xlsx format code states, `[$-407]`, for the month and day
+  names of a date.
 - Insert and delete of rows and columns.

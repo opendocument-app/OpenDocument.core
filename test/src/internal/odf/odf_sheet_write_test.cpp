@@ -782,6 +782,31 @@ TEST(OdfSheetWrite, a_time_takes_the_time_style_of_its_cell) {
             std::string::npos);
 }
 
+TEST(OdfSheetWrite, a_date_takes_the_names_of_its_style_language) {
+  const Document document = document_of(
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.spreadsheet">)"
+      R"(<office:styles><number:date-style style:name="D1")"
+      R"( number:language="ru" number:country="RU"><number:day/>)"
+      R"(<number:text> </number:text>)"
+      R"(<number:month number:textual="true" number:style="long"/>)"
+      R"(</number:date-style></office:styles>)"
+      R"(<office:automatic-styles><style:style style:name="ce1")"
+      R"( style:family="table-cell" style:data-style-name="D1"/>)"
+      R"(</office:automatic-styles><office:body><office:spreadsheet>)"
+      R"(<table:table table:name="s"><table:table-row>)"
+      R"(<table:table-cell table:style-name="ce1"/>)"
+      R"(</table:table-row></table:table></office:spreadsheet></office:body>)"
+      R"(</office:document>)");
+
+  first_sheet(document).set_cell(
+      0, 0, CellValue(ValueType::date).with_number(45731).with_text("15.3."));
+
+  EXPECT_NE(saved_of(document).find("<text:p>15 марта</text:p>"),
+            std::string::npos);
+}
+
 TEST(OdfSheetWrite, a_date_without_its_number_refuses) {
   const Document document = dated_sheet();
 
