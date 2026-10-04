@@ -11,6 +11,7 @@
 #include <odr/internal/formula/formula_parser.hpp>
 
 #include <algorithm>
+#include <limits>
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
@@ -245,18 +246,24 @@ internal::recalculate(const abstract::Document &document) {
         sheet_id, [&](const std::uint32_t column, const std::uint32_t row,
                       const TableDimensions &span, const bool array,
                       const std::string &text) {
+          constexpr auto max = std::numeric_limits<std::uint32_t>::max();
+          if (span.rows == 0 || span.columns == 0 || span.rows > max - row ||
+              span.columns > max - column) {
+            throw UnsupportedOperation();
+          }
           const SheetPosition position(index, column, row);
           const bool spanned = array || span.rows > 1 || span.columns > 1;
           formulas[position] =
               Formula{sheet_id, formula::parse(text, *syntax), spanned};
           if (spanned) {
+            const std::uint64_t count = std::uint64_t{span.rows} * span.columns;
+            if (count > span_limit - spanned_positions) {
+              throw UnsupportedOperation();
+            }
+            spanned_positions += static_cast<std::size_t>(count);
             spans.push_back(Span{position, span, array});
-            spanned_positions += std::size_t{span.rows} * span.columns;
           }
         });
-  }
-  if (spanned_positions > span_limit) {
-    throw UnsupportedOperation();
   }
   for (const Span &span : spans) {
     const ElementIdentifier sheet_id = formulas.at(span.first).sheet_id;
