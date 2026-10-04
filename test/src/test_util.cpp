@@ -137,10 +137,13 @@ std::vector<TestFile> get_test_files(const std::string &root_path,
 }
 
 std::vector<TestFile> get_test_files() {
+  const std::string root = TestData::test_input_directory();
+  if (!fs::is_directory(root)) {
+    return {};
+  }
   std::vector<TestFile> result;
 
-  for (const std::string root = TestData::test_input_directory();
-       const auto &e : fs::directory_iterator(root)) {
+  for (const auto &e : fs::directory_iterator(root)) {
     const auto files = get_test_files(root, e.path().string());
     result.insert(std::end(result), std::begin(files), std::end(files));
   }

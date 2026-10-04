@@ -134,6 +134,16 @@ jobs:
       - name: build
         run: cmake --build build --config Release
 
+      - name: portable core smoke tests
+        if: runner.os != 'macOS'
+        run: >
+          ctest --test-dir build/test -C Release --output-on-failure
+          -R '^(ViewStream|Stream|ByteStream|DeferredBuffer|CryptoUtil|Path|PngUtil|PdfImage|TablePosition)\.'
+
+      - name: release helper tests
+        if: runner.os == 'Linux' && matrix.bindings
+        run: python -m unittest discover -s scripts/tests
+
       - name: save ccache
         if: github.ref == 'refs/heads/main'
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
@@ -141,10 +151,8 @@ jobs:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}-${{ github.run_id }}
 
-      # Both suites run in seconds, so they stay in this job rather than paying
-      # an artifact round-trip. The heavy `odr_test` still runs in `test`, which
-      # needs firefox and the reference output — this job compiles `odr_test`
-      # but never runs it, so it never fetches the data either.
+      # Bindings and smoke tests need no fetched data. The macOS `test` job
+      # handles the document corpus and reference output.
       - name: junit
         if: matrix.bindings
         run: ctest --test-dir build/jni --output-on-failure
