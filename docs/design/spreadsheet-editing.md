@@ -335,7 +335,7 @@ reaches a cell in common, so a cell style after a row style stays after it.
 
 ## Number formats
 
-Status: planned. The steps land as a stack, in this order:
+Status: landed. The steps landed as a stack, in this order:
 
 1. The format-code parser and the formatter for numbers.
 2. Dates and times in the formatter.
@@ -413,6 +413,5 @@ the formatter runs in C++ only, as the evaluator will (decision 5).
   incremental recompute in topological order with cycles reported, and
   `Document::recalculate(operations)` returning the changed cells. Formula
   input in the editor comes with it.
-- Number formats, planned above (decisions 14 to 16).
 - A typed date or time in the editor, and the locale's month names.
 - Insert and delete of rows and columns.

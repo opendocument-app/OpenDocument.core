@@ -31,6 +31,10 @@
           <th class="odr-sheet-row-header">2</th>
           <td style="max-width:0;white-space:nowrap">2,5</td>
         </tr>
+        <tr>
+          <th class="odr-sheet-row-header">3</th>
+          <td class="odr-value-type-float" data-odr-value="1234.5" style="max-width:0;white-space:nowrap">1.234,50 €</td>
+        </tr>
       </tbody>
     </table>
 
@@ -62,6 +66,17 @@
 
       odr.editing.editAt(0, 1);
       check("a string that reads as a number here opens quoted", editor().value === "'2,5");
+      editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+
+      check("a formatted number reads as its value", odr.sheet.valueAt(0, 2).number === 1234.5);
+      odr.editing.editAt(0, 2);
+      check("and opens on it, in the locale's spelling", editor().value === "1234,5");
+      var before = JSON.parse(odr.editing.getOperations()).ops.length;
+      editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      check(
+        "so a commit of it unchanged writes nothing",
+        JSON.parse(odr.editing.getOperations()).ops.length === before
+      );
     </script>
   </body>
 </html>

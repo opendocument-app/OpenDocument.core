@@ -23,6 +23,11 @@ The release run heads these entries with the version and opens a fresh
 - A number written into an ods cell with a data style shows as the style
   says, in the style's language: `1234.5` in a German currency cell shows
   `1.234,50 €`. A cell without a data style keeps the typed text.
+- The sheet editor opens a formatted number on its value, in the locale's
+  spelling, and a commit of it unchanged writes nothing. Before, it opened
+  `€1.234,50` as text and a commit made the cell a string.
+- An ods cell typed `percentage` or `currency` is `ValueType::float_number`,
+  as its `office:value` is a number, and is right-aligned as one.
 
 - `odr::create_document(FileType)` makes a new odt with one empty paragraph,
   an A4 page and Liberation Serif 12pt, a new ods with one empty sheet

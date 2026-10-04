@@ -523,7 +523,9 @@
       return { type: "empty" };
     }
     if (cell.classList.contains("odr-value-type-float")) {
-      var number = toNumber(text);
+      // a formatted number states its value, a plain one is its text
+      var stated = cell.getAttribute("data-odr-value");
+      var number = stated !== null ? Number(stated) : toNumber(text);
       if (!isNaN(number)) {
         return { type: "number", number: number, text: text };
       }
