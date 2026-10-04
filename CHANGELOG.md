@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- CFB validates header fields, directory names, and mini-stream bounds. Version
+  3 files tolerate the uninitialized high size word allowed by the format.
+
 - ZIP preserves full entry names, distinguishes iterators from different
   archives, and isolates miniz error state during concurrent reads. Entry
   sizes and stream offsets are checked before narrowing.
