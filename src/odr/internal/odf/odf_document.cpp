@@ -89,7 +89,8 @@ const StyleRegistry &Document::style_registry() const {
 
 bool Document::is_editable() const noexcept { return true; }
 
-/// [ODF 1.2] 20.174, 20.223 and 20.234: `zxx` and `none` state no language.
+/// `zxx` and `none` state no language. LibreOffice writes `qlt` and the whole
+/// tag in `style:rfc-language-tag` where the three attributes cannot spell it.
 std::optional<std::string> Document::locale() const {
   const auto stated = [](const pugi::xml_attribute attribute) {
     const std::string_view value = attribute.value();
@@ -99,6 +100,11 @@ std::optional<std::string> Document::locale() const {
     const pugi::xml_node properties =
         m_style_registry.default_style_node(family).child(
             "style:text-properties");
+    if (const pugi::xml_attribute tag =
+            properties.attribute("style:rfc-language-tag");
+        stated(tag)) {
+      return tag.value();
+    }
     const pugi::xml_attribute language = properties.attribute("fo:language");
     if (!stated(language)) {
       continue;

@@ -489,5 +489,8 @@ TEST(OdfSheetStyle, the_default_style_states_the_locale) {
             "sr-Latn-RS");
   EXPECT_EQ(locale_of(R"(fo:language="fr" fo:country="none")"), "fr");
   EXPECT_EQ(locale_of(R"(fo:language="zxx" fo:country="none")"), std::nullopt);
+  EXPECT_EQ(locale_of(R"(fo:language="qlt" fo:country="ES")"
+                      R"( style:rfc-language-tag="ca-ES-valencia")"),
+            "ca-ES-valencia");
   EXPECT_EQ(locale_of(""), std::nullopt);
 }

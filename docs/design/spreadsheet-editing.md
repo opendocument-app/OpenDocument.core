@@ -127,7 +127,8 @@ Number formats are not parsed, so a formatted cell edited to `2000` shows
 `2000` until a producer reopens the file.
 
 The decimal separator is the one of `Document::locale`, which an `.ods`
-states on its default style (`fo:language`, `fo:script`, `fo:country`). An
+states on its default style (`fo:language`, `fo:script`, `fo:country`, or
+`style:rfc-language-tag` where those cannot spell it). An
 editable sheet page carries it as `data-odr-locale`, and the editor asks
 `Intl.NumberFormat` for the separator, so no table of locales ships. The
 op states the number with `.` and the text as typed. A point in a German
