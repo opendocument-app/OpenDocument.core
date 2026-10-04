@@ -627,6 +627,10 @@ TEST(CsvDocument, an_insert_puts_lines_of_empty_fields_in) {
   EXPECT_EQ(
       edited("a,b\n", R"({"op":"insertRows","sheet":0,"row":5,"count":1})"),
       "a,b\n");
+  // an empty line is no record, so the one field is quoted
+  EXPECT_EQ(
+      edited("a\nb\n", R"({"op":"insertRows","sheet":0,"row":1,"count":1})"),
+      "a\n\"\"\nb\n");
 }
 
 TEST(CsvDocument, a_delete_takes_lines_away) {

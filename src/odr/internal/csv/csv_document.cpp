@@ -419,7 +419,7 @@ void CsvDocument::insert_rows(const std::uint32_t row,
   if (row >= m_rows.size()) {
     return;
   }
-  // a field per column, so a reader does not take the line for a blank one
+  // a field per column, as the lines around it state
   m_rows.insert(m_rows.begin() + row, count,
                 std::vector<std::string>(m_dimensions.columns));
   m_dimensions.rows = static_cast<std::uint32_t>(m_rows.size());
