@@ -1,10 +1,17 @@
 #pragma once
 
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <string_view>
 
 namespace odr::internal::formula {
+
+/// The longest text a cell holds in both applications, in UTF-16 units.
+inline constexpr std::size_t text_limit = 32767;
+
+/// The UTF-16 units of the UTF-8 @p text.
+[[nodiscard]] std::size_t utf16_length(std::string_view text);
 
 /// @p text in UTF-16, the units both applications count a text in. Nothing
 /// where it holds a character past the basic plane, whose two units a cut

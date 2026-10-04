@@ -59,6 +59,7 @@ public:
         throw NoAnswer{};
       }
       m_area = reference->areas.front();
+      whole = m_area->whole_columns || m_area->whole_rows;
       columns = m_area->range.to().column - m_area->range.from().column + 1;
       rows = m_area->range.to().row - m_area->range.from().row + 1;
     } else if (const auto *matrix = std::get_if<Matrix>(&value.content)) {
@@ -76,6 +77,9 @@ public:
 
   std::uint32_t columns{0};
   std::uint32_t rows{0};
+  /// Whether the cells are a whole column or row, which the extent of its
+  /// sheet cuts and the grid of an application does not.
+  bool whole{false};
 
   [[nodiscard]] Value at(const std::uint32_t column,
                          const std::uint32_t row) const {
@@ -99,8 +103,6 @@ public:
     return Value{
         Reference{{Area{m_area->sheet, TableRange(position, position)}}}};
   }
-
-  [[nodiscard]] const std::optional<Area> &area() const { return m_area; }
 
 private:
   const Call *m_call{nullptr};
@@ -222,12 +224,7 @@ private:
   std::optional<std::string> m_text;
 
   static bool is_truth_text(const std::string_view text) {
-    return equals_without_case(text, "TRUE") ||
-           equals_without_case(text, "FALSE");
-  }
-  static bool equals_without_case(const std::string_view a,
-                                  const std::string_view b) {
-    return a.size() == b.size() && same_text(a, b);
+    return same_text(text, "TRUE") || same_text(text, "FALSE");
   }
 
   /// How @p value orders against the criterion, nothing where the two do not
@@ -302,7 +299,9 @@ std::vector<Condition> conditions(const Call &call, const std::size_t first) {
                                Criterion(call, call.scalar(i + 1))});
     if (result.back().cells.columns != result.front().cells.columns ||
         result.back().cells.rows != result.front().cells.rows) {
-      if (is_libreoffice(call)) {
+      // whole columns of two sheets differ by the extents, not the grid
+      if (is_libreoffice(call) || result.back().cells.whole ||
+          result.front().cells.whole) {
         throw NoAnswer{};
       }
       throw ErrorResult{ErrorType::value};
@@ -315,12 +314,21 @@ std::vector<Condition> conditions(const Call &call, const std::size_t first) {
 constexpr std::size_t cell_limit = 1 << 22;
 
 /// Calls @p visit with the position of every cell that meets all
-/// @p conditions.
+/// @p conditions. Where every condition takes an empty cell, a whole column
+/// matches the cells past the extent of its sheet too, which are not read,
+/// so it has no answer.
 template <typename Visit>
 void each_match(const std::span<const Condition> conditions,
                 const Visit &visit) {
   const Cells &shape = conditions.front().cells;
   if (std::size_t{shape.columns} * shape.rows > cell_limit) {
+    throw NoAnswer{};
+  }
+  if (std::ranges::any_of(conditions,
+                          [](const Condition &c) { return c.cells.whole; }) &&
+      std::ranges::all_of(conditions, [](const Condition &c) {
+        return c.criterion.matches(Value{Empty{}});
+      })) {
     throw NoAnswer{};
   }
   for (std::uint32_t row = 0; row < shape.rows; ++row) {
@@ -411,6 +419,9 @@ template <bool average> Value sum_ifs(const Call &call) {
   const Cells values(call, call.value(0));
   if (values.columns != tested.front().cells.columns ||
       values.rows != tested.front().cells.rows) {
+    if (values.whole || tested.front().cells.whole) {
+      throw NoAnswer{};
+    }
     return refused(call, ErrorType::value);
   }
   return matched(call, tested, values, average);
@@ -497,11 +508,7 @@ bool exact_of(const Call &call, const std::size_t index, const bool unstated) {
   if (index >= call.size()) {
     return unstated;
   }
-  const Number stated = call.number(call.scalar(index));
-  if (const auto *error = std::get_if<ErrorType>(&stated)) {
-    throw ErrorResult{*error};
-  }
-  return std::get<double>(stated) == 0;
+  return number_argument(call, index) == 0;
 }
 
 /// `VLOOKUP` and `HLOOKUP`: the value in line @p index of the table, of the
@@ -510,11 +517,7 @@ template <bool vertical> Value lookup(const Call &call) {
   expect_arguments(call, 3, 4);
   const Value wanted = wanted_of(call, 0);
   const Cells table(call, call.value(1));
-  const Number index_read = call.number(call.scalar(2));
-  if (const auto *error = std::get_if<ErrorType>(&index_read)) {
-    return Value{*error};
-  }
-  const double index = std::trunc(std::get<double>(index_read));
+  const double index = std::trunc(number_argument(call, 2));
   const std::uint32_t lines = vertical ? table.columns : table.rows;
   if (index < 1) {
     return refused(call, ErrorType::value);
@@ -523,11 +526,15 @@ template <bool vertical> Value lookup(const Call &call) {
     return refused(call, ErrorType::reference);
   }
   const std::uint32_t count = vertical ? table.rows : table.columns;
+  const bool exact = exact_of(call, 3, false);
+  // an approximate lookup's search meets the empty cells past the extent
+  if (!exact && table.whole) {
+    throw NoAnswer{};
+  }
   const std::optional<std::uint32_t> found =
-      position_of(call, wanted, count, exact_of(call, 3, false),
-                  [&](const std::uint32_t i) {
-                    return vertical ? table.at(0, i) : table.at(i, 0);
-                  });
+      position_of(call, wanted, count, exact, [&](const std::uint32_t i) {
+        return vertical ? table.at(0, i) : table.at(i, 0);
+      });
   if (!found.has_value()) {
     return Value{ErrorType::not_available};
   }
@@ -543,16 +550,12 @@ Value match(const Call &call) {
   if (line.columns != 1 && line.rows != 1) {
     return Value{ErrorType::not_available};
   }
-  double type = 1;
-  if (call.size() > 2) {
-    const Number stated = call.number(call.scalar(2));
-    if (const auto *error = std::get_if<ErrorType>(&stated)) {
-      return Value{*error};
-    }
-    type = std::get<double>(stated);
-  }
+  const double type = call.size() > 2 ? number_argument(call, 2) : 1;
   if (type < 0) {
     throw NoAnswer{}; // descending order
+  }
+  if (type != 0 && line.whole) {
+    throw NoAnswer{};
   }
   const bool vertical = line.columns == 1;
   const std::optional<std::uint32_t> found =
@@ -572,11 +575,7 @@ Value index(const Call &call) {
   expect_arguments(call, 2, 3);
   const Cells cells(call, call.value(0));
   const auto read = [&](const std::size_t i) {
-    const Number number = call.number(call.scalar(i));
-    if (const auto *error = std::get_if<ErrorType>(&number)) {
-      throw ErrorResult{*error};
-    }
-    return std::trunc(std::get<double>(number));
+    return std::trunc(number_argument(call, i));
   };
   double row = read(1);
   double column = call.size() > 2 ? read(2) : 1;
@@ -593,6 +592,9 @@ Value index(const Call &call) {
     return refused(call, ErrorType::value);
   }
   if (row > cells.rows || column > cells.columns) {
+    if (cells.whole) {
+      throw NoAnswer{}; // past the extent, not the grid
+    }
     return Value{ErrorType::reference};
   }
   return cells.reference_at(static_cast<std::uint32_t>(column) - 1,

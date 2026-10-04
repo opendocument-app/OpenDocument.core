@@ -249,7 +249,9 @@ TEST(SheetRecalculation, an_array_formula_gets_no_result) {
   EXPECT_TRUE(result.changed().empty());
   EXPECT_EQ(spelled(result.unevaluated()),
             (std::vector<std::string>{"0!C1", "0!D1"}));
+  // an xlsx keeps a stale result, as every save sets `fullCalcOnLoad`
   EXPECT_EQ(value_at(document, 2, 0).number(), 11);
+  EXPECT_EQ(value_at(document, 3, 0).number(), 12);
 }
 
 TEST(SheetRecalculation, a_cell_an_array_formula_spans_is_stale_with_it) {
@@ -270,6 +272,8 @@ TEST(SheetRecalculation, a_cell_an_array_formula_spans_is_stale_with_it) {
   EXPECT_TRUE(result.changed().empty());
   EXPECT_EQ(spelled(result.unevaluated()),
             (std::vector<std::string>{"0!B1", "0!C2"}));
+  // an ods drops the stale result of a cell without an answer
+  EXPECT_EQ(value_at(document, 2, 1).type(), ValueType::unknown);
 }
 
 TEST(SheetRecalculation, an_unedited_document_keeps_its_results) {

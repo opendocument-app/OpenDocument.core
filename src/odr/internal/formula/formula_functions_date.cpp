@@ -1,6 +1,7 @@
 #include <odr/internal/formula/formula_function.hpp>
 #include <odr/internal/number_format/number_format.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -8,20 +9,12 @@
 #include <span>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <variant>
 
 namespace odr::internal::formula {
 
 namespace {
-
-/// Argument @p index as a number.
-double number_argument(const Call &call, const std::size_t index) {
-  const Number number = call.number(call.scalar(index));
-  if (const auto *error = std::get_if<ErrorType>(&number)) {
-    throw ErrorResult{*error};
-  }
-  return std::get<double>(number);
-}
 
 /// Argument @p index as a whole number, toward 0. Nothing where reading it to
 /// 15 digits first gives another one: LibreOffice does (`double_to`), and
@@ -42,6 +35,20 @@ constexpr double int16_limit = 32767;
 /// 1900-02-29 that never was.
 constexpr double first_true_serial = 61;
 
+/// The first serial past the dates of @p call: 10000-01-01 in Excel, and in
+/// LibreOffice the first day past its 16-bit years.
+double serial_limit(const Call &call) {
+  const std::int64_t year = is_libreoffice(call) ? 32768 : 10000;
+  return call.settings().serial(
+      static_cast<double>(number_format::days_from_civil(year, 1, 1)));
+}
+
+/// The year and the month counted from 1 of @p months since the year 0.
+std::pair<std::int64_t, std::uint32_t> month_of(const std::int64_t months) {
+  const std::int64_t year = months >= 0 ? months / 12 : -((-months + 11) / 12);
+  return {year, static_cast<std::uint32_t>(months - year * 12 + 1)};
+}
+
 /// The days since 1899-12-30 of the day @p serial falls on. A serial a
 /// moment before midnight is the next day where its time rounds to the
 /// second, and which one the applications take is not documented, so it has
@@ -50,10 +57,11 @@ std::int64_t day_of(const Call &call, const double serial) {
   const bool excel_1900 =
       !is_libreoffice(call) &&
       call.settings().epoch == number_format::Epoch::from_1900;
-  if (!is_libreoffice(call) && serial < 0) {
+  if (!is_libreoffice(call) && (serial < 0 || serial >= serial_limit(call))) {
     throw ErrorResult{ErrorType::number};
   }
-  if (excel_1900 && serial < first_true_serial) {
+  if (std::abs(serial) >= serial_limit(call) ||
+      (excel_1900 && serial < first_true_serial)) {
     throw NoAnswer{};
   }
   const double day = std::floor(serial);
@@ -68,7 +76,7 @@ std::int64_t day_of(const Call &call, const double serial) {
 Value serial_of(const Call &call, const std::int64_t days) {
   const double serial = call.settings().serial(static_cast<double>(days));
   if (!is_libreoffice(call)) {
-    if (serial < 0) {
+    if (serial < 0 || serial >= serial_limit(call)) {
       return Value{ErrorType::number};
     }
     if (call.settings().epoch == number_format::Epoch::from_1900 &&
@@ -92,11 +100,12 @@ std::uint32_t month_length(const std::int64_t year, const std::uint32_t month) {
 /// month of @p days.
 std::tuple<std::int64_t, std::uint32_t, std::uint32_t>
 shifted(const std::int64_t days, const double months) {
+  if (std::abs(months) > 1e6) {
+    throw NoAnswer{};
+  }
   const auto [year, month, day] = number_format::civil_from_days(days);
-  const std::int64_t total =
-      year * 12 + (month - 1) + static_cast<std::int64_t>(months);
-  const std::int64_t new_year = total >= 0 ? total / 12 : -((-total + 11) / 12);
-  const auto new_month = static_cast<std::uint32_t>(total - new_year * 12 + 1);
+  const auto [new_year, new_month] =
+      month_of(year * 12 + (month - 1) + static_cast<std::int64_t>(months));
   return {new_year, new_month, day};
 }
 
@@ -133,12 +142,9 @@ Value date(const Call &call) {
   if (std::abs(month) > 1e6 || std::abs(day) > 1e8) {
     throw NoAnswer{};
   }
-  const std::int64_t total = static_cast<std::int64_t>(year) * 12 +
-                             static_cast<std::int64_t>(month) - 1;
-  const std::int64_t first_year =
-      total >= 0 ? total / 12 : -((-total + 11) / 12);
-  const auto first_month =
-      static_cast<std::uint32_t>(total - first_year * 12 + 1);
+  const auto [first_year, first_month] =
+      month_of(static_cast<std::int64_t>(year) * 12 +
+               static_cast<std::int64_t>(month) - 1);
   const std::int64_t days =
       number_format::days_from_civil(first_year, first_month, 1) +
       static_cast<std::int64_t>(day) - 1;
@@ -160,6 +166,10 @@ Value time(const Call &call) {
       whole ? whole_argument(call, 1) : number_argument(call, 1);
   const double seconds =
       whole ? whole_argument(call, 2) : number_argument(call, 2);
+  // Excel takes each part up to 32767
+  if (whole && std::max({hours, minutes, seconds}) > 32767) {
+    return Value{ErrorType::number};
+  }
   const double total = hours * 3600 + minutes * 60 + seconds;
   if (total < 0) {
     return refused(call, ErrorType::number);
@@ -243,9 +253,6 @@ template <bool end_of_month> Value months_on(const Call &call) {
                 year, month, end_of_month ? length : std::min(day, length)));
 }
 
-/// The serial after 9999-12-31 in Excel.
-constexpr double excel_serial_limit = 2958466;
-
 /// `DAYS`: the days from the second date to the first. Excel counts whole
 /// days, and refuses a date out of its range, LibreOffice the difference of
 /// the serials.
@@ -257,7 +264,7 @@ Value days(const Call &call) {
     return Value{end - start};
   }
   for (const double serial : {end, start}) {
-    if (serial < 0 || serial >= excel_serial_limit) {
+    if (serial < 0 || serial >= serial_limit(call)) {
       return Value{ErrorType::number};
     }
   }

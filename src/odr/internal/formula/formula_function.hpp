@@ -27,6 +27,20 @@ struct ErrorResult final {
   ErrorType error{ErrorType::value};
 };
 
+/// The errors one argument holds. Two different ones have no first one both
+/// applications agree on.
+class Errors final {
+public:
+  void add(ErrorType error);
+  /// The error the argument gives, nothing where it holds none.
+  /// @throws NoAnswer where it holds two different ones.
+  [[nodiscard]] std::optional<ErrorType> first() const;
+
+private:
+  std::optional<ErrorType> m_first{};
+  bool m_mixed{false};
+};
+
 /// What a function is called with. The arguments are evaluated on demand, so
 /// `IF` reads only the branch it takes.
 class Call final {
@@ -46,6 +60,13 @@ public:
   /// Argument @p index read in an array context, as `SUMPRODUCT` reads it:
   /// an operator reads every cell of a range.
   [[nodiscard]] Matrix array(std::size_t index) const;
+
+  /// Calls @p visit with what argument @p index holds: every cell of a range
+  /// up to the extent of its sheet, every element of an array, or the
+  /// argument itself, which is @p stated.
+  void for_each_value(
+      std::size_t index,
+      const std::function<void(const Value &value, bool stated)> &visit) const;
 
   /// Calls @p visit for every cell of @p reference up to the extent of its
   /// sheet, row by row, with what the cell holds.
@@ -73,7 +94,7 @@ using Function = Value (*)(const Call &call);
 
 /// A function as a formula names it, without the prefix of its format.
 struct FunctionEntry final {
-  std::string_view name;
+  std::string_view name{};
   Function function{nullptr};
 };
 
@@ -102,6 +123,9 @@ order_of_texts(std::string_view a, std::string_view b, bool case_sensitive);
 /// code of its own (`Err:502`), which a file cannot hold as an error, so it
 /// has no answer.
 [[nodiscard]] Value refused(const Call &call, ErrorType excel);
+
+/// Argument @p index as a number. @throws ErrorResult where it is an error.
+[[nodiscard]] double number_argument(const Call &call, std::size_t index);
 
 /// Fails where @p call does not have @p least to @p most arguments, or
 /// leaves one out.

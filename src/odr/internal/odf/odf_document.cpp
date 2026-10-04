@@ -774,6 +774,10 @@ public:
         m_registry->sheet_cell_element_at(cell->element_id).is_repeated) {
       throw UnsupportedOperation();
     }
+    if (result.type() == ValueType::unknown) {
+      drop_cell_result(*cell);
+      return;
+    }
     const ElementIdentifier cell_id = cell->element_id;
     const TablePosition position(column, row);
 

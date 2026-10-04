@@ -75,7 +75,7 @@ struct Area final {
 /// What a reference evaluates to before an operator or a function reads its
 /// cells: one area, or several after `~`.
 struct Reference final {
-  std::vector<Area> areas;
+  std::vector<Area> areas{};
 
   friend bool operator==(const Reference &, const Reference &) = default;
 };
@@ -87,7 +87,7 @@ struct Value;
 struct Matrix final {
   std::uint32_t columns{0};
   std::uint32_t rows{0};
-  std::vector<Value> cells;
+  std::vector<Value> cells{};
 
   friend bool operator==(const Matrix &, const Matrix &);
 };
@@ -134,11 +134,11 @@ using Text = std::variant<std::string, ErrorType>;
 
 /// @p x read to @p digits significant digits, as a sheet reads a number
 /// before it rounds it.
-[[nodiscard]] double snapped(double x, int digits);
+[[nodiscard]] double snapped(double x, std::int32_t digits);
 
 /// The number a text reads as in arithmetic. `#VALUE!` where the text holds no
 /// digit, and nothing where it holds one in a form whose reading depends on
-/// the locale: a currency, a date, a grouped number.
+/// the locale: a currency, a date, a grouped number, a decimal sign.
 [[nodiscard]] std::optional<Number> number_of_text(std::string_view text);
 
 /// The text a number reads as in a concatenation: up to 15 significant

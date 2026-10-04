@@ -202,3 +202,20 @@ TEST(FormulaFunctionsMath, a_sum_product_reads_its_arguments_as_arrays) {
 TEST(FormulaFunctionsMath, a_range_outside_an_array_context_reads_one_cell) {
   EXPECT_EQ(ods("=SUM([.A1:.A6]*2)"), error(ErrorType::value));
 }
+
+TEST(FormulaFunctionsMath, a_negative_fraction_has_no_factorial) {
+  // LibreOffice: Err:502, as it reads -0.5 as -1
+  EXPECT_EQ(ods("=FACT(-0.5)"), std::nullopt);
+  EXPECT_EQ(xlsx("=FACT(-0.5)"), error(ErrorType::number));
+}
+
+TEST(FormulaFunctionsMath, an_angle_past_2_to_the_27_has_no_answer) {
+  // Excel: #NUM!, at a limit it does not document
+  EXPECT_EQ(xlsx("=SIN(1E10)"), std::nullopt);
+  EXPECT_EQ(ods("=COS(0)"), number(1));
+}
+
+TEST(FormulaFunctionsMath, the_blank_cells_of_a_whole_column_have_no_answer) {
+  // the grid counts the cells past the extent of the sheet
+  EXPECT_EQ(xlsx("=COUNTBLANK(A:A)"), std::nullopt);
+}
