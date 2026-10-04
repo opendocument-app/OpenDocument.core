@@ -18,7 +18,9 @@
 #include <internal/oldms/oldms_test_util.hpp>
 
 #include <bit>
+#include <clocale>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -177,7 +179,8 @@ std::string make_bof(const std::uint16_t dt) {
 /// One-sheet workbook stream: `globals` records are wrapped with BOF/
 /// BoundSheet8/EOF, the sheet substream holds the given `cells`.
 std::string make_workbook(const std::string &globals,
-                          const std::vector<std::string> &cells) {
+                          const std::vector<std::string> &cells,
+                          const std::uint16_t cell_type = 0x0204) {
   const auto build_globals = [&](const std::uint32_t sheet_offset) {
     std::string result;
     append_record(result, 0x0809 /* BOF */, make_bof(0x0005));
@@ -197,7 +200,7 @@ std::string make_workbook(const std::string &globals,
   std::string sheet;
   append_record(sheet, 0x0809 /* BOF */, make_bof(0x0010));
   for (const std::string &cell : cells) {
-    append_record(sheet, 0x0204 /* Label */, cell);
+    append_record(sheet, cell_type, cell);
   }
   append_record(sheet, 0x000A /* EOF */, "");
 
@@ -384,4 +387,81 @@ TEST(OldMs, xls_file_example_5000) {
   EXPECT_EQ(collect_text(sheet.cell(1, 5000)), "Rasheeda");
   EXPECT_EQ(collect_text(sheet.cell(2, 5000)), "Alkire");
   EXPECT_EQ(collect_text(sheet.cell(7, 5000)), "6125");
+}
+
+TEST(OldMs, xls_truncated_records_are_not_end_of_stream) {
+  using internal::oldms::spreadsheet::BiffReader;
+  for (const std::size_t bytes : {1u, 2u, 3u}) {
+    std::istringstream in(std::string(bytes, '\0'));
+    BiffReader reader(in);
+    EXPECT_THROW(reader.next_record(), std::runtime_error);
+  }
+  std::string record;
+  append_record(record, 0x7777, "payload");
+  record.pop_back();
+  std::istringstream in(record);
+  BiffReader reader(in);
+  ASSERT_TRUE(reader.next_record());
+  EXPECT_THROW(reader.next_record(), std::runtime_error);
+
+  std::istringstream skipped(record);
+  BiffReader skipping(skipped);
+  ASSERT_TRUE(skipping.next_record());
+  EXPECT_THROW(skipping.skip_bytes(7), std::runtime_error);
+  std::istringstream empty;
+  BiffReader exhausted(empty);
+  EXPECT_FALSE(exhausted.next_record());
+}
+
+TEST(OldMs, xls_substreams_and_counts_are_validated) {
+  const std::string valid = make_workbook({}, {});
+  EXPECT_NO_THROW(static_cast<void>(open_workbook(valid)));
+  EXPECT_THROW(open_workbook(valid.substr(0, valid.size() - 4)),
+               std::runtime_error);
+  std::string wrong_bof = valid;
+  wrong_bof[6] = '\x10'; // Worksheet BOF where workbook globals are required.
+  EXPECT_THROW(open_workbook(wrong_bof), std::runtime_error);
+
+  std::string sst;
+  append_u32(sst, std::numeric_limits<std::int32_t>::max());
+  append_u32(sst, std::numeric_limits<std::int32_t>::max());
+  std::string globals;
+  append_record(globals, 0x00FC, sst);
+  EXPECT_THROW(open_workbook(make_workbook(globals, {})), std::runtime_error);
+  EXPECT_THROW(open_workbook(make_workbook({}, {make_label(0, 256, 0, "x")})),
+               std::runtime_error);
+
+  std::string formula(12, '\0'); // CellRef and string FormulaValue prefix.
+  append_u16(formula, 0xFFFF);
+  formula.resize(20, '\0');
+  EXPECT_THROW(open_workbook(make_workbook({}, {formula}, 0x0006)),
+               std::runtime_error);
+}
+
+TEST(OldMs, xls_mulrk_checks_its_final_column) {
+  std::string cells;
+  append_u16(cells, 0); // row
+  append_u16(cells, 2); // first column
+  append_u16(cells, 0); // XF
+  append_u32(cells, (12u << 2) | 2u);
+  append_u16(cells, 2); // final column
+  const Document document = open_workbook(make_workbook({}, {cells}, 0x00BD));
+  EXPECT_EQ(
+      collect_text(document.root_element().first_child().as_sheet().cell(2, 0)),
+      "12");
+  cells[cells.size() - 2] = 3;
+  EXPECT_THROW(open_workbook(make_workbook({}, {cells}, 0x00BD)),
+               std::runtime_error);
+}
+
+TEST(OldMs, xls_number_format_ignores_numeric_locale) {
+  struct LocaleGuard final {
+    std::string previous{std::setlocale(LC_NUMERIC, nullptr)};
+    ~LocaleGuard() { std::setlocale(LC_NUMERIC, previous.c_str()); }
+  } guard;
+  if (std::setlocale(LC_NUMERIC, "de_DE.UTF-8") == nullptr &&
+      std::setlocale(LC_NUMERIC, "de_DE.utf8") == nullptr) {
+    GTEST_SKIP() << "German locale unavailable";
+  }
+  EXPECT_EQ(internal::oldms::spreadsheet::format_number(123.45), "123.45");
 }

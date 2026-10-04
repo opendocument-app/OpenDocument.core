@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Legacy Excel rejects truncated BIFF records, missing substream terminators,
+  invalid worksheet ranges, and inconsistent multi-cell records. Shared-string
+  counts no longer trigger allocation before reading; numbers ignore the host locale.
+
 - Legacy Word bounds font and piece tables by their declared lengths, checks
   piece coverage and offsets, and reads PLC entries without unaligned access.
 
