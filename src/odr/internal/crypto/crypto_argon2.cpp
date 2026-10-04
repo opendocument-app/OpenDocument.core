@@ -218,8 +218,10 @@ std::string argon2::id(const std::size_t tag_size,
   if (tag_size < 4 || tag_size > max_uint32) {
     throw std::invalid_argument("argon2id: tag size out of range");
   }
-  if (salt.size() < 8) {
-    throw std::invalid_argument("argon2id: salt too short");
+  if (salt.size() < 8 || salt.size() > max_uint32 ||
+      password.size() > max_uint32) {
+    throw std::invalid_argument(
+        "argon2id: password or salt length out of range");
   }
   if (iterations < 1 || iterations > max_uint32) {
     throw std::invalid_argument("argon2id: iterations out of range");

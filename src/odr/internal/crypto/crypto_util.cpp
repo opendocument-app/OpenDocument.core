@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <stdexcept>
 
 // RC4 and MD5 are retained in Crypto++ only for legacy formats (here: the PDF
@@ -30,6 +31,22 @@
 namespace odr::internal::crypto {
 
 using byte = std::uint8_t;
+
+namespace {
+
+std::string process(CryptoPP::StreamTransformation &cipher,
+                    const std::string_view input) {
+  if (input.size() % cipher.MandatoryBlockSize() != 0) {
+    throw std::invalid_argument("cipher input is not a whole number of blocks");
+  }
+  std::string result(input.size(), '\0');
+  cipher.ProcessData(reinterpret_cast<byte *>(result.data()),
+                     reinterpret_cast<const byte *>(input.data()),
+                     input.size());
+  return result;
+}
+
+} // namespace
 
 std::string util::base64_encode(const std::string_view in) {
   std::string out;
@@ -119,25 +136,26 @@ std::string util::sha512(const std::string_view in) {
 
 std::string util::rc4(const std::string_view key,
                       const std::string_view input) {
-  std::string result(input.size(), '\0');
   CryptoPP::Weak::ARC4 rc4(reinterpret_cast<const byte *>(key.data()),
                            key.size());
-  rc4.ProcessData(reinterpret_cast<byte *>(result.data()),
-                  reinterpret_cast<const byte *>(input.data()), input.size());
-  return result;
+  return process(rc4, input);
 }
 
 std::string util::pbkdf2(const std::size_t key_size,
                          const std::string_view start_key,
                          const std::string_view salt,
                          const std::size_t iteration_count) {
+  if (iteration_count == 0 ||
+      iteration_count > std::numeric_limits<unsigned int>::max()) {
+    throw std::invalid_argument("PBKDF2 iteration count out of range");
+  }
   std::string result(key_size, '\0');
   const CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA1> pbkdf2;
   pbkdf2.DeriveKey(reinterpret_cast<byte *>(result.data()), result.size(),
                    false, reinterpret_cast<const byte *>(start_key.data()),
                    start_key.size(),
                    reinterpret_cast<const byte *>(salt.data()), salt.size(),
-                   iteration_count);
+                   static_cast<unsigned int>(iteration_count));
   return result;
 }
 
@@ -151,41 +169,29 @@ std::string util::argon2id(const std::size_t key_size,
 
 std::string util::decrypt_aes_ecb(const std::string_view key,
                                   const std::string_view input) {
-  std::string result(input.size(), '\0');
   CryptoPP::ECB_Mode<CryptoPP::AES>::Decryption decryption;
   decryption.SetKey(reinterpret_cast<const byte *>(key.data()), key.size());
-  decryption.ProcessData(reinterpret_cast<byte *>(result.data()),
-                         reinterpret_cast<const byte *>(input.data()),
-                         input.size());
-  return result;
+  return process(decryption, input);
 }
 
 std::string util::decrypt_aes_cbc(const std::string_view key,
                                   const std::string_view iv,
                                   const std::string_view input) {
-  std::string result(input.size(), '\0');
   CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption decryption;
   decryption.SetKeyWithIV(reinterpret_cast<const byte *>(key.data()),
                           key.size(), reinterpret_cast<const byte *>(iv.data()),
                           iv.size());
-  decryption.ProcessData(reinterpret_cast<byte *>(result.data()),
-                         reinterpret_cast<const byte *>(input.data()),
-                         input.size());
-  return result;
+  return process(decryption, input);
 }
 
 std::string util::encrypt_aes_cbc(const std::string_view key,
                                   const std::string_view iv,
                                   const std::string_view input) {
-  std::string result(input.size(), '\0');
   CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption encryption;
   encryption.SetKeyWithIV(reinterpret_cast<const byte *>(key.data()),
                           key.size(), reinterpret_cast<const byte *>(iv.data()),
                           iv.size());
-  encryption.ProcessData(reinterpret_cast<byte *>(result.data()),
-                         reinterpret_cast<const byte *>(input.data()),
-                         input.size());
-  return result;
+  return process(encryption, input);
 }
 
 std::string util::decrypt_aes_gcm(const std::string_view key,
@@ -231,29 +237,21 @@ std::string util::decrypt_aes_gcm(const std::string_view key,
 std::string util::decrypt_triple_des(const std::string_view key,
                                      const std::string_view iv,
                                      const std::string_view input) {
-  std::string result(input.size(), '\0');
   CryptoPP::CBC_Mode<CryptoPP::DES_EDE3>::Decryption decryption;
   decryption.SetKeyWithIV(reinterpret_cast<const byte *>(key.data()),
                           key.size(), reinterpret_cast<const byte *>(iv.data()),
                           iv.size());
-  decryption.ProcessData(reinterpret_cast<byte *>(result.data()),
-                         reinterpret_cast<const byte *>(input.data()),
-                         input.size());
-  return result;
+  return process(decryption, input);
 }
 
 std::string util::decrypt_blowfish(const std::string_view key,
                                    const std::string_view iv,
                                    const std::string_view input) {
-  std::string result(input.size(), '\0');
   CryptoPP::CFB_Mode<CryptoPP::Blowfish>::Decryption decryption;
   decryption.SetKeyWithIV(reinterpret_cast<const byte *>(key.data()),
                           key.size(), reinterpret_cast<const byte *>(iv.data()),
                           iv.size());
-  decryption.ProcessData(reinterpret_cast<byte *>(result.data()),
-                         reinterpret_cast<const byte *>(input.data()),
-                         input.size());
-  return result;
+  return process(decryption, input);
 }
 
 namespace {
@@ -263,7 +261,7 @@ public:
   explicit MyInflator(BufferedTransformation *attachment = nullptr)
       : Inflator(attachment, false, -1) {}
 
-  std::uint32_t GetPadding() const { return m_padding; }
+  std::size_t GetPadding() const { return m_padding; }
 
 protected:
   void ProcessPoststreamTail() override {
@@ -272,7 +270,7 @@ protected:
   }
 
 private:
-  std::uint32_t m_padding{0};
+  std::size_t m_padding{0};
 };
 } // namespace
 
