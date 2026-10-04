@@ -141,6 +141,15 @@ Java_app_opendocument_core_Document_documentTypeNative(JNIEnv *env, jobject,
   });
 }
 
+extern "C" JNIEXPORT jstring JNICALL
+Java_app_opendocument_core_Document_localeNative(JNIEnv *env, jobject,
+                                                 jlong handle) {
+  return guarded(env, [&] {
+    return odr_jni::make_string_opt(
+        env, from_handle<odr::Document>(handle)->locale());
+  });
+}
+
 extern "C" JNIEXPORT jlong JNICALL
 Java_app_opendocument_core_Document_rootElementNative(JNIEnv *env, jobject,
                                                       jlong handle) {

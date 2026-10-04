@@ -21,6 +21,9 @@ NS_SWIFT_NAME(Document)
 
 @property(nonatomic, readonly) ODRFileType fileType;
 @property(nonatomic, readonly) ODRDocumentType documentType;
+/// The language the document states for its content, as a BCP 47 tag such as
+/// `de-DE`; nil where it states none.
+@property(nonatomic, readonly, nullable) NSString *locale;
 
 /// Whether edits can be applied back to this document.
 @property(nonatomic, readonly) BOOL isEditable;

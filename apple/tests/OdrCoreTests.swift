@@ -466,6 +466,12 @@ final class DocumentSaveTests: XCTestCase {
     }
   }
 
+  func testLocaleIsTheLanguageOfTheDefaultStyle() throws {
+    let document = try DecodedFile.decode(path: try Fixture.ods())
+      .asDocumentFile().document()
+    XCTAssertEqual(document.locale, "en-US")
+  }
+
   func testSetCellStyleFillsACell() throws {
     let document = try DecodedFile.decode(path: try Fixture.ods())
       .asDocumentFile().document()

@@ -109,6 +109,15 @@ describe('edit', () => {
     }
   });
 
+  it('answers null for a document stating no locale', () => {
+    const doc = odr.open(minimalOds('hello'));
+    try {
+      assert.equal(doc.locale(), null);
+    } finally {
+      doc.close();
+    }
+  });
+
   it('styles a whole row and a whole column', () => {
     const doc = odr.open(minimalOds('hello'));
     try {

@@ -87,6 +87,11 @@ export class Document {
     return unwrap(this.#core.isSavable(this.#handle, encrypted));
   }
 
+  // The language the document states, as a BCP 47 tag, or null.
+  locale() {
+    return unwrap(this.#core.locale(this.#handle));
+  }
+
   // Applies what the rendered page's `odr.generateDiff()` collected.
   edit(diff) {
     unwrap(this.#core.edit(this.#handle, diff));

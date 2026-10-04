@@ -51,6 +51,15 @@ using odr::apple::to_string;
   return static_cast<ODRDocumentType>(_handle->document_type());
 }
 
+- (NSString *)locale {
+  return guarded_value(
+      [&]() -> NSString * {
+        const std::optional<std::string> locale = _handle->locale();
+        return locale ? odr::apple::to_nsstring(*locale) : nil;
+      },
+      nil);
+}
+
 - (BOOL)isEditable {
   return guarded_value([&] { return _handle->is_editable() ? YES : NO; }, NO);
 }

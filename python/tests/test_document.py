@@ -1,3 +1,5 @@
+import zipfile
+
 import pyodr
 import pytest
 
@@ -270,6 +272,28 @@ def test_set_row_and_column_style_reach_past_the_cells(ods_path, tmp_path):
     assert reloaded_sheet.cell_style(0, 40).background_color.rgb() == 0xFFFF00
     assert reloaded_sheet.cell_style(30, 90).background_color.rgb() == 0xFFFF00
     assert reloaded_sheet.cell_style(0, 41).background_color is None
+
+
+def test_locale_is_the_language_of_the_default_style(ods_path, tmp_path):
+    assert pyodr.open(str(ods_path)).as_document_file().document().locale() is None
+
+    path = tmp_path / "german.ods"
+    with zipfile.ZipFile(ods_path) as source, zipfile.ZipFile(path, "w") as target:
+        for item in source.infolist():
+            data = source.read(item.filename)
+            if item.filename == "styles.xml":
+                data = data.replace(
+                    b"<office:styles/>",
+                    b'<office:styles xmlns:style="urn:oasis:names:tc:opendocument'
+                    b':xmlns:style:1.0" xmlns:fo="urn:oasis:names:tc:opendocument'
+                    b':xmlns:xsl-fo-compatible:1.0"><style:default-style'
+                    b' style:family="table-cell"><style:text-properties'
+                    b' fo:language="de" fo:country="DE"/></style:default-style>'
+                    b"</office:styles>",
+                )
+            target.writestr(item, data)
+
+    assert pyodr.open(str(path)).as_document_file().document().locale() == "de-DE"
 
 
 def test_set_cell_style_refuses_what_no_engine_writes(ods_path):
