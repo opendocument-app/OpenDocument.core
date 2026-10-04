@@ -53,10 +53,9 @@ outline. The parser reads both and resolves the reference. Inline
 **`RT_SlideListWithText` recInstance selects the list.** `0x000` is slides,
 `0x001` masters, `0x002` notes (`SlideListInstance`).
 
-**Sequential reading, no `tellg`.** The CFB-backed stream's `tellg()` is not
-reliable. The caller `seekg`s to known offsets, and child records are walked
-forward with a `ChildCursor` that tracks the bytes left in the container. A
-record that overruns its container throws.
+**Sequential reading.** The caller `seekg`s to known offsets, then walks
+child records with a `ChildCursor` that tracks the bytes left in the
+container. A record that overruns its container throws.
 
 **Fail early.** Throw on: a missing required stream; a wrong or truncated
 record type (`read_header`); a record that overruns its container; a missing
