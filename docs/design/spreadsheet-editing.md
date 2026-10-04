@@ -457,10 +457,16 @@ that does not compute (this one included). The cost comes once per save.
 
   The build cost of the small module: a page resource made with emscripten
   makes every build that ships the resources need emscripten too, also the
-  android, ios and python builds. So CI builds the module once and
-  publishes it, and the other builds take that file, as they take any
-  shipped resource. A build without the module ships pages that mark
-  formulas stale, as now.
+  android, ios and python builds. The emsdk in a conan cache takes 2.6 GB.
+  So CI, which has emscripten for the npm package already, builds the
+  module once and publishes it, and the other builds take that file, as
+  they take any shipped resource. A build without the module ships pages
+  that mark formulas stale, as now. This has two costs:
+  - The module must match the core that renders the page, for example in
+    how `data-odr-formula` spells a formula. So CI publishes the module per
+    core version, and a build takes the one of its version.
+  - A local change to `internal/formula` reaches the page only after CI
+    builds the module, or where the developer installs emscripten.
 - **Formula input in the editor.** The user types `=SUM(A1:B2)`, with `;`
   between arguments where the decimal sign of the locale is `,`. The writer
   parses that spelling with the locale of the document, and writes the
