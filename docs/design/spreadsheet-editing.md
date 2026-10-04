@@ -1,7 +1,7 @@
 # Spreadsheet editing design
 
-Status: cells edit and save in `.ods` and `.xlsx`, formulas parse and track
-their dependents, and nothing evaluates a formula yet.
+Status: cells edit and save in `.ods`, `.xlsx` and `.csv`, formulas parse and
+track their dependents, and nothing evaluates a formula yet.
 
 Related: [`editing.md`](editing.md) holds the mode frame every editor shares,
 [`document-editing.md`](document-editing.md) the document view and
@@ -40,7 +40,8 @@ text never had.
 | Browser: the mode | `html/frontend/editing.js` owns `odr.editing`, the refusals, the log and the `odr.on*` callbacks |
 | Browser: sheet editor | `html/frontend/sheet-editing.js` attaches the cell overlay and the stale marks to the mode |
 | Wire format | `document.cpp::Document::edit` dispatches the op envelope |
-| Capabilities | `file_type_table.cpp`: `ods` and `xlsx` declare `edit` and `save`, `csv` declares neither |
+| CSV write and save | `csv_document.cpp`: `set_cell` grows the rows, `save` writes UTF-8 with the line end and the `sep=` line the file had |
+| Capabilities | `file_type_table.cpp`: `ods`, `xlsx` and `csv` declare `edit` and `save` |
 | Tests | `test/src/document_edit_test.cpp`, `test/src/sheet_dependencies_test.cpp`, `test/browser/sheet/` |
 
 ## Decisions
@@ -310,5 +311,4 @@ undo step.
 - A style for a whole row or column, so cells past the rendered extent take it.
 - `align` back to the alignment by value type: `TableCellStyle` has no value
   that says it.
-- `.csv` save.
 - The decimal separator and the document locale are read nowhere.

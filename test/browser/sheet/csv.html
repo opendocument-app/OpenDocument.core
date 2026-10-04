@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet csv checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <!-- A csv states no style, and `translate` says so on `<body>`. -->
+  <body
+    class="odr-body odr-gridlines-soft"
+    data-odr-editable="true"
+    data-odr-keyboard="navigation shortcuts"
+    data-odr-sheet-styles="false"
+  >
+    <table class="odr-sheet" data-odr-sheet="0">
+      <col class="odr-sheet-gutter" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <thead>
+        <tr>
+          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+          <th class="odr-sheet-column-header">A</th>
+          <th class="odr-sheet-column-header">B</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="odr-sheet-row-header">1</th>
+          <td style="max-width:0;white-space:nowrap">a</td>
+          <td style="max-width:0;white-space:nowrap">b</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="report"></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var refusals = [];
+      odr.onEditRefused = function (event) {
+        refusals.push(event.reason);
+      };
+      function editor() {
+        return document.querySelector(".odr-sheet-editor");
+      }
+      function ops() {
+        return JSON.parse(odr.editing.getOperations()).ops;
+      }
+
+      check("the mode turns on", odr.editing.enable() === true);
+      odr.sheet.pin({ column: 0, row: 0 });
+      check("a fill is refused", odr.editing.format({ fill: "#ffff00" }) === false);
+      check("as unsupported", refusals.length === 1 && refusals[0] === "unsupportedEdit");
+      check("bold too", odr.editing.toggle("bold") === false && ops().length === 0);
+      check("and the cell keeps no style", odr.sheet.cellAt(0, 0).getAttribute("style").indexOf("background") === -1);
+
+      odr.editing.editAt(1, 0);
+      editor().value = "c";
+      editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      check("a value is still written", ops().length === 1 && ops()[0].op === "setCell");
+    </script>
+  </body>
+</html>

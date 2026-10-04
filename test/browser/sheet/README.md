@@ -13,6 +13,7 @@ open http://localhost:8732/editing.html
 open http://localhost:8732/keyboard.html
 open http://localhost:8732/formatting.html
 open http://localhost:8732/cut.html
+open http://localhost:8732/csv.html
 ```
 
 `serve` serves `document.css`, `spreadsheet.css`, `editing.js`,
@@ -53,6 +54,9 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
   file styled; the ops, one undo step per gesture, and the chords.
 - `cut.html`: a sheet the limits cut. Enabling the mode and a move past the
   rendered extent refuse with `sheetCut`; the edge of the sheet itself does not.
+- `csv.html`: a page that states `data-odr-sheet-styles="false"`, as a csv
+  does. A format and a toggle refuse with `unsupportedEdit`; a value is
+  written.
 - `sorting.html`: the same questions after the sort control moved every row.
   Nothing is merged, because a merged sheet gets no sort control. A row is
   found by its label, not by its position.

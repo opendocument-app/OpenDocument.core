@@ -38,11 +38,29 @@ public:
   [[nodiscard]] ValueType value_type(std::uint32_t column,
                                      std::uint32_t row) const;
 
+  /// Writes @p text at a position, growing the sheet to reach it.
+  void set_cell(std::uint32_t column, std::uint32_t row, std::string text);
+
+  [[nodiscard]] bool is_editable() const noexcept override;
+  [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
+  /// UTF-8, whatever the source encoding was, with a byte order mark unless
+  /// the source was UTF-8 without one. A field is quoted only where it has to
+  /// be.
+  void save(std::ostream &out) const override;
+
 private:
+  Dialect m_dialect;
+  bool m_separator_directive{false};
+  bool m_byte_order_mark{false};
+  std::string m_line_end;
+  bool m_final_line_end{true};
+
   std::vector<std::vector<std::string>> m_rows;
   TableDimensions m_dimensions;
   /// Per column, whether every value below the first row is a number.
   std::vector<bool> m_numeric_columns;
+
+  void type_column(std::uint32_t column);
 };
 
 } // namespace odr::internal::csv

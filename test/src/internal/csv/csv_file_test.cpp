@@ -505,3 +505,117 @@ TEST(CsvDocument, translating_the_decoded_file_yields_a_table) {
   EXPECT_THAT(out.str(), testing::HasSubstr("<table"));
   EXPECT_THAT(out.str(), testing::HasSubstr(">a<"));
 }
+
+namespace {
+
+std::string edited(
+    const std::string &content, const std::string &ops,
+    const DecodeOptions &options = DecodeOptions::as_csv({.separator = ','})) {
+  const Document document =
+      open(File::from_memory(content), options).as_csv_file().document();
+  document.edit(R"({"version":2,"ops":[)" + ops + "]}");
+  std::ostringstream out;
+  document.save(out);
+  return std::move(out).str();
+}
+
+} // namespace
+
+TEST(CsvDocument, an_unedited_file_saves_as_it_reads) {
+  EXPECT_EQ(edited("a,b\n1,2\n", ""), "a,b\n1,2\n");
+  EXPECT_EQ(edited("a,b\r\n1,2", ""), "a,b\r\n1,2");
+  EXPECT_EQ(edited("a\nb,c,d\n", ""), "a\nb,c,d\n");
+}
+
+TEST(CsvDocument, a_cell_is_written_and_saved) {
+  EXPECT_EQ(edited("a,b\n1,2\n",
+                   R"({"op":"setCell","sheet":0,"column":1,"row":1,)"
+                   R"("value":{"type":"number","number":2.5,"text":"2.5"}},)"
+                   R"({"op":"setCell","sheet":0,"column":0,"row":0,)"
+                   R"("value":{"type":"empty"}})"),
+            ",b\n1,2.5\n");
+}
+
+TEST(CsvDocument, a_field_is_quoted_only_where_it_has_to_be) {
+  // msvc cannot read an escape inside a raw string in a macro argument
+  const std::string quoted =
+      edited("a,b\n", R"({"op":"setCell","sheet":0,"column":0,"row":0,)"
+                      R"("value":{"type":"string","text":"x, \"y\""}})");
+  EXPECT_EQ(quoted, "\"x, \"\"y\"\"\",b\n");
+  EXPECT_EQ(edited("a;b\n",
+                   R"({"op":"setCell","sheet":0,"column":1,"row":0,)"
+                   R"("value":{"type":"string","text":"1,5"}})",
+                   DecodeOptions::as_csv({.separator = ';'})),
+            "a;1,5\n");
+}
+
+TEST(CsvDocument, a_write_past_the_end_grows_the_sheet) {
+  EXPECT_EQ(edited("a,b\n", R"({"op":"setCell","sheet":0,"column":2,"row":2,)"
+                            R"("value":{"type":"string","text":"c"}})"),
+            "a,b\n\"\"\n,,c\n");
+
+  const Document document = open(File::from_memory("a,b\n"),
+                                 DecodeOptions::as_csv({.separator = ','}))
+                                .as_csv_file()
+                                .document();
+  Sheet sheet = (*document.root_element().children().begin()).as_sheet();
+  sheet.set_cell(2, 2, CellValue("c"));
+  EXPECT_EQ(sheet.dimensions().rows, 3);
+  EXPECT_EQ(sheet.dimensions().columns, 3);
+}
+
+TEST(CsvDocument, a_written_number_types_its_column_again) {
+  const Document document = open(File::from_memory("a,b\nx,1\ny,2\n"),
+                                 DecodeOptions::as_csv({.separator = ','}))
+                                .as_csv_file()
+                                .document();
+  Sheet sheet = (*document.root_element().children().begin()).as_sheet();
+  sheet.set_cell(1, 2, CellValue("two"));
+  EXPECT_EQ(sheet.cell(1, 1).value_type(), ValueType::string);
+  sheet.set_cell(1, 2, CellValue(2.0));
+  EXPECT_EQ(sheet.cell(1, 1).value_type(), ValueType::float_number);
+}
+
+TEST(CsvDocument, the_separator_directive_is_kept) {
+  EXPECT_EQ(edited("sep=;\na;b\n1;2\n", "",
+                   DecodeOptions::as(FileType::comma_separated_values)),
+            "sep=;\na;b\n1;2\n");
+}
+
+TEST(CsvDocument, a_date_has_no_csv_spelling) {
+  const Document document = open(File::from_memory("a,b\n"),
+                                 DecodeOptions::as_csv({.separator = ','}))
+                                .as_csv_file()
+                                .document();
+  Sheet sheet = (*document.root_element().children().begin()).as_sheet();
+  EXPECT_THROW(sheet.set_cell(0, 0, CellValue(ValueType::date)),
+               UnsupportedOperation);
+  EXPECT_TRUE(document.is_editable());
+  EXPECT_TRUE(document.is_savable());
+}
+
+TEST(CsvDocument, a_byte_order_mark_is_kept_or_added) {
+  EXPECT_EQ(edited("\xef\xbb\xbf"
+                   "a,b\n",
+                   ""),
+            "\xef\xbb\xbf"
+            "a,b\n");
+  EXPECT_EQ(edited("caf\xe9,b\n", "",
+                   DecodeOptions::as_csv({.encoding = TextEncoding::iso_8859_1,
+                                          .separator = ','})),
+            "\xef\xbb\xbf"
+            "caf\xc3\xa9,b\n");
+}
+
+TEST(CsvDocument, clearing_the_one_word_makes_a_column_numeric) {
+  const Document document = open(File::from_memory("a,b\nx,1\ny,z\n"),
+                                 DecodeOptions::as_csv({.separator = ','}))
+                                .as_csv_file()
+                                .document();
+  Sheet sheet = (*document.root_element().children().begin()).as_sheet();
+  EXPECT_EQ(sheet.cell(1, 1).value_type(), ValueType::string);
+  sheet.clear_cell(1, 2);
+  EXPECT_EQ(sheet.cell(1, 1).value_type(), ValueType::float_number);
+  sheet.set_cell(1, 0, CellValue("header"));
+  EXPECT_EQ(sheet.cell(1, 1).value_type(), ValueType::float_number);
+}

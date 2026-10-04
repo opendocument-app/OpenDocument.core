@@ -55,6 +55,15 @@ leading zero and a thousands separator both reject, because `007` is an
 identifier and `1,234` means two numbers depending on the locale. Dates are
 never guessed. Quoting carries no type information.
 
+## A save writes the cells, not the bytes
+
+`CsvDocument::save` writes every row back from its fields. A field is quoted
+only where RFC 4180 needs it, an empty line is gone, and the text is UTF-8,
+as for a `.txt`. A byte order mark leads it unless the source was UTF-8
+without one, because Excel reads a csv without one as the system's code page.
+The line end and the `sep=` line follow the file. A cell
+states no style, so the editable page states `data-odr-sheet-styles="false"`.
+
 ## A csv holds a text file and also loads as a document
 
 A csv is `FileCategory::text` with `DocumentType::spreadsheet`, so

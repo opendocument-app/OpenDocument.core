@@ -15,7 +15,11 @@
 #include <algorithm>
 #include <istream>
 #include <memory>
+#include <ostream>
+#include <string>
 #include <utility>
+
+#include <fmt/format.h>
 
 namespace odr::internal::csv {
 
@@ -61,8 +65,7 @@ using AdapterBase =
 
 class ElementAdapter final : public AdapterBase {
 public:
-  explicit ElementAdapter(const CsvDocument &document)
-      : m_document{&document} {}
+  explicit ElementAdapter(CsvDocument &document) : m_document{&document} {}
 
   [[nodiscard]] ElementType
   element_type(const ElementIdentifier element_id) const override {
@@ -156,10 +159,9 @@ public:
     return null_element_id;
   }
   void sheet_set_cell([[maybe_unused]] const ElementIdentifier element_id,
-                      [[maybe_unused]] const std::uint32_t column,
-                      [[maybe_unused]] const std::uint32_t row,
-                      [[maybe_unused]] const CellValue &value) const override {
-    throw UnsupportedOperation();
+                      const std::uint32_t column, const std::uint32_t row,
+                      const CellValue &value) const override {
+    m_document->set_cell(column, row, cell_text(value));
   }
   [[nodiscard]] TableStyle sheet_style(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
@@ -231,8 +233,46 @@ public:
   }
 
 private:
-  const CsvDocument *m_document;
+  CsvDocument *m_document;
+
+  static std::string cell_text(const CellValue &value) {
+    switch (value.type()) {
+    case ValueType::unknown:
+      return "";
+    case ValueType::string:
+      return value.has_text() ? value.text() : "";
+    case ValueType::float_number:
+      return value.has_text() ? value.text()
+                              : fmt::format("{}", value.number());
+    case ValueType::boolean:
+      return value.has_number() && value.number() != 0 ? "TRUE" : "FALSE";
+    case ValueType::date:
+    case ValueType::time:
+    case ValueType::error:
+      break;
+    }
+    throw UnsupportedOperation();
+  }
 };
+
+/// RFC 4180 2.6 and 2.7: a field is quoted where it holds the separator, the
+/// quote or a line break, and a quote inside it is doubled.
+void write_field(std::ostream &out, const std::string_view field,
+                 const Dialect &dialect) {
+  if (field.find_first_of(std::string{dialect.separator, dialect.quote, '\r',
+                                      '\n'}) == std::string_view::npos) {
+    out << field;
+    return;
+  }
+  out << dialect.quote;
+  for (const char c : field) {
+    if (c == dialect.quote) {
+      out << dialect.quote;
+    }
+    out << c;
+  }
+  out << dialect.quote;
+}
 
 } // namespace
 
@@ -240,9 +280,21 @@ CsvDocument::CsvDocument(const abstract::File &file,
                          const TextEncoding encoding, const Dialect dialect,
                          const bool skip_first_line)
     : internal::Document(FileType::comma_separated_values,
-                         DocumentType::spreadsheet, nullptr) {
+                         DocumentType::spreadsheet, nullptr),
+      m_dialect{dialect}, m_separator_directive{skip_first_line} {
   const std::unique_ptr<std::istream> in = file.stream();
-  std::string text = encoding::to_utf8(util::stream::read(*in), encoding);
+  const std::string bytes = util::stream::read(*in);
+  // Excel reads a csv without one as the system's code page
+  m_byte_order_mark =
+      encoding != TextEncoding::utf8 || bytes.starts_with("\xef\xbb\xbf");
+  std::string text = encoding::to_utf8(bytes, encoding);
+
+  const std::size_t first_break = text.find('\n');
+  m_line_end = first_break != std::string::npos &&
+                       (first_break == 0 || text[first_break - 1] != '\r')
+                   ? "\n"
+                   : "\r\n";
+  m_final_line_end = text.empty() || text.back() == '\n' || text.back() == '\r';
 
   std::string_view remainder = text;
   if (skip_first_line) {
@@ -319,6 +371,82 @@ ValueType CsvDocument::value_type(const std::uint32_t column,
   // the header of a numeric column is still a name
   return is_number(cell(column, row)) ? ValueType::float_number
                                       : ValueType::string;
+}
+
+void CsvDocument::set_cell(const std::uint32_t column, const std::uint32_t row,
+                           std::string text) {
+  if (row >= m_rows.size()) {
+    m_rows.resize(row + 1);
+  }
+  std::vector<std::string> &fields = m_rows[row];
+  if (column >= fields.size()) {
+    fields.resize(column + 1);
+  }
+  fields[column] = std::move(text);
+
+  m_dimensions = {std::max(m_dimensions.rows, row + 1),
+                  std::max(m_dimensions.columns, column + 1)};
+  if (m_numeric_columns.size() < m_dimensions.columns) {
+    m_numeric_columns.resize(m_dimensions.columns, false);
+  }
+
+  // a header names its column; a value ends a numeric column or keeps one, and
+  // only the other writes need the whole column read again
+  const std::string_view written = fields[column];
+  if (row == 0 ||
+      (!written.empty() && m_numeric_columns[column] && is_number(written))) {
+    return;
+  }
+  if (!written.empty() && !is_number(written)) {
+    m_numeric_columns[column] = false;
+    return;
+  }
+  type_column(column);
+}
+
+void CsvDocument::type_column(const std::uint32_t column) {
+  bool has_value = false;
+  bool numeric = true;
+  for (std::uint32_t row = 1; row < m_rows.size(); ++row) {
+    const std::string_view value = cell(column, row);
+    if (!value.empty()) {
+      has_value = true;
+      numeric = numeric && is_number(value);
+    }
+  }
+  m_numeric_columns[column] = numeric && has_value;
+}
+
+bool CsvDocument::is_editable() const noexcept { return true; }
+
+bool CsvDocument::is_savable(const bool encrypted) const noexcept {
+  return !encrypted;
+}
+
+void CsvDocument::save(std::ostream &out) const {
+  if (m_byte_order_mark) {
+    out << "\xef\xbb\xbf";
+  }
+  if (m_separator_directive) {
+    out << "sep=" << m_dialect.separator << m_line_end;
+  }
+  for (std::size_t row = 0; row < m_rows.size(); ++row) {
+    const std::vector<std::string> &fields = m_rows[row];
+    if (fields.size() <= 1 &&
+        cell(0, static_cast<std::uint32_t>(row)).empty()) {
+      // an empty line is no record, so an empty row states its one field
+      out << m_dialect.quote << m_dialect.quote;
+    }
+    for (std::size_t column = 0; column < fields.size(); ++column) {
+      if (column > 0) {
+        out << m_dialect.separator;
+      }
+      write_field(out, fields[column], m_dialect);
+    }
+    if (row + 1 < m_rows.size() || m_final_line_end) {
+      out << m_line_end;
+    }
+  }
 }
 
 } // namespace odr::internal::csv

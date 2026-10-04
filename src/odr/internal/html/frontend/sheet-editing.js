@@ -565,6 +565,8 @@
 
   // ------------------------------------------------------------- formatting
 
+  // A csv states no style.
+  var styles = document.body.getAttribute("data-odr-sheet-styles") !== "false";
   var TOGGLES = ["bold", "italic", "underline", "strikethrough"];
   var KEYS = TOGGLES.concat(["color", "size", "fill", "align"]);
 
@@ -867,6 +869,10 @@
     }
     if (!odr.editing.isEditable()) {
       odr.editing.refuse("readOnly", { sheet: sheet });
+      return false;
+    }
+    if (!styles) {
+      odr.editing.refuse("unsupportedEdit", { sheet: sheet });
       return false;
     }
     var cells = odr.sheet.selectedCells();
