@@ -448,4 +448,111 @@ ooxml::spreadsheet::move_position(const TablePosition &position,
               : TablePosition(span->first, position.row);
 }
 
+namespace {
+
+/// The range @p table covers, header and totals rows included.
+TableRange table_range(const pugi::xml_node table) {
+  const std::string ref = table.attribute("ref").value();
+  return TableRange(ref.contains(':') ? ref : ref + ":" + ref);
+}
+
+} // namespace
+
+bool ooxml::spreadsheet::cuts_table(const pugi::xml_node table,
+                                    const formula::SheetEdit &edit) {
+  if (edit.insert) {
+    return false;
+  }
+  const TableRange range = table_range(table);
+  const auto removed = [&](const std::uint32_t index) {
+    return index >= edit.index &&
+           std::uint64_t{index} < std::uint64_t{edit.index} + edit.count;
+  };
+  if (edit.axis == formula::Axis::column) {
+    return !edit.span(range.from().column, range.to().column).has_value();
+  }
+  return (table.attribute("headerRowCount").as_uint(1) > 0 &&
+          removed(range.from().row)) ||
+         (table.attribute("totalsRowCount").as_uint(0) > 0 &&
+          removed(range.to().row));
+}
+
+std::vector<ooxml::spreadsheet::TableHeader>
+ooxml::spreadsheet::move_table(pugi::xml_node table,
+                               const formula::SheetEdit &edit) {
+  std::vector<TableHeader> result;
+  const TableRange range = table_range(table);
+
+  pugi::xml_node columns = table.child("tableColumns");
+  if (edit.axis == formula::Axis::column) {
+    const std::uint32_t first = range.from().column;
+    const std::uint32_t last = range.to().column;
+    if (edit.insert && first < edit.index && edit.index <= last) {
+      std::uint32_t id = 0;
+      std::vector<std::string> names;
+      for (const pugi::xml_node column : columns.children("tableColumn")) {
+        id = std::max(id, column.attribute("id").as_uint());
+        names.emplace_back(column.attribute("name").value());
+      }
+      pugi::xml_node next = columns.child("tableColumn");
+      for (std::uint32_t at = first; at < edit.index; ++at) {
+        next = next.next_sibling("tableColumn");
+      }
+      std::uint32_t suffix = 1;
+      for (std::uint32_t i = 0; i < edit.count; ++i) {
+        std::string name;
+        do {
+          name = "Column" + std::to_string(suffix++);
+        } while (std::ranges::find(names, name) != names.end());
+        names.push_back(name);
+        pugi::xml_node column =
+            next ? columns.insert_child_before("tableColumn", next)
+                 : columns.append_child("tableColumn");
+        column.append_attribute("id").set_value(++id);
+        column.append_attribute("name").set_value(name.c_str());
+        if (table.attribute("headerRowCount").as_uint(1) > 0) {
+          result.push_back(
+              {TablePosition(edit.index + i, range.from().row), name});
+        }
+      }
+    } else if (!edit.insert) {
+      std::uint32_t at = first;
+      for (pugi::xml_node column = columns.child("tableColumn"); column; ++at) {
+        const pugi::xml_node next = column.next_sibling("tableColumn");
+        if (at >= edit.index &&
+            std::uint64_t{at} < std::uint64_t{edit.index} + edit.count) {
+          columns.remove_child(column);
+        }
+        column = next;
+      }
+    }
+    if (pugi::xml_attribute count = columns.attribute("count")) {
+      count.set_value(static_cast<std::uint32_t>(
+          std::ranges::distance(columns.children("tableColumn"))));
+    }
+  }
+  for (const pugi::xml_node column : columns.children("tableColumn")) {
+    for (const char *name : {"calculatedColumnFormula", "totalsRowFormula"}) {
+      if (const pugi::xml_node formula = column.child(name)) {
+        move_text(formula, edit.sheet, edit);
+      }
+    }
+  }
+  if (pugi::xml_node filter = table.child("autoFilter");
+      filter && edit.axis == formula::Axis::column) {
+    move_filter_columns(filter, edit);
+  }
+  for (pugi::xml_node node :
+       {table, table.child("autoFilter"), table.child("sortState"),
+        table.child("autoFilter").child("sortState")}) {
+    if (pugi::xml_attribute ref = node.attribute("ref")) {
+      if (const std::optional<std::string> moved =
+              formula::move_addresses(ref.value(), edit, edit.sheet, syntax)) {
+        ref.set_value(moved->c_str());
+      }
+    }
+  }
+  return result;
+}
+
 } // namespace odr::internal

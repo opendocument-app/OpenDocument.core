@@ -58,4 +58,24 @@ void move_drawing(pugi::xml_node drawing, const formula::SheetEdit &edit);
 void move_comments(pugi::xml_node comments, pugi::xml_node threaded,
                    pugi::xml_node vml, const formula::SheetEdit &edit);
 
+/// A header cell an inserted table column needs, and the name it states.
+struct TableHeader final {
+  TablePosition position;
+  std::string name;
+};
+
+/// Whether the edit would remove the header row, the totals row or every
+/// column of @p table (`table`, ECMA-376 18.5.1.2), which only a removal of
+/// the part could answer.
+[[nodiscard]] bool cuts_table(pugi::xml_node table,
+                              const formula::SheetEdit &edit);
+
+/// Moves @p table, its filter and its formulas with the edit. An inserted
+/// column inside it gets a `tableColumn` with the next free `id` and a name
+/// no other column has, and a removed one loses its `tableColumn`.
+/// @return The header cells of the inserted columns, which have to state
+///         their names: Excel repairs a table whose header cells differ.
+[[nodiscard]] std::vector<TableHeader>
+move_table(pugi::xml_node table, const formula::SheetEdit &edit);
+
 } // namespace odr::internal::ooxml::spreadsheet

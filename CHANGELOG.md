@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- An inserted or deleted row or column moves the tables of an xlsx: their
+  range, filter and calculated columns. A column inserted inside a table gets
+  a named `tableColumn` and a header cell stating that name. An edit that
+  would remove a table's header row, its totals row or all of it refuses
+  with `UnsupportedOperation`.
 - `Sheet::insert_columns` and `Sheet::delete_columns` in every binding:
   `insert_columns` and `delete_columns` in python, `insertColumns` and
   `deleteColumns` in java, `insertColumns(at:count:)` and
