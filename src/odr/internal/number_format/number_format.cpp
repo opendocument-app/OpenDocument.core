@@ -1029,6 +1029,33 @@ std::string format_general(const double value, const Symbols &symbols) {
          fmt::format("{:02d}", std::abs(power));
 }
 
+std::int64_t days_from_civil(std::int64_t year, const unsigned month,
+                             const unsigned day) {
+  // Howard Hinnant's `days_from_civil`, moved from 1970-01-01 to 1899-12-30
+  year -= month <= 2 ? 1 : 0;
+  const std::int64_t era = (year >= 0 ? year : year - 399) / 400;
+  const auto year_of_era = static_cast<unsigned>(year - era * 400);
+  const unsigned day_of_year =
+      (153 * (month > 2 ? month - 3 : month + 9) + 2) / 5 + day - 1;
+  const unsigned day_of_era =
+      year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
+  return era * 146097 + static_cast<std::int64_t>(day_of_era) - 719468 + 25569;
+}
+
+double days_from_serial(const double serial, const Epoch epoch) {
+  if (epoch == Epoch::from_1904) {
+    return serial + 1462;
+  }
+  return serial < 61 ? serial + 1 : serial;
+}
+
+double serial_from_days(const double days, const Epoch epoch) {
+  if (epoch == Epoch::from_1904) {
+    return days - 1462;
+  }
+  return days < 61 ? days - 1 : days;
+}
+
 Symbols symbols_of(const std::string_view locale) {
   const std::string_view language = locale.substr(0, locale.find('-'));
   const std::string_view region = locale.find('-') == std::string_view::npos

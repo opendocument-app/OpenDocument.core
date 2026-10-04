@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -58,6 +59,16 @@ struct Section final {
 
 /// Where a date serial counts from: `workbookPr/@date1904` picks 1904.
 enum class Epoch { from_1900, from_1904 };
+
+/// The days from 1899-12-30 to the civil date, negative before it.
+[[nodiscard]] std::int64_t days_from_civil(std::int64_t year, unsigned month,
+                                           unsigned day);
+
+/// A serial counted from @p epoch as days since 1899-12-30. The 1900 system
+/// counts 1900-02-29, which never was, so a serial before 61 is one day more.
+[[nodiscard]] double days_from_serial(double serial, Epoch epoch);
+/// The serial @p epoch counts for @p days since 1899-12-30.
+[[nodiscard]] double serial_from_days(double days, Epoch epoch);
 
 /// The signs a locale writes a number with, where the code spells `.` and `,`.
 struct Symbols final {

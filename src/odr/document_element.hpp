@@ -180,6 +180,8 @@ public:
   [[nodiscard]] bool has_text() const noexcept;
   [[nodiscard]] bool has_formula() const noexcept;
 
+  /// A date or a time states days since 1899-12-30, the time of day in the
+  /// fraction, whatever the file counts from.
   /// @throws ValueNotStated where the cell states none.
   [[nodiscard]] double number() const;
   /// @throws ValueNotStated where the cell shows no text.

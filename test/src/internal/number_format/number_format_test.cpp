@@ -171,3 +171,17 @@ TEST(NumberFormat, a_locale_writes_its_own_point_and_grouping) {
   EXPECT_EQ(symbols_of("es-MX").decimal, ".");
   EXPECT_EQ(symbols_of("pt-BR").group, ".");
 }
+
+TEST(NumberFormat, a_serial_is_days_since_1899_12_30) {
+  EXPECT_EQ(days_from_civil(1899, 12, 30), 0);
+  EXPECT_EQ(days_from_civil(2025, 1, 1), 45658);
+  EXPECT_EQ(days_from_civil(1900, 1, 1), 2);
+  EXPECT_EQ(days_from_civil(1800, 1, 1), -36522);
+
+  EXPECT_DOUBLE_EQ(days_from_serial(45658.5, Epoch::from_1900), 45658.5);
+  EXPECT_DOUBLE_EQ(days_from_serial(1, Epoch::from_1900), 2);
+  EXPECT_DOUBLE_EQ(days_from_serial(60, Epoch::from_1900), 61);
+  EXPECT_DOUBLE_EQ(days_from_serial(0, Epoch::from_1904), 1462);
+  EXPECT_DOUBLE_EQ(serial_from_days(2, Epoch::from_1900), 1);
+  EXPECT_DOUBLE_EQ(serial_from_days(45658, Epoch::from_1904), 44196);
+}

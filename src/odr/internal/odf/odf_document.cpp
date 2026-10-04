@@ -26,6 +26,7 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <cstring>
 #include <mutex>
 #include <ostream>
@@ -242,6 +243,92 @@ ValueType value_type_of(const pugi::xml_node node) {
     return ValueType::time;
   }
   return ValueType::string;
+}
+
+/// An `office:date-value`, `YYYY-MM-DD` with an optional `THH:MM:SS` and a
+/// fraction of a second, as days since 1899-12-30. Nothing where it is none.
+std::optional<double> date_days(const std::string_view text) {
+  const auto integer = [](const std::string_view digits, auto &out) {
+    const auto [end, error] =
+        std::from_chars(digits.data(), digits.data() + digits.size(), out);
+    return error == std::errc() && end == digits.data() + digits.size();
+  };
+  std::int64_t year = 0;
+  unsigned month = 0;
+  unsigned day = 0;
+  if (text.size() < 10 || text[4] != '-' || text[7] != '-' ||
+      !integer(text.substr(0, 4), year) || !integer(text.substr(5, 2), month) ||
+      !integer(text.substr(8, 2), day)) {
+    return std::nullopt;
+  }
+  double result =
+      static_cast<double>(number_format::days_from_civil(year, month, day));
+  if (text.size() == 10) {
+    return result;
+  }
+  unsigned hours = 0;
+  unsigned minutes = 0;
+  std::string_view seconds = text.size() > 17 ? text.substr(17) : "";
+  if (seconds.ends_with('Z')) {
+    seconds.remove_suffix(1);
+  }
+  const std::optional<double> second = util::number::parse(seconds);
+  if (text[10] != 'T' || text.size() < 19 || text[13] != ':' ||
+      text[16] != ':' || !integer(text.substr(11, 2), hours) ||
+      !integer(text.substr(14, 2), minutes) || !second) {
+    return std::nullopt;
+  }
+  return result + (hours * 3600.0 + minutes * 60.0 + *second) / 86400;
+}
+
+/// An `office:time-value`, an ISO 8601 duration such as `PT18H30M00S`, as
+/// days. Nothing where it is none.
+std::optional<double> duration_days(std::string_view text) {
+  const bool negative = text.starts_with('-');
+  if (negative) {
+    text.remove_prefix(1);
+  }
+  if (!text.starts_with('P')) {
+    return std::nullopt;
+  }
+  text.remove_prefix(1);
+  double result = 0;
+  bool time = false;
+  while (!text.empty()) {
+    if (text.front() == 'T') {
+      time = true;
+      text.remove_prefix(1);
+      continue;
+    }
+    const std::size_t unit = text.find_first_of("DHMS");
+    const std::optional<double> amount =
+        unit == std::string_view::npos
+            ? std::nullopt
+            : util::number::parse(text.substr(0, unit));
+    if (!amount) {
+      return std::nullopt;
+    }
+    switch (text[unit]) {
+    case 'D':
+      result += *amount;
+      break;
+    case 'H':
+      result += *amount / 24;
+      break;
+    case 'M':
+      // a month before `T` has no length in days
+      if (!time) {
+        return std::nullopt;
+      }
+      result += *amount / 1440;
+      break;
+    default:
+      result += *amount / 86400;
+      break;
+    }
+    text.remove_prefix(unit + 1);
+  }
+  return negative ? -result : result;
 }
 
 /// Whether the engine has a form to write @p value in.
@@ -923,14 +1010,18 @@ public:
     return value_type_of(get_node(element_id));
   }
   /// [ODF 1.2] 19.386 `office:value`, 19.642 `table:formula`. A date and a
-  /// time state their value as text; a boolean states 1 or 0.
+  /// time state days since 1899-12-30; a boolean states 1 or 0.
   [[nodiscard]] CellValue
   sheet_cell_value(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
 
     CellValue result = CellValue(sheet_cell_value_type(element_id));
     if (const std::optional<double> number =
-            util::number::parse(node.attribute("office:value").value())) {
+            result.type() == ValueType::date
+                ? date_days(node.attribute("office:date-value").value())
+            : result.type() == ValueType::time
+                ? duration_days(node.attribute("office:time-value").value())
+                : util::number::parse(node.attribute("office:value").value())) {
       result = result.with_number(*number);
     }
     if (result.type() == ValueType::boolean) {
