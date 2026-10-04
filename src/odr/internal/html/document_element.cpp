@@ -817,16 +817,17 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                       (folded.has_value() ? folded->style : std::string()),
                   state.styles())
               .set_class([&]() -> std::optional<HtmlWritable> {
-                const bool number = cell_value_type == ValueType::float_number;
-                if (number && lock != nullptr) {
-                  return "odr-value-type-float odr-locked";
+                std::string clazz = cell_value_type == ValueType::float_number
+                                        ? "odr-value-type-float"
+                                    : cell_value_type == ValueType::date ||
+                                            cell_value_type == ValueType::time
+                                        ? "odr-value-type-date"
+                                        : "";
+                if (lock != nullptr) {
+                  clazz += clazz.empty() ? "odr-locked" : " odr-locked";
                 }
-                if (number) {
-                  return "odr-value-type-float";
-                }
-                return lock != nullptr
-                           ? std::optional<HtmlWritable>("odr-locked")
-                           : std::nullopt;
+                return clazz.empty() ? std::nullopt
+                                     : std::optional<HtmlWritable>(clazz);
               }()));
       if (column_index == 0 && row_index == 0) {
         for (const Element shape : sheet.shapes()) {

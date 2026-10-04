@@ -139,3 +139,74 @@ TEST(OoxmlSpreadsheetValue, an_error_and_a_date_cell_are_typed) {
   EXPECT_EQ(date.type(), ValueType::date);
   EXPECT_FALSE(date.has_number());
 }
+
+namespace {
+
+/// `cellXfs` 1 to 5: a custom `#,##0.00`, the built-in date 14, percent 9,
+/// time 20, and a code this cannot read.
+constexpr const char *number_styles =
+    R"(<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.00"/>)"
+    R"(<numFmt numFmtId="165" formatCode="&quot;open"/></numFmts>)"
+    R"(<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>)"
+    R"(<fills count="2"><fill><patternFill patternType="none"/></fill>)"
+    R"(<fill><patternFill patternType="gray125"/></fill></fills>)"
+    R"(<borders count="1"><border/></borders>)"
+    R"(<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>)"
+    R"(<cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>)"
+    R"(<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>)"
+    R"(<xf numFmtId="14" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>)"
+    R"(<xf numFmtId="9" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>)"
+    R"(<xf numFmtId="20" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>)"
+    R"(<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>)"
+    R"(</cellXfs>)";
+
+Document formatted(const std::string &workbook_extra = "") {
+  return decode(workbook(
+      R"(<row r="1"><c r="A1" s="1"><v>1234.5</v></c>)"
+      R"(<c r="B1" s="2"><v>45658</v></c><c r="C1" s="3"><v>0.25</v></c>)"
+      R"(<c r="D1" s="4"><v>0.75</v></c><c r="E1" s="5"><v>0.1</v></c>)"
+      R"(<c r="F1" t="b"><v>1</v></c><c r="G1"><v>0.30000000000000004</v></c>)"
+      R"(</row>)",
+      "", "", workbook_extra, "", number_styles));
+}
+
+std::string shown_at(const Sheet &sheet, const std::uint32_t column) {
+  return sheet.cell(column, 0).first_child().as_text().content();
+}
+
+} // namespace
+
+TEST(OoxmlSpreadsheetValue, a_number_shows_its_format) {
+  const Document document = formatted();
+  const Sheet sheet = first_sheet(document);
+
+  EXPECT_EQ(shown_at(sheet, 0), "1,234.50");
+  EXPECT_EQ(shown_at(sheet, 1), "01-01-25");
+  EXPECT_EQ(shown_at(sheet, 2), "25%");
+  EXPECT_EQ(shown_at(sheet, 3), "18:00");
+  EXPECT_EQ(shown_at(sheet, 4), "0.1");
+  EXPECT_EQ(shown_at(sheet, 5), "TRUE");
+  EXPECT_EQ(shown_at(sheet, 6), "0.3");
+
+  const CellValue value = sheet.cell(0, 0).value();
+  EXPECT_EQ(value.type(), ValueType::float_number);
+  EXPECT_DOUBLE_EQ(value.number(), 1234.5);
+  EXPECT_EQ(value.text(), "1,234.50");
+}
+
+TEST(OoxmlSpreadsheetValue, a_date_format_types_a_date) {
+  const Document document = formatted();
+  const Sheet sheet = first_sheet(document);
+
+  const CellValue date = sheet.cell(1, 0).value();
+  EXPECT_EQ(date.type(), ValueType::date);
+  EXPECT_DOUBLE_EQ(date.number(), 45658);
+  EXPECT_EQ(sheet.cell(3, 0).value().type(), ValueType::time);
+  EXPECT_EQ(sheet.cell(2, 0).value().type(), ValueType::float_number);
+}
+
+TEST(OoxmlSpreadsheetValue, date1904_counts_from_1904) {
+  const Document document = formatted(R"(<workbookPr date1904="1"/>)");
+
+  EXPECT_EQ(shown_at(first_sheet(document), 1), "01-02-29");
+}

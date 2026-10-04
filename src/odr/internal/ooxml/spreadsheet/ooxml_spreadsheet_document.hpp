@@ -23,6 +23,9 @@ public:
   [[nodiscard]] const StyleRegistry &style_registry() const;
   StyleRegistry &style_registry();
 
+  /// Where a date serial counts from, as `workbookPr/@date1904` says.
+  [[nodiscard]] number_format::Epoch epoch() const;
+
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
 
@@ -37,6 +40,7 @@ private:
 
   ElementRegistry m_element_registry;
   StyleRegistry m_style_registry;
+  number_format::Epoch m_epoch{number_format::Epoch::from_1900};
 
   std::pair<pugi::xml_document &, Relations &> parse_xml_(const AbsPath &path);
 };

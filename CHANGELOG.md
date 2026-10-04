@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- An xlsx cell shows its number formatted, as its `numFmt` or a built-in
+  format says, and a date or time format types it `ValueType::date` or
+  `time`, in the 1900 or the 1904 date system. A boolean shows `TRUE` or
+  `FALSE`. A date or time cell is right-aligned, as a number is.
+
 - `odr::create_document(FileType)` makes a new odt with one empty paragraph,
   an A4 page and Liberation Serif 12pt, a new ods with one empty sheet
   `Sheet1` and Liberation Sans 10pt, a new docx with one empty paragraph, an
