@@ -18,6 +18,7 @@ open http://localhost:8732/lines.html
 open http://localhost:8732/locale.html
 open http://localhost:8732/dates.html
 open http://localhost:8732/rows.html
+open http://localhost:8732/columns.html
 ```
 
 `serve` serves `document.css`, `spreadsheet.css`, `editing.js`,
@@ -73,6 +74,9 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
   side of a row op stay apart in the log. An edge inside a merge refuses.
   The stale marks follow the formula cells as the rows move them, a save
   takes the moves in, and the chords act on a header selection only.
+- `columns.html`: the same for inserted and deleted columns: the headers
+  are lettered again, a new column states no width, and a `colspan` an edge
+  falls inside refuses.
 - `sorting.html`: the same questions after the sort control moved every row.
   Nothing is merged, because a merged sheet gets no sort control. A row is
   found by its label, not by its position.

@@ -688,6 +688,176 @@
     return rows;
   }
 
+  // The letters naming the column @p index, `A` for 0.
+  function columnName(index) {
+    var name = "";
+    for (var n = index + 1; n > 0; n = Math.floor((n - 1) / 26)) {
+      name = String.fromCharCode(65 + ((n - 1) % 26)) + name;
+    }
+    return name;
+  }
+
+  // The headers of the columns, the corner left out.
+  function columnHeaders() {
+    return Array.prototype.slice.call(table.tHead.rows[0].cells, 1);
+  }
+
+  function addSortControl(header) {
+    var control = document.createElement("span");
+    control.className = "odr-sheet-sort";
+    header.appendChild(control);
+  }
+
+  // Whether a `colspan` starting left of @p column reaches it, so an edge
+  // there would cut a merge.
+  function colspanReaches(column) {
+    var cells = table.querySelectorAll("td[colspan]");
+    for (var i = 0; i < cells.length; ++i) {
+      var left = positionOf(cells[i]).column;
+      if (left < column && left + Number(cells[i].getAttribute("colspan")) > column) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // States every column's letters again, and moves what a sort and the pin
+  // hold by the place of a header, after @p count columns from @p column on
+  // went in or out.
+  function columnsChanged(column, count, inserted) {
+    index = null;
+    columnHeaders().forEach(function (header, at) {
+      var letters = header.firstChild;
+      if (letters === null || letters.nodeType !== Node.TEXT_NODE) {
+        letters = header.insertBefore(document.createTextNode(""), header.firstChild);
+      }
+      letters.nodeValue = columnName(at);
+      var control = header.querySelector(".odr-sheet-sort");
+      if (control !== null) {
+        control.setAttribute("title", "sort by column " + columnName(at));
+      }
+    });
+    // `sortedColumn` is the header's place, the corner being 0
+    var sorted = sortedColumn - 1;
+    if (sorted >= column + (inserted ? 0 : count)) {
+      sortedColumn += inserted ? count : -count;
+    } else if (sorted >= column && !inserted) {
+      sortedColumn = -1;
+      sortedDirection = 0;
+    }
+    if (pinnedCell !== null && !table.contains(pinnedCell)) {
+      pin(-1, null, null);
+      return;
+    }
+    if (pinnedColumn >= 0) {
+      pinnedColumn = rulerColumn(pinnedCell);
+    }
+    paint();
+    paintSelection();
+  }
+
+  // Puts the `<col>`s, the headers and the cells of @p slice in at
+  // @p column: a cell goes before the first one of its row at or right of the
+  // column.
+  function restoreColumns(column, slice) {
+    lower();
+    var cols = table.querySelectorAll("col");
+    var nextCol = cols[column + 1] || null;
+    var headerRow = table.tHead.rows[0];
+    var nextHeader = columnHeaders()[column] || null;
+    var places = slice.cells.map(function (entry) {
+      var next = null;
+      for (var i = 1; i < entry.tr.cells.length && next === null; ++i) {
+        var at = positionOf(entry.tr.cells[i]);
+        if (at !== null && at.column >= column) {
+          next = entry.tr.cells[i];
+        }
+      }
+      return next;
+    });
+    slice.cols.forEach(function (col) {
+      cols[0].parentNode.insertBefore(col, nextCol === null ? cols[cols.length - 1].nextSibling : nextCol);
+    });
+    slice.headers.forEach(function (header) {
+      headerRow.insertBefore(header, nextHeader);
+    });
+    slice.cells.forEach(function (entry, i) {
+      entry.tds.forEach(function (td) {
+        entry.tr.insertBefore(td, places[i]);
+      });
+    });
+    columnsChanged(column, slice.headers.length, true);
+  }
+
+  // @p count empty columns from @p column on, the columns right of it moved
+  // on. A new column states no width and its cells no style. Null where the
+  // edge would cut a merge, or lies past the rendered columns.
+  function insertColumns(column, count) {
+    if (column > lastColumn() + 1 || colspanReaches(column)) {
+      return null;
+    }
+    var slice = { cols: [], headers: [], cells: [] };
+    for (var i = 0; i < count; ++i) {
+      slice.cols.push(document.createElement("col"));
+      var header = document.createElement("th");
+      header.className = "odr-sheet-column-header";
+      if (!merged) {
+        addSortControl(header);
+      }
+      slice.headers.push(header);
+    }
+    for (var r = 0; r < body.rows.length; ++r) {
+      var tds = [];
+      for (var j = 0; j < count; ++j) {
+        var td = document.createElement("td");
+        td.style.cssText = "white-space:nowrap";
+        tds.push(td);
+      }
+      slice.cells.push({ tr: body.rows[r], tds: tds });
+    }
+    restoreColumns(column, slice);
+    return slice;
+  }
+
+  // Takes the columns from @p column on away, @p count of them at most, and
+  // moves the columns right of them back. What was taken, for
+  // `restoreColumns`; null where an edge would cut a merge.
+  function deleteColumns(column, count) {
+    if (colspanReaches(column) || colspanReaches(column + count)) {
+      return null;
+    }
+    lower();
+    var end = Math.min(column + count, lastColumn() + 1);
+    var cols = table.querySelectorAll("col");
+    var headers = columnHeaders();
+    var slice = { cols: [], headers: [], cells: [] };
+    for (var at = column; at < end; ++at) {
+      slice.cols.push(cols[at + 1]);
+      slice.headers.push(headers[at]);
+    }
+    for (var r = 0; r < body.rows.length; ++r) {
+      var tr = body.rows[r];
+      var tds = [];
+      for (var i = 1; i < tr.cells.length; ++i) {
+        var position = positionOf(tr.cells[i]);
+        if (position !== null && position.column >= column && position.column < end) {
+          tds.push(tr.cells[i]);
+        }
+      }
+      slice.cells.push({ tr: tr, tds: tds });
+    }
+    slice.cols.concat(slice.headers).forEach(function (node) {
+      node.remove();
+    });
+    slice.cells.forEach(function (entry) {
+      entry.tds.forEach(function (td) {
+        td.remove();
+      });
+    });
+    columnsChanged(column, end - column, false);
+    return slice;
+  }
+
   // What the script beside this one, and a host, ask of the sheet: positions
   // the way an op names them, and the pin. `spreadsheet-editing.md` decision 8.
   odr.sheet = {
@@ -706,6 +876,9 @@
     insertRows: insertRows,
     deleteRows: deleteRows,
     restoreRows: restoreRows,
+    insertColumns: insertColumns,
+    deleteColumns: deleteColumns,
+    restoreColumns: restoreColumns,
   };
 
   table.addEventListener("mouseover", function (event) {
@@ -907,12 +1080,11 @@
   // breaks the column index, so a merged sheet gets no sort control.
   if (!merged) {
     var headers = table.tHead.rows[0].children;
-    for (var column = 1; column < headers.length; ++column) {
-      var control = document.createElement("span");
-      control.className = "odr-sheet-sort";
-      control.setAttribute("title", "sort by column " + headers[column].textContent);
-      headers[column].appendChild(control);
-    }
+    columnHeaders().forEach(function (header) {
+      var letters = header.textContent;
+      addSortControl(header);
+      header.lastChild.setAttribute("title", "sort by column " + letters);
+    });
 
     table.addEventListener(
       "click",

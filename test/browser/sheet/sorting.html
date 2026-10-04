@@ -134,6 +134,19 @@
       click(document.querySelectorAll(".odr-sheet-sort")[3]);
       click(document.querySelectorAll(".odr-sheet-sort")[3]);
       check("and the file's order takes it in", labels() === "123456", labels());
+
+      click(document.querySelectorAll(".odr-sheet-sort")[3]);
+      odr.sheet.insertColumns(0, 1);
+      var controls = document.querySelectorAll(".odr-sheet-sort");
+      check("a sort follows its column past an insert", controls[4].classList.contains("odr-sheet-sort-asc"));
+      click(controls[4]);
+      check("so its next click turns it round", controls[4].classList.contains("odr-sheet-sort-desc"));
+      odr.sheet.deleteColumns(4, 1);
+      click(document.querySelectorAll(".odr-sheet-sort")[1]);
+      check(
+        "a deleted sort column leaves the next sort to start afresh",
+        document.querySelectorAll(".odr-sheet-sort")[1].classList.contains("odr-sheet-sort-asc")
+      );
     </script>
   </body>
 </html>

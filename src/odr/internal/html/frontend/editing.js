@@ -160,7 +160,8 @@
 
     /// Adds one format's editor. Only `operations` is required; `enable`,
     /// `disable`, `undo`, `redo`, `canUndo`, `canRedo`, `committed`, `format`,
-    /// `toggle`, `insertRows` and `deleteRows` default.
+    /// `toggle`, `insertRows`, `deleteRows`, `insertColumns` and
+    /// `deleteColumns` default.
     attach: function (editor) {
       editors.push(editor);
     },
@@ -192,6 +193,17 @@
     /// Removes the rows the selection spans. False where refused.
     deleteRows: function () {
       return delegate("deleteRows");
+    },
+
+    /// Inserts as many columns as the selection spans, `"left"` of it (the
+    /// default) or `"right"` of it. False where refused.
+    insertColumns: function (where) {
+      return delegate("insertColumns", where);
+    },
+
+    /// Removes the columns the selection spans. False where refused.
+    deleteColumns: function () {
+      return delegate("deleteColumns");
     },
 
     /// The style the selection shows, a key per property the covered runs
