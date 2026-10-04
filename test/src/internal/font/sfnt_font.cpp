@@ -1,3 +1,5 @@
+#include "sfnt_test_util.hpp"
+
 #include <odr/internal/font/sfnt_font.hpp>
 
 #include <odr/font.hpp>
@@ -18,75 +20,13 @@ using namespace odr::internal::font::sfnt;
 
 namespace {
 
+using namespace odr::test::font;
+
 namespace bs = odr::internal::util::byte_string;
 
 /// Parse a font from its in-memory bytes.
 SfntFont sfnt_font_from_string(std::string bytes) {
   return SfntFont(std::move(bytes));
-}
-
-/// A `head` table: only unitsPerEm (offset 18) and the bbox (36..42) are read.
-std::string head_table() {
-  std::string t(54, '\0');
-  const auto u16 = [&](std::size_t o, std::uint16_t v) {
-    t[o] = static_cast<char>(v >> 8);
-    t[o + 1] = static_cast<char>(v & 0xff);
-  };
-  u16(18, 1000);                             // unitsPerEm
-  u16(36, static_cast<std::uint16_t>(-100)); // xMin
-  u16(38, static_cast<std::uint16_t>(-200)); // yMin
-  u16(40, 900);                              // xMax
-  u16(42, 800);                              // yMax
-  return t;
-}
-
-std::string maxp_table(const std::uint16_t glyphs) {
-  std::string t;
-  bs::put_u32_be(t, 0x00010000); // version 1.0
-  bs::put_u16_be(t, glyphs);
-  t.resize(32, '\0');
-  return t;
-}
-
-std::string hhea_table(const std::uint16_t number_of_h_metrics) {
-  std::string t(36, '\0');
-  t[34] = static_cast<char>(number_of_h_metrics >> 8);
-  t[35] = static_cast<char>(number_of_h_metrics & 0xff);
-  return t;
-}
-
-std::string hmtx_table(const std::vector<std::uint16_t> &advances) {
-  std::string t;
-  for (const std::uint16_t a : advances) {
-    bs::put_u16_be(t, a); // advanceWidth
-    bs::put_u16_be(t, 0); // leftSideBearing
-  }
-  return t;
-}
-
-/// Format-4 subtable mapping the contiguous run [start, start+count) to glyph
-/// ids [1, count] via a single idDelta segment, plus the required terminator.
-std::string cmap_format4(const char16_t start, const std::uint16_t count) {
-  std::string t;
-  bs::put_u16_be(t, 4);  // format
-  bs::put_u16_be(t, 32); // length
-  bs::put_u16_be(t, 0);  // language
-  bs::put_u16_be(t, 4);  // segCountX2 (2 segments)
-  bs::put_u16_be(t, 0);  // searchRange
-  bs::put_u16_be(t, 0);  // entrySelector
-  bs::put_u16_be(t, 0);  // rangeShift
-  bs::put_u16_be(t,
-                 static_cast<std::uint16_t>(start + count - 1)); // endCode[0]
-  bs::put_u16_be(t, 0xffff);                                     // endCode[1]
-  bs::put_u16_be(t, 0);                                          // reservedPad
-  bs::put_u16_be(t, start);                                      // startCode[0]
-  bs::put_u16_be(t, 0xffff);                                     // startCode[1]
-  bs::put_u16_be(
-      t, static_cast<std::uint16_t>(1 - start)); // idDelta[0] -> gid 1..count
-  bs::put_u16_be(t, 1);                          // idDelta[1]
-  bs::put_u16_be(t, 0);                          // idRangeOffset[0]
-  bs::put_u16_be(t, 0);                          // idRangeOffset[1]
-  return t;
 }
 
 /// Format-4 subtable mapping [start, start+count) to glyph ids [1, count] via a
@@ -134,70 +74,10 @@ std::string cmap_format12(const char32_t start, const std::uint32_t count) {
   return t;
 }
 
-std::string cmap_table(const std::uint16_t platform,
-                       const std::uint16_t encoding,
-                       const std::string &subtable) {
-  std::string t;
-  bs::put_u16_be(t, 0); // version
-  bs::put_u16_be(t, 1); // numTables
-  bs::put_u16_be(t, platform);
-  bs::put_u16_be(t, encoding);
-  bs::put_u32_be(t, 12); // offset to the single subtable
-  t += subtable;
-  return t;
-}
-
-// A `name` table with a single PostScript-name (id 6) record, UTF-16BE.
-std::string name_table(const std::string &ascii) {
-  std::string strings;
-  for (const char c : ascii) {
-    bs::put_u16_be(strings, static_cast<std::uint8_t>(c));
-  }
-  std::string t;
-  bs::put_u16_be(t, 0);     // format
-  bs::put_u16_be(t, 1);     // count
-  bs::put_u16_be(t, 18);    // stringOffset (6 header + 12 record)
-  bs::put_u16_be(t, 3);     // platformID (Windows)
-  bs::put_u16_be(t, 1);     // encodingID
-  bs::put_u16_be(t, 0x409); // languageID
-  bs::put_u16_be(t, 6);     // nameID (PostScript)
-  bs::put_u16_be(t, static_cast<std::uint16_t>(strings.size()));
-  bs::put_u16_be(t, 0); // offset within string storage
-  t += strings;
-  return t;
-}
-
-// Assemble a full SFNT from named tables, computing the table directory.
-std::string
-build_sfnt(const std::vector<std::pair<std::string, std::string>> &tables) {
-  const auto count = static_cast<std::uint16_t>(tables.size());
-  std::string out;
-  bs::put_u32_be(out, 0x00010000); // sfntVersion (TrueType)
-  bs::put_u16_be(out, count);
-  bs::put_u16_be(out, 0); // searchRange
-  bs::put_u16_be(out, 0); // entrySelector
-  bs::put_u16_be(out, 0); // rangeShift
-
-  std::uint32_t offset = 12 + count * 16U;
-  std::string body;
-  for (const auto &[tag, data] : tables) {
-    out += tag;
-    bs::put_u32_be(out, 0); // checksum (not validated by the reader)
-    bs::put_u32_be(out, offset);
-    bs::put_u32_be(out, static_cast<std::uint32_t>(data.size()));
-    body += data;
-    while (body.size() % 4 != 0) {
-      body += '\0';
-    }
-    offset = 12 + count * 16U + static_cast<std::uint32_t>(body.size());
-  }
-  return out + body;
-}
-
 std::string sample_font(const std::string &cmap) {
   // Tables are stored in tag-sorted order, as required by the spec.
-  return build_sfnt({{"cmap", cmap},
-                     {"head", head_table()},
+  return sfnt_bytes({{"cmap", cmap},
+                     {"head", head_table({-100, -200, 900, 800})},
                      {"hhea", hhea_table(5)},
                      {"hmtx", hmtx_table({500, 600, 700, 222, 333})},
                      {"maxp", maxp_table(5)},
@@ -294,8 +174,8 @@ TEST(SfntFont, write_pads_a_short_hmtx) {
   // Two longHorMetrics for five glyphs, and none of the three leftSideBearings
   // that must follow them.
   const SfntFont font = sfnt_font_from_string(
-      build_sfnt({{"cmap", cmap_table(3, 1, cmap_format4('A', 3))},
-                  {"head", head_table()},
+      sfnt_bytes({{"cmap", cmap_table(3, 1, cmap_format4('A', 3))},
+                  {"head", head_table({-100, -200, 900, 800})},
                   {"hhea", hhea_table(2)},
                   {"hmtx", hmtx_table({500, 600})},
                   {"maxp", maxp_table(5)}}));
@@ -328,15 +208,15 @@ TEST(SfntFont, rejects_invalid_headers_and_clips_quirky_ranges) {
   bs::write_u32_be(bytes, 20, static_cast<std::uint32_t>(bytes.size() + 1));
   EXPECT_THROW(SfntFont{bytes}, std::runtime_error);
 
-  std::string head = head_table();
+  std::string head = head_table({-100, -200, 900, 800});
   bs::write_u16_be(head, 18, 0);
-  EXPECT_THROW(SfntFont(build_sfnt({{"head", head}})), std::runtime_error);
+  EXPECT_THROW(SfntFont(sfnt_bytes({{"head", head}})), std::runtime_error);
 
   std::string name = name_table("A");
   bs::write_u16_be(name, 14, 4);
-  EXPECT_EQ(SfntFont(build_sfnt({{"name", name}})).name(), "A");
+  EXPECT_EQ(SfntFont(sfnt_bytes({{"name", name}})).name(), "A");
   bs::write_u16_be(name, 14, 1);
-  EXPECT_EQ(SfntFont(build_sfnt({{"name", name}})).name(), "");
+  EXPECT_EQ(SfntFont(sfnt_bytes({{"name", name}})).name(), "");
 }
 
 TEST(SfntFont, drops_an_invalid_cmap_and_keeps_the_font) {

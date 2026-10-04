@@ -1,3 +1,5 @@
+#include "sfnt_test_util.hpp"
+
 #include <odr/internal/font/sfnt_transform.hpp>
 
 #include <odr/internal/font/sfnt_font.hpp>
@@ -16,6 +18,8 @@ using namespace odr::internal::font;
 
 namespace {
 
+using namespace odr::test::font;
+
 namespace bs = odr::internal::util::byte_string;
 
 /// Parse a font from its in-memory bytes.
@@ -28,56 +32,6 @@ std::string reencoded(std::string bytes) {
   sfnt::SfntFont font = parse(std::move(bytes));
   reencode_to_pua(font);
   return font.write();
-}
-
-std::string head_table() {
-  std::string t(54, '\0');
-  t[18] = 0x03; // unitsPerEm = 1000 (0x03E8)
-  t[19] = static_cast<char>(0xe8);
-  return t;
-}
-
-std::string maxp_table(const std::uint16_t glyphs) {
-  std::string t;
-  bs::put_u32_be(t, 0x00010000);
-  bs::put_u16_be(t, glyphs);
-  t.resize(32, '\0');
-  return t;
-}
-
-std::string hhea_table(const std::uint16_t number_of_h_metrics) {
-  std::string t(36, '\0');
-  t[34] = static_cast<char>(number_of_h_metrics >> 8);
-  t[35] = static_cast<char>(number_of_h_metrics & 0xff);
-  return t;
-}
-
-std::string hmtx_table(const std::vector<std::uint16_t> &advances) {
-  std::string t;
-  for (const std::uint16_t a : advances) {
-    bs::put_u16_be(t, a);
-    bs::put_u16_be(t, 0);
-  }
-  return t;
-}
-
-std::string name_table(const std::string &ascii) {
-  std::string strings;
-  for (const char c : ascii) {
-    bs::put_u16_be(strings, static_cast<std::uint8_t>(c));
-  }
-  std::string t;
-  bs::put_u16_be(t, 0);
-  bs::put_u16_be(t, 1);
-  bs::put_u16_be(t, 18);
-  bs::put_u16_be(t, 3);
-  bs::put_u16_be(t, 1);
-  bs::put_u16_be(t, 0x409);
-  bs::put_u16_be(t, 6);
-  bs::put_u16_be(t, static_cast<std::uint16_t>(strings.size()));
-  bs::put_u16_be(t, 0);
-  t += strings;
-  return t;
 }
 
 // A 3-glyph TrueType font (no original cmap — the re-encode supplies one),
@@ -184,38 +138,31 @@ TEST(SfntTransform, serialize_cmap_format12_round_trips_beyond_bmp) {
   EXPECT_EQ(parsed.glyph_for_code_point(0xf0002), 0); // gap after the run
 }
 
-TEST(SfntTransform, reencode_mutates_the_font_in_place) {
+TEST(SfntTransform, reencode_mutates_and_round_trips) {
   sfnt::SfntFont font = parse(sample_font());
   reencode_to_pua(font);
-
-  // The mutated object itself reflects the new map — accessors read cmap().
-  EXPECT_EQ(font.glyph_for_code_point(pua_code_point(1)), 1);
-  EXPECT_EQ(font.glyph_for_code_point(pua_code_point(2)), 2);
-  EXPECT_EQ(font.code_point_for_glyph(1), pua_code_point(1));
-  EXPECT_EQ(font.code_point_for_glyph(2), pua_code_point(2));
+  const auto check = [](const sfnt::SfntFont &mapped) {
+    EXPECT_EQ(mapped.glyph_for_code_point(pua_code_point(1)), 1);
+    EXPECT_EQ(mapped.glyph_for_code_point(pua_code_point(2)), 2);
+    EXPECT_EQ(mapped.code_point_for_glyph(1), pua_code_point(1));
+    EXPECT_EQ(mapped.code_point_for_glyph(2), pua_code_point(2));
+  };
+  check(font);
+  check(parse(font.write()));
 }
 
-TEST(SfntTransform, reencode_maps_every_glyph_to_pua_after_round_trip) {
-  const sfnt::SfntFont parsed = parse(reencoded(sample_font()));
-
-  EXPECT_EQ(parsed.glyph_for_code_point(pua_code_point(1)), 1);
-  EXPECT_EQ(parsed.glyph_for_code_point(pua_code_point(2)), 2);
-  EXPECT_EQ(parsed.code_point_for_glyph(1), pua_code_point(1));
-  EXPECT_EQ(parsed.code_point_for_glyph(2), pua_code_point(2));
-}
-
-TEST(SfntTransform, reencode_with_extra_adds_real_unicode_beside_pua) {
+TEST(SfntTransform, reencode_with_extra_mutates_and_round_trips) {
   sfnt::SfntFont font = parse(sample_font());
-  // Real Unicode 'A' -> glyph 1 and 'B' -> glyph 2, alongside the PUA range.
-  reencode_to_pua(font, {{U'A', 1}, {U'B', 2}});
-
-  // Real-Unicode entries resolve to their glyphs ...
-  EXPECT_EQ(font.glyph_for_code_point('A'), 1);
-  EXPECT_EQ(font.glyph_for_code_point('B'), 2);
-  // ... and the PUA fallback for every glyph is still present.
-  EXPECT_EQ(font.glyph_for_code_point(pua_code_point(0)), 0);
-  EXPECT_EQ(font.glyph_for_code_point(pua_code_point(1)), 1);
-  EXPECT_EQ(font.glyph_for_code_point(pua_code_point(2)), 2);
+  reencode_to_pua(font, {{U'A', 1}, {U'Z', 2}});
+  const auto check = [](const sfnt::SfntFont &mapped) {
+    EXPECT_EQ(mapped.glyph_for_code_point('A'), 1);
+    EXPECT_EQ(mapped.glyph_for_code_point('Z'), 2);
+    EXPECT_EQ(mapped.glyph_for_code_point(pua_code_point(0)), 0);
+    EXPECT_EQ(mapped.glyph_for_code_point(pua_code_point(1)), 1);
+    EXPECT_EQ(mapped.glyph_for_code_point(pua_code_point(2)), 2);
+  };
+  check(font);
+  check(parse(font.write()));
 }
 
 TEST(SfntTransform, reencode_drops_extra_entries_past_glyph_count) {
@@ -229,18 +176,6 @@ TEST(SfntTransform, reencode_drops_extra_entries_past_glyph_count) {
   EXPECT_EQ(font.glyph_for_code_point('B'), 0); // dropped: not mapped
   // The in-range PUA range is untouched.
   EXPECT_EQ(font.glyph_for_code_point(pua_code_point(2)), 2);
-}
-
-TEST(SfntTransform, reencode_with_extra_round_trips_through_write) {
-  sfnt::SfntFont font = parse(sample_font());
-  // 'A' is adjacent to nothing; 'Z' forces a second cmap segment past the PUA.
-  reencode_to_pua(font, {{U'A', 1}, {U'Z', 2}});
-
-  const sfnt::SfntFont parsed = parse(font.write());
-  EXPECT_EQ(parsed.glyph_for_code_point('A'), 1);
-  EXPECT_EQ(parsed.glyph_for_code_point('Z'), 2);
-  EXPECT_EQ(parsed.glyph_for_code_point(pua_code_point(1)), 1);
-  EXPECT_EQ(parsed.glyph_for_code_point(pua_code_point(2)), 2);
 }
 
 TEST(SfntTransform, write_preserves_passthrough_tables_and_checksum) {
