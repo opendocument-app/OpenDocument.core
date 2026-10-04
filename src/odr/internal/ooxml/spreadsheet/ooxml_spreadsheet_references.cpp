@@ -24,19 +24,10 @@ namespace {
 
 constexpr formula::Syntax syntax = formula::Syntax::ooxml;
 
-/// Where the cell at @p position sits after the edit, nothing where it is
-/// removed.
 std::optional<TablePosition> moved_position(const TablePosition &position,
                                             const bool edited,
                                             const formula::SheetEdit &edit) {
-  if (!edited) {
-    return position;
-  }
-  const auto rows = edit.span(position.row, position.row);
-  if (!rows.has_value()) {
-    return std::nullopt;
-  }
-  return TablePosition(position.column, rows->first);
+  return edited ? move_position(position, edit) : position;
 }
 
 /// @p node as the cell at @p to reads it, where the one at @p from states it.
@@ -163,8 +154,8 @@ void move_calc_chain(pugi::xml_node calc_chain,
       sheet_id = id.value();
     }
     if (sheet_id == edited_sheet_id) {
-      if (const std::optional<TablePosition> at = moved_position(
-              TablePosition(entry.attribute("r").value()), true, edit)) {
+      if (const std::optional<TablePosition> at = move_position(
+              TablePosition(entry.attribute("r").value()), edit)) {
         entry.attribute("r").set_value(at->to_string().c_str());
       } else {
         if (next && !next.attribute("i") && entry.attribute("i")) {
@@ -269,7 +260,7 @@ void move_corner(pugi::xml_node corner, const formula::SheetEdit &edit) {
 
 namespace odr::internal {
 
-void ooxml::spreadsheet::move_row_references(
+void ooxml::spreadsheet::move_workbook_references(
     const pugi::xml_node workbook,
     const std::vector<NamedWorksheet> &worksheets,
     const pugi::xml_node calc_chain, const std::string &edited_sheet_id,
@@ -399,6 +390,19 @@ void ooxml::spreadsheet::move_comments(const pugi::xml_node comments,
   for (pugi::xml_node shape : removed) {
     shape.parent().remove_child(shape);
   }
+}
+
+std::optional<TablePosition>
+ooxml::spreadsheet::move_position(const TablePosition &position,
+                                  const formula::SheetEdit &edit) {
+  const bool rows = edit.axis == formula::Axis::row;
+  const std::uint32_t along = rows ? position.row : position.column;
+  const auto span = edit.span(along, along);
+  if (!span.has_value()) {
+    return std::nullopt;
+  }
+  return rows ? TablePosition(position.column, span->first)
+              : TablePosition(span->first, position.row);
 }
 
 } // namespace odr::internal

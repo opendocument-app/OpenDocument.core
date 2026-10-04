@@ -24,6 +24,7 @@
 #include <cstdint>
 #include <optional>
 #include <ostream>
+#include <ranges>
 #include <sstream>
 #include <string_view>
 #include <utility>
@@ -539,23 +540,41 @@ public:
   void sheet_insert_rows(const ElementIdentifier element_id,
                          const std::uint32_t row,
                          const std::uint32_t count) const override {
-    edit_rows(element_id, {.index = row, .count = count});
+    edit_sheet(element_id, {.index = row, .count = count});
   }
   void sheet_delete_rows(const ElementIdentifier element_id,
                          const std::uint32_t row,
                          const std::uint32_t count) const override {
-    edit_rows(element_id, {.index = row, .count = count, .insert = false});
+    edit_sheet(element_id, {.index = row, .count = count, .insert = false});
+  }
+  void sheet_insert_columns(const ElementIdentifier element_id,
+                            const std::uint32_t column,
+                            const std::uint32_t count) const override {
+    edit_sheet(
+        element_id,
+        {.axis = formula::Axis::column, .index = column, .count = count});
+  }
+  void sheet_delete_columns(const ElementIdentifier element_id,
+                            const std::uint32_t column,
+                            const std::uint32_t count) const override {
+    edit_sheet(element_id, {.axis = formula::Axis::column,
+                            .index = column,
+                            .count = count,
+                            .insert = false});
   }
 
-  /// The rows of the grid (ECMA-376 18.3.1.73).
+  /// The rows and the columns of the grid, `1048576` and `XFD`.
   static constexpr std::uint32_t row_limit = 1048576;
+  static constexpr std::uint32_t column_limit = 16384;
 
-  /// Every `row` and `c` states its number (18.3.1.73, 18.3.1.4), so the ones
-  /// past the edit are numbered again, and the merges, the dimension, the
-  /// ranges of the sheet, its drawings and comments, every formula, every
-  /// defined name and the calc chain move with them.
-  void edit_rows(const ElementIdentifier element_id,
-                 formula::SheetEdit edit) const {
+  /// Every `row` and `c` states its position (18.3.1.73, 18.3.1.4), so the
+  /// ones past the edit state it again, and the column declarations, the
+  /// merges, the dimension, the ranges of the sheet, its drawings and
+  /// comments, every formula, every defined name and the calc chain move with
+  /// them.
+  void edit_sheet(const ElementIdentifier element_id,
+                  formula::SheetEdit edit) const {
+    const bool rows_edited = edit.axis == formula::Axis::row;
     ElementRegistry::Sheet &sheet = m_registry->sheet_element_at(element_id);
     edit.sheet = sheet.name;
     pugi::xml_node sheet_node = get_node(element_id);
@@ -567,19 +586,24 @@ public:
         throw UnsupportedOperation();
       }
     }
-    std::uint32_t last_row = 0;
-    for (const auto &[index, entry] : sheet.rows) {
-      last_row = std::max(last_row, index);
-      for (const pugi::xml_node cell : entry.node.children("c")) {
-        if (const pugi::xml_node formula = cell.child("f");
-            std::string_view(formula.attribute("t").value()) == "array" &&
-            cut_by(formula.attribute("ref").value(), edit)) {
-          throw UnsupportedOperation();
-        }
+    std::optional<std::uint32_t> last;
+    for (const auto &[position, cell] : sheet.cells) {
+      last = std::max(last.value_or(0),
+                      rows_edited ? position.row : position.column);
+      if (const pugi::xml_node formula = cell.node.child("f");
+          std::string_view(formula.attribute("t").value()) == "array" &&
+          cut_by(formula.attribute("ref").value(), edit)) {
+        throw UnsupportedOperation();
       }
     }
-    if (edit.insert && !sheet.rows.empty() && last_row >= edit.index &&
-        static_cast<std::uint64_t>(last_row) + edit.count >= row_limit) {
+    // a `row` may state a format and no cell
+    if (rows_edited && !sheet.rows.empty()) {
+      last = std::max(last.value_or(0),
+                      std::ranges::max(sheet.rows | std::views::keys));
+    }
+    if (edit.insert && last.has_value() && *last >= edit.index &&
+        std::uint64_t{*last} + edit.count >=
+            (rows_edited ? row_limit : column_limit)) {
       throw UnsupportedOperation();
     }
 
@@ -622,7 +646,7 @@ public:
                             .node = get_node(id)});
       sheet_entry = sheet_entry.next_sibling("sheet");
     }
-    move_row_references(
+    move_workbook_references(
         m_document->workbook(), worksheets,
         m_document->related_part(AbsPath("/xl/workbook.xml"), "calcChain"),
         sheet_id, edit);
@@ -631,24 +655,39 @@ public:
     for (pugi::xml_node row_node = sheet_data.child("row"); row_node;) {
       const pugi::xml_node next = row_node.next_sibling("row");
       const std::uint32_t index = row_node.attribute("r").as_uint() - 1;
-      if (const auto moved = edit.span(index, index); !moved.has_value()) {
-        sheet_data.remove_child(row_node);
-      } else if (moved->first != index) {
-        row_node.attribute("r").set_value(moved->first + 1);
-        for (const pugi::xml_node cell : row_node.children("c")) {
-          cell.attribute("r").set_value(
-              TablePosition(TablePosition(cell.attribute("r").value()).column,
-                            moved->first)
-                  .to_string()
-                  .c_str());
+      if (rows_edited) {
+        const auto moved = edit.span(index, index);
+        if (!moved.has_value()) {
+          sheet_data.remove_child(row_node);
+          row_node = next;
+          continue;
         }
+        row_node.attribute("r").set_value(moved->first + 1);
+      } else {
+        // a hint of the columns the row holds, which the edit makes wrong
+        row_node.remove_attribute("spans");
+      }
+      for (pugi::xml_node cell = row_node.child("c"); cell;) {
+        const pugi::xml_node next_cell = cell.next_sibling("c");
+        if (const std::optional<TablePosition> moved = move_position(
+                TablePosition(cell.attribute("r").value()), edit)) {
+          cell.attribute("r").set_value(moved->to_string().c_str());
+        } else {
+          row_node.remove_child(cell);
+        }
+        cell = next_cell;
       }
       row_node = next;
     }
+    if (!rows_edited) {
+      move_columns(sheet_node, sheet, edit);
+    }
 
-    move_sheet_ranges(sheet_node, edit);
-    move_drawing(drawing, edit);
-    move_comments(comments, threaded, notes, edit);
+    if (rows_edited) {
+      move_sheet_ranges(sheet_node, edit);
+      move_drawing(drawing, edit);
+      move_comments(comments, threaded, notes, edit);
+    }
 
     if (pugi::xml_node merges = sheet_node.child("mergeCells")) {
       for (pugi::xml_node merge = merges.child("mergeCell"); merge;) {
@@ -680,27 +719,28 @@ public:
         ref.set_value(moved->empty() ? "A1" : moved->c_str());
       }
     }
-    if (edit.index < sheet.dimensions.rows) {
-      sheet.dimensions.rows =
-          edit.insert
-              ? sheet.dimensions.rows + edit.count
-              : sheet.dimensions.rows -
-                    std::min(edit.count, sheet.dimensions.rows - edit.index);
+    std::uint32_t &extent =
+        rows_edited ? sheet.dimensions.rows : sheet.dimensions.columns;
+    if (edit.index < extent) {
+      extent = edit.insert ? extent + edit.count
+                           : extent - std::min(edit.count, extent - edit.index);
     }
 
-    decltype(sheet.rows) rows;
-    for (const auto &[index, entry] : sheet.rows) {
-      if (const auto moved = edit.span(index, index)) {
-        rows.emplace(moved->first, entry);
+    if (rows_edited) {
+      decltype(sheet.rows) rows;
+      for (const auto &[index, entry] : sheet.rows) {
+        if (const auto moved = edit.span(index, index)) {
+          rows.emplace(moved->first, entry);
+        }
       }
+      sheet.rows = std::move(rows);
     }
-    sheet.rows = std::move(rows);
     decltype(sheet.cells) cells;
     for (const auto &[position, cell] : sheet.cells) {
-      if (const auto moved = edit.span(position.row, position.row)) {
-        const TablePosition at(position.column, moved->first);
-        m_registry->sheet_cell_element_at(cell.element_id).position = at;
-        cells.emplace(at, cell);
+      if (const std::optional<TablePosition> at =
+              move_position(position, edit)) {
+        m_registry->sheet_cell_element_at(cell.element_id).position = *at;
+        cells.emplace(*at, cell);
       }
     }
     sheet.cells = std::move(cells);
@@ -711,12 +751,50 @@ public:
     m_document->drop_sheet_dependencies();
   }
 
+  /// The `col` declarations (18.3.1.13) after a column edit: one past the edit
+  /// moves, one an insert falls inside is cut and the new columns state none,
+  /// and a delete shrinks the ones it reaches. Reindexes the columns.
+  static void move_columns(pugi::xml_node sheet_node,
+                           ElementRegistry::Sheet &sheet,
+                           const formula::SheetEdit &edit) {
+    pugi::xml_node cols = sheet_node.child("cols");
+    for (pugi::xml_node col = cols.child("col"); col;) {
+      const pugi::xml_node next = col.next_sibling("col");
+      const std::uint32_t min = col.attribute("min").as_uint() - 1;
+      const std::uint32_t max = col.attribute("max").as_uint() - 1;
+      if (edit.insert && min < edit.index && edit.index <= max) {
+        const pugi::xml_node after = cols.insert_copy_after(col, col);
+        xml::set_attribute(after, "min",
+                           std::to_string(edit.index + edit.count + 1).c_str());
+        xml::set_attribute(after, "max",
+                           std::to_string(max + edit.count + 1).c_str());
+        xml::set_attribute(col, "max", std::to_string(edit.index).c_str());
+      } else if (const auto span = edit.span(min, max)) {
+        xml::set_attribute(col, "min", std::to_string(span->first + 1).c_str());
+        xml::set_attribute(col, "max",
+                           std::to_string(span->second + 1).c_str());
+      } else {
+        cols.remove_child(col);
+      }
+      col = next;
+    }
+    if (cols && !cols.child("col")) {
+      sheet_node.remove_child(cols);
+    }
+    sheet.columns.clear();
+    for (const pugi::xml_node col : sheet_node.child("cols").children("col")) {
+      sheet.register_column(col.attribute("min").as_uint() - 1,
+                            col.attribute("max").as_uint() - 1, col);
+    }
+  }
+
   /// Whether @p ref, a cell or a range, reaches over an edge of the edit: an
   /// insert strictly inside it, or a delete taking part of it.
   static bool cut_by(const std::string &ref, const formula::SheetEdit &edit) {
     const TableRange range(ref.contains(':') ? ref : ref + ":" + ref);
-    const std::uint32_t first = range.from().row;
-    const std::uint32_t last = range.to().row;
+    const bool rows = edit.axis == formula::Axis::row;
+    const std::uint32_t first = rows ? range.from().row : range.from().column;
+    const std::uint32_t last = rows ? range.to().row : range.to().column;
     if (edit.insert) {
       return first < edit.index && edit.index <= last;
     }
