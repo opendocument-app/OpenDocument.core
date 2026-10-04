@@ -66,8 +66,6 @@ public:
   /// The text a cell holding the text @p value shows.
   [[nodiscard]] std::string format(std::string_view value) const;
 
-  [[nodiscard]] const std::vector<Section> &sections() const;
-
 private:
   std::vector<Section> m_sections;
 };

@@ -419,11 +419,11 @@ std::string format_scientific(const std::vector<Token> &tokens,
     } else {
       power -= step - 1;
     }
-    // rounding may carry into one more digit
+    // rounding may carry into one more digit, and so into the next power
     const Decimal decimal =
         round_decimal(value / std::pow(10.0, power), fraction_count);
-    if (!hashed && decimal.integer.size() > integer_count) {
-      ++power;
+    if (decimal.integer.size() > integer_count) {
+      power += hashed && step > 1 ? step : 1;
     }
   }
   const double mantissa = value / std::pow(10.0, power);
@@ -685,9 +685,10 @@ Format::Format(const std::string_view code) : m_sections{parse_code(code)} {
   }
 }
 
-const std::vector<Section> &Format::sections() const { return m_sections; }
-
 std::string Format::format(const double value) const {
+  if (!std::isfinite(value)) {
+    return format_general(value);
+  }
   // the text section is not a number's
   std::size_t count = std::min<std::size_t>(m_sections.size(), 3);
   while (count > 1 && has(m_sections[count - 1], Kind::text) &&
@@ -760,6 +761,9 @@ std::string Format::format(const std::string_view value) const {
 std::string format_general(const double value) {
   if (value == 0) {
     return "0";
+  }
+  if (!std::isfinite(value)) {
+    return fmt::format("{}", value);
   }
   const double magnitude = std::abs(value);
   const std::string sign = value < 0 ? "-" : "";

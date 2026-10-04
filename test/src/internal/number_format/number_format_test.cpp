@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <stdexcept>
 #include <string>
 
@@ -22,6 +23,8 @@ TEST(NumberFormat, general_shows_fifteen_digits_at_most) {
   EXPECT_EQ(Format().format(0), "0");
   EXPECT_EQ(Format().format(1e20), "1E+20");
   EXPECT_EQ(Format().format(1.5e-12), "1.5E-12");
+  EXPECT_EQ(Format("0.00").format(std::numeric_limits<double>::infinity()),
+            "inf");
   EXPECT_EQ(shown("General", 0.00001), "0.00001");
 }
 
@@ -85,6 +88,7 @@ TEST(NumberFormat, scientific_notation) {
   EXPECT_EQ(shown("0.00E-00", 12345), "1.23E04");
   EXPECT_EQ(shown("##0.0E+0", 12345), "12.3E+3");
   EXPECT_EQ(shown("0.0E+0", 9.99), "1.0E+1");
+  EXPECT_EQ(shown("##0.0E+0", 999.99), "1.0E+3");
 }
 
 TEST(NumberFormat, fractions) {
