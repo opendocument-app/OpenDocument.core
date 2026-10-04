@@ -338,10 +338,10 @@ void StyleRegistry::resolve_border_(const std::uint32_t i,
   result.table_cell_style.border.bottom = side(border.child("bottom"));
 }
 
-std::uint32_t
-StyleRegistry::create_cell_format(const std::uint32_t base,
-                                  const TableCellStyle &cell_style,
-                                  const TextStyle &text_style) {
+std::uint32_t StyleRegistry::create_cell_format(
+    const std::uint32_t base, const TableCellStyle &cell_style,
+    const TextStyle &text_style,
+    const std::optional<std::uint32_t> number_format_id) {
   state_defaults(m_styles_root);
   generate_indices_(m_styles_root);
 
@@ -430,6 +430,12 @@ StyleRegistry::create_cell_format(const std::uint32_t base,
     }
     xml::set_attribute(alignment, "horizontal", horizontal);
     xml::set_attribute(xf, "applyAlignment", "1");
+  }
+
+  if (number_format_id) {
+    xml::set_attribute(xf, "numFmtId",
+                       std::to_string(*number_format_id).c_str());
+    xml::set_attribute(xf, "applyNumberFormat", "1");
   }
 
   const std::uint32_t result = intern(m_styles_root.child("cellXfs"), xf);

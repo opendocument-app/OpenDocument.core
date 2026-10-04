@@ -25,11 +25,13 @@ public:
   [[nodiscard]] const number_format::Format &
   number_format(std::uint32_t i) const;
 
-  /// The `cellXfs` index of @p base with the delta applied. An equal `xf`,
-  /// `font` or `fill` is reused, else one is appended.
-  std::uint32_t create_cell_format(std::uint32_t base,
-                                   const TableCellStyle &cell_style,
-                                   const TextStyle &text_style);
+  /// The `cellXfs` index of @p base with the delta applied, and with
+  /// @p number_format_id where it is stated. An equal `xf`, `font` or `fill`
+  /// is reused, else one is appended.
+  std::uint32_t
+  create_cell_format(std::uint32_t base, const TableCellStyle &cell_style,
+                     const TextStyle &text_style,
+                     std::optional<std::uint32_t> number_format_id = {});
 
 private:
   pugi::xml_node m_styles_root;

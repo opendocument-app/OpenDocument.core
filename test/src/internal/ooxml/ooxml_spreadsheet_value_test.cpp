@@ -1,11 +1,15 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
+#include <odr/file.hpp>
+#include <odr/filesystem.hpp>
+#include <odr/odr.hpp>
 
 #include <internal/ooxml/ooxml_spreadsheet_test_util.hpp>
 
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <sstream>
 #include <string>
 
 using namespace odr;
@@ -214,4 +218,63 @@ TEST(OoxmlSpreadsheetValue, date1904_counts_from_1904) {
   EXPECT_EQ(shown_at(sheet, 1), "01-02-29");
   // the value counts from 1899-12-30, whatever the workbook does
   EXPECT_DOUBLE_EQ(sheet.cell(1, 0).value().number(), 45658 + 1462);
+}
+
+namespace {
+
+Document saved_and_reopened(const Document &document) {
+  std::ostringstream saved;
+  document.save(saved);
+  return odr::open(odr::File::from_memory(saved.str()))
+      .as_document_file()
+      .document();
+}
+
+CellValue date(const double days) {
+  return CellValue(ValueType::date).with_number(days);
+}
+
+} // namespace
+
+TEST(OoxmlSpreadsheetValue, a_written_date_gets_a_date_format) {
+  const Document document = formatted();
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(6, 0, date(45658));
+  sheet.set_cell(7, 0, date(45658.75));
+  sheet.set_cell(8, 0, CellValue(ValueType::time).with_number(0.75));
+  sheet.set_cell(9, 0,
+                 CellValue(ValueType::time).with_number(0.75 + 5.0 / 86400));
+
+  const Document reopened = saved_and_reopened(document);
+  const Sheet saved = first_sheet(reopened);
+  EXPECT_EQ(saved.cell(6, 0).value().type(), ValueType::date);
+  EXPECT_DOUBLE_EQ(saved.cell(6, 0).value().number(), 45658);
+  EXPECT_EQ(shown_at(saved, 6), "01-01-25");
+  EXPECT_EQ(shown_at(saved, 7), "1/1/25 18:00");
+  EXPECT_EQ(saved.cell(8, 0).value().type(), ValueType::time);
+  EXPECT_EQ(shown_at(saved, 8), "18:00");
+  EXPECT_EQ(shown_at(saved, 9), "18:00:05");
+}
+
+TEST(OoxmlSpreadsheetValue, a_date_keeps_the_date_format_its_cell_has) {
+  const Document document = formatted(R"(<workbookPr date1904="1"/>)");
+  const Sheet sheet = first_sheet(document);
+
+  // `B1` shows `cellXfs` 2, the built-in date 14
+  sheet.set_cell(1, 0, date(45659));
+
+  const Document reopened = saved_and_reopened(document);
+  const Sheet saved = first_sheet(reopened);
+  EXPECT_EQ(shown_at(saved, 1), "01-02-25");
+  EXPECT_DOUBLE_EQ(saved.cell(1, 0).value().number(), 45659);
+  std::ostringstream xml;
+  xml << reopened.as_filesystem()
+             .open("/xl/worksheets/sheet1.xml")
+             .stream()
+             ->rdbuf();
+  // 1904 counts 1462 days fewer
+  EXPECT_NE(xml.str().find(R"(<c r="B1" s="2"><v>44197</v>)"),
+            std::string::npos)
+      << xml.str();
 }

@@ -255,9 +255,10 @@ public:
   void sheet_set_cell(const ElementIdentifier element_id,
                       const std::uint32_t column, const std::uint32_t row,
                       const CellValue &value) const override {
-    if (value.type() == ValueType::date || value.type() == ValueType::time ||
-        value.type() == ValueType::error) {
-      throw UnsupportedOperation(); // no form to write them in yet
+    if (value.type() == ValueType::error ||
+        ((value.type() == ValueType::date || value.type() == ValueType::time) &&
+         !value.has_number())) {
+      throw UnsupportedOperation(); // no form to write it in
     }
     const ElementRegistry::Sheet &sheet =
         m_registry->sheet_element_at(element_id);
@@ -329,7 +330,33 @@ public:
       m_registry->append_child(cell_id, text_id);
     } break;
     case ValueType::date:
-    case ValueType::time:
+    case ValueType::time: {
+      const pugi::xml_node value_node = node.append_child("v");
+      // a time is a duration, which no epoch moves
+      value_node.text().set(
+          fmt::format("{}", value.type() == ValueType::time
+                                ? value.number()
+                                : number_format::serial_from_days(
+                                      value.number(), m_document->epoch()))
+              .c_str());
+      const auto &[text_id, unused1, unused2] =
+          m_registry->create_text_element(value_node, value_node);
+      m_registry->append_child(cell_id, text_id);
+      // a date typed into a cell of a number format gets a date format, as
+      // Excel gives it one: 14, 20, 21 or 22 of ECMA-376 18.8.30
+      if (number_format_of(cell_id).category() ==
+          number_format::Category::number) {
+        const std::int64_t seconds = std::llround(value.number() * 86400);
+        const std::uint32_t id = value.type() == ValueType::time
+                                     ? (seconds % 60 != 0 ? 21 : 20)
+                                 : seconds % 86400 != 0 ? 22
+                                                        : 14;
+        restyle_cell(node,
+                     shown_format(node, m_registry->sheet_element_at(element_id)
+                                            .column_node(column)),
+                     {}, {}, id);
+      }
+    } break;
     case ValueType::error:
       throw UnsupportedOperation(); // refused above
     }
@@ -526,12 +553,13 @@ public:
   }
 
   /// Points the `s` of @p cell at @p base with the delta applied.
-  void restyle_cell(pugi::xml_node cell, const std::uint32_t base,
-                    const TableCellStyle &cell_style,
-                    const TextStyle &text_style) const {
+  void
+  restyle_cell(pugi::xml_node cell, const std::uint32_t base,
+               const TableCellStyle &cell_style, const TextStyle &text_style,
+               const std::optional<std::uint32_t> number_format_id = {}) const {
     const std::uint32_t format =
-        m_document->style_registry().create_cell_format(base, cell_style,
-                                                        text_style);
+        m_document->style_registry().create_cell_format(
+            base, cell_style, text_style, number_format_id);
     pugi::xml_attribute attribute = cell.attribute("s");
     if (!attribute) {
       const pugi::xml_attribute reference = cell.attribute("r");
