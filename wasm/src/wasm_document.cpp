@@ -128,61 +128,54 @@ emscripten::val set_paragraph_style(const Handle handle, const double id,
   });
 }
 
-/// @p style as the page's `odr.editing.format` takes it for a cell, replayed
-/// through the envelope, which parses it.
-emscripten::val set_cell_style(const Handle handle, const double sheet,
-                               const double column, const double row,
-                               const emscripten::val style) {
+/// One @p op stating @p style, as the page's `odr.editing.format` takes it,
+/// on the cells @p place names, replayed through the envelope, which parses
+/// it.
+emscripten::val edit_style(const Handle handle, const std::string &op,
+                           const std::string &place,
+                           const emscripten::val style) {
   return guarded([&] {
     Session &s = session(handle);
     if (style.isUndefined() || style.isNull() ||
         style.typeOf().as<std::string>() != "object") {
-      throw std::invalid_argument("setCellStyle takes a style object");
+      throw std::invalid_argument(op + " takes a style object");
     }
     const std::string json =
         emscripten::val::global("JSON").call<std::string>("stringify", style);
-    document_of(s).edit(
-        R"({"version":2,"ops":[{"op":"setCellStyle","sheet":)" +
-        std::to_string(static_cast<std::uint32_t>(sheet)) + R"(,"column":)" +
-        std::to_string(static_cast<std::uint32_t>(column)) + R"(,"row":)" +
-        std::to_string(static_cast<std::uint32_t>(row)) + R"(,"style":)" +
-        json + "}]}");
+    document_of(s).edit(R"({"version":2,"ops":[{"op":")" + op + R"(",)" +
+                        place + R"(,"style":)" + json + "}]}");
     return ok();
   });
 }
 
-/// @p style on a whole row or column: @p axis is `row` or `column`.
-emscripten::val set_axis_style(const Handle handle, const double sheet,
-                               const char *op, const char *axis,
-                               const double index,
+std::string index_field(const std::string &name, const double index) {
+  return '"' + name + R"(":)" +
+         std::to_string(static_cast<std::uint32_t>(index));
+}
+
+emscripten::val set_cell_style(const Handle handle, const double sheet,
+                               const double column, const double row,
                                const emscripten::val style) {
-  return guarded([&] {
-    Session &s = session(handle);
-    if (style.isUndefined() || style.isNull() ||
-        style.typeOf().as<std::string>() != "object") {
-      throw std::invalid_argument(std::string(op) + " takes a style object");
-    }
-    const std::string json =
-        emscripten::val::global("JSON").call<std::string>("stringify", style);
-    document_of(s).edit(
-        R"({"version":2,"ops":[{"op":")" + std::string(op) + R"(","sheet":)" +
-        std::to_string(static_cast<std::uint32_t>(sheet)) + R"(,")" + axis +
-        R"(":)" + std::to_string(static_cast<std::uint32_t>(index)) +
-        R"(,"style":)" + json + "}]}");
-    return ok();
-  });
+  return edit_style(handle, "setCellStyle",
+                    index_field("sheet", sheet) + "," +
+                        index_field("column", column) + "," +
+                        index_field("row", row),
+                    style);
 }
 
 emscripten::val set_row_style(const Handle handle, const double sheet,
                               const double row, const emscripten::val style) {
-  return set_axis_style(handle, sheet, "setRowStyle", "row", row, style);
+  return edit_style(handle, "setRowStyle",
+                    index_field("sheet", sheet) + "," + index_field("row", row),
+                    style);
 }
 
 emscripten::val set_column_style(const Handle handle, const double sheet,
                                  const double column,
                                  const emscripten::val style) {
-  return set_axis_style(handle, sheet, "setColumnStyle", "column", column,
-                        style);
+  return edit_style(
+      handle, "setColumnStyle",
+      index_field("sheet", sheet) + "," + index_field("column", column), style);
 }
 
 /// @p after of 0 is `null_element_id`: split before every child.

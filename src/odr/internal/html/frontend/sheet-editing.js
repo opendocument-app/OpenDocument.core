@@ -921,6 +921,20 @@
     });
   }
 
+  /// A style op on a cell, or on a row or a column where @p column or @p row
+  /// is null.
+  function styleOp(kind, column, row, style) {
+    var op = { op: kind, sheet: sheet };
+    if (column !== null) {
+      op.column = column;
+    }
+    if (row !== null) {
+      op.row = row;
+    }
+    op.style = Object.assign({}, style);
+    return op;
+  }
+
   /// States @p style on every selected cell as one undo step. A lock refuses
   /// a value, not a style.
   function format(style) {
@@ -951,33 +965,23 @@
     var rows = new Set();
     // a header stands for its whole row or column, past the rendered extent
     var pin = odr.sheet.pinned();
-    if (pin.row === null) {
-      ops.push({
-        op: "setColumnStyle",
-        sheet: sheet,
-        column: pin.column,
-        style: Object.assign({}, style),
-      });
-    } else if (pin.column === null) {
-      ops.push({
-        op: "setRowStyle",
-        sheet: sheet,
-        row: pin.row,
-        style: Object.assign({}, style),
-      });
+    var header = pin.row === null || pin.column === null;
+    if (header) {
+      ops.push(
+        styleOp(
+          pin.row === null ? "setColumnStyle" : "setRowStyle",
+          pin.column,
+          pin.row,
+          style
+        )
+      );
     }
     cells.forEach(function (at) {
       befores.push(snapshot(at.cell));
       paintCell(at.cell, style);
       afters.push(snapshot(at.cell));
-      if (pin.row !== null && pin.column !== null) {
-        ops.push({
-          op: "setCellStyle",
-          sheet: sheet,
-          column: at.column,
-          row: at.row,
-          style: Object.assign({}, style),
-        });
+      if (!header) {
+        ops.push(styleOp("setCellStyle", at.column, at.row, style));
       }
       rows.add(at.row);
     });
