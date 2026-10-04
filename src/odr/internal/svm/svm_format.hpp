@@ -15,9 +15,7 @@
 // https://github.com/LibreOffice/core/blob/master/include/vcl/metaact.hxx
 namespace odr::internal::svm {
 
-/// `rtl_TextEncoding`, what a byte string in the file is written in. Only the
-/// ones we have a decoder for are named; `read_string_with_encoding` takes
-/// anything else for `MS_1252`.
+/// Supported `rtl_TextEncoding` values; unknown encodings use `MS_1252`.
 enum TextEncoding {
   RTL_TEXTENCODING_DONTKNOW = 0,
   RTL_TEXTENCODING_MS_1252 = 1,
@@ -406,18 +404,14 @@ struct Hatch final {
   std::uint16_t angle{};
 };
 
-/// A clip region: bands covering it as a union of rectangles, and from
-/// version 2 the poly-polygon those were rasterised from. An *empty* region
-/// covers nothing and so clips everything away; `REGION_NULL`, which does not
-/// clip at all, is no region and reads as `std::nullopt`.
+/// A clip region as bands and optional polygons. Empty clips everything;
+/// `std::nullopt` represents `REGION_NULL`, which leaves clipping unchanged.
 struct Region final {
   std::vector<Rectangle> rectangles;
   std::vector<Polygon> polygons;
 };
 
-/// A dib as something a browser reads. A metafile stores a dib *with* its
-/// `BITMAPFILEHEADER`, so its bytes already are a `.bmp` file; they are only
-/// unpacked where a png would be smaller, which for a chart is by fifty.
+/// A DIB with its file header, preserved as BMP or repacked as PNG.
 struct Image final {
   /// Empty where the dib is one we could not hand on, its bytes read anyway.
   std::string data;
@@ -432,10 +426,8 @@ struct Bitmap final {
   Image mask;
 };
 
-/// The `BMP` family. @ref size is the logical size to draw at, empty for the
-/// actions that draw at the bitmap's own; @ref source_point and
-/// @ref source_size name the part to draw, in pixels, and are empty for the
-/// actions that draw all of it.
+/// A bitmap destination in logical units and optional source crop in pixels.
+/// An empty size uses the bitmap size; an empty crop draws the whole image.
 struct BitmapAction final {
   Bitmap bitmap;
   IntPair point;
@@ -524,9 +516,8 @@ TextLineAction read_text_line_action(std::istream &in, const VersionLength &vl);
 std::uint16_t read_push_action(std::istream &in, const VersionLength &vl);
 /// The `TextAlign` of a `TEXTALIGN`.
 std::uint16_t read_text_align_action(std::istream &in);
-/// A colour *inside* an object, which is not the plain `uint32` an action's
-/// own colour is: `GenericTypeSerializer::readColor` reads a name id, and only
-/// the user one carries three 16-bit channels behind it.
+/// `GenericTypeSerializer::readColor`: a name ID, followed by three 16-bit
+/// channels for user-defined colors.
 std::uint32_t read_object_color(std::istream &in);
 Gradient read_gradient(std::istream &in);
 Hatch read_hatch(std::istream &in);
@@ -536,9 +527,7 @@ std::optional<Region> read_region(std::istream &in);
 /// A `CLIPREGION`: the region, and whether it clips at all.
 std::pair<std::optional<Region>, bool>
 read_clip_region_action(std::istream &in);
-/// A dib with its file header, as `ReadDIB(…, bFileHeader=true)` reads one.
-/// @p limit is what the enclosing action declared, so a length field cannot
-/// ask for more than the file holds.
+/// Reads a DIB with its file header, consuming at most @p limit bytes.
 Image read_dib(std::istream &in, std::uint32_t limit);
 /// @ref read_dib plus the optional transparency mask behind it, as
 /// `ReadDIBBitmapEx` reads one.

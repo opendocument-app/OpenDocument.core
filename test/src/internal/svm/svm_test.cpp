@@ -203,9 +203,7 @@ public:
         .end();
   }
 
-  /// A 24-bit uncompressed dib with the `BITMAPFILEHEADER` a metafile stores
-  /// it behind. @p pixels is @p width * @p height bgr triples, top row first;
-  /// the rows go out bottom-up and padded, as a dib holds them.
+  /// Writes a 24-bit DIB from top-down BGR triples, adding row padding.
   SvmBuilder &dib(const std::int32_t width, const std::int32_t height,
                   const std::string &pixels) {
     const std::size_t stride = ((width * 24 + 31) / 32) * 4;
@@ -679,9 +677,7 @@ TEST(SvmToSvg, text_draws_the_run_it_names) {
   EXPECT_NE(std::string::npos, svg.find(">cde</text>"));
 }
 
-/// A metafile stores a dib behind its file header, so the bytes already are a
-/// bmp - and where the pixels can simply be copied out, a png instead, which
-/// is what keeps a chart from costing megabytes.
+// Uncompressed pixels are repacked as PNG.
 TEST(SvmToSvg, a_bitmap_is_drawn_where_the_action_puts_it) {
   const std::string white_black_red_blue("\xff\xff\xff"
                                          "\x00\x00\x00"
@@ -701,8 +697,6 @@ TEST(SvmToSvg, a_bitmap_is_drawn_where_the_action_puts_it) {
   EXPECT_NE(std::string::npos, svg.find("href=\"data:image/png;base64,"));
 }
 
-/// The mask says where the bitmap does *not* show, in white - and an svg mask
-/// keeps what is white, so it goes through a filter that inverts it.
 TEST(SvmToSvg, an_unsized_bitmap_is_drawn_at_its_pixel_size) {
   // 16 pixels at 96 dpi is 16 * 2540 / 96 = 423 hundredths of a millimetre;
   // truncating the per-pixel 26.458 to 26 first would say 416
@@ -896,9 +890,7 @@ TEST(SvmToSvg, line) {
   EXPECT_NE(std::string::npos, svg.find("d=\"M 1,2 L 3,4\""));
 }
 
-/// A dot is a zero-length path with a round cap, which a browser draws and a
-/// zero-length `<line>` does not. A `PIXEL` brings its own colour and leaves
-/// the state's alone.
+// A pixel uses its own color without changing the point-drawing state.
 TEST(SvmToSvg, a_point_and_a_pixel_are_dots) {
   const std::string svg = translate(SvmBuilder()
                                         .action(svm::META_LINECOLOR_ACTION)
@@ -1114,9 +1106,7 @@ TEST(SvmToSvg, a_pop_restores_the_map_mode) {
   EXPECT_NE(std::string::npos, svg.find("width=\"100\" height=\"100\""));
 }
 
-/// Two control points between two corners are a bezier segment, which is a
-/// `C` - the same path LibreOffice writes for the same polygon.
-/// 0x92 is a curly apostrophe in `MS_1252` and a control character in latin-1.
+// 0x92 is a curly apostrophe in `MS_1252` and a control character in latin-1.
 TEST(SvmToSvg, text_is_decoded_by_the_font_charset) {
   const auto translate_in = [](const std::uint16_t charset) {
     return translate(SvmBuilder()

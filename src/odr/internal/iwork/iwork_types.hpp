@@ -5,25 +5,13 @@
 
 namespace odr::internal::iwork {
 
-/// The archive types and field numbers the engine reads.
-///
-/// There is no spec and Apple has never published the `.proto` schemas, so
-/// each of these is cited to the fixture it was read off rather than to a
-/// section number, and holds for the iWork version that wrote it — see
-/// `Metadata/BuildVersionHistory.plist`. A type id that is not here is one we
-/// have not mapped, which the reader skips rather than throws on.
-///
-/// Type ids are namespaced per app: `TP.*` (Pages) starts at 10000 while
-/// `KN.*` (Keynote) and `TN.*` (Numbers) both start at 1, so a `.key` and a
-/// `.numbers` share every low id — see `app_by_components` in
-/// `iwork_file.cpp`. Only the `TS*` frameworks (text storage, drawables,
-/// tables) mean the same thing in all three.
+/// Fixture-verified archive IDs and fields. IDs are app-specific; see
+/// AGENTS.md.
 namespace archive_type {
 /// `TP.DocumentArchive`, the root of a `.pages` package.
 /// `empty.pages Index/Document.iwa` object 1 (iWork 13.2).
 constexpr std::uint32_t pages_document = 10000;
-/// `KN.DocumentArchive` and `TN.DocumentArchive`, the root of a `.key` and of
-/// a `.numbers` package alike.
+/// `KN.DocumentArchive` / `TN.DocumentArchive`.
 /// `empty.key` / `empty.numbers Index/Document.iwa` object 1 (iWork 14.4).
 constexpr std::uint32_t app_document = 1;
 /// `KN.ShowArchive`, the deck below a `.key` root.
@@ -35,8 +23,7 @@ constexpr std::uint32_t keynote_slide_node = 4;
 /// `KN.SlideArchive`, one slide.
 /// `empty.key Index/Slide-31724.iwa` object 31724 (iWork 14.4).
 constexpr std::uint32_t keynote_slide = 5;
-/// `KN.PlaceholderArchive`, a title or body box a slide inherits from its
-/// master. Wraps a @ref text_shape in its first field.
+/// `KN.PlaceholderArchive`, wrapping a text shape.
 /// `empty.key Index/Slide-31724.iwa` object 31730 (iWork 14.4).
 constexpr std::uint32_t keynote_placeholder = 7;
 /// `TSWP.StorageArchive`, a run of text with its run tables.
@@ -48,8 +35,7 @@ constexpr std::uint32_t text_shape = 2011;
 /// `TSWP.DrawableAttachmentArchive`, what a `U+FFFC` in a text flow points at.
 /// `style-various-1.pages Index/Document.iwa` object 1732925 (iWork 13.2).
 constexpr std::uint32_t drawable_attachment = 2003;
-/// `TN.SheetArchive`, one sheet of a `.numbers` package. Numbered the same as
-/// @ref keynote_show — see the note above.
+/// `TN.SheetArchive`.
 /// `style-various-1.numbers Index/Document.iwa` object 904475 (iWork 14.4).
 constexpr std::uint32_t numbers_sheet = 2;
 /// `TST.TableInfoArchive`, the drawable a table is placed by.
@@ -104,9 +90,8 @@ constexpr std::uint32_t slide = 2;
 } // namespace slide_node
 
 namespace slide_archive {
-/// One drawable on the slide, as a `TSP.Reference`; repeated, in z-order.
-/// Placeholders the slide leaves empty are not in this list, which is why it
-/// is read rather than the title and body references beside it.
+/// Drawables in z-order as repeated `TSP.Reference`s; excludes empty
+/// placeholders.
 constexpr std::uint32_t drawables = 7;
 } // namespace slide_archive
 
@@ -156,9 +141,7 @@ constexpr std::uint32_t columns = 7;
 constexpr std::uint32_t name = 8;
 } // namespace table_model
 
-/// `TST.DataStore` — the tiles a table's cells live in, and the side lists
-/// they reference by key. The other lists it names are formats, formulas and
-/// styles, none of which is read.
+/// `TST.DataStore`: tiles and the side lists referenced by cells.
 namespace data_store {
 constexpr std::uint32_t tiles = 3;
 constexpr std::uint32_t string_list = 4;
@@ -206,13 +189,8 @@ namespace rich_text_payload {
 constexpr std::uint32_t storage = 1;
 } // namespace rich_text_payload
 
-/// One packed cell record inside a tile row's storage.
-///
-/// The layout is a twelve-byte header — a version byte, a type byte, six bytes
-/// nothing here reads, then a little-endian `std::uint32_t` of flags — followed
-/// by the optional fields the flags name, in ascending bit order. Read off the
-/// cells of `style-various-1.pages` (iWork 13.2) and
-/// `style-various-1.numbers` (iWork 14.4), which agree.
+/// Packed cell layout, verified on `style-various-1.pages` (iWork 13.2) and
+/// `style-various-1.numbers` (iWork 14.4). See AGENTS.md for the byte layout.
 namespace cell {
 /// The only encoding both fixtures write. A record that declares another is
 /// one we have not mapped, and reads as an empty cell rather than a wrong one.
@@ -232,9 +210,7 @@ constexpr std::uint8_t duration = 7;  ///< a count of seconds
 constexpr std::uint8_t rich_text = 9; ///< a key into the rich text list
 } // namespace type
 
-/// The flag bits that name a value, with the width each one occupies. The
-/// higher bits name styles and formats, which nothing reads — a value is
-/// always in one of these five, so the walk stops after the last of them.
+/// Value payload flags; higher bits describe unparsed styles and formats.
 namespace flag {
 constexpr std::uint32_t decimal = 1U << 0;       ///< 16 bytes, IEEE decimal128
 constexpr std::uint32_t number = 1U << 1;        ///< 8 bytes, IEEE double
@@ -250,10 +226,8 @@ constexpr std::uint32_t text = 3;
 /// The paragraph style run table: one entry per paragraph, holding the
 /// character index the paragraph starts at and, where it has one, its style.
 constexpr std::uint32_t paragraph_styles = 5;
-/// The attachment run table: one entry per `U+FFFC` in the text, naming the
-/// drawable anchored there.
-/// `style-various-1.pages` body storage, indices 18, 460 and 469 against the
-/// three anchors the text carries (iWork 13.2).
+/// Attachments by UTF-16 index: `style-various-1.pages` body storage has
+/// `U+FFFC` anchors at 18, 460 and 469 (iWork 13.2).
 constexpr std::uint32_t attachments = 9;
 } // namespace text_storage
 

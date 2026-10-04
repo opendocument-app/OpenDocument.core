@@ -45,9 +45,8 @@ private:
   std::vector<Object> m_objects;
 };
 
-/// An iWork package. Objects reference each other across components, so the
-/// list from `Index/Metadata.iwa` is read first and a component decompressed
-/// when something in it is asked for.
+/// Resolves cross-component objects, loading components on demand from the
+/// list in `Index/Metadata.iwa`.
 class Package final {
 public:
   explicit Package(const abstract::ReadableFilesystem &filesystem);

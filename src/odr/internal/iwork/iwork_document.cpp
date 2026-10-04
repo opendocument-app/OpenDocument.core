@@ -302,9 +302,8 @@ private:
     return Measure(value, DynamicUnit("pt"));
   }
 
-  /// One side of a frame's rectangle, or nothing where the frame has no
-  /// geometry or the side itself is absent — which only an extent is, for a
-  /// box that grows with its text.
+  /// Returns a frame measure, or nothing for missing geometry or an autosized
+  /// side.
   template <typename Selector>
   [[nodiscard]] std::optional<Measure>
   rect_measure(const ElementIdentifier element_id,

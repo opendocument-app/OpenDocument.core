@@ -13,10 +13,7 @@ namespace odr::internal::svg {
 /// any other xml - and what @ref SvgFile's constructor throws on.
 [[nodiscard]] bool is_svg_file(const xml::XmlFile &file);
 
-/// An image whose bytes are an xml document, so the xml decoder is what
-/// recognises it and what resolves its encoding. Nothing is drawn from the
-/// tree - the markup goes into a page as the `<img>` data url every other
-/// image does.
+/// An XML-backed image embedded as an `<img>` data URL.
 class SvgFile final : public abstract::ImageFile {
 public:
   /// @throws NoSvgFile if @p file's root element is not `svg`.

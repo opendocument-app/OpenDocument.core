@@ -99,10 +99,7 @@ std::optional<ElementRegistry::Rect> shape_rect(const Message &shape) {
   return rect;
 }
 
-/// The `TSWP.ShapeArchive` a drawable holds, or nothing when it is a kind we
-/// do not read — a table, an image, a group. An unmapped drawable is skipped
-/// rather than thrown on: there is no spec, so it is a shape Apple ships and
-/// we have not seen.
+/// Returns a drawable's text shape, or nothing for an unmapped kind.
 std::optional<Message> text_shape_of(const Object &drawable) {
   switch (drawable.type) {
   case archive_type::text_shape:
@@ -159,9 +156,7 @@ void parse_slide(const Context &context, const ElementIdentifier slide_id,
   }
 }
 
-/// One Numbers sheet holds many tables and our `Sheet` is one grid, so each
-/// table becomes an odr sheet of its own — taking only the first would drop
-/// data with nothing to show for it.
+/// Appends one odr sheet per Numbers table.
 void parse_sheet(const Context &context, const ElementIdentifier root_id,
                  const Object &sheet) {
   ElementRegistry &registry = *context.registry;

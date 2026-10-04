@@ -11,11 +11,8 @@ namespace odr::internal::svg {
 /// @p value is not finite - `nan` in an attribute drops the element.
 [[nodiscard]] std::string format_number(double value);
 
-/// @brief Writes escaped svg markup.
-///
-/// The `style` attribute is accumulated as declarations arrive and written when
-/// the element takes content or ends, so attributes and style may be written in
-/// any order.
+/// Writes escaped SVG, buffering style declarations until content or closing.
+/// Attributes and style declarations may arrive in any order.
 class SvgWriter final {
 public:
   explicit SvgWriter(std::ostream &out);

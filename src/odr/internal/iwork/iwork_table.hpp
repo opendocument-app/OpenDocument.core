@@ -34,17 +34,11 @@ struct TableModel final {
   std::vector<Cell> cells;
 };
 
-/// Reads the table the `TST.TableInfoArchive` @p identifier names, spending
-/// what it decodes against @p budget. A drawable kind we have not mapped comes
-/// back as an empty table rather than throwing, as every other per-drawable
-/// reader does.
+/// Reads a table within @p budget; unknown drawable kinds yield an empty model.
 TableModel read_table(Package &package, Budget &budget,
                       std::uint64_t identifier);
 
-/// Every table one parse reads, by identifier. A reference list may name one
-/// table any number of times, and `Package::object` memoises the archive but
-/// not the tiles below it — so a repeat that decoded them again would spend
-/// the bytes without building an element the budget could count.
+/// Caches decoded table models by identifier for one parse.
 class TableCache final {
 public:
   const TableModel &table(Package &package, Budget &budget,
