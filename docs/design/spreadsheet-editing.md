@@ -529,8 +529,8 @@ formulas, the next time an edit asks it.
 - `.xlsx` numbers every `row` and `c`, so the writer states the numbers
   again past the edit. The `dimension`, the merges, the defined names and
   every formula move. A shared formula whose members would read something
-  else after the move is written out as one formula per cell. `calcChain.xml`
-  is dropped, because it lists positions and Excel builds it again.
+  else after the move is written out as one formula per cell. The entries
+  of `calcChain.xml` move with their cells, and the ones in removed rows go.
   Step 4 moves the ranges of the conditional formats, the validations, the
   links and the filter, the selection and the pane of the view, the drawing
   anchors and the comments.

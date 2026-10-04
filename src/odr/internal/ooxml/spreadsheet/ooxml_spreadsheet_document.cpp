@@ -13,6 +13,7 @@
 #include <odr/internal/formula/formula_writer.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.hpp>
+#include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_references.hpp>
 #include <odr/internal/util/number_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
@@ -125,6 +126,25 @@ StyleRegistry &Document::style_registry() { return m_style_registry; }
 
 number_format::Epoch Document::epoch() const { return m_epoch; }
 
+pugi::xml_node Document::workbook() const {
+  return m_xml_documents_and_relations.at(AbsPath("/xl/workbook.xml"))
+      .first.document_element();
+}
+
+pugi::xml_node Document::calc_chain() {
+  const std::optional<AbsPath> path = parse_relationship_target(
+      *m_files, AbsPath("/xl/workbook.xml"), "calcChain");
+  if (!path.has_value() || !m_files->is_file(*path)) {
+    return {};
+  }
+  if (const auto parsed = m_xml_documents_and_relations.find(*path);
+      parsed != m_xml_documents_and_relations.end()) {
+    return parsed->second.first.document_element();
+  }
+  m_written_parts.push_back(*path);
+  return parse_xml_(*path).first.document_element();
+}
+
 bool Document::is_editable() const noexcept { return true; }
 
 bool Document::is_savable(const bool encrypted) const noexcept {
@@ -138,9 +158,7 @@ void Document::save(std::ostream &out) const {
 
   // ECMA-376 18.2.2: nothing here computes a formula, so every save asks the
   // reader to recompute what this one may have invalidated
-  pugi::xml_node calc_node =
-      calc_pr(m_xml_documents_and_relations.at(AbsPath("/xl/workbook.xml"))
-                  .first.document_element());
+  pugi::xml_node calc_node = calc_pr(workbook());
   calc_node.remove_attribute("fullCalcOnLoad");
   calc_node.append_attribute("fullCalcOnLoad").set_value("1");
 
@@ -508,6 +526,177 @@ public:
                            column_node.attribute("style").as_uint(), cell_style,
                            text_style))
             .c_str());
+  }
+
+  void sheet_insert_rows(const ElementIdentifier element_id,
+                         const std::uint32_t row,
+                         const std::uint32_t count) const override {
+    edit_rows(element_id, {.row = row, .count = count});
+  }
+  void sheet_delete_rows(const ElementIdentifier element_id,
+                         const std::uint32_t row,
+                         const std::uint32_t count) const override {
+    edit_rows(element_id, {.row = row, .count = count, .insert = false});
+  }
+
+  /// The rows of the grid (ECMA-376 18.3.1.73).
+  static constexpr std::uint32_t row_limit = 1048576;
+
+  /// Every `row` and `c` states its number (18.3.1.73, 18.3.1.4), so the ones
+  /// past the edit are numbered again, and the merges, the dimension, every
+  /// formula, every defined name and the calc chain move with them.
+  void edit_rows(const ElementIdentifier element_id,
+                 formula::RowEdit edit) const {
+    ElementRegistry::Sheet &sheet = m_registry->sheet_element_at(element_id);
+    edit.sheet = sheet.name;
+    pugi::xml_node sheet_node = get_node(element_id);
+
+    // decided before anything is written
+    for (const pugi::xml_node merge :
+         sheet_node.child("mergeCells").children("mergeCell")) {
+      if (cut_by(merge.attribute("ref").value(), edit)) {
+        throw UnsupportedOperation();
+      }
+    }
+    std::uint32_t last_row = 0;
+    for (const auto &[index, entry] : sheet.rows) {
+      last_row = std::max(last_row, index);
+      for (const pugi::xml_node cell : entry.node.children("c")) {
+        if (const pugi::xml_node formula = cell.child("f");
+            std::string_view(formula.attribute("t").value()) == "array" &&
+            cut_by(formula.attribute("ref").value(), edit)) {
+          throw UnsupportedOperation();
+        }
+      }
+    }
+    if (edit.insert && !sheet.rows.empty() && last_row >= edit.row &&
+        static_cast<std::uint64_t>(last_row) + edit.count >= row_limit) {
+      throw UnsupportedOperation();
+    }
+
+    std::vector<ElementIdentifier> sheet_ids;
+    std::vector<NamedWorksheet> worksheets;
+    std::string sheet_id;
+    pugi::xml_node sheet_entry =
+        m_document->workbook().child("sheets").child("sheet");
+    for (ElementIdentifier id = element_first_child(m_document->root_element());
+         id != null_element_id; id = element_next_sibling(id)) {
+      if (id == element_id) {
+        sheet_id = sheet_entry.attribute("sheetId").value();
+      }
+      sheet_ids.push_back(id);
+      worksheets.push_back({.name = m_registry->sheet_element_at(id).name,
+                            .node = get_node(id)});
+      sheet_entry = sheet_entry.next_sibling("sheet");
+    }
+    move_row_references(m_document->workbook(), worksheets,
+                        m_document->calc_chain(), sheet_id, edit);
+
+    pugi::xml_node sheet_data = sheet_node.child("sheetData");
+    for (pugi::xml_node row_node = sheet_data.child("row"); row_node;) {
+      const pugi::xml_node next = row_node.next_sibling("row");
+      const std::uint32_t index = row_node.attribute("r").as_uint() - 1;
+      if (const auto moved = edit.span(index, index); !moved.has_value()) {
+        sheet_data.remove_child(row_node);
+      } else if (moved->first != index) {
+        row_node.attribute("r").set_value(moved->first + 1);
+        for (const pugi::xml_node cell : row_node.children("c")) {
+          cell.attribute("r").set_value(
+              TablePosition(TablePosition(cell.attribute("r").value()).column,
+                            moved->first)
+                  .to_string()
+                  .c_str());
+        }
+      }
+      row_node = next;
+    }
+
+    if (pugi::xml_node merges = sheet_node.child("mergeCells")) {
+      for (pugi::xml_node merge = merges.child("mergeCell"); merge;) {
+        const pugi::xml_node next = merge.next_sibling("mergeCell");
+        if (const std::optional<std::string> moved =
+                move_row_addresses(merge.attribute("ref").value(), edit,
+                                   sheet.name, formula::Syntax::ooxml)) {
+          if (moved->empty()) {
+            merges.remove_child(merge);
+          } else {
+            merge.attribute("ref").set_value(moved->c_str());
+          }
+        }
+        merge = next;
+      }
+      if (!merges.child("mergeCell")) {
+        sheet_node.remove_child(merges);
+      } else if (pugi::xml_attribute merge_count = merges.attribute("count")) {
+        merge_count.set_value(static_cast<std::uint32_t>(
+            std::ranges::distance(merges.children("mergeCell"))));
+      }
+    }
+
+    if (pugi::xml_attribute ref =
+            sheet_node.child("dimension").attribute("ref");
+        ref) {
+      if (const std::optional<std::string> moved = move_row_addresses(
+              ref.value(), edit, sheet.name, formula::Syntax::ooxml)) {
+        ref.set_value(moved->empty() ? "A1" : moved->c_str());
+      }
+    }
+    if (edit.row < sheet.dimensions.rows) {
+      sheet.dimensions.rows =
+          edit.insert
+              ? sheet.dimensions.rows + edit.count
+              : sheet.dimensions.rows -
+                    std::min(edit.count, sheet.dimensions.rows - edit.row);
+    }
+
+    decltype(sheet.rows) rows;
+    for (const auto &[index, entry] : sheet.rows) {
+      if (const auto moved = edit.span(index, index)) {
+        rows.emplace(moved->first, entry);
+      }
+    }
+    sheet.rows = std::move(rows);
+    decltype(sheet.cells) cells;
+    for (const auto &[position, cell] : sheet.cells) {
+      if (const auto moved = edit.span(position.row, position.row)) {
+        const TablePosition at(position.column, moved->first);
+        m_registry->sheet_cell_element_at(cell.element_id).position = at;
+        cells.emplace(at, cell);
+      }
+    }
+    sheet.cells = std::move(cells);
+
+    for (const ElementIdentifier id : sheet_ids) {
+      index_shared_formulas(m_registry->sheet_element_at(id));
+    }
+    m_document->drop_sheet_dependencies();
+  }
+
+  /// Whether @p ref, a cell or a range, reaches over an edge of the edit: an
+  /// insert strictly inside it, or a delete taking part of it.
+  static bool cut_by(const std::string &ref, const formula::RowEdit &edit) {
+    const TableRange range(ref.contains(':') ? ref : ref + ":" + ref);
+    const std::uint32_t first = range.from().row;
+    const std::uint32_t last = range.to().row;
+    if (edit.insert) {
+      return first < edit.row && edit.row <= last;
+    }
+    const std::uint64_t end = static_cast<std::uint64_t>(edit.row) + edit.count;
+    return first < end && last >= edit.row && (first < edit.row || last >= end);
+  }
+
+  /// The masters of the shared groups, as the cells state them now.
+  static void index_shared_formulas(ElementRegistry::Sheet &sheet) {
+    sheet.shared_formulas.clear();
+    for (const auto &[position, cell] : sheet.cells) {
+      if (const pugi::xml_node formula = cell.node.child("f");
+          std::string_view(formula.attribute("t").value()) == "shared" &&
+          !std::string_view(formula.text().get()).empty()) {
+        sheet.shared_formulas.emplace(formula.attribute("si").value(),
+                                      ElementRegistry::Sheet::SharedFormula{
+                                          position, formula.text().get()});
+      }
+    }
   }
 
   /// The number format the cell @p cell_id shows its value in.

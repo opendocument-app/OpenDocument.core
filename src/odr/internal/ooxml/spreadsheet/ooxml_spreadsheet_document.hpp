@@ -26,6 +26,12 @@ public:
   /// Where a date serial counts from, as `workbookPr/@date1904` says.
   [[nodiscard]] number_format::Epoch epoch() const;
 
+  /// The `workbook` element of `xl/workbook.xml`.
+  [[nodiscard]] pugi::xml_node workbook() const;
+  /// The `calcChain` element (ECMA-376 18.6), read on first use and written
+  /// back by `save`. Null where the package has none.
+  [[nodiscard]] pugi::xml_node calc_chain();
+
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
 

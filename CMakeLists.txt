@@ -274,6 +274,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/ooxml/presentation/ooxml_presentation_style.cpp"
         "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_document.cpp"
         "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.cpp"
+        "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_references.cpp"
         "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element_registry.cpp"
         "src/odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.cpp"
         "src/odr/internal/ooxml/text/ooxml_text_document.cpp"

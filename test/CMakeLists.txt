@@ -104,6 +104,7 @@ add_executable(odr_test
         "src/internal/ooxml/ooxml_crypto_test.cpp"
         "src/internal/ooxml/ooxml_text_style_test.cpp"
         "src/internal/ooxml/ooxml_spreadsheet_merge_test.cpp"
+        "src/internal/ooxml/ooxml_spreadsheet_rows_test.cpp"
         "src/internal/ooxml/ooxml_spreadsheet_style_test.cpp"
         "src/internal/ooxml/ooxml_spreadsheet_style_write_test.cpp"
         "src/internal/ooxml/ooxml_spreadsheet_value_test.cpp"
