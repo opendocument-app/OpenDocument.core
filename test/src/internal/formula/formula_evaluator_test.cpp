@@ -206,6 +206,8 @@ TEST(FormulaEvaluator, a_whole_column_reaches_past_the_extent_of_its_sheet) {
   // `t` states one row, and the formula sits in row 30
   EXPECT_EQ(xlsx("=t!A:A"), number(0));
   EXPECT_EQ(xlsx("=SUM(t!A:A)"), number(5));
+  EXPECT_EQ(xlsx("=SUM(t!1:1)"), number(5));
+  EXPECT_EQ(xlsx("=SUM(4:5)"), number(2));
 }
 
 TEST(FormulaEvaluator, a_libreoffice_boolean_in_a_join_follows_its_version) {

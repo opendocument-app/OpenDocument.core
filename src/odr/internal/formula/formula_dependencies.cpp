@@ -1,5 +1,7 @@
 #include <odr/internal/formula/formula_dependencies.hpp>
 
+#include <odr/internal/util/string_util.hpp>
+
 #include <algorithm>
 #include <limits>
 #include <variant>
@@ -28,17 +30,29 @@ Extent extent_of(const CellReference &from, const CellReference &to) {
           {std::max(from_column, to_column), std::max(from_row, to_row)}}};
 }
 
+void add_extent(const CellReference &from, const CellReference &to,
+                References &into) {
+  if ((from.sheet.has_value() && from.sheet->find(':') != std::string::npos) ||
+      (to.document.has_value() && to.document != from.document) ||
+      (to.sheet.has_value() &&
+       (!from.sheet.has_value() ||
+        !util::string::equals_ignore_case(*from.sheet, *to.sheet)))) {
+    into.complete = false;
+  }
+  into.extents.push_back(extent_of(from, to));
+}
+
 const CellReference *as_cell(const Node &node) {
   return std::get_if<CellReference>(&node.content);
 }
 
 void collect(const Node &node, References &into) {
   if (const auto *cell = as_cell(node)) {
-    into.extents.push_back(extent_of(*cell, *cell));
+    add_extent(*cell, *cell, into);
     return;
   }
   if (const auto *range = std::get_if<RangeReference>(&node.content)) {
-    into.extents.push_back(extent_of(range->from, range->to));
+    add_extent(range->from, range->to, into);
     return;
   }
   if (node.holds<NameReference>()) {
@@ -52,7 +66,7 @@ void collect(const Node &node, References &into) {
     const CellReference *from = as_cell(node.children.front());
     const CellReference *to = as_cell(node.children.back());
     if (from != nullptr && to != nullptr) {
-      into.extents.push_back(extent_of(*from, *to));
+      add_extent(*from, *to, into);
       return;
     }
     // a corner that is no reference: what the range spans cannot be read

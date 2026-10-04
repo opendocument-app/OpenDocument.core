@@ -211,3 +211,12 @@ TEST(SheetDependencies, a_formula_after_a_merge_is_at_its_own_position) {
   EXPECT_EQ(spelled(document.dependents(SheetPosition(0, 0, 1))),
             (std::vector<std::string>{"0!C1"}));
 }
+
+TEST(SheetDependencies, a_range_across_sheets_is_unresolved) {
+  const Document document = decode(flat_document(
+      sheet("First", row(number("1"))) + sheet("Last", row(number("2"))) +
+      sheet("Report", row(computed("of:=SUM([First.A1:Last.A1])") +
+                          computed("of:=SUM([First.A1:FIRST.A1])")))));
+  EXPECT_EQ(spelled(document.unresolved_formulas()),
+            (std::vector<std::string>{"2!A1"}));
+}
