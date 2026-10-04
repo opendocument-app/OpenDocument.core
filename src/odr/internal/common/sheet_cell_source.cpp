@@ -74,17 +74,17 @@ bool is_at(const SheetCell &cell, const TablePosition &position) {
 } // namespace
 
 SheetCellSource::SheetCellSource(const abstract::Document &document)
-    : m_settings{document.formula_settings()},
+    : m_adapter{document.element_adapter()},
+      m_settings{document.formula_settings()},
       m_syntax{formula::syntax_of(document.file_type())} {
   for (formula::Name &name : document.formula_names()) {
     m_names[util::string::to_lower(name.name)].push_back(std::move(name));
   }
-  const abstract::ElementAdapter *adapter = document.element_adapter();
-  m_adapter = adapter;
-  if (adapter == nullptr) {
+  if (m_adapter == nullptr) {
     return;
   }
-  for (Element child = Element(adapter, document.root_element()).first_child();
+  for (Element child =
+           Element(m_adapter, document.root_element()).first_child();
        child; child = child.next_sibling()) {
     if (child.type() != ElementType::sheet) {
       continue;

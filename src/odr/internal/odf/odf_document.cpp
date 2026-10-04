@@ -248,8 +248,6 @@ void remove_value_attributes(pugi::xml_node node) {
   }
 }
 
-/// [ODF 1.2] 19.385 `office:value-type`. A cell stating neither a type nor
-/// any content is empty, which a cell holding an empty text is not.
 /// Whether the LibreOffice that @p generator names spells a boolean as
 /// `TRUE` in `&`: from 27.2 on (its commit 5663da9fa7). Nothing for another
 /// application, or for a build of 27.2 before its release, which may not.
@@ -282,6 +280,8 @@ std::optional<bool> boolean_word_of(std::string_view generator) {
   return std::nullopt;
 }
 
+/// [ODF 1.2] 19.385 `office:value-type`. A cell stating neither a type nor
+/// any content is empty, which a cell holding an empty text is not.
 ValueType value_type_of(const pugi::xml_node node) {
   // LibreOffice states an error a formula computed as a text of its spelling
   if (std::strcmp("error", node.attribute("calcext:value-type").value()) == 0) {
@@ -691,46 +691,51 @@ public:
   void sheet_visit_formulas(
       const ElementIdentifier element_id,
       const abstract::SheetFormulaVisitor &visitor) const override {
-    const ElementRegistry::Sheet &sheet =
-        m_registry->sheet_element_at(element_id);
-    std::uint32_t row = 0;
-    for (const ElementRegistry::Sheet::Row &run : sheet.rows) {
-      for (const ElementRegistry::Sheet::Cell &cell : sheet.row_cells(run)) {
-        if (const pugi::xml_attribute formula =
-                cell.node.attribute("table:formula")) {
-          // [ODF 1.2] 19.684: an array formula states the range it fills
-          const pugi::xml_attribute matrix_columns =
-              cell.node.attribute("table:number-matrix-columns-spanned");
-          const TableDimensions span =
-              matrix_columns
-                  ? TableDimensions(
-                        cell.node.attribute("table:number-matrix-rows-spanned")
-                            .as_uint(1),
-                        matrix_columns.as_uint(1))
-                  : TableDimensions(run.end - row, cell.end - cell.begin);
-          visitor(cell.begin, row, span, bool(matrix_columns), formula.value());
-        }
+    for_each_cell_run(element_id, [&](const ElementRegistry::Sheet::Cell &cell,
+                                      const std::uint32_t row,
+                                      const TableDimensions &repeated) {
+      if (const pugi::xml_attribute formula =
+              cell.node.attribute("table:formula")) {
+        // [ODF 1.2] 19.684: an array formula states the range it fills
+        const pugi::xml_attribute matrix_columns =
+            cell.node.attribute("table:number-matrix-columns-spanned");
+        const TableDimensions span =
+            matrix_columns
+                ? TableDimensions(
+                      cell.node.attribute("table:number-matrix-rows-spanned")
+                          .as_uint(1),
+                      matrix_columns.as_uint(1))
+                : repeated;
+        visitor(cell.begin, row, span, bool(matrix_columns), formula.value());
       }
-      row = run.end;
-    }
+    });
   }
   bool
   sheet_visit_cells(const ElementIdentifier element_id,
                     const abstract::SheetCellVisitor &visitor) const override {
+    for_each_cell_run(element_id, [&](const ElementRegistry::Sheet::Cell &cell,
+                                      const std::uint32_t row,
+                                      const TableDimensions &repeated) {
+      if (cell.element_id != null_element_id) {
+        visitor(cell.begin, row, repeated, cell.element_id);
+      }
+    });
+    return true;
+  }
+  /// Calls @p visit with every cell run of the sheet the parser indexed, the
+  /// row it starts at, and the rows and columns its repeat stands for.
+  template <typename Visit>
+  void for_each_cell_run(const ElementIdentifier element_id,
+                         const Visit &visit) const {
     const ElementRegistry::Sheet &sheet =
         m_registry->sheet_element_at(element_id);
     std::uint32_t row = 0;
     for (const ElementRegistry::Sheet::Row &run : sheet.rows) {
       for (const ElementRegistry::Sheet::Cell &cell : sheet.row_cells(run)) {
-        if (cell.element_id != null_element_id) {
-          visitor(cell.begin, row,
-                  TableDimensions(run.end - row, cell.end - cell.begin),
-                  cell.element_id);
-        }
+        visit(cell, row, TableDimensions(run.end - row, cell.end - cell.begin));
       }
       row = run.end;
     }
-    return true;
   }
   /// [ODF 1.2] 19.385: the value is an attribute and the `text:p` under the
   /// cell shows it, so both are written or the file contradicts itself.

@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <span>
 #include <string>
 #include <unordered_map>
@@ -85,7 +86,10 @@ double formula::number_argument(const Call &call, const std::size_t index) {
 bool formula::same_number(const Dialect dialect, const double a,
                           const double b) {
   const bool approximately = approximately_equal(a, b);
-  if (dialect == Dialect::libreoffice || a == b) {
+  // two numbers this far apart differ in 15 digits too
+  if (dialect == Dialect::libreoffice || a == b ||
+      (!approximately &&
+       std::abs(a - b) > std::max(std::abs(a), std::abs(b)) * 1e-13)) {
     return approximately;
   }
   if (approximately != (snapped(a, 15) == snapped(b, 15))) {

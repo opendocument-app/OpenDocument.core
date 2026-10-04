@@ -130,21 +130,6 @@ public:
     return result;
   }
 
-  [[nodiscard]] bool holds_stale(const formula::Area &area) const {
-    const TablePosition &from = area.range.from();
-    const TablePosition &to = area.range.to();
-    for (auto it = std::ranges::lower_bound(
-             m_stale_ordered, SheetPosition(area.sheet, 0, from.row));
-         it != m_stale_ordered.end() && it->sheet == area.sheet &&
-         it->cell.row <= to.row;
-         ++it) {
-      if (it->cell.column >= from.column && it->cell.column <= to.column) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   [[nodiscard]] bool is_circular(const SheetPosition &position) const {
     return m_circular.contains(position);
   }
@@ -160,6 +145,21 @@ public:
   }
 
 private:
+  [[nodiscard]] bool holds_stale(const formula::Area &area) const {
+    const TablePosition &from = area.range.from();
+    const TablePosition &to = area.range.to();
+    for (auto it = std::ranges::lower_bound(
+             m_stale_ordered, SheetPosition(area.sheet, 0, from.row));
+         it != m_stale_ordered.end() && it->sheet == area.sheet &&
+         it->cell.row <= to.row;
+         ++it) {
+      if (it->cell.column >= from.column && it->cell.column <= to.column) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   const SheetCellSource *m_base{nullptr};
   const std::unordered_map<SheetPosition, Formula> *m_formulas{nullptr};
   std::unordered_set<SheetPosition> m_stale;
