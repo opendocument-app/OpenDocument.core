@@ -26,20 +26,22 @@ std::optional<double> number::parse(const std::string_view text) {
   return (stream >> std::ws).eof() ? std::optional(value) : std::nullopt;
 }
 
-std::string number::to_string_significant(const double value,
-                                          const int significant_digits) {
+std::string
+number::to_string_significant(const double value,
+                              const std::int32_t significant_digits) {
   if (!std::isfinite(value)) {
     return fmt::format("{}", value);
   }
 
   // `{:.Nf}` counts decimals, not significant digits, so shift by the integer
   // part; clamped because a denormal or a huge value would blow up
-  int integer_digits = 1;
+  std::int32_t integer_digits = 1;
   if (value != 0.0) {
     integer_digits =
-        static_cast<int>(std::floor(std::log10(std::abs(value)))) + 1;
+        static_cast<std::int32_t>(std::floor(std::log10(std::abs(value)))) + 1;
   }
-  const int decimals = std::clamp(significant_digits - integer_digits, 0, 15);
+  const auto decimals = static_cast<std::int32_t>(std::clamp<std::int64_t>(
+      std::int64_t{significant_digits} - integer_digits, 0, 15));
 
   std::string result = fmt::format("{:.{}f}", value, decimals);
 

@@ -1,6 +1,7 @@
 #include <odr/internal/util/number_util.hpp>
 
 #include <cmath>
+#include <limits>
 #include <optional>
 
 #include <gtest/gtest.h>
@@ -62,4 +63,13 @@ TEST(ToStringSignificant, never_uses_scientific_notation) {
 TEST(ToStringSignificant, passes_through_non_finite) {
   EXPECT_EQ(to_string_significant(std::nan(""), 7), "nan");
   EXPECT_EQ(to_string_significant(HUGE_VAL, 7), "inf");
+}
+
+TEST(ToStringSignificant, bounds_extreme_precision) {
+  EXPECT_EQ(
+      to_string_significant(0.5, std::numeric_limits<std::int32_t>::max()),
+      "0.5");
+  EXPECT_EQ(
+      to_string_significant(1234, std::numeric_limits<std::int32_t>::min()),
+      "1234");
 }

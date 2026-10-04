@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Quantity parsing and integer formatting are locale independent. Invalid or
+  out-of-range integer magnitudes throw instead of silently converting.
+
 - Block-cipher helpers reject incomplete blocks before calling Crypto++, and
   password derivation rejects parameters that would be narrowed or truncated.
 
