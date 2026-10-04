@@ -255,6 +255,7 @@ export declare class Document {
    * Moves the rows from `row` on down by `count`, and every reference to them
    * in the document with them. The new rows are empty.
    * @throws OdrError `unsupported_operation` where the edit would cut a merge
+   *         or push a stated cell off the grid
    */
   insertRows(sheet: number, row: number, count: number): this;
   /**
@@ -267,6 +268,7 @@ export declare class Document {
    * Moves the columns from `column` on right by `count`, and every reference
    * to them in the document with them. The new columns are empty.
    * @throws OdrError `unsupported_operation` where the edit would cut a merge
+   *         or push a stated cell off the grid
    */
   insertColumns(sheet: number, column: number, count: number): this;
   /**
