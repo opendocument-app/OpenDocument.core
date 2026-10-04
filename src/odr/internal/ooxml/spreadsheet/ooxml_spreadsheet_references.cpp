@@ -6,11 +6,17 @@
 #include <odr/internal/formula/formula_writer.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
+#include <cstdlib>
 #include <map>
 #include <optional>
+#include <ranges>
 #include <string_view>
 #include <utility>
+
+#include <fmt/format.h>
+#include <fmt/ranges.h>
 
 namespace odr::internal::ooxml::spreadsheet {
 
@@ -170,6 +176,95 @@ void move_calc_chain(pugi::xml_node calc_chain,
   }
 }
 
+/// An element stating a range list, which goes when a delete takes the list.
+struct RangeAttribute final {
+  std::string_view element;
+  std::string_view attribute;
+};
+
+constexpr std::array<RangeAttribute, 7> removable_ranges{{
+    {"conditionalFormatting", "sqref"},
+    {"dataValidation", "sqref"},
+    {"hyperlink", "ref"},
+    {"autoFilter", "ref"},
+    {"sortState", "ref"},
+    {"protectedRange", "sqref"},
+    {"ignoredError", "sqref"},
+}};
+
+/// The cell @p address names after the edit, the first one past the removed
+/// rows where a delete takes it.
+std::string moved_cell(const std::string &address,
+                       const formula::RowEdit &edit) {
+  const TablePosition position(address);
+  const auto rows = edit.span(position.row, position.row);
+  return TablePosition(position.column,
+                       rows.has_value() ? rows->first : edit.row)
+      .to_string();
+}
+
+void collect_ranges(const pugi::xml_node node, const formula::RowEdit &edit,
+                    std::vector<pugi::xml_node> &lost) {
+  for (pugi::xml_node child : node.children()) {
+    const std::string_view name = child.name();
+    if (child.type() != pugi::node_element || name == "sheetData") {
+      continue;
+    }
+    for (const RangeAttribute &range : removable_ranges) {
+      pugi::xml_attribute attribute = child.attribute(range.attribute.data());
+      if (name != range.element || !attribute) {
+        continue;
+      }
+      if (const std::optional<std::string> moved = formula::move_row_addresses(
+              attribute.value(), edit, edit.sheet, syntax)) {
+        if (moved->empty()) {
+          lost.push_back(child);
+        } else {
+          attribute.set_value(moved->c_str());
+        }
+      }
+    }
+    if (name == "selection") {
+      pugi::xml_attribute active = child.attribute("activeCell");
+      if (active) {
+        active.set_value(moved_cell(active.value(), edit).c_str());
+      }
+      if (pugi::xml_attribute sqref = child.attribute("sqref")) {
+        if (const std::optional<std::string> moved =
+                formula::move_row_addresses(sqref.value(), edit, edit.sheet,
+                                            syntax)) {
+          sqref.set_value(moved->empty() && active ? active.value()
+                                                   : moved->c_str());
+        }
+      }
+    }
+    if (pugi::xml_attribute top_left = child.attribute("topLeftCell");
+        top_left && (name == "pane" || name == "sheetView")) {
+      top_left.set_value(moved_cell(top_left.value(), edit).c_str());
+    }
+    collect_ranges(child, edit, lost);
+  }
+}
+
+/// The row of an anchor corner after the edit, at the edge of the rows that
+/// stay where a delete takes it.
+void move_corner(pugi::xml_node corner, const std::int64_t by,
+                 const formula::RowEdit &edit) {
+  pugi::xml_text row = corner.child("xdr:row").text();
+  const std::uint32_t old = row.as_uint();
+  if (by != 0) {
+    row.set(static_cast<std::uint32_t>(
+        std::max<std::int64_t>(0, static_cast<std::int64_t>(old) + by)));
+    return;
+  }
+  if (const auto rows = edit.span(old, old)) {
+    row.set(rows->first);
+  } else {
+    row.set(edit.row);
+    corner.child("xdr:rowOff").text().set(0);
+  }
+}
+
 } // namespace
 
 } // namespace odr::internal::ooxml::spreadsheet
@@ -198,6 +293,111 @@ void ooxml::spreadsheet::move_row_references(
 
   if (calc_chain) {
     move_calc_chain(calc_chain, edited_sheet_id, edit);
+  }
+}
+
+void ooxml::spreadsheet::move_sheet_ranges(const pugi::xml_node worksheet,
+                                           const formula::RowEdit &edit) {
+  std::vector<pugi::xml_node> lost;
+  collect_ranges(worksheet, edit, lost);
+  for (pugi::xml_node node : lost) {
+    pugi::xml_node parent = node.parent();
+    parent.remove_child(node);
+    // a list such as `hyperlinks` states one entry at least
+    if (parent == worksheet) {
+      continue;
+    }
+    if (!parent.find_child([](const pugi::xml_node child) {
+          return child.type() == pugi::node_element;
+        })) {
+      parent.parent().remove_child(parent);
+    } else if (pugi::xml_attribute count = parent.attribute("count")) {
+      count.set_value(static_cast<std::uint32_t>(
+          std::ranges::distance(parent.children(node.name()))));
+    }
+  }
+}
+
+void ooxml::spreadsheet::move_drawing(const pugi::xml_node drawing,
+                                      const formula::RowEdit &edit) {
+  for (const pugi::xml_node anchor : drawing.children()) {
+    const std::string_view name = anchor.name();
+    const std::string_view edit_as = anchor.attribute("editAs").value();
+    const pugi::xml_node from = anchor.child("xdr:from");
+    if (!from || edit_as == "absolute") {
+      continue;
+    }
+    const std::uint32_t old = from.child("xdr:row").text().as_uint();
+    move_corner(from, 0, edit);
+    if (const pugi::xml_node to = anchor.child("xdr:to")) {
+      // a `oneCell` box keeps its size, so its far corner moves as the first
+      move_corner(to,
+                  name == "xdr:twoCellAnchor" && edit_as != "oneCell"
+                      ? 0
+                      : static_cast<std::int64_t>(
+                            from.child("xdr:row").text().as_uint()) -
+                            old,
+                  edit);
+    }
+  }
+}
+
+void ooxml::spreadsheet::move_comments(const pugi::xml_node comments,
+                                       const pugi::xml_node threaded,
+                                       const pugi::xml_node vml,
+                                       const formula::RowEdit &edit) {
+  const auto move_refs = [&](pugi::xml_node list, const char *name) {
+    for (pugi::xml_node comment = list.child(name); comment;) {
+      const pugi::xml_node next = comment.next_sibling(name);
+      pugi::xml_attribute ref = comment.attribute("ref");
+      if (const std::optional<std::string> moved = formula::move_row_addresses(
+              ref.value(), edit, edit.sheet, syntax)) {
+        if (moved->empty()) {
+          list.remove_child(comment);
+        } else {
+          ref.set_value(moved->c_str());
+        }
+      }
+      comment = next;
+    }
+  };
+  move_refs(comments.child("commentList"), "comment");
+  move_refs(threaded, "threadedComment");
+
+  // a note states its cell in `x:Row`, and its box in `x:Anchor` as column,
+  // offset, row and offset of two corners
+  if (!vml) {
+    return;
+  }
+  std::vector<pugi::xml_node> removed;
+  for (const pugi::xpath_node found :
+       vml.select_nodes("//*[local-name()='ClientData'][@ObjectType='Note']")) {
+    const pugi::xml_node data = found.node();
+    pugi::xml_text row = data.child("x:Row").text();
+    const std::uint32_t old = row.as_uint();
+    const auto rows = edit.span(old, old);
+    if (!rows.has_value()) {
+      removed.push_back(data.parent());
+      continue;
+    }
+    row.set(rows->first);
+    pugi::xml_text anchor = data.child("x:Anchor").text();
+    std::vector<std::int64_t> values;
+    for (const std::string_view value :
+         std::views::split(std::string_view(anchor.get()), ',') |
+             std::views::transform([](const auto range) {
+               return std::string_view(range.begin(), range.end());
+             })) {
+      values.push_back(std::strtoll(std::string(value).c_str(), nullptr, 10));
+    }
+    if (values.size() == 8) {
+      values[2] += static_cast<std::int64_t>(rows->first) - old;
+      values[6] += static_cast<std::int64_t>(rows->first) - old;
+      anchor.set(fmt::format("{}", fmt::join(values, ", ")).c_str());
+    }
+  }
+  for (pugi::xml_node shape : removed) {
+    shape.parent().remove_child(shape);
   }
 }
 

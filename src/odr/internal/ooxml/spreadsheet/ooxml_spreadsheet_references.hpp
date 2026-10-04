@@ -28,4 +28,22 @@ void move_row_references(pugi::xml_node workbook,
                          const std::string &edited_sheet_id,
                          const formula::RowEdit &edit);
 
+/// Moves the ranges @p worksheet states besides its cells: conditional
+/// formats, validations, links, the filter, protected ranges, ignored errors
+/// and the view. An element whose range a delete takes completely goes; the
+/// view keeps a cell, the first one past the removed rows.
+void move_sheet_ranges(pugi::xml_node worksheet, const formula::RowEdit &edit);
+
+/// Moves the anchors of @p drawing (`xdr:wsDr`) as Excel moves a drawing
+/// with its cells: a `twoCell` anchor moves each corner, a `oneCell` one moves
+/// its box, an `absolute` one stays (ECMA-376 20.5.2.33). A corner inside the
+/// removed rows goes to the edge of the rows that stay.
+void move_drawing(pugi::xml_node drawing, const formula::RowEdit &edit);
+
+/// Moves the comments of @p comments (`comments`) and @p threaded
+/// (`ThreadedComments`) and the notes of @p vml that show them. A comment in a
+/// removed row goes, with its note.
+void move_comments(pugi::xml_node comments, pugi::xml_node threaded,
+                   pugi::xml_node vml, const formula::RowEdit &edit);
+
 } // namespace odr::internal::ooxml::spreadsheet

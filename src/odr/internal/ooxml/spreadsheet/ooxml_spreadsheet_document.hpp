@@ -8,6 +8,7 @@
 
 #include <iosfwd>
 #include <memory>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -28,9 +29,13 @@ public:
 
   /// The `workbook` element of `xl/workbook.xml`.
   [[nodiscard]] pugi::xml_node workbook() const;
-  /// The `calcChain` element (ECMA-376 18.6), read on first use and written
+  /// The root element of the part at @p path, read on first use and written
   /// back by `save`. Null where the package has none.
-  [[nodiscard]] pugi::xml_node calc_chain();
+  /// @throws std::exception where the part does not parse.
+  [[nodiscard]] pugi::xml_node part(const AbsPath &path);
+  /// @ref part for the one a relationship of @p type leads to from @p origin.
+  [[nodiscard]] pugi::xml_node related_part(const AbsPath &origin,
+                                            std::string_view type);
 
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
