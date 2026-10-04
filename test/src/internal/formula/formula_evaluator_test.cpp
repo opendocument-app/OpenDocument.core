@@ -235,6 +235,8 @@ TEST(FormulaEvaluator, an_excel_comparison_near_the_15th_digit_has_no_answer) {
 
 TEST(FormulaEvaluator, array_limits_apply_before_dimension_products_narrow) {
   EXPECT_EQ(xlsx("=SUMPRODUCT(A1:CRXP65536)"), std::nullopt);
+  EXPECT_EQ(xlsx("=COUNTIF(A1:CRXP65536,1)"), std::nullopt);
+  EXPECT_EQ(xlsx("=MATCH(999,A1:A4294967295,0)"), std::nullopt);
   Node row{ArrayLiteral{65536, 1}, {}};
   row.children.assign(65536, Node{NumberLiteral{1}, {}});
   Node column{ArrayLiteral{1, 65536}, row.children};

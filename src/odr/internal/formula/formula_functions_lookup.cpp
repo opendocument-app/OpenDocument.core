@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 #include <optional>
 #include <span>
 #include <string>
@@ -40,8 +42,16 @@ public:
       }
       m_area = reference->areas.front();
       whole = m_area->whole_columns || m_area->whole_rows;
-      columns = m_area->range.to().column - m_area->range.from().column + 1;
-      rows = m_area->range.to().row - m_area->range.from().row + 1;
+      const auto width = std::uint64_t{m_area->range.to().column} -
+                         m_area->range.from().column + 1;
+      const auto height =
+          std::uint64_t{m_area->range.to().row} - m_area->range.from().row + 1;
+      if (width > std::numeric_limits<std::uint32_t>::max() ||
+          height > std::numeric_limits<std::uint32_t>::max()) {
+        throw NoAnswer{};
+      }
+      columns = static_cast<std::uint32_t>(width);
+      rows = static_cast<std::uint32_t>(height);
     } else if (const auto *matrix = std::get_if<Matrix>(&value.content)) {
       m_matrix = *matrix;
       columns = matrix->columns;
@@ -300,7 +310,7 @@ template <typename Visit>
 void each_match(const std::span<const Condition> conditions,
                 const Visit &visit) {
   const Cells &shape = conditions.front().cells;
-  if (std::size_t{shape.columns} * shape.rows > cell_limit) {
+  if (std::uint64_t{shape.columns} * shape.rows > cell_limit) {
     throw NoAnswer{};
   }
   if (std::ranges::any_of(conditions,
@@ -445,6 +455,9 @@ template <typename CellAt>
 std::optional<std::uint32_t>
 position_of(const Call &call, const Value &wanted, const std::uint32_t count,
             const bool exact, const CellAt &cell_at) {
+  if (count > cell_limit) {
+    throw NoAnswer{};
+  }
   if (exact) {
     for (std::uint32_t i = 0; i < count; ++i) {
       if (is_lookup_match(call, wanted, cell_at(i))) {
