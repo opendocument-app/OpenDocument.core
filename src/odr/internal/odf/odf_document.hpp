@@ -34,6 +34,9 @@ public:
   /// What `table:calculation-settings` states, and the ODF defaults where it
   /// states nothing.
   [[nodiscard]] formula::Settings formula_settings() const override;
+  /// The `table:named-range` and `table:named-expression` entries of the
+  /// document and of each sheet.
+  [[nodiscard]] std::vector<formula::Name> formula_names() const override;
 
   void save(std::ostream &out) const override;
   void save(std::ostream &out, const char *password) const override;

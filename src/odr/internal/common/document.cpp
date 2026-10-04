@@ -59,6 +59,8 @@ const SheetDependencies &Document::sheet_dependencies() const {
 
 formula::Settings Document::formula_settings() const { return {}; }
 
+std::vector<formula::Name> Document::formula_names() const { return {}; }
+
 void Document::drop_sheet_dependencies() const noexcept {
   m_sheet_dependencies.reset();
 }

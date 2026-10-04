@@ -72,7 +72,11 @@ bool is_at(const SheetCell &cell, const TablePosition &position) {
 } // namespace
 
 SheetCellSource::SheetCellSource(const abstract::Document &document)
-    : m_settings{document.formula_settings()} {
+    : m_settings{document.formula_settings()},
+      m_syntax{formula::syntax_of(document.file_type())} {
+  for (formula::Name &name : document.formula_names()) {
+    m_names[util::string::to_lower(name.name)].push_back(std::move(name));
+  }
   const abstract::ElementAdapter *adapter = document.element_adapter();
   if (adapter == nullptr) {
     return;
@@ -125,6 +129,28 @@ TableDimensions SheetCellSource::extent(const std::uint32_t sheet) const {
   const TableDimensions extent = m_sheets[sheet].content(std::nullopt);
   m_extents.emplace(sheet, extent);
   return extent;
+}
+
+std::optional<formula::Node>
+SheetCellSource::name(const std::string_view name,
+                      const std::uint32_t sheet) const {
+  const auto found = m_names.find(util::string::to_lower(name));
+  if (found == m_names.end() || !m_syntax.has_value()) {
+    return std::nullopt;
+  }
+  const formula::Name *global = nullptr;
+  for (const formula::Name &candidate : found->second) {
+    if (candidate.sheet == sheet) {
+      return formula::parse(candidate.expression, *m_syntax);
+    }
+    if (!candidate.sheet.has_value() && global == nullptr) {
+      global = &candidate;
+    }
+  }
+  if (global == nullptr) {
+    return std::nullopt;
+  }
+  return formula::parse(global->expression, *m_syntax);
 }
 
 const formula::Settings &SheetCellSource::settings() const noexcept {

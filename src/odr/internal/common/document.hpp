@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
@@ -44,6 +45,7 @@ public:
 
   [[nodiscard]] const SheetDependencies &sheet_dependencies() const final;
   [[nodiscard]] formula::Settings formula_settings() const override;
+  [[nodiscard]] std::vector<formula::Name> formula_names() const override;
   /// Drops the graph, so the next question builds it off the formulas as they
   /// are now: a structural edit moves them.
   void drop_sheet_dependencies() const noexcept;

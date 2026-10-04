@@ -44,6 +44,16 @@ struct Settings final {
   [[nodiscard]] double days(double serial) const;
 };
 
+/// A name a document defines for a formula to read: `Total` for
+/// `$Sheet1.$B$9`.
+struct Name final {
+  std::string name{};
+  /// The sheet the name is local to, nothing for one of the whole document.
+  std::optional<std::uint32_t> sheet{};
+  /// What the name stands for, in the syntax of the document.
+  std::string expression{};
+};
+
 /// A cell that states nothing.
 struct Empty final {
   friend bool operator==(const Empty &, const Empty &) = default;

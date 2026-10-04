@@ -5,6 +5,7 @@
 #include <odr/table_dimension.hpp>
 
 #include <odr/internal/formula/formula_evaluator.hpp>
+#include <odr/internal/formula/formula_parser.hpp>
 #include <odr/internal/formula/formula_value.hpp>
 
 #include <cstdint>
@@ -31,6 +32,8 @@ public:
   [[nodiscard]] std::optional<formula::Value>
   cell(const SheetPosition &position) const override;
   [[nodiscard]] TableDimensions extent(std::uint32_t sheet) const override;
+  [[nodiscard]] std::optional<formula::Node>
+  name(std::string_view name, std::uint32_t sheet) const override;
 
   /// The settings the document states, which a cell's date is read with.
   [[nodiscard]] const formula::Settings &settings() const noexcept;
@@ -40,6 +43,9 @@ private:
   /// The sheets by their name in lower case.
   std::unordered_map<std::string, std::uint32_t> m_by_name;
   formula::Settings m_settings;
+  std::optional<formula::Syntax> m_syntax;
+  /// The names of the document by their name in lower case.
+  std::unordered_map<std::string, std::vector<formula::Name>> m_names;
   mutable std::unordered_map<SheetPosition, std::optional<formula::Value>>
       m_cells;
   mutable std::unordered_map<std::uint32_t, TableDimensions> m_extents;

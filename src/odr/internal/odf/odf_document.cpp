@@ -2552,4 +2552,36 @@ formula::Settings Document::formula_settings() const {
   return result;
 }
 
+std::vector<formula::Name> Document::formula_names() const {
+  std::vector<formula::Name> result;
+  const auto collect = [&](const pugi::xml_node names,
+                           const std::optional<std::uint32_t> sheet) {
+    for (const pugi::xml_node name : names.children()) {
+      const std::string_view kind = name.name();
+      if (kind == "table:named-range") {
+        // an address is a reference without its brackets ([ODF 1.2] 9.2.5)
+        result.push_back(formula::Name{
+            name.attribute("table:name").value(), sheet,
+            "[" +
+                std::string(
+                    name.attribute("table:cell-range-address").value()) +
+                "]"});
+      } else if (kind == "table:named-expression") {
+        result.push_back(
+            formula::Name{name.attribute("table:name").value(), sheet,
+                          name.attribute("table:expression").value()});
+      }
+    }
+  };
+  const pugi::xml_node spreadsheet = m_content_xml.document_element()
+                                         .child("office:body")
+                                         .child("office:spreadsheet");
+  collect(spreadsheet.child("table:named-expressions"), std::nullopt);
+  std::uint32_t ordinal = 0;
+  for (const pugi::xml_node table : spreadsheet.children("table:table")) {
+    collect(table.child("table:named-expressions"), ordinal++);
+  }
+  return result;
+}
+
 } // namespace odr::internal::odf
