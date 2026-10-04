@@ -109,3 +109,20 @@ TEST(CryptoUtil, zlib_inflate_ignores_the_declared_window) {
 
   EXPECT_EQ(zlib_inflate(stream), data);
 }
+
+// Crypto++ TestVectors/gcm.txt: Gladman's basic AES-GCM vectors.
+TEST(CryptoUtil, aes_gcm_returns_only_authenticated_plaintext) {
+  const std::string key(16, '\0');
+  const std::string iv(12, '\0');
+  const auto empty = iv + hex_decode("58e2fccefa7e3061367f1d57a4e7455a");
+  const auto block = iv + hex_decode("0388dace60b6a392f328c2b971b2fe78"
+                                     "ab6e47d42cec13bdf53a67b21257bddf");
+  EXPECT_EQ(decrypt_aes_gcm(key, iv, empty), "");
+  EXPECT_EQ(decrypt_aes_gcm(key, iv, block), std::string(16, '\0'));
+  for (const std::size_t offset : {1U, 12U, 43U}) {
+    auto corrupt = block;
+    corrupt[offset] ^= 1;
+    EXPECT_THROW(decrypt_aes_gcm(key, iv, corrupt), std::runtime_error);
+  }
+  EXPECT_THROW(decrypt_aes_gcm(key, iv, empty.substr(1)), std::runtime_error);
+}
