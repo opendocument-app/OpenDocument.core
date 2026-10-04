@@ -23,4 +23,9 @@ namespace odr::internal::odf {
 move_sheet_references(pugi::xml_node spreadsheet,
                       const formula::SheetEdit &edit);
 
+/// Moves the addresses an embedded object's own part (@p object) states: the
+/// ranges a chart reads. A chart names the sheet of every range.
+void move_object_references(pugi::xml_node object,
+                            const formula::SheetEdit &edit);
+
 } // namespace odr::internal::odf

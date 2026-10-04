@@ -166,6 +166,13 @@ void Document::save(std::ostream &out) const {
       archive.insert_directory(std::end(archive), rel_path);
       continue;
     }
+    if (const auto part = m_parts.find(abs_path); part != m_parts.end()) {
+      std::stringstream content;
+      part->second.print(content, "", pugi::format_raw);
+      archive.insert_file(std::end(archive), rel_path,
+                          std::make_shared<MemoryFile>(content.str()));
+      continue;
+    }
     if (abs_path == Path("/content.xml")) {
       // TODO stream
       std::stringstream content;
@@ -178,6 +185,18 @@ void Document::save(std::ostream &out) const {
   }
 
   archive.save(out);
+}
+
+pugi::xml_node Document::part(const AbsPath &path) {
+  if (m_files == nullptr || !m_files->is_file(path)) {
+    return {};
+  }
+  if (const auto parsed = m_parts.find(path); parsed != m_parts.end()) {
+    return parsed->second.document_element();
+  }
+  pugi::xml_document document = xml::parse(*m_files, path);
+  return m_parts.emplace(path, std::move(document))
+      .first->second.document_element();
 }
 
 void Document::save(std::ostream & /*out*/, const char * /*password*/) const {
@@ -880,7 +899,7 @@ public:
       throw UnsupportedOperation();
     }
 
-    const std::vector<SheetPosition> touched = move_sheet_references(
+    const std::vector<SheetPosition> touched = move_references(
         sheet_node.parent(),
         {.sheet = sheet_name(element_id), .index = row, .count = count});
 
@@ -919,11 +938,11 @@ public:
       throw UnsupportedOperation();
     }
 
-    const std::vector<SheetPosition> touched = move_sheet_references(
-        sheet_node.parent(), {.sheet = sheet_name(element_id),
-                              .index = row,
-                              .count = count,
-                              .insert = false});
+    const std::vector<SheetPosition> touched =
+        move_references(sheet_node.parent(), {.sheet = sheet_name(element_id),
+                                              .index = row,
+                                              .count = count,
+                                              .insert = false});
 
     if (const std::uint32_t rows_end = runs.empty() ? 0 : runs.back().end;
         row < rows_end) {
@@ -968,11 +987,11 @@ public:
       throw UnsupportedOperation();
     }
 
-    const std::vector<SheetPosition> touched = move_sheet_references(
-        sheet_node.parent(), {.sheet = sheet_name(element_id),
-                              .axis = formula::Axis::column,
-                              .index = column,
-                              .count = count});
+    const std::vector<SheetPosition> touched =
+        move_references(sheet_node.parent(), {.sheet = sheet_name(element_id),
+                                              .axis = formula::Axis::column,
+                                              .index = column,
+                                              .count = count});
 
     for (const Run &row : rows) {
       insert_run(cell_runs(row.node), "table:table-cell", column, count);
@@ -1000,12 +1019,12 @@ public:
       }
     }
 
-    const std::vector<SheetPosition> touched = move_sheet_references(
-        sheet_node.parent(), {.sheet = sheet_name(element_id),
-                              .axis = formula::Axis::column,
-                              .index = column,
-                              .count = count,
-                              .insert = false});
+    const std::vector<SheetPosition> touched =
+        move_references(sheet_node.parent(), {.sheet = sheet_name(element_id),
+                                              .axis = formula::Axis::column,
+                                              .index = column,
+                                              .count = count,
+                                              .insert = false});
 
     for (const Run &row : rows) {
       pugi::xml_node row_node = row.node;
@@ -1084,6 +1103,34 @@ public:
                               .as_uint(1) >
                  column;
     });
+  }
+
+  /// Moves every reference of the document with the edit: the formulas and
+  /// addresses of the content, and the ranges of every embedded chart, whose
+  /// parts are read before anything is written.
+  [[nodiscard]] std::vector<SheetPosition>
+  move_references(const pugi::xml_node spreadsheet,
+                  const formula::SheetEdit &edit) const {
+    std::vector<pugi::xml_node> objects;
+    try {
+      for (const pugi::xpath_node object :
+           spreadsheet.select_nodes("//draw:object[@xlink:href]")) {
+        const AbsPath path = Path(object.node().attribute("xlink:href").value())
+                                 .make_absolute()
+                                 .join(RelPath("content.xml"));
+        if (const pugi::xml_node root = m_document->part(path)) {
+          objects.push_back(root);
+        }
+      }
+    } catch (const std::exception &) {
+      throw UnsupportedOperation(); // a part that does not parse
+    }
+    std::vector<SheetPosition> touched =
+        move_sheet_references(spreadsheet, edit);
+    for (const pugi::xml_node object : objects) {
+      move_object_references(object, edit);
+    }
+    return touched;
   }
 
   /// The rows of a LibreOffice sheet; ODF states no grid.

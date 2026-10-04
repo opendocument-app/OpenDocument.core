@@ -1,12 +1,14 @@
 #pragma once
 
 #include <odr/internal/common/document.hpp>
+#include <odr/internal/common/path.hpp>
 #include <odr/internal/odf/odf_element_registry.hpp>
 #include <odr/internal/odf/odf_style.hpp>
 
 #include <pugixml.hpp>
 
 #include <memory>
+#include <unordered_map>
 
 namespace odr::internal::odf {
 
@@ -33,11 +35,19 @@ public:
   void save(std::ostream &out) const override;
   void save(std::ostream &out, const char *password) const override;
 
+  /// The root of the xml part at @p path, read on first use and written back
+  /// by `save`: the `content.xml` of an embedded object, say. Null where the
+  /// package has none, or the document is flat.
+  /// @throws std::exception where the part does not parse.
+  [[nodiscard]] pugi::xml_node part(const AbsPath &path);
+
 private:
   void init_(pugi::xml_node content_root, pugi::xml_node styles_root);
 
   pugi::xml_document m_content_xml;
   pugi::xml_document m_styles_xml;
+  /// The parts besides `content.xml` that `save` writes back.
+  std::unordered_map<AbsPath, pugi::xml_document> m_parts;
 
   ElementRegistry m_element_registry;
   StyleRegistry m_style_registry;
