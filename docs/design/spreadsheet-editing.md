@@ -426,17 +426,41 @@ that does not compute (this one included). The cost comes once per save.
   as `sqref` and `xm:f` as a rule formula, with the code of decision 28.
 - **The formula evaluator**, as the plan above states it.
 - **Live results in the page.** The page has no evaluator, so it marks the
-  formula cells stale until something computes them. There are three ways to
+  formula cells stale until something computes them. There are four ways to
   compute them while the user edits:
+  - **A small wasm module with the evaluator only. This is the preferred
+    way.** The page has the cells already: `data-odr-formula` and
+    `data-odr-value` state what the evaluator reads. So the module holds
+    `internal/formula` and `internal/number_format` and nothing else: no
+    XML, no zip, no file format. Its only dependency outside core is `fmt`.
+    A JavaScript callback implements `formula::CellSource` over the DOM
+    (decision 30). The page embeds the module as base64, as
+    `HtmlConfig::embed_shipped_resources` does with the other resources,
+    so a page with no host computes too: an export, a page opened from
+    `file://`, a page sent as a mail attachment. There is still one
+    evaluator and one corpus test. Measure the size of the module once
+    step 1 exists.
   - The host computes them in process (decision 5) and sends them to the
-    page. The apps and the npm host have core already, so no evaluator is
-    written twice. The host must keep a decoded document that matches the
-    page, and an undo in the page needs a fresh decode and a replay of the
-    log, because `Document::edit` cannot take an op back.
-  - The page loads core as wasm and computes them itself. The page then needs
-    the file, or the cells, and the wasm build adds megabytes to each page.
-  - The page has an evaluator in JavaScript. This is a second library of
-    functions that drifts from the first, which decision 5 rejects.
+    page. The apps and the npm host have core already. The host must keep a
+    decoded document that matches the page, and an undo in the page needs a
+    fresh decode and a replay of the log, because `Document::edit` cannot
+    take an op back. A page with no host does not compute.
+  - The page loads all of core as wasm. The page then needs the file, and
+    the module is 4.6 MB (`odr-core.wasm` today).
+  - The page has an evaluator in JavaScript. A page with no host computes,
+    but this is a second library of functions that drifts from the first,
+    which decision 5 rejects.
+
+  An evaluator in the page reads only what the page shows. A formula that
+  reads past a sheet the limits cut, or a sheet that is not in the page,
+  stays stale (decision 29). The page still needs a host to save.
+
+  The build cost of the small module: a page resource made with emscripten
+  makes every build that ships the resources need emscripten too, also the
+  android, ios and python builds. So CI builds the module once and
+  publishes it, and the other builds take that file, as they take any
+  shipped resource. A build without the module ships pages that mark
+  formulas stale, as now.
 - **Formula input in the editor.** The user types `=SUM(A1:B2)`, with `;`
   between arguments where the decimal sign of the locale is `,`. The writer
   parses that spelling with the locale of the document, and writes the
