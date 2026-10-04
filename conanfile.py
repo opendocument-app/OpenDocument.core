@@ -73,8 +73,6 @@ class OpenDocumentCoreConan(ConanFile):
         tc = CMakeToolchain(self)
         tc.variables["CMAKE_PROJECT_VERSION"] = self.version
         tc.variables["ODR_TEST"] = False
-        # forwarded only so the CMake deprecation warning reaches a consumer
-        # who still sets it; neither end does anything with it
         tc.variables["ODR_WITH_HTTP_SERVER"] = self.options.get_safe("with_http_server", False)
         tc.variables["ODR_CLI"] = self.options.get_safe("with_cli", True)
         tc.variables["ODR_PYTHON"] = self.options.get_safe("with_python", False)

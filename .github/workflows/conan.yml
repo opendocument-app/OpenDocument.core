@@ -42,7 +42,7 @@ jobs:
         run: pip install --upgrade pip conan
 
       - name: get version
-        run: echo "VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
+        run: echo "VERSION=${GITHUB_REF_NAME:1}" >> "$GITHUB_ENV"
 
       - name: cache conan
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
@@ -78,5 +78,5 @@ jobs:
           --profile:host '${{ matrix.host_profile }}'
           --profile:build '${{ matrix.build_profile }}'
           --name odrcore
-          --version ${VERSION}
+          --version "${VERSION}"
           --build missing

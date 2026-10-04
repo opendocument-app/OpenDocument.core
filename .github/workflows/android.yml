@@ -53,7 +53,7 @@ jobs:
         run: pip install conan
 
       - name: install NDK
-        run: yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;${NDK_VERSION}"
+        run: yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;${NDK_VERSION}"
 
       - name: conan cache key
         shell: bash
@@ -232,9 +232,9 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
         run: |
           if [ "${{ github.event_name }}" = release ]; then
-            echo "ODR_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
+            echo "ODR_VERSION=${GITHUB_REF_NAME:1}" >> "$GITHUB_ENV"
           else
-            echo "ODR_VERSION=${INPUT_VERSION}" >> $GITHUB_ENV
+            echo "ODR_VERSION=${INPUT_VERSION}" >> "$GITHUB_ENV"
           fi
 
       - name: publish to github packages

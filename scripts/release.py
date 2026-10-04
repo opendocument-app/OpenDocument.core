@@ -86,9 +86,22 @@ def cliff(*arguments: str, capture: bool = False) -> str:
     return (result.stdout or "").strip()
 
 
+def release_version(value: str) -> str:
+    """A version tag safe to embed in package metadata and workflow outputs."""
+    suffix = r"[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*"
+    pattern = rf"v[0-9]+\.[0-9]+\.[0-9]+(?:-{suffix})?(?:\+{suffix})?"
+    if not re.fullmatch(pattern, value):
+        raise argparse.ArgumentTypeError(
+            "expected vMAJOR.MINOR.PATCH with optional prerelease/build suffixes"
+        )
+    return value
+
+
 def command_version(arguments: argparse.Namespace) -> None:
     """The next version, on stdout and nothing else — the workflow reads it."""
-    version = arguments.version or cliff("--bumped-version", capture=True)
+    version = release_version(
+        arguments.version or cliff("--bumped-version", capture=True)
+    )
 
     # Deriving against the nearest *reachable* tag is what lets a maintenance
     # line version itself, and how it collides: a `feat:` on `release/v6.2.X`
@@ -255,33 +268,34 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     version = subparsers.add_parser("version", help="print the next version")
-    version.add_argument("--version", help="override what the commits say")
+    version.add_argument("--version", type=release_version,
+                         help="override what the commits say")
     version.set_defaults(function=command_version)
 
     changelog = subparsers.add_parser("changelog",
                                       help="print the CHANGELOG.md section")
-    changelog.add_argument("--version", required=True)
+    changelog.add_argument("--version", type=release_version, required=True)
     changelog.set_defaults(function=command_changelog)
 
     cut = subparsers.add_parser("cut", help="head the entries with the version")
-    cut.add_argument("--version", required=True)
+    cut.add_argument("--version", type=release_version, required=True)
     cut.add_argument("--date", help="defaults to today")
     cut.add_argument("--dry-run", action="store_true")
     cut.set_defaults(function=command_cut)
 
     notes = subparsers.add_parser("notes", help="write the release body")
-    notes.add_argument("--version", required=True)
+    notes.add_argument("--version", type=release_version, required=True)
     notes.add_argument("--output", type=Path, required=True)
     notes.set_defaults(function=command_notes)
 
     stamp = subparsers.add_parser("stamp", help="commit and push what the run wrote")
-    stamp.add_argument("--version", required=True)
+    stamp.add_argument("--version", type=release_version, required=True)
     stamp.add_argument("--branch", required=True, help="branch to push to")
     stamp.add_argument("--dry-run", action="store_true")
     stamp.set_defaults(function=command_stamp)
 
     publish = subparsers.add_parser("publish", help="create or update the draft")
-    publish.add_argument("--version", required=True)
+    publish.add_argument("--version", type=release_version, required=True)
     publish.add_argument("--notes", type=Path, required=True)
     publish.add_argument("--asset", type=Path, action="append", default=[])
     publish.add_argument("--dry-run", action="store_true")
