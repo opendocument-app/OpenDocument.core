@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
+
 using namespace odr::internal;
 
 namespace {
@@ -55,6 +57,9 @@ TEST(ListCounter, starts_at_the_level_start_value) {
 
   EXPECT_EQ("5.", counter.advance(0, level));
   EXPECT_EQ("6.", counter.advance(0, level));
+  counter.restart(0, 0);
+  EXPECT_EQ("0.", counter.advance(0, decimal_level("%1.", 0)));
+  EXPECT_EQ("1.", counter.advance(0, decimal_level("%1.", 0)));
 }
 
 TEST(ListCounter, resets_deeper_levels) {
@@ -81,10 +86,10 @@ TEST(ListCounter, expands_each_level_in_its_own_format) {
 
 TEST(ListCounter, treats_a_bullet_label_as_literal) {
   ListCounter counter;
-  const ListLevel level{ListNumberFormat::bullet, "•", 1};
+  const ListLevel level{ListNumberFormat::bullet, "%1•", 1};
 
-  EXPECT_EQ("•", counter.advance(0, level));
-  EXPECT_EQ("•", counter.advance(0, level));
+  EXPECT_EQ("%1•", counter.advance(0, level));
+  EXPECT_EQ("%1•", counter.advance(0, level));
 }
 
 TEST(ListCounter, restarts_where_told_to) {
@@ -111,4 +116,15 @@ TEST(ListCounter, starts_deep_without_its_ancestors) {
   const ListLevel level = decimal_level("%1.%2.%3.");
 
   EXPECT_EQ("1.1.1.", counter.advance(2, level));
+}
+
+TEST(ListCounter, rejects_overflow) {
+  ListCounter counter;
+  constexpr auto maximum = std::numeric_limits<std::uint32_t>::max();
+  EXPECT_EQ("4294967295.", counter.advance(0, decimal_level("%1.", maximum)));
+  EXPECT_THROW(counter.advance(0, decimal_level("%1.")), std::overflow_error);
+  EXPECT_EQ(maximum, counter.number(0));
+  EXPECT_THROW(counter.advance(maximum, decimal_level("%1.")),
+               std::overflow_error);
+  EXPECT_THROW(counter.restart(maximum, 0), std::overflow_error);
 }

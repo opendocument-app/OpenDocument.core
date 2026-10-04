@@ -29,7 +29,7 @@ struct ListLevel final {
   std::uint32_t start{1};
 };
 
-/// @brief What one list item is labelled with, once resolved.
+/// A resolved list item label.
 struct ListMarker final {
   std::string text;
   std::optional<std::uint32_t> number;
@@ -37,7 +37,7 @@ struct ListMarker final {
 
 std::string format_list_number(ListNumberFormat format, std::uint32_t number);
 
-/// @brief The counters of one list, indexed by level.
+/// The counters of one list, indexed by level.
 class ListCounter final {
 public:
   /// Advances `level` (counted from 0), resets the levels below it, and expands
@@ -50,7 +50,7 @@ public:
   void restart(std::uint32_t level, std::uint32_t number);
 
 private:
-  std::vector<std::uint32_t> m_numbers;
+  std::vector<std::optional<std::uint32_t>> m_numbers;
   std::vector<ListNumberFormat> m_formats;
 
   void grow_(std::uint32_t level);

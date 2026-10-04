@@ -4,9 +4,14 @@
 
 #include <odr/internal/ooxml/text/ooxml_text_element_registry.hpp>
 
-#include <array>
+#include <odr/internal/util/string_util.hpp>
 
-#include <utf8/unchecked.h>
+#include <array>
+#include <charconv>
+#include <limits>
+#include <stdexcept>
+
+#include <utf8/checked.h>
 
 namespace odr::internal::ooxml::text {
 
@@ -40,9 +45,27 @@ ListNumberFormat parse_number_format(const std::string &format) {
   return ListNumberFormat::decimal;
 }
 
-/// Word writes symbol-font bullets as private-use code points that only render
-/// in Symbol or Wingdings, so they arrive as tofu in any other font. Map the
-/// ones that carry meaning and fall back to the level's default shape.
+std::uint32_t read_number(
+    const pugi::xml_attribute attribute, const std::uint32_t fallback,
+    const std::uint32_t maximum = std::numeric_limits<std::uint32_t>::max()) {
+  if (!attribute) {
+    return fallback;
+  }
+  auto value = util::string::trim_view(attribute.value());
+  if (value.starts_with('+')) {
+    value.remove_prefix(1);
+  }
+  std::uint32_t result{};
+  const auto [end, error] =
+      std::from_chars(value.data(), value.data() + value.size(), result);
+  if (error != std::errc{} || end != value.data() + value.size() ||
+      result > maximum) {
+    throw std::runtime_error("Invalid numbering value");
+  }
+  return result;
+}
+
+/// Map private-use symbol-font bullets to Unicode.
 std::string resolve_bullet(const std::string &text, const std::uint32_t level) {
   static constexpr std::array<const char *, 3> defaults{"•", "◦", "▪"};
 
@@ -51,7 +74,7 @@ std::string resolve_bullet(const std::string &text, const std::uint32_t level) {
   }
 
   auto it = std::begin(text);
-  const char32_t first = utf8::unchecked::next(it);
+  const char32_t first = utf8::next(it, text.end());
   if (first < 0xE000 || first > 0xF8FF) {
     return text;
   }
@@ -78,11 +101,12 @@ pugi::xml_node level_node(const pugi::xml_node abstract_numbering,
                           const std::uint32_t level) {
   pugi::xml_node result;
   for (const pugi::xml_node child : abstract_numbering.children("w:lvl")) {
-    const auto child_level = child.attribute("w:ilvl").as_uint(0);
+    const auto child_level = read_number(child.attribute("w:ilvl"), 0, 8);
     if (child_level == level) {
       return child;
     }
-    if (!result || child_level > result.attribute("w:ilvl").as_uint(0)) {
+    if (!result ||
+        child_level > read_number(result.attribute("w:ilvl"), 0, 8)) {
       result = child;
     }
   }
@@ -93,7 +117,7 @@ ListLevel read_level(const pugi::xml_node node, const std::uint32_t level) {
   ListLevel result;
   result.format =
       parse_number_format(node.child("w:numFmt").attribute("w:val").value());
-  result.start = node.child("w:start").attribute("w:val").as_uint(1);
+  result.start = read_number(node.child("w:start").attribute("w:val"), 0);
   result.label = node.child("w:lvlText").attribute("w:val").value();
 
   if (result.format == ListNumberFormat::bullet) {
@@ -103,6 +127,21 @@ ListLevel read_level(const pugi::xml_node node, const std::uint32_t level) {
 }
 
 } // namespace
+
+} // namespace odr::internal::ooxml::text
+
+namespace odr::internal::ooxml {
+
+std::uint32_t text::list_level(const pugi::xml_node paragraph) {
+  return read_number(
+      paragraph.child("w:pPr").child("w:numPr").child("w:ilvl").attribute(
+          "w:val"),
+      0, 8);
+}
+
+} // namespace odr::internal::ooxml
+
+namespace odr::internal::ooxml::text {
 
 NumberingRegistry::NumberingRegistry(const pugi::xml_node numbering_root,
                                      const pugi::xml_node styles_root) {
@@ -168,7 +207,7 @@ ListLevel NumberingRegistry::level(const std::string &num_id,
   pugi::xml_node override_node;
   for (const pugi::xml_node node :
        numbering_it->second.children("w:lvlOverride")) {
-    if (node.attribute("w:ilvl").as_uint(0) == level) {
+    if (read_number(node.attribute("w:ilvl"), 0, 8) == level) {
       override_node = node;
       break;
     }
@@ -183,15 +222,19 @@ ListLevel NumberingRegistry::level(const std::string &num_id,
 
   if (const pugi::xml_attribute start =
           override_node.child("w:startOverride").attribute("w:val")) {
-    result.start = start.as_uint(1);
+    result.start = read_number(start, 0);
   }
 
   return result;
 }
 
-void resolve_list_numbering(ElementRegistry &registry,
-                            const NumberingRegistry &numbering,
-                            const ElementIdentifier root_id) {
+} // namespace odr::internal::ooxml::text
+
+namespace odr::internal::ooxml {
+
+void text::resolve_list_numbering(ElementRegistry &registry,
+                                  const NumberingRegistry &numbering,
+                                  const ElementIdentifier root_id) {
   if (root_id == null_element_id) {
     return;
   }
@@ -216,8 +259,7 @@ void resolve_list_numbering(ElementRegistry &registry,
         const pugi::xml_node properties = numbering_properties(element.node);
         const std::string num_id =
             properties.child("w:numId").attribute("w:val").value();
-        const auto level =
-            properties.child("w:ilvl").attribute("w:val").as_uint(0);
+        const auto level = list_level(element.node);
         const ListLevel list_level = numbering.level(num_id, level);
         const bool ordered = list_level.format != ListNumberFormat::bullet &&
                              list_level.format != ListNumberFormat::none;
@@ -242,4 +284,4 @@ void resolve_list_numbering(ElementRegistry &registry,
   walk(walk, registry.element_at(root_id).first_child_id);
 }
 
-} // namespace odr::internal::ooxml::text
+} // namespace odr::internal::ooxml
