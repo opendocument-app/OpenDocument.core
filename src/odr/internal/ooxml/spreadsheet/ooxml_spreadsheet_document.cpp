@@ -148,6 +148,18 @@ pugi::xml_node Document::part(const AbsPath &path) {
   return root;
 }
 
+std::vector<pugi::xml_node>
+Document::related_parts(const AbsPath &origin, const std::string_view type) {
+  std::vector<pugi::xml_node> result;
+  for (const AbsPath &path :
+       parse_relationship_targets(*m_files, origin, type)) {
+    if (const pugi::xml_node root = part(path)) {
+      result.push_back(root);
+    }
+  }
+  return result;
+}
+
 const Relations &Document::relations_of(const AbsPath &path) const {
   return m_xml_documents_and_relations.at(path).second;
 }
@@ -587,7 +599,7 @@ public:
     // decided before anything is written
     for (const pugi::xml_node merge :
          sheet_node.child("mergeCells").children("mergeCell")) {
-      if (cut_by(merge.attribute("ref").value(), edit)) {
+      if (cuts(merge.attribute("ref").value(), edit)) {
         throw UnsupportedOperation();
       }
     }
@@ -597,7 +609,7 @@ public:
                       rows_edited ? position.row : position.column);
       if (const pugi::xml_node formula = cell.node.child("f");
           std::string_view(formula.attribute("t").value()) == "array" &&
-          cut_by(formula.attribute("ref").value(), edit)) {
+          cuts(formula.attribute("ref").value(), edit)) {
         throw UnsupportedOperation();
       }
     }
@@ -628,7 +640,12 @@ public:
     pugi::xml_node comments;
     pugi::xml_node threaded;
     std::vector<pugi::xml_node> tables;
+    std::vector<pugi::xml_node> pivots;
+    std::vector<pugi::xml_node> caches;
     try {
+      pivots = m_document->related_parts(relations.origin, "pivotTable");
+      caches = m_document->related_parts(AbsPath("/xl/workbook.xml"),
+                                         "pivotCacheDefinition");
       drawing = related(sheet_node.child("drawing"));
       notes = related(sheet_node.child("legacyDrawing"));
       comments = m_document->related_part(relations.origin, "comments");
@@ -640,8 +657,16 @@ public:
     } catch (const std::exception &) {
       throw UnsupportedOperation(); // a part that does not parse, as VML may
     }
-    if (std::ranges::any_of(tables, [&](const pugi::xml_node table) {
-          return cuts_table(table, edit);
+    if (std::ranges::any_of(tables,
+                            [&](const pugi::xml_node table) {
+                              return cuts_table(table, edit);
+                            }) ||
+        std::ranges::any_of(pivots,
+                            [&](const pugi::xml_node pivot) {
+                              return cuts_pivot(pivot, edit);
+                            }) ||
+        std::ranges::any_of(caches, [&](const pugi::xml_node cache) {
+          return loses_pivot_source(cache, edit);
         })) {
       throw UnsupportedOperation();
     }
@@ -736,6 +761,12 @@ public:
     move_comments(comments, threaded, notes, edit);
     for (const pugi::xml_node chart : charts) {
       move_chart(chart, edit);
+    }
+    for (const pugi::xml_node pivot : pivots) {
+      move_pivot(pivot, edit);
+    }
+    for (const pugi::xml_node cache : caches) {
+      move_pivot_cache(cache, edit);
     }
     std::vector<TableHeader> headers;
     for (const pugi::xml_node table : tables) {
@@ -858,22 +889,6 @@ public:
       sheet.register_column(col.attribute("min").as_uint() - 1,
                             col.attribute("max").as_uint() - 1, col);
     }
-  }
-
-  /// Whether @p ref, a cell or a range, reaches over an edge of the edit: an
-  /// insert strictly inside it, or a delete taking part of it.
-  static bool cut_by(const std::string &ref, const formula::SheetEdit &edit) {
-    const TableRange range(ref.contains(':') ? ref : ref + ":" + ref);
-    const bool rows = edit.axis == formula::Axis::row;
-    const std::uint32_t first = rows ? range.from().row : range.from().column;
-    const std::uint32_t last = rows ? range.to().row : range.to().column;
-    if (edit.insert) {
-      return first < edit.index && edit.index <= last;
-    }
-    const std::uint64_t end =
-        static_cast<std::uint64_t>(edit.index) + edit.count;
-    return first < end && last >= edit.index &&
-           (first < edit.index || last >= end);
   }
 
   /// The masters of the shared groups, as the cells state them now.

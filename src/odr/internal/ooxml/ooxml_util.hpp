@@ -100,5 +100,10 @@ parse_relationships(const abstract::ReadableFilesystem &filesystem,
 std::optional<AbsPath>
 parse_relationship_target(const abstract::ReadableFilesystem &filesystem,
                           const AbsPath &path, std::string_view type);
+/// Every part a relationship of @p type leads to from @p path, in the order
+/// the relationships state them.
+std::vector<AbsPath>
+parse_relationship_targets(const abstract::ReadableFilesystem &filesystem,
+                           const AbsPath &path, std::string_view type);
 
 } // namespace odr::internal::ooxml
