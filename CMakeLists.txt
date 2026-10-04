@@ -194,6 +194,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/formula/formula_dependencies.cpp"
         "src/odr/internal/formula/formula_parser.cpp"
         "src/odr/internal/formula/formula_writer.cpp"
+        "src/odr/internal/number_format/number_format.cpp"
 
         "src/odr/internal/html/common.cpp"
         "src/odr/internal/html/document.cpp"
