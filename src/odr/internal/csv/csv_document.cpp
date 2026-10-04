@@ -163,6 +163,16 @@ public:
                       const CellValue &value) const override {
     m_document->set_cell(column, row, cell_text(value));
   }
+  void sheet_insert_rows([[maybe_unused]] const ElementIdentifier element_id,
+                         const std::uint32_t row,
+                         const std::uint32_t count) const override {
+    m_document->insert_rows(row, count);
+  }
+  void sheet_delete_rows([[maybe_unused]] const ElementIdentifier element_id,
+                         const std::uint32_t row,
+                         const std::uint32_t count) const override {
+    m_document->delete_rows(row, count);
+  }
   [[nodiscard]] TableStyle sheet_style(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};
@@ -402,6 +412,38 @@ void CsvDocument::set_cell(const std::uint32_t column, const std::uint32_t row,
     return;
   }
   type_column(column);
+}
+
+void CsvDocument::insert_rows(const std::uint32_t row,
+                              const std::uint32_t count) {
+  if (row >= m_rows.size()) {
+    return;
+  }
+  // a field per column, so a reader does not take the line for a blank one
+  m_rows.insert(m_rows.begin() + row, count,
+                std::vector<std::string>(m_dimensions.columns));
+  m_dimensions.rows = static_cast<std::uint32_t>(m_rows.size());
+  type_columns();
+}
+
+void CsvDocument::delete_rows(const std::uint32_t row,
+                              const std::uint32_t count) {
+  if (row >= m_rows.size()) {
+    return;
+  }
+  m_rows.erase(m_rows.begin() + row,
+               m_rows.begin() +
+                   std::min<std::size_t>(static_cast<std::size_t>(row) + count,
+                                         m_rows.size()));
+  m_dimensions.rows = static_cast<std::uint32_t>(m_rows.size());
+  type_columns();
+}
+
+void CsvDocument::type_columns() {
+  // the first row may be another one now, and it names its column
+  for (std::uint32_t column = 0; column < m_numeric_columns.size(); ++column) {
+    type_column(column);
+  }
 }
 
 void CsvDocument::type_column(const std::uint32_t column) {

@@ -40,6 +40,11 @@ public:
 
   /// Writes @p text at a position, growing the sheet to reach it.
   void set_cell(std::uint32_t column, std::uint32_t row, std::string text);
+  /// Puts @p count lines of empty fields before @p row, where the file
+  /// reaches it.
+  void insert_rows(std::uint32_t row, std::uint32_t count);
+  /// Takes the lines from @p row on away, @p count of them at most.
+  void delete_rows(std::uint32_t row, std::uint32_t count);
 
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
@@ -61,6 +66,7 @@ private:
   std::vector<bool> m_numeric_columns;
 
   void type_column(std::uint32_t column);
+  void type_columns();
 };
 
 } // namespace odr::internal::csv
