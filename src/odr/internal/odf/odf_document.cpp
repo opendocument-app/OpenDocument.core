@@ -1118,7 +1118,9 @@ public:
         const AbsPath path = Path(object.node().attribute("xlink:href").value())
                                  .make_absolute()
                                  .join(RelPath("content.xml"));
-        if (const pugi::xml_node root = m_document->part(path)) {
+        // an embedded spreadsheet reads its own sheets
+        if (const pugi::xml_node root = m_document->part(path);
+            root.child("office:body").child("office:chart")) {
           objects.push_back(root);
         }
       }

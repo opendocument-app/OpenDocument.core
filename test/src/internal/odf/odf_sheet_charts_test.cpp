@@ -27,7 +27,8 @@ void insert(zip::ZipArchive &zip, const std::string &path,
 }
 
 /// An ods whose sheet `Výplaty` holds a chart, in a part of its own, reading
-/// `A1:A3` and labelled by `B1`.
+/// `A1:A3` and labelled by `B1`, and an embedded spreadsheet with a sheet of
+/// the same name.
 std::string with_chart() {
   zip::ZipArchive zip;
   insert(zip, "mimetype", "application/vnd.oasis.opendocument.spreadsheet");
@@ -47,7 +48,9 @@ std::string with_chart() {
       R"(<office:body><office:spreadsheet><table:table table:name="Výplaty">)"
       R"(<table:table-row><table:table-cell office:value-type="float" office:value="1">)"
       R"(<draw:frame><draw:object draw:notify-on-update-of-ranges="Výplaty.A1:Výplaty.A3")"
-      R"( xlink:href="./Object 1"/></draw:frame><text:p>1</text:p>)"
+      R"( xlink:href="./Object 1"/></draw:frame>)"
+      R"(<draw:frame><draw:object xlink:href="./Object 2"/></draw:frame>)"
+      R"(<text:p>1</text:p>)"
       R"(</table:table-cell></table:table-row></table:table>)"
       R"(</office:spreadsheet></office:body></office:document-content>)");
   insert(
@@ -59,7 +62,17 @@ std::string with_chart() {
       R"( table:cell-range-address="Výplaty.A1:Výplaty.A3">)"
       R"(<chart:series chart:values-cell-range-address="Výplaty.A1:Výplaty.A3")"
       R"( chart:label-cell-address="Výplaty.B1"/>)"
+      R"(<style:chart-properties chart:error-upper-range="Výplaty.C1:Výplaty.C3"/>)"
       R"(</chart:plot-area></chart:chart></office:chart></office:body>)"
+      R"(</office:document-content>)");
+  insert(
+      zip, "Object 2/content.xml",
+      R"(<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" )"
+      R"(xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0">)"
+      R"(<office:body><office:spreadsheet><table:table table:name="Výplaty"/>)"
+      R"(<table:named-expressions><table:named-range table:name="n")"
+      R"( table:cell-range-address="Výplaty.A1:Výplaty.A3"/>)"
+      R"(</table:named-expressions></office:spreadsheet></office:body>)"
       R"(</office:document-content>)");
   std::stringstream out;
   zip.save(out);
@@ -106,6 +119,17 @@ TEST(OdfSheetCharts, a_row_edit_moves_the_ranges_a_chart_reads) {
       std::string::npos);
 }
 
+TEST(OdfSheetCharts, an_embedded_spreadsheet_stays) {
+  const Document document =
+      open(File::from_memory(with_chart())).as_document_file().document();
+
+  first_sheet(document).insert_rows(1, 1);
+
+  EXPECT_NE(part_of(document, "/Object 2/content.xml")
+                .find(R"(table:cell-range-address="Výplaty.A1:Výplaty.A3")"),
+            std::string::npos);
+}
+
 TEST(OdfSheetCharts, a_column_edit_moves_them_too) {
   const Document document =
       open(File::from_memory(with_chart())).as_document_file().document();
@@ -119,4 +143,7 @@ TEST(OdfSheetCharts, a_column_edit_moves_them_too) {
       std::string::npos);
   EXPECT_NE(chart.find(R"(chart:label-cell-address="'Výplaty'.C1")"),
             std::string::npos);
+  EXPECT_NE(
+      chart.find(R"(chart:error-upper-range="'Výplaty'.D1:'Výplaty'.D3")"),
+      std::string::npos);
 }
