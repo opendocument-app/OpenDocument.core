@@ -65,6 +65,7 @@ add_executable(odr_test
         "src/internal/csv/csv_file_test.cpp"
         "src/internal/encoding/text_encoding_test.cpp"
         "src/internal/formula/formula_evaluator_test.cpp"
+        "src/internal/formula/formula_functions_date_test.cpp"
         "src/internal/formula/formula_functions_lookup_test.cpp"
         "src/internal/formula/formula_functions_math_test.cpp"
         "src/internal/formula/formula_functions_text_test.cpp"

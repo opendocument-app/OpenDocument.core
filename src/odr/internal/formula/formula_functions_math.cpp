@@ -1,7 +1,5 @@
 #include <odr/internal/formula/formula_function.hpp>
 
-#include <fmt/format.h>
-
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -22,15 +20,6 @@ Value invalid(const Call &call) { return refused(call, ErrorType::number); }
 
 Value checked(const double x) {
   return std::isfinite(x) ? Value{x} : Value{ErrorType::number};
-}
-
-/// @p x read to @p digits significant digits, as a sheet reads a number
-/// before it rounds it.
-double snapped(const double x, const int digits) {
-  if (x == 0 || !std::isfinite(x)) {
-    return x;
-  }
-  return std::strtod(fmt::format("{:.{}g}", x, digits).c_str(), nullptr);
 }
 
 /// @p round applied to @p x read to 15 significant digits. Nothing where

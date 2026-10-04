@@ -2541,6 +2541,8 @@ formula::Settings Document::formula_settings() const {
       flag("table:use-regular-expressions", result.regular_expressions);
   result.whole_cell =
       flag("table:search-criteria-must-apply-to-whole-cell", result.whole_cell);
+  result.null_year =
+      settings.attribute("table:null-year").as_llong(result.null_year);
   if (const std::optional<double> days =
           date_days(settings.child("table:null-date")
                         .attribute("table:date-value")
