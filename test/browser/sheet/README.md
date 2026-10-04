@@ -16,6 +16,7 @@ open http://localhost:8732/cut.html
 open http://localhost:8732/csv.html
 open http://localhost:8732/lines.html
 open http://localhost:8732/locale.html
+open http://localhost:8732/dates.html
 ```
 
 `serve` serves `document.css`, `spreadsheet.css`, `editing.js`,
@@ -64,6 +65,8 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
   commits.
 - `locale.html`: a page that states `data-odr-locale="de-DE"`. A typed
   number takes the comma of the locale, and a point makes a string.
+- `dates.html`: typed dates and times in `en-US`, and a date cell and a time
+  cell that open on their value and write nothing when committed unchanged.
 - `sorting.html`: the same questions after the sort control moved every row.
   Nothing is merged, because a merged sheet gets no sort control. A row is
   found by its label, not by its position.

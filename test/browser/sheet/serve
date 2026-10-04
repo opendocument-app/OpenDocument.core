@@ -23,5 +23,6 @@ serve(
         "csv.html",
         "lines.html",
         "locale.html",
+        "dates.html",
     ),
 )

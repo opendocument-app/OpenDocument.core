@@ -522,12 +522,21 @@
     if (text === "") {
       return { type: "empty" };
     }
-    if (cell.classList.contains("odr-value-type-float")) {
-      // a formatted number states its value, a plain one is its text
+    var kind = cell.classList.contains("odr-value-type-float")
+      ? "number"
+      : cell.classList.contains("odr-value-type-date")
+        ? "date"
+        : cell.classList.contains("odr-value-type-time")
+          ? "time"
+          : null;
+    if (kind !== null) {
+      // a formatted number, a date and a time state their value, a plain
+      // number is its text
       var stated = cell.getAttribute("data-odr-value");
-      var number = stated !== null ? Number(stated) : toNumber(text);
+      var number =
+        stated !== null ? Number(stated) : kind === "number" ? toNumber(text) : NaN;
       if (!isNaN(number)) {
-        return { type: "number", number: number, text: text };
+        return { type: kind, number: number, text: text };
       }
     }
     return { type: "string", text: text };
@@ -562,6 +571,13 @@
     }
     run.textContent = value.type === "empty" ? "" : value.text;
     cell.classList.toggle("odr-value-type-float", value.type === "number");
+    cell.classList.toggle("odr-value-type-date", value.type === "date");
+    cell.classList.toggle("odr-value-type-time", value.type === "time");
+    if (value.number !== undefined) {
+      cell.setAttribute("data-odr-value", String(value.number));
+    } else {
+      cell.removeAttribute("data-odr-value");
+    }
     reflow(row);
     return true;
   }

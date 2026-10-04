@@ -353,10 +353,17 @@ std::string shown_text(const Element &element) {
   return result;
 }
 
-/// The number the editor opens a cell on, where the cell shows it formatted.
+/// The number the editor opens a cell on, where the cell shows it formatted:
+/// a date and a time always.
 std::optional<std::string> formatted_value(const CellValue &value,
                                            const SheetCell &cell) {
-  if (value.type() != ValueType::float_number || !value.has_number()) {
+  if (!value.has_number()) {
+    return std::nullopt;
+  }
+  if (value.type() == ValueType::date || value.type() == ValueType::time) {
+    return number_format::format_general(value.number());
+  }
+  if (value.type() != ValueType::float_number) {
     return std::nullopt;
   }
   std::string plain = number_format::format_general(value.number());
@@ -847,12 +854,12 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                       (folded.has_value() ? folded->style : std::string()),
                   state.styles())
               .set_class([&]() -> std::optional<HtmlWritable> {
-                std::string clazz = cell_value_type == ValueType::float_number
-                                        ? "odr-value-type-float"
-                                    : cell_value_type == ValueType::date ||
-                                            cell_value_type == ValueType::time
-                                        ? "odr-value-type-date"
-                                        : "";
+                std::string clazz =
+                    cell_value_type == ValueType::float_number
+                        ? "odr-value-type-float"
+                    : cell_value_type == ValueType::date ? "odr-value-type-date"
+                    : cell_value_type == ValueType::time ? "odr-value-type-time"
+                                                         : "";
                 if (lock != nullptr) {
                   clazz += clazz.empty() ? "odr-locked" : " odr-locked";
                 }

@@ -26,6 +26,10 @@ The release run heads these entries with the version and opens a fresh
 - An xlsx cell takes a written date or time as a serial of the workbook's
   date system. A cell without a date or time format gets the built-in 14,
   20, 21 or 22, as Excel gives one.
+- The sheet editor reads a typed date or time: ISO 8601, or the locale's
+  numeric order (`1/2/2025` in `en-US`, `2.1.2025` in `de-DE`), with
+  `AM`/`PM`. A date or time cell opens on its value and states its kind in
+  `odr-value-type-date` or the new `odr-value-type-time`.
 
 - An xlsx cell shows its number formatted, as its `numFmt` or a built-in
   format says, and a date or time format types it `ValueType::date` or

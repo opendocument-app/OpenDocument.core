@@ -1003,6 +1003,23 @@ TEST(html, a_formatted_number_states_its_value) {
   EXPECT_EQ(page.find(R"(data-odr-value="7")"), std::string::npos);
 }
 
+TEST(html, a_date_and_a_time_state_their_value) {
+  const std::string page = render_sheet(
+      fods_file(fods_row(
+          R"(<table:table-cell office:value-type="date")"
+          R"( office:date-value="2025-01-01"><text:p>01.01.2025</text:p>)"
+          R"(</table:table-cell>)"
+          R"(<table:table-cell office:value-type="time")"
+          R"( office:time-value="PT18H00M00S"><text:p>18:00</text:p>)"
+          R"(</table:table-cell>)")),
+      editing_config());
+
+  EXPECT_NE(page.find(R"(class="odr-value-type-date)"), std::string::npos);
+  EXPECT_NE(page.find(R"(data-odr-value="45658")"), std::string::npos);
+  EXPECT_NE(page.find(R"(class="odr-value-type-time)"), std::string::npos);
+  EXPECT_NE(page.find(R"(data-odr-value="0.75")"), std::string::npos);
+}
+
 TEST(html, an_editable_csv_states_that_it_takes_no_style) {
   HtmlConfig config;
   config.editable = true;
