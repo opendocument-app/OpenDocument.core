@@ -5,6 +5,7 @@
 #include <odr/internal/formula/formula_ast.hpp>
 #include <odr/internal/formula/formula_value.hpp>
 
+#include <compare>
 #include <cstddef>
 #include <functional>
 #include <span>
@@ -52,6 +53,10 @@ public:
                 const std::function<void(const SheetPosition &, const Value &)>
                     &visit) const;
 
+  /// What the cell at @p position holds. A cell past the extent of its
+  /// sheet is empty.
+  [[nodiscard]] Value cell_value(const SheetPosition &position) const;
+
   [[nodiscard]] Number number(const Value &value) const;
   [[nodiscard]] Text text(const Value &value) const;
 
@@ -71,6 +76,21 @@ struct FunctionEntry final {
   std::string_view name;
   Function function{nullptr};
 };
+
+/// The order of two texts as both applications sort them: ignoring case
+/// first, then, where @p case_sensitive, a lower case letter before its
+/// upper case one. @throws NoAnswer for a character other than a letter or a
+/// digit, whose place is for the collator of the application.
+[[nodiscard]] std::strong_ordering
+order_of_texts(std::string_view a, std::string_view b, bool case_sensitive);
+/// Whether two texts are equal, without case unless @p case_sensitive.
+/// @throws NoAnswer where the case of a letter cannot be folded.
+[[nodiscard]] bool equal_texts(std::string_view a, std::string_view b,
+                               bool case_sensitive);
+
+/// The sum of @p numbers: as LibreOffice's `KahanSum` adds them, and in
+/// Excel exact, with no answer where it nearly cancels.
+[[nodiscard]] Value sum_of(const Call &call, std::span<const double> numbers);
 
 /// `x^y`, which LibreOffice and Excel compute apart at 0 and below.
 [[nodiscard]] Value power(double x, double y, Dialect dialect);
@@ -93,6 +113,9 @@ void expect_arguments(const Call &call, std::size_t least, std::size_t most);
 [[nodiscard]] std::span<const FunctionEntry> logic_functions();
 /// The functions of text: `LEFT`, `FIND`, `SUBSTITUTE`.
 [[nodiscard]] std::span<const FunctionEntry> text_functions();
+/// The functions of lookup and the conditional aggregates: `VLOOKUP`,
+/// `MATCH`, `COUNTIF`.
+[[nodiscard]] std::span<const FunctionEntry> lookup_functions();
 
 /// The function a formula names as @p name, with or without the prefix a
 /// format writes in front of it (`_xlfn.`, `COM.MICROSOFT.`). Nothing for one

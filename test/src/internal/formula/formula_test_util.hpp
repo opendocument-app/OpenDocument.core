@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <map>
 #include <optional>
 #include <set>
@@ -66,6 +67,33 @@ inline Cells cells() {
   result.values[SheetPosition(0, 0, 5)] = Value{std::string()};
   result.values[SheetPosition(0, 0, 29)] = Value{7.0};
   result.values[SheetPosition(1, 0, 0)] = Value{5.0};
+  return result;
+}
+
+/// Column A of `s` as the criteria probes state it: `Sp`, `sp`, `Sa`,
+/// `x Sp`, 5, the text `5`, true, nothing, an empty text, `a*b`, `ab`, `Ü`,
+/// `ü` and `Sp ` with a space.
+inline Cells criteria_cells() {
+  Cells result;
+  const std::array column{Value{std::string("Sp")},
+                          Value{std::string("sp")},
+                          Value{std::string("Sa")},
+                          Value{std::string("x Sp")},
+                          Value{5.0},
+                          Value{std::string("5")},
+                          Value{true},
+                          Value{Empty{}},
+                          Value{std::string()},
+                          Value{std::string("a*b")},
+                          Value{std::string("ab")},
+                          Value{std::string("Ü")},
+                          Value{std::string("ü")},
+                          Value{std::string("Sp ")}};
+  for (std::uint32_t row = 0; row < column.size(); ++row) {
+    if (!column[row].holds<Empty>()) {
+      result.values[SheetPosition(0, 0, row)] = column[row];
+    }
+  }
   return result;
 }
 

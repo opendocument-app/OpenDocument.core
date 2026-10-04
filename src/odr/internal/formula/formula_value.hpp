@@ -47,7 +47,12 @@ struct Empty final {
 /// A rectangle of one sheet.
 struct Area final {
   std::uint32_t sheet{0};
+  /// A whole column or row reaches only to the extent of the sheet here.
   TableRange range{};
+  /// Whether the reference states no row (`A:A`) or no column (`1:1`), so
+  /// the rectangle is as tall or as wide as the grid of the application.
+  bool whole_columns{false};
+  bool whole_rows{false};
 
   friend bool operator==(const Area &, const Area &) = default;
 };

@@ -42,7 +42,7 @@ const std::unordered_map<std::string, Function> &functions() {
     std::unordered_map<std::string, Function> table;
     for (const std::span<const FunctionEntry> entries :
          {std::span<const FunctionEntry>(constant_functions), math_functions(),
-          logic_functions(), text_functions()}) {
+          logic_functions(), text_functions(), lookup_functions()}) {
       for (const FunctionEntry &entry : entries) {
         table.emplace(entry.name, entry.function);
       }
