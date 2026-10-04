@@ -678,18 +678,19 @@ std::string format_fraction(const std::vector<Token> &tokens,
 
 /// The civil date @p days after 1970-01-01, as Howard Hinnant's
 /// `civil_from_days` computes it.
-std::tuple<std::int64_t, unsigned, unsigned> civil(std::int64_t days) {
+std::tuple<std::int64_t, std::uint32_t, std::uint32_t>
+civil(std::int64_t days) {
   days += 719468;
   const std::int64_t era = (days >= 0 ? days : days - 146096) / 146097;
-  const auto day_of_era = static_cast<unsigned>(days - era * 146097);
-  const unsigned year_of_era = (day_of_era - day_of_era / 1460 +
-                                day_of_era / 36524 - day_of_era / 146096) /
-                               365;
-  const unsigned day_of_year =
+  const auto day_of_era = static_cast<std::uint32_t>(days - era * 146097);
+  const std::uint32_t year_of_era = (day_of_era - day_of_era / 1460 +
+                                     day_of_era / 36524 - day_of_era / 146096) /
+                                    365;
+  const std::uint32_t day_of_year =
       day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
-  const unsigned shifted_month = (5 * day_of_year + 2) / 153;
-  const unsigned day = day_of_year - (153 * shifted_month + 2) / 5 + 1;
-  const unsigned month =
+  const std::uint32_t shifted_month = (5 * day_of_year + 2) / 153;
+  const std::uint32_t day = day_of_year - (153 * shifted_month + 2) / 5 + 1;
+  const std::uint32_t month =
       shifted_month < 10 ? shifted_month + 3 : shifted_month - 9;
   const std::int64_t year =
       static_cast<std::int64_t>(year_of_era) + era * 400 + (month <= 2 ? 1 : 0);
@@ -737,8 +738,8 @@ std::string format_date_time(const std::vector<Token> &tokens,
   // 1900 counts 1900-02-29, which never was, as day 60, so its weekdays only
   // agree with the calendar from day 61 on
   std::int64_t year = 1900;
-  unsigned month = 2;
-  unsigned month_day = 29;
+  std::uint32_t month = 2;
+  std::uint32_t month_day = 29;
   std::int64_t weekday = 0;
   if (epoch == Epoch::from_1904) {
     std::tie(year, month, month_day) = civil(day - 24107);
@@ -995,7 +996,12 @@ std::string Format::format(const std::string_view value) const {
   return result;
 }
 
-std::string format_general(const double value, const Symbols &symbols) {
+} // namespace odr::internal::number_format
+
+namespace odr::internal {
+
+std::string number_format::format_general(const double value,
+                                          const Symbols &symbols) {
   if (value == 0) {
     return "0";
   }
@@ -1029,34 +1035,36 @@ std::string format_general(const double value, const Symbols &symbols) {
          fmt::format("{:02d}", std::abs(power));
 }
 
-std::int64_t days_from_civil(std::int64_t year, const unsigned month,
-                             const unsigned day) {
+std::int64_t number_format::days_from_civil(std::int64_t year,
+                                            const std::uint32_t month,
+                                            const std::uint32_t day) {
   // Howard Hinnant's `days_from_civil`, moved from 1970-01-01 to 1899-12-30
   year -= month <= 2 ? 1 : 0;
   const std::int64_t era = (year >= 0 ? year : year - 399) / 400;
-  const auto year_of_era = static_cast<unsigned>(year - era * 400);
-  const unsigned day_of_year =
+  const auto year_of_era = static_cast<std::uint32_t>(year - era * 400);
+  const std::uint32_t day_of_year =
       (153 * (month > 2 ? month - 3 : month + 9) + 2) / 5 + day - 1;
-  const unsigned day_of_era =
+  const std::uint32_t day_of_era =
       year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
   return era * 146097 + static_cast<std::int64_t>(day_of_era) - 719468 + 25569;
 }
 
-double days_from_serial(const double serial, const Epoch epoch) {
+double number_format::days_from_serial(const double serial, const Epoch epoch) {
   if (epoch == Epoch::from_1904) {
     return serial + 1462;
   }
   return serial < 61 ? serial + 1 : serial;
 }
 
-double serial_from_days(const double days, const Epoch epoch) {
+double number_format::serial_from_days(const double days, const Epoch epoch) {
   if (epoch == Epoch::from_1904) {
     return days - 1462;
   }
   return days < 61 ? days - 1 : days;
 }
 
-Symbols symbols_of(const std::string_view locale) {
+number_format::Symbols
+number_format::symbols_of(const std::string_view locale) {
   const std::string_view language = locale.substr(0, locale.find('-'));
   const std::string_view region = locale.find('-') == std::string_view::npos
                                       ? std::string_view()
@@ -1087,4 +1095,4 @@ Symbols symbols_of(const std::string_view locale) {
   return {};
 }
 
-} // namespace odr::internal::number_format
+} // namespace odr::internal

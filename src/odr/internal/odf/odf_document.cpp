@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <cstdint>
 #include <cstring>
 #include <mutex>
 #include <ostream>
@@ -254,8 +255,8 @@ std::optional<double> date_days(const std::string_view text) {
     return error == std::errc() && end == digits.data() + digits.size();
   };
   std::int64_t year = 0;
-  unsigned month = 0;
-  unsigned day = 0;
+  std::uint32_t month = 0;
+  std::uint32_t day = 0;
   if (text.size() < 10 || text[4] != '-' || text[7] != '-' ||
       !integer(text.substr(0, 4), year) || !integer(text.substr(5, 2), month) ||
       !integer(text.substr(8, 2), day) || month < 1 || month > 12 || day < 1 ||
@@ -267,8 +268,8 @@ std::optional<double> date_days(const std::string_view text) {
   if (text.size() == 10) {
     return result;
   }
-  unsigned hours = 0;
-  unsigned minutes = 0;
+  std::uint32_t hours = 0;
+  std::uint32_t minutes = 0;
   std::string_view seconds = text.size() > 17 ? text.substr(17) : "";
   if (seconds.ends_with('Z')) {
     seconds.remove_suffix(1);
