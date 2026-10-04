@@ -258,7 +258,8 @@ std::optional<double> date_days(const std::string_view text) {
   unsigned day = 0;
   if (text.size() < 10 || text[4] != '-' || text[7] != '-' ||
       !integer(text.substr(0, 4), year) || !integer(text.substr(5, 2), month) ||
-      !integer(text.substr(8, 2), day)) {
+      !integer(text.substr(8, 2), day) || month < 1 || month > 12 || day < 1 ||
+      day > 31) {
     return std::nullopt;
   }
   double result =

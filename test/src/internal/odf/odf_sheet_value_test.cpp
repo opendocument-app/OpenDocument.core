@@ -141,8 +141,12 @@ TEST(OdfSheetValue, a_date_and_a_time_state_days_since_1899_12_30) {
 }
 
 TEST(OdfSheetValue, a_date_that_does_not_parse_states_no_number) {
-  EXPECT_FALSE(value_of(R"(<table:table-cell office:value-type="date")"
-                        R"( office:date-value="soon"><text:p>soon</text:p>)"
-                        R"(</table:table-cell>)")
-                   .has_number());
+  for (const char *date : {"soon", "2025-13-01", "2025-01-45"}) {
+    EXPECT_FALSE(value_of(std::string(R"(<table:table-cell)"
+                                      R"( office:value-type="date")"
+                                      R"( office:date-value=")") +
+                          date + R"("><text:p>x</text:p></table:table-cell>)")
+                     .has_number())
+        << date;
+  }
 }
