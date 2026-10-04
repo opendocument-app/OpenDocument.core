@@ -307,3 +307,52 @@ TEST(OdfSheetRows, the_dependents_follow_the_moved_formulas) {
   ASSERT_EQ(dependents.size(), 1);
   EXPECT_EQ(dependents[0], SheetPosition(0, 1, 1));
 }
+
+TEST(OdfSheetRows, the_references_of_a_condition_move) {
+  const Document document = document_of(flat_spreadsheet(
+      table(
+          "s",
+          row(string_cell("a")) + row(string_cell("b")) +
+              R"x(<calcext:conditional-formats><calcext:conditional-format)x"
+              R"x( calcext:target-range-address="s.A1:s.A2">)x"
+              R"x(<calcext:condition calcext:value="formula-is([.A1]&gt;[.$B$1])")x"
+              R"x( calcext:base-cell-address="s.A1"/>)x"
+              R"x(</calcext:conditional-format></calcext:conditional-formats>)x"),
+      R"x(<table:content-validations><table:content-validation table:name="v")x"
+      R"x( table:condition="of:cell-content()&lt;[.$C$3] and &quot;[.A1]&quot;&lt;&gt;[.A1]")x"
+      R"x( table:base-cell-address="s.A2"/></table:content-validations>)x"));
+
+  sheet_at(document, 0).insert_rows(0, 1);
+
+  const std::string xml = saved(document);
+  EXPECT_NE(xml.find(R"x(calcext:value="formula-is([.A2]>[.$B$2])")x"),
+            std::string::npos);
+  EXPECT_NE(xml.find(R"x(calcext:target-range-address="s.A2:s.A3")x"),
+            std::string::npos);
+  // the string literal is no reference; pugixml writes `>` plain
+  EXPECT_NE(
+      xml.find(
+          R"x(table:condition="of:cell-content()&lt;[.$C$4] and &quot;[.A1]&quot;&lt;>[.A2]")x"),
+      std::string::npos);
+  EXPECT_NE(xml.find(R"x(table:base-cell-address="s.A3")x"), std::string::npos);
+}
+
+TEST(OdfSheetRows, the_condition_of_a_cell_style_moves) {
+  const Document document = document_of(
+      R"x(<?xml version="1.0" encoding="UTF-8"?>)x"
+      R"x(<office:document office:mimetype=")x"
+      R"x(application/vnd.oasis.opendocument.spreadsheet">)x"
+      R"x(<office:automatic-styles><style:style style:name="ce1")x"
+      R"x( style:family="table-cell"><style:map style:condition="cell-content()&gt;[.B1]")x"
+      R"x( style:apply-style-name="Default" style:base-cell-address="s.A1"/>)x"
+      R"x(</style:style></office:automatic-styles>)x"
+      R"x(<office:body><office:spreadsheet>)x" +
+      abc() + R"x(</office:spreadsheet></office:body></office:document>)x");
+
+  sheet_at(document, 0).insert_rows(0, 1);
+
+  const std::string xml = saved(document);
+  EXPECT_NE(xml.find(R"x(style:condition="cell-content()>[.B2]")x"),
+            std::string::npos);
+  EXPECT_NE(xml.find(R"x(style:base-cell-address="s.A2")x"), std::string::npos);
+}
