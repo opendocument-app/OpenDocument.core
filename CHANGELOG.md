@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- CFB streams retain their entry metadata after the file wrapper is released.
+  Nested directory walks finish children before resuming outer siblings.
+
 - JSON edits reject fractional and out-of-range indices before changing a
   document, and preserve the full width of positive element identifiers.
   Text and document edits validate the version and operations array.
