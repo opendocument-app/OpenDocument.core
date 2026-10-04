@@ -172,6 +172,24 @@ TEST(NumberFormat, a_locale_writes_its_own_point_and_grouping) {
   EXPECT_EQ(symbols_of("pt-BR").group, ".");
 }
 
+/// The names are the ones LibreOffice shows for the same date style.
+TEST(NumberFormat, a_locale_writes_its_own_month_and_day_names) {
+  const auto shown_in = [](const std::string_view code,
+                           const std::string_view locale) {
+    // 2025-03-15, a Saturday
+    return Format(code).format(45731, Epoch::from_1900, symbols_of(locale));
+  };
+  EXPECT_EQ(shown_in("dddd, d. mmmm yyyy", "de-DE"), "Samstag, 15. März 2025");
+  EXPECT_EQ(shown_in("ddd d. mmm", "de-DE"), "Sa 15. Mär");
+  // a month after its day is declined
+  EXPECT_EQ(shown_in("mmmm yyyy", "ru-RU"), "Март 2025");
+  EXPECT_EQ(shown_in("d mmmm yyyy", "ru-RU"), "15 марта 2025");
+  EXPECT_EQ(shown_in("mmmmm", "ru-RU"), "М");
+  EXPECT_EQ(shown_in("d mmmm", "fi-FI"), "15 maaliskuuta");
+  EXPECT_EQ(shown_in("mmmm", "no"), "mars");
+  EXPECT_EQ(shown_in("dddd, mmmm d", "ja"), "Saturday, March 15");
+}
+
 TEST(NumberFormat, a_serial_is_days_since_1899_12_30) {
   EXPECT_EQ(days_from_civil(1899, 12, 30), 0);
   EXPECT_EQ(days_from_civil(2025, 1, 1), 45658);
