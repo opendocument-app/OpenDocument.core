@@ -58,6 +58,9 @@ struct Condition final {
 struct Section final {
   std::vector<Token> tokens{};
   std::optional<Condition> condition{};
+  /// The month and day names of the language `[$-407]` states; null where
+  /// the section states none, or one the table does not have.
+  const CalendarNames *names{nullptr};
 };
 
 /// Where a date serial counts from: `workbookPr/@date1904` picks 1904.

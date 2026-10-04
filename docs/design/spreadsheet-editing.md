@@ -446,7 +446,9 @@ editor opens the cell on the locale's spelling of its serial, and a commit of
 it unchanged writes nothing.
 
 A date written into an ods cell takes the month and day names of its data
-style's language (decision 14). An xlsx date shows English names.
+style's language (decision 14). An xlsx date takes the names of the language
+its format code states, `[$-419]`, and English ones where it states none, as
+the file does not say what the reader's system writes.
 
 ## Formulas, read side
 
@@ -472,6 +474,4 @@ style's language (decision 14). An xlsx date shows English names.
   incremental recompute in topological order with cycles reported, and
   `Document::recalculate(operations)` returning the changed cells. Formula
   input in the editor comes with it.
-- The language an xlsx format code states, `[$-407]`, for the month and day
-  names of a date.
 - Insert and delete of rows and columns.

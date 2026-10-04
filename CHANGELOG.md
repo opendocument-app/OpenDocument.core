@@ -35,6 +35,8 @@ The release run heads these entries with the version and opens a fresh
 - A date written into an ods cell shows the month and day names of its data
   style's language, as LibreOffice shows them: `15 марта` in a Russian
   `D MMMM` cell.
+- An xlsx date shows the month and day names of the language its format
+  code states: `[$-419]d mmmm` shows `15 марта`.
 
 - An xlsx cell shows its number formatted, as its `numFmt` or a built-in
   format says, and a date or time format types it `ValueType::date` or
