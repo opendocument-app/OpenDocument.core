@@ -424,6 +424,24 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
   });
 }
 
+- (BOOL)insertRowsAt:(uint32_t)row
+               count:(uint32_t)count
+               error:(NSError **)error {
+  return guarded(error, [&] {
+    self.handle.as_sheet().insert_rows(row, count);
+    return YES;
+  });
+}
+
+- (BOOL)deleteRowsAt:(uint32_t)row
+               count:(uint32_t)count
+               error:(NSError **)error {
+  return guarded(error, [&] {
+    self.handle.as_sheet().delete_rows(row, count);
+    return YES;
+  });
+}
+
 @end
 
 @implementation ODRSheetCell

@@ -252,6 +252,18 @@ export declare class Document {
   /** `setCellStyle` on every cell of the column, also past what the file states. */
   setColumnStyle(sheet: number, column: number, style: CellStyle): this;
   /**
+   * Moves the rows from `row` on down by `count`, and every reference to them
+   * in the document with them. The new rows are empty.
+   * @throws OdrError `unsupported_operation` where the edit would cut a merge
+   */
+  insertRows(sheet: number, row: number, count: number): this;
+  /**
+   * Removes `count` rows from `row` on, and moves the rows below up. A
+   * reference into the removed rows becomes `#REF!`.
+   * @throws OdrError `unsupported_operation` where the edit would cut a merge
+   */
+  deleteRows(sheet: number, row: number, count: number): this;
+  /**
    * States `style` on one paragraph and leaves what it does not name. The
    * same object the page's `odr.editing.format` takes.
    * @throws OdrError `invalid_argument` for a property or a value it does

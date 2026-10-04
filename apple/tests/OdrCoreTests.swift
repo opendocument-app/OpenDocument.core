@@ -504,6 +504,32 @@ final class DocumentSaveTests: XCTestCase {
     XCTAssertEqual(text.style.fontWeight?.intValue, FontWeight.bold.rawValue)
   }
 
+  func testInsertAndDeleteRowsMoveTheCells() throws {
+    let document = try DecodedFile.decode(path: try Fixture.ods())
+      .asDocumentFile().document()
+    let root = try XCTUnwrap(try document.rootElement())
+    let sheet = try XCTUnwrap(root.firstDescendant(ofType: Sheet.self))
+    let text = try XCTUnwrap(
+      try XCTUnwrap(sheet.cell(column: 0, row: 0)).firstDescendant(ofType: Text.self)
+    ).content
+
+    try sheet.insertRows(at: 0, count: 2)
+
+    let path = URL(fileURLWithPath: try temporaryDirectory())
+      .appendingPathComponent("rows.ods")
+    try XCTUnwrap(try document.saveToMemory()).write(to: path)
+    let reloaded = try DecodedFile.decode(path: path.path)
+      .asDocumentFile().document()
+    let reloadedRoot = try XCTUnwrap(try reloaded.rootElement())
+    let reloadedSheet = try XCTUnwrap(reloadedRoot.firstDescendant(ofType: Sheet.self))
+    let moved = try XCTUnwrap(reloadedSheet.cell(column: 0, row: 2))
+    XCTAssertEqual(moved.firstDescendant(ofType: Text.self)?.content, text)
+
+    try reloadedSheet.deleteRows(at: 0, count: 2)
+    let back = try XCTUnwrap(reloadedSheet.cell(column: 0, row: 0))
+    XCTAssertEqual(back.firstDescendant(ofType: Text.self)?.content, text)
+  }
+
   func testSetRowAndColumnStyleReachPastTheCells() throws {
     let document = try DecodedFile.decode(path: try Fixture.ods())
       .asDocumentFile().document()

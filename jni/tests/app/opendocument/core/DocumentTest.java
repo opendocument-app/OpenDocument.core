@@ -312,6 +312,25 @@ class DocumentTest {
   }
 
   @Test
+  void insertAndDeleteRowsMoveTheCells() throws IOException {
+    Path ods = TestFiles.odsFile(tempDir);
+    Document document = Odr.open(ods.toString()).asDocumentFile().document();
+    Sheet sheet = document.rootElement().firstChild().asSheet();
+    String text = firstText(sheet.cell(0, 0)).content();
+
+    sheet.insertRows(0, 2);
+
+    Path path = tempDir.resolve("rows.ods");
+    Files.write(path, document.saveToMemory());
+    Document reloaded = Odr.open(path.toString()).asDocumentFile().document();
+    Sheet reloadedSheet = reloaded.rootElement().firstChild().asSheet();
+    assertEquals(text, firstText(reloadedSheet.cell(0, 2)).content());
+
+    reloadedSheet.deleteRows(0, 2);
+    assertEquals(text, firstText(reloadedSheet.cell(0, 0)).content());
+  }
+
+  @Test
   void setCellStyleRefusesWhatNoEngineWrites() throws IOException {
     Path ods = TestFiles.odsFile(tempDir);
     Document document = Odr.open(ods.toString()).asDocumentFile().document();
