@@ -16,6 +16,7 @@
 #include <odr/internal/zip/zip_file.hpp>
 
 #include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 
 #include <cstdint>
 #include <memory>
@@ -147,6 +148,33 @@ TEST(DocumentEdit, an_unknown_version_refuses) {
   EXPECT_THROW(document.edit(R"({"version":3,"ops":[]})"),
                std::invalid_argument);
   EXPECT_THROW(document.edit(R"({"ops":[]})"), std::invalid_argument);
+}
+
+TEST(DocumentEdit, invalid_integer_arguments_do_not_target_another_cell) {
+  const Document document = three_cell_sheet();
+  nlohmann::json operation{{"op", "setCell"},
+                           {"sheet", 0},
+                           {"column", 0},
+                           {"row", 0},
+                           {"value", {{"type", "string"}, {"text", "wrong"}}}};
+  for (const char *field : {"sheet", "column", "row"}) {
+    for (const auto &value :
+         nlohmann::json::array({-4294967296LL, 4294967296ULL, 0.5, true})) {
+      operation[field] = value;
+      EXPECT_THROW(
+          document.edit(
+              nlohmann::json{{"version", 2}, {"ops", {operation}}}.dump()),
+          std::invalid_argument);
+      EXPECT_EQ(first_sheet(document).cell(0, 0).value().text(), "a");
+    }
+    operation[field] = 0;
+  }
+  EXPECT_THROW(document.edit(R"({"version":4294967298,"ops":[]})"),
+               std::invalid_argument);
+  EXPECT_THROW(document.edit(R"({"version":2.5,"ops":[]})"),
+               std::invalid_argument);
+  EXPECT_THROW(document.edit(R"({"version":2,"ops":null})"),
+               std::invalid_argument);
 }
 
 TEST(DocumentEdit, an_unknown_op_refuses) {
@@ -327,6 +355,17 @@ TEST(DocumentEdit, an_op_naming_a_created_element_that_is_not_there_refuses) {
 
   EXPECT_THROW(document.edit(ops(R"({"op":"setText","id":-1,"text":"x"})")),
                std::invalid_argument);
+}
+
+TEST(DocumentEdit, an_unsigned_id_does_not_alias_a_created_element) {
+  const Document document = two_paragraph_text();
+  EXPECT_THROW(
+      document.edit(
+          ops(R"({"op":"insertText","after":)" + id_of(run_at(document, 0, 2)) +
+              R"(,"text":"four","id":-1},)" +
+              R"({"op":"setText","id":18446744073709551615,"text":"wrong"})")),
+      std::invalid_argument);
+  EXPECT_EQ(text_of(paragraph_at(document, 0)), "one two threefour");
 }
 
 TEST(DocumentEdit, creating_two_elements_under_one_id_refuses) {
