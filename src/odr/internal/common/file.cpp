@@ -44,7 +44,7 @@ MemoryFile::MemoryFile(std::string data, std::string name)
 MemoryFile::MemoryFile(const File &file)
     : m_data(file.size(), ' '), m_name{file.name()} {
   const auto istream = file.stream();
-  const auto size = static_cast<std::int64_t>(file.size());
+  const auto size = static_cast<std::streamsize>(m_data.size());
   istream->read(m_data.data(), size);
   if (istream->gcount() != size) {
     throw FileReadError();

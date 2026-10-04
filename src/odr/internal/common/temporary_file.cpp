@@ -86,7 +86,7 @@ TemporaryDiskFile TemporaryDiskFileFactory::copy(std::istream &in) const {
 
     if (!file.is_open()) {
       file.clear();
-      file.open(file_path.string(), std::ios_base::out);
+      file.open(file_path.string(), std::ios_base::out | std::ios_base::binary);
       break;
     }
 

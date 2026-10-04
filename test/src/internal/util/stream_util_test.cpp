@@ -1,6 +1,8 @@
+#include <odr/internal/util/byte_stream_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <ios>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -40,6 +42,40 @@ TEST(ViewStream, seek_out_of_range) {
   in.clear();
   in.seekg(-1, std::ios::beg);
   EXPECT_TRUE(in.fail());
+
+  in.clear();
+  in.seekg(std::numeric_limits<std::streamoff>::max(), std::ios::end);
+  EXPECT_TRUE(in.fail());
+
+  in.clear();
+  in.seekg(std::numeric_limits<std::streamoff>::min(), std::ios::cur);
+  EXPECT_TRUE(in.fail());
+}
+
+TEST(ViewStream, empty_view_is_seekable) {
+  stream::ViewStream in(std::string_view{});
+  EXPECT_EQ(in.tellg(), 0);
+  in.seekg(0, std::ios::end);
+  EXPECT_TRUE(in.good());
+  EXPECT_EQ(stream::read(in), "");
+}
+
+TEST(Stream, delimiter_reads_preserve_failed_input) {
+  std::istringstream in("first\nsecond;");
+  in.setstate(std::ios::failbit);
+  EXPECT_EQ(stream::read_line(in, false), "");
+  EXPECT_EQ(stream::read_until(in, ';', false), "");
+  in.clear();
+  EXPECT_EQ(stream::read_line(in, false), "first");
+  EXPECT_EQ(stream::read_until(in, ';', true), "second;");
+}
+
+TEST(ByteStream, length_prefixed_reads_handle_chunks_and_stream_exceptions) {
+  const std::string data(4097, 'x');
+  std::istringstream in(data);
+  in.exceptions(std::ios::badbit | std::ios::failbit);
+  EXPECT_EQ(byte_stream::read_u8s(in, data.size()), data);
+  EXPECT_THROW(byte_stream::read_u8s(in, 1), std::ios_base::failure);
 }
 
 // Nothing reaches the stream until the buffer is released, and the release
@@ -83,4 +119,21 @@ TEST(DeferredBuffer, releases_once) {
   buffer.release();
 
   EXPECT_EQ(out.str(), "headbody");
+}
+
+TEST(DeferredBuffer, propagates_sink_failures_before_and_after_release) {
+  for (const bool released : {false, true}) {
+    std::ostringstream out;
+    stream::DeferredBuffer buffer(out, 0, [] {});
+    std::ostream deferred(&buffer);
+    if (released) {
+      buffer.release();
+    }
+    out.setstate(std::ios::badbit);
+    deferred << "body";
+    EXPECT_TRUE(deferred.bad());
+    deferred.clear();
+    deferred.put('x');
+    EXPECT_TRUE(deferred.bad());
+  }
 }

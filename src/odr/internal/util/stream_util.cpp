@@ -43,6 +43,9 @@ std::istream &stream::pipe_line(std::istream &in, std::ostream &out,
   // reading through the streambuf is faster than through the istream, but has
   // to be guarded by a sentry
   std::istream::sentry se(in, true);
+  if (!se) {
+    return in;
+  }
   std::streambuf *sb = in.rdbuf();
 
   while (true) {
@@ -81,6 +84,9 @@ std::string stream::read_line(std::istream &in, const bool inclusive) {
 std::istream &stream::pipe_until(std::istream &in, std::ostream &out,
                                  const char until_char, const bool inclusive) {
   std::istream::sentry se(in, true);
+  if (!se) {
+    return in;
+  }
   std::streambuf *sb = in.rdbuf();
 
   while (true) {
@@ -120,7 +126,7 @@ class ViewStreamBuf : public std::streambuf {
 public:
   explicit ViewStreamBuf(std::string_view view) {
     // the get area is never written through
-    auto *begin = const_cast<char *>(view.data());
+    auto *begin = view.empty() ? &m_empty : const_cast<char *>(view.data());
     setg(begin, begin, begin + view.size());
   }
 
@@ -131,18 +137,20 @@ protected:
       return pos_type(off_type(-1));
     }
 
-    off_type position = off;
+    const off_type size = egptr() - eback();
+    off_type base = 0;
     if (dir == std::ios_base::cur) {
-      position += gptr() - eback();
+      base = gptr() - eback();
     } else if (dir == std::ios_base::end) {
-      position += egptr() - eback();
+      base = size;
     } else if (dir != std::ios_base::beg) {
       return pos_type(off_type(-1));
     }
 
-    if (position < 0 || position > egptr() - eback()) {
+    if (off < -base || off > size - base) {
       return pos_type(off_type(-1));
     }
+    const off_type position = base + off;
     setg(eback(), eback() + position, egptr());
     return position;
   }
@@ -151,6 +159,9 @@ protected:
                    const std::ios_base::openmode which) override {
     return seekoff(pos, std::ios_base::beg, which);
   }
+
+private:
+  char m_empty{};
 };
 
 } // namespace
@@ -174,13 +185,13 @@ std::streamsize DeferredBuffer::xsputn(const char *data,
                                        const std::streamsize size) {
   if (m_released) {
     m_out->write(data, size);
-    return size;
+    return *m_out ? size : 0;
   }
   m_held.append(data, static_cast<std::size_t>(size));
   if (m_held.size() > m_cap) {
     release();
   }
-  return size;
+  return *m_out ? size : 0;
 }
 
 int DeferredBuffer::overflow(const int c) {
@@ -188,8 +199,7 @@ int DeferredBuffer::overflow(const int c) {
     return traits_type::not_eof(c);
   }
   const char value = traits_type::to_char_type(c);
-  xsputn(&value, 1);
-  return c;
+  return xsputn(&value, 1) == 1 ? c : traits_type::eof();
 }
 
 ViewStream::ViewStream(std::string_view view)

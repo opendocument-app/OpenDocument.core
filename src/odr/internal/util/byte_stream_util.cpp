@@ -49,19 +49,12 @@ std::string byte_stream::read_u8s(std::istream &in, const std::uint64_t n) {
   constexpr std::uint64_t chunk_size = 4096;
 
   std::string result;
+  std::array<char, chunk_size> buffer{};
   while (result.size() < n) {
-    const std::size_t offset = result.size();
     const auto step =
-        static_cast<std::size_t>(std::min(chunk_size, n - offset));
-    // The callback must not throw, so a short read reports itself by
-    // shrinking the string back.
-    result.resize_and_overwrite(
-        offset + step, [&](char *out, const std::size_t size) {
-          return try_read(in, out + offset, step) ? size : offset;
-        });
-    if (result.size() == offset) {
-      throw_exhausted();
-    }
+        static_cast<std::size_t>(std::min(chunk_size, n - result.size()));
+    read(in, buffer.data(), step);
+    result.append(buffer.data(), step);
   }
   return result;
 }
