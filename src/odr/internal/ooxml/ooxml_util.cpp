@@ -565,8 +565,6 @@ ooxml::parse_relationships(const abstract::ReadableFilesystem &filesystem,
   return parse_relationships(relationships);
 }
 
-/// The target of the first relationship whose type ends in @p type
-/// (`slideLayout`, `slideMaster`, `theme`, …), resolved against the part.
 std::vector<AbsPath> ooxml::parse_relationship_targets(
     const abstract::ReadableFilesystem &filesystem, const AbsPath &path,
     const std::string_view type) {
@@ -594,6 +592,8 @@ std::vector<AbsPath> ooxml::parse_relationship_targets(
   return result;
 }
 
+/// The target of the first relationship whose type ends in @p type
+/// (`slideLayout`, `slideMaster`, `theme`, …), resolved against the part.
 std::optional<AbsPath>
 ooxml::parse_relationship_target(const abstract::ReadableFilesystem &filesystem,
                                  const AbsPath &path,

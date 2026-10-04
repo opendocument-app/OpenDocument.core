@@ -688,8 +688,9 @@ Status: landed. The steps landed as a stack, in this order:
   moves where it names the edited sheet. Its place on a sheet,
   `location/@ref`, moves too, and an edit cutting it refuses, as Excel
   refuses to change part of a pivot table. So does an edit removing all of
-  its source, which would leave no range to state. An ods pivot table states its
-  source and its target as addresses, which already move.
+  its source, which would leave no range to state. A source in another
+  workbook (`r:id`) stays. An ods pivot table states its source and its
+  target as addresses, which already move.
 
 **Why refuse a cut table and pivot table rather than remove them:** removing
 a part means editing the package's relationships and content types, which no

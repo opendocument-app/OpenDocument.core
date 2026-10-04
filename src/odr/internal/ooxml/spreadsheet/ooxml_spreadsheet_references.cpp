@@ -276,6 +276,25 @@ void move_range(pugi::xml_node node, const formula::SheetEdit &edit) {
   }
 }
 
+/// Whether the edit removes all of @p ref, a range list of the edited sheet.
+bool removes_all(const std::string_view ref, const formula::SheetEdit &edit) {
+  const std::optional<std::string> moved =
+      formula::move_addresses(ref, edit, edit.sheet, syntax);
+  return moved.has_value() && moved->empty();
+}
+
+/// The `worksheetSource` of @p cache where it reads the edited sheet, else
+/// null. One with an `r:id` reads another workbook.
+pugi::xml_node edited_source(const pugi::xml_node cache,
+                             const formula::SheetEdit &edit) {
+  const pugi::xml_node source =
+      cache.child("cacheSource").child("worksheetSource");
+  return source.attribute("ref") && !source.attribute("r:id") &&
+                 source.attribute("sheet").value() == edit.sheet
+             ? source
+             : pugi::xml_node();
+}
+
 void collect_ranges(const pugi::xml_node node, const formula::SheetEdit &edit,
                     std::vector<pugi::xml_node> &lost) {
   for (pugi::xml_node child : node.children()) {
@@ -661,54 +680,23 @@ bool ooxml::spreadsheet::cuts(const std::string &ref,
 bool ooxml::spreadsheet::cuts_pivot(const pugi::xml_node pivot,
                                     const formula::SheetEdit &edit) {
   const std::string ref = pivot.child("location").attribute("ref").value();
-  if (ref.empty()) {
-    return false;
-  }
-  const TableRange range(ref.contains(':') ? ref : ref + ":" + ref);
-  const bool rows = edit.axis == formula::Axis::row;
-  return cuts(ref, edit) ||
-         !edit.span(rows ? range.from().row : range.from().column,
-                    rows ? range.to().row : range.to().column)
-              .has_value();
+  return !ref.empty() && (cuts(ref, edit) || removes_all(ref, edit));
 }
 
 void ooxml::spreadsheet::move_pivot(const pugi::xml_node pivot,
                                     const formula::SheetEdit &edit) {
-  if (pugi::xml_attribute ref = pivot.child("location").attribute("ref")) {
-    if (const std::optional<std::string> moved =
-            formula::move_addresses(ref.value(), edit, edit.sheet, syntax)) {
-      ref.set_value(moved->c_str());
-    }
-  }
+  move_range(pivot.child("location"), edit);
 }
 
 bool ooxml::spreadsheet::loses_pivot_source(const pugi::xml_node cache,
                                             const formula::SheetEdit &edit) {
-  const pugi::xml_node source =
-      cache.child("cacheSource").child("worksheetSource");
-  const pugi::xml_attribute ref = source.attribute("ref");
-  if (!ref ||
-      std::string_view(source.attribute("sheet").value()) != edit.sheet) {
-    return false;
-  }
-  const std::optional<std::string> moved =
-      formula::move_addresses(ref.value(), edit, edit.sheet, syntax);
-  return moved.has_value() && moved->empty();
+  const pugi::xml_node source = edited_source(cache, edit);
+  return source && removes_all(source.attribute("ref").value(), edit);
 }
 
 void ooxml::spreadsheet::move_pivot_cache(const pugi::xml_node cache,
                                           const formula::SheetEdit &edit) {
-  const pugi::xml_node source =
-      cache.child("cacheSource").child("worksheetSource");
-  pugi::xml_attribute ref = source.attribute("ref");
-  if (!ref ||
-      std::string_view(source.attribute("sheet").value()) != edit.sheet) {
-    return;
-  }
-  if (const std::optional<std::string> moved =
-          formula::move_addresses(ref.value(), edit, edit.sheet, syntax)) {
-    ref.set_value(moved->c_str());
-  }
+  move_range(edited_source(cache, edit), edit);
 }
 
 } // namespace odr::internal

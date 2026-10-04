@@ -18,8 +18,9 @@ using namespace odr::test::ooxml;
 
 namespace {
 
-/// Sheet `s` with a pivot table at D10:E12 over the source A1:B3.
-std::shared_ptr<internal::abstract::File> with_pivot() {
+/// Sheet `s` with a pivot table at D10:E12 over @p source, A1:B3 by default.
+std::shared_ptr<internal::abstract::File> with_pivot(
+    const std::string &source = R"(<worksheetSource ref="A1:B3" sheet="s"/>)") {
   internal::zip::ZipArchive zip;
   insert(
       zip, "[Content_Types].xml",
@@ -63,8 +64,8 @@ std::shared_ptr<internal::abstract::File> with_pivot() {
   insert(
       zip, "xl/pivotCache/pivotCacheDefinition1.xml",
       R"(<pivotCacheDefinition xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">)"
-      R"(<cacheSource type="worksheet"><worksheetSource ref="A1:B3" sheet="s"/>)"
-      R"(</cacheSource></pivotCacheDefinition>)");
+      R"(<cacheSource type="worksheet">)" +
+          source + R"(</cacheSource></pivotCacheDefinition>)");
 
   std::stringstream out;
   zip.save(out);
@@ -125,4 +126,15 @@ TEST(OoxmlSpreadsheetPivots,
   EXPECT_TRUE(
       contains(part_of(document, "/xl/pivotCache/pivotCacheDefinition1.xml"),
                R"(<worksheetSource ref="A1:B2" sheet="s"/>)"));
+}
+
+TEST(OoxmlSpreadsheetPivots, a_source_in_another_workbook_stays) {
+  const Document document = decode(
+      with_pivot(R"(<worksheetSource ref="A1:B3" sheet="s" r:id="rId1"/>)"));
+
+  first_sheet(document).delete_rows(0, 3);
+
+  EXPECT_TRUE(
+      contains(part_of(document, "/xl/pivotCache/pivotCacheDefinition1.xml"),
+               R"(<worksheetSource ref="A1:B3" sheet="s" r:id="rId1"/>)"));
 }
