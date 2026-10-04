@@ -73,6 +73,7 @@
   var undone = [];
 
   var STYLE_OPS = ["setCellStyle", "setRowStyle", "setColumnStyle"];
+  var ROW_OPS = ["insertRows", "deleteRows"];
 
   /// Whether two style ops reach a cell in common. An absent axis is a whole
   /// row or column.
@@ -87,7 +88,9 @@
 
   /// One op per kind and position: the last value written, and the style
   /// keys merged with the later ones winning. A style op does not merge back
-  /// past a later one that reaches the same cell, so the order survives.
+  /// past a later one that reaches the same cell, and nothing merges across
+  /// an inserted or deleted row, which moves the positions, so the order
+  /// survives.
   function coalesced() {
     var result = [];
     var byKey = new Map();
@@ -95,6 +98,11 @@
       var ops = history[i].ops;
       for (var j = 0; j < ops.length; ++j) {
         var op = ops[j];
+        if (ROW_OPS.indexOf(op.op) !== -1) {
+          byKey.clear();
+          result.push(op);
+          continue;
+        }
         var key = op.op + ":" + op.sheet + ":" + op.column + ":" + op.row;
         var at = byKey.get(key);
         var styles = STYLE_OPS.indexOf(op.op) !== -1;
@@ -475,40 +483,99 @@
     return false;
   }
 
-  /// Every cell reading one of @p positions, and every cell reading one of
-  /// those: a formula whose input went stale is stale itself.
-  function staleFrom(positions) {
-    var entries = readersOf();
-    var taken = [];
-    var frontier = positions;
-    var result = [];
-    while (frontier.length > 0) {
-      var next = [];
-      for (var i = 0; i < entries.length; ++i) {
-        if (taken[i] || !readsAny(entries[i], frontier)) {
-          continue;
-        }
-        taken[i] = true;
-        result.push(entries[i]);
-        next.push(entries[i].at);
-      }
-      frontier = next;
+  /// Where @p row goes under a row op, null where a delete takes it. An
+  /// unbounded row stays unbounded.
+  function movedRow(op, row) {
+    if (row < op.row) {
+      return row;
     }
-    return result;
+    if (op.op === "insertRows") {
+      return row + op.count;
+    }
+    return row < op.row + op.count ? null : row - op.count;
+  }
+
+  /// The rows @p first to @p last span after a row op, as the library moves a
+  /// range: null where a delete takes all of them.
+  function movedSpan(op, first, last) {
+    var end = op.row + op.count;
+    if (op.op === "deleteRows" && first >= op.row && last < end) {
+      return null;
+    }
+    var from = movedRow(op, first);
+    var to = movedRow(op, last);
+    return [from === null ? op.row : from, to === null ? op.row - 1 : to];
+  }
+
+  /// The formula cells after @p ops, each where it sits and what it reads as
+  /// the ops moved them, and marked where an op changed an input: a write it
+  /// reads, a row a delete took, or a range an insert grew. A cell a delete
+  /// took is left out.
+  function walk(ops) {
+    var entries = readersOf().map(function (entry) {
+      return {
+        cell: entry.cell,
+        at: { column: entry.at.column, row: entry.at.row },
+        reads: entry.reads.map(function (box) {
+          return box.slice();
+        }),
+        marked: false,
+      };
+    });
+    ops.forEach(function (op) {
+      if (op.op === "setCell") {
+        entries.forEach(function (entry) {
+          entry.marked = entry.marked || readsAny(entry, [op]);
+        });
+        return;
+      }
+      if (ROW_OPS.indexOf(op.op) === -1 || op.sheet !== sheet) {
+        return;
+      }
+      entries = entries.filter(function (entry) {
+        entry.marked =
+          entry.marked ||
+          entry.reads.some(function (box) {
+            return op.op === "deleteRows"
+              ? box[2] < op.row + op.count && box[3] >= op.row
+              : box[2] < op.row && op.row <= box[3] && box[3] !== Infinity;
+          });
+        entry.at.row = movedRow(op, entry.at.row);
+        entry.reads = entry.reads
+          .map(function (box) {
+            var rows = movedSpan(op, box[2], box[3]);
+            return rows === null ? null : [box[0], box[1], rows[0], rows[1]];
+          })
+          .filter(function (box) {
+            return box !== null;
+          });
+        return entry.at.row !== null;
+      });
+    });
+    return entries;
   }
 
   var stale = [];
   var staleKey = "";
 
   /// The marks follow the log, not the last write, so an undo takes back what
-  /// it made stale and a save clears them with the log.
+  /// it made stale and a save clears them with the log. A formula cell
+  /// reading a marked one is marked too.
   function repaintStale() {
-    var written = [];
-    var ops = coalesced();
-    for (var i = 0; i < ops.length; ++i) {
-      if (ops[i].op === "setCell") {
-        written.push({ column: ops[i].column, row: ops[i].row });
-      }
+    var entries = walk(coalesced());
+    var frontier = entries.filter(function (entry) {
+      return entry.marked;
+    });
+    while (frontier.length > 0) {
+      var positions = frontier.map(function (entry) {
+        return entry.at;
+      });
+      frontier = entries.filter(function (entry) {
+        return !entry.marked && readsAny(entry, positions);
+      });
+      frontier.forEach(function (entry) {
+        entry.marked = true;
+      });
     }
 
     for (var j = 0; j < stale.length; ++j) {
@@ -517,12 +584,13 @@
     stale = [];
 
     var cells = [];
-    var entries = staleFrom(written);
-    for (var k = 0; k < entries.length; ++k) {
-      entries[k].cell.classList.add("odr-sheet-stale");
-      stale.push(entries[k].cell);
-      cells.push({ column: entries[k].at.column, row: entries[k].at.row });
-    }
+    entries.forEach(function (entry) {
+      if (entry.marked) {
+        entry.cell.classList.add("odr-sheet-stale");
+        stale.push(entry.cell);
+        cells.push({ column: entry.at.column, row: entry.at.row });
+      }
+    });
 
     // A host hears when the set moved, not on every keystroke.
     var key = cells
@@ -1236,6 +1304,83 @@
     return format(style);
   }
 
+  /// Whether a row edit can go ahead: the mode is on, the document takes
+  /// edits, and the formula cells are read where the page put them.
+  function rowsEditable() {
+    finish();
+    if (!odr.editing.isEnabled()) {
+      return false;
+    }
+    if (!odr.editing.isEditable()) {
+      odr.editing.refuse("readOnly", { sheet: sheet });
+      return false;
+    }
+    readersOf();
+    return true;
+  }
+
+  /// One row op as one undo step.
+  function rowStep(op, undo, redo) {
+    history.push({ ops: [op], undo: undo, redo: redo });
+    undone = [];
+    repaintStale();
+    odr.editing.changed();
+    reportSelection(true);
+    return true;
+  }
+
+  /// Inserts as many rows as the selection spans, `above` it or `below` it.
+  function insertRows(where) {
+    if (!rowsEditable()) {
+      return false;
+    }
+    var range = odr.sheet.selection();
+    var below = where === "below";
+    var row = range === null ? null : below ? range.rows[1] + 1 : range.rows[0];
+    var count = range === null ? 0 : range.rows[1] - range.rows[0] + 1;
+    var rows =
+      row === null || (where !== undefined && where !== "above" && !below)
+        ? null
+        : odr.sheet.insertRows(row, count);
+    if (rows === null) {
+      odr.editing.refuse("unsupportedEdit", { sheet: sheet, row: row });
+      return false;
+    }
+    return rowStep(
+      { op: "insertRows", sheet: sheet, row: row, count: count },
+      function () {
+        odr.sheet.deleteRows(row, count);
+      },
+      function () {
+        odr.sheet.restoreRows(row, rows);
+      }
+    );
+  }
+
+  /// Removes the rows of the selection.
+  function deleteRows() {
+    if (!rowsEditable()) {
+      return false;
+    }
+    var range = odr.sheet.selection();
+    var row = range === null ? null : range.rows[0];
+    var count = range === null ? 0 : range.rows[1] - range.rows[0] + 1;
+    var rows = row === null ? null : odr.sheet.deleteRows(row, count);
+    if (rows === null) {
+      odr.editing.refuse("unsupportedEdit", { sheet: sheet, row: row });
+      return false;
+    }
+    return rowStep(
+      { op: "deleteRows", sheet: sheet, row: row, count: count },
+      function () {
+        odr.sheet.restoreRows(row, rows);
+      },
+      function () {
+        odr.sheet.deleteRows(row, count);
+      }
+    );
+  }
+
   var chords = { b: "bold", i: "italic", u: "underline" };
 
   /// The formatting chords, where the config gives the scripts the shortcuts.
@@ -1249,11 +1394,21 @@
     ) {
       return;
     }
-    var property = chords[event.key.toLowerCase()];
-    if (property === undefined || odr.sheet.selectedCells().length === 0) {
-      return;
+    // a row header selected: Shift with `+` inserts above, `-` deletes, as
+    // in Excel
+    var pin = odr.sheet.pinned();
+    var rowHeader = pin !== null && pin.column === null && pin.row !== null;
+    if (rowHeader && (event.key === "+" || (event.shiftKey && event.key === "="))) {
+      insertRows("above");
+    } else if (rowHeader && event.key === "-" && !event.shiftKey) {
+      deleteRows();
+    } else {
+      var property = chords[event.key.toLowerCase()];
+      if (property === undefined || odr.sheet.selectedCells().length === 0) {
+        return;
+      }
+      toggle(property);
     }
-    toggle(property);
     event.stopPropagation();
     event.preventDefault();
   }
@@ -1293,6 +1448,8 @@
     },
     format: format,
     toggle: toggle,
+    insertRows: insertRows,
+    deleteRows: deleteRows,
     enable: function () {
       reportSelection(true);
       if (cut !== null) {
@@ -1304,6 +1461,8 @@
       }
     },
     committed: function () {
+      // what the formula cells read, where the saved rows put it
+      readers = walk(coalesced());
       history = [];
       undone = [];
       repaintStale();

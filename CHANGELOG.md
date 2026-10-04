@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- The sheet editor inserts and deletes rows: `odr.editing.insertRows("above"
+  | "below")` inserts as many rows as the selection spans, and
+  `odr.editing.deleteRows()` removes them, each one undo step. Ctrl or Cmd
+  with Shift and `+` inserts, and with `-` deletes, on a row header. An edge
+  inside a merge refuses with `unsupportedEdit`.
 - `Sheet::insert_rows(row, count)` and `Sheet::delete_rows(row, count)`, and
   the `insertRows` and `deleteRows` ops, for an ods, an xlsx and a csv. Every
   formula, named range and cell address that names a moved row moves with

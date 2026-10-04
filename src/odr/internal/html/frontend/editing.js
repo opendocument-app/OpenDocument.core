@@ -97,6 +97,17 @@
     return ops;
   }
 
+  /// Hands @p name to the last editor that has it, refusing where none does.
+  function delegate(name, argument) {
+    for (var i = editors.length - 1; i >= 0; --i) {
+      if (typeof editors[i][name] === "function") {
+        return editors[i][name](argument) === true;
+      }
+    }
+    odr.editing.refuse("unsupportedEdit", null);
+    return false;
+  }
+
   function modeChange(reason) {
     var refused = reason ? refusal(reason) : null;
     fire("onEditModeChange", {
@@ -148,8 +159,8 @@
     },
 
     /// Adds one format's editor. Only `operations` is required; `enable`,
-    /// `disable`, `undo`, `redo`, `canUndo`, `canRedo`, `committed`, `format`
-    /// and `toggle` default.
+    /// `disable`, `undo`, `redo`, `canUndo`, `canRedo`, `committed`, `format`,
+    /// `toggle`, `insertRows` and `deleteRows` default.
     attach: function (editor) {
       editors.push(editor);
     },
@@ -161,13 +172,7 @@
     /// paragraph or cell it reaches, and `fill` (`#rrggbb` or null) on cells.
     /// False where refused.
     format: function (style) {
-      for (var i = editors.length - 1; i >= 0; --i) {
-        if (typeof editors[i].format === "function") {
-          return editors[i].format(style) === true;
-        }
-      }
-      odr.editing.refuse("unsupportedEdit", null);
-      return false;
+      return delegate("format", style);
     },
 
     /// Flips `bold`, `italic`, `underline` or `strikethrough` on the
@@ -175,13 +180,18 @@
     /// boundary the mark waits for the next typed text, and
     /// `onSelectionChange` shows it meanwhile.
     toggle: function (property) {
-      for (var i = editors.length - 1; i >= 0; --i) {
-        if (typeof editors[i].toggle === "function") {
-          return editors[i].toggle(property) === true;
-        }
-      }
-      odr.editing.refuse("unsupportedEdit", null);
-      return false;
+      return delegate("toggle", property);
+    },
+
+    /// Inserts as many rows as the selection spans, `"above"` it (the
+    /// default) or `"below"` it. False where refused.
+    insertRows: function (where) {
+      return delegate("insertRows", where);
+    },
+
+    /// Removes the rows the selection spans. False where refused.
+    deleteRows: function () {
+      return delegate("deleteRows");
     },
 
     /// The style the selection shows, a key per property the covered runs

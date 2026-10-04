@@ -7,6 +7,7 @@
   }
 
   var merged = table.querySelector("td[colspan],td[rowspan]") !== null;
+  var body = table.tBodies[0];
 
   var odr = (window.odr = window.odr || {});
 
@@ -70,7 +71,6 @@
   function build() {
     var index = { rows: new Map(), positions: new Map() };
     var covered = [];
-    var body = table.tBodies[0];
     for (var i = 0; i < body.rows.length; ++i) {
       var tr = body.rows[i];
       var row = rowOf(tr);
@@ -582,6 +582,112 @@
     return true;
   }
 
+  // Whether a `rowspan` starting above @p row reaches it, so an edge there
+  // would cut a merge.
+  function spanReaches(row) {
+    var cells = table.querySelectorAll("td[rowspan]");
+    for (var i = 0; i < cells.length; ++i) {
+      var top = rowOf(cells[i].parentElement);
+      if (top < row && top + Number(cells[i].getAttribute("rowspan")) > row) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Labels every row from @p row on again, @p by further down.
+  function relabel(row, by) {
+    var rows = body.rows;
+    for (var i = 0; i < rows.length; ++i) {
+      var label = rowOf(rows[i]);
+      if (label >= row) {
+        rows[i].cells[0].textContent = String(label + by + 1);
+      }
+    }
+  }
+
+  function changed() {
+    index = null;
+    if (pinnedRow !== null && !body.contains(pinnedRow)) {
+      pin(-1, null, null);
+    } else {
+      paintSelection();
+    }
+  }
+
+  // Puts @p rows in at @p row, where the row the label names is shown, or
+  // after the one before it, and labels them and the rows below.
+  function restoreRows(row, rows) {
+    lower();
+    var at = indexed().rows.get(row);
+    var before = indexed().rows.get(row - 1);
+    relabel(row, rows.length);
+    for (var i = 0; i < rows.length; ++i) {
+      rows[i].cells[0].textContent = String(row + i + 1);
+      if (at !== undefined) {
+        body.insertBefore(rows[i], at.tr);
+      } else if (before !== undefined) {
+        body.insertBefore(rows[i], before.tr.nextSibling);
+        before = { tr: rows[i] };
+      } else {
+        body.appendChild(rows[i]);
+      }
+    }
+    changed();
+  }
+
+  // @p count empty rows from @p row on, the rows below moved down. A new
+  // cell takes no style: the page cannot know what its column's default
+  // resolves to. Null where the edge would cut a merge, or lies past the
+  // rendered rows.
+  function insertRows(row, count) {
+    if (row > lastRow() + 1 || spanReaches(row)) {
+      return null;
+    }
+    var cols = table.querySelectorAll("col");
+    var rows = [];
+    for (var i = 0; i < count; ++i) {
+      var tr = document.createElement("tr");
+      var th = document.createElement("th");
+      th.className = "odr-sheet-row-header";
+      tr.appendChild(th);
+      for (var column = 0; column <= lastColumn(); ++column) {
+        var td = document.createElement("td");
+        var width = cols[column + 1];
+        td.style.cssText =
+          (width !== undefined && width.style.width !== "" ? "max-width:0;" : "") +
+          "white-space:nowrap";
+        tr.appendChild(td);
+      }
+      rows.push(tr);
+    }
+    restoreRows(row, rows);
+    return rows;
+  }
+
+  // Takes the rows from @p row on away, @p count of them at most, and moves
+  // the rows below up. The rows taken, for `restoreRows`; null where an edge
+  // would cut a merge.
+  function deleteRows(row, count) {
+    if (spanReaches(row) || spanReaches(row + count)) {
+      return null;
+    }
+    lower();
+    var rows = [];
+    for (var at = row; at < row + count; ++at) {
+      var entry = indexed().rows.get(at);
+      if (entry !== undefined) {
+        rows.push(entry.tr);
+      }
+    }
+    rows.forEach(function (tr) {
+      tr.remove();
+    });
+    relabel(row + count, -count);
+    changed();
+    return rows;
+  }
+
   // What the script beside this one, and a host, ask of the sheet: positions
   // the way an op names them, and the pin. `spreadsheet-editing.md` decision 8.
   odr.sheet = {
@@ -597,6 +703,9 @@
     selection: selectionOf,
     select: select,
     selectedCells: selectedCells,
+    insertRows: insertRows,
+    deleteRows: deleteRows,
+    restoreRows: restoreRows,
   };
 
   table.addEventListener("mouseover", function (event) {
@@ -711,8 +820,6 @@
   }
 
 
-  var body = table.tBodies[0];
-  var original = null;
   var sortedColumn = -1;
   var sortedDirection = 0;
 
@@ -760,15 +867,17 @@
   }
 
   function sortBy(index, direction) {
-    if (original === null) {
-      original = Array.prototype.slice.call(body.rows);
-    }
+    var rows = Array.prototype.slice.call(body.rows);
+    // the labels state the file's order, whatever an edit added or took
     if (direction === 0) {
-      reorder(original);
+      reorder(
+        rows.sort(function (a, b) {
+          return rowOf(a) - rowOf(b);
+        })
+      );
       return;
     }
 
-    var rows = Array.prototype.slice.call(body.rows);
     var keys = new Map();
     for (var i = 0; i < rows.length; ++i) {
       keys.set(rows[i], keyOf(rows[i], index));

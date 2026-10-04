@@ -17,6 +17,7 @@ open http://localhost:8732/csv.html
 open http://localhost:8732/lines.html
 open http://localhost:8732/locale.html
 open http://localhost:8732/dates.html
+open http://localhost:8732/rows.html
 ```
 
 `serve` serves `document.css`, `spreadsheet.css`, `editing.js`,
@@ -67,6 +68,11 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
   number takes the comma of the locale, and a point makes a string.
 - `dates.html`: typed dates and times in `en-US`, and a date cell and a time
   cell that open on their value and write nothing when committed unchanged.
+- `rows.html`: inserted and deleted rows. The labels below move, a new row
+  is plain, an undo puts a row back with what it held, and writes on either
+  side of a row op stay apart in the log. An edge inside a merge refuses.
+  The stale marks follow the formula cells as the rows move them, a save
+  takes the moves in, and the chords act on a header selection only.
 - `sorting.html`: the same questions after the sort control moved every row.
   Nothing is merged, because a merged sheet gets no sort control. A row is
   found by its label, not by its position.

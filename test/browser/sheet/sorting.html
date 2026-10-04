@@ -128,6 +128,12 @@
 
       click(document.querySelectorAll(".odr-sheet-sort")[3]);
       check("a date column sorts by the value, not the text", labels() === "21534");
+
+      odr.sheet.insertRows(4, 1);
+      check("a row goes in where the row it moves is shown", labels() === "215634", labels());
+      click(document.querySelectorAll(".odr-sheet-sort")[3]);
+      click(document.querySelectorAll(".odr-sheet-sort")[3]);
+      check("and the file's order takes it in", labels() === "123456", labels());
     </script>
   </body>
 </html>

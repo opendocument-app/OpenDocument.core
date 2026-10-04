@@ -1,0 +1,222 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet row checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body class="odr-body odr-gridlines-soft" data-odr-editable="true" data-odr-keyboard="navigation shortcuts">
+    <!-- B3 sums A1:A3 and B4 doubles B3, so a row inserted inside A1:A3 or
+         deleted out of it reaches both. D4 spans two rows, so an edge at row
+         5 would cut it. -->
+    <table class="odr-sheet" data-odr-sheet="2">
+      <col class="odr-sheet-gutter" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <thead>
+        <tr>
+          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+          <th class="odr-sheet-column-header">A</th>
+          <th class="odr-sheet-column-header">B</th>
+          <th class="odr-sheet-column-header">C</th>
+          <th class="odr-sheet-column-header">D</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="odr-sheet-row-header">1</th>
+          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">1</td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">2</th>
+          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">2</td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">3</th>
+          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">3</td>
+          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=SUM([.A1:.A3])" data-odr-reads="2,0,0,0,2" style="max-width:0;white-space:nowrap">6</td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">4</th>
+          <td style="max-width:0;white-space:nowrap">x</td>
+          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.B3]*2" data-odr-reads="2,1,1,2,2" style="max-width:0;white-space:nowrap">12</td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td rowspan="2" style="max-width:0;white-space:nowrap">m</td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">5</th>
+          <td style="max-width:0;white-space:nowrap">y</td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">6</th>
+          <td style="max-width:0;white-space:nowrap">z</td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="report"></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var refusals = [];
+      odr.onEditRefused = function (event) {
+        refusals.push(event.reason + " at " + event.row);
+      };
+
+      var sum = document.querySelector('[data-odr-formula*="SUM"]');
+      var twice = document.querySelector('[data-odr-formula*="B3"]');
+      var tbody = document.querySelector(".odr-sheet tbody");
+
+      function labels() {
+        return Array.prototype.map
+          .call(tbody.rows, function (tr) {
+            return tr.cells[0].textContent;
+          })
+          .join(" ");
+      }
+      function column(index) {
+        var texts = [];
+        for (var row = 0; odr.sheet.cellAt(index, row) !== null; ++row) {
+          texts.push(odr.sheet.cellAt(index, row).textContent);
+        }
+        return texts.join(",");
+      }
+      function ops() {
+        return JSON.parse(odr.editing.getOperations()).ops;
+      }
+      function spelled() {
+        return ops()
+          .map(function (op) {
+            return op.op + (op.row === undefined ? "" : op.row) + (op.count === undefined ? "" : "x" + op.count);
+          })
+          .join(" ");
+      }
+      function staleNow() {
+        return Array.prototype.slice
+          .call(document.querySelectorAll(".odr-sheet-stale"))
+          .map(function (td) {
+            var at = odr.sheet.positionOf(td);
+            return at.column + "," + at.row;
+          })
+          .join(" ");
+      }
+      function press(key, modifiers) {
+        document.body.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: key,
+            shiftKey: !!modifiers.shift,
+            ctrlKey: true,
+            bubbles: true,
+          })
+        );
+      }
+      function write(column, row, text) {
+        odr.editing.editAt(column, row);
+        var editor = document.querySelector(".odr-sheet-editor");
+        editor.value = text;
+        editor.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      }
+      function pinRowHeader(row) {
+        Array.prototype.filter
+          .call(tbody.rows, function (tr) {
+            return tr.cells[0].textContent === String(row + 1);
+          })[0]
+          .cells[0].click();
+      }
+
+      check("a row edit needs the mode", odr.editing.insertRows() === false && ops().length === 0);
+      odr.editing.enable();
+
+      note("insert");
+      odr.sheet.pin({ column: 0, row: 1 });
+      check("a row goes in above the selection", odr.editing.insertRows() === true);
+      check("the rows below move down", column(0) === "1,,2,3,x,y,z", column(0));
+      check("and are labelled again", labels() === "1 2 3 4 5 6 7", labels());
+      check("the op names the row and the count", spelled() === "insertRows1x1", spelled());
+      check("the formula cells moved with their rows", odr.sheet.positionOf(sum).row === 3 && odr.sheet.positionOf(twice).row === 4);
+      check(
+        "a range the insert grew is marked, and what reads it",
+        staleNow() === "1,3 1,4",
+        staleNow()
+      );
+      check("a new cell is plain and the right size", odr.sheet.cellAt(0, 1).style.cssText === "max-width: 0px; white-space: nowrap;", odr.sheet.cellAt(0, 1).style.cssText);
+
+      check("an undo takes the row back out", odr.editing.undo() && column(0) === "1,2,3,x,y,z" && labels() === "1 2 3 4 5 6");
+      check("with its op and its marks", ops().length === 0 && staleNow() === "", staleNow());
+      check("a redo puts it in again", odr.editing.redo() && column(0) === "1,,2,3,x,y,z" && spelled() === "insertRows1x1");
+
+      note("writes around an insert");
+      write(0, 1, "5");
+      check("a write into the new row joins the log", spelled() === "insertRows1x1 setCell1", spelled());
+      odr.sheet.pin({ column: 0, row: 0 });
+      odr.editing.insertRows("above");
+      write(0, 1, "4");
+      check(
+        "writes on either side of an insert never merge",
+        spelled() === "insertRows1x1 setCell1 insertRows0x1 setCell1",
+        spelled()
+      );
+      check("and the cells hold them", column(0) === ",4,5,2,3,x,y,z", column(0));
+
+      note("merges");
+      refusals = [];
+      odr.sheet.pin({ column: 0, row: 6 });
+      check("an edge inside a merge refuses", odr.editing.insertRows("above") === false && refusals.join() === "unsupportedEdit at 6", refusals.join());
+      check("and so does a delete cutting it", odr.editing.deleteRows() === false);
+      check("an edge after it does not", odr.editing.insertRows("below") === true && column(0) === ",4,5,2,3,x,y,,z", column(0));
+
+      note("delete");
+      pinRowHeader(1);
+      check("a header selection deletes its row", odr.editing.deleteRows() === true);
+      check("the rows below move up", column(0) === ",5,2,3,x,y,,z" && labels() === "1 2 3 4 5 6 7 8", column(0) + " / " + labels());
+      check("a delete is an op of its own", spelled().endsWith("insertRows7x1 deleteRows1x1"), spelled());
+      check("an undo puts the row back with its value", odr.editing.undo() && column(0) === ",4,5,2,3,x,y,,z");
+      odr.editing.redo();
+
+      note("a delete out of a range");
+      odr.sheet.pin({ column: 0, row: 2 });
+      odr.editing.deleteRows();
+      check("the sum moves up", odr.sheet.positionOf(sum).row === 2, odr.sheet.positionOf(sum).row);
+      check("and is marked with what reads it", staleNow() === "1,2 1,3", staleNow());
+
+      note("chords");
+      var before = ops().length;
+      pinRowHeader(0);
+      press("+", { shift: true });
+      check("ctrl shift + inserts above a header", ops().length === before + 1 && ops()[before].op === "insertRows" && ops()[before].row === 0);
+      pinRowHeader(0);
+      press("-", {});
+      check("ctrl - deletes it", ops().length === before + 2 && ops()[before + 1].op === "deleteRows");
+      odr.sheet.pin({ column: 0, row: 0 });
+      press("-", {});
+      check("a cell selection takes neither", ops().length === before + 2);
+
+      note("a save");
+      odr.editing.committed();
+      check("resets the log and the marks", ops().length === 0 && staleNow() === "");
+      var at = odr.sheet.positionOf(sum);
+      write(0, at.row - 1, "9");
+      check("a write after it still reaches the moved sum", staleNow() === at.column + "," + at.row + " 1," + (at.row + 1), staleNow());
+      check("the envelope carries row ops", JSON.parse(odr.editing.getOperations()).version === 2);
+    </script>
+  </body>
+</html>
