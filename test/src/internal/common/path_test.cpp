@@ -15,6 +15,13 @@ TEST(Path, something) {
 }
 
 TEST(Path, normalization) {
+  EXPECT_EQ(Path("/ppt/media"), Path("//ppt///media//"));
+  EXPECT_EQ(Path("ppt/media"), Path("ppt//media/"));
+  EXPECT_EQ(Path("/"), Path("//ppt//..//"));
+  EXPECT_EQ("/..name", Path("/..name").string());
+  EXPECT_EQ("/...", Path("/...").string());
+  EXPECT_THROW(Path("/.."), std::invalid_argument);
+  EXPECT_THROW(Path("//ppt//../../"), std::invalid_argument);
   EXPECT_EQ(Path("ppt/media/image8.png"), Path("./ppt/media/image8.png"));
   EXPECT_EQ(Path("ppt/media/image8.png"), Path("ppt/./media/image8.png"));
   EXPECT_EQ(Path("ppt/media/image8.png"), Path("ppt/media/./image8.png"));
@@ -109,4 +116,17 @@ TEST(Path, descendant_of_respects_component_boundary) {
   EXPECT_FALSE(Path("/ab/c").descendant_of(Path("/a")));
   EXPECT_FALSE(Path("/a").parent_of(Path("/ab")));
   EXPECT_TRUE(Path("/a").parent_of(Path("/a/b")));
+}
+
+TEST(Path, relative_ancestry_accounts_for_parent_components) {
+  EXPECT_TRUE(Path("..").parent_of(Path("")));
+  EXPECT_TRUE(Path("../..").parent_of(Path("..")));
+  EXPECT_TRUE(Path("..").parent_of(Path("../a")));
+  EXPECT_FALSE(Path("").parent_of(Path("../a")));
+  EXPECT_FALSE(Path("../a").parent_of(Path("a/b")));
+  EXPECT_TRUE(Path("a/b").descendant_of(Path("..")));
+  EXPECT_TRUE(Path("../a").descendant_of(Path("../..")));
+  EXPECT_FALSE(Path("../a").descendant_of(Path("")));
+  EXPECT_FALSE(Path("../a/b").descendant_of(Path("a")));
+  EXPECT_FALSE(Path("..").descendant_of(Path("..")));
 }

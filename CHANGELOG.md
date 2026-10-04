@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Paths normalize repeated separators, accept names beginning with `..`, and
+  account for parent components when comparing relative ancestry.
+
 - AES-GCM decryption returns the exact plaintext, without a zero-filled suffix.
 
 - ZIP entry streams release their extraction buffers and reject truncated or

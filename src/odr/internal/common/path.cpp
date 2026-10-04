@@ -23,12 +23,6 @@ Path::Path() noexcept : Path("") {}
 Path::Path(const char *c_string) : Path(std::string(c_string)) {}
 
 Path::Path(const std::string &string) {
-  // TODO throw on illegal chars
-  // TODO remove forward slash
-  if (string.rfind("/..", 0) == 0) {
-    throw std::invalid_argument("path");
-  }
-
   m_absolute = !string.empty() && (string[0] == '/');
   m_path = m_absolute ? "/" : "";
   m_upwards = 0;
@@ -64,7 +58,7 @@ void Path::parent_() {
 }
 
 void Path::join_(const std::string &child) {
-  if (child == ".") {
+  if (child.empty() || child == ".") {
     return;
   }
   if (child == "..") {
@@ -137,9 +131,7 @@ bool Path::parent_of(const Path &b) const {
   if (m_absolute != b.m_absolute) {
     throw std::invalid_argument("cannot compare absolute and relative path");
   }
-  // TODO we need to check upwards as well
-  return (m_downwards + 1 == b.m_downwards) &&
-         has_path_prefix(b.m_path, m_path);
+  return !b.root() && b.parent() == *this;
 }
 
 bool Path::ancestor_of(const Path &b) const { return b.descendant_of(*this); }
@@ -148,8 +140,12 @@ bool Path::descendant_of(const Path &b) const {
   if (m_absolute != b.m_absolute) {
     throw std::invalid_argument("cannot compare absolute and relative path");
   }
-  // TODO we need to check upwards as well
-  return (b.m_downwards < m_downwards) && has_path_prefix(m_path, b.m_path);
+  // "../.." holds everything that goes up fewer levels, "a" and ".." alike
+  if (b.m_downwards == 0 && m_upwards < b.m_upwards) {
+    return true;
+  }
+  return m_upwards == b.m_upwards && b.m_downwards < m_downwards &&
+         has_path_prefix(m_path, b.m_path);
 }
 
 AbsPath Path::as_absolute() const & { return AbsPath(*this); }
