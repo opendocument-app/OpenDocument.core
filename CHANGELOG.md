@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- An inserted or deleted row or column moves the formulas of an xlsx
+  conditional format and validation, and its page breaks.
 - An inserted or deleted row or column moves the tables of an xlsx: their
   range, filter and calculated columns. A column inserted inside a table gets
   a named `tableColumn` and a header cell stating that name. An edit that

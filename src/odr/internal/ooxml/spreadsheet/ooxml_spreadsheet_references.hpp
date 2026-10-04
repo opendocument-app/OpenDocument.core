@@ -39,12 +39,18 @@ void move_workbook_references(pugi::xml_node workbook,
                               const formula::SheetEdit &edit);
 
 /// Moves the ranges @p worksheet states besides its cells: conditional
-/// formats, validations, links, the filter, protected ranges, ignored errors
-/// and the view, and the columns a filter counts. An element whose range a
-/// delete takes completely goes; the view keeps a cell, the first one past
-/// the removed rows or columns.
+/// formats and validations with their formulas, links, the filter, protected
+/// ranges, ignored errors and the view, and the columns a filter counts. An
+/// element whose range a delete takes completely goes; the view keeps a cell,
+/// the first one past the removed rows or columns.
 void move_sheet_ranges(pugi::xml_node worksheet,
                        const formula::SheetEdit &edit);
+
+/// Moves the page breaks of @p worksheet along the edit's axis
+/// (`rowBreaks`, `colBreaks`). A break names the first row or column of the
+/// next page; one inside removed rows or columns goes to the edge of the ones
+/// that stay, and two at one place become one.
+void move_breaks(pugi::xml_node worksheet, const formula::SheetEdit &edit);
 
 /// Moves the anchors of @p drawing (`xdr:wsDr`) as Excel moves a drawing
 /// with its cells: a `twoCell` anchor moves each corner, a `oneCell` one moves

@@ -695,6 +695,7 @@ public:
     }
 
     move_sheet_ranges(sheet_node, edit);
+    move_breaks(sheet_node, edit);
     move_drawing(drawing, edit);
     move_comments(comments, threaded, notes, edit);
     std::vector<TableHeader> headers;
