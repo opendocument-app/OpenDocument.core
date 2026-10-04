@@ -644,4 +644,71 @@ void ooxml::spreadsheet::move_chart(const pugi::xml_node chart,
   }
 }
 
+bool ooxml::spreadsheet::cuts(const std::string &ref,
+                              const formula::SheetEdit &edit) {
+  const TableRange range(ref.contains(':') ? ref : ref + ":" + ref);
+  const bool rows = edit.axis == formula::Axis::row;
+  const std::uint32_t first = rows ? range.from().row : range.from().column;
+  const std::uint32_t last = rows ? range.to().row : range.to().column;
+  if (edit.insert) {
+    return first < edit.index && edit.index <= last;
+  }
+  const std::uint64_t end = std::uint64_t{edit.index} + edit.count;
+  return first < end && last >= edit.index &&
+         (first < edit.index || last >= end);
+}
+
+bool ooxml::spreadsheet::cuts_pivot(const pugi::xml_node pivot,
+                                    const formula::SheetEdit &edit) {
+  const std::string ref = pivot.child("location").attribute("ref").value();
+  if (ref.empty()) {
+    return false;
+  }
+  const TableRange range(ref.contains(':') ? ref : ref + ":" + ref);
+  const bool rows = edit.axis == formula::Axis::row;
+  return cuts(ref, edit) ||
+         !edit.span(rows ? range.from().row : range.from().column,
+                    rows ? range.to().row : range.to().column)
+              .has_value();
+}
+
+void ooxml::spreadsheet::move_pivot(const pugi::xml_node pivot,
+                                    const formula::SheetEdit &edit) {
+  if (pugi::xml_attribute ref = pivot.child("location").attribute("ref")) {
+    if (const std::optional<std::string> moved =
+            formula::move_addresses(ref.value(), edit, edit.sheet, syntax)) {
+      ref.set_value(moved->c_str());
+    }
+  }
+}
+
+bool ooxml::spreadsheet::loses_pivot_source(const pugi::xml_node cache,
+                                            const formula::SheetEdit &edit) {
+  const pugi::xml_node source =
+      cache.child("cacheSource").child("worksheetSource");
+  const pugi::xml_attribute ref = source.attribute("ref");
+  if (!ref ||
+      std::string_view(source.attribute("sheet").value()) != edit.sheet) {
+    return false;
+  }
+  const std::optional<std::string> moved =
+      formula::move_addresses(ref.value(), edit, edit.sheet, syntax);
+  return moved.has_value() && moved->empty();
+}
+
+void ooxml::spreadsheet::move_pivot_cache(const pugi::xml_node cache,
+                                          const formula::SheetEdit &edit) {
+  const pugi::xml_node source =
+      cache.child("cacheSource").child("worksheetSource");
+  pugi::xml_attribute ref = source.attribute("ref");
+  if (!ref ||
+      std::string_view(source.attribute("sheet").value()) != edit.sheet) {
+    return;
+  }
+  if (const std::optional<std::string> moved =
+          formula::move_addresses(ref.value(), edit, edit.sheet, syntax)) {
+    ref.set_value(moved->c_str());
+  }
+}
+
 } // namespace odr::internal

@@ -38,6 +38,9 @@ public:
   /// @ref part for the one a relationship of @p type leads to from @p origin.
   [[nodiscard]] pugi::xml_node related_part(const AbsPath &origin,
                                             std::string_view type);
+  /// @ref part for every one a relationship of @p type leads to.
+  [[nodiscard]] std::vector<pugi::xml_node>
+  related_parts(const AbsPath &origin, std::string_view type);
 
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;

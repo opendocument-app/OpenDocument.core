@@ -541,8 +541,7 @@ An edit refuses (`UnsupportedOperation`) before it writes anything:
 - where an `.xlsx` array formula reaches over the edge of the edit;
 - where an insert would push a stated cell past the last row of the grid.
 
-The formulas inside a conditional format or a validation condition, the
-ranges a chart reads and a pivot table's source do not move yet.
+Decision 28 states what else moves.
 
 ### 23. The sheet editor acts on the selected rows
 
@@ -645,7 +644,7 @@ stale marks treat a column op as decision 24 treats a row op.
 
 ## What else a structural edit moves
 
-Status: planned. The steps land as a stack, in this order:
+Status: landed. The steps landed as a stack, in this order:
 
 1. The tables of an `.xlsx` (`xl/tables/`).
 2. The formulas of an xlsx conditional format and validation, and the page
@@ -655,9 +654,6 @@ Status: planned. The steps land as a stack, in this order:
 4. The ranges an xlsx chart reads.
 5. The ranges an ods chart reads, in the chart's own part.
 6. The source and the place of an xlsx pivot table.
-
-Until a step lands, the edit leaves what it names where it was, as decision
-22 states.
 
 ### 28. A structural edit moves every range the file states
 
@@ -691,7 +687,8 @@ Until a step lands, the edit leaves what it names where it was, as decision
 - **An xlsx pivot table** reads `worksheetSource/@ref` of its cache, which
   moves where it names the edited sheet. Its place on a sheet,
   `location/@ref`, moves too, and an edit cutting it refuses, as Excel
-  refuses to change part of a pivot table. An ods pivot table states its
+  refuses to change part of a pivot table. So does an edit removing all of
+  its source, which would leave no range to state. An ods pivot table states its
   source and its target as addresses, which already move.
 
 **Why refuse a cut table and pivot table rather than remove them:** removing
@@ -723,4 +720,3 @@ not.
   incremental recompute in topological order with cycles reported, and
   `Document::recalculate(operations)` returning the changed cells. Formula
   input in the editor comes with it.
-- What else a structural edit moves, planned above (decision 28).

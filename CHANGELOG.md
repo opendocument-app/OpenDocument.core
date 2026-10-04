@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- An inserted or deleted row or column moves the source and the place of an
+  xlsx pivot table. An edit that would change part of a pivot table's place,
+  or remove all of its source, refuses with `UnsupportedOperation`.
 - An inserted or deleted row or column moves the ranges an xlsx or an ods
   chart reads, on whichever sheet the chart sits. An ods saves the part of
   an embedded chart again.

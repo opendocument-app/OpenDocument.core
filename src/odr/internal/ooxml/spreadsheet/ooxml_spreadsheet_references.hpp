@@ -69,6 +69,28 @@ void move_comments(pugi::xml_node comments, pugi::xml_node threaded,
 /// the cells.
 void move_chart(pugi::xml_node chart, const formula::SheetEdit &edit);
 
+/// Whether @p ref, a cell or a range of the edited sheet, reaches over an
+/// edge of the edit: an insert strictly inside it, or a delete taking part
+/// of it.
+[[nodiscard]] bool cuts(const std::string &ref, const formula::SheetEdit &edit);
+
+/// Whether the edit would change part of the place of @p pivot
+/// (`pivotTableDefinition`), or remove all of it, as Excel refuses to.
+[[nodiscard]] bool cuts_pivot(pugi::xml_node pivot,
+                              const formula::SheetEdit &edit);
+
+/// Moves the place of @p pivot on the edited sheet.
+void move_pivot(pugi::xml_node pivot, const formula::SheetEdit &edit);
+
+/// Whether the edit would remove all of the source @p cache
+/// (`pivotCacheDefinition`) reads, which leaves no range to state.
+[[nodiscard]] bool loses_pivot_source(pugi::xml_node cache,
+                                      const formula::SheetEdit &edit);
+
+/// Moves the source @p cache (`pivotCacheDefinition`) reads, where it names
+/// the edited sheet.
+void move_pivot_cache(pugi::xml_node cache, const formula::SheetEdit &edit);
+
 /// A header cell an inserted table column needs, and the name it states.
 struct TableHeader final {
   TablePosition position;
