@@ -23,6 +23,22 @@ TEST(FormulaFunctionsDate, a_date_runs_over_into_the_next_month) {
   EXPECT_EQ(xlsx("=DATE(10000,1,1)"), error(ErrorType::number));
 }
 
+TEST(FormulaFunctionsDate, a_libreoffice_date_reads_16_bit_arguments) {
+  // LibreOffice: Err:502, as GetInt16 refuses a day past 32767
+  EXPECT_EQ(ods("=DATE(1900;1;40000)"), std::nullopt);
+  EXPECT_EQ(ods("=DATE(1900;1;32767)"), number(32768));
+  // LibreOffice reads 0.3/0.1 as 3, std::trunc as 2
+  EXPECT_EQ(ods("=DATE(2020;0.3/0.1;1)"), std::nullopt);
+}
+
+TEST(FormulaFunctionsDate, a_1904_workbook_counts_from_its_first_day) {
+  const Settings settings{.epoch =
+                              odr::internal::number_format::Epoch::from_1904};
+  EXPECT_EQ(evaluated("=DATE(1904,1,1)", Syntax::ooxml, settings), number(0));
+  EXPECT_EQ(evaluated("=DATE(1903,12,31)", Syntax::ooxml, settings),
+            error(ErrorType::number));
+}
+
 TEST(FormulaFunctionsDate, a_short_year_follows_the_dialect) {
   // LibreOffice puts a two-digit year at or past the null year, 1930
   EXPECT_EQ(ods("=DATE(20;1;1)"), number(43831));
@@ -96,6 +112,8 @@ TEST(FormulaFunctionsDate, the_days_between_two_dates) {
   ASSERT_TRUE(fraction.has_value() && fraction->holds<double>());
   EXPECT_NEAR(fraction->get<double>(), 58.8, 1e-9);
   EXPECT_EQ(xlsx("=DAYS(45658.9,45600.1)"), number(58));
+  // Excel refuses a date out of its range
+  EXPECT_EQ(xlsx("=DAYS(-1,0)"), error(ErrorType::number));
   EXPECT_EQ(ods(R"(=DATEDIF(45000;45658;"Y"))"), number(1));
   EXPECT_EQ(ods(R"(=DATEDIF(45000;45658;"M"))"), number(21));
   EXPECT_EQ(ods(R"(=DATEDIF(45000;45658;"D"))"), number(658));

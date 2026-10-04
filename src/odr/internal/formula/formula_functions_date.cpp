@@ -1,6 +1,7 @@
 #include <odr/internal/formula/formula_function.hpp>
 #include <odr/internal/number_format/number_format.hpp>
 
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <optional>
@@ -13,10 +14,6 @@ namespace odr::internal::formula {
 
 namespace {
 
-bool is_libreoffice(const Call &call) {
-  return call.settings().dialect == Dialect::libreoffice;
-}
-
 /// Argument @p index as a number.
 double number_argument(const Call &call, const std::size_t index) {
   const Number number = call.number(call.scalar(index));
@@ -25,6 +22,21 @@ double number_argument(const Call &call, const std::size_t index) {
   }
   return std::get<double>(number);
 }
+
+/// Argument @p index as a whole number, toward 0. Nothing where reading it to
+/// 15 digits first gives another one: LibreOffice does (`double_to`), and
+/// Excel does not document it.
+double whole_argument(const Call &call, const std::size_t index) {
+  const double x = number_argument(call, index);
+  const double whole = std::trunc(x);
+  if (whole != std::trunc(snapped(x, 15))) {
+    throw NoAnswer{};
+  }
+  return whole;
+}
+
+/// The most a 16-bit argument of LibreOffice holds; past it is `Err:502`.
+constexpr double int16_limit = 32767;
 
 /// The first serial Excel counts a real day for: before it lies the
 /// 1900-02-29 that never was.
@@ -56,7 +68,7 @@ std::int64_t day_of(const Call &call, const double serial) {
 Value serial_of(const Call &call, const std::int64_t days) {
   const double serial = call.settings().serial(static_cast<double>(days));
   if (!is_libreoffice(call)) {
-    if (serial < 1) {
+    if (serial < 0) {
       return Value{ErrorType::number};
     }
     if (call.settings().epoch == number_format::Epoch::from_1900 &&
@@ -82,20 +94,22 @@ std::tuple<std::int64_t, std::uint32_t, std::uint32_t>
 shifted(const std::int64_t days, const double months) {
   const auto [year, month, day] = number_format::civil_from_days(days);
   const std::int64_t total =
-      year * 12 + (month - 1) + static_cast<std::int64_t>(std::trunc(months));
+      year * 12 + (month - 1) + static_cast<std::int64_t>(months);
   const std::int64_t new_year = total >= 0 ? total / 12 : -((-total + 11) / 12);
   const auto new_month = static_cast<std::uint32_t>(total - new_year * 12 + 1);
   return {new_year, new_month, day};
 }
 
 /// `DATE`: a year, a month and a day, which may run over into the next.
+/// LibreOffice reads each as a 16-bit integer (`GetInt16`).
 Value date(const Call &call) {
   expect_arguments(call, 3, 3);
-  double year = std::trunc(number_argument(call, 0));
-  const double month = std::trunc(number_argument(call, 1));
-  const double day = std::trunc(number_argument(call, 2));
+  double year = whole_argument(call, 0);
+  const double month = whole_argument(call, 1);
+  const double day = whole_argument(call, 2);
   if (is_libreoffice(call)) {
-    if (year < 0) {
+    if (year < 0 || year > int16_limit || std::abs(month) > int16_limit ||
+        std::abs(day) > int16_limit) {
       throw NoAnswer{};
     }
     const std::int64_t null_year = call.settings().null_year;
@@ -128,6 +142,10 @@ Value date(const Call &call) {
   const std::int64_t days =
       number_format::days_from_civil(first_year, first_month, 1) +
       static_cast<std::int64_t>(day) - 1;
+  if (is_libreoffice(call) &&
+      std::get<0>(number_format::civil_from_days(days)) > int16_limit) {
+    throw NoAnswer{};
+  }
   return serial_of(call, days);
 }
 
@@ -135,14 +153,13 @@ Value date(const Call &call) {
 /// day from 0 again. Excel truncates each argument, LibreOffice does not.
 Value time(const Call &call) {
   expect_arguments(call, 3, 3);
-  double hours = number_argument(call, 0);
-  double minutes = number_argument(call, 1);
-  double seconds = number_argument(call, 2);
-  if (!is_libreoffice(call)) {
-    hours = std::trunc(hours);
-    minutes = std::trunc(minutes);
-    seconds = std::trunc(seconds);
-  }
+  const bool whole = !is_libreoffice(call);
+  const double hours =
+      whole ? whole_argument(call, 0) : number_argument(call, 0);
+  const double minutes =
+      whole ? whole_argument(call, 1) : number_argument(call, 1);
+  const double seconds =
+      whole ? whole_argument(call, 2) : number_argument(call, 2);
   const double total = hours * 3600 + minutes * 60 + seconds;
   if (total < 0) {
     return refused(call, ErrorType::number);
@@ -193,8 +210,7 @@ Value time_part(const Call &call) {
 Value weekday(const Call &call) {
   expect_arguments(call, 1, 2);
   const std::int64_t days = day_of(call, number_argument(call, 0));
-  const double type =
-      call.size() > 1 ? std::trunc(number_argument(call, 1)) : 1;
+  const double type = call.size() > 1 ? whole_argument(call, 1) : 1;
   // 1899-12-30 was a Saturday; 0 is Sunday here
   const std::int64_t sunday_based = ((days % 7) + 7 + 6) % 7;
   const std::int64_t monday_based = (sunday_based + 6) % 7;
@@ -220,21 +236,30 @@ Value weekday(const Call &call) {
 template <bool end_of_month> Value months_on(const Call &call) {
   expect_arguments(call, 2, 2);
   const std::int64_t days = day_of(call, number_argument(call, 0));
-  const auto [year, month, day] = shifted(days, number_argument(call, 1));
+  const auto [year, month, day] = shifted(days, whole_argument(call, 1));
   const std::uint32_t length = month_length(year, month);
   return serial_of(
       call, number_format::days_from_civil(
                 year, month, end_of_month ? length : std::min(day, length)));
 }
 
+/// The serial after 9999-12-31 in Excel.
+constexpr double excel_serial_limit = 2958466;
+
 /// `DAYS`: the days from the second date to the first. Excel counts whole
-/// days, LibreOffice the difference of the serials.
+/// days, and refuses a date out of its range, LibreOffice the difference of
+/// the serials.
 Value days(const Call &call) {
   expect_arguments(call, 2, 2);
   const double end = number_argument(call, 0);
   const double start = number_argument(call, 1);
   if (is_libreoffice(call)) {
     return Value{end - start};
+  }
+  for (const double serial : {end, start}) {
+    if (serial < 0 || serial >= excel_serial_limit) {
+      return Value{ErrorType::number};
+    }
   }
   return Value{std::trunc(end) - std::trunc(start)};
 }
@@ -275,20 +300,20 @@ Value date_difference(const Call &call) {
   throw NoAnswer{};
 }
 
-constexpr FunctionEntry entries[] = {
-    {"DATE", date},
-    {"DATEDIF", date_difference},
-    {"DAY", date_part<Part::day>},
-    {"DAYS", days},
-    {"EDATE", months_on<false>},
-    {"EOMONTH", months_on<true>},
-    {"HOUR", time_part<3600, 24>},
-    {"MINUTE", time_part<60, 60>},
-    {"MONTH", date_part<Part::month>},
-    {"SECOND", time_part<1, 60>},
-    {"TIME", time},
-    {"WEEKDAY", weekday},
-    {"YEAR", date_part<Part::year>},
+constexpr std::array entries{
+    FunctionEntry{"DATE", date},
+    FunctionEntry{"DATEDIF", date_difference},
+    FunctionEntry{"DAY", date_part<Part::day>},
+    FunctionEntry{"DAYS", days},
+    FunctionEntry{"EDATE", months_on<false>},
+    FunctionEntry{"EOMONTH", months_on<true>},
+    FunctionEntry{"HOUR", time_part<3600, 24>},
+    FunctionEntry{"MINUTE", time_part<60, 60>},
+    FunctionEntry{"MONTH", date_part<Part::month>},
+    FunctionEntry{"SECOND", time_part<1, 60>},
+    FunctionEntry{"TIME", time},
+    FunctionEntry{"WEEKDAY", weekday},
+    FunctionEntry{"YEAR", date_part<Part::year>},
 };
 
 } // namespace

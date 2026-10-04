@@ -107,6 +107,13 @@ double formula::approximate_add(const double a, const double b) {
   return a + b;
 }
 
+double formula::snapped(const double x, const int digits) {
+  if (x == 0 || !std::isfinite(x)) {
+    return x;
+  }
+  return std::strtod(fmt::format("{:.{}g}", x, digits).c_str(), nullptr);
+}
+
 bool formula::nearly_cancels(const double sum, const double largest) {
   return sum != 0 && std::abs(sum) < largest * 1e-12;
 }
