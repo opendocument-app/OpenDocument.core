@@ -13,6 +13,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace odr {
 class File;
@@ -36,6 +37,7 @@ class SheetDependencies;
 
 namespace odr::internal::formula {
 struct Settings;
+struct Name;
 } // namespace odr::internal::formula
 
 namespace odr::internal::abstract {
@@ -94,6 +96,9 @@ public:
   /// How the formulas of the document compute: what an `.ods` states, and
   /// Excel's settings for every other format.
   [[nodiscard]] virtual formula::Settings formula_settings() const = 0;
+  /// The names the document defines for its formulas. None for a format
+  /// that states none.
+  [[nodiscard]] virtual std::vector<formula::Name> formula_names() const = 0;
 };
 
 class ElementAdapter {

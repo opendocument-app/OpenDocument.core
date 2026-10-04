@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <map>
 #include <optional>
 #include <set>
@@ -24,6 +25,9 @@ class Cells final : public CellSource {
 public:
   std::map<SheetPosition, Value> values;
   std::set<SheetPosition> stale;
+  /// The names of the document, in lower case, each in the OpenFormula
+  /// syntax.
+  std::map<std::string, std::string> names;
 
   [[nodiscard]] std::optional<std::uint32_t>
   sheet(const std::string_view name) const override {
@@ -42,6 +46,18 @@ public:
     }
     const auto found = values.find(position);
     return found == values.end() ? Value{Empty{}} : found->second;
+  }
+  [[nodiscard]] std::optional<Node> name(const std::string_view name,
+                                         const std::uint32_t) const override {
+    std::string lower(name);
+    std::ranges::transform(lower, lower.begin(), [](const char c) {
+      return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    });
+    const auto found = names.find(lower);
+    if (found == names.end()) {
+      return std::nullopt;
+    }
+    return parse(found->second, Syntax::opendocument);
   }
   [[nodiscard]] TableDimensions
   extent(const std::uint32_t sheet) const override {

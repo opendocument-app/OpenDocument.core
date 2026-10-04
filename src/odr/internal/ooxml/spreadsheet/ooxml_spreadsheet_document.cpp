@@ -129,6 +129,21 @@ StyleRegistry &Document::style_registry() { return m_style_registry; }
 
 number_format::Epoch Document::epoch() const { return m_epoch; }
 
+std::vector<formula::Name> Document::formula_names() const {
+  std::vector<formula::Name> result;
+  // ECMA-376 18.2.5: a name local to a sheet states its index among them
+  for (const pugi::xml_node name :
+       workbook().child("definedNames").children("definedName")) {
+    std::optional<std::uint32_t> sheet;
+    if (const pugi::xml_attribute local = name.attribute("localSheetId")) {
+      sheet = local.as_uint();
+    }
+    result.push_back(formula::Name{name.attribute("name").value(), sheet,
+                                   name.text().get()});
+  }
+  return result;
+}
+
 formula::Settings Document::formula_settings() const {
   return formula::Settings{.epoch = m_epoch};
 }

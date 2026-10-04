@@ -185,3 +185,20 @@ TEST(FormulaEvaluator, a_function_name_drops_the_prefix_of_its_format) {
   EXPECT_EQ(xlsx("=_xlfn.TRUE()"), boolean(true));
   EXPECT_EQ(ods("=org.openoffice.na()"), error(ErrorType::not_available));
 }
+
+TEST(FormulaEvaluator, a_name_stands_for_its_expression) {
+  Cells source = cells();
+  source.names["total"] = "[$s.$A$4:.$A$5]";
+  source.names["rate"] = "of:=0.5*2";
+  source.names["twice"] = "$$Total";
+  source.names["relative"] = "[$s.A4]";
+  source.names["loop"] = "$$Loop";
+
+  EXPECT_EQ(ods("=SUM($$Total)*$$Rate", source), number(3));
+  EXPECT_EQ(xlsx("=SUM(Total)*rate", source), number(2));
+  EXPECT_EQ(ods("=SUM($$Twice)", source), number(3));
+  // a relative reference reads from a base cell the formats state apart
+  EXPECT_EQ(ods("=$$Relative", source), std::nullopt);
+  EXPECT_EQ(ods("=$$Loop", source), std::nullopt);
+  EXPECT_EQ(ods("=$$Unknown", source), std::nullopt);
+}

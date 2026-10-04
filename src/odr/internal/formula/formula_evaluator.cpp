@@ -234,6 +234,11 @@ private:
   const Node *m_root{nullptr};
   /// Whether an operator reads a range as an array of its cells.
   bool m_array{false};
+  /// The names being read, one inside the other.
+  std::uint32_t m_names{0};
+
+  /// The most names one inside the other, so a name that names itself ends.
+  static constexpr std::uint32_t name_limit = 16;
 
   /// The most cells an array context reads out of one range.
   static constexpr std::size_t array_limit = 1 << 20;
@@ -284,8 +289,38 @@ private:
   [[nodiscard]] Value value_of(const Missing &, const Node &) {
     return Value{Empty{}};
   }
-  [[nodiscard]] Value value_of(const NameReference &, const Node &) {
-    throw NoAnswer{};
+  /// What a name stands for. A name whose references are relative reads
+  /// from a base cell the two formats state apart, so it has no answer.
+  [[nodiscard]] Value value_of(const NameReference &reference, const Node &) {
+    if (reference.document.has_value() || m_names >= name_limit) {
+      throw NoAnswer{};
+    }
+    const std::uint32_t scope = sheet_of(reference.sheet, m_cell.sheet);
+    const std::optional<Node> node = m_source->name(reference.name, scope);
+    if (!node.has_value() || is_relative(*node)) {
+      throw NoAnswer{};
+    }
+    ++m_names;
+    Value result = value(*node);
+    --m_names;
+    return result;
+  }
+
+  /// Whether @p node holds a reference that is relative on an axis, or that
+  /// names no sheet.
+  [[nodiscard]] static bool is_relative(const Node &node) {
+    const auto relative = [](const CellReference &cell, const bool first) {
+      return (first && !cell.sheet.has_value()) ||
+             (cell.column.has_value() && !cell.column->absolute) ||
+             (cell.row.has_value() && !cell.row->absolute);
+    };
+    if (const auto *cell = std::get_if<CellReference>(&node.content)) {
+      return relative(*cell, true);
+    }
+    if (const auto *range = std::get_if<RangeReference>(&node.content)) {
+      return relative(range->from, true) || relative(range->to, false);
+    }
+    return std::ranges::any_of(node.children, is_relative);
   }
   [[nodiscard]] Value value_of(const CellReference &cell, const Node &) {
     return Value{Reference{{area(cell, cell)}}};

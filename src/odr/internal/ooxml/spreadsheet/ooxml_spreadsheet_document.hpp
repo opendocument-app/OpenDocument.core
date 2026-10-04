@@ -28,6 +28,8 @@ public:
   [[nodiscard]] number_format::Epoch epoch() const;
   /// Excel's settings, and the epoch of the workbook.
   [[nodiscard]] formula::Settings formula_settings() const override;
+  /// The `definedName` entries of the workbook.
+  [[nodiscard]] std::vector<formula::Name> formula_names() const override;
 
   /// The `workbook` element of `xl/workbook.xml`.
   [[nodiscard]] pugi::xml_node workbook() const;

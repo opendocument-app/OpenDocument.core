@@ -29,6 +29,14 @@ public:
   /// The columns and rows of @p sheet up to the last one stating content. A
   /// whole column (`A:A`) reaches to the last row of it.
   [[nodiscard]] virtual TableDimensions extent(std::uint32_t sheet) const = 0;
+  /// What @p name stands for in a formula on @p sheet: a name local to the
+  /// sheet, else one of the whole document, read without case. Nothing where
+  /// the document defines none, or one that does not parse.
+  [[nodiscard]] virtual std::optional<Node>
+  name([[maybe_unused]] std::string_view name,
+       [[maybe_unused]] std::uint32_t sheet) const {
+    return std::nullopt;
+  }
 };
 
 /// The value of @p node, the formula of the cell at @p cell. A result that

@@ -144,3 +144,53 @@ TEST(SheetCellSource, a_position_a_merge_covers_is_empty) {
   EXPECT_EQ(at(source, 1, 0), Value{formula::Empty{}});
   EXPECT_EQ(at(source, 2, 0), Value{3.0});
 }
+
+TEST(SheetCellSource, an_ods_name_is_local_to_its_sheet_first) {
+  const std::shared_ptr<abstract::Document> document = decode(std::make_shared<
+                                                              MemoryFile>(
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.spreadsheet">)"
+      R"(<office:body><office:spreadsheet>)"
+      R"(<table:table table:name="s"><table:table-row><table:table-cell/>)"
+      R"(</table:table-row><table:named-expressions>)"
+      R"(<table:named-expression table:name="Rate" table:expression="of:=2"/>)"
+      R"(</table:named-expressions></table:table>)"
+      R"(<table:table table:name="t"><table:table-row><table:table-cell/>)"
+      R"(</table:table-row></table:table>)"
+      R"(<table:named-expressions>)"
+      R"(<table:named-range table:name="Total")"
+      R"( table:cell-range-address="$s.$A$1:.$A$3"/>)"
+      R"(<table:named-expression table:name="rate" table:expression="of:=3"/>)"
+      R"(</table:named-expressions>)"
+      R"(</office:spreadsheet></office:body></office:document>)"));
+  const SheetCellSource source(*document);
+
+  const std::optional<formula::Node> total = source.name("TOTAL", 1);
+  ASSERT_TRUE(total.has_value());
+  EXPECT_TRUE(total->holds<formula::RangeReference>());
+  const std::optional<formula::Node> local = source.name("rate", 0);
+  ASSERT_TRUE(local.has_value());
+  EXPECT_EQ(local->get<formula::NumberLiteral>().value, 2);
+  const std::optional<formula::Node> global = source.name("rate", 1);
+  ASSERT_TRUE(global.has_value());
+  EXPECT_EQ(global->get<formula::NumberLiteral>().value, 3);
+  EXPECT_FALSE(source.name("nope", 0).has_value());
+}
+
+TEST(SheetCellSource, an_xlsx_name_states_its_sheet_by_index) {
+  const std::shared_ptr<abstract::Document> document =
+      decode(test::ooxml::workbook(
+          R"(<row r="1"><c r="A1"><v>2</v></c></row>)", "", "",
+          R"(<definedNames><definedName name="Total">s!$A$1</definedName>)"
+          R"(<definedName name="Rate" localSheetId="0">0.5</definedName>)"
+          R"(</definedNames>)"));
+  const SheetCellSource source(*document);
+
+  const std::optional<formula::Node> total = source.name("total", 0);
+  ASSERT_TRUE(total.has_value());
+  EXPECT_TRUE(total->holds<formula::CellReference>());
+  const std::optional<formula::Node> rate = source.name("RATE", 0);
+  ASSERT_TRUE(rate.has_value());
+  EXPECT_EQ(rate->get<formula::NumberLiteral>().value, 0.5);
+}
