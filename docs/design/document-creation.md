@@ -78,7 +78,8 @@ is a locale choice, and an options struct can add it when a host asks for it.
 
 ### 6. The metadata names us and holds no date
 
-`meta:generator` and `Application` are `odr/<version>`. There is no creation
+`meta:generator` and `Application` are `odr`. The build carries no version
+on main, so the name holds none. There is no creation
 date, so the bytes of a new document are the same on every call, and a test
 can compare them.
 
