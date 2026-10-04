@@ -3,6 +3,7 @@
 #include <odr/internal/crypto/crypto_util.hpp>
 
 #include <cstdint>
+#include <random>
 #include <string>
 
 #include <gtest/gtest.h>
@@ -30,6 +31,7 @@ struct DecodedPng final {
   std::int32_t width{};
   std::int32_t height{};
   std::string rgb;
+  std::size_t idat_chunks{0};
 };
 
 /// Reads back what @ref png::write wrote: the chunks, then the one
@@ -43,13 +45,16 @@ DecodedPng decode_png(const std::string &png) {
   while (at + 12 <= png.size()) {
     const auto length = static_cast<std::size_t>(be32(png, at));
     const std::string type = png.substr(at + 4, 4);
+    EXPECT_LE(length, 0x7fffffffU);
     const std::string data = png.substr(at + 8, length);
+    EXPECT_EQ(be32(png, at + 8 + length), crypto::util::crc32(type + data));
     if (type == "IHDR") {
       result.width = static_cast<std::int32_t>(be32(data, 0));
       result.height = static_cast<std::int32_t>(be32(data, 4));
       EXPECT_EQ(static_cast<std::uint8_t>(data[8]), 8); // bit depth
       EXPECT_EQ(static_cast<std::uint8_t>(data[9]), 2); // colour type rgb
     } else if (type == "IDAT") {
+      ++result.idat_chunks;
       idat += data;
     } else if (type == "IEND") {
       break;
@@ -103,4 +108,15 @@ TEST(PngUtil, write_indexed_rejects_bad_input) {
   EXPECT_TRUE(png::write_indexed("", 65536, 65536, 8, two).empty());
   EXPECT_TRUE(
       png::write_indexed(bytes({0}), 8, 1, 1, two + two.substr(0, 3)).empty());
+}
+
+TEST(PngUtil, image_data_spans_chunks_without_restarting_compression) {
+  std::string rgb(256 * 256 * 3, '\0');
+  std::mt19937 random(0);
+  for (char &byte : rgb) {
+    byte = static_cast<char>(random() & 0xff);
+  }
+  const DecodedPng png = decode_png(png::write(rgb, 256, 256, 3));
+  EXPECT_GT(png.idat_chunks, 1);
+  EXPECT_EQ(png.rgb, rgb);
 }

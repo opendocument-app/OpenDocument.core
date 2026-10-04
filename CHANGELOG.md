@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PNG output splits compressed image data into bounded chunks, avoiding
+  truncated or invalid chunk lengths for large images.
+
 - Formula functions refuse non-finite numeric arguments before integer
   conversion; `TRUE`, `FALSE` and `NA` no longer ignore extra arguments.
 

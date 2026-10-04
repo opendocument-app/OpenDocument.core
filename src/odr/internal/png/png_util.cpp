@@ -3,6 +3,7 @@
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/util/byte_string.hpp>
 
+#include <algorithm>
 #include <array>
 #include <string_view>
 
@@ -12,7 +13,7 @@ namespace {
 
 /// Appends a png chunk: length, four-byte type, data, crc over type+data.
 void write_chunk(std::string &out, const std::string_view type,
-                 const std::string &data) {
+                 const std::string_view data) {
   util::byte_string::put_u32_be(out, static_cast<std::uint32_t>(data.size()));
   const std::size_t crc_start = out.size();
   out.append(type);
@@ -21,7 +22,7 @@ void write_chunk(std::string &out, const std::string_view type,
       out, crypto::util::crc32(std::string_view(out).substr(crc_start)));
 }
 
-/// Signature, `IHDR`, an optional `PLTE`, one `IDAT` and `IEND`. Every
+/// Signature, `IHDR`, optional `PLTE`, `IDAT` chunks and `IEND`. Every
 /// scanline is filtered as `None` (PNG 9.2), no interlacing.
 std::string assemble(const std::string &rows, const std::size_t stride,
                      const std::int32_t width, const std::int32_t height,
@@ -56,7 +57,15 @@ std::string assemble(const std::string &rows, const std::size_t stride,
   if (!palette.empty()) {
     write_chunk(out, "PLTE", palette);
   }
-  write_chunk(out, "IDAT", crypto::util::zlib_deflate(raw));
+  const std::string compressed = crypto::util::zlib_deflate(raw);
+  std::string_view remaining = compressed;
+  // PNG 5.3 limits chunk lengths to 2^31-1; small chunks avoid narrowing.
+  constexpr std::size_t chunk_size = 64 * 1024;
+  while (!remaining.empty()) {
+    const std::size_t count = std::min(remaining.size(), chunk_size);
+    write_chunk(out, "IDAT", remaining.substr(0, count));
+    remaining.remove_prefix(count);
+  }
   write_chunk(out, "IEND", "");
   return out;
 }
