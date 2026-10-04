@@ -34,7 +34,7 @@ text never had.
 | XLSX write | `ooxml_spreadsheet_document.cpp::sheet_set_cell`. `insert_cell` states a `<c>` the file lacks. A string goes inline as `t="inlineStr"`, never back into `sharedStrings.xml` |
 | XLSX save | `ooxml_spreadsheet_document.cpp::save` writes the worksheets and `workbook.xml`, copies the rest, and sets `calcPr/@fullCalcOnLoad="1"` |
 | Formulas | `internal/formula/` parses OpenFormula and OOXML into one AST, writes it back, and shifts it for an ooxml shared formula |
-| Number formats | `internal/number_format/` parses a format code and formats a number with it |
+| Number formats | `internal/number_format/` parses a format code and formats a number with it; `odf/odf_number_format.cpp` turns an ods data style into a format code |
 | Dependencies | `internal::SheetDependencies`, built once off the decoded document. `Document::dependents` and `Document::unresolved_formulas` expose it |
 | Stale results | An odf write drops the cached result of every dependent (`drop_stale_results`). An ooxml write keeps them, because every save sets `fullCalcOnLoad` |
 | Browser: sheet script | `html/frontend/spreadsheet.js` owns pin, raise, sort and the position map, and publishes `odr.sheet` |

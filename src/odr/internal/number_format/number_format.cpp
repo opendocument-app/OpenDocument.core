@@ -338,14 +338,14 @@ std::string join(const std::vector<std::string> &pieces) {
   return result;
 }
 
-std::string group(const std::string &integer) {
+std::string group(const std::string &integer, const std::string &separator) {
   std::string result;
   std::size_t seen = 0;
   for (std::size_t i = integer.size(); i > 0; --i) {
     const char c = integer[i - 1];
     if (c >= '0' && c <= '9') {
       if (seen > 0 && seen % 3 == 0) {
-        result.insert(result.begin(), ',');
+        result.insert(0, separator);
       }
       ++seen;
     }
@@ -358,7 +358,7 @@ std::string group(const std::string &integer) {
 /// integer ones before a point and the decimal ones after it.
 std::string format_plain(const std::vector<Token> &tokens,
                          const std::size_t begin, const std::size_t end,
-                         double value) {
+                         double value, const Symbols &symbols) {
   std::size_t point = end;
   std::size_t first_digit = end;
   std::size_t last_digit = end;
@@ -416,7 +416,8 @@ std::string format_plain(const std::vector<Token> &tokens,
 
   const std::vector<std::string> integer =
       place_integer(decimal.integer, integer_placeholders);
-  const std::string grouped_integer = grouped ? group(join(integer)) : "";
+  const std::string grouped_integer =
+      grouped ? group(join(integer), symbols.group) : "";
 
   std::string result;
   std::size_t integer_seen = 0;
@@ -441,7 +442,7 @@ std::string format_plain(const std::vector<Token> &tokens,
       if (integer_placeholders.empty()) {
         result += decimal.integer;
       }
-      result += '.';
+      result += symbols.decimal;
       break;
     case Kind::literal:
       result += token.text;
@@ -462,7 +463,8 @@ std::string format_plain(const std::vector<Token> &tokens,
 }
 
 std::string format_scientific(const std::vector<Token> &tokens,
-                              const std::size_t exponent, double value) {
+                              const std::size_t exponent, double value,
+                              const Symbols &symbols) {
   std::size_t integer_count = 0;
   bool hashed = false;
   std::size_t point = exponent;
@@ -505,7 +507,7 @@ std::string format_scientific(const std::vector<Token> &tokens,
     exponent_digits += tokens[end].placeholder;
   }
 
-  std::string result = format_plain(tokens, 0, exponent, mantissa);
+  std::string result = format_plain(tokens, 0, exponent, mantissa, symbols);
   result += 'E';
   if (power < 0) {
     result += '-';
@@ -813,18 +815,9 @@ std::string format_date_time(const std::vector<Token> &tokens,
   return result;
 }
 
-std::string format_section(const Section &section, const double value) {
+std::string format_section(const Section &section, const double value,
+                           const Symbols &symbols) {
   const std::vector<Token> &tokens = section.tokens;
-  if (has(section, Kind::general)) {
-    std::string result;
-    for (const Token &token : tokens) {
-      result += token.kind == Kind::general   ? format_general(value)
-                : token.kind == Kind::literal ? token.text
-                                              : std::string();
-    }
-    return result;
-  }
-
   double scaled = value;
   for (const Token &token : tokens) {
     if (token.kind == Kind::percent) {
@@ -832,9 +825,20 @@ std::string format_section(const Section &section, const double value) {
     }
   }
 
+  if (has(section, Kind::general)) {
+    std::string result;
+    for (const Token &token : tokens) {
+      result += token.kind == Kind::general   ? format_general(scaled, symbols)
+                : token.kind == Kind::literal ? token.text
+                : token.kind == Kind::percent ? "%"
+                                              : "";
+    }
+    return result;
+  }
+
   for (std::size_t i = 0; i < tokens.size(); ++i) {
     if (tokens[i].kind == Kind::exponent) {
-      return format_scientific(tokens, i, scaled);
+      return format_scientific(tokens, i, scaled, symbols);
     }
   }
   for (std::size_t i = 0; i < tokens.size(); ++i) {
@@ -853,7 +857,7 @@ std::string format_section(const Section &section, const double value) {
     }
     return result;
   }
-  return format_plain(tokens, 0, tokens.size(), scaled);
+  return format_plain(tokens, 0, tokens.size(), scaled, symbols);
 }
 
 /// Whether @p section rounds @p value to nothing it shows.
@@ -909,9 +913,10 @@ Category Format::category() const {
   return result;
 }
 
-std::string Format::format(const double value, const Epoch epoch) const {
+std::string Format::format(const double value, const Epoch epoch,
+                           const Symbols &symbols) const {
   if (!std::isfinite(value)) {
-    return format_general(value);
+    return format_general(value, symbols);
   }
   // the text section is not a number's
   std::size_t count = std::min<std::size_t>(m_sections.size(), 3);
@@ -954,13 +959,13 @@ std::string Format::format(const double value, const Epoch epoch) const {
     // `####`
     constexpr double last_serial = 2958465;
     return value < 0 || value >= last_serial + 1
-               ? format_general(value)
+               ? format_general(value, symbols)
                : format_date_time(section.tokens, value, epoch);
   }
   if (has(section, Kind::text) && !has(section, Kind::digit)) {
-    return format_general(value);
+    return format_general(value, symbols);
   }
-  std::string result = format_section(section, std::abs(value));
+  std::string result = format_section(section, std::abs(value), symbols);
   const bool shows_nothing =
       has(section, Kind::general) ? value == 0 : shows_zero(section, value);
   if (value < 0 && !negative_section && !shows_nothing) {
@@ -990,7 +995,7 @@ std::string Format::format(const std::string_view value) const {
   return result;
 }
 
-std::string format_general(const double value) {
+std::string format_general(const double value, const Symbols &symbols) {
   if (value == 0) {
     return "0";
   }
@@ -999,11 +1004,13 @@ std::string format_general(const double value) {
   }
   const double magnitude = std::abs(value);
   const std::string sign = value < 0 ? "-" : "";
-  const auto trimmed = [](std::string text) {
-    if (text.find('.') != std::string::npos) {
+  const auto trimmed = [&symbols](std::string text) {
+    if (const std::size_t point = text.find('.'); point != std::string::npos) {
       text.erase(text.find_last_not_of('0') + 1);
       if (text.back() == '.') {
         text.pop_back();
+      } else {
+        text.replace(point, 1, symbols.decimal);
       }
     }
     return text;
@@ -1020,6 +1027,37 @@ std::string format_general(const double value) {
   const int power = std::stoi(spelled.substr(e + 1));
   return sign + trimmed(spelled.substr(0, e)) + "E" + (power < 0 ? "-" : "+") +
          fmt::format("{:02d}", std::abs(power));
+}
+
+Symbols symbols_of(const std::string_view locale) {
+  const std::string_view language = locale.substr(0, locale.find('-'));
+  const std::string_view region = locale.find('-') == std::string_view::npos
+                                      ? std::string_view()
+                                      : locale.substr(locale.rfind('-') + 1);
+  // CLDR, for the languages a spreadsheet is most often written in
+  constexpr std::array<std::string_view, 16> point_group{
+      "de", "es", "it", "nl", "pt", "id", "tr", "da",
+      "el", "ro", "sl", "hr", "sr", "bs", "vi", "ca"};
+  constexpr std::array<std::string_view, 18> space_group{
+      "fr", "ru", "pl", "cs", "sk", "sv", "fi", "nb", "nn",
+      "no", "uk", "hu", "bg", "lt", "lv", "et", "be", "kk"};
+  if ((language == "de" || language == "it") &&
+      (region == "CH" || region == "LI")) {
+    return {".", "\u2019"};
+  }
+  if (language == "es" && (region == "MX" || region == "US")) {
+    return {".", ","};
+  }
+  if (language == "pt" && region == "PT") {
+    return {",", "\u00a0"};
+  }
+  if (std::ranges::find(point_group, language) != std::end(point_group)) {
+    return {",", "."};
+  }
+  if (std::ranges::find(space_group, language) != std::end(space_group)) {
+    return {",", language == "fr" ? "\u202f" : "\u00a0"};
+  }
+  return {};
 }
 
 } // namespace odr::internal::number_format

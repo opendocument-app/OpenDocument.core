@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include <pugixml.hpp>
@@ -70,6 +71,13 @@ public:
                 pugi::xml_node styles_root);
 
   [[nodiscard]] Style *style(const char *name) const;
+  /// The data style (`number:number-style` and its kin) named @p name, null
+  /// where there is none.
+  [[nodiscard]] pugi::xml_node data_style_node(std::string_view name) const;
+  /// The data style the cell style @p style_name shows a value in, through
+  /// its parents and the default `table-cell` style; null where none names
+  /// one.
+  [[nodiscard]] pugi::xml_node cell_data_style(const char *style_name) const;
   /// The `style:default-style` of @p family, null where there is none.
   [[nodiscard]] pugi::xml_node
   default_style_node(const std::string &family) const;
@@ -113,6 +121,7 @@ private:
   std::unordered_map<std::string, pugi::xml_node> m_index_font_face;
   std::unordered_map<std::string, pugi::xml_node> m_index_default_style;
   std::unordered_map<std::string, pugi::xml_node> m_index_style;
+  std::unordered_map<std::string, pugi::xml_node> m_index_data_style;
   std::unordered_map<std::string, pugi::xml_node> m_index_list_style;
   std::unordered_map<std::string, pugi::xml_node> m_index_outline_style;
   std::unordered_map<std::string, pugi::xml_node> m_index_page_layout;

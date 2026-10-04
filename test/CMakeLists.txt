@@ -65,6 +65,7 @@ add_executable(odr_test
         "src/internal/formula/formula_parser_test.cpp"
         "src/internal/formula/formula_writer_test.cpp"
         "src/internal/number_format/number_format_test.cpp"
+        "src/internal/odf/odf_number_format_test.cpp"
         "src/internal/svg/svg_file_test.cpp"
         "src/internal/svg/svg_writer_test.cpp"
         "src/internal/xml/xml_file_test.cpp"
