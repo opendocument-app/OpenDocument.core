@@ -104,6 +104,10 @@ using Text = std::variant<std::string, ErrorType>;
 /// they agree to about 15 significant digits.
 [[nodiscard]] bool approximately_equal(double a, double b);
 
+/// `a + b`, and 0 where the two cancel to within the precision of a sheet,
+/// as LibreOffice's `rtl::math::approxAdd` does: `0.1+0.2-0.3` is 0.
+[[nodiscard]] double approximate_add(double a, double b);
+
 /// The number a text reads as in arithmetic. `#VALUE!` where the text holds no
 /// digit, and nothing where it holds one in a form whose reading depends on
 /// the locale: a currency, a date, a grouped number.
