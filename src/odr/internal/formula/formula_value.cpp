@@ -79,6 +79,13 @@ double formula::Settings::serial(const double days) const {
   return number_format::serial_from_days(days, epoch);
 }
 
+double formula::Settings::days(const double serial) const {
+  if (dialect == Dialect::libreoffice) {
+    return serial + static_cast<double>(null_date);
+  }
+  return number_format::days_from_serial(serial, epoch);
+}
+
 bool formula::approximately_equal(const double a, const double b) {
   // what LibreOffice's `rtl::math::approxEqual` decides: 2^-48 of either
   constexpr double tolerance = 1.0 / (16777216.0 * 16777216.0);

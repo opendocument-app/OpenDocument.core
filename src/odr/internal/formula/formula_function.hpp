@@ -113,6 +113,8 @@ void expect_arguments(const Call &call, std::size_t least, std::size_t most);
 [[nodiscard]] std::span<const FunctionEntry> logic_functions();
 /// The functions of text: `LEFT`, `FIND`, `SUBSTITUTE`.
 [[nodiscard]] std::span<const FunctionEntry> text_functions();
+/// The functions of dates and times: `DATE`, `YEAR`, `WEEKDAY`.
+[[nodiscard]] std::span<const FunctionEntry> date_functions();
 /// The functions of lookup and the conditional aggregates: `VLOOKUP`,
 /// `MATCH`, `COUNTIF`.
 [[nodiscard]] std::span<const FunctionEntry> lookup_functions();

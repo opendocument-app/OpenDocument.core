@@ -34,9 +34,14 @@ struct Settings final {
   number_format::Epoch epoch{number_format::Epoch::from_1900};
   /// The days from 1899-12-30 to the `table:null-date` of an `.ods`.
   std::int64_t null_date{0};
+  /// The first year a two-digit year of an `.ods` stands for: with 1930,
+  /// `30` is 1930 and `29` is 2029.
+  std::int64_t null_year{1930};
 
   /// The serial a formula computes with for @p days since 1899-12-30.
   [[nodiscard]] double serial(double days) const;
+  /// The days since 1899-12-30 a formula's @p serial stands for.
+  [[nodiscard]] double days(double serial) const;
 };
 
 /// A cell that states nothing.
