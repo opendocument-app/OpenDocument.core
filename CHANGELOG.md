@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- The sheet editor inserts and deletes columns:
+  `odr.editing.insertColumns("left" | "right")` inserts as many columns as
+  the selection spans, and `odr.editing.deleteColumns()` removes them, each
+  one undo step. The chords of the rows act on a column header too. An edge
+  inside a merge refuses with `unsupportedEdit`.
 - `Sheet::insert_columns(column, count)` and
   `Sheet::delete_columns(column, count)`, and the `insertColumns` and
   `deleteColumns` ops, for an ods, an xlsx and a csv. Every formula, named

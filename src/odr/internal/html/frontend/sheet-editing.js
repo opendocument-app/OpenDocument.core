@@ -73,7 +73,13 @@
   var undone = [];
 
   var STYLE_OPS = ["setCellStyle", "setRowStyle", "setColumnStyle"];
-  var ROW_OPS = ["insertRows", "deleteRows"];
+  /// The axis a row or column op moves along.
+  var STRUCTURE_OPS = {
+    insertRows: "row",
+    deleteRows: "row",
+    insertColumns: "column",
+    deleteColumns: "column",
+  };
 
   /// Whether two style ops reach a cell in common. An absent axis is a whole
   /// row or column.
@@ -98,7 +104,7 @@
       var ops = history[i].ops;
       for (var j = 0; j < ops.length; ++j) {
         var op = ops[j];
-        if (ROW_OPS.indexOf(op.op) !== -1) {
+        if (STRUCTURE_OPS[op.op] !== undefined) {
           byKey.clear();
           result.push(op);
           continue;
@@ -483,34 +489,36 @@
     return false;
   }
 
-  /// Where @p row goes under a row op, null where a delete takes it. An
-  /// unbounded row stays unbounded.
-  function movedRow(op, row) {
-    if (row < op.row) {
-      return row;
+  /// Where a row or column @p index goes under a row or column op along its
+  /// axis, null where a delete takes it. An unbounded one stays unbounded.
+  function movedIndex(op, index) {
+    var edge = op[STRUCTURE_OPS[op.op]];
+    if (index < edge) {
+      return index;
     }
-    if (op.op === "insertRows") {
-      return row + op.count;
+    if (op.op.indexOf("insert") === 0) {
+      return index + op.count;
     }
-    return row < op.row + op.count ? null : row - op.count;
+    return index < edge + op.count ? null : index - op.count;
   }
 
-  /// The rows @p first to @p last span after a row op, as the library moves a
+  /// What @p first to @p last span after the op, as the library moves a
   /// range: null where a delete takes all of them.
   function movedSpan(op, first, last) {
-    var end = op.row + op.count;
-    if (op.op === "deleteRows" && first >= op.row && last < end) {
+    var edge = op[STRUCTURE_OPS[op.op]];
+    var inserts = op.op.indexOf("insert") === 0;
+    if (!inserts && first >= edge && last < edge + op.count) {
       return null;
     }
-    var from = movedRow(op, first);
-    var to = movedRow(op, last);
-    return [from === null ? op.row : from, to === null ? op.row - 1 : to];
+    var from = movedIndex(op, first);
+    var to = movedIndex(op, last);
+    return [from === null ? edge : from, to === null ? edge - 1 : to];
   }
 
   /// The formula cells after @p ops, each where it sits and what it reads as
   /// the ops moved them, and marked where an op changed an input: a write it
-  /// reads, a row a delete took, or a range an insert grew. A cell a delete
-  /// took is left out.
+  /// reads, a row or column a delete took, or a range an insert grew. A cell
+  /// a delete took is left out.
   function walk(ops) {
     var entries = readersOf().map(function (entry) {
       return {
@@ -529,27 +537,38 @@
         });
         return;
       }
-      if (ROW_OPS.indexOf(op.op) === -1 || op.sheet !== sheet) {
+      var axis = STRUCTURE_OPS[op.op];
+      if (axis === undefined || op.sheet !== sheet) {
         return;
       }
+      // a box is [first column, last column, first row, last row]
+      var low = axis === "row" ? 2 : 0;
+      var edge = op[axis];
+      var inserts = op.op.indexOf("insert") === 0;
       entries = entries.filter(function (entry) {
         entry.marked =
           entry.marked ||
           entry.reads.some(function (box) {
-            return op.op === "deleteRows"
-              ? box[2] < op.row + op.count && box[3] >= op.row
-              : box[2] < op.row && op.row <= box[3] && box[3] !== Infinity;
+            return inserts
+              ? box[low] < edge && edge <= box[low + 1] && box[low + 1] !== Infinity
+              : box[low] < edge + op.count && box[low + 1] >= edge;
           });
-        entry.at.row = movedRow(op, entry.at.row);
+        entry.at[axis] = movedIndex(op, entry.at[axis]);
         entry.reads = entry.reads
           .map(function (box) {
-            var rows = movedSpan(op, box[2], box[3]);
-            return rows === null ? null : [box[0], box[1], rows[0], rows[1]];
+            var span = movedSpan(op, box[low], box[low + 1]);
+            if (span === null) {
+              return null;
+            }
+            var moved = box.slice();
+            moved[low] = span[0];
+            moved[low + 1] = span[1];
+            return moved;
           })
           .filter(function (box) {
             return box !== null;
           });
-        return entry.at.row !== null;
+        return entry.at[axis] !== null;
       });
     });
     return entries;
@@ -1304,9 +1323,11 @@
     return format(style);
   }
 
-  /// Whether a row edit can go ahead: the mode is on, the document takes
-  /// edits, and the formula cells are read where the page put them.
-  function rowsEditable() {
+  /// The row or column op of the selection, as one undo step: @p axis is
+  /// `row` or `column`, and an insert goes before the selection, or after it
+  /// where @p after. The formula cells are read where the page put them
+  /// before the first such op moves them.
+  function editStructure(axis, insert, after) {
     finish();
     if (!odr.editing.isEnabled()) {
       return false;
@@ -1316,12 +1337,33 @@
       return false;
     }
     readersOf();
-    return true;
-  }
-
-  /// One row op as one undo step.
-  function rowStep(op, undo, redo) {
-    history.push({ ops: [op], undo: undo, redo: redo });
+    var range = odr.sheet.selection();
+    var span = range === null ? null : axis === "row" ? range.rows : range.columns;
+    var index = span === null ? null : after ? span[1] + 1 : span[0];
+    var count = span === null ? 0 : span[1] - span[0] + 1;
+    var plural = axis === "row" ? "Rows" : "Columns";
+    var taken =
+      index === null ? null : odr.sheet[(insert ? "insert" : "delete") + plural](index, count);
+    var detail = { sheet: sheet };
+    detail[axis] = index;
+    if (taken === null) {
+      odr.editing.refuse("unsupportedEdit", detail);
+      return false;
+    }
+    var op = { op: (insert ? "insert" : "delete") + plural, sheet: sheet };
+    op[axis] = index;
+    op.count = count;
+    var takeOut = function () {
+      odr.sheet["delete" + plural](index, count);
+    };
+    var putBack = function () {
+      odr.sheet["restore" + plural](index, taken);
+    };
+    history.push({
+      ops: [op],
+      undo: insert ? takeOut : putBack,
+      redo: insert ? putBack : takeOut,
+    });
     undone = [];
     repaintStale();
     odr.editing.changed();
@@ -1331,54 +1373,21 @@
 
   /// Inserts as many rows as the selection spans, `above` it or `below` it.
   function insertRows(where) {
-    if (!rowsEditable()) {
+    if (where !== undefined && where !== "above" && where !== "below") {
+      odr.editing.refuse("unsupportedEdit", { sheet: sheet });
       return false;
     }
-    var range = odr.sheet.selection();
-    var below = where === "below";
-    var row = range === null ? null : below ? range.rows[1] + 1 : range.rows[0];
-    var count = range === null ? 0 : range.rows[1] - range.rows[0] + 1;
-    var rows =
-      row === null || (where !== undefined && where !== "above" && !below)
-        ? null
-        : odr.sheet.insertRows(row, count);
-    if (rows === null) {
-      odr.editing.refuse("unsupportedEdit", { sheet: sheet, row: row });
-      return false;
-    }
-    return rowStep(
-      { op: "insertRows", sheet: sheet, row: row, count: count },
-      function () {
-        odr.sheet.deleteRows(row, count);
-      },
-      function () {
-        odr.sheet.restoreRows(row, rows);
-      }
-    );
+    return editStructure("row", true, where === "below");
   }
 
-  /// Removes the rows of the selection.
-  function deleteRows() {
-    if (!rowsEditable()) {
+  /// Inserts as many columns as the selection spans, `left` of it or `right`
+  /// of it.
+  function insertColumns(where) {
+    if (where !== undefined && where !== "left" && where !== "right") {
+      odr.editing.refuse("unsupportedEdit", { sheet: sheet });
       return false;
     }
-    var range = odr.sheet.selection();
-    var row = range === null ? null : range.rows[0];
-    var count = range === null ? 0 : range.rows[1] - range.rows[0] + 1;
-    var rows = row === null ? null : odr.sheet.deleteRows(row, count);
-    if (rows === null) {
-      odr.editing.refuse("unsupportedEdit", { sheet: sheet, row: row });
-      return false;
-    }
-    return rowStep(
-      { op: "deleteRows", sheet: sheet, row: row, count: count },
-      function () {
-        odr.sheet.restoreRows(row, rows);
-      },
-      function () {
-        odr.sheet.deleteRows(row, count);
-      }
-    );
+    return editStructure("column", true, where === "right");
   }
 
   var chords = { b: "bold", i: "italic", u: "underline" };
@@ -1394,14 +1403,19 @@
     ) {
       return;
     }
-    // a row header selected: Shift with `+` inserts above, `-` deletes, as
-    // in Excel
+    // a header selected: Shift with `+` inserts before it, `-` deletes, as in
+    // Excel
     var pin = odr.sheet.pinned();
-    var rowHeader = pin !== null && pin.column === null && pin.row !== null;
-    if (rowHeader && (event.key === "+" || (event.shiftKey && event.key === "="))) {
-      insertRows("above");
-    } else if (rowHeader && event.key === "-" && !event.shiftKey) {
-      deleteRows();
+    var axis =
+      pin === null || (pin.column === null) === (pin.row === null)
+        ? null
+        : pin.column === null
+          ? "row"
+          : "column";
+    if (axis !== null && (event.key === "+" || (event.shiftKey && event.key === "="))) {
+      editStructure(axis, true, false);
+    } else if (axis !== null && event.key === "-" && !event.shiftKey) {
+      editStructure(axis, false, false);
     } else {
       var property = chords[event.key.toLowerCase()];
       if (property === undefined || odr.sheet.selectedCells().length === 0) {
@@ -1449,7 +1463,13 @@
     format: format,
     toggle: toggle,
     insertRows: insertRows,
-    deleteRows: deleteRows,
+    deleteRows: function () {
+      return editStructure("row", false, false);
+    },
+    insertColumns: insertColumns,
+    deleteColumns: function () {
+      return editStructure("column", false, false);
+    },
     enable: function () {
       reportSelection(true);
       if (cut !== null) {
