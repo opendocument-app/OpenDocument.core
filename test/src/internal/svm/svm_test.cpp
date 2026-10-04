@@ -413,7 +413,7 @@ TEST(SvmToSvg, font_family_is_escaped) {
 
 TEST(SvmToSvg, unhandled_action_is_skipped) {
   const std::string svg = translate(SvmBuilder()
-                                        .action(svm::META_ELLIPSE_ACTION)
+                                        .action(svm::META_COMMENT_ACTION)
                                         .rectangle(0, 0, 10, 10)
                                         .end()
                                         .action(svm::META_RECT_ACTION)
@@ -1268,4 +1268,63 @@ TEST(SvmFile, bitmap_headers_and_dimensions_are_bounded) {
   EXPECT_THROW(std::ignore = svm::read_dib(input, 57), odr::MalformedSvmFile);
   std::istringstream valid(bitmap(40, 1, -1));
   EXPECT_EQ(svm::read_dib(valid, 58).mime_type, "image/png");
+}
+
+TEST(SvmFile, record_lengths_bound_reads_and_skips) {
+  const std::size_t header_size = SvmBuilder().file().size();
+  for (const std::uint16_t type :
+       {std::uint16_t{svm::META_POINT_ACTION}, std::uint16_t{0xffff}}) {
+    const std::string truncated =
+        SvmBuilder().u16(type).u16(1).u32(8).u32(0).file();
+    EXPECT_THROW(translate(truncated), odr::MalformedSvmFile);
+  }
+
+  const std::string short_action = SvmBuilder()
+                                       .action(svm::META_POINT_ACTION)
+                                       .u32(0)
+                                       .end()
+                                       .action(svm::META_POP_ACTION)
+                                       .end()
+                                       .file();
+  EXPECT_THROW(translate(short_action), odr::MalformedSvmFile);
+
+  std::string header = SvmBuilder().file();
+  header.at(8) = 1;
+  EXPECT_THROW(translate(header), odr::MalformedSvmFile);
+  header = SvmBuilder().file();
+  header.pop_back();
+  EXPECT_THROW(translate(header), odr::MalformedSvmFile);
+
+  const std::string short_map = SvmBuilder()
+                                    .begin()
+                                    .u16(0)
+                                    .end()
+                                    .point(0, 0)
+                                    .point(1, 1)
+                                    .point(1, 1)
+                                    .u8(0)
+                                    .file()
+                                    .substr(header_size);
+  std::istringstream input(short_map);
+  EXPECT_THROW(svm::read_map_mode(input), odr::MalformedSvmFile);
+}
+
+TEST(SvmFile, nested_record_extensions_preserve_following_fields) {
+  const std::string bytes = SvmBuilder()
+                                .begin(2)
+                                .u16(0)
+                                .point(0, 0)
+                                .point(1, 1)
+                                .point(1, 1)
+                                .u8(0)
+                                .u32(0xffffffff)
+                                .end()
+                                .u32(42)
+                                .file()
+                                .substr(SvmBuilder().file().size());
+  std::istringstream input(bytes);
+  EXPECT_EQ(1, svm::read_map_mode(input).scale_x.y);
+  std::uint32_t following{};
+  svm::read_primitive(input, following);
+  EXPECT_EQ(42, following);
 }

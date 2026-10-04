@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- StarView parsing reads each record within its declared length, so unknown
+  extensions no longer shift later fields and truncated records are refused.
+
 - StarView bitmaps check header sizes, dimensions and their byte budget
   before they read or allocate pixels, and skipped bytes must exist.
 
