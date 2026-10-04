@@ -371,7 +371,8 @@ html::translate_table_cell_style(const TableCellStyle &table_cell_style,
   std::string result;
   if (const std::optional<HorizontalAlign> horizontal_align =
           table_cell_style.horizontal_align;
-      horizontal_align.has_value()) {
+      horizontal_align.has_value() &&
+      *horizontal_align != HorizontalAlign::general) {
     result.append("text-align:")
         .append(translate_horizontal_align(*horizontal_align))
         .append(";");

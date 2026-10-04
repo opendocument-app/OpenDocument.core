@@ -184,6 +184,10 @@ parse_cell_style(const nlohmann::json &json) {
                                         ? Color(0, 0, 0, 0)
                                         : parse_color(value.get<std::string>());
     } else if (key == "align") {
+      if (value.is_null()) {
+        cell_style.horizontal_align = HorizontalAlign::general;
+        continue;
+      }
       const auto align = value.get<std::string>();
       if (align == "left") {
         cell_style.horizontal_align = HorizontalAlign::left;

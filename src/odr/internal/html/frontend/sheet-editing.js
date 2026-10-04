@@ -819,8 +819,14 @@
       }
     }
     if (style.align !== undefined) {
+      // null follows the value type, also after a later write changes it
       holders.concat(holders[0] === cell ? [] : [cell]).forEach(function (node) {
-        node.style.textAlign = style.align;
+        node.style.textAlign =
+          style.align !== null
+            ? style.align
+            : node === cell
+              ? "var(--odr-align-by-type)"
+              : "inherit";
       });
     }
     if (style.fill !== undefined) {
@@ -854,7 +860,12 @@
         return SIZE.test(value);
       }
       if (key === "align") {
-        return value === "left" || value === "center" || value === "right";
+        return (
+          value === null ||
+          value === "left" ||
+          value === "center" ||
+          value === "right"
+        );
       }
       return false;
     });

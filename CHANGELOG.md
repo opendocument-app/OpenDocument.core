@@ -46,6 +46,12 @@ The release run heads these entries with the version and opens a fresh
   order mark unless the source was UTF-8 without one. A cell style is
   refused, in the API and in the sheet editor.
 
+- `HorizontalAlign::general`, in every binding, and `align: null` in a
+  `setCellStyle` op and `odr.editing.format`, set a cell back to the
+  alignment by its value type.
+- An ods cell style with `style:text-align-source="value-type"` no longer
+  takes the `fo:text-align` of its parent style, as in LibreOffice.
+
 ## v7.4.0 - 2026-10-03
 
 - `PdfFile::permissions` reports the permission bits of an encrypted pdf, in

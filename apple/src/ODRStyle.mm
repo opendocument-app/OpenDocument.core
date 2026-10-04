@@ -34,6 +34,7 @@ ODR_SAME_ENUM(ODRTextDirectionRightToLeft, odr::TextDirection::right_to_left);
 ODR_SAME_ENUM(ODRHorizontalAlignLeft, odr::HorizontalAlign::left);
 ODR_SAME_ENUM(ODRHorizontalAlignCenter, odr::HorizontalAlign::center);
 ODR_SAME_ENUM(ODRHorizontalAlignRight, odr::HorizontalAlign::right);
+ODR_SAME_ENUM(ODRHorizontalAlignGeneral, odr::HorizontalAlign::general);
 ODR_SAME_ENUM(ODRVerticalAlignTop, odr::VerticalAlign::top);
 ODR_SAME_ENUM(ODRVerticalAlignMiddle, odr::VerticalAlign::middle);
 ODR_SAME_ENUM(ODRVerticalAlignBottom, odr::VerticalAlign::bottom);

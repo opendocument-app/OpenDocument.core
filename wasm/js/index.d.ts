@@ -41,7 +41,8 @@ export interface ParagraphStyle {
 export interface CellStyle extends Omit<TextStyle, 'highlight'> {
   /** `null` takes a fill away. */
   fill?: string | null;
-  align?: 'left' | 'center' | 'right';
+  /** `null` aligns by the value type. */
+  align?: 'left' | 'center' | 'right' | null;
 }
 
 export interface Capabilities {

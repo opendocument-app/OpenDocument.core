@@ -151,7 +151,8 @@ unknown mimetype are tolerated.
   cell shows (its own, else the row's or column's default) plus the delta, or
   a child of a named one. One base and one delta make one style. The fill is
   `fo:background-color`, the alignment `fo:text-align` with
-  `style:text-align-source="fix"`, and the text keys are `text_set_style`'s.
+  `style:text-align-source="fix"` (`general` is `value-type` and no
+  `fo:text-align`), and the text keys are `text_set_style`'s.
 - **A covered position** refuses a value and a style. The index holds no
   covered cell, so `is_covered` walks the row's DOM.
 - **A repeated cell** is written by cutting the run: `claim_cell` copies the

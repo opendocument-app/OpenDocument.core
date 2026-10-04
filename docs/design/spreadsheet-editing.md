@@ -229,7 +229,7 @@ landed as a stack, in this order:
 | `bold`, `italic`, `underline`, `strikethrough` | a bool | `style:text-properties`, as for a run | `b`, `i`, `u`, `strike` in a `font` |
 | `color` | `#rrggbb` | `fo:color` | `font/color/@rgb` |
 | `size` | a length | `fo:font-size` | `font/sz`, in points |
-| `align` | `left`, `center` or `right` | `fo:text-align` in `style:paragraph-properties` and `style:text-align-source="fix"` | `alignment/@horizontal` |
+| `align` | `left`, `center` or `right`, null for the value type | `fo:text-align` in `style:paragraph-properties` and `style:text-align-source="fix"`, null is `value-type` and no `fo:text-align` | `alignment/@horizontal`, null is `general` |
 
 The text keys are the ones of `setTextStyle`, and off is written, never
 removed (`document-editing.md` decision 9). A cell has no `highlight`: `fill` is the
@@ -259,7 +259,8 @@ An `.ods` cell style and an `.xlsx` `xf` are shared by every cell naming them.
 
 `Sheet::set_cell_style(column, row, TableCellStyle, TextStyle)`. The set
 fields are the delta, and a fill of alpha 0 is `fill: null`, as a highlight
-is for a run.
+is for a run. `HorizontalAlign::general` is `align: null`. Only a write takes
+it: a reader reports an alignment by value type as none.
 
 ### 12. A selection is a rectangle, and the pin is one corner of it
 
@@ -309,6 +310,4 @@ undo step.
   their own kinds. This also fixes `.xlsx` serials on the read side.
 - Multi-line cells, insert and delete of rows and columns.
 - A style for a whole row or column, so cells past the rendered extent take it.
-- `align` back to the alignment by value type: `TableCellStyle` has no value
-  that says it.
 - The decimal separator and the document locale are read nowhere.
