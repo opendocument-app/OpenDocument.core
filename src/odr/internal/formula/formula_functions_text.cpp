@@ -1,0 +1,378 @@
+#include <odr/internal/formula/formula_function.hpp>
+#include <odr/internal/formula/formula_text.hpp>
+
+#include <cmath>
+#include <optional>
+#include <span>
+#include <string>
+#include <variant>
+
+namespace odr::internal::formula {
+
+namespace {
+
+bool is_libreoffice(const Call &call) {
+  return call.settings().dialect == Dialect::libreoffice;
+}
+
+/// The longest text a cell holds in both applications.
+constexpr std::size_t text_limit = 32767;
+
+/// Argument @p index as a text in UTF-16.
+std::u16string text_argument(const Call &call, const std::size_t index) {
+  const Text text = call.text(call.scalar(index));
+  if (const auto *error = std::get_if<ErrorType>(&text)) {
+    throw ErrorResult{*error};
+  }
+  std::optional<std::u16string> units = utf16_of(std::get<std::string>(text));
+  if (!units.has_value()) {
+    throw NoAnswer{};
+  }
+  return std::move(*units);
+}
+
+/// Argument @p index as a whole number.
+double count_argument(const Call &call, const std::size_t index) {
+  const Number number = call.number(call.scalar(index));
+  if (const auto *error = std::get_if<ErrorType>(&number)) {
+    throw ErrorResult{*error};
+  }
+  return std::trunc(std::get<double>(number));
+}
+
+Value text_value(const std::u16string &text) {
+  if (text.size() > text_limit) {
+    throw NoAnswer{};
+  }
+  return Value{utf8_of(text)};
+}
+
+Value length(const Call &call) {
+  expect_arguments(call, 1, 1);
+  const std::u16string text = text_argument(call, 0);
+  return Value{static_cast<double>(text.size())};
+}
+
+/// `LEFT` and `RIGHT`: the first or the last @p count units.
+template <bool from_end> Value side(const Call &call) {
+  expect_arguments(call, 1, 2);
+  const std::u16string text = text_argument(call, 0);
+  double count = 1;
+  if (call.size() > 1) {
+    const double stated = count_argument(call, 1);
+    count = stated;
+  }
+  if (count < 0) {
+    return refused(call, ErrorType::value);
+  }
+  const std::size_t take =
+      std::min(text.size(), static_cast<std::size_t>(std::min(count, 1e9)));
+  return text_value(from_end ? text.substr(text.size() - take)
+                             : text.substr(0, take));
+}
+
+Value middle(const Call &call) {
+  expect_arguments(call, 3, 3);
+  const std::u16string text = text_argument(call, 0);
+  const double start = count_argument(call, 1);
+  const double count = count_argument(call, 2);
+  if (start < 1 || count < 0) {
+    return refused(call, ErrorType::value);
+  }
+  if (start > static_cast<double>(text.size())) {
+    return Value{std::string()};
+  }
+  const auto from = static_cast<std::size_t>(start) - 1;
+  return text_value(
+      text.substr(from, static_cast<std::size_t>(std::min(count, 1e9))));
+}
+
+template <bool upper> Value change_case(const Call &call) {
+  expect_arguments(call, 1, 1);
+  const std::u16string text = text_argument(call, 0);
+  const std::optional<std::u16string> result =
+      upper ? to_upper(text) : to_lower(text);
+  if (!result.has_value()) {
+    throw NoAnswer{};
+  }
+  return text_value(*result);
+}
+
+/// `TRIM`: no space at either end, and one between words.
+Value trim(const Call &call) {
+  expect_arguments(call, 1, 1);
+  const std::u16string text = text_argument(call, 0);
+  std::u16string result;
+  bool space = false;
+  for (const char16_t c : text) {
+    if (c == u' ') {
+      space = !result.empty();
+      continue;
+    }
+    if (space) {
+      result += u' ';
+      space = false;
+    }
+    result += c;
+  }
+  return text_value(result);
+}
+
+Value concatenate(const Call &call) {
+  expect_arguments(call, 1, 255);
+  std::u16string result;
+  for (std::size_t i = 0; i < call.size(); ++i) {
+    const std::u16string text = text_argument(call, i);
+    result += text;
+  }
+  return text_value(result);
+}
+
+/// `CONCAT`: as `CONCATENATE`, but a range adds every cell, row by row.
+Value concat(const Call &call) {
+  expect_arguments(call, 1, 255);
+  std::u16string result;
+  std::optional<ErrorType> error;
+  const auto add = [&](const Value &cell) {
+    const Text text = call.text(cell);
+    if (const auto *cell_error = std::get_if<ErrorType>(&text)) {
+      if (!error.has_value()) {
+        error = *cell_error;
+      } else if (*error != *cell_error) {
+        throw NoAnswer{};
+      }
+      return;
+    }
+    const std::optional<std::u16string> units =
+        utf16_of(std::get<std::string>(text));
+    if (!units.has_value()) {
+      throw NoAnswer{};
+    }
+    result += *units;
+  };
+  for (std::size_t i = 0; i < call.size(); ++i) {
+    const Value value = call.value(i);
+    if (const auto *reference = std::get_if<Reference>(&value.content)) {
+      call.for_each(*reference, [&](const SheetPosition &, const Value &cell) {
+        add(cell);
+      });
+    } else if (const auto *matrix = std::get_if<Matrix>(&value.content)) {
+      for (const Value &cell : matrix->cells) {
+        add(cell);
+      }
+    } else {
+      add(value);
+    }
+    if (error.has_value()) {
+      return Value{*error};
+    }
+  }
+  return text_value(result);
+}
+
+Value repeat(const Call &call) {
+  expect_arguments(call, 2, 2);
+  const std::u16string text = text_argument(call, 0);
+  const double count = count_argument(call, 1);
+  if (count < 0) {
+    return refused(call, ErrorType::value);
+  }
+  if (count * static_cast<double>(text.size()) > text_limit) {
+    throw NoAnswer{};
+  }
+  std::u16string result;
+  for (double i = 0; i < count; ++i) {
+    result += text;
+  }
+  return text_value(result);
+}
+
+/// Whether @p text holds a character a search pattern reads as more than
+/// itself: a wildcard, and in LibreOffice the characters of a regular
+/// expression where the document turns them on.
+bool is_pattern(const Call &call, const std::u16string &text) {
+  const bool wildcards = !is_libreoffice(call) || call.settings().wildcards;
+  const bool expressions =
+      is_libreoffice(call) && call.settings().regular_expressions;
+  for (const char16_t c : text) {
+    if (wildcards && (c == u'*' || c == u'?' || c == u'~')) {
+      return true;
+    }
+    if (expressions && std::u16string_view(u".^$*+?()[]{}|\\").find(c) !=
+                           std::u16string_view::npos) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/// `FIND` and `SEARCH`: the position of the first match from the start on,
+/// counted from 1. `SEARCH` ignores case.
+template <bool ignore_case> Value find(const Call &call) {
+  expect_arguments(call, 2, 3);
+  const std::u16string needle = text_argument(call, 0);
+  const std::u16string haystack = text_argument(call, 1);
+  double start = 1;
+  if (call.size() > 2) {
+    const double stated = count_argument(call, 2);
+    start = stated;
+  }
+  if (start < 1 || start > static_cast<double>(haystack.size()) + 1) {
+    return Value{ErrorType::value};
+  }
+  if (needle.empty()) {
+    // LibreOffice refuses to find nothing, Excel finds it at the start
+    return is_libreoffice(call) ? Value{ErrorType::value} : Value{start};
+  }
+  std::u16string pattern = needle;
+  std::u16string text = haystack;
+  if (ignore_case) {
+    if (is_pattern(call, needle)) {
+      throw NoAnswer{};
+    }
+    const std::optional<std::u16string> lower_needle = to_lower(needle);
+    const std::optional<std::u16string> lower_text = to_lower(haystack);
+    if (!lower_needle.has_value() || !lower_text.has_value()) {
+      throw NoAnswer{};
+    }
+    pattern = *lower_needle;
+    text = *lower_text;
+  }
+  const std::size_t at =
+      text.find(pattern, static_cast<std::size_t>(start) - 1);
+  if (at == std::u16string::npos) {
+    return Value{ErrorType::value};
+  }
+  return Value{static_cast<double>(at + 1)};
+}
+
+Value substitute(const Call &call) {
+  expect_arguments(call, 3, 4);
+  const std::u16string text = text_argument(call, 0);
+  const std::u16string old_text = text_argument(call, 1);
+  const std::u16string new_text = text_argument(call, 2);
+  double which = 0;
+  if (call.size() > 3) {
+    const double stated = count_argument(call, 3);
+    if (stated < 1) {
+      return refused(call, ErrorType::value);
+    }
+    which = stated;
+  }
+  if (old_text.empty()) {
+    return text_value(text);
+  }
+  std::u16string result;
+  std::size_t from = 0;
+  double seen = 0;
+  while (true) {
+    const std::size_t at = text.find(old_text, from);
+    if (at == std::u16string::npos) {
+      break;
+    }
+    ++seen;
+    result += text.substr(from, at - from);
+    result += which == 0 || seen == which ? new_text : old_text;
+    from = at + old_text.size();
+  }
+  result += text.substr(from);
+  return text_value(result);
+}
+
+Value replace(const Call &call) {
+  expect_arguments(call, 4, 4);
+  const std::u16string text = text_argument(call, 0);
+  const double start = count_argument(call, 1);
+  const double count = count_argument(call, 2);
+  const std::u16string new_text = text_argument(call, 3);
+  if (start < 1 || count < 0) {
+    return refused(call, ErrorType::value);
+  }
+  const std::size_t from =
+      std::min(text.size(), static_cast<std::size_t>(std::min(start, 1e9)) - 1);
+  const std::size_t removed = std::min(
+      text.size() - from, static_cast<std::size_t>(std::min(count, 1e9)));
+  return text_value(text.substr(0, from) + new_text +
+                    text.substr(from + removed));
+}
+
+Value exact(const Call &call) {
+  expect_arguments(call, 2, 2);
+  const std::u16string a = text_argument(call, 0);
+  const std::u16string b = text_argument(call, 1);
+  return Value{a == b};
+}
+
+/// `VALUE`: the number a text reads as.
+Value value(const Call &call) {
+  expect_arguments(call, 1, 1);
+  const Value argument = call.scalar(0);
+  if (argument.holds<double>() || argument.holds<ErrorType>()) {
+    return argument;
+  }
+  const auto *text = std::get_if<std::string>(&argument.content);
+  if (text == nullptr) {
+    throw NoAnswer{};
+  }
+  const std::optional<Number> number = number_of_text(*text);
+  if (!number.has_value()) {
+    throw NoAnswer{};
+  }
+  if (std::holds_alternative<ErrorType>(*number)) {
+    return refused(call, ErrorType::value);
+  }
+  return Value{std::get<double>(*number)};
+}
+
+/// `CHAR`: an ASCII character. The applications map the codes past it by
+/// different code pages.
+Value character(const Call &call) {
+  expect_arguments(call, 1, 1);
+  const double code = count_argument(call, 0);
+  if (code < 1 || code > 255) {
+    return refused(call, ErrorType::value);
+  }
+  if (code > 127) {
+    throw NoAnswer{};
+  }
+  return Value{std::string(1, static_cast<char>(code))};
+}
+
+Value code(const Call &call) {
+  expect_arguments(call, 1, 1);
+  const std::u16string text = text_argument(call, 0);
+  if (text.empty()) {
+    return refused(call, ErrorType::value);
+  }
+  if (text.front() > 127) {
+    throw NoAnswer{};
+  }
+  return Value{static_cast<double>(text.front())};
+}
+
+constexpr FunctionEntry entries[] = {
+    {"CHAR", character},
+    {"CODE", code},
+    {"CONCAT", concat},
+    {"CONCATENATE", concatenate},
+    {"EXACT", exact},
+    {"FIND", find<false>},
+    {"LEFT", side<false>},
+    {"LEN", length},
+    {"LOWER", change_case<false>},
+    {"MID", middle},
+    {"REPLACE", replace},
+    {"REPT", repeat},
+    {"RIGHT", side<true>},
+    {"SEARCH", find<true>},
+    {"SUBSTITUTE", substitute},
+    {"TRIM", trim},
+    {"UPPER", change_case<true>},
+    {"VALUE", value},
+};
+
+} // namespace
+
+std::span<const FunctionEntry> text_functions() { return entries; }
+
+} // namespace odr::internal::formula

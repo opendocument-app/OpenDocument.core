@@ -140,7 +140,8 @@ TEST(FormulaEvaluator, a_text_compares_by_the_case_the_settings_state) {
 
 TEST(FormulaEvaluator, a_text_the_collator_would_order_has_no_answer) {
   EXPECT_EQ(ods(R"(="a b"<"ab")"), std::nullopt);
-  EXPECT_EQ(xlsx(R"(="é"="É")"), std::nullopt);
+  EXPECT_EQ(xlsx(R"(="é"="É")"), boolean(true));
+  EXPECT_EQ(xlsx(R"(="ж"="Ж")"), std::nullopt);
   EXPECT_EQ(ods(R"(="é"="é")"), boolean(true));
 }
 

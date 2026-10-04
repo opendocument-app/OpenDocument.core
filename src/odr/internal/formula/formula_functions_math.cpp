@@ -21,29 +21,11 @@ bool is_libreoffice(const Call &call) {
   return call.settings().dialect == Dialect::libreoffice;
 }
 
-/// An argument outside the domain of a function. Excel answers `#NUM!`, and
-/// LibreOffice a code of its own (`Err:502`) that no file states as an error.
-Value invalid(const Call &call) {
-  if (is_libreoffice(call)) {
-    throw NoAnswer{};
-  }
-  return Value{ErrorType::number};
-}
+/// An argument outside the domain of a function.
+Value invalid(const Call &call) { return refused(call, ErrorType::number); }
 
 Value checked(const double x) {
   return std::isfinite(x) ? Value{x} : Value{ErrorType::number};
-}
-
-void expect_arguments(const Call &call, const std::size_t least,
-                      const std::size_t most) {
-  if (call.size() < least || call.size() > most) {
-    throw NoAnswer{};
-  }
-  for (std::size_t i = 0; i < call.size(); ++i) {
-    if (call.missing(i)) {
-      throw NoAnswer{};
-    }
-  }
 }
 
 /// @p x read to @p digits significant digits, as a sheet reads a number
