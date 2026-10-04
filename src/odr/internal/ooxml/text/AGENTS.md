@@ -117,3 +117,5 @@ rank in `CT_PPr` (`paragraph_property_order`). Justified is `both`
    because css has no minimum line height. A true minimum needs a second field
    on the public `ParagraphStyle`.
 5. Comments and annotations are not modelled.
+6. `append_text` on a table cell writes a `w:r` straight into the `w:tc`,
+   where the schema wants a `w:p`. Nothing calls it on a cell today.
