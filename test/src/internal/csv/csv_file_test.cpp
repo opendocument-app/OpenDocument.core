@@ -537,9 +537,11 @@ TEST(CsvDocument, a_cell_is_written_and_saved) {
 }
 
 TEST(CsvDocument, a_field_is_quoted_only_where_it_has_to_be) {
-  EXPECT_EQ(edited("a,b\n", R"({"op":"setCell","sheet":0,"column":0,"row":0,)"
-                            R"("value":{"type":"string","text":"x, \"y\""}})"),
-            "\"x, \"\"y\"\"\",b\n");
+  // msvc cannot read an escape inside a raw string in a macro argument
+  const std::string quoted =
+      edited("a,b\n", R"({"op":"setCell","sheet":0,"column":0,"row":0,)"
+                      R"("value":{"type":"string","text":"x, \"y\""}})");
+  EXPECT_EQ(quoted, "\"x, \"\"y\"\"\",b\n");
   EXPECT_EQ(edited("a;b\n",
                    R"({"op":"setCell","sheet":0,"column":1,"row":0,)"
                    R"("value":{"type":"string","text":"1,5"}})",
