@@ -67,7 +67,9 @@ The release run heads these entries with the version and opens a fresh
 
 - `Document::locale` answers the language an odf document states on its
   default style, as a BCP 47 tag such as `de-DE`. The sheet editor reads a
-  typed number with the decimal separator of that locale.
+  typed number with the decimal separator of that locale. Bound as
+  `Document.locale()` in python, java and npm, and `locale` in
+  objective-c and swift.
 - An xlsx cell without its own style shows the style of its row, where the
   row states `customFormat`, else the style of its column.
 

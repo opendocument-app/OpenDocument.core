@@ -43,6 +43,11 @@ public final class Document extends NativeResource {
     return DocumentType.fromNative(documentTypeNative(handle()));
   }
 
+  /** The language the document states for its content, as a BCP 47 tag, or null. */
+  public String locale() {
+    return localeNative(handle());
+  }
+
   /** Root of the element tree; keeps this document reachable. */
   public Element rootElement() {
     return new Element(rootElementNative(handle()), this);
@@ -133,6 +138,8 @@ public final class Document extends NativeResource {
   private native int fileTypeNative(long handle);
 
   private native int documentTypeNative(long handle);
+
+  private native String localeNative(long handle);
 
   private native long rootElementNative(long handle);
 

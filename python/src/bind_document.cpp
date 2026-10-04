@@ -380,6 +380,7 @@ void odr_python::bind_document(py::module_ &m) {
           "Save the document encrypted and return its bytes.")
       .def("file_type", &odr::Document::file_type)
       .def("document_type", &odr::Document::document_type)
+      .def("locale", &odr::Document::locale)
       .def("root_element", &odr::Document::root_element, keep_self_alive)
       .def("as_filesystem", &odr::Document::as_filesystem);
 }

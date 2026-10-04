@@ -272,6 +272,24 @@ def test_set_row_and_column_style_reach_past_the_cells(ods_path, tmp_path):
     assert reloaded_sheet.cell_style(0, 41).background_color is None
 
 
+def test_locale_is_the_language_of_the_default_style(ods_path, tmp_path):
+    assert pyodr.open(str(ods_path)).as_document_file().document().locale() is None
+
+    path = tmp_path / "german.fods"
+    path.write_text(
+        '<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"'
+        ' xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"'
+        ' xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"'
+        ' office:mimetype="application/vnd.oasis.opendocument.spreadsheet">'
+        '<office:styles><style:default-style style:family="table-cell">'
+        '<style:text-properties fo:language="de" fo:country="DE"/>'
+        "</style:default-style></office:styles>"
+        "<office:body><office:spreadsheet/></office:body></office:document>"
+    )
+
+    assert pyodr.open(str(path)).as_document_file().document().locale() == "de-DE"
+
+
 def test_set_cell_style_refuses_what_no_engine_writes(ods_path):
     document = pyodr.open(str(ods_path)).as_document_file().document()
     sheet = next(iter(document.root_element().children())).as_sheet()

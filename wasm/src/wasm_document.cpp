@@ -27,6 +27,18 @@ emscripten::val is_editable(const Handle handle) {
   });
 }
 
+/// Null for a plain text file and for a document stating none.
+emscripten::val locale(const Handle handle) {
+  return guarded([&] {
+    Session &s = session(handle);
+    if (s.file.is_text_file()) {
+      return ok(emscripten::val::null());
+    }
+    const std::optional<std::string> result = document_of(s).locale();
+    return ok(result ? emscripten::val(*result) : emscripten::val::null());
+  });
+}
+
 emscripten::val is_savable(const Handle handle, const bool encrypted) {
   return guarded([&] {
     Session &s = session(handle);
@@ -242,6 +254,7 @@ emscripten::val save_encrypted(const Handle handle,
 EMSCRIPTEN_BINDINGS(odr_document) {
   emscripten::function("isEditable", &odr::wasm::is_editable);
   emscripten::function("isSavable", &odr::wasm::is_savable);
+  emscripten::function("locale", &odr::wasm::locale);
   emscripten::function("removeElement", &odr::wasm::remove_element);
   emscripten::function("insertTextBefore", &odr::wasm::insert_text_before);
   emscripten::function("insertTextAfter", &odr::wasm::insert_text_after);

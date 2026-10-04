@@ -214,6 +214,9 @@ export declare class Document {
   /** `capabilities()` narrowed to this document. */
   isEditable(): boolean;
   isSavable(encrypted?: boolean): boolean;
+  /** The language the document states for its content, as a BCP 47 tag such
+   * as `de-DE`; null where it states none. */
+  locale(): string | null;
   /** Applies what the rendered page's `odr.generateDiff()` collected. A plain
    * text file takes its `setContent` envelope, and the next render shows it.
    * @throws OdrError `NoDocumentFile` for a file that is neither */

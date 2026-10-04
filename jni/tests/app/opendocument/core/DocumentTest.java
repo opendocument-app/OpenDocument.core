@@ -286,6 +286,12 @@ class DocumentTest {
   }
 
   @Test
+  void localeIsTheLanguageOfTheDefaultStyle() throws IOException {
+    Path ods = TestFiles.odsFile(tempDir);
+    assertEquals("en-US", Odr.open(ods.toString()).asDocumentFile().document().locale());
+  }
+
+  @Test
   void setRowAndColumnStyleReachPastTheCells() throws IOException {
     Path ods = TestFiles.odsFile(tempDir);
     Document document = Odr.open(ods.toString()).asDocumentFile().document();
