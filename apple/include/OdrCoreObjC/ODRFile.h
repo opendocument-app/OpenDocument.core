@@ -191,6 +191,8 @@ NS_SWIFT_NAME(FileTypeCapabilities)
 @property(nonatomic, readonly) BOOL encrypt;
 /// `ODRPdfFile.annotate` is supported.
 @property(nonatomic, readonly) BOOL annotate;
+/// `ODRDocument.createWithFileType:` makes a new one.
+@property(nonatomic, readonly) BOOL create;
 
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;

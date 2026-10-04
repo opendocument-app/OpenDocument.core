@@ -140,6 +140,17 @@ public final class Odr {
             options.csv.quoteNative()));
   }
 
+  /**
+   * A new document of {@code type}, with one empty paragraph or one empty sheet.
+   *
+   * @throws OdrException.UnsupportedFileType if {@link FileTypeCapabilities#create} is false
+   */
+  public static Document createDocument(FileType type) {
+    return new Document(createDocumentNative(type.toNative()));
+  }
+
+  private static native long createDocumentNative(int type);
+
   private static native int[] allFileTypesNative();
 
   private static native int fileTypeByFileExtensionNative(String extension);

@@ -68,6 +68,17 @@ emscripten::val open_as(const std::string &bytes, std::string name,
   });
 }
 
+/// A new document opened from its saved bytes, so that its session holds a
+/// file as the session of `open` does.
+emscripten::val create(const int type, const emscripten::val &config) {
+  return guarded([&] {
+    const auto file_type = static_cast<FileType>(type);
+    return opened(odr::open(odr::create_document(file_type).save_to_memory(),
+                            DecodeOptions::as(file_type), default_logger()),
+                  config);
+  });
+}
+
 /// The meta blob as `cli/src/meta.cpp` produces it, reusing the same serialiser
 /// rather than growing a second one that drifts.
 emscripten::val meta(const Handle handle) {
@@ -177,6 +188,7 @@ EMSCRIPTEN_BINDINGS(odr_file) {
   emscripten::function("detect", &odr::wasm::detect);
   emscripten::function("open", &odr::wasm::open);
   emscripten::function("openAs", &odr::wasm::open_as);
+  emscripten::function("create", &odr::wasm::create);
   emscripten::function("meta", &odr::wasm::meta);
   emscripten::function("capabilities", &odr::wasm::capabilities);
   emscripten::function("isPasswordEncrypted",

@@ -144,6 +144,38 @@ class DocumentTest {
   }
 
   @Test
+  void createDocumentMakesEveryTypeThatStatesCreate() {
+    for (FileType type : Odr.allFileTypes()) {
+      if (!Odr.capabilitiesByFileType(type).create) {
+        continue;
+      }
+      Document document = Odr.createDocument(type);
+      assertEquals(type, document.fileType());
+      assertTrue(document.isEditable());
+    }
+  }
+
+  @Test
+  void createDocumentRefusesATypeWithoutCreate() {
+    assertThrows(
+        OdrException.UnsupportedFileType.class,
+        () -> Odr.createDocument(FileType.OFFICE_OPEN_XML_PRESENTATION));
+  }
+
+  @Test
+  void aCreatedDocumentTakesAnEditThroughASave() throws IOException {
+    Document document = Odr.createDocument(FileType.OPENDOCUMENT_TEXT);
+    Paragraph paragraph = document.rootElement().firstChild().asParagraph();
+
+    document.appendText(paragraph, "written in java");
+
+    Path path = tempDir.resolve("created.odt");
+    Files.write(path, document.saveToMemory());
+    Document saved = Odr.open(path.toString()).asDocumentFile().document();
+    assertEquals(List.of("written in java"), walkText(saved.rootElement()));
+  }
+
+  @Test
   void removeTakesTheElementOut() throws IOException {
     Document document = openDocument();
     Element run = document.rootElement().firstChild().firstChild();

@@ -296,3 +296,50 @@ def test_set_paragraph_style_refuses_what_no_engine_writes(odt_path):
     style.line_height = pyodr.Measure("12pt")
     with pytest.raises(pyodr.UnsupportedOperation):
         first_paragraph(document.root_element()).set_style(style)
+
+
+def test_create_document_makes_every_type_that_states_create():
+    for file_type in pyodr.all_file_types():
+        if not pyodr.capabilities_by_file_type(file_type).create:
+            continue
+        document = pyodr.create_document(file_type)
+        assert document.file_type() == file_type
+        assert document.is_editable()
+
+
+def test_create_document_refuses_a_type_without_create():
+    with pytest.raises(pyodr.UnsupportedFileTypeError):
+        pyodr.create_document(pyodr.FileType.office_open_xml_presentation)
+
+
+def test_a_created_text_document_takes_an_edit(tmp_path):
+    document = pyodr.create_document(pyodr.FileType.office_open_xml_document)
+    paragraph = document.root_element().first_child().as_paragraph()
+
+    document.append_text(paragraph, "written in python")
+
+    path = tmp_path / "created.docx"
+    path.write_bytes(document.save_to_memory())
+    text = walk_text(pyodr.open(str(path)).as_document_file().document().root_element())
+
+    assert text == ["written in python"]
+
+
+def test_a_created_sheet_takes_an_edit(tmp_path):
+    document = pyodr.create_document(pyodr.FileType.opendocument_spreadsheet)
+    sheet = document.root_element().first_child().as_sheet()
+
+    assert sheet.name() == "Sheet1"
+
+    document.edit(
+        '{"version":2,"ops":[{"op":"setCell","sheet":0,"column":1,"row":2,'
+        '"value":{"type":"number","number":12.5,"text":"12.5"}}]}'
+    )
+
+    path = tmp_path / "created.ods"
+    path.write_bytes(document.save_to_memory())
+    reloaded = pyodr.open(str(path)).as_document_file().document()
+    cell = reloaded.root_element().first_child().as_sheet().cell(1, 2)
+
+    assert cell.value_type() == pyodr.ValueType.float_number
+    assert walk_text(cell) == ["12.5"]

@@ -74,12 +74,14 @@ class MetaTest {
     assertTrue(odt.translateHtml);
     assertTrue(odt.colorScheme);
     assertTrue(odt.edit);
+    assertTrue(odt.create);
 
     // detected and named, but there is no decoder behind it
     FileTypeCapabilities wpd = Odr.capabilitiesByFileType(FileType.WORD_PERFECT);
     assertTrue(wpd.detectByContent);
     assertFalse(wpd.open);
     assertFalse(wpd.translateHtml);
+    assertFalse(wpd.create);
 
     // a sheet cell can be written, and the package written back
     FileTypeCapabilities ods = Odr.capabilitiesByFileType(FileType.OPENDOCUMENT_SPREADSHEET);

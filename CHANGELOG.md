@@ -21,6 +21,9 @@ The release run heads these entries with the version and opens a fresh
   `Sheet1` and Liberation Sans 10pt, a new docx with one empty paragraph, an
   A4 page and Calibri 11pt, or a new xlsx with one empty sheet `Sheet1` and
   Calibri 11pt. `FileTypeCapabilities::create` names the types it can make.
+  Every binding has both: `pyodr.create_document`, `Odr.createDocument` in
+  java, `ODRDocument createWithFileType:error:` in objective-c and
+  `odr.create` in npm.
 
 ## v7.4.0 - 2026-10-03
 

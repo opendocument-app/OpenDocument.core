@@ -246,6 +246,14 @@ extern "C" JNIEXPORT jlong JNICALL Java_app_opendocument_core_Odr_openAsNative(
 }
 
 extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Odr_createDocumentNative(JNIEnv *env, jclass,
+                                                    jint type) {
+  return guarded(env, [&] {
+    return make_handle(odr::create_document(static_cast<odr::FileType>(type)));
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
 Java_app_opendocument_core_Odr_openWithOptionsNative(
     JNIEnv *env, jclass, jstring path, jint as_file_type,
     jintArray file_type_priority, jint csv_encoding, jint csv_separator,

@@ -98,12 +98,14 @@ def test_capabilities_by_file_type():
     assert odt.translate_html
     assert odt.color_scheme
     assert odt.edit
+    assert odt.create
 
     # detected and named, but there is no decoder behind it
     wpd = pyodr.capabilities_by_file_type(pyodr.FileType.word_perfect)
     assert wpd.detect_by_content
     assert not wpd.open
     assert not wpd.translate_html
+    assert not wpd.create
 
     # a sheet cell can be written, and the package written back
     ods = pyodr.capabilities_by_file_type(pyodr.FileType.opendocument_spreadsheet)

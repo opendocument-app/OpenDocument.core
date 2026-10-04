@@ -219,6 +219,12 @@ export class Odr {
     return new Document(this.#core, handle);
   }
 
+  // A new document of `fileType`, one of `enums.FileType`, with one empty
+  // paragraph or one empty sheet.
+  create(fileType, config = {}) {
+    return new Document(this.#core, unwrap(this.#core.create(fileType, config)));
+  }
+
   setLogger(sink, level = 2) {
     unwrap(this.#core.setLogger(sink, level));
   }

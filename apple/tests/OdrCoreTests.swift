@@ -681,3 +681,37 @@ final class TableAddressTests: XCTestCase {
     XCTAssertEqual(position.row, 4)
   }
 }
+
+final class DocumentCreateTests: XCTestCase {
+  func testCreateMakesEveryTypeThatStatesCreate() throws {
+    for number in Odr.allFileTypes {
+      let type = try XCTUnwrap(FileType(rawValue: number.intValue))
+      guard Odr.capabilities(fileType: type).create else { continue }
+      let document = try Document.create(fileType: type)
+      XCTAssertEqual(document.fileType, type)
+      XCTAssertTrue(document.isEditable)
+    }
+  }
+
+  func testCreateRefusesATypeWithoutCreate() {
+    XCTAssertThrowsError(try Document.create(fileType: .officeOpenXmlPresentation)) { error in
+      XCTAssertEqual((error as NSError).code, ODRError.unsupportedFileType.rawValue)
+    }
+  }
+
+  func testACreatedDocumentTakesAnEditThroughASave() throws {
+    let document = try Document.create(fileType: .openDocumentText)
+    let root = try XCTUnwrap(try document.rootElement())
+    let paragraph = try XCTUnwrap(root.firstDescendant(ofType: Paragraph.self))
+    XCTAssertNotNil(try document.appendText(to: paragraph, text: "written in swift"))
+
+    let path = URL(fileURLWithPath: try temporaryDirectory())
+      .appendingPathComponent("created.odt")
+    try XCTUnwrap(try document.saveToMemory()).write(to: path)
+
+    let reloaded = try DecodedFile.decode(path: path.path).asDocumentFile().document()
+    let reloadedRoot = try XCTUnwrap(try reloaded.rootElement())
+    XCTAssertEqual(
+      reloadedRoot.descendants(ofType: Text.self).map { $0.content }, ["written in swift"])
+  }
+}

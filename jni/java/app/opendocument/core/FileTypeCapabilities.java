@@ -37,6 +37,9 @@ public final class FileTypeCapabilities {
   /** {@link PdfFile#annotate} is supported. */
   public final boolean annotate;
 
+  /** {@link Odr#createDocument} makes a new one. */
+  public final boolean create;
+
   FileTypeCapabilities(
       boolean detectByContent,
       boolean open,
@@ -46,7 +49,8 @@ public final class FileTypeCapabilities {
       boolean edit,
       boolean save,
       boolean encrypt,
-      boolean annotate) {
+      boolean annotate,
+      boolean create) {
     this.detectByContent = detectByContent;
     this.open = open;
     this.decrypt = decrypt;
@@ -56,5 +60,6 @@ public final class FileTypeCapabilities {
     this.save = save;
     this.encrypt = encrypt;
     this.annotate = annotate;
+    this.create = create;
   }
 }

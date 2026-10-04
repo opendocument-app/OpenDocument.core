@@ -202,4 +202,9 @@ void odr_python::bind_functions(py::module_ &m) {
       py::arg("path"), py::arg("options") = odr::DecodeOptions{},
       py::arg("logger") = odr::Logger::null(),
       py::call_guard<py::gil_scoped_release>(), "Open and decode a file.");
+
+  m.def("create_document", &odr::create_document, py::arg("type"),
+        "A new document of the type, with one empty paragraph or one empty "
+        "sheet. Raises `UnsupportedFileTypeError` for a type whose "
+        "capabilities do not state `create`.");
 }

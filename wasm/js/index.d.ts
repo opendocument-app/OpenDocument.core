@@ -56,6 +56,8 @@ export interface Capabilities {
   encrypt: boolean;
   /** `annotate()` is supported. */
   annotate: boolean;
+  /** `create()` makes a new one. */
+  create: boolean;
 }
 
 export interface FileTypeInfo {
@@ -293,6 +295,9 @@ export declare class Odr {
   fileTypes(): FileTypeInfo[];
   detect(bytes: Uint8Array, name?: string): Detection;
   open(bytes: Uint8Array, options?: OpenOptions): Document;
+  /** A new document of `fileType`, with one empty paragraph or one empty
+   * sheet. Throws `UnsupportedFileType` for a type that cannot be created. */
+  create(fileType: number, config?: HtmlConfig): Document;
   /** Applies to documents opened after the call. Null silences it again. */
   setLogger(sink: ((level: number, message: string) => void) | null, level?: number): void;
   /** Releases every open document; prefer closing them individually. */
