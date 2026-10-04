@@ -619,3 +619,36 @@ TEST(CsvDocument, clearing_the_one_word_makes_a_column_numeric) {
   sheet.set_cell(1, 0, CellValue("header"));
   EXPECT_EQ(sheet.cell(1, 1).value_type(), ValueType::float_number);
 }
+
+TEST(CsvDocument, an_insert_puts_lines_of_empty_fields_in) {
+  EXPECT_EQ(edited("a,b\n1,2\n",
+                   R"({"op":"insertRows","sheet":0,"row":1,"count":2})"),
+            "a,b\n,\n,\n1,2\n");
+  EXPECT_EQ(
+      edited("a,b\n", R"({"op":"insertRows","sheet":0,"row":5,"count":1})"),
+      "a,b\n");
+  // an empty line is no record, so the one field is quoted
+  EXPECT_EQ(
+      edited("a\nb\n", R"({"op":"insertRows","sheet":0,"row":1,"count":1})"),
+      "a\n\"\"\nb\n");
+}
+
+TEST(CsvDocument, a_delete_takes_lines_away) {
+  EXPECT_EQ(edited("a,b\n1,2\n3,4\n",
+                   R"({"op":"deleteRows","sheet":0,"row":1,"count":5})"),
+            "a,b\n");
+}
+
+TEST(CsvDocument, a_header_moved_by_an_edit_types_its_column_again) {
+  const Document document = open(File::from_memory("a,b\nx,1\ny,2\n"),
+                                 DecodeOptions::as_csv({.separator = ','}))
+                                .as_csv_file()
+                                .document();
+  Sheet sheet = (*document.root_element().children().begin()).as_sheet();
+  sheet.delete_rows(0, 1);
+  EXPECT_EQ(sheet.dimensions().rows, 2);
+  EXPECT_EQ(sheet.cell(1, 1).value_type(), ValueType::float_number);
+  sheet.insert_rows(0, 1);
+  EXPECT_EQ(sheet.cell(1, 1).value_type(), ValueType::float_number);
+  EXPECT_EQ(sheet.cell(0, 1).value().text(), "x");
+}
