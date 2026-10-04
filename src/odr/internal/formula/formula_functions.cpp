@@ -59,6 +59,29 @@ const std::unordered_map<std::string, Function> &functions() {
 
 namespace odr::internal {
 
+void formula::Errors::add(const ErrorType error) {
+  if (!m_first.has_value()) {
+    m_first = error;
+  } else if (*m_first != error) {
+    m_mixed = true;
+  }
+}
+
+std::optional<formula::ErrorType> formula::Errors::first() const {
+  if (m_mixed) {
+    throw NoAnswer{};
+  }
+  return m_first;
+}
+
+double formula::number_argument(const Call &call, const std::size_t index) {
+  const Number number = call.number(call.scalar(index));
+  if (const auto *error = std::get_if<ErrorType>(&number)) {
+    throw ErrorResult{*error};
+  }
+  return std::get<double>(number);
+}
+
 bool formula::is_libreoffice(const Call &call) {
   return call.settings().dialect == Dialect::libreoffice;
 }

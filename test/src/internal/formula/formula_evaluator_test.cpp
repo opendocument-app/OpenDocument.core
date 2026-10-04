@@ -19,7 +19,6 @@ TEST(FormulaEvaluator, a_text_reads_as_a_number_in_arithmetic) {
   EXPECT_EQ(ods("=[.A1]+1"), number(2));
   EXPECT_EQ(ods(R"(=" 1 "+1)"), number(2));
   EXPECT_EQ(ods(R"(="1e2"+1)"), number(101));
-  EXPECT_EQ(ods(R"(=".5"+1)"), number(1.5));
   EXPECT_EQ(ods(R"(="50%"+1)"), number(1.5));
   EXPECT_EQ(ods("=[.A2]+1"), error(ErrorType::value));
   EXPECT_EQ(ods(R"(=""+1)"), error(ErrorType::value));
@@ -28,11 +27,11 @@ TEST(FormulaEvaluator, a_text_reads_as_a_number_in_arithmetic) {
 
 TEST(FormulaEvaluator,
      a_text_whose_number_depends_on_the_locale_has_no_answer) {
-  // LibreOffice reads all of these, as a currency, a date, an accounting
-  // negative, a decimal comma or a boolean, and Excel reads some of them
+  // an application reads these by its locale: a currency, a date, an
+  // accounting negative, a decimal sign or a boolean
   for (const std::string formula :
        {R"x(="$1"+1)x", R"x(="1/2/2020"+0)x", R"x(="(1)"+1)x", R"x(="1,5"+1)x",
-        R"x(="TRUE"+1)x", R"x(="12:30"+0)x"}) {
+        R"x(=".5"+1)x", R"x(="1.5"+1)x", R"x(="TRUE"+1)x", R"x(="12:30"+0)x"}) {
     EXPECT_EQ(ods(formula), std::nullopt) << formula;
   }
 }
@@ -201,4 +200,10 @@ TEST(FormulaEvaluator, a_name_stands_for_its_expression) {
   EXPECT_EQ(ods("=$$Relative", source), std::nullopt);
   EXPECT_EQ(ods("=$$Loop", source), std::nullopt);
   EXPECT_EQ(ods("=$$Unknown", source), std::nullopt);
+}
+
+TEST(FormulaEvaluator, a_whole_column_reaches_past_the_extent_of_its_sheet) {
+  // `t` states one row, and the formula sits in row 30
+  EXPECT_EQ(xlsx("=t!A:A"), number(0));
+  EXPECT_EQ(xlsx("=SUM(t!A:A)"), number(5));
 }

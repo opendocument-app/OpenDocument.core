@@ -16,82 +16,52 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- `Document::recalculate` is bound as `recalculate` in python, java, npm
-  and swift, and as `-[ODRDocument recalculateWithError:]` in objective-c.
-  Each returns the changed, circular and unevaluated cells as positions:
-  `SheetPosition` in python, java and swift, `{sheet, column, row}` in npm.
-- `Document::recalculate` computes the stale formula cells of an ods and an
-  xlsx and writes each result into the document. It returns the cells whose
-  result changed, the cells of a cycle, and the cells nothing here computes.
-  A save recalculates first where an edit left a formula stale, so a saved
-  ods states the results it can, and a saved xlsx no longer shows a stale
-  result in a reader that does not compute. A cell the evaluator has no
-  answer for stays as before: an ods states no result, and an xlsx asks a
-  reader to compute it on load. An array formula gets no result, as the
-  evaluator does not compute one.
+- `Document::recalculate` in every binding: `recalculate` in python, java,
+  npm and swift, and `recalculateWithError:` in objective-c. Each returns the
+  changed, circular and unevaluated cells as positions.
+- `Document::recalculate` writes the results of the stale formulas of an ods
+  or an xlsx, and a save recalculates after an edit. A cell it cannot compute,
+  such as an array formula, has no result in an ods and its old one in an xlsx.
 - A cell after a `table:covered-table-cell` of an ods array formula reads at
-  its own column. Before, every cell after one moved a column to the left.
-- A sheet cell that states no value reads as `ValueType::unknown` in an ods
-  and an xlsx, as a cell the file does not state does. A cell holding an
-  empty text stays a string. An ods error a formula computed reads as
+  its own column, not one column to the left.
+- An ods or xlsx cell that states no value reads as `ValueType::unknown`, so
+  it differs from an empty text. An ods formula error reads as
   `ValueType::error`.
-- An ods cell that states a value or a formula and no text is read. Before,
-  a formula cell whose result an edit dropped read as an empty cell without
-  its formula after a save and a decode. A formula after a merge in an ods
-  row is reported at its own position, so `Document::dependents` names it
-  right, and a position a merge covers reads as no cell instead of the next
-  cell of the row.
+- An ods cell with a value or a formula but no text is read, so its formula
+  survives a save. After a merge, an ods cell reads at its own position, and a
+  covered position reads as no cell.
 - An inserted or deleted row or column moves the source and the place of an
-  xlsx pivot table. An edit that would change part of a pivot table's place,
-  or remove all of its source, refuses with `UnsupportedOperation`.
+  xlsx pivot table. An edit that changes part of the place, or removes all of
+  the source, refuses with `UnsupportedOperation`.
 - An inserted or deleted row or column moves the ranges an xlsx or an ods
   chart reads, on whichever sheet the chart sits. An ods saves the part of
   an embedded chart again.
 - An inserted or deleted row or column moves the formulas of an xlsx
   conditional format and validation, and its page breaks, and the conditions
   of an ods conditional format, validation and cell style.
-- An inserted or deleted row or column moves the tables of an xlsx: their
-  range, filter and calculated columns. A column inserted inside a table gets
-  a named `tableColumn` and a header cell stating that name. An edit that
-  would remove a table's header row, its totals row or all of it refuses
-  with `UnsupportedOperation`.
-- `Sheet::insert_columns` and `Sheet::delete_columns` in every binding:
-  `insert_columns` and `delete_columns` in python, `insertColumns` and
-  `deleteColumns` in java, `insertColumns(at:count:)` and
-  `deleteColumns(at:count:)` in swift, and
-  `Document.insertColumns(sheet, column, count)` and `deleteColumns` in npm.
-- The sheet editor inserts and deletes columns:
-  `odr.editing.insertColumns("left" | "right")` inserts as many columns as
-  the selection spans, and `odr.editing.deleteColumns()` removes them, each
-  one undo step. The chords of the rows act on a column header too. An edge
+- An inserted or deleted row or column moves an xlsx table: its range, filter
+  and calculated columns. An edit that removes its header row, its totals row
+  or all of it refuses with `UnsupportedOperation`.
+- `Sheet::insert_columns` and `delete_columns` in every binding:
+  `insertColumns` and `deleteColumns` in java and npm, and
+  `insertColumns(at:count:)` and `deleteColumns(at:count:)` in swift.
+- The sheet editor inserts and deletes columns, one undo step each:
+  `odr.editing.insertColumns("left" | "right")` and `deleteColumns()`. An edge
   inside a merge refuses with `unsupportedEdit`.
-- `Sheet::insert_columns(column, count)` and
-  `Sheet::delete_columns(column, count)`, and the `insertColumns` and
-  `deleteColumns` ops, for an ods, an xlsx and a csv. Every formula, named
-  range and cell address that names a moved column moves with it, absolute
-  or not, and a reference into a removed column becomes `#REF!`. The
-  conditional formats, validations, links, filter, view, drawings and
-  comments of an xlsx move too. An edit that cuts a merge, or an insert that
-  pushes a cell past column 16384, refuses with `UnsupportedOperation`.
-- `Sheet::insert_rows` and `Sheet::delete_rows` in every binding:
-  `insert_rows` and `delete_rows` in python, `insertRows` and `deleteRows`
-  in java, `insertRows(at:count:)` and `deleteRows(at:count:)` in swift, and
-  `Document.insertRows(sheet, row, count)` and `deleteRows` in npm.
-- The sheet editor inserts and deletes rows: `odr.editing.insertRows("above"
-  | "below")` inserts as many rows as the selection spans, and
-  `odr.editing.deleteRows()` removes them, each one undo step. Ctrl or Cmd
-  with Shift and `+` inserts, and with `-` deletes, on a row header. An edge
-  inside a merge refuses with `unsupportedEdit`.
-- `Sheet::insert_rows(row, count)` and `Sheet::delete_rows(row, count)`, and
-  the `insertRows` and `deleteRows` ops, for an ods, an xlsx and a csv. Every
-  formula, named range and cell address that names a moved row moves with
-  it, absolute or not, and a reference into a removed row becomes `#REF!`.
-  The conditional formats, validations, links, filter, view, drawings and
-  comments of an xlsx move too. An edit that cuts a merge, or an xlsx array
-  formula, refuses with `UnsupportedOperation`.
-- A date `CellValue` states its number as days since 1899-12-30, whatever
-  the file counts from, and a time its length in days: an ods date or time
-  now states one, and an xlsx date of a 1904 workbook counts 1462 days more. A `setCell` op takes
+- `Sheet::insert_columns` and `delete_columns`, and their ops, for an ods, an
+  xlsx and a csv. What names a moved column moves with it, a reference into a
+  removed one becomes `#REF!`, and a cut merge or column 16384 refuses.
+- `Sheet::insert_rows` and `delete_rows` in every binding: `insertRows` and
+  `deleteRows` in java and npm, and `insertRows(at:count:)` and
+  `deleteRows(at:count:)` in swift.
+- The sheet editor inserts and deletes rows, one undo step each:
+  `odr.editing.insertRows("above" | "below")` and `deleteRows()`, or Ctrl or
+  Cmd with Shift and `+` or `-` on a row header.
+- `Sheet::insert_rows` and `delete_rows`, and their ops, for an ods, an xlsx
+  and a csv. What names a moved row moves with it, a reference into a removed
+  one becomes `#REF!`, and a cut merge or xlsx array formula refuses.
+- A date `CellValue` states days since 1899-12-30, so a 1904 xlsx date counts
+  1462 days more, and a time states its length in days. A `setCell` op takes
   `"date"` and `"time"` values.
 - An ods cell takes a written date or time: `office:date-value` or
   `office:time-value`, and the text of its date or time style where it has
@@ -100,9 +70,8 @@ The release run heads these entries with the version and opens a fresh
   date system. A cell without a date or time format gets the built-in 14,
   20, 21, 22 or 46, as Excel gives one.
 - The sheet editor reads a typed date or time: ISO 8601, or the locale's
-  numeric order (`1/2/2025` in `en-US`, `2.1.2025` in `de-DE`), with
-  `AM`/`PM`. A date or time cell opens on its value and states its kind in
-  `odr-value-type-date` or the new `odr-value-type-time`.
+  numeric order (`1/2/2025` in `en-US`) with `AM`/`PM`. A date or time cell
+  opens on its value and states `odr-value-type-date` or `-time`.
 - A sheet sorts a date or time column by the value, not by the shown text.
   A date or time cell states `data-odr-value` in a read-only render too.
 - A date written into an ods cell shows the month and day names of its data
@@ -110,11 +79,9 @@ The release run heads these entries with the version and opens a fresh
   `D MMMM` cell.
 - An xlsx date shows the month and day names of the language its format
   code states: `[$-419]d mmmm` shows `15 марта`.
-
-- An xlsx cell shows its number formatted, as its `numFmt` or a built-in
-  format says, and a date or time format types it `ValueType::date` or
-  `time`, in the 1900 or the 1904 date system. A boolean shows `TRUE` or
-  `FALSE`. A date or time cell is right-aligned, as a number is.
+- An xlsx cell shows its number as its `numFmt` or a built-in format says,
+  and a date or time format types it `ValueType::date` or `time`. A boolean
+  shows `TRUE` or `FALSE`, and a date or time is right-aligned.
 - A number written into an ods cell with a data style shows as the style
   says, in the style's language: `1234.5` in a German currency cell shows
   `1.234,50 €`. A cell without a data style keeps the typed text.
@@ -123,61 +90,34 @@ The release run heads these entries with the version and opens a fresh
   `€1.234,50` as text and a commit made the cell a string.
 - An ods cell typed `percentage` or `currency` is `ValueType::float_number`,
   as its `office:value` is a number, and is right-aligned as one.
-
-- `odr::create_document(FileType)` makes a new odt with one empty paragraph,
-  an A4 page and Liberation Serif 12pt, a new ods with one empty sheet
-  `Sheet1` and Liberation Sans 10pt, a new docx with one empty paragraph, an
-  A4 page and Calibri 11pt, or a new xlsx with one empty sheet `Sheet1` and
-  Calibri 11pt. `FileTypeCapabilities::create` names the types it can make.
-  Every binding has both: `pyodr.create_document`, `Odr.createDocument` in
-  java, `ODRDocument createWithFileType:error:` in objective-c and
-  `odr.create` in npm.
-
-- Text typed into an empty paragraph of a docx or pptx gets a run of its own.
-  Before, the text sat straight in the paragraph, where Word, PowerPoint and
-  LibreOffice do not show it, and a format on it refused.
-
-- Text typed into an empty paragraph of a docx or pptx takes the formatting
-  of the paragraph mark (`w:pPr/w:rPr`, `a:endParaRPr`), as Word and
-  PowerPoint do. Before, it fell back to the default style.
-
+- `odr::create_document(FileType)` makes an empty odt, ods, docx or xlsx, and
+  `FileTypeCapabilities::create` names the types it makes. Every binding has
+  both, such as `pyodr.create_document` and `odr.create` in npm.
+- Text typed into an empty paragraph of a docx or pptx gets a run of its own,
+  with the formatting of the paragraph mark, as Word and PowerPoint do.
+  Before, Word, PowerPoint and LibreOffice did not show it.
 - The sheet editor opens a string cell that reads as a number, or starts with
   `'` or `=`, with a leading `'`, so a commit keeps it a string.
-
 - The sheet editor refuses with `ErrorCode::edit_sheet_cut` (1011,
-  `sheetCut`) when the mode turns on over a sheet the spreadsheet limits cut,
-  and when a move goes past the rendered extent. The event carries the whole
-  extent as `columns` and `rows`.
-
-- A csv is editable and savable: `Sheet::set_cell` and the `setCell` op
-  write a value, and `Document::save` writes the file as UTF-8, with a byte
-  order mark unless the source was UTF-8 without one. A cell style is
-  refused, in the API and in the sheet editor.
-
+  `sheetCut`) over a sheet the limits cut, or a move past the rendered extent.
+  The event carries the whole extent as `columns` and `rows`.
+- A csv is editable and savable: `Sheet::set_cell` and the `setCell` op write
+  a value, and `Document::save` writes UTF-8, with a byte order mark unless
+  the source was UTF-8 without one. A cell style is refused.
 - `HorizontalAlign::general`, in every binding, and `align: null` in a
   `setCellStyle` op and `odr.editing.format`, set a cell back to the
   alignment by its value type.
 - An ods cell style with `style:text-align-source="value-type"` no longer
   takes the `fo:text-align` of its parent style, as in LibreOffice.
-
-- A sheet cell takes several lines. The sheet editor opens a cell of several
-  paragraphs or line breaks, and Alt or Ctrl with Enter breaks a line. A
-  value with `\n` writes a `text:p` per line into an ods, and turns
-  `wrapText` on in an xlsx.
-
-- `Sheet::set_row_style` and `Sheet::set_column_style`, and the
-  `setRowStyle` and `setColumnStyle` ops, style a whole row or column of an
-  ods or an xlsx, also the cells past what the file states. The sheet editor
-  writes one of them for a header selection. Bound as `set_row_style` and
-  `set_column_style` in python, `setRowStyle` and `setColumnStyle` in java
-  and npm, and `setStyle(_:textStyle:row:)` and `setStyle(_:textStyle:column:)`
-  in swift.
-
-- `Document::locale` answers the language an odf document states on its
-  default style, as a BCP 47 tag such as `de-DE`. The sheet editor reads a
-  typed number with the decimal separator of that locale. Bound as
-  `Document.locale()` in python, java and npm, and `locale` in
-  objective-c and swift.
+- A sheet cell takes several lines: Alt or Ctrl with Enter breaks a line in
+  the sheet editor. An ods writes a `text:p` per line, and an xlsx turns
+  `wrapText` on.
+- `Sheet::set_row_style` and `set_column_style`, and their ops, style a whole
+  row or column of an ods or an xlsx, also past the stated cells. The sheet
+  editor uses them for a header selection, and every binding has them.
+- `Document::locale` answers the BCP 47 language an odf document states on
+  its default style, such as `de-DE`, in every binding. The sheet editor reads
+  a typed number with the decimal separator of that locale.
 - An xlsx cell without its own style shows the style of its row, where the
   row states `customFormat`, else the style of its column.
 

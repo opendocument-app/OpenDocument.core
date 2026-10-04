@@ -2,8 +2,8 @@
 
 Status: cells edit and save in `.ods`, `.xlsx` and `.csv`, with their
 styles, number formats, dates, and inserted and deleted rows and columns.
-Formulas parse and track their dependents. Nothing evaluates a formula yet,
-and the evaluator is the next plan.
+Formulas parse, track their dependents and evaluate. A recalculation and a
+save write the results the evaluator computes.
 
 Related: [`editing.md`](editing.md) holds the mode frame every editor shares,
 [`document-editing.md`](document-editing.md) the document view and
@@ -140,19 +140,21 @@ it keeps `.`.
 
 ### 5. Formulas are recomputed in C++, once, and reached through the host
 
-The evaluator, when it exists, runs in C++ only. The browser hands the host
-the op log per commit, and gets back the cells whose display changed.
+The evaluator runs in C++ only. The browser hands the host the op log per
+commit, and gets back the cells whose display changed.
 
 **Why not JavaScript generated from the tree:** two function libraries that
 drift. **Why not the engine as wasm inside the HTML:** every current host has
 the engine in process. `HtmlConfig::embed_shipped_resources` is where such a
 blob would go if a host without a bridge appears.
 
-Until then the file has to stay honest. `.xlsx` has a switch for this,
-`calcPr/@fullCalcOnLoad="1"` (ECMA-376 18.2.2), set on every save. `.ods` has
-none, so an odf write removes the cached result of every dependent cell: the
-value attributes and the `text:p`. A cell stating a formula and no result is
-one a reader has to compute, and such a cell renders empty here.
+Where the evaluator has no answer, the file still has to stay honest.
+`.xlsx` has a switch for this, `calcPr/@fullCalcOnLoad="1"` (ECMA-376
+18.2.2), set on every save. `.ods` has none, so an odf write removes the
+cached result of every dependent cell: the value attributes and the
+`text:p`. `Document::recalculate` writes back the results it computes. A
+cell stating a formula and no result is one a reader has to compute, and
+such a cell renders empty here.
 
 ### 6. The page stays up until the user saves
 
@@ -269,6 +271,28 @@ and the commits name. Git holds the full text of each decision.
   - XLSX page breaks, the ranges of xlsx and ods charts, and the source and
     the place of an xlsx pivot table. An edit that cuts a pivot table, or
     removes all of its source, refuses. A source in another workbook stays.
+- **Formula evaluation** (decisions 29 to 33).
+  - `formula::evaluate` gives a value or no answer, never a wrong value. An
+    `.ods` follows LibreOffice and reads `table:calculation-settings`. An
+    `.xlsx` follows Excel's documented rules. Where the applications or the
+    documentation leave a result open, the evaluator gives no answer.
+  - A corpus test evaluates every formula of `test/data/input`, and fails on
+    an answer that differs from the result the file caches.
+  - `formula::Value` is empty, a number, a string, a boolean, an error, a
+    reference or an array. A reference stays one until a function reads it.
+    An error propagates left to right. Two numbers are equal where they agree
+    to about 15 significant digits, and an `.ods` sum adds as `KahanSum`.
+  - 116 functions of mathematics, logic, information, text, lookup, the
+    conditional aggregates and dates, and the names a document defines. An
+    array formula, a volatile function, a reference into another document
+    and a localized function name have no answer.
+  - `Document::recalculate` computes each stale cell on demand: a dependent
+    of an edit, every formula after a structural edit, and a formula without
+    a result, with a name or with a volatile function. A cycle gets no
+    result. A save recalculates after an edit.
+  - A cell without an answer has no result in an `.ods`, and keeps its old
+    one in an `.xlsx`, which keeps `fullCalcOnLoad`. Every binding has
+    `recalculate`.
 
 ## Formulas, read side
 
@@ -288,136 +312,6 @@ and the commits name. Git holds the full text of each decision.
   off the coalesced log (`repaintStale`) and raises `odr.onCellsStale`, so an
   undo takes its marks back.
 
-## Formula evaluation
-
-Status: planned. The steps land as a stack, in this order:
-
-1. `internal/formula` evaluates a parsed formula: values, operators,
-   references and error propagation. A corpus test compares each result with
-   the result the file caches.
-2. The functions of mathematics and aggregation.
-3. The functions of logic, text, information and lookup, and the
-   conditional aggregates (`COUNTIF`, `SUMIFS` and the like).
-4. The functions of dates and times.
-5. Named ranges and named expressions resolve.
-6. `Document::recalculate`: it computes the stale formula cells, reports
-   cycles, and writes the results into `.ods` and `.xlsx`. A save
-   recalculates first.
-7. `Document::recalculate` in the python, java, objective-c and npm
-   bindings.
-
-How the page shows the results while the user edits is not part of this
-plan. The open work lists the options.
-
-### 29. A result is never wrong, but it can be absent
-
-The evaluator answers a value or nothing. It answers nothing for a function
-it does not know, for an array formula, for a reference into another
-document, and for a cell that reads a cell with no answer. A cell with no
-answer keeps the result the file caches, or, where an edit made that result
-stale, it has none.
-
-- `.ods` then drops the cached result, as an edit does now (decision 5).
-- `.xlsx` keeps `calcPr/@fullCalcOnLoad="1"` on every save, so Excel and
-  LibreOffice compute what the evaluator did not.
-
-**Why:** a missing value tells a reader to compute it. A wrong value looks
-true, and a reader has no way to see that it is wrong. So the coverage of
-functions can grow one step at a time, and no step makes a file worse.
-
-The corpus test holds this invariant. It evaluates every formula of the
-spreadsheets in `test/data/input` and compares each answer with the result
-the file caches. A difference fails the test, and an absent answer is
-counted, not failed. The corpus states 15186 formula cells, as the files
-spell them, in 18 files. `COUNTIF` is by far the most frequent function,
-then `AVERAGE`, `IF`, `SUM`, `ROUND`, `PI` and `SUMPRODUCT`.
-
-### 30. One value type, and a reference stays a reference
-
-`formula::Value` is empty, a number, a string, a boolean, an error, or a
-reference to a rectangle of cells. A date and a time are numbers, as
-decision 17 states them. A function receives its arguments as values, so
-`SUM` walks a range itself and skips the text in it, and `ROWS` reads the
-size of a range without the cells.
-
-The evaluator reads a cell through an interface, `formula::CellSource`. The
-tests implement it over a map, and `Document::recalculate` implements it over
-the sheet adapters. A source reads a whole range at once, so the cells of a
-repeated `.ods` run are not read one at a time.
-
-An error propagates: an operator or a function gives back the first error
-of its operands, left to right, unless it handles errors (`IFERROR`,
-`ISERROR`, `IFNA`). A number is a `double`. A comparison of two numbers is
-equal where they agree to about 15 significant digits, as LibreOffice's
-`rtl::math::approxEqual` decides.
-
-### 31. The semantics are LibreOffice's, read from the file's settings
-
-Excel and LibreOffice differ in some details: the conversion of text to a
-number in arithmetic, the result of `0^0`, and the case of text in a
-comparison. The evaluator follows LibreOffice, because LibreOffice is the
-oracle the tests can run, for both formats. An `.ods` states some of the
-settings in `table:calculation-settings`: `table:case-sensitive`,
-`table:use-regular-expressions`, `table:use-wildcards`,
-`table:search-criteria-must-apply-to-whole-cell` and `table:null-date`. The
-evaluator reads them. Where an `.ods` omits one, the ODF default holds, and
-LibreOffice computes so: case-sensitive, regular expressions on, wildcards
-off. An `.xlsx` states none of them and takes Excel's settings, as
-LibreOffice does on import: not case-sensitive, wildcards on, regular
-expressions off. Where Excel gives another result, a test states the Excel
-result in a comment, so a later change can follow Excel.
-
-A function name is English, as both file formats state it. A localized
-name, such as `SUMME`, is not read.
-
-### 32. `Document::recalculate` pulls each value on demand
-
-An edit records the positions it writes. `Document::recalculate()` computes
-the stale cells:
-
-- every dependent of a recorded position;
-- after a structural op, every formula that a moved range reaches;
-- every formula without a cached result;
-- every formula that calls a volatile function (`RAND`, `NOW`, `TODAY`,
-  `OFFSET`, `INDIRECT`), and every formula in `unresolved_formulas`.
-
-The evaluator computes a stale cell on demand. When a formula reads a stale
-cell, the evaluator first computes that cell, and keeps the result for the
-rest of the call. A cell under computation that its own computation reaches
-is a cycle. No cell of a cycle gets a value, and the call reports each of
-them.
-
-The result states the cells whose value changed, the cells of a cycle, and
-the cells without an answer. The writers then state each new value as the
-file caches one:
-
-- `.ods`: `office:value-type`, the value attribute, and a `text:p`
-  formatted with the data style of the cell.
-- `.xlsx`: `<v>` and `t`. The reader formats `<v>` already.
-
-
-**Why on demand, not in topological order:** `INDIRECT` and `OFFSET` decide
-what they read only when they run, so a static order is wrong for them. A
-pull computes each stale cell once and needs no sort.
-
-**Why record the positions in the document:** a save and a host then ask
-for a recalculation without naming the positions a second time.
-
-### 33. A save recalculates, and a host can recalculate sooner
-
-`Document::save` calls `recalculate()` before it writes, so a saved file
-states a current result for every cell the evaluator answers. A user who
-opens the saved file again sees the results.
-
-A host can call `recalculate()` at any time, for example after each commit
-to show results while the user edits. Core does not decide when a host does
-this: an app that offers live results to some users only gates the call in
-the app.
-
-**Why a save recalculates:** without it, a saved `.ods` has no result for an
-edited formula, and a saved `.xlsx` shows the old results in every reader
-that does not compute (this one included). The cost comes once per save.
-
 ## Open work
 
 - **The Excel 2010 extensions of an xlsx worksheet do not move.** A
@@ -428,7 +322,21 @@ that does not compute (this one included). The cost comes once per save.
   formulas in `xm:f`. After a structural edit they stay at their old cells.
   No spreadsheet in `test/data/input` states one. The fix moves `xm:sqref`
   as `sqref` and `xm:f` as a rule formula, with the code of decision 28.
-- **The formula evaluator**, as the plan above states it.
+- **A range is read one cell at a time.** `formula::CellSource` has no read
+  of a whole range, so the cells of a repeated `.ods` run are read one by
+  one, and a whole column reads every cell up to the extent of its sheet.
+  The corpus evaluates in seconds, so it has not mattered yet.
+- **Excel's tolerance in a comparison is not documented.** Both dialects
+  compare two numbers as LibreOffice's `approxEqual` does. A pair that
+  Excel decides apart near the 15th digit gets the LibreOffice answer.
+- **The parser has no limit on nesting.** A formula nested some thousand
+  levels deep can overflow the stack in the parser or the evaluator. Excel
+  writes 64 levels of functions at most, so no file of Excel reaches it.
+- **LibreOffice may change how `&` spells a boolean.** Its master branch
+  formats a boolean operand of `&` as `TRUE` or `FALSE`
+  (`PopOperandStringForConcat`). The LibreOffice dialect gives `1` and `0`,
+  as the LibreOffice that the tests ran gives. When a release ships the
+  change, a boolean in a concatenation of an `.ods` gets no answer.
 - **Live results in the page.** The page has no evaluator, so it marks the
   formula cells stale until something computes them. There are four ways to
   compute them while the user edits:
@@ -442,8 +350,8 @@ that does not compute (this one included). The cost comes once per save.
     `HtmlConfig::embed_shipped_resources` does with the other resources,
     so a page with no host computes too: an export, a page opened from
     `file://`, a page sent as a mail attachment. There is still one
-    evaluator and one corpus test. Measure the size of the module once
-    step 1 exists.
+    evaluator and one corpus test. The size of the module is not measured
+    yet.
   - The host computes them in process (decision 5) and sends them to the
     page. The apps and the npm host have core already. The host must keep a
     decoded document that matches the page, and an undo in the page needs a
@@ -476,7 +384,7 @@ that does not compute (this one included). The cost comes once per save.
   parses that spelling with the locale of the document, and writes the
   formula in the syntax of the file. It comes with live results, because a
   typed formula has no result until something computes it.
-- **Out of the evaluator's first plan:** array formulas and dynamic arrays,
-  a reference into another document, iterative calculation, and localized
-  function names. Each cell that needs one stays without an answer
-  (decision 29).
+- **Out of the evaluator so far:** array formulas and dynamic arrays, a
+  reference into another document, iterative calculation, the volatile
+  functions, and localized function names. Each cell that needs one stays
+  without an answer (decision 29).

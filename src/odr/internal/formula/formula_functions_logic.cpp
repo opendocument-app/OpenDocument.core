@@ -85,41 +85,23 @@ Value combine(const Call &call, const bool start, const Combine &next) {
   expect_arguments(call, 1, 255);
   bool result = start;
   bool any = false;
-  std::optional<ErrorType> error;
-  const auto add = [&](const Value &cell) {
-    if (const auto *boolean = std::get_if<bool>(&cell.content)) {
-      result = next(result, *boolean);
-      any = true;
-    } else if (const auto *number = std::get_if<double>(&cell.content)) {
-      result = next(result, *number != 0);
-      any = true;
-    } else if (const auto *cell_error = std::get_if<ErrorType>(&cell.content)) {
-      if (!error.has_value()) {
-        error = *cell_error;
-      } else if (*error != *cell_error) {
-        throw NoAnswer{};
-      }
-    }
-  };
   for (std::size_t i = 0; i < call.size(); ++i) {
-    const Value value = call.value(i);
-    if (const auto *reference = std::get_if<Reference>(&value.content)) {
-      call.for_each(*reference, [&](const SheetPosition &, const Value &cell) {
-        add(cell);
-      });
-    } else if (const auto *matrix = std::get_if<Matrix>(&value.content)) {
-      for (const Value &cell : matrix->cells) {
-        add(cell);
+    Errors errors;
+    call.for_each_value(i, [&](const Value &value, const bool stated) {
+      if (const auto *boolean = std::get_if<bool>(&value.content)) {
+        result = next(result, *boolean);
+        any = true;
+      } else if (const auto *number = std::get_if<double>(&value.content)) {
+        result = next(result, *number != 0);
+        any = true;
+      } else if (const auto *error = std::get_if<ErrorType>(&value.content)) {
+        errors.add(*error);
+      } else if (const auto *text = std::get_if<std::string>(&value.content);
+                 text != nullptr && stated) {
+        errors.add(std::get<ErrorType>(truth_of_text(*text)));
       }
-    } else if (const auto *text = std::get_if<std::string>(&value.content)) {
-      const Truth read = truth_of_text(*text);
-      if (!error.has_value()) {
-        error = std::get<ErrorType>(read);
-      }
-    } else {
-      add(value);
-    }
-    if (error.has_value()) {
+    });
+    if (const std::optional<ErrorType> error = errors.first()) {
       return Value{*error};
     }
   }
@@ -152,11 +134,7 @@ Value negation(const Call &call) {
 
 Value choose(const Call &call) {
   expect_arguments(call, 2, 255);
-  const Number index = call.number(call.scalar(0));
-  if (const auto *error = std::get_if<ErrorType>(&index)) {
-    return Value{*error};
-  }
-  const double at = std::trunc(std::get<double>(index));
+  const double at = std::trunc(number_argument(call, 0));
   if (at < 1 || at >= static_cast<double>(call.size())) {
     return refused(call, ErrorType::value);
   }

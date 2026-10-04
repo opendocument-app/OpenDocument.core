@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
@@ -11,9 +12,6 @@
 namespace odr::internal::formula {
 
 namespace {
-
-/// The longest text a cell holds in both applications.
-constexpr std::size_t text_limit = 32767;
 
 /// Argument @p index as a text.
 std::string string_argument(const Call &call, const std::size_t index) {
@@ -35,11 +33,7 @@ std::u16string text_argument(const Call &call, const std::size_t index) {
 
 /// Argument @p index as a whole number.
 double count_argument(const Call &call, const std::size_t index) {
-  const Number number = call.number(call.scalar(index));
-  if (const auto *error = std::get_if<ErrorType>(&number)) {
-    throw ErrorResult{*error};
-  }
-  return std::trunc(std::get<double>(number));
+  return std::trunc(number_argument(call, index));
 }
 
 Value text_value(const std::u16string &text) {
@@ -130,38 +124,25 @@ Value concatenate(const Call &call) {
 Value concat(const Call &call) {
   expect_arguments(call, 1, 255);
   std::u16string result;
-  std::optional<ErrorType> error;
-  const auto add = [&](const Value &cell) {
-    const Text text = call.text(cell);
-    if (const auto *cell_error = std::get_if<ErrorType>(&text)) {
-      if (!error.has_value()) {
-        error = *cell_error;
-      } else if (*error != *cell_error) {
+  for (std::size_t i = 0; i < call.size(); ++i) {
+    Errors errors;
+    call.for_each_value(i, [&](const Value &value, bool) {
+      const Text text = call.text(value);
+      if (const auto *error = std::get_if<ErrorType>(&text)) {
+        errors.add(*error);
+        return;
+      }
+      const std::optional<std::u16string> units =
+          utf16_of(std::get<std::string>(text));
+      if (!units.has_value()) {
         throw NoAnswer{};
       }
-      return;
-    }
-    const std::optional<std::u16string> units =
-        utf16_of(std::get<std::string>(text));
-    if (!units.has_value()) {
-      throw NoAnswer{};
-    }
-    result += *units;
-  };
-  for (std::size_t i = 0; i < call.size(); ++i) {
-    const Value value = call.value(i);
-    if (const auto *reference = std::get_if<Reference>(&value.content)) {
-      call.for_each(*reference, [&](const SheetPosition &, const Value &cell) {
-        add(cell);
-      });
-    } else if (const auto *matrix = std::get_if<Matrix>(&value.content)) {
-      for (const Value &cell : matrix->cells) {
-        add(cell);
+      result += *units;
+      if (result.size() > text_limit) {
+        throw NoAnswer{};
       }
-    } else {
-      add(value);
-    }
-    if (error.has_value()) {
+    });
+    if (const std::optional<ErrorType> error = errors.first()) {
       return Value{*error};
     }
   }
@@ -175,11 +156,14 @@ Value repeat(const Call &call) {
   if (count < 0) {
     return refused(call, ErrorType::value);
   }
+  if (text.empty() || count == 0) {
+    return Value{std::string()};
+  }
   if (count * static_cast<double>(text.size()) > text_limit) {
     throw NoAnswer{};
   }
   std::u16string result;
-  for (double i = 0; i < count; ++i) {
+  for (auto i = static_cast<std::uint32_t>(count); i > 0; --i) {
     result += text;
   }
   return text_value(result);
@@ -268,6 +252,9 @@ Value substitute(const Call &call) {
     result += text.substr(from, at - from);
     result += which == 0 || seen == which ? new_text : old_text;
     from = at + old_text.size();
+    if (result.size() > text_limit) {
+      throw NoAnswer{};
+    }
   }
   result += text.substr(from);
   return text_value(result);

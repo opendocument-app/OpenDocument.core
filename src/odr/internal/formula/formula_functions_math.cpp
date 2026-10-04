@@ -6,7 +6,6 @@
 #include <cstdlib>
 #include <numbers>
 #include <optional>
-#include <set>
 #include <span>
 #include <string>
 #include <vector>
@@ -68,85 +67,35 @@ Value round_to(const double x, const double digits, const Round &round) {
   return checked(stable(x / scale, round) * scale);
 }
 
-/// The argument at @p index as a number, or the error standing for it.
-Number argument(const Call &call, const std::size_t index) {
-  return call.number(call.scalar(index));
-}
-
 using Unary = Value (*)(const Call &, double);
 using Binary = Value (*)(const Call &, double, double);
 
 /// A function of one number.
 template <Unary function> Value unary(const Call &call) {
   expect_arguments(call, 1, 1);
-  const Number x = argument(call, 0);
-  if (const auto *error = std::get_if<ErrorType>(&x)) {
-    return Value{*error};
-  }
-  return function(call, std::get<double>(x));
+  return function(call, number_argument(call, 0));
 }
 
 /// A function of two numbers, the second @p fallback where it is left out.
-template <Binary function, int fallback = 0, bool optional = false>
+template <Binary function, std::int32_t fallback = 0, bool optional = false>
 Value binary(const Call &call) {
   expect_arguments(call, optional ? 1 : 2, 2);
-  const Number x = argument(call, 0);
-  if (const auto *error = std::get_if<ErrorType>(&x)) {
-    return Value{*error};
-  }
-  const Number y =
-      call.size() > 1 ? argument(call, 1) : Number{double{fallback}};
-  if (const auto *error = std::get_if<ErrorType>(&y)) {
-    return Value{*error};
-  }
-  return function(call, std::get<double>(x), std::get<double>(y));
+  const double x = number_argument(call, 0);
+  const double y = call.size() > 1 ? number_argument(call, 1) : fallback;
+  return function(call, x, y);
 }
 
 /// The numbers an aggregate reads out of its arguments, and the first error
 /// among them.
 struct Collected final {
-  std::vector<double> numbers;
-  std::optional<ErrorType> error;
+  std::vector<double> numbers{};
+  std::optional<ErrorType> error{};
 };
 
-/// The errors of one argument. A range holding two different errors has no
-/// first one both applications agree on.
-class Errors final {
-public:
-  void add(const ErrorType error) { m_seen.insert(error); }
-  void into(std::optional<ErrorType> &first) const {
-    if (first.has_value() || m_seen.empty()) {
-      return;
-    }
-    if (m_seen.size() > 1) {
-      throw NoAnswer{};
-    }
-    first = *m_seen.begin();
-  }
-
-private:
-  std::set<ErrorType> m_seen;
-};
-
-/// What a cell of a range or an element of an array adds to an aggregate: a
-/// number, and a boolean in LibreOffice, where it is the number 1 or 0. A
-/// text and an empty cell add nothing.
-void collect_cell(const Call &call, const Value &value, Collected &into,
-                  Errors &errors) {
-  if (const auto *number = std::get_if<double>(&value.content)) {
-    into.numbers.push_back(*number);
-  } else if (const auto *boolean = std::get_if<bool>(&value.content)) {
-    if (is_libreoffice(call)) {
-      into.numbers.push_back(*boolean ? 1 : 0);
-    }
-  } else if (const auto *error = std::get_if<ErrorType>(&value.content)) {
-    errors.add(*error);
-  }
-}
-
-/// The numbers of the first @p count arguments, as `SUM` reads them. An
-/// argument stated directly adds a boolean too, and in Excel a text that
-/// reads as a number.
+/// The numbers of the first @p count arguments, as `SUM` reads them. A cell
+/// adds a number, and a boolean in LibreOffice, where it is the number 1 or
+/// 0. An argument stated directly adds a boolean too, and in Excel a text
+/// that reads as a number.
 Collected collect(const Call &call, const std::size_t count) {
   Collected result;
   for (std::size_t i = 0; i < count; ++i) {
@@ -154,40 +103,39 @@ Collected collect(const Call &call, const std::size_t count) {
       throw NoAnswer{};
     }
     Errors errors;
-    const Value value = call.value(i);
-    if (const auto *reference = std::get_if<Reference>(&value.content)) {
-      call.for_each(*reference, [&](const SheetPosition &, const Value &cell) {
-        collect_cell(call, cell, result, errors);
-      });
-    } else if (const auto *matrix = std::get_if<Matrix>(&value.content)) {
-      for (const Value &cell : matrix->cells) {
-        collect_cell(call, cell, result, errors);
-      }
-    } else if (const auto *number = std::get_if<double>(&value.content)) {
-      result.numbers.push_back(*number);
-    } else if (const auto *boolean = std::get_if<bool>(&value.content)) {
-      result.numbers.push_back(*boolean ? 1 : 0);
-    } else if (const auto *error = std::get_if<ErrorType>(&value.content)) {
-      errors.add(*error);
-    } else if (const auto *text = std::get_if<std::string>(&value.content)) {
-      // LibreOffice refuses a text argument with `#VALUE!` or a code of its
-      // own, function by function
-      if (is_libreoffice(call)) {
-        throw NoAnswer{};
-      }
-      const std::optional<Number> read = number_of_text(*text);
-      if (!read.has_value()) {
-        throw NoAnswer{};
-      }
-      if (const auto *error = std::get_if<ErrorType>(&*read)) {
+    call.for_each_value(i, [&](const Value &value, const bool stated) {
+      if (const auto *number = std::get_if<double>(&value.content)) {
+        result.numbers.push_back(*number);
+      } else if (const auto *boolean = std::get_if<bool>(&value.content)) {
+        if (stated || is_libreoffice(call)) {
+          result.numbers.push_back(*boolean ? 1 : 0);
+        }
+      } else if (const auto *error = std::get_if<ErrorType>(&value.content)) {
         errors.add(*error);
+      } else if (!stated) {
+        return;
+      } else if (const auto *text = std::get_if<std::string>(&value.content)) {
+        // LibreOffice refuses a text argument with `#VALUE!` or a code of
+        // its own, function by function
+        if (is_libreoffice(call)) {
+          throw NoAnswer{};
+        }
+        const std::optional<Number> read = number_of_text(*text);
+        if (!read.has_value()) {
+          throw NoAnswer{};
+        }
+        if (const auto *error = std::get_if<ErrorType>(&*read)) {
+          errors.add(*error);
+        } else {
+          result.numbers.push_back(std::get<double>(*read));
+        }
       } else {
-        result.numbers.push_back(std::get<double>(*read));
+        throw NoAnswer{};
       }
-    } else {
-      throw NoAnswer{};
+    });
+    if (!result.error.has_value()) {
+      result.error = errors.first();
     }
-    errors.into(result.error);
   }
   return result;
 }
@@ -342,11 +290,7 @@ template <bool largest> Value kth(const Call &call) {
   if (const std::optional<Value> refused = no_numbers(call, collected)) {
     return *refused;
   }
-  const Number k = argument(call, 1);
-  if (const auto *error = std::get_if<ErrorType>(&k)) {
-    return Value{*error};
-  }
-  double rank = std::get<double>(k);
+  double rank = number_argument(call, 1);
   if (rank != std::trunc(rank)) {
     if (!is_libreoffice(call)) {
       throw NoAnswer{};
@@ -401,27 +345,21 @@ Value count(const Call &call) {
     if (call.missing(i)) {
       throw NoAnswer{};
     }
-    const Value value = call.value(i);
-    const auto counts = [&](const Value &cell) {
-      return cell.holds<double>() ||
-             (cell.holds<bool>() && is_libreoffice(call));
-    };
-    if (const auto *reference = std::get_if<Reference>(&value.content)) {
-      call.for_each(*reference, [&](const SheetPosition &, const Value &cell) {
-        result += counts(cell) ? 1 : 0;
-      });
-    } else if (const auto *matrix = std::get_if<Matrix>(&value.content)) {
-      result +=
-          static_cast<double>(std::ranges::count_if(matrix->cells, counts));
-    } else if (const auto *text = std::get_if<std::string>(&value.content)) {
-      const std::optional<Number> read = number_of_text(*text);
-      if (!read.has_value()) {
-        throw NoAnswer{};
+    call.for_each_value(i, [&](const Value &value, const bool stated) {
+      if (const auto *text = std::get_if<std::string>(&value.content);
+          text != nullptr && stated) {
+        const std::optional<Number> read = number_of_text(*text);
+        if (!read.has_value()) {
+          throw NoAnswer{};
+        }
+        result += std::holds_alternative<double>(*read) ? 1 : 0;
+        return;
       }
-      result += std::holds_alternative<double>(*read) ? 1 : 0;
-    } else {
-      result += value.holds<double>() || value.holds<bool>() ? 1 : 0;
-    }
+      result += value.holds<double>() || (value.holds<bool>() &&
+                                          (stated || is_libreoffice(call)))
+                    ? 1
+                    : 0;
+    });
   }
   return Value{result};
 }
@@ -432,19 +370,9 @@ Value count_stated(const Call &call) {
     if (call.missing(i)) {
       throw NoAnswer{};
     }
-    const Value value = call.value(i);
-    if (const auto *reference = std::get_if<Reference>(&value.content)) {
-      call.for_each(*reference, [&](const SheetPosition &, const Value &cell) {
-        result += cell.holds<Empty>() ? 0 : 1;
-      });
-    } else if (const auto *matrix = std::get_if<Matrix>(&value.content)) {
-      result += static_cast<double>(
-          std::ranges::count_if(matrix->cells, [](const Value &cell) {
-            return !cell.holds<Empty>();
-          }));
-    } else {
-      result += 1;
-    }
+    call.for_each_value(i, [&](const Value &value, const bool stated) {
+      result += stated || !value.holds<Empty>() ? 1 : 0;
+    });
   }
   return Value{result};
 }
@@ -455,7 +383,11 @@ Value count_blank(const Call &call) {
   expect_arguments(call, 1, 1);
   const Value value = call.value(0);
   const auto *reference = std::get_if<Reference>(&value.content);
-  if (reference == nullptr || reference->areas.size() != 1) {
+  // a whole column counts the blank cells of the grid, which the extent of
+  // its sheet cuts
+  if (reference == nullptr || reference->areas.size() != 1 ||
+      reference->areas.front().whole_columns ||
+      reference->areas.front().whole_rows) {
     throw NoAnswer{};
   }
   // the cells past the extent of the sheet are empty, and not visited
@@ -505,9 +437,7 @@ Value sum_product(const Call &call) {
       products[i] *= factor;
     }
   }
-  std::optional<ErrorType> error;
-  errors.into(error);
-  if (error.has_value()) {
+  if (const std::optional<ErrorType> error = errors.first()) {
     return Value{*error};
   }
   return sum_of(call, products);
@@ -621,9 +551,17 @@ Value radians(const Call &, const double x) {
 Value degrees(const Call &, const double x) {
   return checked(x * 180 / std::numbers::pi);
 }
-Value sine(const Call &, const double x) { return checked(std::sin(x)); }
-Value cosine(const Call &, const double x) { return checked(std::cos(x)); }
-Value tangent(const Call &, const double x) { return checked(std::tan(x)); }
+/// @p result, a sine, cosine or tangent of @p x. Excel refuses an angle of
+/// 2^27 or more, at a limit it does not document, so it has no answer.
+Value circular(const double x, const double result) {
+  if (std::abs(x) >= 134217728.0) {
+    throw NoAnswer{};
+  }
+  return checked(result);
+}
+Value sine(const Call &, const double x) { return circular(x, std::sin(x)); }
+Value cosine(const Call &, const double x) { return circular(x, std::cos(x)); }
+Value tangent(const Call &, const double x) { return circular(x, std::tan(x)); }
 Value hyperbolic_sine(const Call &, const double x) {
   return checked(std::sinh(x));
 }
@@ -672,10 +610,11 @@ template <bool odd> Value parity(const Call &call, const double x) {
 }
 
 Value factorial(const Call &call, const double x) {
-  const double n = settled(call, x, round_toward);
-  if (n < 0) {
+  // LibreOffice reads -0.5 as -1, and Excel refuses any negative number
+  if (x < 0) {
     return invalid(call);
   }
+  const double n = settled(call, x, round_toward);
   if (n > 170) {
     return Value{is_libreoffice(call) ? ErrorType::value : ErrorType::number};
   }

@@ -3,6 +3,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
+#include <cstdint>
 #include <tuple>
 
 namespace odr::internal::formula {
@@ -100,6 +101,18 @@ std::optional<std::u16string> formula::utf16_of(const std::string_view text) {
         return c >= 0xD800 && c <= 0xDFFF;
       })) {
     return std::nullopt;
+  }
+  return result;
+}
+
+std::size_t formula::utf16_length(const std::string_view text) {
+  std::size_t result = 0;
+  for (const char c : text) {
+    const auto byte = static_cast<std::uint8_t>(c);
+    // a lead byte starts a character, and one of four bytes takes two units
+    if ((byte & 0xC0) != 0x80) {
+      result += byte >= 0xF0 ? 2 : 1;
+    }
   }
   return result;
 }

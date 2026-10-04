@@ -143,3 +143,11 @@ TEST(FormulaFunctionsLookup, a_cell_by_its_position) {
   // as tall as the grid, which the two applications state apart
   EXPECT_EQ(xlsx("=ROWS(A:A)"), std::nullopt);
 }
+
+TEST(FormulaFunctionsLookup, a_whole_column_past_the_extent_has_no_answer) {
+  // the cells past the extent of the sheet are empty, and not read
+  EXPECT_EQ(xlsx(R"(=COUNTIF(A:A,""))"), std::nullopt);
+  EXPECT_EQ(xlsx(R"(=COUNTIF(A:A,"abc"))"), number(1));
+  EXPECT_EQ(xlsx("=VLOOKUP(2,A:A,1)"), std::nullopt);
+  EXPECT_EQ(xlsx("=INDEX(A:A,100)"), std::nullopt);
+}

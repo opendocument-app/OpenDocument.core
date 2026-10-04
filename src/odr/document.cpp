@@ -598,8 +598,13 @@ Recalculation Document::recalculate() const {
 }
 
 void Document::recalculate_edits_() const {
-  if (internal::is_edited(*m_impl)) {
+  if (!internal::is_edited(*m_impl)) {
+    return;
+  }
+  // a document a recalculation cannot read saves what its edits left
+  try {
     recalculate();
+  } catch (const UnsupportedOperation &) {
   }
 }
 

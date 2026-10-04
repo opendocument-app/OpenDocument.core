@@ -38,6 +38,17 @@ struct Span final {
   bool array{false};
 };
 
+/// Calls @p visit with every position of @p span.
+template <typename Visit>
+void for_each_position(const Span &span, const Visit &visit) {
+  for (std::uint32_t row = 0; row < span.size.rows; ++row) {
+    for (std::uint32_t column = 0; column < span.size.columns; ++column) {
+      visit(SheetPosition(span.first.sheet, span.first.cell.column + column,
+                          span.first.cell.row + row));
+    }
+  }
+}
+
 /// The most positions of spanned formula cells a recalculation reads.
 constexpr std::size_t span_limit = 1 << 20;
 
@@ -222,15 +233,12 @@ internal::recalculate(const abstract::Document &document) {
   if (spanned_positions > span_limit) {
     throw UnsupportedOperation();
   }
-  for (const auto &[first, size, array] : spans) {
-    for (std::uint32_t row = 0; row < size.rows; ++row) {
-      for (std::uint32_t column = 0; column < size.columns; ++column) {
-        const SheetPosition position(first.sheet, first.cell.column + column,
-                                     first.cell.row + row);
-        formulas[position] = Formula{formulas.at(first).sheet_id, std::nullopt,
-                                     true, array && position != first};
-      }
-    }
+  for (const Span &span : spans) {
+    const ElementIdentifier sheet_id = formulas.at(span.first).sheet_id;
+    for_each_position(span, [&](const SheetPosition &position) {
+      formulas[position] = Formula{sheet_id, std::nullopt, true,
+                                   span.array && position != span.first};
+    });
   }
 
   const SheetDependencies &graph = document.sheet_dependencies();
@@ -268,20 +276,15 @@ internal::recalculate(const abstract::Document &document) {
     const std::vector<SheetPosition> reached = graph.dependents(
         std::vector<SheetPosition>(stale_set.begin(), stale_set.end()));
     stale_set.insert(reached.begin(), reached.end());
-    for (const auto &[first, span, array] : spans) {
+    for (const Span &span : spans) {
       bool any = false;
-      for (std::uint32_t row = 0; row < span.rows && !any; ++row) {
-        for (std::uint32_t column = 0; column < span.columns && !any;
-             ++column) {
-          any = stale_set.contains(SheetPosition(
-              first.sheet, first.cell.column + column, first.cell.row + row));
-        }
-      }
-      for (std::uint32_t row = 0; any && row < span.rows; ++row) {
-        for (std::uint32_t column = 0; column < span.columns; ++column) {
-          stale_set.insert(SheetPosition(
-              first.sheet, first.cell.column + column, first.cell.row + row));
-        }
+      for_each_position(span, [&](const SheetPosition &position) {
+        any = any || stale_set.contains(position);
+      });
+      if (any) {
+        for_each_position(span, [&](const SheetPosition &position) {
+          stale_set.insert(position);
+        });
       }
     }
   }
@@ -298,9 +301,9 @@ internal::recalculate(const abstract::Document &document) {
   // results the file caches
   const StaleCells cells(&source, &formulas, std::move(stale_set));
   struct Computed final {
-    SheetPosition position;
-    std::optional<formula::Value> before;
-    std::optional<formula::Value> value;
+    SheetPosition position{};
+    std::optional<formula::Value> before{};
+    std::optional<formula::Value> value{};
   };
   std::vector<Computed> computed;
   computed.reserve(ordered.size());
@@ -310,16 +313,23 @@ internal::recalculate(const abstract::Document &document) {
   }
 
   for (const auto &[position, before, value] : computed) {
+    const ElementIdentifier sheet_id = formulas.at(position).sheet_id;
+    const abstract::SheetAdapter *sheet = adapter->sheet_adapter(sheet_id);
     if (!value.has_value()) {
       (cells.is_circular(position) ? result.circular : result.unevaluated)
           .push_back(position);
+      // the result the file caches is stale, where the file can drop it
+      try {
+        sheet->sheet_set_result(sheet_id, position.cell.column,
+                                position.cell.row,
+                                CellValue(ValueType::unknown));
+      } catch (const UnsupportedOperation &) {
+      }
       continue;
     }
-    const ElementIdentifier sheet_id = formulas.at(position).sheet_id;
     try {
-      adapter->sheet_adapter(sheet_id)->sheet_set_result(
-          sheet_id, position.cell.column, position.cell.row,
-          cell_value_of(*value));
+      sheet->sheet_set_result(sheet_id, position.cell.column, position.cell.row,
+                              cell_value_of(*value));
     } catch (const UnsupportedOperation &) {
       result.unevaluated.push_back(position);
       continue;

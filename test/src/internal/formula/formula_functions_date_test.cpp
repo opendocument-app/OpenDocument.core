@@ -126,3 +126,13 @@ TEST(FormulaFunctionsDate, a_date_as_a_text_has_no_answer) {
   // LibreOffice: 2020, as it reads an ISO 8601 date
   EXPECT_EQ(ods(R"(=YEAR("2020-01-02"))"), std::nullopt);
 }
+
+TEST(FormulaFunctionsDate, a_date_past_the_last_one_has_no_value) {
+  // Excel ends at 9999-12-31, and takes each part of a time up to 32767
+  EXPECT_EQ(xlsx("=YEAR(2958466)"), error(ErrorType::number));
+  EXPECT_EQ(xlsx("=DATE(9999,13,1)"), error(ErrorType::number));
+  EXPECT_EQ(xlsx("=TIME(32768,0,0)"), error(ErrorType::number));
+  EXPECT_EQ(ods("=YEAR(1E300)"), std::nullopt);
+  EXPECT_EQ(ods("=EDATE(0;1E300)"), std::nullopt);
+  EXPECT_EQ(ods("=TIME(1E308;0;0)"), std::nullopt);
+}

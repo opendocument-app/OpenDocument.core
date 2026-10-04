@@ -310,7 +310,9 @@ public:
                               std::uint32_t column, std::uint32_t row,
                               const CellValue &value) const = 0;
   /// Writes @p result as what the formula at (@p column, @p row) computes,
-  /// and keeps the formula. A number is shown by the cell's format.
+  /// and keeps the formula. A number is shown by the cell's format. An
+  /// unknown result says the cached one is stale: an engine drops it, or
+  /// keeps it where the file asks a reader to compute on load.
   /// @throws UnsupportedOperation where the engine cannot write, or the cell
   ///         holds no formula, or one a repeat stands for.
   virtual void

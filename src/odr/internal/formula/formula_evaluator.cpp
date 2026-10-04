@@ -36,61 +36,6 @@ std::optional<char> primary_of(const char c) {
 
 } // namespace
 
-/// The order of two texts as both applications sort them: ignoring case
-/// first, then, where @p case_sensitive, a lower case letter before its upper
-/// case one. Only for letters and digits, the rest is for the collator.
-std::strong_ordering order_of_texts(const std::string_view a,
-                                    const std::string_view b,
-                                    const bool case_sensitive) {
-  if (a == b) {
-    return std::strong_ordering::equal;
-  }
-  const auto known = [](const std::string_view text) {
-    return std::ranges::all_of(
-        text, [](const char c) { return primary_of(c).has_value(); });
-  };
-  if (!known(a) || !known(b)) {
-    throw NoAnswer{};
-  }
-  for (std::size_t i = 0; i < std::min(a.size(), b.size()); ++i) {
-    if (const char left = *primary_of(a[i]), right = *primary_of(b[i]);
-        left != right) {
-      return left <=> right;
-    }
-  }
-  if (a.size() != b.size()) {
-    return a.size() <=> b.size();
-  }
-  if (case_sensitive) {
-    for (std::size_t i = 0; i < a.size(); ++i) {
-      if (a[i] != b[i]) {
-        // the two differ in case alone here, and lower case sorts first
-        return a[i] == str::to_lower(a[i]) ? std::strong_ordering::less
-                                           : std::strong_ordering::greater;
-      }
-    }
-  }
-  return std::strong_ordering::equal;
-}
-
-/// Whether two texts are equal, without case unless @p case_sensitive.
-bool equal_texts(const std::string_view a, const std::string_view b,
-                 const bool case_sensitive) {
-  if (a == b) {
-    return true;
-  }
-  if (case_sensitive) {
-    return false;
-  }
-  const std::optional<std::string> left = folded(a);
-  const std::optional<std::string> right = folded(b);
-  // folding the case of the rest of Unicode is for the collator
-  if (!left.has_value() || !right.has_value()) {
-    throw NoAnswer{};
-  }
-  return *left == *right;
-}
-
 /// Evaluates the nodes of one formula. A reference stays one until an
 /// operator or a function reads it.
 class Evaluator final {
@@ -256,6 +201,10 @@ private:
       throw NoAnswer{};
     }
     const Area &area = reference->areas.front();
+    // the extent of a sheet cuts a whole column, which the grid does not
+    if (area.whole_columns || area.whole_rows) {
+      throw NoAnswer{};
+    }
     const std::uint32_t columns =
         area.range.to().column - area.range.from().column + 1;
     const std::uint32_t rows = area.range.to().row - area.range.from().row + 1;
@@ -442,26 +391,35 @@ private:
     const TablePosition &from = area.range.from();
     const TablePosition &to = area.range.to();
     const TablePosition &at = m_cell.cell;
-    if (from == to) {
+    // a whole column reaches past the extent of its sheet, which `to` states
+    const bool one_column = from.column == to.column && !area.whole_rows;
+    const bool one_row = from.row == to.row && !area.whole_columns;
+    if (one_column && one_row) {
       return read(SheetPosition(area.sheet, from));
     }
-    if (from.column == to.column && at.row >= from.row && at.row <= to.row) {
-      return read(SheetPosition(area.sheet, from.column, at.row));
+    if (one_column && at.row >= from.row &&
+        (area.whole_columns || at.row <= to.row)) {
+      return cell_value(SheetPosition(area.sheet, from.column, at.row));
     }
-    if (from.row == to.row && at.column >= from.column &&
-        at.column <= to.column) {
-      return read(SheetPosition(area.sheet, at.column, from.row));
+    if (one_row && at.column >= from.column &&
+        (area.whole_rows || at.column <= to.column)) {
+      return cell_value(SheetPosition(area.sheet, at.column, from.row));
     }
     return Value{ErrorType::value};
   }
 
-  /// The single area @p value is, else nothing.
+  /// The single area @p value is, else nothing. A whole column has no
+  /// answer: the extent of its sheet cuts it, and the grid does not.
   [[nodiscard]] static std::optional<Area> area_of(const Value &value) {
     const auto *reference = std::get_if<Reference>(&value.content);
     if (reference == nullptr || reference->areas.size() != 1) {
       return std::nullopt;
     }
-    return reference->areas.front();
+    const Area &area = reference->areas.front();
+    if (area.whole_columns || area.whole_rows) {
+      throw NoAnswer{};
+    }
+    return area;
   }
 
   /// `A1:B2` spelled as two references around `:`: the rectangle both span.
@@ -549,6 +507,9 @@ private:
     Matrix result{std::max(columns_of(left), columns_of(right)),
                   std::max(rows_of(left), rows_of(right)),
                   {}};
+    if (std::size_t{result.columns} * result.rows > array_limit) {
+      throw NoAnswer{};
+    }
     result.cells.reserve(std::size_t{result.columns} * result.rows);
     for (std::uint32_t row = 0; row < result.rows; ++row) {
       for (std::uint32_t column = 0; column < result.columns; ++column) {
@@ -645,7 +606,12 @@ private:
     if (const auto *error = std::get_if<ErrorType>(&right)) {
       return Value{*error};
     }
-    return Value{std::get<std::string>(left) + std::get<std::string>(right)};
+    std::string result =
+        std::get<std::string>(left) + std::get<std::string>(right);
+    if (utf16_length(result) > text_limit) {
+      throw NoAnswer{};
+    }
+    return Value{std::move(result)};
   }
 
   /// A number sorts before a text, and a text before a boolean. LibreOffice
@@ -764,6 +730,23 @@ Matrix Call::array(const std::size_t index) const {
   return m_evaluator->array(m_node->children[index]);
 }
 
+void Call::for_each_value(
+    const std::size_t index,
+    const std::function<void(const Value &, bool)> &visit) const {
+  const Value value = this->value(index);
+  if (const auto *reference = std::get_if<Reference>(&value.content)) {
+    for_each(*reference, [&](const SheetPosition &, const Value &cell) {
+      visit(cell, false);
+    });
+  } else if (const auto *matrix = std::get_if<Matrix>(&value.content)) {
+    for (const Value &cell : matrix->cells) {
+      visit(cell, false);
+    }
+  } else {
+    visit(value, true);
+  }
+}
+
 void Call::for_each(const Reference &reference,
                     const std::function<void(const SheetPosition &,
                                              const Value &)> &visit) const {
@@ -811,6 +794,57 @@ formula::Value formula::power(const double x, const double y,
   return Value{result};
 }
 
+std::strong_ordering formula::order_of_texts(const std::string_view a,
+                                             const std::string_view b,
+                                             const bool case_sensitive) {
+  if (a == b) {
+    return std::strong_ordering::equal;
+  }
+  const auto known = [](const std::string_view text) {
+    return std::ranges::all_of(
+        text, [](const char c) { return primary_of(c).has_value(); });
+  };
+  if (!known(a) || !known(b)) {
+    throw NoAnswer{};
+  }
+  for (std::size_t i = 0; i < std::min(a.size(), b.size()); ++i) {
+    if (const char left = *primary_of(a[i]), right = *primary_of(b[i]);
+        left != right) {
+      return left <=> right;
+    }
+  }
+  if (a.size() != b.size()) {
+    return a.size() <=> b.size();
+  }
+  if (case_sensitive) {
+    for (std::size_t i = 0; i < a.size(); ++i) {
+      if (a[i] != b[i]) {
+        // the two differ in case alone here, and lower case sorts first
+        return a[i] == str::to_lower(a[i]) ? std::strong_ordering::less
+                                           : std::strong_ordering::greater;
+      }
+    }
+  }
+  return std::strong_ordering::equal;
+}
+
+bool formula::equal_texts(const std::string_view a, const std::string_view b,
+                          const bool case_sensitive) {
+  if (a == b) {
+    return true;
+  }
+  if (case_sensitive) {
+    return false;
+  }
+  const std::optional<std::string> left = folded(a);
+  const std::optional<std::string> right = folded(b);
+  // folding the case of the rest of Unicode is for the collator
+  if (!left.has_value() || !right.has_value()) {
+    throw NoAnswer{};
+  }
+  return *left == *right;
+}
+
 std::optional<formula::Value> formula::evaluate(const Node &node,
                                                 const SheetPosition &cell,
                                                 const CellSource &source,
@@ -821,6 +855,9 @@ std::optional<formula::Value> formula::evaluate(const Node &node,
     // a formula reading an empty cell shows 0
     if (result.holds<Empty>()) {
       return Value{0.0};
+    }
+    if (result.holds<double>() && !std::isfinite(result.get<double>())) {
+      return std::nullopt;
     }
     return result;
   } catch (const NoAnswer &) {

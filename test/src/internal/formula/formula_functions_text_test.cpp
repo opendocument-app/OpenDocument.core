@@ -164,3 +164,11 @@ TEST(FormulaEvaluator, a_latin_letter_compares_without_case) {
             boolean(true));
   EXPECT_EQ(ods(R"(="Ü"="ü")"), boolean(false));
 }
+
+TEST(FormulaFunctionsText, a_text_past_the_limit_of_a_cell_has_no_answer) {
+  EXPECT_EQ(ods(R"(=REPT("";1E300))"), text(""));
+  // Excel: #VALUE!, as a cell holds 32767 characters at most
+  EXPECT_EQ(xlsx(R"(=REPT("a",20000)&REPT("a",20000))"), std::nullopt);
+  EXPECT_EQ(ods(R"(=LEN(SUBSTITUTE(REPT("a";200);"a";REPT("b";200))))"),
+            std::nullopt);
+}

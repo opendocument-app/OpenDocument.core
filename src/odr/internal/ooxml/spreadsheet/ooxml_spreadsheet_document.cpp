@@ -316,8 +316,11 @@ public:
         if (const std::string ref = formula.attribute("ref").value();
             array && ref.find(':') != std::string::npos) {
           const TableRange range(ref);
-          span = TableDimensions(range.to().row - range.from().row + 1,
-                                 range.to().column - range.from().column + 1);
+          const auto [top, bottom] =
+              std::minmax(range.from().row, range.to().row);
+          const auto [left, right] =
+              std::minmax(range.from().column, range.to().column);
+          span = TableDimensions(bottom - top + 1, right - left + 1);
         }
         visitor(position.column, position.row, span, array,
                 formula_expression(cell.element_id, formula));
@@ -451,6 +454,10 @@ public:
     if (cell == nullptr || !cell->node.child("f")) {
       throw UnsupportedOperation();
     }
+    // a stale result stays, as every save sets `fullCalcOnLoad`
+    if (result.type() == ValueType::unknown) {
+      return;
+    }
     const ElementIdentifier cell_id = cell->element_id;
     pugi::xml_node node = get_node(cell_id);
     for (const char *stated : {"v", "is"}) {
@@ -483,7 +490,7 @@ public:
       text = result.has_text() ? result.text() : "#VALUE!";
       break;
     case ValueType::unknown:
-      return;
+      break;
     }
     const pugi::xml_node value_node =
         node.insert_child_after("v", node.child("f"));
