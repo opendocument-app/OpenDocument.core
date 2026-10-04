@@ -468,9 +468,6 @@ Status: landed. The steps landed as a stack, in this order:
 7. `Sheet::insert_rows` and `Sheet::delete_rows` in the python, java,
    objective-c and npm bindings.
 
-Columns follow the same path after this, with the same decisions turned by
-ninety degrees.
-
 ### 20. Two ops, each a row and a count
 
 ```json
@@ -576,6 +573,76 @@ formula cell reads and where it sits, as decision 21 states. The marks then
 spread to the cells that read a marked cell. A formula cell keeps the
 spelling of its formula in the page until the host renders again.
 
+## Inserted and deleted columns
+
+Status: planned. The steps land as a stack, in this order:
+
+1. `internal/formula` moves a reference along either axis, with one edit
+   type for rows and columns.
+2. `Sheet::insert_columns`, `Sheet::delete_columns` and their ops, written
+   into `.ods`.
+3. The same written into `.xlsx`: the cells, the column declarations, the
+   formulas, the names and the merges.
+4. The rest of what an xlsx worksheet addresses, along columns: conditional
+   formats, validations, links, the filter, the view, drawings and comments.
+5. The same written into `.csv`.
+6. The sheet editor inserts and deletes the selected columns.
+7. `Sheet::insert_columns` and `Sheet::delete_columns` in the python, java,
+   objective-c and npm bindings.
+
+Decisions 20 to 24 hold with rows and columns swapped. What follows is only
+where a column differs.
+
+### 25. One edit type for both axes
+
+```json
+{"op": "insertColumns", "sheet": 0, "column": 2, "count": 1}
+{"op": "deleteColumns", "sheet": 0, "column": 2, "count": 3}
+```
+
+`formula::RowEdit` becomes `formula::SheetEdit`, which states the axis
+beside the index, the count and the kind of edit. `move_rows` and
+`move_row_addresses` become `move_references` and `move_addresses`, and move
+the coordinate of the edit's axis. A whole-row reference (`3:5`) does not
+move for a column edit, and a whole-column one (`A:C`) moves as a range does.
+
+A new column is plain: it states the default width and no style. Excel and
+LibreOffice give it the format of the column to its left. Both grids end at
+column 16384 (`XFD`), which LibreOffice confirms: it keeps a cell in `XFD`
+and drops one past it.
+
+### 26. A column cuts every row
+
+- `.ods` states the cells of a row in order, so an edit cuts every row at its
+  edges, a repeated row once, because its cells stand for every row of it.
+  The `table:table-column` declarations are cut the same way, and an insert
+  declares plain columns. A row that ends in an empty repeated cell gives up
+  as many cells as an insert adds, and so do the declarations, so the extent
+  stays. A `table:number-columns-spanned` that the edit cuts refuses, as a
+  row span does for rows.
+- `.xlsx` states each cell's column in `c/@r`, so the writer states it again
+  past the edit. A `col` range the insert falls inside is cut, and the new
+  columns state none; a delete shrinks or removes the ranges it reaches. The
+  `spans` of a row is a hint that an edit makes wrong, so it goes. The
+  anchors of a drawing move along their `xdr:col`, a note along `x:Column`,
+  and a filter's `filterColumn` its `colId`, which counts from the filter's
+  first column.
+- `.csv` puts empty fields into every line and takes fields out.
+
+The refusals of decision 22 hold along columns: a cut merge, an xlsx array
+formula over the edge, and a cell pushed past column 16384.
+
+### 27. The sheet editor acts on the selected columns
+
+`odr.editing.insertColumns(where)` inserts as many columns as the selection
+spans, `"left"` of it by default or `"right"` of it, and
+`odr.editing.deleteColumns()` removes them. The chords of decision 23 act on
+a column header too. `odr.sheet` gains `insertColumns`, `deleteColumns` and
+`restoreColumns`: they put a `<col>`, a header and a cell in every row into
+the page, or take them out, and state the column letters again. A sort
+follows its column, and an edge inside a `colspan` refuses. The log and the
+stale marks treat a column op as decision 24 treats a row op.
+
 ## Formulas, read side
 
 - `internal/formula` parses `of:=SUM([.A1:.B2])` (`table:formula`) and
@@ -600,8 +667,7 @@ spelling of its formula in the page until the host renders again.
   incremental recompute in topological order with cycles reported, and
   `Document::recalculate(operations)` returning the changed cells. Formula
   input in the editor comes with it.
-- Inserted and deleted columns, on the path the rows took (decisions 20 to
-  24).
+- Inserted and deleted columns, planned above (decisions 25 to 27).
 - The formulas inside a conditional format or a validation condition, the
-  ranges a chart reads, a pivot table's source and an xlsx table, which a row
-  edit leaves where they were.
+  ranges a chart reads, a pivot table's source, an xlsx table and the page
+  breaks of an xlsx, which a structural edit leaves where they were.
