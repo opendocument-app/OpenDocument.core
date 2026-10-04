@@ -20,18 +20,34 @@ namespace {
 class SystemFileWalker final : public abstract::FileWalker {
 public:
   SystemFileWalker(AbsPath root, const Path &path)
-      : m_root{std::move(root)},
-        m_iterator{std::filesystem::recursive_directory_iterator(path.path())} {
+      : m_root{std::move(root)}, m_start{path.path()}, m_iterator{m_start} {}
+
+  SystemFileWalker(const SystemFileWalker &other)
+      : m_root{other.m_root}, m_start{other.m_start} {
+    if (other.end()) {
+      return;
+    }
+    // Directory iterators are single-pass; copying one shares its traversal.
+    m_iterator = std::filesystem::recursive_directory_iterator(m_start);
+    while (!end() && m_iterator->path() != other.m_iterator->path()) {
+      ++m_iterator;
+    }
+    if (end()) {
+      throw std::runtime_error("walked directory changed while copying");
+    }
   }
 
   [[nodiscard]] std::unique_ptr<FileWalker> clone() const override {
     return std::make_unique<SystemFileWalker>(*this);
   }
 
-  /// TODO always false: two walkers at the same place do not compare equal.
-  /// Nothing calls this yet, so nothing depends on the answer.
-  [[nodiscard]] bool equals(const FileWalker & /*rhs*/) const override {
-    return false;
+  [[nodiscard]] bool equals(const FileWalker &other) const override {
+    const auto *rhs = dynamic_cast<const SystemFileWalker *>(&other);
+    if (rhs == nullptr || m_root != rhs->m_root || m_start != rhs->m_start) {
+      return false;
+    }
+    return end() || rhs->end() ? end() && rhs->end()
+                               : m_iterator->path() == rhs->m_iterator->path();
   }
 
   [[nodiscard]] bool end() const override {
@@ -65,6 +81,7 @@ public:
 
 private:
   AbsPath m_root;
+  std::filesystem::path m_start;
   std::filesystem::recursive_directory_iterator m_iterator;
 };
 } // namespace
