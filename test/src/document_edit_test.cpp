@@ -1550,3 +1550,39 @@ TEST(DocumentEdit, off_tree_elements_refuse_generic_removal) {
                UnsupportedOperation);
   EXPECT_EQ(text_of(table), "cell");
 }
+
+TEST(DocumentEdit, docx_list_structure_refuses_edits_without_mutation) {
+  const Document document =
+      docx_of(R"(<w:p><w:pPr><w:numPr><w:numId w:val="1"/></w:numPr></w:pPr>)"
+              R"(<w:r><w:t>one</w:t></w:r></w:p>)"
+              R"(<w:p><w:pPr><w:numPr><w:numId w:val="1"/></w:numPr></w:pPr>)"
+              R"(<w:r><w:t>two</w:t></w:r></w:p>)");
+  const std::string before = part_of(document, "word/document.xml");
+  const Element paragraph = nth_paragraph(document, 0);
+  for (const Element element :
+       {paragraph, paragraph.parent(), paragraph.parent().parent()}) {
+    EXPECT_THROW(document.remove(element), UnsupportedOperation);
+  }
+  EXPECT_THROW((void)document.split_paragraph(paragraph.as_paragraph(), {}),
+               UnsupportedOperation);
+  EXPECT_THROW((void)document.insert_paragraph_after(paragraph.as_paragraph()),
+               UnsupportedOperation);
+  EXPECT_EQ(part_of(document, "word/document.xml"), before);
+  EXPECT_EQ(text_of(document.root_element()), "onetwo");
+  nth_run(document, 0).as_text().set_content("edited");
+  EXPECT_EQ(text_of(reopened(document).root_element()), "editedtwo");
+}
+
+TEST(DocumentEdit, docx_appends_only_to_inline_containers) {
+  const Document document = docx_of(
+      R"(<w:tbl><w:tr><w:tc><w:p><w:r><w:t>one</w:t></w:r></w:p></w:tc></w:tr></w:tbl>)");
+  const std::string before = part_of(document, "word/document.xml");
+  EXPECT_THROW((void)document.append_text(document.root_element(), "bad"),
+               UnsupportedOperation);
+  EXPECT_THROW((void)document.append_text(
+                   nth_of_type(document, ElementType::table_cell, 0), "bad"),
+               UnsupportedOperation);
+  EXPECT_EQ(part_of(document, "word/document.xml"), before);
+  (void)document.append_text(nth_paragraph(document, 0), "two");
+  EXPECT_EQ(text_of(reopened(document).root_element()), "onetwo");
+}

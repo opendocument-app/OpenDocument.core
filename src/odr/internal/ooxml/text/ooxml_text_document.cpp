@@ -470,8 +470,13 @@ public:
   [[nodiscard]] ElementIdentifier
   element_append_text(const ElementIdentifier element_id,
                       const std::string &text) const override {
+    const ElementType type = element_type(element_id);
+    if (type != ElementType::paragraph && type != ElementType::span &&
+        type != ElementType::link) {
+      throw UnsupportedOperation();
+    }
     ElementIdentifier run_id = element_id;
-    if (element_type(element_id) != ElementType::span) {
+    if (type != ElementType::span) {
       pugi::xml_node parent = get_node(element_id);
       pugi::xml_node run = parent.append_child("w:r");
       if (const pugi::xml_node mark = parent.child("w:pPr").child("w:rPr");

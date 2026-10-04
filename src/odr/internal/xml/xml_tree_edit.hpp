@@ -52,6 +52,7 @@ public:
     if (type == ElementType::sheet_cell || type == ElementType::table_column) {
       throw UnsupportedOperation();
     }
+    require_owned_node_(element_id);
     const NodeSpan span = node_span(element_id);
     m_registry->unlink_child(element_id);
     m_registry->invalidate(element_id);
@@ -64,6 +65,7 @@ public:
   /// it will split through.
   ElementIdentifier split(const ElementIdentifier element_id,
                           const ElementIdentifier after_id) const {
+    require_owned_node_(element_id);
     ElementIdentifier stays_id = after_id;
     ElementIdentifier level_id = element_id;
 
@@ -116,6 +118,8 @@ public:
     if (next_id == null_element_id) {
       throw std::invalid_argument("TreeEditor::merge_next: nothing follows");
     }
+    require_owned_node_(element_id);
+    require_owned_node_(next_id);
     move_children_(next_id, null_element_id, element_id);
     remove(next_id);
   }
@@ -129,10 +133,23 @@ public:
 private:
   Registry *m_registry{nullptr};
 
+  /// Synthetic wrappers share a node and need format-specific structural edits.
+  void require_owned_node_(const ElementIdentifier id) const {
+    const auto &element = m_registry->element_at(id);
+    for (const ElementIdentifier neighbour :
+         {element.parent_id, element.first_child_id}) {
+      if (neighbour != null_element_id &&
+          m_registry->element_at(neighbour).node == element.node) {
+        throw UnsupportedOperation();
+      }
+    }
+  }
+
   /// A copy of @p element_id right after it, with what the format says about
   /// it and none of its content.
   ElementIdentifier
   clone_shell_after_(const ElementIdentifier element_id) const {
+    require_owned_node_(element_id);
     const pugi::xml_node node = m_registry->element_at(element_id).node;
     const ElementType type = m_registry->element_at(element_id).type;
 
