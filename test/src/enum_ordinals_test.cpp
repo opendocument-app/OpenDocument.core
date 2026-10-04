@@ -300,6 +300,7 @@ TEST(EnumOrdinals, horizontal_align) {
   EXPECT_EQ(ordinal(HorizontalAlign::left), 0);
   EXPECT_EQ(ordinal(HorizontalAlign::center), 1);
   EXPECT_EQ(ordinal(HorizontalAlign::right), 2);
+  EXPECT_EQ(ordinal(HorizontalAlign::general), 3);
 }
 
 TEST(EnumOrdinals, vertical_align) {

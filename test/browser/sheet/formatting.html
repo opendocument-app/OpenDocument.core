@@ -259,6 +259,23 @@
       check("a chord typed into a field is the field's", computed(cell(0, 2)).fontStyle !== "italic");
       field.remove();
 
+      note("align null");
+      odr.sheet.pin({ column: 0, row: 2 });
+      odr.sheet.select({ column: 2, row: 2 });
+      odr.editing.format({ align: "center" });
+      check("a number cell takes center", computed(cell(0, 2)).textAlign === "center");
+      check("null is an alignment the op carries", odr.editing.format({ align: null }) === true);
+      check("a number goes right again", computed(cell(0, 2)).textAlign === "right");
+      check("a string at its start, which is the right in a right-to-left sheet", computed(cell(1, 2)).textAlign === "start");
+      check(
+        "and the op says null",
+        ops().filter(function (op) {
+          return op.op === "setCellStyle" && op.column === 0 && op.row === 2;
+        })[0].style.align === null
+      );
+      cell(1, 2).classList.add("odr-value-type-float");
+      check("a later number follows its type", computed(cell(1, 2)).textAlign === "right");
+
       odr.editing.committed();
       check("a save resets the log", ops().length === 0);
     </script>

@@ -58,7 +58,8 @@ void odr_python::bind_style(py::module_ &m) {
   py::enum_<odr::HorizontalAlign>(m, "HorizontalAlign")
       .value("left", odr::HorizontalAlign::left)
       .value("center", odr::HorizontalAlign::center)
-      .value("right", odr::HorizontalAlign::right);
+      .value("right", odr::HorizontalAlign::right)
+      .value("general", odr::HorizontalAlign::general);
 
   py::enum_<odr::VerticalAlign>(m, "VerticalAlign")
       .value("top", odr::VerticalAlign::top)

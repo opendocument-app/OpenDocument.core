@@ -425,6 +425,12 @@ void Style::resolve_paragraph_style_(const pugi::xml_node node,
   const pugi::xml_node paragraph_properties =
       node.child("style:paragraph-properties");
 
+  // [ODF 1.2] 20.373; LibreOffice drops only the inherited alignment
+  if (std::string_view(node.child("style:table-cell-properties")
+                           .attribute("style:text-align-source")
+                           .value()) == "value-type") {
+    result.text_align.reset();
+  }
   if (const std::optional<TextAlign> text_align =
           read_text_align(paragraph_properties.attribute("fo:text-align"))) {
     result.text_align = text_align;
@@ -829,6 +835,8 @@ const char *text_align_value(const HorizontalAlign align) {
     return "center";
   case HorizontalAlign::right:
     return "right";
+  case HorizontalAlign::general:
+    break;
   }
   return "left";
 }
@@ -868,7 +876,11 @@ std::string StyleRegistry::create_cell_style(pugi::xml_node automatic_styles,
                        "fo:background-color",
                        color_value(*cell.background_color).c_str());
   }
-  if (cell.horizontal_align.has_value()) {
+  if (cell.horizontal_align == HorizontalAlign::general) {
+    xml::set_attribute(properties_of(node, "style:table-cell-properties"),
+                       "style:text-align-source", "value-type");
+    node.child("style:paragraph-properties").remove_attribute("fo:text-align");
+  } else if (cell.horizontal_align.has_value()) {
     xml::set_attribute(properties_of(node, "style:table-cell-properties"),
                        "style:text-align-source", "fix");
     xml::set_attribute(properties_of(node, "style:paragraph-properties"),

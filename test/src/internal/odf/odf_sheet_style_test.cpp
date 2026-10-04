@@ -227,6 +227,61 @@ TEST(OdfSheetStyle, an_alignment_is_fixed_on_the_cell) {
   EXPECT_NE(xml.find(R"(fo:text-align="right")"), std::string::npos);
 }
 
+TEST(OdfSheetStyle, general_aligns_by_the_value_type_again) {
+  const Document document = document_of(flat_sheet(
+      string_cell("a", "Right") + string_cell("b"), "",
+      R"(<style:style style:name="Right" style:family="table-cell">)"
+      R"(<style:table-cell-properties style:text-align-source="fix"/>)"
+      R"(<style:paragraph-properties fo:text-align="end"/></style:style>)"));
+  const Sheet sheet = first_sheet(document);
+  const auto align_at = [&sheet](const std::uint32_t column) {
+    return sheet.cell(column, 0)
+        .first_child()
+        .as_paragraph()
+        .style()
+        .text_align;
+  };
+
+  TableCellStyle right;
+  right.horizontal_align = HorizontalAlign::right;
+  TableCellStyle general;
+  general.horizontal_align = HorizontalAlign::general;
+  sheet.set_cell_style(0, 0, general, {});
+  sheet.set_cell_style(1, 0, right, {});
+  sheet.set_cell_style(1, 0, general, {});
+
+  EXPECT_EQ(align_at(0), std::nullopt);
+  EXPECT_EQ(align_at(1), std::nullopt);
+  const std::string xml = saved(document);
+  EXPECT_EQ(count(xml, R"(style:text-align-source="value-type")"), 2);
+  EXPECT_EQ(count(xml, R"(fo:text-align="right")"), 1);
+}
+
+TEST(OdfSheetStyle, value_type_drops_the_inherited_alignment_only) {
+  const std::string parent =
+      R"(<style:style style:name="Right" style:family="table-cell">)"
+      R"(<style:paragraph-properties fo:text-align="end"/></style:style>)";
+  const auto align_of = [&parent](const std::string &own) {
+    const Document document = document_of(flat_sheet(
+        string_cell("a", "ce1"),
+        R"(<style:style style:name="ce1" style:family="table-cell")"
+        R"( style:parent-style-name="Right">)"
+        R"(<style:table-cell-properties style:text-align-source="value-type"/>)" +
+            own + "</style:style>",
+        parent));
+    return first_sheet(document)
+        .cell(0, 0)
+        .first_child()
+        .as_paragraph()
+        .style()
+        .text_align;
+  };
+
+  EXPECT_EQ(align_of(""), std::nullopt);
+  EXPECT_EQ(align_of(R"(<style:paragraph-properties fo:text-align="center"/>)"),
+            TextAlign::center);
+}
+
 TEST(OdfSheetStyle, a_formula_cell_takes_a_style) {
   const Document document = document_of(flat_sheet(
       R"(<table:table-cell table:formula="of:=1+1" office:value-type="float")"

@@ -237,3 +237,17 @@ TEST(OoxmlSpreadsheetStyleWrite, the_op_carries_the_fill_and_the_text_keys) {
   EXPECT_EQ(text_style_at(sheet, 0).font_weight, FontWeight::bold);
   EXPECT_EQ(sheet.cell_style(0, 0).horizontal_align, HorizontalAlign::center);
 }
+
+TEST(OoxmlSpreadsheetStyleWrite, align_null_is_general_again) {
+  const Document document = decode(workbook(one_string));
+
+  document.edit(R"({"version": 2, "ops": [)"
+                R"({"op": "setCellStyle", "sheet": 0, "column": 0, "row": 0,)"
+                R"( "style": {"align": "right"}},)"
+                R"({"op": "setCellStyle", "sheet": 0, "column": 0, "row": 0,)"
+                R"( "style": {"align": null}}]})");
+
+  EXPECT_EQ(first_sheet(reopened(document)).cell_style(0, 0).horizontal_align,
+            std::nullopt);
+  EXPECT_EQ(count(styles_of(document), R"(horizontal="general")"), 1);
+}

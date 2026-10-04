@@ -413,6 +413,8 @@ StyleRegistry::create_cell_format(const std::uint32_t base,
       horizontal = "center";
     } else if (*cell_style.horizontal_align == HorizontalAlign::right) {
       horizontal = "right";
+    } else if (*cell_style.horizontal_align == HorizontalAlign::general) {
+      horizontal = "general";
     }
     xml::set_attribute(alignment, "horizontal", horizontal);
     xml::set_attribute(xf, "applyAlignment", "1");

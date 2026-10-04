@@ -46,6 +46,7 @@ typedef NS_ENUM(NSInteger, ODRHorizontalAlign) {
   ODRHorizontalAlignLeft = 0,
   ODRHorizontalAlignCenter,
   ODRHorizontalAlignRight,
+  ODRHorizontalAlignGeneral,
 } NS_SWIFT_NAME(HorizontalAlign);
 
 typedef NS_ENUM(NSInteger, ODRVerticalAlign) {

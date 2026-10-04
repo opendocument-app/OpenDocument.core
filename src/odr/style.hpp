@@ -55,6 +55,9 @@ enum class HorizontalAlign {
   left,
   center,
   right,
+  /// A cell only: by its value type, as an unstated alignment reads. Only a
+  /// write takes it.
+  general,
 };
 
 /// Collection of vertical alignments.
