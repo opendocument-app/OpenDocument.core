@@ -399,3 +399,33 @@ TEST(OoxmlSpreadsheetStyleWrite, the_ops_name_a_row_and_a_column) {
   EXPECT_EQ(fill_at(sheet, 0, 2), 0x00ff00u);
   EXPECT_EQ(fill_at(sheet, 4, 7), 0x0000ffu);
 }
+
+/// LibreOffice reads a `c` without `s` through its row and its column, for
+/// the text as much as for the fill.
+TEST(OoxmlSpreadsheetStyleWrite, a_cell_without_s_shows_its_row_and_column) {
+  const std::string bold_styles =
+      R"(<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font>)"
+      R"(<font><b/><sz val="11"/><name val="Calibri"/></font></fonts>)"
+      R"(<fills count="2"><fill><patternFill patternType="none"/></fill>)"
+      R"(<fill><patternFill patternType="gray125"/></fill></fills>)"
+      R"(<borders count="1"><border/></borders>)"
+      R"(<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>)"
+      R"(<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>)"
+      R"(<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>)"
+      R"(</cellXfs>)";
+  const Document document = decode(workbook(
+      R"(<row r="1" s="1" customFormat="1">)"
+      R"(<c r="A1" t="inlineStr"><is><t>a</t></is></c></row>)"
+      R"(<row r="2"><c r="B2" t="inlineStr"><is><t>b</t></is></c>)"
+      R"(<c r="C2" t="inlineStr"><is><t>c</t></is></c></row>)",
+      "", "", "", R"(<cols><col min="2" max="2" width="9" style="1"/></cols>)",
+      bold_styles));
+  const Sheet sheet = first_sheet(document);
+
+  EXPECT_EQ(sheet.cell(0, 0).first_child().as_text().style().font_weight,
+            FontWeight::bold);
+  EXPECT_EQ(sheet.cell(1, 1).first_child().as_text().style().font_weight,
+            FontWeight::bold);
+  EXPECT_NE(sheet.cell(2, 1).first_child().as_text().style().font_weight,
+            FontWeight::bold);
+}

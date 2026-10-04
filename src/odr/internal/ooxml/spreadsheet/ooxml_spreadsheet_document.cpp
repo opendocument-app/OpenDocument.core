@@ -471,9 +471,9 @@ public:
             .c_str());
   }
 
-  /// [ECMA-376] 18.3.1.4: a position without `s` shows its row's `s` where
-  /// the row states `customFormat`, else its column's `style`. None where
-  /// nothing states one.
+  /// A position without `s` shows its row's `s` where the row states
+  /// `customFormat`, else its column's `style`, as LibreOffice reads it;
+  /// 18.3.1.4 alone would default `s` to 0. None where nothing states one.
   static std::optional<std::uint32_t>
   shown_format(const pugi::xml_node cell, const pugi::xml_node row_node,
                const pugi::xml_node column_node) {
@@ -539,14 +539,13 @@ public:
         xml::set_attribute(before, "max", std::to_string(column).c_str());
       }
     } else {
-      node = cols.append_child("col");
-      for (const pugi::xml_node col : cols.children("col")) {
-        if (col.attribute("min").as_uint() > column + 1) {
-          cols.remove_child(node);
-          node = cols.insert_child_before("col", col);
-          break;
-        }
-      }
+      // 18.3.1.17 states the `col`s in column order
+      const pugi::xml_node next =
+          cols.find_child([column](const pugi::xml_node col) {
+            return col.attribute("min").as_uint() > column + 1;
+          });
+      node = next ? cols.insert_child_before("col", next)
+                  : cols.append_child("col");
       const pugi::xml_node format = sheet_node.child("sheetFormatPr");
       const pugi::xml_attribute width = format.attribute("defaultColWidth");
       // Excel's own default for an 11pt Calibri
@@ -958,8 +957,13 @@ private:
   [[nodiscard]] ResolvedStyle
   get_partial_cell_style(const ElementIdentifier element_id) const {
     const pugi::xml_node node = get_node(element_id);
-    if (const pugi::xml_attribute style_id = node.attribute("s")) {
-      return m_document->style_registry().cell_style(style_id.as_uint());
+    const pugi::xml_node column_node =
+        m_registry->sheet_element_at(element_parent(element_id))
+            .column_node(
+                m_registry->sheet_cell_element_at(element_id).position.column);
+    if (const std::optional<std::uint32_t> format =
+            shown_format(node, node.parent(), column_node)) {
+      return m_document->style_registry().cell_style(*format);
     }
     return {};
   }
