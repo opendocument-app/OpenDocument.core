@@ -569,9 +569,9 @@ stays in order. An undo of an insert removes the rows, and an undo of a
 delete puts the kept rows back.
 
 The stale marks walk the coalesced log in order. A write marks the formula
-cells that read it, a delete marks the ones that read a removed row, and each
-structural op moves what every formula cell reads and where it sits, as
-decision 21 states. The marks then spread to the cells that read a marked
+cells that read it, a delete marks the ones that read a removed row, an
+insert the ones whose range it grows, and each structural op moves what every
+formula cell reads and where it sits, as decision 21 states. The marks then spread to the cells that read a marked
 cell. A formula cell keeps the spelling of its formula in the page until the
 host renders again.
 

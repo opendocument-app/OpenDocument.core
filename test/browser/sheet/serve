@@ -24,5 +24,6 @@ serve(
         "lines.html",
         "locale.html",
         "dates.html",
+        "rows.html",
     ),
 )
