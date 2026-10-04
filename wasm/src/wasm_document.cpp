@@ -50,6 +50,29 @@ emscripten::val is_savable(const Handle handle, const bool encrypted) {
   });
 }
 
+/// `{changed, circular, unevaluated}`, each a list of `{sheet, column, row}`.
+emscripten::val recalculate(const Handle handle) {
+  return guarded([&] {
+    const Recalculation result = document_of(session(handle)).recalculate();
+    const auto list = [](const std::vector<SheetPosition> &positions) {
+      emscripten::val array = emscripten::val::array();
+      for (const SheetPosition &position : positions) {
+        emscripten::val entry = emscripten::val::object();
+        entry.set("sheet", position.sheet);
+        entry.set("column", position.cell.column);
+        entry.set("row", position.cell.row);
+        array.call<void>("push", entry);
+      }
+      return array;
+    };
+    emscripten::val object = emscripten::val::object();
+    object.set("changed", list(result.changed()));
+    object.set("circular", list(result.circular()));
+    object.set("unevaluated", list(result.unevaluated()));
+    return ok(object);
+  });
+}
+
 /// The element the operation names, refusing an id this document does not
 /// hold. Ids are what crosses instead of elements: the render writes them into
 /// the page as `data-odr-id`, and a plain number needs no handle.
@@ -291,6 +314,7 @@ EMSCRIPTEN_BINDINGS(odr_document) {
   emscripten::function("isEditable", &odr::wasm::is_editable);
   emscripten::function("isSavable", &odr::wasm::is_savable);
   emscripten::function("locale", &odr::wasm::locale);
+  emscripten::function("recalculate", &odr::wasm::recalculate);
   emscripten::function("removeElement", &odr::wasm::remove_element);
   emscripten::function("insertTextBefore", &odr::wasm::insert_text_before);
   emscripten::function("insertTextAfter", &odr::wasm::insert_text_after);

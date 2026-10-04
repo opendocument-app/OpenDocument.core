@@ -66,6 +66,36 @@ Java_app_opendocument_core_Document_editNative(JNIEnv *env, jobject,
   });
 }
 
+extern "C" JNIEXPORT jintArray JNICALL
+Java_app_opendocument_core_Document_recalculateNative(JNIEnv *env, jobject,
+                                                      jlong handle) {
+  return guarded(env, [&]() -> jintArray {
+    const odr::Recalculation result =
+        from_handle<odr::Document>(handle)->recalculate();
+    // three counts, then each position as its sheet, column and row
+    std::vector<jint> stated;
+    for (const auto *positions :
+         {&result.changed(), &result.circular(), &result.unevaluated()}) {
+      stated.push_back(static_cast<jint>(positions->size()));
+    }
+    for (const auto *positions :
+         {&result.changed(), &result.circular(), &result.unevaluated()}) {
+      for (const odr::SheetPosition &position : *positions) {
+        stated.push_back(static_cast<jint>(position.sheet));
+        stated.push_back(static_cast<jint>(position.cell.column));
+        stated.push_back(static_cast<jint>(position.cell.row));
+      }
+    }
+    jintArray array = env->NewIntArray(static_cast<jsize>(stated.size()));
+    if (array == nullptr) {
+      return nullptr;
+    }
+    env->SetIntArrayRegion(array, 0, static_cast<jsize>(stated.size()),
+                           stated.data());
+    return array;
+  });
+}
+
 extern "C" JNIEXPORT jboolean JNICALL
 Java_app_opendocument_core_Document_isEditableNative(JNIEnv *env, jobject,
                                                      jlong handle) {

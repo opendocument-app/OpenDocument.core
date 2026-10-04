@@ -6,6 +6,39 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/// A cell of a sheet, by the sheet's ordinal — `odr::SheetPosition`.
+NS_SWIFT_NAME(SheetPosition)
+@interface ODRSheetPosition : NSObject
+
+- (instancetype)initWithSheet:(uint32_t)sheet
+                       column:(uint32_t)column
+                          row:(uint32_t)row NS_DESIGNATED_INITIALIZER;
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
+@property(nonatomic, readonly) uint32_t sheet;
+@property(nonatomic, readonly) uint32_t column;
+@property(nonatomic, readonly) uint32_t row;
+
+@end
+
+/// What `-[ODRDocument recalculateWithError:]` did — `odr::Recalculation`.
+/// Each list is in reading order.
+NS_SWIFT_NAME(Recalculation)
+@interface ODRRecalculation : NSObject
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
+/// The formula cells whose result changed, or that had none before.
+@property(nonatomic, readonly) NSArray<ODRSheetPosition *> *changed;
+/// The cells of a cycle, which have no result.
+@property(nonatomic, readonly) NSArray<ODRSheetPosition *> *circular;
+/// The stale formula cells nothing here computes.
+@property(nonatomic, readonly) NSArray<ODRSheetPosition *> *unevaluated;
+
+@end
+
 /// A decoded document — `odr::Document`. Obtained from `ODRDocumentFile`.
 NS_SWIFT_NAME(Document)
 @interface ODRDocument : NSObject
@@ -38,6 +71,11 @@ NS_SWIFT_NAME(Document)
 /// of this.
 - (BOOL)edit:(NSString *)operations
        error:(NSError **)error NS_SWIFT_NAME(edit(operations:));
+
+/// Computes the stale formula cells and writes each result into the
+/// document. A save does so first where an edit left one stale.
+- (nullable ODRRecalculation *)recalculateWithError:(NSError **)error
+    NS_SWIFT_NAME(recalculate());
 
 - (BOOL)saveTo:(NSString *)path error:(NSError **)error;
 - (BOOL)saveTo:(NSString *)path

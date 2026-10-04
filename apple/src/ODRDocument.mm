@@ -10,10 +10,73 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <vector>
 
 using odr::apple::guarded;
 using odr::apple::guarded_value;
 using odr::apple::to_string;
+
+@implementation ODRSheetPosition
+
+- (instancetype)initWithSheet:(uint32_t)sheet
+                       column:(uint32_t)column
+                          row:(uint32_t)row {
+  if ((self = [super init])) {
+    _sheet = sheet;
+    _column = column;
+    _row = row;
+  }
+  return self;
+}
+
+- (BOOL)isEqual:(id)other {
+  if (![other isKindOfClass:[ODRSheetPosition class]]) {
+    return NO;
+  }
+  ODRSheetPosition *const position = other;
+  return _sheet == position.sheet && _column == position.column &&
+         _row == position.row;
+}
+
+- (NSUInteger)hash {
+  return (_sheet * 31u + _column) * 31u + _row;
+}
+
+- (NSString *)description {
+  return
+      [NSString stringWithFormat:@"SheetPosition(sheet=%u, column=%u, row=%u)",
+                                 _sheet, _column, _row];
+}
+
+@end
+
+@interface ODRRecalculation ()
+- (instancetype)initWithResult:(const odr::Recalculation &)result;
+@end
+
+@implementation ODRRecalculation
+
+- (instancetype)initWithResult:(const odr::Recalculation &)result {
+  if ((self = [super init])) {
+    const auto list = [](const std::vector<odr::SheetPosition> &positions) {
+      NSMutableArray<ODRSheetPosition *> *const array =
+          [NSMutableArray arrayWithCapacity:positions.size()];
+      for (const odr::SheetPosition &position : positions) {
+        [array addObject:[[ODRSheetPosition alloc]
+                             initWithSheet:position.sheet
+                                    column:position.cell.column
+                                       row:position.cell.row]];
+      }
+      return [array copy];
+    };
+    _changed = list(result.changed());
+    _circular = list(result.circular());
+    _unevaluated = list(result.unevaluated());
+  }
+  return self;
+}
+
+@end
 
 @interface ODRDocument ()
 - (nullable ODRText *)wrapText:(odr::Text)handle;
@@ -113,6 +176,12 @@ using odr::apple::to_string;
     _handle->save(out, to_string(password));
     const std::string bytes = out.str();
     return [NSData dataWithBytes:bytes.data() length:bytes.size()];
+  });
+}
+
+- (nullable ODRRecalculation *)recalculateWithError:(NSError **)error {
+  return guarded(error, [&]() -> ODRRecalculation * {
+    return [[ODRRecalculation alloc] initWithResult:_handle->recalculate()];
   });
 }
 

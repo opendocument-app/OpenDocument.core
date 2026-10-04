@@ -62,6 +62,14 @@ public final class Document extends NativeResource {
     editNative(handle(), diff);
   }
 
+  /**
+   * Computes the stale formula cells and writes each result into the document. A save does so
+   * first where an edit left one stale.
+   */
+  public Recalculation recalculate() {
+    return Recalculation.fromNative(recalculateNative(handle()));
+  }
+
   /** The element {@link Element#identifier()} handed out, or {@code null}. */
   public Element elementById(long identifier) {
     long h = elementByIdNative(handle(), identifier);
@@ -120,6 +128,8 @@ public final class Document extends NativeResource {
   }
 
   private static native void destroy(long handle);
+
+  private native int[] recalculateNative(long handle);
 
   private native void editNative(long handle, String diff);
 
