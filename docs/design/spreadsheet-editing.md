@@ -450,6 +450,131 @@ style's language (decision 14). An xlsx date takes the names of the language
 its format code states, `[$-419]`, and English ones where it states none, as
 the file does not say what the reader's system writes.
 
+## Inserted and deleted rows
+
+Status: planned. The steps land as a stack, in this order:
+
+1. `internal/formula` moves the references of a formula for an inserted or a
+   deleted row.
+2. `Sheet::insert_rows`, `Sheet::delete_rows` and their ops, written into
+   `.ods`.
+3. The same written into `.xlsx`: the cells, the formulas, the names and the
+   merges.
+4. The rest of what an xlsx worksheet addresses: conditional formats,
+   validations, links, the filter, the view, drawings and comments.
+5. The same written into `.csv`.
+6. The sheet editor inserts and deletes the selected rows.
+7. `Sheet::insert_rows` and `Sheet::delete_rows` in the python, java,
+   objective-c and npm bindings.
+
+Columns follow the same path after this, with the same decisions turned by
+ninety degrees.
+
+### 20. Two ops, each a row and a count
+
+```json
+{"op": "insertRows", "sheet": 0, "row": 2, "count": 1}
+{"op": "deleteRows", "sheet": 0, "row": 2, "count": 3}
+```
+
+`insertRows` moves the rows from `row` on down by `count`, and the new rows
+are empty. `deleteRows` removes `count` rows from `row` on, and moves the
+rows below up. `Sheet::insert_rows(row, count)` and
+`Sheet::delete_rows(row, count)` are the API, and a count of zero does
+nothing.
+
+A new row is plain: its cells take the default of their column, and the row
+the default height. Excel and LibreOffice give it the format of the row above,
+but the page cannot know what that resolves to, and an edit that the page
+shows one way and the file states another is worse than a plain row.
+
+**Why a count:** a selection of rows is one op, so one undo step is one op,
+and a writer cuts a repeated run once.
+
+### 21. A reference moves with the cell it names
+
+Every formula of the document that names the edited sheet moves, on every
+sheet, with the formula's own sheet where it names none.
+
+- An insert moves each corner of a reference at or past `row` down by
+  `count`, absolute or not, as a cut and paste does. So a range grows by an
+  insert inside it and by one at its first row moves, and an insert right
+  after its last row leaves it, as Excel and LibreOffice do.
+- A delete moves each corner past the removed rows up by `count`. A corner
+  inside them moves to the edge of the rows that stay. A cell reference
+  inside them, and a range all inside them, becomes `#REF!`.
+- A whole-column reference (`A:A`) does not move, and a whole-row one
+  (`3:5`) moves as a range does.
+- A reference into another document never moves.
+
+A formula is written back only where a reference in it moved, so the
+others keep their spelling. A formula that does not parse stays as it is.
+
+**Why not `formula::shift`:** a shift copies a formula to another cell and
+keeps an absolute axis. A structural edit moves the cell itself, and `$A$5`
+names that cell as `A5` does.
+
+The dependency graph is built again after a structural op, off the moved
+formulas, the next time an edit asks it.
+
+### 22. A writer moves what the file addresses, and refuses a cut merge
+
+- `.ods` states rows in order, so an insert cuts the repeated run it falls
+  in and puts empty rows there, and a delete cuts the runs at both ends and
+  removes what is between. A sheet that ends in an empty repeated run gives
+  up as many rows as an insert adds, so its extent stays the same. The
+  named ranges and expressions, the print ranges, and every attribute that
+  states a cell or a range address move: the end cell of a drawing, a
+  conditional format's range, a validation's base cell and a database range.
+- `.xlsx` numbers every `row` and `c`, so the writer states the numbers
+  again past the edit. The `dimension`, the merges, the defined names and
+  every formula move. A shared formula whose members would read something
+  else after the move is written out as one formula per cell. `calcChain.xml`
+  is dropped, because it lists positions and Excel builds it again.
+  Step 4 moves the ranges of the conditional formats, the validations, the
+  links and the filter, the selection and the pane of the view, the drawing
+  anchors and the comments.
+- `.csv` inserts empty lines and removes lines.
+
+An edit refuses (`UnsupportedOperation`) before it writes anything:
+
+- where an insert falls strictly inside a merge, or a delete removes part of
+  one but not all of it;
+- where an `.xlsx` array formula reaches over the edge of the edit;
+- where an insert would push a stated cell past the last row of the grid.
+
+The formulas inside a conditional format or a validation condition, the
+ranges a chart reads and a pivot table's source do not move yet.
+
+### 23. The sheet editor acts on the selected rows
+
+`odr.editing.insertRows(where)` inserts as many rows as the selection spans,
+`"above"` it by default or `"below"` it. `odr.editing.deleteRows()` removes
+the rows of the selection. Where the config gives the scripts the shortcuts,
+Ctrl or Cmd with Shift and `+` inserts above and Ctrl or Cmd with `-`
+deletes, on a header selection only, as in Excel. A merge that the edit cuts
+refuses with `unsupportedEdit`.
+
+`spreadsheet.js` owns the rows of the page, so `odr.sheet` gains
+`insertRows(row, count)` and `deleteRows(row, count)`. They put empty rows in
+the page or take the rows out, state the labels of the rows below again, and
+rebuild the position map. A deleted row is kept aside for an undo. After a
+sort, a new row goes where the row it names is shown.
+
+### 24. A structural op splits the log
+
+Coalescing keys a cell by position, and an insert moves the positions. So a
+structural op is a barrier: no op merges with one across it, and the log
+stays in order. An undo of an insert removes the rows, and an undo of a
+delete puts the kept rows back.
+
+The stale marks walk the coalesced log in order. A write marks the formula
+cells that read it, a delete marks the ones that read a removed row, and each
+structural op moves what every formula cell reads and where it sits, as
+decision 21 states. The marks then spread to the cells that read a marked
+cell. A formula cell keeps the spelling of its formula in the page until the
+host renders again.
+
 ## Formulas, read side
 
 - `internal/formula` parses `of:=SUM([.A1:.B2])` (`table:formula`) and
@@ -474,4 +599,5 @@ the file does not say what the reader's system writes.
   incremental recompute in topological order with cycles reported, and
   `Document::recalculate(operations)` returning the changed cells. Formula
   input in the editor comes with it.
-- Insert and delete of rows and columns.
+- Inserted and deleted rows, planned above (decisions 20 to 24).
+- Inserted and deleted columns.
