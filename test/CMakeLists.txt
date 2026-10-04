@@ -54,6 +54,7 @@ add_executable(odr_test
 
         "src/internal/cfb/cfb_archive_test.cpp"
 
+        "src/internal/common/container_bounds_test.cpp"
         "src/internal/common/filesystem_test.cpp"
         "src/internal/common/list_numbering_test.cpp"
         "src/internal/common/path_test.cpp"
