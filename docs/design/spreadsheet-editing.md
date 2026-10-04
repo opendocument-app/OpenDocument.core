@@ -391,7 +391,7 @@ the formatter runs in C++ only, as the evaluator will (decision 5).
 
 ## Typed dates and times
 
-Status: planned. The steps land as a stack, in this order:
+Status: landed. The steps landed as a stack, in this order:
 
 1. A date or time value states its serial, and the op carries one.
 2. The ods writer writes a date and a time.
@@ -430,9 +430,11 @@ the file.
 
 ISO 8601 (`2025-01-02`) always reads as a date. Otherwise the order of day,
 month and year and the separator are the ones `Intl.DateTimeFormat` writes for
-the locale, so `1/2/2025` is 2 January in `en-US` and 1 February in `en-GB`. A
-two-digit year below 30 is 20xx, else 19xx, as Excel reads one. A time is
-`h:mm`, `h:mm:ss`, with `AM`/`PM`, alone or after a date.
+the document's locale, else the reader's, since a file that states none has
+no order of its own, so `1/2/2025` is 2 January in `en-US` and 1 February in
+`en-GB`. A two-digit year below 30 is 20xx, else 19xx, as Excel reads one. A
+time is `h:mm`, `h:mm:ss`, with `AM`/`PM`, alone or after a date. A time with a
+sign is a negative duration.
 
 An editable render states `data-odr-value` on a date or time cell, so the
 editor opens the cell on the locale's spelling of its serial, and a commit of
@@ -464,6 +466,5 @@ Month and day names stay English in what C++ formats: no locale data ships.
   incremental recompute in topological order with cycles reported, and
   `Document::recalculate(operations)` returning the changed cells. Formula
   input in the editor comes with it.
-- Typed dates and times, planned above (decisions 17 to 19).
 - The locale's month and day names in a formatted date.
 - Insert and delete of rows and columns.

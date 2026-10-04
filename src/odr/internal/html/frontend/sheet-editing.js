@@ -158,8 +158,144 @@
     )
   );
 
+  // A date is typed in the document's order, else the reader's: a file that
+  // states no locale has no order of its own. Gregorian and Latin digits, so
+  // what `spell` writes `parse` reads back.
+  var DATE_FORMAT = (function () {
+    var options = {
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      timeZone: "UTC",
+      calendar: "gregory",
+      numberingSystem: "latn",
+    };
+    var locale =
+      document.body.getAttribute("data-odr-locale") ||
+      navigator.language ||
+      "en-US";
+    try {
+      return new Intl.DateTimeFormat(locale, options);
+    } catch (e) {
+      return new Intl.DateTimeFormat("en-US", options);
+    }
+  })();
+
+  /// The order of day, month and year, as `dmy`, and the sign between them.
+  var DATE_ORDER = (function () {
+    var order = "";
+    var separator = null;
+    DATE_FORMAT.formatToParts(Date.UTC(2025, 10, 22)).forEach(function (part) {
+      if (part.type === "day" || part.type === "month" || part.type === "year") {
+        order += part.type.charAt(0);
+      } else if (part.type === "literal" && separator === null) {
+        separator = part.value.trim() || part.value;
+      }
+    });
+    return order.length === 3 && separator !== null
+      ? { order: order, separator: separator }
+      : { order: "mdy", separator: "/" };
+  })();
+
+  function escaped(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  var ISO_DATE = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
+  var LOCAL_DATE = new RegExp(
+    "^(\\d{1,4})\\s*S\\s*(\\d{1,2})\\s*S\\s*(\\d{1,4})\\s*S?$".replace(
+      /S/g,
+      escaped(DATE_ORDER.separator)
+    )
+  );
+  var TIME =
+    /^(-?)(\d{1,4}):(\d{2})(?::(\d{2})(?:[.,](\d{1,3}))?)?(?:\s*([ap])\.?m?\.?)?$/i;
+
+  /// Days since 1899-12-30, or null where the date is none.
+  function civilDays(year, month, day) {
+    var date = new Date(0);
+    date.setUTCFullYear(year, month - 1, day);
+    if (
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day
+    ) {
+      return null;
+    }
+    return date.getTime() / 86400000 + 25569;
+  }
+
+  /// A typed date as days since 1899-12-30; a two-digit year below 30 is 20xx,
+  /// as Excel reads one.
+  function readDate(text) {
+    var iso = ISO_DATE.exec(text);
+    if (iso !== null) {
+      return civilDays(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+    }
+    var local = LOCAL_DATE.exec(text);
+    if (local === null) {
+      return null;
+    }
+    var parts = {};
+    for (var i = 0; i < 3; ++i) {
+      parts[DATE_ORDER.order.charAt(i)] = local[i + 1];
+    }
+    var year = Number(parts.y);
+    if (parts.y.length <= 2) {
+      year += year < 30 ? 2000 : 1900;
+    }
+    return civilDays(year, Number(parts.m), Number(parts.d));
+  }
+
+  /// A typed time as days; an hour past 23 or a sign is a duration, without
+  /// `AM`/`PM`.
+  function readTime(text) {
+    var time = TIME.exec(text);
+    if (time === null) {
+      return null;
+    }
+    var hours = Number(time[2]);
+    var minutes = Number(time[3]);
+    var seconds = Number(time[4] || 0) + Number("0." + (time[5] || "0"));
+    if (minutes > 59 || seconds >= 60) {
+      return null;
+    }
+    if (time[6] !== undefined) {
+      if (time[1] !== "" || hours < 1 || hours > 12) {
+        return null;
+      }
+      hours = (hours % 12) + (time[6].toLowerCase() === "p" ? 12 : 0);
+    }
+    var result = (hours * 3600 + minutes * 60 + seconds) / 86400;
+    return time[1] !== "" ? -result : result;
+  }
+
+  /// A date, a time, or a date and a time, or null.
+  function readMoment(text) {
+    var date = readDate(text);
+    if (date !== null) {
+      return { type: "date", number: date };
+    }
+    var time = readTime(text);
+    if (time !== null) {
+      return { type: "time", number: time };
+    }
+    // a date can hold spaces, `2. 1. 2025`, and so can a time, `6:00 PM`
+    for (var split = text.search(/\s/); split > 0; ) {
+      date = readDate(text.slice(0, split));
+      time = readTime(text.slice(split).trim());
+      if (date !== null && time !== null && time >= 0 && time < 1) {
+        return { type: "date", number: date + time };
+      }
+      var next = text.slice(split + 1).search(/\s/);
+      split = next < 0 ? -1 : split + 1 + next;
+    }
+    return null;
+  }
+
   /// The type follows the string the user typed: a number where the grammar
-  /// says so, a string otherwise, and a leading `'` forces one.
+  /// says so, a date or a time where the locale reads one, a string otherwise,
+  /// and a leading `'` forces one.
   function parse(text) {
     var quoted = text.charAt(0) === "'";
     var content = quoted ? text.slice(1) : text;
@@ -173,7 +309,42 @@
         text: content,
       };
     }
+    var moment = quoted ? null : readMoment(content);
+    if (moment !== null) {
+      moment.text = content;
+      return moment;
+    }
     return { type: "string", text: content };
+  }
+
+  function twoDigits(value) {
+    return (value < 10 ? "0" : "") + value;
+  }
+
+  /// @p seconds as `h:mm`, with seconds where it has them.
+  function spellTime(seconds) {
+    var magnitude = Math.abs(seconds);
+    var result =
+      (seconds < 0 ? "-" : "") +
+      Math.floor(magnitude / 3600) +
+      ":" +
+      twoDigits(Math.floor(magnitude / 60) % 60);
+    return magnitude % 60 !== 0
+      ? result + ":" + twoDigits(magnitude % 60)
+      : result;
+  }
+
+  /// A date or a time as the locale writes one, which `parse` reads back.
+  function spellMoment(value) {
+    // rounded as a whole, so 23:59:59.6 is the next day
+    var seconds = Math.round(value.number * 86400);
+    if (value.type === "time") {
+      return spellTime(seconds);
+    }
+    var days = Math.floor(seconds / 86400);
+    var date = DATE_FORMAT.format(new Date((days - 25569) * 86400000));
+    var time = seconds - days * 86400;
+    return time > 0 ? date + " " + spellTime(time) : date;
   }
 
   /// What the editor opens on: a formatted number its value, and a string
@@ -187,6 +358,12 @@
       return String(value.number).replace(".", DECIMAL);
     }
     if (
+      (value.type === "date" || value.type === "time") &&
+      !same(parse(text), value)
+    ) {
+      return spellMoment(value);
+    }
+    if (
       value.type === "string" &&
       (text.charAt(0) === "=" || !same(parse(text), value))
     ) {
@@ -195,15 +372,23 @@
     return text;
   }
 
-  /// Two numbers are the same where their values are, whatever the text.
+  /// Two numbers are the same where their values are, whatever the text, and
+  /// two dates or times within half a second, the precision `spell` writes.
   function same(one, other) {
-    return (
-      one.type === other.type &&
-      (one.type === "empty" ||
-        (one.type === "number"
-          ? one.number === other.number
-          : one.text === other.text))
-    );
+    if (one.type !== other.type) {
+      return false;
+    }
+    switch (one.type) {
+      case "empty":
+        return true;
+      case "number":
+        return one.number === other.number;
+      case "date":
+      case "time":
+        return Math.abs(one.number - other.number) < 0.5 / 86400;
+      default:
+        return one.text === other.text;
+    }
   }
 
   /// Writes @p value at a position: the cell shows it, and the op joins the

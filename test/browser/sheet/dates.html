@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet date checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <!-- An en-US sheet with date and time cells as `translate` writes them,
+       and an empty cell to type into. -->
+  <body
+    class="odr-body odr-gridlines-soft"
+    data-odr-editable="true"
+    data-odr-keyboard="navigation shortcuts"
+    data-odr-locale="en-US"
+  >
+    <table class="odr-sheet" data-odr-sheet="0">
+      <col class="odr-sheet-gutter" />
+      <col style="width: 120px" />
+      <thead>
+        <tr>
+          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+          <th class="odr-sheet-column-header">A</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="odr-sheet-row-header">1</th>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">2</th>
+          <td class="odr-value-type-date" data-odr-value="45659" style="max-width:0;white-space:nowrap">2-Jan-25</td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">3</th>
+          <td class="odr-value-type-time" data-odr-value="0.770833333333333" style="max-width:0;white-space:nowrap">6:30 PM</td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">4</th>
+          <td class="odr-value-type-date" data-odr-value="45659.999995" style="max-width:0;white-space:nowrap">2-Jan-25</td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">5</th>
+          <td class="odr-value-type-time" data-odr-value="-0.104166666666667" style="max-width:0;white-space:nowrap">(2:30)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="report"></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      function editor() {
+        return document.querySelector(".odr-sheet-editor");
+      }
+      function enter() {
+        editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      }
+      function ops() {
+        return JSON.parse(odr.editing.getOperations()).ops;
+      }
+      function type(text) {
+        odr.editing.editAt(0, 0);
+        editor().value = text;
+        enter();
+        return ops().filter(function (op) {
+          return op.row === 0;
+        })[0].value;
+      }
+      function near(a, b) {
+        return Math.abs(a - b) < 1e-9;
+      }
+
+      odr.editing.enable();
+      var value = type("1/2/2025");
+      check("month first in en-US", value.type === "date" && value.number === 45659 && value.text === "1/2/2025");
+      value = type("2025-01-02");
+      check("ISO always", value.type === "date" && value.number === 45659);
+      value = type("1/2/25");
+      check("a two-digit year below 30 is 20xx", value.number === 45659);
+      value = type("1/2/2025 18:00");
+      check("a date and a time", value.type === "date" && near(value.number, 45659.75));
+      value = type("18:30");
+      check("a time", value.type === "time" && near(value.number, 18.5 / 24));
+      value = type("6:30 pm");
+      check("with pm", value.type === "time" && near(value.number, 18.5 / 24));
+      value = type("12:00 AM");
+      check("12 AM is midnight", value.number === 0);
+      value = type("36:00");
+      check("an hour past 23 is a duration", near(value.number, 1.5));
+      value = type("-1:30");
+      check("a sign is a duration", value.type === "time" && near(value.number, -1.5 / 24));
+      value = type("-1:30 PM");
+      check("which takes no PM", value.type === "string");
+      value = type("2/30/2025");
+      check("a day the month does not have is text", value.type === "string");
+      value = type("13:75");
+      check("and so is a minute past 59", value.type === "string");
+      value = type("'1/2/2025");
+      check("a quote keeps a date text", value.type === "string" && value.text === "1/2/2025");
+
+      check("a date cell reads as its value", odr.sheet.valueAt(0, 1).type === "date");
+      odr.editing.editAt(0, 1);
+      check("and opens in the locale's spelling", editor().value === "1/2/2025");
+      var count = ops().length;
+      enter();
+      check("so a commit of it unchanged writes nothing", ops().length === count);
+
+      odr.editing.editAt(0, 2);
+      check("a time cell whose text reads back opens on its text", editor().value === "6:30 PM");
+      enter();
+      check("and an unchanged one writes nothing either", ops().length === count);
+
+      odr.editing.editAt(0, 1);
+      editor().value = "1/3/2025";
+      enter();
+      check("a changed date writes one op", ops().length === count + 1);
+      odr.editing.editAt(0, 1);
+      check("and reopens on its new value", editor().value === "1/3/2025");
+
+      odr.editing.editAt(0, 3);
+      check("a time that rounds to midnight opens on the next day", editor().value === "1/3/2025");
+      enter();
+      check("and reads back as a date", odr.sheet.valueAt(0, 3).type === "date");
+      odr.editing.editAt(0, 4);
+      check("a negative time opens with its sign", editor().value === "-2:30");
+    </script>
+  </body>
+</html>
