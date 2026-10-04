@@ -582,7 +582,7 @@ private:
     if (m_settings->dialect == Dialect::libreoffice) {
       return approximate_add(a, b);
     }
-    if (last && std::abs(result) < std::max(std::abs(a), std::abs(b)) * 1e-12) {
+    if (last && nearly_cancels(result, std::max(std::abs(a), std::abs(b)))) {
       throw NoAnswer{};
     }
     return result;

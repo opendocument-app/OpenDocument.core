@@ -3,6 +3,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
+#include <array>
 #include <span>
 #include <string>
 #include <unordered_map>
@@ -13,10 +14,11 @@ namespace str = util::string;
 
 namespace {
 
-constexpr FunctionEntry constant_functions[] = {
-    {"TRUE", [](const Call &) { return Value{true}; }},
-    {"FALSE", [](const Call &) { return Value{false}; }},
-    {"NA", [](const Call &) { return Value{ErrorType::not_available}; }},
+constexpr std::array constant_functions{
+    FunctionEntry{"TRUE", [](const Call &) { return Value{true}; }},
+    FunctionEntry{"FALSE", [](const Call &) { return Value{false}; }},
+    FunctionEntry{"NA",
+                  [](const Call &) { return Value{ErrorType::not_available}; }},
 };
 
 /// The function a name stands for once the prefix of its format is gone.

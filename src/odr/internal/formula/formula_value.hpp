@@ -108,6 +108,10 @@ using Text = std::variant<std::string, ErrorType>;
 /// as LibreOffice's `rtl::math::approxAdd` does: `0.1+0.2-0.3` is 0.
 [[nodiscard]] double approximate_add(double a, double b);
 
+/// Whether @p sum is so near 0 against @p largest, the largest magnitude it
+/// adds, that Excel may make it 0. Excel does not document how near.
+[[nodiscard]] bool nearly_cancels(double sum, double largest);
+
 /// The number a text reads as in arithmetic. `#VALUE!` where the text holds no
 /// digit, and nothing where it holds one in a form whose reading depends on
 /// the locale: a currency, a date, a grouped number.

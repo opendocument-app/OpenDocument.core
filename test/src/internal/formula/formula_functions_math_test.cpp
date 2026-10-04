@@ -41,6 +41,11 @@ TEST(FormulaFunctionsMath, a_sum_that_cancels_is_0_in_libreoffice) {
   EXPECT_EQ(xlsx("=SUM(0.1,0.2,-0.3)"), std::nullopt);
 }
 
+TEST(FormulaFunctionsMath, a_libreoffice_sum_keeps_what_a_large_number_hides) {
+  // LibreOffice's `KahanSum`; adding left to right gives 0.5
+  EXPECT_EQ(ods("=SUM(1;1E20;-1E20;0.5)"), number(1.5));
+}
+
 TEST(FormulaFunctionsMath, an_average_needs_a_number) {
   EXPECT_EQ(ods("=AVERAGE([.A1:.A6])"), number(1.5));
   EXPECT_EQ(ods("=AVERAGE([.A3])"), error(ErrorType::division));
@@ -118,6 +123,12 @@ TEST(FormulaFunctionsMath, rounding_reads_the_number_as_a_sheet_shows_it) {
 TEST(FormulaFunctionsMath, a_number_at_the_edge_of_a_rounding_has_no_answer) {
   // LibreOffice: 1, as it reads the number to fewer digits than 15
   EXPECT_EQ(ods("=ROUNDUP(1.0000000000001;0)"), std::nullopt);
+  // Excel documents no reading to 15 digits outside a rounding
+  EXPECT_EQ(ods("=INT(0.3/0.1)"), number(3));
+  EXPECT_EQ(xlsx("=INT(0.3/0.1)"), std::nullopt);
+  EXPECT_EQ(xlsx("=INT(0.1*3*10)"), number(3));
+  EXPECT_EQ(xlsx("=MOD(3,0.1)"), std::nullopt);
+  EXPECT_EQ(xlsx("=MOD(-3,2)"), number(1));
 }
 
 TEST(FormulaFunctionsMath, a_remainder_takes_the_sign_of_the_divisor) {

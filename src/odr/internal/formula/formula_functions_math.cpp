@@ -3,6 +3,7 @@
 #include <fmt/format.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <numbers>
@@ -60,6 +61,17 @@ double snapped(const double x, const int digits) {
 template <typename Round> double stable(const double x, const Round &round) {
   const double result = round(snapped(x, 15));
   if (round(snapped(x, 12)) != result) {
+    throw NoAnswer{};
+  }
+  return result;
+}
+
+/// @p round applied as `stable` does. Excel documents no such reading for a
+/// function other than a rounding, so there a number it moves has no answer.
+template <typename Round>
+double settled(const Call &call, const double x, const Round &round) {
+  const double result = stable(x, round);
+  if (!is_libreoffice(call) && round(x) != result) {
     throw NoAnswer{};
   }
   return result;
@@ -214,19 +226,69 @@ Collected collect(const Call &call, const std::size_t first = 0,
   return result;
 }
 
-/// The sum of @p numbers. LibreOffice adds left to right and makes a sum
-/// that cancels 0. Excel does not, so a sum that nearly cancels has no answer
-/// there.
+/// A sum as LibreOffice's `KahanSum` adds it (`sc/inc/kahan.hxx`): a
+/// Neumaier sum that holds the last number back, and gives 0 where that
+/// number cancels the rest as `approxAdd` decides.
+class KahanSum final {
+public:
+  void add(const double x) {
+    if (x == 0) {
+      return;
+    }
+    if (m_last != 0) {
+      neumaier(m_last);
+    }
+    m_last = x;
+  }
+
+  [[nodiscard]] double get() const {
+    const double total = m_sum + m_error;
+    if (m_last == 0) {
+      return total;
+    }
+    if (total != 0 && (m_last < 0) != (total < 0) &&
+        approximately_equal(m_last, -total)) {
+      return 0;
+    }
+    KahanSum result = *this;
+    result.neumaier(m_last);
+    return result.m_sum + result.m_error;
+  }
+
+private:
+  double m_sum{0};
+  double m_error{0};
+  double m_last{0};
+
+  void neumaier(const double x) {
+    const double t = m_sum + x;
+    m_error +=
+        std::abs(m_sum) >= std::abs(x) ? (m_sum - t) + x : (x - t) + m_sum;
+    m_sum = t;
+  }
+};
+
+double kahan_sum(const std::vector<double> &numbers) {
+  KahanSum sum;
+  for (const double number : numbers) {
+    sum.add(number);
+  }
+  return sum.get();
+}
+
+/// The sum of @p numbers. LibreOffice makes a sum that cancels 0, Excel does
+/// not, so a sum that nearly cancels has no answer there.
 Value sum_of(const Call &call, const std::vector<double> &numbers) {
+  if (is_libreoffice(call)) {
+    return checked(kahan_sum(numbers));
+  }
   double total = 0;
   double largest = 0;
   for (const double number : numbers) {
-    total =
-        is_libreoffice(call) ? approximate_add(total, number) : total + number;
+    total += number;
     largest = std::max(largest, std::abs(number));
   }
-  if (!is_libreoffice(call) && total != 0 &&
-      std::abs(total) < largest * 1e-14) {
+  if (nearly_cancels(total, largest)) {
     throw NoAnswer{};
   }
   return checked(total);
@@ -288,11 +350,12 @@ Value sum_of_squares(const Call &call) {
   if (collected.error.has_value()) {
     return Value{*collected.error};
   }
-  double result = 0;
+  std::vector<double> squares;
+  squares.reserve(collected.numbers.size());
   for (const double number : collected.numbers) {
-    result += number * number;
+    squares.push_back(number * number);
   }
-  return checked(result);
+  return sum_of(call, squares);
 }
 
 /// The numbers of an aggregate that needs at least one, where none is
@@ -349,7 +412,8 @@ template <bool largest> Value kth(const Call &call) {
   return Value{largest ? numbers[numbers.size() - 1 - at] : numbers[at]};
 }
 
-/// The variance of the numbers, of a sample where @p sample.
+/// The variance of the numbers, of a sample where @p sample. LibreOffice
+/// takes the mean with `KahanSum` and each deviation with `approxSub`.
 Value variance_of(const Call &call, const bool sample, const bool root) {
   const Collected collected = collect(call);
   if (collected.error.has_value()) {
@@ -360,14 +424,21 @@ Value variance_of(const Call &call, const bool sample, const bool root) {
   if (numbers.size() < least) {
     return Value{ErrorType::division};
   }
+  const bool libreoffice = is_libreoffice(call);
   double mean = 0;
-  for (const double number : numbers) {
-    mean += number;
+  if (libreoffice) {
+    mean = kahan_sum(numbers);
+  } else {
+    for (const double number : numbers) {
+      mean += number;
+    }
   }
   mean /= static_cast<double>(numbers.size());
   double squares = 0;
   for (const double number : numbers) {
-    squares += (number - mean) * (number - mean);
+    const double deviation =
+        libreoffice ? approximate_add(number, -mean) : number - mean;
+    squares += deviation * deviation;
   }
   const double variance =
       squares / static_cast<double>(numbers.size() - (sample ? 1 : 0));
@@ -434,17 +505,14 @@ Value count_blank(const Call &call) {
   expect_arguments(call, 1, 1);
   const Value value = call.value(0);
   const auto *reference = std::get_if<Reference>(&value.content);
-  if (reference == nullptr) {
+  if (reference == nullptr || reference->areas.size() != 1) {
     throw NoAnswer{};
   }
   // the cells past the extent of the sheet are empty, and not visited
-  double cells = 0;
-  for (const Area &area : reference->areas) {
-    cells +=
-        (static_cast<double>(area.range.to().column) -
-         area.range.from().column + 1) *
-        (static_cast<double>(area.range.to().row) - area.range.from().row + 1);
-  }
+  const TableRange &range = reference->areas.front().range;
+  const double cells =
+      (static_cast<double>(range.to().column) - range.from().column + 1) *
+      (static_cast<double>(range.to().row) - range.from().row + 1);
   double stated = 0;
   call.for_each(*reference, [&](const SheetPosition &, const Value &cell) {
     const auto *text = std::get_if<std::string>(&cell.content);
@@ -501,8 +569,9 @@ Value sign(const Call &, const double x) {
   return Value{x > 0 ? 1.0 : x < 0 ? -1.0 : 0.0};
 }
 
-Value integer(const Call &, const double x) {
-  return checked(stable(x, [](const double y) { return std::floor(y); }));
+Value integer(const Call &call, const double x) {
+  return checked(
+      settled(call, x, [](const double y) { return std::floor(y); }));
 }
 
 Value round_function(const Call &, const double x, const double digits) {
@@ -525,8 +594,20 @@ Value modulo(const Call &call, const double x, const double y) {
     throw NoAnswer{};
   }
   const double floor =
-      stable(quotient, [](const double q) { return std::floor(q); });
-  return checked(approximate_add(x, -y * floor));
+      settled(call, quotient, [](const double q) { return std::floor(q); });
+  if (!is_libreoffice(call)) {
+    const double result = x - y * floor;
+    if (nearly_cancels(result, std::abs(x))) {
+      throw NoAnswer{};
+    }
+    return checked(result);
+  }
+  // LibreOffice refuses a remainder that precision put outside the divisor
+  const double result = approximate_add(x, -y * floor);
+  if (y > 0 ? result < 0 || result >= y : result > 0 || result <= y) {
+    return Value{ErrorType::value};
+  }
+  return checked(result);
 }
 
 Value quotient(const Call &call, const double x, const double y) {
@@ -536,7 +617,7 @@ Value quotient(const Call &call, const double x, const double y) {
     }
     return Value{ErrorType::division};
   }
-  return checked(stable(x / y, round_toward));
+  return checked(settled(call, x / y, round_toward));
 }
 
 Value square_root(const Call &call, const double x) {
@@ -628,8 +709,8 @@ Value arc_tangent_2(const Call &call, const double x, const double y) {
 }
 
 /// `EVEN` and `ODD`: away from 0 to the next even or odd integer.
-template <bool odd> Value parity(const Call &, const double x) {
-  const double away = stable(x, round_away);
+template <bool odd> Value parity(const Call &call, const double x) {
+  const double away = settled(call, x, round_away);
   const double magnitude = std::abs(away);
   double result = magnitude;
   if (odd) {
@@ -641,7 +722,7 @@ template <bool odd> Value parity(const Call &, const double x) {
 }
 
 Value factorial(const Call &call, const double x) {
-  const double n = stable(x, round_toward);
+  const double n = settled(call, x, round_toward);
   if (n < 0) {
     return invalid(call);
   }
@@ -655,55 +736,62 @@ Value factorial(const Call &call, const double x) {
   return Value{result};
 }
 
-constexpr FunctionEntry entries[] = {
-    {"ABS", unary<absolute>},
-    {"ACOS", unary<arc_cosine>},
-    {"ASIN", unary<arc_sine>},
-    {"ATAN", unary<arc_tangent>},
-    {"ATAN2", binary<arc_tangent_2>},
-    {"AVERAGE", average},
-    {"COS", unary<cosine>},
-    {"COSH", unary<hyperbolic_cosine>},
-    {"COUNT", count},
-    {"COUNTA", count_stated},
-    {"COUNTBLANK", count_blank},
-    {"DEGREES", unary<degrees>},
-    {"EVEN", unary<parity<false>>},
-    {"EXP", unary<exponential>},
-    {"FACT", unary<factorial>},
-    {"INT", unary<integer>},
-    {"LARGE", kth<true>},
-    {"LN", unary<natural_logarithm>},
-    {"LOG", binary<logarithm, 10, true>},
-    {"LOG10", unary<logarithm_10>},
-    {"MAX", extreme<true>},
-    {"MEDIAN", median},
-    {"MIN", extreme<false>},
-    {"MOD", binary<modulo>},
-    {"ODD", unary<parity<true>>},
-    {"PI", pi},
-    {"POWER", binary<power_function>},
-    {"PRODUCT", product},
-    {"QUOTIENT", binary<quotient>},
-    {"RADIANS", unary<radians>},
-    {"ROUND", binary<round_function, 0, true>},
-    {"ROUNDDOWN", binary<round_down, 0, true>},
-    {"ROUNDUP", binary<round_up, 0, true>},
-    {"SIGN", unary<sign>},
-    {"SIN", unary<sine>},
-    {"SINH", unary<hyperbolic_sine>},
-    {"SMALL", kth<false>},
-    {"SQRT", unary<square_root>},
-    {"STDEV", [](const Call &call) { return variance_of(call, true, true); }},
-    {"STDEVP", [](const Call &call) { return variance_of(call, false, true); }},
-    {"SUM", sum},
-    {"SUMPRODUCT", sum_product},
-    {"SUMSQ", sum_of_squares},
-    {"TAN", unary<tangent>},
-    {"TANH", unary<hyperbolic_tangent>},
-    {"TRUNC", binary<round_down, 0, true>},
-    {"VAR", [](const Call &call) { return variance_of(call, true, false); }},
-    {"VARP", [](const Call &call) { return variance_of(call, false, false); }},
+constexpr std::array entries{
+    FunctionEntry{"ABS", unary<absolute>},
+    FunctionEntry{"ACOS", unary<arc_cosine>},
+    FunctionEntry{"ASIN", unary<arc_sine>},
+    FunctionEntry{"ATAN", unary<arc_tangent>},
+    FunctionEntry{"ATAN2", binary<arc_tangent_2>},
+    FunctionEntry{"AVERAGE", average},
+    FunctionEntry{"COS", unary<cosine>},
+    FunctionEntry{"COSH", unary<hyperbolic_cosine>},
+    FunctionEntry{"COUNT", count},
+    FunctionEntry{"COUNTA", count_stated},
+    FunctionEntry{"COUNTBLANK", count_blank},
+    FunctionEntry{"DEGREES", unary<degrees>},
+    FunctionEntry{"EVEN", unary<parity<false>>},
+    FunctionEntry{"EXP", unary<exponential>},
+    FunctionEntry{"FACT", unary<factorial>},
+    FunctionEntry{"INT", unary<integer>},
+    FunctionEntry{"LARGE", kth<true>},
+    FunctionEntry{"LN", unary<natural_logarithm>},
+    FunctionEntry{"LOG", binary<logarithm, 10, true>},
+    FunctionEntry{"LOG10", unary<logarithm_10>},
+    FunctionEntry{"MAX", extreme<true>},
+    FunctionEntry{"MEDIAN", median},
+    FunctionEntry{"MIN", extreme<false>},
+    FunctionEntry{"MOD", binary<modulo>},
+    FunctionEntry{"ODD", unary<parity<true>>},
+    FunctionEntry{"PI", pi},
+    FunctionEntry{"POWER", binary<power_function>},
+    FunctionEntry{"PRODUCT", product},
+    FunctionEntry{"QUOTIENT", binary<quotient>},
+    FunctionEntry{"RADIANS", unary<radians>},
+    FunctionEntry{"ROUND", binary<round_function, 0, true>},
+    FunctionEntry{"ROUNDDOWN", binary<round_down, 0, true>},
+    FunctionEntry{"ROUNDUP", binary<round_up, 0, true>},
+    FunctionEntry{"SIGN", unary<sign>},
+    FunctionEntry{"SIN", unary<sine>},
+    FunctionEntry{"SINH", unary<hyperbolic_sine>},
+    FunctionEntry{"SMALL", kth<false>},
+    FunctionEntry{"SQRT", unary<square_root>},
+    FunctionEntry{
+        "STDEV",
+        [](const Call &call) { return variance_of(call, true, true); }},
+    FunctionEntry{
+        "STDEVP",
+        [](const Call &call) { return variance_of(call, false, true); }},
+    FunctionEntry{"SUM", sum},
+    FunctionEntry{"SUMPRODUCT", sum_product},
+    FunctionEntry{"SUMSQ", sum_of_squares},
+    FunctionEntry{"TAN", unary<tangent>},
+    FunctionEntry{"TANH", unary<hyperbolic_tangent>},
+    FunctionEntry{"TRUNC", binary<round_down, 0, true>},
+    FunctionEntry{
+        "VAR", [](const Call &call) { return variance_of(call, true, false); }},
+    FunctionEntry{
+        "VARP",
+        [](const Call &call) { return variance_of(call, false, false); }},
 };
 
 } // namespace

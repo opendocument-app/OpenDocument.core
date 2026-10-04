@@ -100,6 +100,10 @@ double formula::approximate_add(const double a, const double b) {
   return a + b;
 }
 
+bool formula::nearly_cancels(const double sum, const double largest) {
+  return sum != 0 && std::abs(sum) < largest * 1e-12;
+}
+
 std::optional<formula::Number>
 formula::number_of_text(const std::string_view text) {
   std::string_view trimmed = text;
