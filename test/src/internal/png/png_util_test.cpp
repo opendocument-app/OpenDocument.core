@@ -11,9 +11,9 @@ using namespace odr::internal;
 
 namespace {
 
-std::string bytes(const std::initializer_list<int> values) {
+std::string bytes(const std::initializer_list<std::uint8_t> values) {
   std::string result;
-  for (const int value : values) {
+  for (const std::uint8_t value : values) {
     result.push_back(static_cast<char>(value));
   }
   return result;
@@ -84,6 +84,7 @@ TEST(PngUtil, rgb_round_trip) {
 TEST(PngUtil, a_buffer_too_short_for_the_size_is_refused) {
   EXPECT_TRUE(png::write(bytes({255, 0, 0}), 2, 2, 3).empty());
   EXPECT_TRUE(png::write("", 0, 0, 3).empty());
+  EXPECT_TRUE(png::write("", 65536, 65536, 4).empty());
 }
 
 TEST(PngUtil, only_three_or_four_channels) {
@@ -99,6 +100,7 @@ TEST(PngUtil, write_indexed_rejects_bad_input) {
   EXPECT_TRUE(png::write_indexed(bytes({0}), 8, 1, 3, two).empty());
   EXPECT_TRUE(png::write_indexed(bytes({0}), 8, 2, 1, two).empty());
   EXPECT_TRUE(png::write_indexed(bytes({0}), 8, 1, 1, "").empty());
+  EXPECT_TRUE(png::write_indexed("", 65536, 65536, 8, two).empty());
   EXPECT_TRUE(
       png::write_indexed(bytes({0}), 8, 1, 1, two + two.substr(0, 3)).empty());
 }

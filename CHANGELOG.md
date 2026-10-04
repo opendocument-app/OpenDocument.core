@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF mask resampling handles large dimensions without signed overflow. PDF
+  and PNG image buffers check sizes before narrowing or allocation, including
+  on 32-bit targets.
+
 - CFB entry streams report the consumed position and seek relative to it,
   with bounds checks before offset arithmetic.
 

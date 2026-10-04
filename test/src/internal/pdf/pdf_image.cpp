@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -350,4 +351,30 @@ TEST(PdfImage, decode_mask_alpha_resamples_to_base) {
   const std::vector<std::uint8_t> alpha =
       decode_mask_alpha(samples, 1, 1, 8, {}, /*stencil=*/false, 2, 2);
   EXPECT_EQ(alpha, (std::vector<std::uint8_t>{200, 200, 200, 200}));
+}
+
+TEST(PdfImage, resampling_large_masks_keeps_both_axes_in_range) {
+  std::string samples(60000, '\0');
+  samples[59998] = static_cast<char>(255);
+  for (const bool vertical : {false, true}) {
+    const auto alpha = decode_mask_alpha(
+        samples, vertical ? 1 : 60000, vertical ? 60000 : 1, 8, {}, false,
+        vertical ? 1 : 60001, vertical ? 60001 : 1);
+    ASSERT_EQ(alpha.size(), 60001);
+    EXPECT_EQ(alpha[59999], 255);
+    EXPECT_EQ(alpha.back(), 0);
+  }
+}
+
+TEST(PdfImage, rejects_unrepresentable_output_sizes) {
+  constexpr auto extent = std::numeric_limits<std::int32_t>::max();
+  EXPECT_TRUE(
+      encode_image_png("", extent, extent, 8, device_rgb(), {}).empty());
+  EXPECT_TRUE(encode_stencil_png("", extent, extent, {0, 0, 0}, {}).empty());
+  if constexpr (sizeof(std::size_t) == 4) {
+    EXPECT_TRUE(
+        decode_mask_alpha("", 65536, 65536, 8, {}, false, 1, 1).empty());
+    EXPECT_TRUE(
+        decode_mask_alpha("", 1, 1, 8, {}, false, 65536, 65536).empty());
+  }
 }

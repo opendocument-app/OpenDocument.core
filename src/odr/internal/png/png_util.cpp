@@ -29,6 +29,9 @@ std::string assemble(const std::string &rows, const std::size_t stride,
                      const std::int32_t colour_type,
                      const std::string &palette) {
   std::string raw;
+  if (stride >= raw.max_size() / static_cast<std::size_t>(height)) {
+    return {};
+  }
   raw.reserve((stride + 1) * static_cast<std::size_t>(height));
   for (std::int32_t y = 0; y < height; ++y) {
     raw.push_back(0);
@@ -66,12 +69,13 @@ std::string png::write(const std::string &pixels, const std::int32_t width,
     return {};
   }
   const auto stride =
-      static_cast<std::size_t>(width) * static_cast<std::size_t>(channels);
-  if (pixels.size() < stride * static_cast<std::size_t>(height)) {
+      static_cast<std::uint64_t>(width) * static_cast<std::uint64_t>(channels);
+  if (stride > pixels.size() / static_cast<std::size_t>(height)) {
     return {};
   }
   // colour type: 2 = truecolour (rgb), 6 = truecolour with alpha (rgba)
-  return assemble(pixels, stride, width, height, 8, channels == 4 ? 6 : 2, "");
+  return assemble(pixels, static_cast<std::size_t>(stride), width, height, 8,
+                  channels == 4 ? 6 : 2, "");
 }
 
 std::string png::write_indexed(const std::string &rows,
@@ -85,14 +89,15 @@ std::string png::write_indexed(const std::string &rows,
       palette.size() / 3 > (std::size_t{1} << bit_depth)) {
     return {};
   }
-  const std::size_t stride =
-      (static_cast<std::size_t>(width) * static_cast<std::size_t>(bit_depth) +
-       7) /
-      8;
-  if (rows.size() < stride * static_cast<std::size_t>(height)) {
+  const std::uint64_t stride = (static_cast<std::uint64_t>(width) *
+                                    static_cast<std::uint64_t>(bit_depth) +
+                                7) /
+                               8;
+  if (stride > rows.size() / static_cast<std::size_t>(height)) {
     return {};
   }
-  return assemble(rows, stride, width, height, bit_depth, 3, palette);
+  return assemble(rows, static_cast<std::size_t>(stride), width, height,
+                  bit_depth, 3, palette);
 }
 
 } // namespace odr::internal

@@ -1,8 +1,11 @@
 #include <odr/internal/pdf/pdf_jpx.hpp>
 
+#include <odr/internal/util/image_util.hpp>
+
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <limits>
 #include <memory>
 
 #include <openjpeg.h>
@@ -32,7 +35,7 @@ OPJ_SIZE_T stream_read(void *buffer, const OPJ_SIZE_T size, void *user) {
 OPJ_OFF_T stream_skip(const OPJ_OFF_T size, void *user) {
   auto *stream = static_cast<MemoryStream *>(user);
   const std::size_t left = stream->data->size() - stream->position;
-  const auto n = static_cast<std::size_t>(std::max<OPJ_OFF_T>(size, 0));
+  const auto n = static_cast<std::uint64_t>(std::max<OPJ_OFF_T>(size, 0));
   if (n > left) {
     stream->position = stream->data->size();
     return static_cast<OPJ_OFF_T>(-1);
@@ -44,7 +47,7 @@ OPJ_OFF_T stream_skip(const OPJ_OFF_T size, void *user) {
 OPJ_BOOL stream_seek(const OPJ_OFF_T position, void *user) {
   auto *stream = static_cast<MemoryStream *>(user);
   if (position < 0 ||
-      static_cast<std::size_t>(position) > stream->data->size()) {
+      static_cast<std::uint64_t>(position) > stream->data->size()) {
     return OPJ_FALSE;
   }
   stream->position = static_cast<std::size_t>(position);
@@ -73,7 +76,7 @@ std::uint8_t sample_at(const opj_image_comp_t &comp, const std::int32_t x,
   const std::uint32_t cy =
       std::min(static_cast<std::uint32_t>(y) / std::max(comp.dy, 1u),
                comp.h == 0 ? 0 : comp.h - 1);
-  std::int32_t value = comp.data[cy * comp.w + cx];
+  std::int32_t value = comp.data[static_cast<std::size_t>(cy) * comp.w + cx];
   if (comp.sgnd != 0) {
     value += 1 << (comp.prec - 1);
   }
@@ -143,13 +146,16 @@ std::optional<pdf::JpxImage> pdf::decode_jpx(const std::string &data) {
     return std::nullopt;
   }
 
-  const std::int32_t width = static_cast<std::int32_t>(image->x1) -
-                             static_cast<std::int32_t>(image->x0);
-  const std::int32_t height = static_cast<std::int32_t>(image->y1) -
-                              static_cast<std::int32_t>(image->y0);
-  if (width <= 0 || height <= 0 || image->numcomps == 0) {
+  if (image->x1 <= image->x0 || image->y1 <= image->y0 ||
+      image->numcomps == 0 ||
+      image->x1 - image->x0 > static_cast<std::uint32_t>(
+                                  std::numeric_limits<std::int32_t>::max()) ||
+      image->y1 - image->y0 > static_cast<std::uint32_t>(
+                                  std::numeric_limits<std::int32_t>::max())) {
     return std::nullopt;
   }
+  const auto width = static_cast<std::int32_t>(image->x1 - image->x0);
+  const auto height = static_cast<std::int32_t>(image->y1 - image->y0);
   for (std::uint32_t i = 0; i < image->numcomps; ++i) {
     const opj_image_comp_t &comp = image->comps[i];
     if (comp.data == nullptr || comp.w == 0 || comp.h == 0 || comp.prec == 0 ||
@@ -173,14 +179,18 @@ std::optional<pdf::JpxImage> pdf::decode_jpx(const std::string &data) {
     return std::nullopt;
   }
 
+  const auto output_size =
+      util::image::buffer_size(width, height, colour.size());
+  if (!output_size.has_value()) {
+    return std::nullopt;
+  }
   JpxImage result;
   result.width = width;
   result.height = height;
   result.components = static_cast<std::int32_t>(colour.size());
-  result.samples.resize(static_cast<std::size_t>(width) * height *
-                        colour.size());
+  result.samples.resize(*output_size);
   if (alpha_index.has_value()) {
-    result.alpha.resize(static_cast<std::size_t>(width) * height);
+    result.alpha.resize(*output_size / colour.size());
   }
 
   std::size_t out = 0;
