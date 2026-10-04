@@ -9,6 +9,8 @@
 #include <odr/internal/oldms/text/doc_io.hpp>
 #include <odr/internal/oldms/text/doc_structs.hpp>
 #include <odr/internal/oldms/text/doc_style.hpp>
+#include <odr/internal/util/byte_stream_util.hpp>
+#include <odr/internal/util/stream_util.hpp>
 
 #include <algorithm>
 #include <cstdint>
@@ -107,6 +109,9 @@ struct StyledRun {
 std::vector<StyledRun> decode_styled_runs(
     std::istream &document_stream, const text::CharacterIndex &character_index,
     const text::CharacterRuns &character_runs, const std::size_t ccp_text) {
+  if (character_index.last_cp() < ccp_text) {
+    throw std::runtime_error("doc: piece table does not cover the body");
+  }
   std::vector<StyledRun> runs;
   std::size_t consumed_cp = 0;
 
@@ -158,7 +163,11 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
                                    const abstract::ReadableFilesystem &files) {
   auto [root_id, _] = registry.create_element(ElementType::root);
 
-  const auto document_stream = files.open(AbsPath("/WordDocument"))->stream();
+  const auto document_file = files.open(AbsPath("/WordDocument"));
+  if (document_file == nullptr) {
+    throw std::runtime_error("doc: missing WordDocument stream");
+  }
+  const auto document_stream = document_file->stream();
   ParsedFib fib;
   read(*document_stream, fib);
 
@@ -181,7 +190,10 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
   style_registry = StyleRegistry(std::move(styles));
 
   table_stream->seekg(fib.fibRgFcLcb.clx.fc);
-  const CharacterIndex character_index = read_character_index(*table_stream);
+  const std::string clx_bytes =
+      util::byte_stream::read_u8s(*table_stream, fib.fibRgFcLcb.clx.lcb);
+  util::stream::ViewStream clx_stream(clx_bytes);
+  const CharacterIndex character_index = read_character_index(clx_stream);
 
   const auto ccp_text = static_cast<std::size_t>(fib.ccpText());
   const std::vector<StyledRun> runs = decode_styled_runs(

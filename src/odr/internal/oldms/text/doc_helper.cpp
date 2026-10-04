@@ -3,7 +3,6 @@
 #include <odr/internal/oldms/text/doc_io.hpp>
 #include <odr/internal/oldms/text/doc_style.hpp>
 #include <odr/internal/util/byte_stream_util.hpp>
-#include <odr/internal/util/stream_util.hpp>
 
 #include <array>
 #include <cstring>
@@ -12,6 +11,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 
 namespace odr::internal::oldms::text {
 
@@ -62,11 +62,11 @@ text::CharacterIndex text::read_character_index(std::istream &in) {
       throw std::runtime_error("Unexpected input: " + std::to_string(c));
     }
     const std::uint32_t lcb = util::byte_stream::read<std::uint32_t>(in);
-    std::string plcPcd = util::stream::read(in, lcb);
+    std::string plcPcd = util::byte_stream::read_u8s(in, lcb);
     const PlcPcdMap plc_pcd_map(plcPcd.data(), plcPcd.size());
 
-    const std::uint32_t count = plc_pcd_map.n();
-    for (std::uint32_t i = 0; i < count; ++i) {
+    const std::size_t count = plc_pcd_map.n();
+    for (std::size_t i = 0; i < count; ++i) {
       // aCp is strictly ascending ([MS-DOC] 2.8.35); otherwise the piece
       // length below would wrap around.
       if (plc_pcd_map.aCP(i + 1) <= plc_pcd_map.aCP(i)) {
@@ -97,7 +97,8 @@ text::read_character_runs(std::istream &document_stream,
   const TextStyle default_style = styles.at(0);
 
   table_stream.seekg(plcf_bte_chpx.fc);
-  std::string plc_bytes = util::stream::read(table_stream, plcf_bte_chpx.lcb);
+  std::string plc_bytes =
+      util::byte_stream::read_u8s(table_stream, plcf_bte_chpx.lcb);
   const PlcBteChpxMap plc(plc_bytes.data(), plc_bytes.size());
 
   // One resolved style per distinct Chpx byte sequence.
@@ -108,6 +109,9 @@ text::read_character_runs(std::istream &document_stream,
     }
     const auto [it, inserted] = style_cache.try_emplace(std::string(grpprl));
     if (inserted) {
+      if (!std::in_range<std::uint32_t>(styles.size())) {
+        throw std::length_error("doc: too many character styles");
+      }
       styles.push_back(
           apply_character_sprms(default_style, grpprl, font_names));
       it->second = static_cast<std::uint32_t>(styles.size() - 1);
@@ -117,8 +121,8 @@ text::read_character_runs(std::istream &document_stream,
 
   // A ChpxFkp page ([MS-DOC] 2.9.33) is 512 bytes at pn * 512; rgb[j] * 2
   // locates the run's Chpx within it, 0 meaning default properties.
-  const std::uint32_t page_count = plc.n();
-  for (std::uint32_t i = 0; i < page_count; ++i) {
+  const std::size_t page_count = plc.n();
+  for (std::size_t i = 0; i < page_count; ++i) {
     std::array<char, 512> page;
     document_stream.seekg(static_cast<std::streamoff>(plc.aData(i).pn) * 512);
     document_stream.read(page.data(), page.size());

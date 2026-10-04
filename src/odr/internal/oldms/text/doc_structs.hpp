@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/internal/util/byte_string.hpp>
+
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -273,20 +275,31 @@ public:
       : m_data(data), m_cbPlc(cbPlc) {}
 
   /// Number of data elements; throws unless cbPlc yields a whole number.
-  [[nodiscard]] std::uint32_t n() const {
+  [[nodiscard]] std::size_t n() const {
     constexpr std::size_t stride = 4 + sizeof(Data);
     if (m_cbPlc < 4 || (m_cbPlc - 4) % stride != 0) {
       throw std::runtime_error("doc: malformed Plc size");
     }
-    return static_cast<std::uint32_t>((m_cbPlc - 4) / stride);
+    return (m_cbPlc - 4) / stride;
   }
 
-  [[nodiscard]] std::uint32_t aCP(const std::uint32_t i) const {
-    return reinterpret_cast<const std::uint32_t *>(m_data)[i];
+  [[nodiscard]] std::uint32_t aCP(const std::size_t i) const {
+    if (i > n()) {
+      throw std::out_of_range("doc: PLC boundary index out of range");
+    }
+    util::byte_string::Reader cursor(std::string_view(m_data, m_cbPlc));
+    cursor.skip(i * 4);
+    return cursor.read<std::uint32_t>();
   }
 
-  [[nodiscard]] Data aData(const std::uint32_t i) const {
-    return reinterpret_cast<const Data *>(m_data + (n() + 1) * 4)[i];
+  [[nodiscard]] Data aData(const std::size_t i) const {
+    const std::size_t count = n();
+    if (i >= count) {
+      throw std::out_of_range("doc: PLC data index out of range");
+    }
+    util::byte_string::Reader cursor(std::string_view(m_data, m_cbPlc));
+    cursor.skip((count + 1) * 4 + i * sizeof(Data));
+    return cursor.read<Data>();
   }
 
 private:
