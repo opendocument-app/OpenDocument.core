@@ -47,7 +47,7 @@ public:
           m_path{std::move(path)} {}
 
     bool operator==(const Entry &other) const {
-      return m_entry_id == other.m_entry_id;
+      return m_archive == other.m_archive && m_entry_id == other.m_entry_id;
     }
 
     [[nodiscard]] bool is_file() const { return m_entry.is_file(); }
@@ -103,9 +103,13 @@ public:
     }
 
   private:
+    struct Directory final {
+      Entry entry;
+      std::size_t ancestors;
+    };
     std::optional<Entry> m_entry;
     std::vector<Entry> m_ancestors;
-    std::vector<Entry> m_directories;
+    std::vector<Directory> m_directories;
     std::set<std::uint32_t> m_visited;
 
     Iterator() = default;

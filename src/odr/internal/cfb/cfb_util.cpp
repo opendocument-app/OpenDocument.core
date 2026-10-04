@@ -21,21 +21,21 @@ public:
                const impl::CompoundFileEntry &entry,
                std::unique_ptr<std::istream> stream,
                const std::size_t buffer_size = 4096)
-      : m_reader{&reader}, m_entry{&entry}, m_stream{std::move(stream)},
+      : m_reader{&reader}, m_entry{entry}, m_stream{std::move(stream)},
         m_buffer(buffer_size, '\0') {
     setg(m_buffer.data(), m_buffer.data(), m_buffer.data());
   }
 
 protected:
   int underflow() override {
-    if (m_offset >= m_entry->size) {
+    if (m_offset >= m_entry.size) {
       return traits_type::eof();
     }
 
-    const std::uint64_t remaining = m_entry->size - m_offset;
+    const std::uint64_t remaining = m_entry.size - m_offset;
     const std::uint64_t amount =
         std::min<std::uint64_t>(remaining, m_buffer.size());
-    m_reader->read_file(*m_stream, *m_entry, m_offset, m_buffer.data(), amount);
+    m_reader->read_file(*m_stream, m_entry, m_offset, m_buffer.data(), amount);
     m_offset += amount;
     setg(m_buffer.data(), m_buffer.data(), m_buffer.data() + amount);
 
@@ -54,11 +54,11 @@ protected:
       return -1;
     }
 
-    if (m_entry->size > static_cast<std::uint64_t>(
-                            std::numeric_limits<std::streamoff>::max())) {
+    if (m_entry.size > static_cast<std::uint64_t>(
+                           std::numeric_limits<std::streamoff>::max())) {
       return -1;
     }
-    const auto size = static_cast<std::streamoff>(m_entry->size);
+    const auto size = static_cast<std::streamoff>(m_entry.size);
     std::streamoff base = 0;
     if (dir == std::ios_base::cur) {
       base = static_cast<std::streamoff>(m_offset) - (egptr() - gptr());
@@ -81,7 +81,7 @@ protected:
 
 private:
   const impl::CompoundFileReader *m_reader{};
-  const impl::CompoundFileEntry *m_entry{};
+  const impl::CompoundFileEntry m_entry;
   std::unique_ptr<std::istream> m_stream;
   std::uint64_t m_offset{0};
   std::vector<char> m_buffer;
@@ -205,7 +205,7 @@ void Archive::Iterator::next_() {
   }
 
   if (const std::optional<Entry> child = m_entry->child(); child.has_value()) {
-    m_directories.push_back(*m_entry);
+    m_directories.push_back({*m_entry, m_ancestors.size()});
     enter_(*child);
     dig_left_();
     return;
@@ -215,30 +215,29 @@ void Archive::Iterator::next_() {
 }
 
 void Archive::Iterator::next_flat_() {
-  if (!m_entry.has_value()) {
-    return;
-  }
+  while (m_entry.has_value()) {
+    if (const std::optional<Entry> right = m_entry->right();
+        right.has_value()) {
+      enter_(*right);
+      dig_left_();
+      return;
+    }
 
-  if (const std::optional<Entry> right = m_entry->right(); right.has_value()) {
-    enter_(*right);
-    dig_left_();
-    return;
-  }
+    if (!m_ancestors.empty() &&
+        (m_directories.empty() ||
+         m_ancestors.size() > m_directories.back().ancestors)) {
+      m_entry = m_ancestors.back();
+      m_ancestors.pop_back();
+      return;
+    }
 
-  if (!m_ancestors.empty()) {
-    m_entry = m_ancestors.back();
-    m_ancestors.pop_back();
-    return;
-  }
-
-  if (!m_directories.empty()) {
-    m_entry = m_directories.back();
+    if (m_directories.empty()) {
+      m_entry.reset();
+      return;
+    }
+    m_entry = m_directories.back().entry;
     m_directories.pop_back();
-    next_flat_();
-    return;
   }
-
-  m_entry = {};
 }
 
 const impl::CompoundFileReader &Archive::cfb() const { return m_cfb; }

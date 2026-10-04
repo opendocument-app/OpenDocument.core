@@ -2,6 +2,7 @@
 
 #include <odr/internal/abstract/file.hpp>
 
+#include <array>
 #include <cstdint>
 #include <string>
 
@@ -15,14 +16,14 @@ static constexpr std::uint32_t RootId = 0;
 #pragma pack(push, 1)
 
 struct CompoundFileHeader {
-  std::uint8_t signature[8];
-  std::uint8_t unused_clsid[16];
+  std::array<std::uint8_t, 8> signature;
+  std::array<std::uint8_t, 16> unused_clsid;
   std::uint16_t minor_version;
   std::uint16_t major_version;
   std::uint16_t byte_order;
   std::uint16_t sector_shift;
   std::uint16_t mini_sector_shift;
-  std::uint8_t reserved[6];
+  std::array<std::uint8_t, 6> reserved;
   std::uint32_t num_directory_sector;
   std::uint32_t num_fat_sector;
   std::uint32_t first_directory_sector_location;
@@ -32,18 +33,18 @@ struct CompoundFileHeader {
   std::uint32_t num_mini_fat_sector;
   std::uint32_t first_difat_sector_location;
   std::uint32_t num_difat_sector;
-  std::uint32_t header_difat[109];
+  std::array<std::uint32_t, 109> header_difat;
 };
 
 struct CompoundFileEntry {
-  char16_t name[32];
+  std::array<char16_t, 32> name;
   std::uint16_t name_len;
   std::uint8_t type;
   std::uint8_t color_flag;
   std::uint32_t left_sibling_id;
   std::uint32_t right_sibling_id;
   std::uint32_t child_id;
-  std::uint8_t clsid[16];
+  std::array<std::uint8_t, 16> clsid;
   std::uint32_t state_bits;
   std::uint64_t creation_time;
   std::uint64_t modified_time;
@@ -60,6 +61,9 @@ struct CompoundFileEntry {
 };
 
 #pragma pack(pop)
+
+static_assert(sizeof(CompoundFileHeader) == 512);
+static_assert(sizeof(CompoundFileEntry) == 128);
 
 void parse_header(std::istream &in, CompoundFileHeader &hdr);
 void parse_entry(std::istream &in, CompoundFileEntry &entry);
@@ -79,19 +83,14 @@ public:
     return m_root;
   }
 
-  /// Get entry (directory or file) by its ID.
-  /// Pass "0" to get the root directory entry. -- This is the start point to
-  /// navigate the compound file. Use the returned object to access child
-  /// entries.
+  /// Reads a directory entry by ID; zero names the root ([MS-CFB] 2.6.1).
   [[nodiscard]] CompoundFileEntry parse_entry(std::istream &in,
                                               std::uint32_t entry_id) const;
 
   void parse_entry(std::istream &in, std::uint32_t entry_id,
                    CompoundFileEntry &entry) const;
 
-  /// Get file(stream) data start with "offset".
-  /// The buffer must have enough space to store "len" bytes. Typically, "len"
-  /// is derived by the steam length.
+  /// Reads @p len bytes at @p offset into a buffer of at least @p len bytes.
   void read_file(std::istream &in, const CompoundFileEntry &entry,
                  std::uint64_t offset, char *buffer, std::uint64_t len) const;
 
@@ -106,7 +105,7 @@ private:
   void read_stream(std::istream &in, const SectorOffset &sector_offset,
                    char *buffer, std::uint64_t length) const;
 
-  // Same logic as "ReadStream" except that use MiniStream functions instead
+  /// Reads a stream stored in mini sectors ([MS-CFB] 2.4).
   void read_mini_stream(std::istream &in, const SectorOffset &sector_offset,
                         char *buffer, std::uint64_t length) const;
 
@@ -124,8 +123,7 @@ private:
   mini_sector_offset_to_address(std::istream &in,
                                 const SectorOffset &sector_offset) const;
 
-  /// Locate the final sector/offset when original offset expands multiple
-  /// sectors
+  /// Follows the sector chain to the requested offset.
   [[nodiscard]] SectorOffset
   normalize_sector_offset(std::istream &in, SectorOffset sector_offset) const;
 

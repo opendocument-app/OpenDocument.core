@@ -47,7 +47,7 @@ std::string CompoundFileEntry::get_name() const {
   if (name_len < 2) {
     return {};
   }
-  return internal::util::string::c16str_to_string(name, name_len - 2);
+  return internal::util::string::c16str_to_string(name.data(), name_len - 2);
 }
 
 CompoundFileReader::CompoundFileReader(std::istream &in,
@@ -55,7 +55,7 @@ CompoundFileReader::CompoundFileReader(std::istream &in,
     : m_file_size{file_size} {
   parse_header(in, m_header);
 
-  if (std::memcmp(m_header.signature, MAGIC, 8) != 0) {
+  if (std::memcmp(m_header.signature.data(), MAGIC, 8) != 0) {
     throw NoCfbFile();
   }
 
@@ -80,7 +80,8 @@ CompoundFileReader::CompoundFileReader(std::istream &in,
 void CompoundFileReader::parse_entry(std::istream &in,
                                      const std::uint32_t entry_id,
                                      CompoundFileEntry &entry) const {
-  const std::uint64_t offset = entry_id * sizeof(CompoundFileEntry);
+  const std::uint64_t offset =
+      std::uint64_t{entry_id} * sizeof(CompoundFileEntry);
 
   if (offset >= m_file_size) {
     throw std::invalid_argument("");
@@ -129,9 +130,6 @@ void CompoundFileReader::read_stream(std::istream &in,
   SectorOffset current_sector_offset =
       normalize_sector_offset(in, sector_offset);
 
-  // copy as many as possible in each step
-  // copy_length typically iterate as: m_sectorSize - offset   --> m_sectorSize
-  // -->   m_sectorSize  --> ... -->    remaining
   while (length > 0) {
     const std::uint64_t address =
         sector_offset_to_address(current_sector_offset);
@@ -142,10 +140,13 @@ void CompoundFileReader::read_stream(std::istream &in,
     }
 
     in.seekg(static_cast<std::streampos>(address));
-    in.read(buffer, static_cast<std::streamsize>(copy_length));
+    util::byte_stream::read(in, buffer, copy_length);
     buffer += copy_length;
     length -= copy_length;
 
+    if (length == 0) {
+      break;
+    }
     current_sector_offset.sector =
         resolve_next_sector(in, current_sector_offset.sector);
     current_sector_offset.offset = 0;
@@ -159,9 +160,6 @@ void CompoundFileReader::read_mini_stream(std::istream &in,
   SectorOffset current_sector_offset =
       normalize_mini_sector_offset(in, sector_offset);
 
-  // copy as many as possible in each step
-  // copy_length typically iterate as: m_sectorSize - offset   --> m_sectorSize
-  // -->   m_sectorSize  --> ... -->    remaining
   while (length > 0) {
     const std::uint64_t address =
         mini_sector_offset_to_address(in, current_sector_offset);
@@ -172,10 +170,13 @@ void CompoundFileReader::read_mini_stream(std::istream &in,
     }
 
     in.seekg(static_cast<std::streampos>(address));
-    in.read(buffer, static_cast<std::streamsize>(copy_length));
+    util::byte_stream::read(in, buffer, copy_length);
     buffer += copy_length;
     length -= copy_length;
 
+    if (length == 0) {
+      break;
+    }
     current_sector_offset.sector =
         resolve_next_mini_sector(in, current_sector_offset.sector);
     current_sector_offset.offset = 0;
