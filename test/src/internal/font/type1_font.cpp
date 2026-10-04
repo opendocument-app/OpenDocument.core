@@ -1,12 +1,16 @@
+#include "type1_test_util.hpp"
+
 #include <odr/internal/font/type1_font.hpp>
 #include <odr/internal/font/type1_transform.hpp>
 
 #include <odr/internal/font/cff_font.hpp>
 #include <odr/internal/font/cff_transform.hpp>
 #include <odr/internal/font/sfnt_font.hpp>
+#include <odr/internal/util/byte_string.hpp>
 
 #include <gtest/gtest.h>
 
+#include <clocale>
 #include <cstdint>
 #include <string>
 
@@ -14,67 +18,61 @@ using namespace odr::internal::font::type1;
 
 namespace {
 
-/// Forward Type1 cipher (the inverse of `decrypt`), so the test builds a real
-/// encrypted program rather than trusting the decryptor.
-std::string encrypt(const std::string &plain, std::uint16_t r,
-                    const std::string &random_prefix) {
-  constexpr std::uint16_t c1 = 52845;
-  constexpr std::uint16_t c2 = 22719;
-  std::string out;
-  for (const char ch : random_prefix + plain) {
-    const auto p = static_cast<std::uint8_t>(ch);
-    const auto cipher = static_cast<std::uint8_t>(p ^ (r >> 8));
-    out += static_cast<char>(cipher);
-    r = static_cast<std::uint16_t>((cipher + r) * c1 + c2);
-  }
-  return out;
-}
+using odr::test::font::encrypt;
 
-/// A `/name len RD <bytes> ND` charstring entry, the charstring encrypted with
-/// the charstring key (4330) and a 4-byte lenIV prefix.
+/// A charstring entry encoded according to /lenIV.
 std::string charstring_entry(const std::string &name,
-                             const std::string &plain_charstring) {
-  // The 4-byte lenIV prefix must be a real 4 NUL bytes — a "\x00\x00\x00\x00"
-  // string literal would be empty (the first NUL terminates it).
-  const std::string enc = encrypt(plain_charstring, 4330, std::string(4, '\0'));
+                             const std::string &plain_charstring,
+                             const std::int32_t len_iv) {
+  const std::string enc =
+      len_iv == -1
+          ? plain_charstring
+          : encrypt(plain_charstring, 4330,
+                    std::string(static_cast<std::size_t>(len_iv), '\0'));
   return "/" + name + " " + std::to_string(enc.size()) + " RD " + enc + " ND\n";
 }
 
-/// Assemble a minimal but well-formed Type1 program: a clear header (with a
-/// custom /Encoding and /FontMatrix) and an eexec-encrypted private section
-/// holding two glyphs and one subr.
-std::string build_type1() {
-  std::string clear = "%!PS-AdobeFont-1.0: TestType1 001.000\n"
-                      "/FontName /TestType1 def\n"
-                      "/FontMatrix [0.001 0 0 0.001 0 0] readonly def\n"
-                      "/FontBBox {0 -200 700 800} readonly def\n"
-                      "/Encoding 256 array\n"
-                      "0 1 255 {1 index exch /.notdef put} for\n"
-                      "dup 65 /A put\n"
-                      "dup 66 /B put\n"
-                      "readonly def\n"
-                      "currentdict end\n"
-                      "currentfile eexec\n";
+/// Type1 fixture with two glyphs and one subroutine.
+std::string build_type1(const std::int32_t len_iv = 4,
+                        const std::string &prefix = "wxyz") {
+  const std::string clear = "%!PS-AdobeFont-1.0: TestType1 001.000\n"
+                            "/FontName /TestType1 def\n"
+                            "/FontMatrix [0.001 0 0 0.001 0 0] readonly def\n"
+                            "/FontBBox {0 -200 700 800} readonly def\n"
+                            "/Encoding 256 array\n"
+                            "0 1 255 {1 index exch /.notdef put} for\n"
+                            "dup 65 /A put\n"
+                            "dup 66 /B put\n"
+                            "readonly def\n"
+                            "currentdict end\n"
+                            "currentfile eexec\n";
 
   std::string private_section = "dup /Private 16 dict dup begin\n"
-                                "/lenIV 4 def\n"
-                                "/Subrs 1 array\n";
+                                "/lenIV " +
+                                std::to_string(len_iv) +
+                                " def\n/Subrs 1 array\n";
   private_section += "dup 0 ";
   {
+    const std::string plain("\x0b", 1);
     const std::string subr =
-        encrypt(std::string("\x0b", 1), 4330, std::string(4, '\0')); // return
+        len_iv == -1
+            ? plain
+            : encrypt(plain, 4330,
+                      std::string(static_cast<std::size_t>(len_iv), '\0'));
     private_section += std::to_string(subr.size()) + " RD " + subr + " NP\n";
   }
   private_section += "ND\n"
                      "2 index /CharStrings 2 dict dup begin\n";
   // .notdef-ish + two named glyphs. Charstring bytes are arbitrary here: the
   // parser does not interpret them, it only extracts them.
-  private_section += charstring_entry("A", std::string("\x8b\x8b\x0d\x0e", 4));
-  private_section += charstring_entry("B", std::string("\xf0\x0d\x0e", 3));
+  private_section +=
+      charstring_entry("A", std::string("\x8b\x8b\x0d\x0e", 4), len_iv);
+  private_section +=
+      charstring_entry("B", std::string("\xf0\x0d\x0e", 3), len_iv);
   private_section += "end\nend\n";
 
   std::string program = clear;
-  program += encrypt(private_section, 55665, "wxyz");
+  program += encrypt(private_section, 55665, prefix);
   // Trailer (would be 512 zeros + cleartomark in a real font); the parser
   // tolerates trailing data, so a short stub is enough.
   program += std::string(8, '\0');
@@ -89,6 +87,13 @@ TEST(Type1FontTest, IsType1Magic) {
 }
 
 TEST(Type1FontTest, ParsesHeaderAndEncoding) {
+  struct LocaleGuard final {
+    std::string previous{std::setlocale(LC_NUMERIC, nullptr)};
+    ~LocaleGuard() { std::setlocale(LC_NUMERIC, previous.c_str()); }
+  } guard;
+  if (std::setlocale(LC_NUMERIC, "de_DE.UTF-8") == nullptr) {
+    std::setlocale(LC_NUMERIC, "de_DE.utf8");
+  }
   const Type1Font font{build_type1()};
 
   EXPECT_EQ(font.name(), "TestType1");
@@ -103,16 +108,18 @@ TEST(Type1FontTest, ParsesHeaderAndEncoding) {
 }
 
 TEST(Type1FontTest, DecryptsCharstringsAndSubrs) {
-  const Type1Font font{build_type1()};
+  for (const std::int32_t len_iv : {-1, 0, 4}) {
+    const Type1Font font{build_type1(len_iv, std::string("\xd9xyz", 4))};
 
-  ASSERT_EQ(font.glyphs().size(), 2u);
-  EXPECT_EQ(font.glyphs()[0].name, "A");
-  EXPECT_EQ(font.glyphs()[0].charstring, std::string("\x8b\x8b\x0d\x0e", 4));
-  EXPECT_EQ(font.glyphs()[1].name, "B");
-  EXPECT_EQ(font.glyphs()[1].charstring, std::string("\xf0\x0d\x0e", 3));
+    ASSERT_EQ(font.glyphs().size(), 2u);
+    EXPECT_EQ(font.glyphs()[0].name, "A");
+    EXPECT_EQ(font.glyphs()[0].charstring, std::string("\x8b\x8b\x0d\x0e", 4));
+    EXPECT_EQ(font.glyphs()[1].name, "B");
+    EXPECT_EQ(font.glyphs()[1].charstring, std::string("\xf0\x0d\x0e", 3));
 
-  ASSERT_EQ(font.subrs().size(), 1u);
-  EXPECT_EQ(font.subrs()[0], std::string("\x0b", 1)); // return
+    ASSERT_EQ(font.subrs().size(), 1u);
+    EXPECT_EQ(font.subrs()[0], std::string("\x0b", 1)); // return
+  }
 }
 
 TEST(Type1FontTest, ConvertsToLoadableCff) {
@@ -131,4 +138,22 @@ TEST(Type1FontTest, ConvertsToLoadableCff) {
 
   // The converted CFF wraps into a browser-loadable OTTO (the 3.4 path).
   EXPECT_TRUE(sfnt::SfntFont::is_sfnt(cff::wrap_to_otf(font)));
+}
+
+TEST(Type1FontTest, RejectsInvalidNumbersAndPfbSegments) {
+  for (const std::string_view number : {"nan", "inf", "1oops"}) {
+    std::string program = build_type1();
+    program.replace(program.find("0.001"), 5, number);
+    EXPECT_THROW(Type1Font{program}, std::runtime_error);
+  }
+  const std::string program = build_type1();
+  std::string pfb("\x80\x01", 2);
+  odr::internal::util::byte_string::put_u32_le(
+      pfb, static_cast<std::uint32_t>(program.size()));
+  pfb += program;
+  EXPECT_EQ(Type1Font(pfb + std::string("\x80\x03", 2)).glyphs().size(), 2);
+  EXPECT_THROW(Type1Font(pfb + std::string("\x80\x02\xff\xff\xff\xff", 6)),
+               std::runtime_error);
+  pfb[1] = 4;
+  EXPECT_THROW(Type1Font{pfb}, std::runtime_error);
 }

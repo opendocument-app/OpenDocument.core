@@ -1,7 +1,7 @@
 #include <odr/internal/font/type1_crypt.hpp>
 
-#include <cctype>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 
 namespace odr::internal::font::type1 {
@@ -12,7 +12,8 @@ constexpr std::uint16_t c1 = 52845;
 constexpr std::uint16_t c2 = 22719;
 
 [[nodiscard]] bool is_hex_digit(const std::uint8_t c) {
-  return std::isxdigit(c) != 0;
+  return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') ||
+         (c >= 'a' && c <= 'f');
 }
 
 /// Hex-decode @p in, skipping whitespace; stops at the first non-hex, non-space
@@ -22,7 +23,7 @@ constexpr std::uint16_t c2 = 22719;
   std::int32_t high = -1;
   for (const char ch : in) {
     const auto c = static_cast<std::uint8_t>(ch);
-    if (std::isspace(c) != 0) {
+    if (std::string_view(" \t\r\n").contains(ch)) {
       continue;
     }
     if (!is_hex_digit(c)) {
@@ -47,7 +48,7 @@ constexpr std::uint16_t c2 = 22719;
   std::int32_t seen = 0;
   for (const char ch : eexec) {
     const auto c = static_cast<std::uint8_t>(ch);
-    if (std::isspace(c) != 0) {
+    if (std::string_view(" \t\r\n").contains(ch)) {
       continue;
     }
     if (!is_hex_digit(c)) {
@@ -74,10 +75,10 @@ std::string type1::decrypt(const std::string_view cipher,
   for (const char ch : cipher) {
     const auto c = static_cast<std::uint8_t>(ch);
     out += static_cast<char>(c ^ (r >> 8));
-    r = static_cast<std::uint16_t>((c + r) * c1 + c2);
+    r = static_cast<std::uint16_t>((std::uint32_t{c} + r) * c1 + c2);
   }
-  if (skip >= out.size()) {
-    return {};
+  if (skip > out.size()) {
+    throw std::runtime_error("type1: truncated encryption prefix");
   }
   return out.substr(skip);
 }

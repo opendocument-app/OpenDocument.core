@@ -1,3 +1,5 @@
+#include "type1_test_util.hpp"
+
 #include <odr/internal/font/type1_crypt.hpp>
 
 #include <gtest/gtest.h>
@@ -9,23 +11,7 @@ using namespace odr::internal::font::type1;
 
 namespace {
 
-/// Independent reference implementation of the Type1 *encryption* (the inverse
-/// of `decrypt`), so the round-trip tests are not circular: this codes the
-/// cipher forwards (plaintext -> ciphertext), `decrypt` codes it backwards.
-std::string encrypt(const std::string &plain, std::uint16_t r,
-                    const std::string &random_prefix) {
-  constexpr std::uint16_t c1 = 52845;
-  constexpr std::uint16_t c2 = 22719;
-  std::string out;
-  const std::string full = random_prefix + plain;
-  for (const char ch : full) {
-    const auto p = static_cast<std::uint8_t>(ch);
-    const auto cipher = static_cast<std::uint8_t>(p ^ (r >> 8));
-    out += static_cast<char>(cipher);
-    r = static_cast<std::uint16_t>((cipher + r) * c1 + c2);
-  }
-  return out;
-}
+using odr::test::font::encrypt;
 
 } // namespace
 
@@ -45,6 +31,7 @@ TEST(Type1CryptTest, CharstringHonoursLenIv) {
   const std::string plain = "hello";
   const std::string cipher = encrypt(plain, 4330, "");
   EXPECT_EQ(decrypt_charstring(cipher, 0), plain);
+  EXPECT_THROW((void)decrypt_charstring("x", 4), std::runtime_error);
 }
 
 TEST(Type1CryptTest, EexecAcceptsHexForm) {

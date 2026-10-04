@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Type1 fonts avoid signed overflow when they decrypt, keep binary ciphertext
+  bytes, and support unencrypted charstrings.
+
 - CFF fonts bound INDEX, dictionary and glyph reads, and check offsets before
   conversion. Real operands ignore the host locale.
 
