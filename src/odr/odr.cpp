@@ -8,6 +8,7 @@
 #include <odr/internal/file_type_table.hpp>
 #include <odr/internal/git_info.hpp>
 #include <odr/internal/magic.hpp>
+#include <odr/internal/odf/odf_blank.hpp>
 #include <odr/internal/open_strategy.hpp>
 #include <odr/internal/project_info.hpp>
 
@@ -203,4 +204,19 @@ odr::DecodedFile odr::open(const File &file, const DecodeOptions &options,
 odr::DecodedFile odr::open(const std::string &path,
                            const DecodeOptions &options, const Logger &logger) {
   return open(File::from_disk(path), options, logger);
+}
+
+odr::Document odr::create_document(const FileType type) {
+  std::string package;
+  switch (type) {
+  case FileType::opendocument_text:
+    package = internal::odf::blank_package(type);
+    break;
+  default:
+    throw UnsupportedFileType(type);
+  }
+
+  return open(File::from_memory(std::move(package)), DecodeOptions::as(type))
+      .as_document_file()
+      .document();
 }

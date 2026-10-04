@@ -206,6 +206,7 @@ struct FileTypeCapabilities final {
   bool save{};              ///< @ref Document::save, or for a plain file
                             ///< @ref TextFile::write_edited
   bool encrypt{};  ///< @ref Document::save with a password is supported
+  bool create{};   ///< @ref create_document makes a new one
   bool annotate{}; ///< @ref PdfFile::annotate is supported; a concrete file
                    ///< still answers for itself with
                    ///< @ref PdfFile::is_annotatable

@@ -229,6 +229,9 @@ TEST(FileTypeTable, capabilities_build_on_each_other) {
     if (capabilities.edit) {
       EXPECT_TRUE(capabilities.save) << file_type_to_string(type);
     }
+    if (capabilities.create) {
+      EXPECT_TRUE(capabilities.edit) << file_type_to_string(type);
+    }
     if (!capabilities.translate_html) {
       EXPECT_FALSE(capabilities.color_scheme) << file_type_to_string(type);
     }

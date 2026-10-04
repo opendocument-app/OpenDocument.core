@@ -1,5 +1,6 @@
 #pragma once
 
+#include <odr/document.hpp>
 #include <odr/file.hpp>
 #include <odr/logger.hpp>
 
@@ -110,5 +111,9 @@ list_file_types(const std::string &path, const Logger &logger = Logger::null());
 [[nodiscard]] DecodedFile open(const std::string &path,
                                const DecodeOptions &options = {},
                                const Logger &logger = Logger::null());
+
+/// A new document of @p type, with one empty paragraph or one empty sheet.
+/// @throws UnsupportedFileType if @ref FileTypeCapabilities::create is false.
+[[nodiscard]] Document create_document(FileType type);
 
 } // namespace odr
