@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- ZIP preserves full entry names, distinguishes iterators from different
+  archives, and isolates miniz error state during concurrent reads. Entry
+  sizes and stream offsets are checked before narrowing.
+
 - XML helpers preserve embedded zero bytes when detecting UTF-16/32, report
   stream failures, and read encoding names only from declaration attributes.
 
