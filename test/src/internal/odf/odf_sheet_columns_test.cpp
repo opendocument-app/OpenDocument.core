@@ -156,12 +156,16 @@ TEST(OdfSheetColumns, a_formula_moves_with_the_cells_it_reads) {
       table("s", row(string_cell("a") + formula_cell("of:=[.C1]+[.$A$1]") +
                      string_cell("c")))));
 
-  sheet_at(document, 0).insert_columns(1, 1);
+  const Sheet sheet = sheet_at(document, 0);
+  sheet.insert_columns(1, 1);
 
+  // a reference that only moved still reads the same value
+  EXPECT_EQ(sheet.cell(2, 0).value().number(), 1);
+  // the save computes the result again: `c` and `a` add up to an error
   const std::string xml = saved(document);
   EXPECT_NE(xml.find(R"(table:formula="of:=[.D1]+[.$A$1]")"),
             std::string::npos);
-  EXPECT_NE(xml.find(R"(office:value="1")"), std::string::npos);
+  EXPECT_NE(xml.find(R"(calcext:value-type="error")"), std::string::npos);
 }
 
 TEST(OdfSheetColumns, a_deleted_reference_becomes_an_error) {

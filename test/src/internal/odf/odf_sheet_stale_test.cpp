@@ -160,7 +160,8 @@ TEST(OdfSheetStale, a_drawing_anchored_in_a_stale_cell_stays) {
   EXPECT_EQ(saved.str().find(R"(<text:p>1</text:p>)"), std::string::npos);
 }
 
-TEST(OdfSheetStale, the_saved_file_states_no_result_either) {
+/// A save computes what the write took away.
+TEST(OdfSheetStale, the_saved_file_states_the_computed_result) {
   const Document document = document_of(flat_document(chain_sheet()));
   sheet_at(document, 0).set_cell(0, 0, CellValue(10.0, "10"));
 
@@ -168,7 +169,8 @@ TEST(OdfSheetStale, the_saved_file_states_no_result_either) {
   document.save(saved);
 
   const Document reopened = document_of(saved.str());
-  EXPECT_FALSE(sheet_at(reopened, 0).cell(1, 0).value().has_number());
+  EXPECT_DOUBLE_EQ(sheet_at(reopened, 0).cell(1, 0).value().number(), 10);
+  EXPECT_DOUBLE_EQ(sheet_at(reopened, 0).cell(2, 0).value().number(), 20);
   EXPECT_DOUBLE_EQ(sheet_at(reopened, 0).cell(0, 0).value().number(), 10);
 }
 

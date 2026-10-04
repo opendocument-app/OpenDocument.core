@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace odr::internal::abstract {
@@ -50,6 +51,21 @@ public:
   /// are now: a structural edit moves them.
   void drop_sheet_dependencies() const noexcept;
 
+  /// Notes a write to (@p position) of the sheet @p sheet: a recalculation
+  /// computes the formulas reading it again.
+  void note_written(ElementIdentifier sheet,
+                    const TablePosition &position) const;
+  /// Notes an edit that moves cells: a recalculation computes every formula
+  /// again.
+  void note_moved() const noexcept;
+  /// The writes noted since the last recalculation, by sheet.
+  [[nodiscard]] const std::vector<std::pair<ElementIdentifier, TablePosition>> &
+  written() const noexcept;
+  [[nodiscard]] bool moved() const noexcept;
+  /// Forgets the edits noted: a recalculation has computed what they made
+  /// stale.
+  void forget_edits() const noexcept;
+
   /// Decoded from a package that was password-encrypted. `save` has no
   /// encryption to put back, so a savable engine refuses one.
   [[nodiscard]] bool is_decrypted() const noexcept;
@@ -66,6 +82,8 @@ protected:
 
 private:
   mutable std::unique_ptr<SheetDependencies> m_sheet_dependencies;
+  mutable std::vector<std::pair<ElementIdentifier, TablePosition>> m_written;
+  mutable bool m_moved{false};
 };
 
 } // namespace odr::internal

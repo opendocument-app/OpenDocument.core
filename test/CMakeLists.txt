@@ -42,6 +42,7 @@ add_executable(odr_test
         "src/quantity_test.cpp"
         "src/formula_corpus_test.cpp"
         "src/sheet_dependencies_test.cpp"
+        "src/sheet_recalculation_test.cpp"
         "src/table_position_test.cpp"
 
         "src/internal/html/common_test.cpp"

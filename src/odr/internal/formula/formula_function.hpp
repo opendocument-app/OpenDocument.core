@@ -119,6 +119,11 @@ void expect_arguments(const Call &call, std::size_t least, std::size_t most);
 /// `MATCH`, `COUNTIF`.
 [[nodiscard]] std::span<const FunctionEntry> lookup_functions();
 
+/// Whether @p node calls a function whose result changes without an input
+/// changing (`RAND`, `NOW`), or that decides what it reads only when it runs
+/// (`OFFSET`, `INDIRECT`).
+[[nodiscard]] bool is_volatile(const Node &node);
+
 /// The function a formula names as @p name, with or without the prefix a
 /// format writes in front of it (`_xlfn.`, `COM.MICROSOFT.`). Nothing for one
 /// the evaluator does not know.

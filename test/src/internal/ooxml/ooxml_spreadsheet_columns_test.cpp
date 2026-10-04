@@ -114,7 +114,9 @@ TEST(OoxmlSpreadsheetColumns, a_deleted_reference_becomes_an_error) {
 
   first_sheet(document).delete_columns(1, 1);
 
-  EXPECT_TRUE(contains(sheet_xml(document), R"(<c r="B1"><f>#REF!*2</f>)"));
+  // the save computes the error
+  EXPECT_TRUE(contains(sheet_xml(document),
+                       R"(<c r="B1" t="e"><f>#REF!*2</f><v>#REF!</v></c>)"));
 }
 
 TEST(OoxmlSpreadsheetColumns, a_shared_group_moves_along_columns) {

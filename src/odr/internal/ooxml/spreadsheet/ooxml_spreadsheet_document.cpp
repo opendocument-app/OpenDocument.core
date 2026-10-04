@@ -309,7 +309,7 @@ public:
     for (const auto &[position, cell] :
          m_registry->sheet_element_at(element_id).cells) {
       if (const pugi::xml_node formula = cell.node.child("f")) {
-        visitor(position.column, position.row,
+        visitor(position.column, position.row, TableDimensions(1, 1),
                 formula_expression(cell.element_id, formula));
       }
     }
@@ -428,6 +428,59 @@ public:
     case ValueType::error:
       throw UnsupportedOperation(); // refused above
     }
+    m_document->note_written(element_id, TablePosition(column, row));
+  }
+
+  /// ECMA-376 18.3.1.4: the result is `v` after the `f`, typed by `t`: `str`
+  /// for a text, `b` for a boolean, `e` for an error.
+  void sheet_set_result(const ElementIdentifier element_id,
+                        const std::uint32_t column, const std::uint32_t row,
+                        const CellValue &result) const override {
+    const ElementRegistry::Sheet::Cell *cell =
+        m_registry->sheet_element_at(element_id).cell(column, row);
+    if (cell == nullptr || !cell->node.child("f")) {
+      throw UnsupportedOperation();
+    }
+    const ElementIdentifier cell_id = cell->element_id;
+    pugi::xml_node node = get_node(cell_id);
+    for (const char *stated : {"v", "is"}) {
+      while (const pugi::xml_node child = node.child(stated)) {
+        node.remove_child(child);
+      }
+    }
+    node.remove_attribute("t");
+    ElementRegistry::Element &cell_element = m_registry->element_at(cell_id);
+    cell_element.first_child_id = null_element_id;
+    cell_element.last_child_id = null_element_id;
+
+    std::string text;
+    switch (result.type()) {
+    case ValueType::float_number:
+    case ValueType::date:
+    case ValueType::time:
+      text = fmt::format("{}", result.number());
+      break;
+    case ValueType::string:
+      node.append_attribute("t").set_value("str");
+      text = result.has_text() ? result.text() : "";
+      break;
+    case ValueType::boolean:
+      node.append_attribute("t").set_value("b");
+      text = result.has_number() && result.number() != 0 ? "1" : "0";
+      break;
+    case ValueType::error:
+      node.append_attribute("t").set_value("e");
+      text = result.has_text() ? result.text() : "#VALUE!";
+      break;
+    case ValueType::unknown:
+      return;
+    }
+    const pugi::xml_node value_node =
+        node.insert_child_after("v", node.child("f"));
+    value_node.text().set(text.c_str());
+    const auto &[text_id, unused1, unused2] =
+        m_registry->create_text_element(value_node, value_node);
+    m_registry->append_child(cell_id, text_id);
   }
 
   /// TODO a sheet carries no style of its own here; `sheetFormatPr` (default
@@ -855,6 +908,7 @@ public:
       index_shared_formulas(m_registry->sheet_element_at(id));
     }
     m_document->drop_sheet_dependencies();
+    m_document->note_moved();
 
     for (const TableHeader &header : headers) {
       sheet_set_cell(element_id, header.position.column, header.position.row,
