@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <utility>
 
@@ -21,7 +22,9 @@ public:
                std::unique_ptr<std::istream> stream,
                const std::size_t buffer_size = 4096)
       : m_reader{&reader}, m_entry{&entry}, m_stream{std::move(stream)},
-        m_buffer(buffer_size, '\0') {}
+        m_buffer(buffer_size, '\0') {
+    setg(m_buffer.data(), m_buffer.data(), m_buffer.data());
+  }
 
 protected:
   int underflow() override {
@@ -51,25 +54,23 @@ protected:
       return -1;
     }
 
-    std::streampos new_pos;
-
-    if (dir == std::ios_base::beg) {
-      new_pos = off;
-    } else if (dir == std::ios_base::cur) {
-      const std::streampos current_pos =
-          static_cast<std::streampos>(m_offset) +
-          static_cast<std::streampos>(gptr() - eback());
-      new_pos = current_pos + off;
-    } else if (dir == std::ios_base::end) {
-      new_pos = static_cast<std::streampos>(m_entry->size) + off;
-    } else {
-      throw std::logic_error("Invalid seek direction");
-    }
-
-    if (new_pos < 0 || static_cast<std::uint64_t>(new_pos) > m_entry->size) {
+    if (m_entry->size > static_cast<std::uint64_t>(
+                            std::numeric_limits<std::streamoff>::max())) {
       return -1;
     }
-
+    const auto size = static_cast<std::streamoff>(m_entry->size);
+    std::streamoff base = 0;
+    if (dir == std::ios_base::cur) {
+      base = static_cast<std::streamoff>(m_offset) - (egptr() - gptr());
+    } else if (dir == std::ios_base::end) {
+      base = size;
+    } else if (dir != std::ios_base::beg) {
+      return -1;
+    }
+    if (off < -base || off > size - base) {
+      return -1;
+    }
+    const std::streamoff new_pos = base + off;
     m_offset = static_cast<std::uint64_t>(new_pos);
 
     // invalidate buffer

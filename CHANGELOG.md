@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- CFB entry streams report the consumed position and seek relative to it,
+  with bounds checks before offset arithmetic.
+
 - Paths normalize repeated separators, accept names beginning with `..`, and
   account for parent components when comparing relative ancestry.
 
