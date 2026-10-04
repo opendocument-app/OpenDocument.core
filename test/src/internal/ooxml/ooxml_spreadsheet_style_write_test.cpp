@@ -251,3 +251,18 @@ TEST(OoxmlSpreadsheetStyleWrite, align_null_is_general_again) {
             std::nullopt);
   EXPECT_EQ(count(styles_of(document), R"(horizontal="general")"), 1);
 }
+
+/// Excel shows a line break only in a cell that wraps, so a write of several
+/// lines turns wrapping on, as LibreOffice's export does.
+TEST(OoxmlSpreadsheetStyleWrite, a_line_break_makes_the_cell_wrap) {
+  const Document document = decode(workbook(one_string));
+
+  first_sheet(document).set_cell(0, 0, CellValue("a\nb"));
+  first_sheet(document).set_cell(1, 0, CellValue("c"));
+
+  const Document saved = reopened(document);
+  const Sheet sheet = first_sheet(saved);
+  EXPECT_EQ(sheet.cell(0, 0).first_child().as_text().content(), "a\nb");
+  EXPECT_EQ(sheet.cell_style(0, 0).wrap_text, true);
+  EXPECT_NE(sheet.cell_style(1, 0).wrap_text, true);
+}

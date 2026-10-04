@@ -22,7 +22,7 @@
   var messages = {
     newLine: "a line break inside a paragraph is not supported",
     formula: "cell holds a formula",
-    rich: "cell holds more than one plain run",
+    rich: "cell holds more than text",
     shapes: "cell holds a drawing",
     readOnly: "document cannot be edited",
     formulaInput: "typing a formula is not supported",

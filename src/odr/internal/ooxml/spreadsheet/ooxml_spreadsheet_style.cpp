@@ -403,6 +403,15 @@ StyleRegistry::create_cell_format(const std::uint32_t base,
     xml::set_attribute(xf, "applyFill", "1");
   }
 
+  if (cell_style.wrap_text) {
+    pugi::xml_node alignment = xf.child("alignment");
+    if (!alignment) {
+      alignment = xf.prepend_child("alignment");
+    }
+    xml::set_attribute(alignment, "wrapText",
+                       *cell_style.wrap_text ? "1" : "0");
+    xml::set_attribute(xf, "applyAlignment", "1");
+  }
   if (cell_style.horizontal_align) {
     pugi::xml_node alignment = xf.child("alignment");
     if (!alignment) {

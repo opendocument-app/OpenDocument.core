@@ -1366,16 +1366,14 @@ TEST(html, a_cell_holding_a_link_is_locked_rich) {
   EXPECT_NE(page.find(R"(data-odr-lock="rich")"), std::string::npos);
 }
 
-// A write replaces the cell's line, so several of them are locked rather than
-// thrown away.
-TEST(html, a_cell_of_several_paragraphs_is_locked_rich) {
+TEST(html, a_cell_of_several_lines_carries_no_lock) {
   const std::string page = render_sheet(
       fods_file(fods_row(R"(<table:table-cell office:value-type="string">)"
-                         R"(<text:p>a</text:p><text:p>b</text:p>)"
-                         R"(</table:table-cell>)")),
+                         R"(<text:p>a</text:p><text:p>b<text:line-break/>c)"
+                         R"(</text:p></table:table-cell>)")),
       editing_config());
 
-  EXPECT_NE(page.find(R"(data-odr-lock="rich")"), std::string::npos);
+  EXPECT_EQ(page.find(R"(data-odr-lock=")"), std::string::npos);
 }
 
 // The cost is a class on the locked cells only, nothing on the others.

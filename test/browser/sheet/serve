@@ -21,5 +21,6 @@ serve(
         "formatting.html",
         "cut.html",
         "csv.html",
+        "lines.html",
     ),
 )

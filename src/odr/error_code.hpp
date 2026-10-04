@@ -71,7 +71,7 @@ enum class ErrorCode : std::int32_t {
   /// `odr.onError`.
   edit_new_line = 1001, ///< A line break inside a paragraph.
   edit_formula = 1002,
-  edit_rich = 1003, ///< The cell holds more than one plain run.
+  edit_rich = 1003, ///< The cell holds more than text, such as a link.
   edit_shapes = 1004,
   edit_read_only = 1005,
   edit_formula_input = 1006,

@@ -318,7 +318,7 @@ bool is_blank(const SheetCell &cell) {
 bool holds_plain_runs(const ElementRange &children) {
   for (const Element child : children) {
     const ElementType type = child.type();
-    if (type == ElementType::text) {
+    if (type == ElementType::text || type == ElementType::line_break) {
       continue;
     }
     if (type != ElementType::span || !holds_plain_runs(child.children())) {
@@ -328,19 +328,18 @@ bool holds_plain_runs(const ElementRange &children) {
   return true;
 }
 
-/// What a write can replace: text and spans of it, under one paragraph at
-/// most. odf wraps a cell's text in a `text:p` and ooxml hangs it under the
-/// `c` directly, so a single paragraph is unwrapped once. Several are several
-/// lines, which the overlay cannot write.
+/// What a write can replace: text, line breaks and spans of them, under
+/// paragraphs or not. odf wraps each line of a cell in a `text:p`, and ooxml
+/// hangs the text under the `c` directly.
 bool holds_plain_cell(const ElementRange &children) {
   ElementIterator child = children.begin();
-  if (child == children.end()) {
-    return true;
+  if (child == children.end() || (*child).type() != ElementType::paragraph) {
+    return holds_plain_runs(children);
   }
-  if (const Element first = *child; first.type() == ElementType::paragraph) {
-    return ++child == children.end() && holds_plain_runs(first.children());
-  }
-  return holds_plain_runs(children);
+  return std::ranges::all_of(children, [](const Element paragraph) {
+    return paragraph.type() == ElementType::paragraph &&
+           holds_plain_runs(paragraph.children());
+  });
 }
 
 /// Its place among the document's sheets, which is how an op names one.
@@ -431,8 +430,7 @@ const char *cell_lock(const CellValue &value, const SheetCell &cell,
   if (anchors_shapes) {
     return "shapes";
   }
-  // a write replaces the cell's runs, and a link or a line break would go
-  // unseen with them
+  // a write replaces the cell's runs, and a link would go unseen with them
   return holds_plain_cell(cell.children()) ? nullptr : "rich";
 }
 

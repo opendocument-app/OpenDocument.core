@@ -52,6 +52,11 @@ The release run heads these entries with the version and opens a fresh
 - An ods cell style with `style:text-align-source="value-type"` no longer
   takes the `fo:text-align` of its parent style, as in LibreOffice.
 
+- A sheet cell takes several lines. The sheet editor opens a cell of several
+  paragraphs or line breaks, and Alt or Ctrl with Enter breaks a line. A
+  value with `\n` writes a `text:p` per line into an ods, and turns
+  `wrapText` on in an xlsx.
+
 ## v7.4.0 - 2026-10-03
 
 - `PdfFile::permissions` reports the permission bits of an encrypted pdf, in

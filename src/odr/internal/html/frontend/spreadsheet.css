@@ -53,7 +53,7 @@ body{margin:0;background:var(--odr-sheet-canvas)}
 .odr-sheet-raised-box{display:block}
 /* The editor is an overlay: over the ruler, which sticks at 3, and over the
    raise at 4. */
-.odr-sheet-editor{position:absolute;z-index:5;box-sizing:border-box;margin:0;padding:1px 6px;border:0;outline:2px solid var(--odr-sheet-focus);outline-offset:-2px;border-radius:0;background:var(--odr-sheet-raised)}
+.odr-sheet-editor{position:absolute;z-index:5;box-sizing:border-box;margin:0;padding:1px 6px;border:0;outline:2px solid var(--odr-sheet-focus);outline-offset:-2px;border-radius:0;background:var(--odr-sheet-raised);resize:none;overflow:hidden}
 .odr-editing td{cursor:cell}
 .odr-editing td.odr-locked{cursor:not-allowed}
 .odr-sheet td.odr-sheet-refused{outline:2px solid var(--odr-sheet-refused);outline-offset:-2px}

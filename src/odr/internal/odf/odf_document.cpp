@@ -511,7 +511,7 @@ public:
       if (cell->node.attribute("table:formula")) {
         throw UnsupportedOperation(); // its dependants would go stale
       }
-      if (cell_id != null_element_id && !holds_plain_paragraph(cell_id)) {
+      if (cell_id != null_element_id && !holds_plain_lines(cell_id)) {
         throw UnsupportedOperation();
       }
 
@@ -522,8 +522,7 @@ public:
     }
 
     pugi::xml_node node = get_node(cell_id);
-    text_set_content(text_run_of(cell_id),
-                     value.has_text() ? value.text() : "");
+    write_lines(cell_id, value.has_text() ? value.text() : "");
 
     remove_value_attributes(node);
 
@@ -1414,13 +1413,13 @@ private:
                : null_element_id;
   }
 
-  /// Text, and spans of text, and nothing else, all the way down.
+  /// Text, line breaks and spans of them, and nothing else, all the way down.
   [[nodiscard]] bool holds_plain_runs(const ElementIdentifier parent_id) const {
     for (ElementIdentifier child_id = element_first_child(parent_id);
          child_id != null_element_id;
          child_id = element_next_sibling(child_id)) {
       const ElementType type = element_type(child_id);
-      if (type == ElementType::text) {
+      if (type == ElementType::text || type == ElementType::line_break) {
         continue;
       }
       if (type != ElementType::span || !holds_plain_runs(child_id)) {
@@ -1430,26 +1429,51 @@ private:
     return true;
   }
 
-  /// Whether a write can go through the cell: one paragraph, of text and spans
-  /// alone. A link, a line break or a second paragraph is content the write
-  /// would take away without the user seeing it go.
-  [[nodiscard]] bool
-  holds_plain_paragraph(const ElementIdentifier cell_id) const {
-    const ElementIdentifier paragraph_id = element_first_child(cell_id);
-    if (paragraph_id == null_element_id) {
-      return true; // a spanned cell states no paragraph; the write states one
+  /// Whether a write can go through the cell: paragraphs of plain runs. A link
+  /// or a drawing is content the write would take away unseen.
+  [[nodiscard]] bool holds_plain_lines(const ElementIdentifier cell_id) const {
+    for (ElementIdentifier child_id = element_first_child(cell_id);
+         child_id != null_element_id;
+         child_id = element_next_sibling(child_id)) {
+      if (element_type(child_id) != ElementType::paragraph ||
+          !holds_plain_runs(child_id)) {
+        return false;
+      }
     }
-    if (element_next_sibling(paragraph_id) != null_element_id ||
-        element_type(paragraph_id) != ElementType::paragraph) {
-      return false;
+    return true;
+  }
+
+  /// One `text:p` per line, as LibreOffice writes a cell. The first line goes
+  /// through the cell's own run and keeps its style.
+  void write_lines(const ElementIdentifier cell_id,
+                   const std::string_view text) const {
+    const std::size_t first_end = text.find('\n');
+    text_set_content(text_run_of(cell_id),
+                     std::string(text.substr(0, first_end)));
+
+    ElementIdentifier paragraph_id = element_first_child(cell_id);
+    for (ElementIdentifier next_id = element_next_sibling(paragraph_id);
+         next_id != null_element_id;
+         next_id = element_next_sibling(paragraph_id)) {
+      element_remove(next_id);
     }
-    return holds_plain_runs(paragraph_id);
+
+    for (std::size_t start = first_end; start != std::string_view::npos;) {
+      const std::size_t end = text.find('\n', start + 1);
+      const std::string_view line = text.substr(
+          start + 1, end == std::string_view::npos ? end : end - start - 1);
+      paragraph_id = TreeEditor(*m_registry).insert_sibling_after(paragraph_id);
+      if (!line.empty()) {
+        std::ignore = element_append_text(paragraph_id, std::string(line));
+      }
+      start = end;
+    }
   }
 
   /// The run a write goes through: the one the cell holds, so it keeps its
   /// style, and a fresh one where the cell holds none or several. The
-  /// paragraph too where the cell states none. @ref holds_plain_paragraph has
-  /// to pass.
+  /// paragraph too where the cell states none. @ref holds_plain_lines has to
+  /// pass.
   [[nodiscard]] ElementIdentifier
   text_run_of(const ElementIdentifier cell_id) const {
     ElementIdentifier paragraph_id = element_first_child(cell_id);

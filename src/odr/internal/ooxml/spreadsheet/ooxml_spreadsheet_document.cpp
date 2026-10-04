@@ -293,6 +293,14 @@ public:
       const auto &[text_id, unused1, unused2] =
           m_registry->create_text_element(text_node, text_node);
       m_registry->append_child(cell_id, text_id);
+      // Excel shows a line break only in a cell that wraps
+      if (value.has_text() && value.text().contains('\n') &&
+          !sheet_cell_style(element_id, column, row)
+               .wrap_text.value_or(false)) {
+        TableCellStyle wraps;
+        wraps.wrap_text = true;
+        sheet_set_cell_style(element_id, column, row, wraps, {});
+      }
     } break;
     case ValueType::float_number: {
       // `t` defaults to "n"; the number format, not a stored string, is

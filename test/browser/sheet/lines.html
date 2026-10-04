@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet line checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <!-- A cell of two `text:p`, as odf writes one, and a cell with a line break
+       inside its paragraph. -->
+  <body
+    class="odr-body odr-gridlines-soft"
+    data-odr-editable="true"
+    data-odr-keyboard="navigation shortcuts"
+  >
+    <table class="odr-sheet" data-odr-sheet="0">
+      <col class="odr-sheet-gutter" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <thead>
+        <tr>
+          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+          <th class="odr-sheet-column-header">A</th>
+          <th class="odr-sheet-column-header">B</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="odr-sheet-row-header">1</th>
+          <td><x-p style="display:block"><x-s>one</x-s></x-p><x-p style="display:block"><x-s>two</x-s></x-p></td>
+          <td><x-p style="display:block"><x-s>three</x-s><br><x-s></x-s><x-s>four</x-s></x-p></td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">2</th>
+          <td></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="report"></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      function editor() {
+        return document.querySelector(".odr-sheet-editor");
+      }
+      function press(key, modifiers) {
+        modifiers = modifiers || {};
+        editor().dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: key,
+            altKey: !!modifiers.alt,
+            ctrlKey: !!modifiers.ctrl,
+            bubbles: true,
+          })
+        );
+      }
+      function ops() {
+        return JSON.parse(odr.editing.getOperations()).ops;
+      }
+      function cell(column, row) {
+        return odr.sheet.cellAt(column, row);
+      }
+
+      check("two blocks read as two lines", odr.sheet.valueAt(0, 0).text === "one\ntwo");
+      check("a break reads as one", odr.sheet.valueAt(1, 0).text === "three\nfour");
+
+      odr.editing.enable();
+      check("a cell of several lines opens", odr.editing.editAt(0, 0) === true);
+      check("in a field that holds lines", editor().tagName === "TEXTAREA");
+      check("holding its lines", editor().value === "one\ntwo");
+      var height = editor().offsetHeight;
+
+      editor().value = "a";
+      editor().setSelectionRange(1, 1);
+      press("Enter", { alt: true });
+      check("alt+enter breaks the line", editor() !== null && editor().value === "a\n");
+      editor().setRangeText("b", 2, 2, "end");
+      press("Enter", { ctrl: true });
+      check("ctrl+enter too", editor().value === "a\nb\n");
+      editor().value = "a\nb";
+      editor().dispatchEvent(new Event("input"));
+      check("the field grows with its lines", editor().offsetHeight >= height);
+      press("Enter");
+      check("enter commits", editor() === null);
+      check("the op states the lines", ops().length === 1 && ops()[0].value.text === "a\nb");
+      check("the cell shows them", odr.sheet.valueAt(0, 0).text === "a\nb");
+      check("in one block", cell(0, 0).querySelectorAll("x-p").length === 1);
+      check("on two lines", cell(0, 0).offsetHeight > cell(0, 1).offsetHeight);
+
+      check("undo puts the lines back", odr.editing.undo() === true && odr.sheet.valueAt(0, 0).text === "one\ntwo");
+
+      odr.editing.editAt(1, 0);
+      check("a cell with a break opens on its lines", editor().value === "three\nfour");
+      press("Escape");
+    </script>
+  </body>
+</html>
