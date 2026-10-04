@@ -333,3 +333,143 @@ TEST(OdfSheetStyle, the_op_carries_the_fill_and_the_text_keys) {
           R"( "column": 0, "row": 0, "style": {"highlight": "#ffff00"}}]})"),
       std::invalid_argument);
 }
+
+namespace {
+
+/// Three columns, B defaulting to blue, and two rows: one stating `a` red,
+/// `b` and nothing else, and one standing for three rows.
+std::string rows_and_columns() {
+  return R"(<?xml version="1.0" encoding="UTF-8"?>)"
+         R"(<office:document office:mimetype=")"
+         R"(application/vnd.oasis.opendocument.spreadsheet">)"
+         R"(<office:automatic-styles>)" +
+         std::string(red_cell_style) +
+         R"(<style:style style:name="Blue" style:family="table-cell">)"
+         R"(<style:table-cell-properties fo:background-color="#0000ff"/>)"
+         R"(</style:style></office:automatic-styles>)"
+         R"(<office:body><office:spreadsheet><table:table table:name="s">)"
+         R"(<table:table-column/>)"
+         R"(<table:table-column table:default-cell-style-name="Blue"/>)"
+         R"(<table:table-column/>)"
+         R"(<table:table-row>)" +
+         string_cell("a", "ce1") + string_cell("b") +
+         R"(</table:table-row>)"
+         R"(<table:table-row table:number-rows-repeated="3">)"
+         R"(<table:table-cell table:number-columns-repeated="3"/>)"
+         R"(</table:table-row>)"
+         R"(</table:table></office:spreadsheet></office:body>)"
+         R"(</office:document>)";
+}
+
+} // namespace
+
+TEST(OdfSheetStyle, a_row_style_reaches_every_cell_of_the_row) {
+  const Document document = document_of(rows_and_columns());
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_row_style(0, fill(0x00ff00_rgb), bold());
+
+  EXPECT_EQ(fill_at(sheet, 0, 0), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 1, 0), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 2, 0), 0x00ff00u);
+  EXPECT_EQ(text_style_of(sheet, 0).font_weight, FontWeight::bold);
+  EXPECT_EQ(fill_at(sheet, 1, 1), 0x0000ffu);
+  EXPECT_EQ(fill_at(sheet, 0, 1), std::nullopt);
+  // no row states a default, which LibreOffice would read as the sheet's
+  EXPECT_EQ(saved(document).find("table:table-row table:default-cell-style"),
+            std::string::npos);
+}
+
+TEST(OdfSheetStyle, a_row_style_keeps_what_each_cell_showed) {
+  const Document document = document_of(rows_and_columns());
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_row_style(0, {}, bold());
+
+  EXPECT_EQ(fill_at(sheet, 0, 0), 0xff0000u);
+  EXPECT_EQ(fill_at(sheet, 1, 0), 0x0000ffu);
+  EXPECT_EQ(fill_at(sheet, 2, 0), std::nullopt);
+  EXPECT_EQ(text_style_of(sheet, 1).font_weight, FontWeight::bold);
+}
+
+/// Some producers state a row's default, which a cell without a style of its
+/// own shows before its column's.
+TEST(OdfSheetStyle, a_row_style_keeps_the_default_its_row_states) {
+  std::string source = rows_and_columns();
+  const std::string row = "<table:table-row>";
+  source.replace(source.find(row), row.size(),
+                 R"(<table:table-row table:default-cell-style-name="ce1">)");
+  const Document document = document_of(source);
+  const Sheet sheet = first_sheet(document);
+  EXPECT_EQ(fill_at(sheet, 2, 0), 0xff0000u);
+
+  sheet.set_row_style(0, {}, bold());
+
+  EXPECT_EQ(fill_at(sheet, 1, 0), 0xff0000u);
+  EXPECT_EQ(fill_at(sheet, 2, 0), 0xff0000u);
+  EXPECT_EQ(text_style_of(sheet, 1).font_weight, FontWeight::bold);
+}
+
+TEST(OdfSheetStyle, a_row_style_cuts_a_repeated_row_and_reaches_past_it) {
+  const Document document = document_of(rows_and_columns());
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_row_style(2, fill(0x00ff00_rgb), {});
+  sheet.set_row_style(6, fill(0x00ff00_rgb), {});
+
+  EXPECT_EQ(fill_at(sheet, 0, 1), std::nullopt);
+  EXPECT_EQ(fill_at(sheet, 0, 2), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 2, 2), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 0, 3), std::nullopt);
+  EXPECT_EQ(fill_at(sheet, 0, 5), std::nullopt);
+  EXPECT_EQ(fill_at(sheet, 2, 6), 0x00ff00u);
+}
+
+TEST(OdfSheetStyle, a_column_style_reaches_every_cell_of_the_column) {
+  const Document document = document_of(rows_and_columns());
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_column_style(0, fill(0x00ff00_rgb), {});
+  sheet.set_column_style(1, {}, bold());
+
+  EXPECT_EQ(fill_at(sheet, 0, 0), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 0, 3), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 0, 100), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 1, 100), 0x0000ffu);
+  EXPECT_EQ(fill_at(sheet, 2, 0), std::nullopt);
+  EXPECT_EQ(text_style_of(sheet, 1).font_weight, FontWeight::bold);
+  // the repeated row stays one: its cell stands for every row of it
+  EXPECT_EQ(count(saved(document), "<table:table-row"), 2);
+}
+
+TEST(OdfSheetStyle, a_column_past_the_declared_ones_is_declared) {
+  const Document document = document_of(rows_and_columns());
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_column_style(4, fill(0x00ff00_rgb), {});
+
+  EXPECT_EQ(fill_at(sheet, 4, 50), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 3, 50), std::nullopt);
+}
+
+TEST(OdfSheetStyle, the_ops_name_a_row_and_a_column) {
+  const Document document = document_of(rows_and_columns());
+
+  document.edit(R"({"version": 2, "ops": [)"
+                R"({"op": "setRowStyle", "sheet": 0, "row": 1,)"
+                R"( "style": {"fill": "#00ff00"}},)"
+                R"({"op": "setColumnStyle", "sheet": 0, "column": 2,)"
+                R"( "style": {"bold": true}}]})");
+
+  const Sheet sheet = first_sheet(document);
+  EXPECT_EQ(fill_at(sheet, 0, 1), 0x00ff00u);
+  EXPECT_EQ(fill_at(sheet, 0, 2), std::nullopt);
+  EXPECT_THROW(sheet.set_row_style(0,
+                                   [] {
+                                     TableCellStyle style;
+                                     style.wrap_text = true;
+                                     return style;
+                                   }(),
+                                   {}),
+               UnsupportedOperation);
+}

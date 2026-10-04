@@ -425,12 +425,11 @@ void Sheet::clear_cell(const std::uint32_t column,
   set_cell(column, row, CellValue());
 }
 
-void Sheet::set_cell_style(const std::uint32_t column, const std::uint32_t row,
-                           const TableCellStyle &cell_style,
-                           const TextStyle &text_style) const {
-  if (!exists_()) {
-    return;
-  }
+namespace {
+
+/// What no engine writes into a cell style.
+void refuse_unwritable(const TableCellStyle &cell_style,
+                       const TextStyle &text_style) {
   const auto stated = [](const auto &sides) {
     return sides.right || sides.top || sides.left || sides.bottom;
   };
@@ -440,8 +439,40 @@ void Sheet::set_cell_style(const std::uint32_t column, const std::uint32_t row,
       text_style.background_color || text_style.font_position) {
     throw UnsupportedOperation();
   }
+}
+
+} // namespace
+
+void Sheet::set_cell_style(const std::uint32_t column, const std::uint32_t row,
+                           const TableCellStyle &cell_style,
+                           const TextStyle &text_style) const {
+  if (!exists_()) {
+    return;
+  }
+  refuse_unwritable(cell_style, text_style);
   m_adapter2->sheet_set_cell_style(m_identifier, column, row, cell_style,
                                    text_style);
+}
+
+void Sheet::set_row_style(const std::uint32_t row,
+                          const TableCellStyle &cell_style,
+                          const TextStyle &text_style) const {
+  if (!exists_()) {
+    return;
+  }
+  refuse_unwritable(cell_style, text_style);
+  m_adapter2->sheet_set_row_style(m_identifier, row, cell_style, text_style);
+}
+
+void Sheet::set_column_style(const std::uint32_t column,
+                             const TableCellStyle &cell_style,
+                             const TextStyle &text_style) const {
+  if (!exists_()) {
+    return;
+  }
+  refuse_unwritable(cell_style, text_style);
+  m_adapter2->sheet_set_column_style(m_identifier, column, cell_style,
+                                     text_style);
 }
 
 TableStyle Sheet::style() const {

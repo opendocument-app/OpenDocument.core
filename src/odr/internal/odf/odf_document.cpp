@@ -586,6 +586,167 @@ public:
     attribute.set_value(name.c_str());
   }
 
+  /// LibreOffice applies a row's `table:default-cell-style-name` to the whole
+  /// sheet, so a row style goes onto its cells, to the last declared column.
+  void sheet_set_row_style(const ElementIdentifier element_id,
+                           const std::uint32_t row,
+                           const TableCellStyle &cell_style,
+                           const TextStyle &text_style) const override {
+    const ElementRegistry::Sheet &sheet =
+        m_registry->sheet_element_at(element_id);
+    const pugi::xml_node row_node = claim_row(element_id, row);
+
+    std::uint32_t stated = 0;
+    for (const pugi::xml_node cell : row_node.children()) {
+      stated += cell.attribute("table:number-columns-repeated").as_uint(1);
+    }
+    if (stated < sheet.dimensions.columns) {
+      append_empty_cells(row_node, sheet.dimensions.columns - stated);
+    }
+
+    // a cell stating no style shows the row's default before its column's
+    const char *row_default =
+        row_node.attribute("table:default-cell-style-name").value();
+    std::uint32_t column = 0;
+    for (pugi::xml_node cell = row_node.first_child(); cell;) {
+      const pugi::xml_node next = cell.next_sibling();
+      const std::uint32_t repeated =
+          cell.attribute("table:number-columns-repeated").as_uint(1);
+      if (std::strcmp(cell.name(), "table:table-cell") == 0) {
+        if (const pugi::xml_attribute own = cell.attribute("table:style-name");
+            own || *row_default != '\0') {
+          restyle(cell, "table:style-name", own ? own.value() : row_default,
+                  cell_style, text_style);
+        } else {
+          restyle_by_column(sheet, cell, column, repeated, cell_style,
+                            text_style);
+        }
+      }
+      column += repeated;
+      cell = next;
+    }
+
+    reindex_sheet(*m_registry, element_id);
+  }
+
+  /// The column's `table:default-cell-style-name`, and every cell of it that
+  /// would not take that: one stating its own style, or in a row stating a
+  /// default. A repeated row is not cut, because its cell stands for all.
+  void sheet_set_column_style(const ElementIdentifier element_id,
+                              const std::uint32_t column,
+                              const TableCellStyle &cell_style,
+                              const TextStyle &text_style) const override {
+    ElementRegistry::Sheet &sheet = m_registry->sheet_element_at(element_id);
+    const pugi::xml_node sheet_node = get_node(element_id);
+    grow_columns(sheet_node, sheet, column);
+
+    const ElementRegistry::Sheet::Column *entry = sheet.column(column);
+    const std::size_t index = entry - sheet.columns.data();
+    split_run(entry->node, "table:number-columns-repeated",
+              index == 0 ? 0 : sheet.columns[index - 1].end, entry->end,
+              column);
+    const pugi::xml_node column_node = entry->node;
+
+    for_each_table_row(sheet_node, [&](const pugi::xml_node row_node) {
+      std::uint32_t begin = 0;
+      for (const pugi::xml_node cell : row_node.children()) {
+        const std::uint32_t end =
+            begin + cell.attribute("table:number-columns-repeated").as_uint(1);
+        if (column >= end) {
+          begin = end;
+          continue;
+        }
+        const char *base = cell.attribute("table:style-name").value();
+        if (*base == '\0') {
+          base = row_node.attribute("table:default-cell-style-name").value();
+        }
+        if (std::strcmp(cell.name(), "table:table-cell") == 0 &&
+            *base != '\0') {
+          split_run(cell, "table:number-columns-repeated", begin, end, column);
+          restyle(cell, "table:style-name", base, cell_style, text_style);
+        }
+        break;
+      }
+    });
+
+    restyle(column_node, "table:default-cell-style-name",
+            column_node.attribute("table:default-cell-style-name").value(),
+            cell_style, text_style);
+    reindex_sheet(*m_registry, element_id);
+  }
+
+  /// Points @p attribute of @p node at @p base with the delta applied.
+  void restyle(pugi::xml_node node, const char *attribute, const char *base,
+               const TableCellStyle &cell_style,
+               const TextStyle &text_style) const {
+    const std::string name = m_document->style_registry().create_cell_style(
+        automatic_styles_of(node), base, cell_style, text_style);
+    pugi::xml_attribute target = node.attribute(attribute);
+    if (!target) {
+      target = node.append_attribute(attribute);
+    }
+    target.set_value(name.c_str());
+  }
+
+  /// Cuts a run of cells that state no style where the default of their
+  /// column changes, and restyles each part from that default.
+  void restyle_by_column(const ElementRegistry::Sheet &sheet,
+                         pugi::xml_node cell, const std::uint32_t begin,
+                         const std::uint32_t repeated,
+                         const TableCellStyle &cell_style,
+                         const TextStyle &text_style) const {
+    std::vector<std::pair<std::uint32_t, std::string>> parts;
+    for (std::uint32_t column = begin; column < begin + repeated;) {
+      const ElementRegistry::Sheet::Column *entry = sheet.column(column);
+      const std::uint32_t end = entry == nullptr
+                                    ? begin + repeated
+                                    : std::min(entry->end, begin + repeated);
+      const std::string base =
+          entry == nullptr
+              ? std::string()
+              : entry->node.attribute("table:default-cell-style-name").value();
+      if (!parts.empty() && parts.back().second == base) {
+        parts.back().first += end - column;
+      } else {
+        parts.emplace_back(end - column, base);
+      }
+      column = end;
+    }
+
+    pugi::xml_node part = cell;
+    for (std::size_t i = 0; i < parts.size(); ++i) {
+      if (i > 0) {
+        part = part.parent().insert_copy_after(part, part);
+      }
+      set_repeat(part, "table:number-columns-repeated", parts[i].first);
+      restyle(part, "table:style-name", parts[i].second.c_str(), cell_style,
+              text_style);
+    }
+  }
+
+  /// The node of @p row alone, cut out of its run or stated past the last.
+  [[nodiscard]] pugi::xml_node claim_row(const ElementIdentifier sheet_id,
+                                         const std::uint32_t row) const {
+    const ElementRegistry::Sheet &sheet =
+        m_registry->sheet_element_at(sheet_id);
+    if (sheet.row(row) != nullptr) {
+      return split_row_at(sheet, row);
+    }
+    const pugi::xml_node sheet_node = get_node(sheet_id);
+    const std::uint32_t rows_end =
+        sheet.rows.empty() ? 0 : sheet.rows.back().end;
+    if (row > rows_end) {
+      pugi::xml_node filler =
+          insert_ordered(sheet_node, "table:table-row", after_rows);
+      set_repeat(filler, "table:number-rows-repeated", row - rows_end);
+      append_empty_cells(filler, sheet.dimensions.columns);
+    }
+    const pugi::xml_node row_node =
+        insert_ordered(sheet_node, "table:table-row", after_rows);
+    append_empty_cells(row_node, sheet.dimensions.columns);
+    return row_node;
+  }
+
   /// The sheets of the document in the order an operation names them by.
   [[nodiscard]] std::vector<ElementIdentifier> sheets_() const {
     std::vector<ElementIdentifier> result;

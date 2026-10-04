@@ -443,10 +443,20 @@ void odf::reindex_sheet(ElementRegistry &registry,
     }
   }
 
+  const pugi::xml_node node = registry.element_at(sheet_id).node;
+
+  sheet.columns.clear();
+  std::uint32_t column = 0;
+  for_each_table_column(node, [&](const pugi::xml_node column_node) {
+    const std::uint32_t repeated =
+        column_node.attribute("table:number-columns-repeated").as_uint(1);
+    sheet.register_column(column, repeated, column_node);
+    column += repeated;
+  });
+
   sheet.rows.clear();
   sheet.cells.clear();
-  index_sheet_rows(registry, sheet_id, sheet,
-                   registry.element_at(sheet_id).node, existing);
+  index_sheet_rows(registry, sheet_id, sheet, node, existing);
 }
 
 } // namespace odr::internal

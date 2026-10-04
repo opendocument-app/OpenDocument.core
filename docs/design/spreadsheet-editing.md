@@ -285,6 +285,31 @@ dark scheme too. `html_common` and `formatting.html` pin the same colours.
 Undo holds each cell's inline style before the gesture, and one gesture is one
 undo step.
 
+### 13. A row or a column style reaches the cells no file states
+
+```json
+{"op": "setRowStyle", "sheet": 0, "row": 2, "style": {"fill": "#ffff00"}}
+{"op": "setColumnStyle", "sheet": 0, "column": 1, "style": {"bold": true}}
+```
+
+`Sheet::set_row_style` and `Sheet::set_column_style` take the same delta as
+`set_cell_style`. A cell that states its own style takes the delta on that
+style, so it keeps what it showed.
+
+- `.ods`, a column: the delta goes onto the column's
+  `table:default-cell-style-name`, which every cell without its own style
+  takes. A cell of the column that states a style, or that sits in a row
+  stating a default, gets its own copy. A repeated row is not cut, because
+  its cell stands for every row of it.
+- `.ods`, a row: the delta goes onto every cell of the row, padded to the
+  last declared column, and each one starts from the default of its column.
+  The row's `table:default-cell-style-name` is not written: LibreOffice
+  applies it to every row of the sheet.
+
+**Why:** a header click selects a row or a column across the rendered extent
+only. The cells past it, and the cells a later write makes, have to take the
+style too.
+
 ## Formulas, read side
 
 - `internal/formula` parses `of:=SUM([.A1:.B2])` (`table:formula`) and
