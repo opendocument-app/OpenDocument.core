@@ -215,6 +215,7 @@ odr::Document odr::create_document(const FileType type) {
     package = internal::odf::blank_package(type);
     break;
   case FileType::office_open_xml_document:
+  case FileType::office_open_xml_workbook:
     package = internal::ooxml::blank_package(type);
     break;
   default:
