@@ -233,8 +233,13 @@ void collect_ranges(const pugi::xml_node node, const formula::RowEdit &edit,
         if (const std::optional<std::string> moved =
                 formula::move_row_addresses(sqref.value(), edit, edit.sheet,
                                             syntax)) {
-          sqref.set_value(moved->empty() && active ? active.value()
-                                                   : moved->c_str());
+          if (!moved->empty()) {
+            sqref.set_value(moved->c_str());
+          } else if (active) {
+            sqref.set_value(active.value());
+          } else {
+            child.remove_attribute(sqref); // `A1`, the default
+          }
         }
       }
     }
@@ -248,16 +253,9 @@ void collect_ranges(const pugi::xml_node node, const formula::RowEdit &edit,
 
 /// The row of an anchor corner after the edit, at the edge of the rows that
 /// stay where a delete takes it.
-void move_corner(pugi::xml_node corner, const std::int64_t by,
-                 const formula::RowEdit &edit) {
+void move_corner(pugi::xml_node corner, const formula::RowEdit &edit) {
   pugi::xml_text row = corner.child("xdr:row").text();
-  const std::uint32_t old = row.as_uint();
-  if (by != 0) {
-    row.set(static_cast<std::uint32_t>(
-        std::max<std::int64_t>(0, static_cast<std::int64_t>(old) + by)));
-    return;
-  }
-  if (const auto rows = edit.span(old, old)) {
+  if (const auto rows = edit.span(row.as_uint(), row.as_uint())) {
     row.set(rows->first);
   } else {
     row.set(edit.row);
@@ -321,23 +319,25 @@ void ooxml::spreadsheet::move_sheet_ranges(const pugi::xml_node worksheet,
 void ooxml::spreadsheet::move_drawing(const pugi::xml_node drawing,
                                       const formula::RowEdit &edit) {
   for (const pugi::xml_node anchor : drawing.children()) {
-    const std::string_view name = anchor.name();
     const std::string_view edit_as = anchor.attribute("editAs").value();
     const pugi::xml_node from = anchor.child("xdr:from");
     if (!from || edit_as == "absolute") {
       continue;
     }
-    const std::uint32_t old = from.child("xdr:row").text().as_uint();
-    move_corner(from, 0, edit);
-    if (const pugi::xml_node to = anchor.child("xdr:to")) {
+    const pugi::xml_text from_row = from.child("xdr:row").text();
+    const std::int64_t old = from_row.as_uint();
+    move_corner(from, edit);
+    const pugi::xml_node to = anchor.child("xdr:to");
+    if (!to) {
+      continue;
+    }
+    if (edit_as != "oneCell") {
+      move_corner(to, edit);
+    } else {
       // a `oneCell` box keeps its size, so its far corner moves as the first
-      move_corner(to,
-                  name == "xdr:twoCellAnchor" && edit_as != "oneCell"
-                      ? 0
-                      : static_cast<std::int64_t>(
-                            from.child("xdr:row").text().as_uint()) -
-                            old,
-                  edit);
+      pugi::xml_text to_row = to.child("xdr:row").text();
+      to_row.set(static_cast<std::uint32_t>(std::max<std::int64_t>(
+          0, to_row.as_llong() + from_row.as_llong() - old)));
     }
   }
 }

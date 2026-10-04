@@ -375,6 +375,17 @@ TEST(OoxmlSpreadsheetRows, the_ranges_of_the_sheet_move) {
   EXPECT_TRUE(contains(xml, R"(<selection activeCell="A2" sqref="A2"/>)"));
 }
 
+TEST(OoxmlSpreadsheetRows, a_selection_a_delete_takes_falls_back_to_a1) {
+  const Document document =
+      decode(workbook(abc, "", "", "",
+                      R"(<sheetViews><sheetView><selection sqref="A2"/>)"
+                      R"(</sheetView></sheetViews>)"));
+
+  first_sheet(document).delete_rows(1, 1);
+
+  EXPECT_TRUE(contains(sheet_xml(document), "<selection/>"));
+}
+
 TEST(OoxmlSpreadsheetRows, a_drawing_moves_with_its_cells) {
   const Document document = decode(
       sheet_with_parts(abc,
@@ -389,6 +400,16 @@ TEST(OoxmlSpreadsheetRows, a_drawing_moves_with_its_cells) {
   EXPECT_TRUE(contains(xml, anchor("twoCell", 0, 4)));
   EXPECT_TRUE(contains(xml, anchor("oneCell", 3, 4)));
   EXPECT_TRUE(contains(xml, anchor("absolute", 1, 2)));
+}
+
+TEST(OoxmlSpreadsheetRows, a_one_cell_box_keeps_its_size_over_an_insert) {
+  const Document document =
+      decode(sheet_with_parts(abc, anchor("oneCell", 0, 2), "", ""));
+
+  first_sheet(document).insert_rows(1, 2);
+
+  EXPECT_TRUE(contains(part_of(document, "/xl/drawings/drawing1.xml"),
+                       anchor("oneCell", 0, 2)));
 }
 
 TEST(OoxmlSpreadsheetRows, a_comment_moves_with_its_note) {
