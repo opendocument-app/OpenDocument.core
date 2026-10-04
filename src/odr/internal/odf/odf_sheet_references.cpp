@@ -161,24 +161,35 @@ odf::move_row_references(const pugi::xml_node spreadsheet,
     const std::string sheet = table.attribute("table:name").value();
     const bool edited = sheet == edit.sheet;
 
-    std::uint32_t row = 0;
+    std::uint32_t row_begin = 0;
     for_each_table_row(table, [&](const pugi::xml_node row_node) {
-      std::uint32_t column = 0;
+      const std::uint32_t row_end =
+          row_begin +
+          row_node.attribute("table:number-rows-repeated").as_uint(1);
+      std::uint32_t column_begin = 0;
       for (const pugi::xml_node cell : row_node.children()) {
+        const std::uint32_t column_end =
+            column_begin +
+            cell.attribute("table:number-columns-repeated").as_uint(1);
         const pugi::xml_attribute formula = cell.attribute("table:formula");
         if (formula && move_formula(formula, sheet, edit)) {
-          // where the cell itself sits after the edit
-          if (!edited || row < edit.row) {
-            result.emplace_back(ordinal, column, row);
-          } else if (edit.insert) {
-            result.emplace_back(ordinal, column, row + edit.count);
-          } else if (row >= end) {
-            result.emplace_back(ordinal, column, row - edit.count);
+          for (std::uint32_t row = row_begin; row < row_end; ++row) {
+            for (std::uint32_t column = column_begin; column < column_end;
+                 ++column) {
+              // where the cell itself sits after the edit
+              if (!edited || row < edit.row) {
+                result.emplace_back(ordinal, column, row);
+              } else if (edit.insert) {
+                result.emplace_back(ordinal, column, row + edit.count);
+              } else if (row >= end) {
+                result.emplace_back(ordinal, column, row - edit.count);
+              }
+            }
           }
         }
-        column += cell.attribute("table:number-columns-repeated").as_uint(1);
+        column_begin = column_end;
       }
-      row += row_node.attribute("table:number-rows-repeated").as_uint(1);
+      row_begin = row_end;
     });
     ++ordinal;
   }

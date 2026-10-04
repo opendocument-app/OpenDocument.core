@@ -193,6 +193,21 @@ TEST(OdfSheetRows, a_range_an_insert_grows_loses_its_result) {
   EXPECT_FALSE(sheet.cell(1, 0).value().has_number());
 }
 
+TEST(OdfSheetRows, what_reads_a_repeat_of_a_formula_loses_its_result) {
+  const Document document = document_of(flat_spreadsheet(
+      table("s", row(string_cell("a") +
+                     R"(<table:table-cell table:number-columns-repeated="2")"
+                     R"x( table:formula="of:=ROWS([.$A$1:.$A$3])")x"
+                     R"( office:value-type="float" office:value="3"/>)" +
+                     formula_cell("of:=[.C1]")) +
+                     row(string_cell("b")) + row(string_cell("c")))));
+  const Sheet sheet = sheet_at(document, 0);
+
+  sheet.insert_rows(1, 1);
+
+  EXPECT_FALSE(sheet.cell(3, 0).value().has_number());
+}
+
 TEST(OdfSheetRows, a_deleted_reference_becomes_an_error) {
   const Document document = document_of(flat_spreadsheet(
       table("s", row(string_cell("a")) + row(string_cell("b")) +

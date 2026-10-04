@@ -863,8 +863,8 @@ public:
     const std::uint32_t stated_end = trailing != nullptr ? trailing->begin
                                      : runs.empty()      ? 0
                                                          : runs.back().end;
-    if (row<stated_end &&static_cast<std::uint64_t>(stated_end) + count>
-            row_limit) {
+    const std::uint64_t moved_end = std::uint64_t{stated_end} + count;
+    if (row < stated_end && moved_end > row_limit) {
       throw UnsupportedOperation();
     }
 
