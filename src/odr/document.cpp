@@ -340,6 +340,24 @@ void Document::edit(const std::string_view operations,
       continue;
     }
 
+    if (name == "setRowStyle") {
+      const auto [cell_style, text_style] =
+          parse_cell_style(operation.at("style"));
+      sheet_at(root_element(), operation.at("sheet").get<std::uint32_t>())
+          .set_row_style(operation.at("row").get<std::uint32_t>(), cell_style,
+                         text_style);
+      continue;
+    }
+
+    if (name == "setColumnStyle") {
+      const auto [cell_style, text_style] =
+          parse_cell_style(operation.at("style"));
+      sheet_at(root_element(), operation.at("sheet").get<std::uint32_t>())
+          .set_column_style(operation.at("column").get<std::uint32_t>(),
+                            cell_style, text_style);
+      continue;
+    }
+
     if (name == "setText") {
       text_of(operation, "id")
           .set_content(operation.at("text").get<std::string>());

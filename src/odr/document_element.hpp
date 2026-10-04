@@ -395,6 +395,14 @@ public:
   void set_cell_style(std::uint32_t column, std::uint32_t row,
                       const TableCellStyle &cell_style,
                       const TextStyle &text_style) const;
+  /// @ref set_cell_style on every cell of the row, also the ones a later
+  /// write makes.
+  void set_row_style(std::uint32_t row, const TableCellStyle &cell_style,
+                     const TextStyle &text_style) const;
+  /// @ref set_cell_style on every cell of the column, also the ones a later
+  /// write makes.
+  void set_column_style(std::uint32_t column, const TableCellStyle &cell_style,
+                        const TextStyle &text_style) const;
 
   [[nodiscard]] TableStyle style() const;
   [[nodiscard]] TableColumnStyle column_style(std::uint32_t column) const;

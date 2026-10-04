@@ -57,6 +57,10 @@ The release run heads these entries with the version and opens a fresh
   value with `\n` writes a `text:p` per line into an ods, and turns
   `wrapText` on in an xlsx.
 
+- `Sheet::set_row_style` and `Sheet::set_column_style`, and the
+  `setRowStyle` and `setColumnStyle` ops, style a whole row or column of an
+  ods, also the cells past what the file states.
+
 ## v7.4.0 - 2026-10-03
 
 - `PdfFile::permissions` reports the permission bits of an encrypted pdf, in

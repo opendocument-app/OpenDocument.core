@@ -301,6 +301,23 @@ public:
                        [[maybe_unused]] const TextStyle &text_style) const {
     throw UnsupportedOperation();
   }
+  /// States the set fields on every cell of @p row, also the ones past what
+  /// the file states, and on the cells of it that state their own style.
+  virtual void
+  sheet_set_row_style([[maybe_unused]] ElementIdentifier element_id,
+                      [[maybe_unused]] std::uint32_t row,
+                      [[maybe_unused]] const TableCellStyle &cell_style,
+                      [[maybe_unused]] const TextStyle &text_style) const {
+    throw UnsupportedOperation();
+  }
+  /// The same for every cell of @p column.
+  virtual void
+  sheet_set_column_style([[maybe_unused]] ElementIdentifier element_id,
+                         [[maybe_unused]] std::uint32_t column,
+                         [[maybe_unused]] const TableCellStyle &cell_style,
+                         [[maybe_unused]] const TextStyle &text_style) const {
+    throw UnsupportedOperation();
+  }
 
   [[nodiscard]] virtual TableStyle
   sheet_style(ElementIdentifier element_id) const = 0;
