@@ -68,9 +68,8 @@ public:
     return value;
   }
 
-  /// @p node evaluated in an array context, as `SUMPRODUCT` reads its
-  /// arguments: an operator reads every cell of a range, not the one the
-  /// formula crosses. The result is an array.
+  /// Evaluates @p node as an array, expanding range operands as `SUMPRODUCT`
+  /// does.
   [[nodiscard]] Matrix array(const Node &node) {
     const bool outer = m_array;
     m_array = true;
@@ -570,10 +569,8 @@ private:
     return Value{result};
   }
 
-  /// `a + b`. LibreOffice gives 0 where the two cancel to within the
-  /// precision of a sheet (`rtl::math::approxAdd`), so `0.1+0.2-0.3` is 0.
-  /// Excel does so only for the last operation of a formula outside brackets,
-  /// which the tree does not keep, and does not document how near to 0.
+  /// Adds with LibreOffice cancellation (`rtl::math::approxAdd`). Excel
+  /// cancellation depends on parentheses absent from this AST.
   [[nodiscard]] double add(const double a, const double b,
                            const bool last) const {
     const double result = a + b;

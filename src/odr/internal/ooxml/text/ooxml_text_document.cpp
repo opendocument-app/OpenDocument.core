@@ -465,10 +465,8 @@ public:
     return new_id;
   }
 
-  /// [ECMA-376] Part 1 17.3.3.31: a `w:t` sits in a `w:r`, so a parent that
-  /// is no run gets a new one. In a paragraph the new run takes the
-  /// properties of the paragraph mark (17.3.1.29), as Word does for typed
-  /// text, without the revision marks that only the mark can carry.
+  /// [ECMA-376] 17.3.3.31: creates a missing `w:r` for `w:t`, inheriting
+  /// paragraph-mark properties except revision marks (17.3.1.29).
   [[nodiscard]] ElementIdentifier
   element_append_text(const ElementIdentifier element_id,
                       const std::string &text) const override {

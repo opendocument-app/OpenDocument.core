@@ -92,10 +92,8 @@ struct Collected final {
   std::optional<ErrorType> error{};
 };
 
-/// The numbers of the first @p count arguments, as `SUM` reads them. A cell
-/// adds a number, and a boolean in LibreOffice, where it is the number 1 or
-/// 0. An argument stated directly adds a boolean too, and in Excel a text
-/// that reads as a number.
+/// Reads @p count arguments as SUM does: numeric cells and LibreOffice
+/// boolean cells; direct booleans and Excel numeric text also count.
 Collected collect(const Call &call, const std::size_t count) {
   Collected result;
   for (std::size_t i = 0; i < count; ++i) {

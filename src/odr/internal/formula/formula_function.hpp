@@ -16,13 +16,10 @@ namespace odr::internal::formula {
 
 class Evaluator;
 
-/// Thrown where the evaluator has no answer. `evaluate` catches it, so a
-/// function throws it for an argument it cannot read the way the
-/// application would.
+/// Signals an indeterminate result; caught by `evaluate`.
 struct NoAnswer final {};
 
-/// Thrown by a function for an argument that is an error, which is then
-/// what the function gives back.
+/// Propagates an argument error as the function result.
 struct ErrorResult final {
   ErrorType error{ErrorType::value};
 };
@@ -98,10 +95,9 @@ struct FunctionEntry final {
   Function function{nullptr};
 };
 
-/// The order of two texts as both applications sort them: ignoring case
-/// first, then, where @p case_sensitive, a lower case letter before its
-/// upper case one. @throws NoAnswer for a character other than a letter or a
-/// digit, whose place is for the collator of the application.
+/// Compares ASCII letters and digits, ignoring case first; case-sensitive
+/// ties put lowercase first.
+/// @throws NoAnswer if ordering requires application-specific collation.
 [[nodiscard]] std::strong_ordering
 order_of_texts(std::string_view a, std::string_view b, bool case_sensitive);
 /// Whether two texts are equal, without case unless @p case_sensitive.

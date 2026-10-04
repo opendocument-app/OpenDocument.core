@@ -30,10 +30,9 @@ public:
   /// The columns and rows of @p sheet up to the last one stating content. A
   /// whole column (`A:A`) reaches to the last row of it.
   [[nodiscard]] virtual TableDimensions extent(std::uint32_t sheet) const = 0;
-  /// Calls @p visit with every cell of @p area that states something, row by
-  /// row, with what it holds, nothing for a cell without an answer. An empty
-  /// cell may be left out, and so may the positions past the extent of the
-  /// sheet. By default, every position up to the extent is read.
+  /// Visits cells of @p area in reading order; null values mean no answer.
+  /// Empty and out-of-extent cells may be skipped; the default visits every
+  /// in-extent position.
   virtual void for_each_cell(
       const Area &area,
       const std::function<void(const SheetPosition &,
@@ -48,14 +47,9 @@ public:
   }
 };
 
-/// The value of @p node, the formula of the cell at @p cell. A result that
-/// is a range reads the cell the formula's row or column crosses, as a cell
-/// without an array formula does.
-///
-/// Nothing where the evaluator has no answer: for a function it does not
-/// know, a name, a reference into another document, a cell with no answer,
-/// or a text whose number depends on the locale. An answer it gives is the
-/// one LibreOffice or Excel gives, as @p settings says.
+/// Evaluates @p node at @p cell using @p settings, with implicit intersection
+/// for range results. Returns null when the application-specific result
+/// cannot be determined.
 [[nodiscard]] std::optional<Value> evaluate(const Node &node,
                                             const SheetPosition &cell,
                                             const CellSource &source,

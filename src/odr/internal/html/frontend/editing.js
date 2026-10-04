@@ -158,20 +158,16 @@
         : "document";
     },
 
-    /// Adds one format's editor. Only `operations` is required; `enable`,
-    /// `disable`, `undo`, `redo`, `canUndo`, `canRedo`, `committed`, `format`,
-    /// `toggle`, `insertRows`, `deleteRows`, `insertColumns` and
-    /// `deleteColumns` default.
+    /// Registers an editor; only `operations` is required.
     attach: function (editor) {
       editors.push(editor);
     },
 
-    /// States @p style on the selection: `bold`, `italic`, `underline`,
-    /// `strikethrough` (a bool), `color` (`#rrggbb`), `size` (`14pt`), and
-    /// `highlight` (`#rrggbb` or null) on text, `align` (`left`, `center`,
-    /// `right`, `justify` on text, null on a cell for its value type) on every
-    /// paragraph or cell it reaches, and `fill` (`#rrggbb` or null) on cells.
-    /// False where refused.
+    /// Formats the selection; false if refused. Text accepts `bold`, `italic`,
+    /// `underline`, `strikethrough` (booleans), `size` (e.g. `14pt`), `color`
+    /// and `highlight`. Paragraphs/cells accept `align`: left, center, right,
+    /// justify, or null for cell-type alignment. Cells accept `fill`.
+    /// Colors use `#rrggbb`; null clears highlight/fill.
     format: function (style) {
       return delegate("format", style);
     },

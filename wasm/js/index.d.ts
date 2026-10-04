@@ -90,7 +90,7 @@ export interface Recalculation {
   changed: SheetPosition[];
   /** The cells of a cycle, which have no result. */
   circular: SheetPosition[];
-  /** The stale formula cells nothing here computes. */
+  /** Stale formula cells the evaluator cannot resolve. */
   unevaluated: SheetPosition[];
 }
 
@@ -269,36 +269,32 @@ export declare class Document {
   /** `setCellStyle` on every cell of the column, also past what the file states. */
   setColumnStyle(sheet: number, column: number, style: CellStyle): this;
   /**
-   * Moves the rows from `row` on down by `count`, and every reference to them
-   * in the document with them. The new rows are empty.
-   * @throws OdrError `unsupported_operation` where the edit would cut a merge
-   *         or push a stated cell off the grid
+   * Inserts `count` empty rows at `row`, shifting cells and references.
+   * @throws OdrError `unsupported_operation` if the edit cuts a merge or
+   * pushes a cell off-grid.
    */
   insertRows(sheet: number, row: number, count: number): this;
   /**
-   * Removes `count` rows from `row` on, and moves the rows below up. A
-   * reference into the removed rows becomes `#REF!`.
-   * @throws OdrError `unsupported_operation` where the edit would cut a merge
+   * Deletes `count` rows at `row`; deleted references become `#REF!`.
+   * @throws OdrError `unsupported_operation` if the edit cuts a merge.
    */
   deleteRows(sheet: number, row: number, count: number): this;
   /**
-   * Moves the columns from `column` on right by `count`, and every reference
-   * to them in the document with them. The new columns are empty.
-   * @throws OdrError `unsupported_operation` where the edit would cut a merge
-   *         or push a stated cell off the grid
+   * Inserts `count` empty columns at `column`, shifting cells and references.
+   * @throws OdrError `unsupported_operation` if the edit cuts a merge or
+   * pushes a cell off-grid.
    */
   insertColumns(sheet: number, column: number, count: number): this;
   /**
-   * Removes `count` columns from `column` on, and moves the columns right of
-   * them left. A reference into the removed columns becomes `#REF!`.
-   * @throws OdrError `unsupported_operation` where the edit would cut a merge
+   * Deletes `count` columns at `column`; deleted references become `#REF!`.
+   * @throws OdrError `unsupported_operation` if the edit cuts a merge.
    */
   deleteColumns(sheet: number, column: number, count: number): this;
   /**
-   * Computes the stale formula cells and writes each result into the
-   * document. `save` does so first where an edit left one stale.
-   * @throws OdrError `unsupported_operation` where the sheets repeat more
-   *         formula cells than a recalculation reads
+   * Recalculates stale formulas and stores their results; save does this after
+   * edits.
+   * @throws OdrError `unsupported_operation` if repeated formulas exceed the
+   * recalculation limit.
    */
   recalculate(): Recalculation;
   /**

@@ -163,9 +163,8 @@ emscripten::val set_paragraph_style(const Handle handle, const double id,
   });
 }
 
-/// One @p op stating @p style, as the page's `odr.editing.format` takes it,
-/// on the cells @p place names, replayed through the envelope, which parses
-/// it.
+/// Replays a style operation for @p place through the editor envelope's
+/// parser.
 emscripten::val edit_style(const Handle handle, const std::string &op,
                            const std::string &place,
                            const emscripten::val style) {

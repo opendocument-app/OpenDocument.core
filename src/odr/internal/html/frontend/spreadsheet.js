@@ -633,10 +633,8 @@
     changed();
   }
 
-  // @p count empty rows from @p row on, the rows below moved down. A new
-  // cell takes no style: the page cannot know what its column's default
-  // resolves to. Null where the edge would cut a merge, or lies past the
-  // rendered rows.
+  // Inserts @p count unstyled rows at @p row. Returns null if the edit cuts a
+  // merge or lies past the rendered rows.
   function insertRows(row, count) {
     if (row > lastRow() + 1 || spanReaches(row)) {
       return null;

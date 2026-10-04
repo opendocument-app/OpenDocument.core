@@ -52,9 +52,8 @@ void for_each_position(const Span &span, const Visit &visit) {
 /// The most positions of spanned formula cells a recalculation reads.
 constexpr std::size_t span_limit = 1 << 20;
 
-/// How deep a formula reads stale formulas reading stale formulas in one
-/// go, which bounds the stack: a level takes about a kilobyte. A deeper chain
-/// is computed from its far end first (`compute`).
+/// Maximum dependency depth per chunk; `compute` resolves deeper chains from
+/// the far end.
 constexpr std::size_t depth_limit = 64;
 
 /// The cells as a recalculation reads them: a stale formula cell computed on

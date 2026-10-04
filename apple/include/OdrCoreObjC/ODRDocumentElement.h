@@ -169,24 +169,22 @@ NS_SWIFT_NAME(Sheet)
               atColumn:(uint32_t)column
                  error:(NSError **)error
     NS_SWIFT_NAME(setStyle(_:textStyle:column:));
-/// Moves the rows from `row` on down by `count`, and every reference to them
-/// in the document with them. The new rows are empty.
+/// Inserts `count` empty rows at `row`, shifting cells and references.
 - (BOOL)insertRowsAt:(uint32_t)row
                count:(uint32_t)count
                error:(NSError **)error NS_SWIFT_NAME(insertRows(at:count:));
-/// Removes `count` rows from `row` on, and moves the rows below up. A
-/// reference into the removed rows becomes `#REF!`.
+/// Deletes `count` rows at `row`, shifting cells and references up. Deleted
+/// references become `#REF!`.
 - (BOOL)deleteRowsAt:(uint32_t)row
                count:(uint32_t)count
                error:(NSError **)error NS_SWIFT_NAME(deleteRows(at:count:));
-/// Moves the columns from `column` on right by `count`, and every reference
-/// to them in the document with them. The new columns are empty.
+/// Inserts `count` empty columns at `column`, shifting cells and references.
 - (BOOL)insertColumnsAt:(uint32_t)column
                   count:(uint32_t)count
                   error:(NSError **)error
     NS_SWIFT_NAME(insertColumns(at:count:));
-/// Removes `count` columns from `column` on, and moves the columns right of
-/// them left. A reference into the removed columns becomes `#REF!`.
+/// Deletes `count` columns at `column`, shifting cells and references left.
+/// Deleted references become `#REF!`.
 - (BOOL)deleteColumnsAt:(uint32_t)column
                   count:(uint32_t)count
                   error:(NSError **)error

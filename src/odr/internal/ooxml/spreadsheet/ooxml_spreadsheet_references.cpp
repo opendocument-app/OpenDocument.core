@@ -64,9 +64,8 @@ void move_text(pugi::xml_node node, const std::optional<std::string> &sheet,
   }
 }
 
-/// Moves @p formulas of a rule or a validation of the edited sheet, which
-/// state their cells as the first cell of @p sqref sees them. Where a delete
-/// removes that cell, they read as the first cell that stays.
+/// Moves rule formulas relative to the first cell of @p sqref. If that cell
+/// is deleted, rebases them on the first surviving cell.
 void move_anchored_formulas(const std::string &sqref,
                             const std::span<const pugi::xml_node> formulas,
                             const formula::SheetEdit &edit) {
@@ -129,7 +128,13 @@ std::vector<pugi::xml_node> descendants(const pugi::xml_node node,
 void remove_entry(pugi::xml_node node) {
   while (node && std::string_view(node.name()) != "worksheet") {
     pugi::xml_node parent = node.parent();
+    const bool sparklines = std::string_view(node.name()) == "x14:sparklines";
     parent.remove_child(node);
+    // A group without sparklines is invalid ([MS-XLSX] 2.6.7).
+    if (sparklines) {
+      node = parent;
+      continue;
+    }
     if (parent.find_child([](const pugi::xml_node child) {
           return child.type() == pugi::node_element;
         })) {
@@ -145,9 +150,8 @@ void remove_entry(pugi::xml_node node) {
   }
 }
 
-/// [MS-XLSX] 2.3: the Excel 2010 extensions of a worksheet state their cells
-/// in `xm:sqref` and their formulas in `xm:f`, which may read another sheet.
-/// So each worksheet moves its formulas, and the edited one its cells too.
+/// [MS-XLSX] 2.3: moves extension formulas on every sheet and `xm:sqref`
+/// locations on the edited sheet.
 void move_extensions(const NamedWorksheet &worksheet, const bool edited,
                      const formula::SheetEdit &edit) {
   const pugi::xml_node extensions = worksheet.node.child("extLst");
@@ -174,6 +178,12 @@ void move_extensions(const NamedWorksheet &worksheet, const bool edited,
         }
       }
     }
+  }
+  // [MS-XLSX] 2.6.7: a group's date-axis range is independent of its
+  // sparklines.
+  for (const pugi::xml_node group :
+       descendants(extensions, "x14:sparklineGroup")) {
+    move_text(group.child("xm:f"), worksheet.name, edit);
   }
   // a sparkline reads its range as it is, and sits in its own cell
   for (const pugi::xml_node sparkline :

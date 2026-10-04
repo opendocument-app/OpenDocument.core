@@ -74,9 +74,8 @@ public:
   /// The data style (`number:number-style` and its kin) named @p name, null
   /// where there is none.
   [[nodiscard]] pugi::xml_node data_style_node(std::string_view name) const;
-  /// The data style the cell style @p style_name shows a value in, through
-  /// its parents and the default `table-cell` style; null where none names
-  /// one.
+  /// Resolves a cell data style through its parents and the default
+  /// `table-cell` style; null if absent.
   [[nodiscard]] pugi::xml_node cell_data_style(const char *style_name) const;
   /// The `style:default-style` of @p family, null where there is none.
   [[nodiscard]] pugi::xml_node

@@ -92,11 +92,8 @@
     );
   }
 
-  /// One op per kind and position: the last value written, and the style
-  /// keys merged with the later ones winning. A style op does not merge back
-  /// past a later one that reaches the same cell, and nothing merges across
-  /// an inserted or deleted row, which moves the positions, so the order
-  /// survives.
+  /// Coalesces values and style keys by position, with later writes winning.
+  /// Overlapping style operations and structural edits are merge barriers.
   function coalesced() {
     var result = [];
     var byKey = new Map();
@@ -149,8 +146,7 @@
     reportSelection(true);
   }
 
-  /// The decimal separator of the document's locale, `.` where it states
-  /// none: an xlsx shows its numbers with `.` until number formats are read.
+  /// The document's decimal separator, defaulting to `.`.
   var DECIMAL = (function () {
     var locale = document.body.getAttribute("data-odr-locale");
     try {
@@ -307,9 +303,8 @@
     return null;
   }
 
-  /// The type follows the string the user typed: a number where the grammar
-  /// says so, a date or a time where the locale reads one, a string otherwise,
-  /// and a leading `'` forces one.
+  /// Parses numbers and, on styled sheets, locale dates/times. Other input
+  /// stays text; a leading apostrophe forces text.
   function parse(text) {
     var quoted = text.charAt(0) === "'";
     var content = quoted ? text.slice(1) : text;
@@ -516,10 +511,8 @@
     return [from === null ? edge : from, to === null ? edge - 1 : to];
   }
 
-  /// The formula cells after @p ops, each where it sits and what it reads as
-  /// the ops moved them, and marked where an op changed an input: a write it
-  /// reads, a row or column a delete took, or a range an insert grew. A cell
-  /// a delete took is left out.
+  /// Moves formula positions and dependencies through @p ops, marking changed
+  /// inputs and omitting deleted cells.
   function walk(ops) {
     var entries = readersOf().map(function (entry) {
       return {
@@ -1324,10 +1317,8 @@
     return format(style);
   }
 
-  /// The row or column op of the selection, as one undo step: @p axis is
-  /// `row` or `column`, and an insert goes before the selection, or after it
-  /// where @p after. The formula cells are read where the page put them
-  /// before the first such op moves them.
+  /// Edits the selected rows or columns as one undo step; @p after inserts
+  /// after the selection. Captures formulas before the first structural edit.
   function editStructure(axis, insert, after) {
     finish();
     if (!odr.editing.isEnabled()) {

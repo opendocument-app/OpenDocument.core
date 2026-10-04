@@ -11,14 +11,13 @@ namespace odr::internal {
 
 namespace {
 
-/// What the evaluator reads out of @p value. Nothing for a formula that
-/// caches no result, and for an error whose spelling no formula states.
+/// Converts a cached value; null for a missing formula result or unrecognized
+/// error.
 std::optional<formula::Value> value_of(const CellValue &value,
                                        const formula::Settings &settings) {
   using formula::Value;
-  // LibreOffice before 4 and OpenOffice stated an error as the number 0
-  // showing it: in the language of the user (`#VALORE!`), and as its own codes
-  // (`Err:502`)
+  // Old LibreOffice and OpenOffice store errors as numeric zero with
+  // localized error text or an `Err:` code.
   if (value.has_formula() && value.type() == ValueType::float_number &&
       value.has_text()) {
     if (const std::optional<formula::ErrorType> error =
@@ -64,9 +63,8 @@ std::optional<formula::Value> value_of(const CellValue &value,
   return std::nullopt;
 }
 
-/// Whether @p cell is the one at @p position. A merge covers the positions
-/// of its span but the first, and an ods sheet answers the next cell of the
-/// row for a covered position. Either reads as empty.
+/// Rejects a neighboring cell returned for a covered ODS position, which
+/// reads as empty.
 bool is_at(const SheetCell &cell, const TablePosition &position) {
   return !cell || cell.position() == position;
 }

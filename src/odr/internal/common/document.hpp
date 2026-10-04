@@ -47,12 +47,10 @@ public:
   [[nodiscard]] const SheetDependencies &sheet_dependencies() const final;
   [[nodiscard]] formula::Settings formula_settings() const override;
   [[nodiscard]] std::vector<formula::Name> formula_names() const override;
-  /// Drops the graph, so the next question builds it off the formulas as they
-  /// are now: a structural edit moves them.
+  /// Invalidates the dependency graph after formulas move.
   void drop_sheet_dependencies() const noexcept;
 
-  /// Notes a write to (@p position) of the sheet @p sheet: a recalculation
-  /// computes the formulas reading it again.
+  /// Marks dependents of (@p sheet, @p position) for recalculation.
   void note_written(ElementIdentifier sheet,
                     const TablePosition &position) const;
   /// Notes an edit that moves cells: a recalculation computes every formula
@@ -62,8 +60,7 @@ public:
   [[nodiscard]] const std::vector<std::pair<ElementIdentifier, TablePosition>> &
   written() const noexcept;
   [[nodiscard]] bool moved() const noexcept;
-  /// Forgets the edits noted: a recalculation has computed what they made
-  /// stale.
+  /// Clears the edits handled by recalculation.
   void forget_edits() const noexcept;
 
   /// Decoded from a package that was password-encrypted. `save` has no

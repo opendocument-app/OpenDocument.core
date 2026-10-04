@@ -12,9 +12,8 @@ namespace odr::internal::odf {
 /// Looks a data style up by its `style:name`; null where there is none.
 using DataStyleLookup = std::function<pugi::xml_node(std::string_view)>;
 
-/// The format code an ods data style (`number:number-style` and its kin) says
-/// the same as, with its `style:map`s as sections, as LibreOffice exports one.
-/// Nothing where it holds a part no format code spells, such as an era.
+/// Converts an ODS data style and its maps to a format code, matching
+/// LibreOffice export; null for unrepresentable parts such as eras.
 [[nodiscard]] std::optional<std::string>
 format_code(pugi::xml_node data_style, const DataStyleLookup &lookup);
 

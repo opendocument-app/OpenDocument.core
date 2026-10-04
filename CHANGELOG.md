@@ -18,9 +18,9 @@ The release run heads these entries with the version and opens a fresh
 
 - An inserted or deleted row or column moves the Excel 2010 extensions of an
   xlsx worksheet: an `x14` conditional format, validation and sparkline, and
-  the references a rule on another sheet reads in the edited one.
-- A formula nested more than 64 levels deep does not parse, and gets no
-  answer. An ods `&` of a boolean follows the LibreOffice in `meta:generator`,
+  sparkline date-axis ranges, and references from other sheets.
+- A formula nested more than 64 levels deep, including operator chains,
+  does not parse and gets no answer. An ods `&` of a boolean follows the LibreOffice in `meta:generator`,
   and an xlsx comparison near the 15th digit gets no answer.
 
 - Spreadsheet structural edits preserve cross-sheet rules and table formulas,

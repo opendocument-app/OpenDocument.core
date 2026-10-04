@@ -570,9 +570,8 @@ public:
         cell_style, text_style);
   }
 
-  /// A row's `s` with `customFormat`, and every `c` of it on its own `s`. A
-  /// column stating a style inside the used range gets a `c` where the row
-  /// states none, because the row's format would hide the column's.
+  /// Applies row and cell styles; materializes missing cells where the new
+  /// row style would hide a column style.
   void sheet_set_row_style(const ElementIdentifier element_id,
                            const std::uint32_t row,
                            const TableCellStyle &cell_style,
@@ -622,9 +621,8 @@ public:
     xml::set_attribute(row_node, "customFormat", "1");
   }
 
-  /// A `col` of its own with the delta on its `style`, and every `c` of the
-  /// column on its own `s`. A row with `customFormat` gets a `c` where it
-  /// states none, because its format would hide the column's.
+  /// Applies column and cell styles; materializes missing cells where a row
+  /// style would hide the new column style.
   void sheet_set_column_style(const ElementIdentifier element_id,
                               const std::uint32_t column,
                               const TableCellStyle &cell_style,
@@ -684,11 +682,8 @@ public:
   static constexpr std::uint32_t row_limit = 1048576;
   static constexpr std::uint32_t column_limit = 16384;
 
-  /// Every `row` and `c` states its position (18.3.1.73, 18.3.1.4), so the
-  /// ones past the edit state it again, and the column declarations, the
-  /// merges, the dimension, the ranges of the sheet, its drawings and
-  /// comments, every formula, every defined name and the calc chain move with
-  /// them.
+  /// Moves rows, cells and dependent references and parts (ECMA-376
+  /// 18.3.1.73, 18.3.1.4).
   void edit_sheet(const ElementIdentifier element_id,
                   formula::SheetEdit edit) const {
     const bool rows_edited = edit.axis == formula::Axis::row;
@@ -954,10 +949,8 @@ public:
     }
   }
 
-  /// The `col` declarations (18.3.1.13) after a column edit: one past the edit
-  /// moves, one an insert falls inside is cut and the new columns state none,
-  /// and a delete shrinks the ones it reaches. None reaches past `XFD`.
-  /// Reindexes the columns.
+  /// Moves, splits or shrinks `col` ranges and reindexes them (18.3.1.13).
+  /// Inserted columns have no declaration; ranges cannot exceed `XFD`.
   static void move_columns(pugi::xml_node sheet_node,
                            ElementRegistry::Sheet &sheet,
                            const formula::SheetEdit &edit) {
@@ -1042,9 +1035,8 @@ public:
     return number_format_of(cell_id).format(number, m_document->epoch());
   }
 
-  /// A position without `s` shows its row's `s` where the row states
-  /// `customFormat`, else its column's `style`, as LibreOffice reads it;
-  /// 18.3.1.4 alone would default `s` to 0. None where nothing states one.
+  /// Resolves an unstated cell style through its row's `customFormat`, then
+  /// its column, matching LibreOffice rather than the 18.3.1.4 default of 0.
   static std::optional<std::uint32_t>
   shown_format(const pugi::xml_node cell, const pugi::xml_node row_node,
                const pugi::xml_node column_node) {
@@ -1082,9 +1074,8 @@ public:
     attribute.set_value(format);
   }
 
-  /// The `col` of @p column alone: cut out of the one covering it, or stated
-  /// with the sheet's default width, since a `col` without one is zero wide
-  /// in Excel. Reindexes the columns.
+  /// Splits or creates a `col` for @p column and reindexes. New declarations
+  /// need a width; Excel otherwise treats them as zero-width.
   static pugi::xml_node claim_column(const pugi::xml_node sheet_node,
                                      ElementRegistry::Sheet &sheet,
                                      const std::uint32_t column) {

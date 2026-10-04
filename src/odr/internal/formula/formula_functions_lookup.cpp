@@ -294,10 +294,8 @@ std::vector<Condition> conditions(const Call &call, const std::size_t first) {
 /// The most positions the conditions of one call test.
 constexpr std::size_t cell_limit = 1 << 22;
 
-/// Calls @p visit with the position of every cell that meets all
-/// @p conditions. Where every condition takes an empty cell, a whole column
-/// matches the cells past the extent of its sheet too, which are not read,
-/// so it has no answer.
+/// Visits cells matching all @p conditions. Refuses unbounded ranges when
+/// empty cells beyond the sheet extent would also match.
 template <typename Visit>
 void each_match(const std::span<const Condition> conditions,
                 const Visit &visit) {
@@ -440,11 +438,9 @@ Value wanted_of(const Call &call, const std::size_t index) {
   return wanted;
 }
 
-/// The position of @p wanted along a line of @p count cells, read by
-/// @p cell_at. An exact lookup takes the first match. An approximate one
-/// takes the last number not past @p wanted, where every cell is a number in
-/// ascending order and the one found is not repeated; anything else is for
-/// the binary search of the application, which the two do apart.
+/// Finds the first exact match, or the last number <= @p wanted. Approximate
+/// lookup requires ascending numbers and a unique match; other cases depend
+/// on application-specific binary search.
 template <typename CellAt>
 std::optional<std::uint32_t>
 position_of(const Call &call, const Value &wanted, const std::uint32_t count,

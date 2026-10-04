@@ -80,8 +80,8 @@ insert touches one entry. A covered position refuses first. That check reads
 **`save` writes the parts it can have changed**, every worksheet and
 `workbook.xml`, and byte-copies the rest. pugixml does not parse the xml
 declaration, so `save` writes one itself. Every save sets
-`calcPr/@fullCalcOnLoad` ([ECMA-376] 18.2.2), because nothing here computes a
-formula.
+`calcPr/@fullCalcOnLoad` ([ECMA-376] 18.2.2) so the reader refreshes formulas
+the evaluator cannot compute.
 
 ## Module layout
 

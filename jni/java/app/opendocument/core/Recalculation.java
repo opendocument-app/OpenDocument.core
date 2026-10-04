@@ -42,7 +42,7 @@ public final class Recalculation {
     return circular;
   }
 
-  /** The stale formula cells nothing here computes. */
+  /** Stale formula cells the evaluator cannot resolve. */
   public List<SheetPosition> unevaluated() {
     return unevaluated;
   }

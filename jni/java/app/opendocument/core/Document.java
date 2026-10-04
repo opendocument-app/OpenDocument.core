@@ -62,10 +62,7 @@ public final class Document extends NativeResource {
     editNative(handle(), diff);
   }
 
-  /**
-   * Computes the stale formula cells and writes each result into the document. A save does so
-   * first where an edit left one stale.
-   */
+  /** Recalculates stale formulas and stores their results; save does this after edits. */
   public Recalculation recalculate() {
     return Recalculation.fromNative(recalculateNative(handle()));
   }

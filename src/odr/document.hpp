@@ -40,10 +40,8 @@ public:
   [[nodiscard]] const std::vector<SheetPosition> &changed() const noexcept;
   /// The cells of a cycle: each reads itself, and none has a result.
   [[nodiscard]] const std::vector<SheetPosition> &circular() const noexcept;
-  /// The stale formula cells nothing here computes: a function the evaluator
-  /// does not know, a volatile one, or a value the applications compute
-  /// apart. An ods states no result for one, and an xlsx keeps the one it
-  /// had and asks a reader to compute it on load.
+  /// Stale formulas the evaluator cannot resolve. ODS drops their cached
+  /// results; XLSX keeps them and requests recalculation on load.
   [[nodiscard]] const std::vector<SheetPosition> &unevaluated() const noexcept;
 
 private:
@@ -79,21 +77,11 @@ public:
   /// as `de-DE`. Nothing where it states none; only odf states one.
   [[nodiscard]] std::optional<std::string> locale() const;
 
-  /// @brief Applies @p operations to the document, in order.
-  ///
-  /// The wire format our browser-side editor produces:
-  /// `{"version": 2, "ops": [{"op": "setCell", "sheet": 0, "column": 1,
-  /// "row": 2, "value": {"type": "number", "number": 12.5, "text": "12.5"}}]}`.
-  /// A value is typed `number`, `string` or `empty`. `insertRows` and
-  /// `deleteRows` name a sheet, a `row` and a `count`, `insertColumns` and
-  /// `deleteColumns` a sheet, a `column` and a `count`. `setText` and
-  /// `setTextStyle` and `setParagraphStyle` name an element by the `id` the
-  /// render wrote into the page instead (`docs/design/document-editing.md`).
-  /// Editing a single element in process is @ref Text::set_content,
-  /// @ref Text::set_style or @ref Paragraph::set_style and needs none of this.
-  /// @throws std::invalid_argument on the first operation it cannot apply,
-  ///         leaving the ones before it applied - a host replays onto a fresh
-  ///         decode.
+  /// Applies the version-2 edit envelope in order; see
+  /// `docs/design/document-editing.md` and
+  /// `docs/design/spreadsheet-editing.md`.
+  /// @throws std::invalid_argument on the first invalid operation; earlier
+  /// operations remain applied.
   void edit(std::string_view operations,
             const Logger &logger = Logger::null()) const;
 
@@ -156,13 +144,11 @@ public:
   /// may read any position, so a caller that must be right assumes it does.
   [[nodiscard]] std::vector<SheetPosition> unresolved_formulas() const;
 
-  /// Computes the stale formula cells and writes each result into the
-  /// document: the cells an edit since the last recalculation reaches, the
-  /// ones that state no result, and the ones whose reads no position names.
-  /// A structural edit makes every formula stale. A save recalculates first
-  /// where an edit left a formula stale.
-  /// @throws UnsupportedOperation where the sheets repeat more formula cells
-  ///         than a recalculation reads.
+  /// Recomputes stale formulas: edited dependencies, missing results and
+  /// untracked reads. Structural edits invalidate all formulas; save
+  /// recalculates after edits.
+  /// @throws UnsupportedOperation if repeated formulas exceed the
+  /// recalculation limit.
   Recalculation recalculate() const;
 
   /// @}
@@ -174,8 +160,7 @@ public:
 private:
   std::shared_ptr<internal::abstract::Document> m_impl;
 
-  /// Recalculates where an edit left a formula stale, so a saved file states
-  /// the results it can.
+  /// Recalculates formulas made stale by edits before saving.
   void recalculate_edits_() const;
 
   /// @p element 's identifier, checked to be one this document holds.

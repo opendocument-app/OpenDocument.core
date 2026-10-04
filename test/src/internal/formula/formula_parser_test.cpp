@@ -414,14 +414,20 @@ TEST(FormulaParser, the_odf_reference_operators_parse) {
 }
 
 TEST(FormulaParser, a_formula_nests_64_levels_at_most) {
-  // Excel writes 64 levels of functions at most, and a deeper formula would
-  // take more stack than a thread of a phone has
   const auto nested = [](const int depth) {
     return parse("=" + std::string(depth, '(') + "1" + std::string(depth, ')'),
                  Syntax::ooxml);
   };
   EXPECT_TRUE(nested(63).has_value());
   EXPECT_FALSE(nested(64).has_value());
+  EXPECT_TRUE(parse("=1" + std::string(63, '%'), Syntax::ooxml).has_value());
+  EXPECT_FALSE(parse("=1" + std::string(64, '%'), Syntax::ooxml).has_value());
+  std::string chain = "=1";
+  for (std::uint32_t i = 0; i < 63; ++i) {
+    chain += "+1";
+  }
+  EXPECT_TRUE(parse(chain, Syntax::ooxml).has_value());
+  EXPECT_FALSE(parse(chain + "+1", Syntax::ooxml).has_value());
   EXPECT_FALSE(
       parse("=" + std::string(100, '-') + "1", Syntax::ooxml).has_value());
 }

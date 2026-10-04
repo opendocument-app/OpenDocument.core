@@ -255,9 +255,8 @@ void remove_value_attributes(pugi::xml_node node) {
   }
 }
 
-/// Whether the LibreOffice that @p generator names spells a boolean as
-/// `TRUE` in `&`: from 27.2 on (its commit 5663da9fa7). Nothing for another
-/// application, or for a build of 27.2 before its release, which may not.
+/// Boolean `&` uses words from LibreOffice 27.2 (commit 5663da9fa7).
+/// Unknown for other generators or 27.2 alpha builds.
 std::optional<bool> boolean_word_of(std::string_view generator) {
   for (const std::string_view name : {"LibreOffice/", "LibreOfficeDev/"}) {
     if (!generator.starts_with(name)) {
@@ -845,10 +844,8 @@ public:
     m_document->note_written(element_id, TablePosition(column, row));
   }
 
-  /// [ODF 1.2] 19.385: the result is the value attributes and the `text:p`,
-  /// as for a value. A number takes the type the cell's data style shows it
-  /// as: a date, a time, or a number. LibreOffice states an error as a text
-  /// of its spelling, typed by `calcext:value-type`.
+  /// [ODF 1.2] 19.385: caches results as value attributes and `text:p`, using
+  /// the data style for the type and `calcext:value-type` for errors.
   void sheet_set_result(const ElementIdentifier element_id,
                         const std::uint32_t column, const std::uint32_t row,
                         const CellValue &result) const override {
@@ -1314,9 +1311,8 @@ public:
     });
   }
 
-  /// Moves every reference of the document with the edit: the formulas and
-  /// addresses of the content, and the ranges of every embedded chart, whose
-  /// parts are read before anything is written.
+  /// Moves content and chart references; reads all affected parts before
+  /// writing.
   [[nodiscard]] std::vector<SheetPosition>
   move_references(const pugi::xml_node spreadsheet,
                   const formula::SheetEdit &edit) const {
@@ -1554,9 +1550,8 @@ public:
     }
   }
 
-  /// After a structural edit: the graph is read again off the moved formulas,
-  /// and the formulas at @p touched lose their result with every one reading
-  /// them.
+  /// Rebuilds dependencies after a structural edit and invalidates @p touched
+  /// formulas and their dependents.
   void drop_moved_results(std::vector<SheetPosition> touched) const {
     m_document->drop_sheet_dependencies();
     m_document->note_moved();
@@ -2426,10 +2421,8 @@ private:
     }
   }
 
-  /// The run a write goes through: the one the cell holds, so it keeps its
-  /// style, and a fresh one where the cell holds none or several. The
-  /// paragraph too where the cell states none. @ref holds_plain_lines has to
-  /// pass.
+  /// Reuses a sole text run to preserve its style; otherwise creates one,
+  /// adding a paragraph if needed. Requires @ref holds_plain_lines.
   [[nodiscard]] ElementIdentifier
   text_run_of(const ElementIdentifier cell_id) const {
     ElementIdentifier paragraph_id = element_first_child(cell_id);
@@ -2651,9 +2644,8 @@ private:
     }
   }
 
-  /// What the cell's data style shows for @p value, a number or a date or a
-  /// time, in the style's language or the document's. Nothing where the style
-  /// is not of the value's kind: the typed text stays then.
+  /// Formats numbers, dates and times using the matching data style and its
+  /// language. Returns null if the style does not match the value type.
   [[nodiscard]] std::optional<std::string>
   shown_value(const ElementIdentifier sheet_id, const ElementIdentifier cell_id,
               const TablePosition &position, const CellValue &value) const {
