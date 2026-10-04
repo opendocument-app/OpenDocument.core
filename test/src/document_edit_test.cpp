@@ -1533,3 +1533,20 @@ TEST(DocumentEdit, removed_subtrees_reject_retained_handles) {
     EXPECT_NO_THROW((void)text_of(document.root_element()));
   }
 }
+
+TEST(DocumentEdit, off_tree_elements_refuse_generic_removal) {
+  const Document sheet_document = three_cell_sheet();
+  EXPECT_THROW(sheet_document.remove(first_sheet(sheet_document).cell(0, 0)),
+               UnsupportedOperation);
+  EXPECT_EQ(first_sheet(sheet_document).cell(0, 0).value().text(), "a");
+
+  const Document table_document = docx_of(
+      R"(<w:tbl><w:tblGrid><w:gridCol w:w="100"/></w:tblGrid>)"
+      R"(<w:tr><w:tc><w:p><w:r><w:t>cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl>)");
+  const Table table =
+      nth_of_type(table_document, ElementType::table, 0).as_table();
+  ASSERT_TRUE(table.first_column());
+  EXPECT_THROW(table_document.remove(table.first_column()),
+               UnsupportedOperation);
+  EXPECT_EQ(text_of(table), "cell");
+}

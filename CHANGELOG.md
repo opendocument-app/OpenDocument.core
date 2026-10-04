@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Deleting spreadsheet rows or columns retires handles to deleted cells before
+  freeing their nodes. Generic removal refuses off-tree cells and table columns.
+
 - Explicit XML element removal and cell-text replacement retire old handles
   before freeing nodes. Removing a root refuses before changing the DOM.
 

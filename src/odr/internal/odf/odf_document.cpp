@@ -40,6 +40,7 @@
 #include <sstream>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <fmt/format.h>
 
@@ -1157,10 +1158,15 @@ public:
         cut(row_runs(sheet_node), end, rows_repeated);
       }
       cut(row_runs(sheet_node), row, rows_repeated);
+      std::vector<Run> removed;
       for (const Run &run : row_runs(sheet_node)) {
         if (run.begin >= row && run.begin < end) {
-          remove_run(run.node);
+          removed.push_back(run);
         }
+      }
+      retire_cells(element_id, removed);
+      for (const Run &run : removed) {
+        remove_run(run.node);
       }
     }
 
@@ -1232,15 +1238,20 @@ public:
                                               .count = count,
                                               .insert = false});
 
+    std::vector<Run> removed;
     for (const Run &row : rows) {
-      pugi::xml_node row_node = row.node;
-      for (const Run &cell :
-           cut_out([&] { return cell_runs(row_node); }, column, end)) {
-        row_node.remove_child(cell.node);
-      }
-      // a row states one cell at least ([ODF 1.2] 9.1.3)
-      if (cell_runs(row_node).empty()) {
-        append_empty_cells(row_node, 1);
+      const auto cells =
+          cut_out([&] { return cell_runs(row.node); }, column, end);
+      removed.insert(removed.end(), cells.begin(), cells.end());
+    }
+    retire_cells(element_id, removed);
+    for (const Run &cell : removed) {
+      cell.node.parent().remove_child(cell.node);
+    }
+    for (const Run &row : rows) {
+      // [ODF 1.2] 9.1.3: a row states at least one cell.
+      if (cell_runs(row.node).empty()) {
+        append_empty_cells(row.node, 1);
       }
     }
     for (const Run &declaration :
@@ -1432,6 +1443,29 @@ public:
       return run.node;
     }
     return {};
+  }
+
+  /// Retires old cell ids before their DOM addresses can be reused.
+  void retire_cells(const ElementIdentifier sheet_id,
+                    const std::vector<Run> &runs) const {
+    std::unordered_set<const void *> removed;
+    for (const Run &run : runs) {
+      if (std::string_view(run.node.name()) == "table:table-row") {
+        for (const pugi::xml_node cell :
+             run.node.children("table:table-cell")) {
+          removed.insert(cell.internal_object());
+        }
+      } else {
+        removed.insert(run.node.internal_object());
+      }
+    }
+    for (auto &cell : m_registry->sheet_element_at(sheet_id).cells) {
+      if (cell.element_id != null_element_id &&
+          removed.contains(cell.node.internal_object())) {
+        m_registry->invalidate(cell.element_id);
+        cell.element_id = null_element_id;
+      }
+    }
   }
 
   /// Removes @p node, and a grouping element it leaves empty.
