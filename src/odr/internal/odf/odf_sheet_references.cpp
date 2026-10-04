@@ -109,6 +109,7 @@ std::vector<SheetPosition>
 odf::move_sheet_references(const pugi::xml_node spreadsheet,
                            const formula::SheetEdit &edit) {
   std::vector<SheetPosition> result;
+  const bool rows = edit.axis == formula::Axis::row;
 
   move_subtree(spreadsheet, "", edit);
 
@@ -133,15 +134,12 @@ odf::move_sheet_references(const pugi::xml_node spreadsheet,
             for (std::uint32_t column = column_begin; column < column_end;
                  ++column) {
               // where the cell itself sits after the edit
-              const std::uint32_t along =
-                  edit.axis == formula::Axis::row ? row : column;
+              const std::uint32_t along = rows ? row : column;
               if (!edited) {
                 result.emplace_back(ordinal, column, row);
               } else if (const auto moved = edit.span(along, along)) {
-                result.emplace_back(
-                    ordinal,
-                    edit.axis == formula::Axis::row ? column : moved->first,
-                    edit.axis == formula::Axis::row ? moved->first : row);
+                result.emplace_back(ordinal, rows ? column : moved->first,
+                                    rows ? moved->first : row);
               }
             }
           }

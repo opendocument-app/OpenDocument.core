@@ -896,7 +896,7 @@ public:
         if (kept > count) {
           set_repeat(trailing->node, rows_repeated, kept - count);
         } else {
-          remove_row(trailing->node);
+          remove_run(trailing->node);
         }
       }
     }
@@ -934,7 +934,7 @@ public:
       cut(row_runs(sheet_node), row, rows_repeated);
       for (const Run &run : row_runs(sheet_node)) {
         if (run.begin >= row && run.begin < end) {
-          remove_row(run.node);
+          remove_run(run.node);
         }
       }
     }
@@ -1020,7 +1020,7 @@ public:
     }
     for (const Run &declaration :
          cut_out([&] { return column_runs(sheet_node); }, column, end)) {
-      remove_row(declaration.node);
+      remove_run(declaration.node);
     }
     if (column_runs(sheet_node).empty()) {
       insert_ordered(sheet_node, "table:table-column", after_columns);
@@ -1053,7 +1053,7 @@ public:
         kept > count) {
       set_repeat(last, columns_repeated, kept - count);
     } else {
-      remove_row(last);
+      remove_run(last);
     }
   }
 
@@ -1179,18 +1179,18 @@ public:
     return {};
   }
 
-  /// Removes @p row, and a grouping element it leaves empty.
-  static void remove_row(pugi::xml_node row) {
-    for (pugi::xml_node parent = row.parent();;) {
-      parent.remove_child(row);
+  /// Removes @p node, and a grouping element it leaves empty.
+  static void remove_run(pugi::xml_node node) {
+    for (pugi::xml_node parent = node.parent();;) {
+      parent.remove_child(node);
       if (std::string_view(parent.name()) == "table:table" ||
           parent.find_child([](const pugi::xml_node child) {
             return child.type() == pugi::node_element;
           })) {
         return;
       }
-      row = parent;
-      parent = row.parent();
+      node = parent;
+      parent = node.parent();
     }
   }
 
