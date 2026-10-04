@@ -15,45 +15,59 @@ namespace {
 class ReaderBuffer final : public std::streambuf {
 public:
   ReaderBuffer(std::shared_ptr<const Archive> archive,
-               mz_zip_reader_extract_iter_state *iter,
-               const std::size_t buffer_size = 4096)
-      : m_archive{std::move(archive)}, m_buffer(buffer_size, '\0') {
-    if (m_archive == nullptr) {
-      throw NullPointerError("ReaderBuffer: archive is nullptr");
+               const std::uint32_t index)
+      : m_archive{std::move(archive)},
+        m_iter{mz_zip_reader_extract_iter_new(m_archive->zip(), index, 0),
+               mz_zip_reader_extract_iter_free} {
+    if (m_iter == nullptr) {
+      throw FileReadError();
     }
-    if (iter == nullptr) {
-      throw NullPointerError("ReaderBuffer: iter is nullptr");
+    m_remaining = m_iter->file_stat.m_uncomp_size;
+    if (m_remaining == 0) {
+      finish();
     }
-    m_iter = iter;
-    m_remaining = iter->file_stat.m_uncomp_size;
   }
 
 protected:
   int underflow() override {
-    if (m_remaining <= 0) {
+    if (m_remaining == 0) {
       return traits_type::eof();
     }
 
     const std::uint64_t amount =
         std::min<std::uint64_t>(m_remaining, m_buffer.size());
-    const std::uint32_t result =
-        mz_zip_reader_extract_iter_read(m_iter, m_buffer.data(), amount);
-    // miniz reports a failed inflate as a short read; leaving the get area
-    // empty while claiming success would spin `underflow` forever.
-    if (result == 0) {
-      return traits_type::eof();
+    const std::size_t result =
+        mz_zip_reader_extract_iter_read(m_iter.get(), m_buffer.data(), amount);
+    if (result != amount) {
+      throw FileReadError();
     }
     m_remaining -= result;
+    if (m_remaining == 0) {
+      finish();
+    }
     setg(m_buffer.data(), m_buffer.data(), m_buffer.data() + result);
 
     return traits_type::to_int_type(*gptr());
   }
 
 private:
+  void finish() {
+    // Finish inflation and validate size/CRC before exposing the final bytes.
+    char extra{};
+    const auto excess =
+        mz_zip_reader_extract_iter_read(m_iter.get(), &extra, 1);
+    const bool valid = mz_zip_reader_extract_iter_free(m_iter.release());
+    if (excess != 0 || !valid) {
+      throw FileReadError();
+    }
+  }
+
   std::shared_ptr<const Archive> m_archive;
-  mz_zip_reader_extract_iter_state *m_iter{};
+  std::unique_ptr<mz_zip_reader_extract_iter_state,
+                  decltype(&mz_zip_reader_extract_iter_free)>
+      m_iter;
   std::uint64_t m_remaining{0};
-  std::vector<char> m_buffer;
+  std::array<char, 4096> m_buffer{};
 };
 
 class FileInZipIstream final : public std::istream {
@@ -104,12 +118,8 @@ public:
     if (!mz_zip_reader_is_file_supported(m_archive->zip(), m_index)) {
       throw UnsupportedOperation("zip entry not supported");
     }
-    auto iter = mz_zip_reader_extract_iter_new(m_archive->zip(), m_index, 0);
-    if (iter == nullptr) {
-      throw FileNotFound("zip entry not found " + std::to_string(m_index));
-    }
     return std::make_unique<FileInZipIstream>(
-        std::make_unique<ReaderBuffer>(m_archive, iter, 4098));
+        std::make_unique<ReaderBuffer>(m_archive, m_index));
   }
 
 private:
