@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Java dependent handles reject calls after their owner is explicitly closed.
+  Document edits also keep argument wrappers alive through native calls.
+
 - PDF mask resampling handles large dimensions without signed overflow. PDF
   and PNG image buffers check sizes before narrowing or allocation, including
   on 32-bit targets.

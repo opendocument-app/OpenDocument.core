@@ -35,6 +35,16 @@ class DocumentTest {
   }
 
   @Test
+  void closingDocumentInvalidatesDerivedElements() throws IOException {
+    Document document = openDocument();
+    try (Element root = document.rootElement(); TextRoot typed = root.asTextRoot()) {
+      document.close();
+      assertThrows(IllegalStateException.class, root::type);
+      assertThrows(IllegalStateException.class, typed::pageLayout);
+    }
+  }
+
+  @Test
   void elementTree() throws IOException {
     Document document = openDocument();
     assertEquals(DocumentType.TEXT, document.documentType());
