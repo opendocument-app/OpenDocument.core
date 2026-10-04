@@ -437,16 +437,13 @@
     var step =
       arrows[event.key] ||
       (event.key === "Tab" ? [event.shiftKey ? -1 : 1, 0] : null);
-    if (event.shiftKey && arrows[event.key] !== undefined) {
-      var to = odr.sheet.selection().focus;
-      var next = { column: to.column + step[0], row: to.row + step[1] };
-      if (!odr.sheet.select(next)) {
-        refuseCut(next.column, next.row);
-      }
-    } else if (step !== null) {
-      var moved = { column: at.column + step[0], row: at.row + step[1] };
-      if (!odr.sheet.pin(moved)) {
-        refuseCut(moved.column, moved.row);
+    if (step !== null) {
+      // shift with an arrow moves the focus, anything else the pin
+      var widens = event.shiftKey && arrows[event.key] !== undefined;
+      var from = widens ? odr.sheet.selection().focus : at;
+      var to = { column: from.column + step[0], row: from.row + step[1] };
+      if (!(widens ? odr.sheet.select(to) : odr.sheet.pin(to))) {
+        refuseCut(to.column, to.row);
       }
     } else if (event.key === "Enter" || event.key === "F2") {
       edit(at.column, at.row, null);
