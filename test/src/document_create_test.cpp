@@ -25,6 +25,18 @@ std::vector<Element> children(const Element &element) {
   return result;
 }
 
+/// The text of every run below @p element, at any depth.
+std::string text_of(const Element &element) {
+  if (element.type() == ElementType::text) {
+    return element.as_text().content();
+  }
+  std::string result;
+  for (const Element child : element.children()) {
+    result += text_of(child);
+  }
+  return result;
+}
+
 Document reopen(const Document &document) {
   return open(document.save_to_memory(),
               DecodeOptions::as(document.file_type()))
@@ -197,6 +209,6 @@ TEST(DocumentCreate, docx_takes_an_edit_and_keeps_it_through_a_save) {
   const Document saved = reopen(document);
   const std::vector<Element> body = children(saved.root_element());
   ASSERT_EQ(body.size(), 2);
-  EXPECT_EQ(children(body[0]).at(0).as_text().content(), "hello");
-  EXPECT_EQ(children(body[1]).at(0).as_text().content(), "world");
+  EXPECT_EQ(text_of(body[0]), "hello");
+  EXPECT_EQ(text_of(body[1]), "world");
 }

@@ -88,7 +88,6 @@ constexpr std::array document_parts{
         R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>)"
         R"(<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">)"
         R"(<w:defaultTabStop w:val="720"/>)"
-        R"(<w:characterSpacingControl w:val="doNotCompress"/>)"
         R"(<w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat>)"
         R"(</w:settings>)",
     },
