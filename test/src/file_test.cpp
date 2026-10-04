@@ -174,7 +174,7 @@ TEST(File, failed_temporary_copies_leave_no_file) {
                                                    [name] { return name; });
   std::istringstream source("bytes");
   source.setstate(std::ios::badbit);
-  EXPECT_THROW(factory.copy(source), std::ios_base::failure);
+  EXPECT_THROW(std::ignore = factory.copy(source), std::ios_base::failure);
   EXPECT_FALSE(
       std::filesystem::exists(directory.join(internal::RelPath(name)).path()));
 }
