@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- An inserted or deleted row or column moves the ranges an xlsx chart reads,
+  on whichever sheet the chart sits.
 - An inserted or deleted row or column moves the formulas of an xlsx
   conditional format and validation, and its page breaks, and the conditions
   of an ods conditional format, validation and cell style.
