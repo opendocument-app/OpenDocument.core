@@ -173,6 +173,16 @@ public:
                          const std::uint32_t count) const override {
     m_document->delete_rows(row, count);
   }
+  void sheet_insert_columns([[maybe_unused]] const ElementIdentifier element_id,
+                            const std::uint32_t column,
+                            const std::uint32_t count) const override {
+    m_document->insert_columns(column, count);
+  }
+  void sheet_delete_columns([[maybe_unused]] const ElementIdentifier element_id,
+                            const std::uint32_t column,
+                            const std::uint32_t count) const override {
+    m_document->delete_columns(column, count);
+  }
   [[nodiscard]] TableStyle sheet_style(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return {};
@@ -437,6 +447,38 @@ void CsvDocument::delete_rows(const std::uint32_t row,
                                          m_rows.size()));
   m_dimensions.rows = static_cast<std::uint32_t>(m_rows.size());
   type_columns();
+}
+
+void CsvDocument::insert_columns(const std::uint32_t column,
+                                 const std::uint32_t count) {
+  if (column >= m_dimensions.columns) {
+    return;
+  }
+  for (std::vector<std::string> &fields : m_rows) {
+    if (column < fields.size()) {
+      fields.insert(fields.begin() + column, count, std::string());
+    }
+  }
+  m_dimensions.columns += count;
+  m_numeric_columns.insert(m_numeric_columns.begin() + column, count, false);
+}
+
+void CsvDocument::delete_columns(const std::uint32_t column,
+                                 const std::uint32_t count) {
+  if (column >= m_dimensions.columns) {
+    return;
+  }
+  const std::uint32_t end =
+      column + std::min(count, m_dimensions.columns - column);
+  for (std::vector<std::string> &fields : m_rows) {
+    if (column < fields.size()) {
+      fields.erase(fields.begin() + column,
+                   fields.begin() + std::min<std::size_t>(end, fields.size()));
+    }
+  }
+  m_dimensions.columns -= end - column;
+  m_numeric_columns.erase(m_numeric_columns.begin() + column,
+                          m_numeric_columns.begin() + end);
 }
 
 void CsvDocument::type_columns() {
