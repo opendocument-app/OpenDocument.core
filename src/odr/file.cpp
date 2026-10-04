@@ -308,8 +308,12 @@ namespace {
 /// The text @p operations set, or none where they state no operation.
 std::optional<std::string> content_of(const std::string_view operations) {
   const nlohmann::json json = nlohmann::json::parse(operations);
-  if (json.value("version", 0) != 2) {
+  if (json.value("version", nlohmann::json{}) != 2) {
     throw std::invalid_argument("unsupported edit version");
+  }
+
+  if (!json.at("ops").is_array()) {
+    throw std::invalid_argument("edit operations must be an array");
   }
 
   std::optional<std::string> content;

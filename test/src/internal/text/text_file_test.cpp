@@ -150,6 +150,12 @@ TEST(TextFile, an_unknown_version_or_op_refuses) {
 
   EXPECT_THROW((void)edited(file, R"({"version":1,"ops":[]})"),
                std::invalid_argument);
+  EXPECT_THROW((void)edited(file, R"({"version":4294967298,"ops":[]})"),
+               std::invalid_argument);
+  EXPECT_THROW((void)edited(file, R"({"version":2.5,"ops":[]})"),
+               std::invalid_argument);
+  EXPECT_THROW((void)edited(file, R"({"version":2,"ops":null})"),
+               std::invalid_argument);
   EXPECT_THROW((void)edited(file, R"({"version":2,"ops":[{"op":"setText"}]})"),
                std::invalid_argument);
 }

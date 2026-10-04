@@ -105,6 +105,21 @@ std::optional<std::string> Document::locale() const { return m_impl->locale(); }
 
 namespace {
 
+template <typename T> T integer(const nlohmann::json &value) {
+  if (value.is_number_unsigned()) {
+    const auto number = value.get<std::uint64_t>();
+    if (std::in_range<T>(number)) {
+      return static_cast<T>(number);
+    }
+  } else if (value.is_number_integer()) {
+    const auto number = value.get<std::int64_t>();
+    if (std::in_range<T>(number)) {
+      return static_cast<T>(number);
+    }
+  }
+  throw std::invalid_argument("edit integer is out of range");
+}
+
 /// `{"type": "number", "number": …, "text": …}`, `"date"` and `"time"` the
 /// same with days since 1899-12-30, or `"string"` with the text alone, or
 /// `"empty"` for a cell stating nothing.
@@ -266,8 +281,12 @@ Sheet sheet_at(const Element root, const std::uint32_t ordinal) {
 void Document::edit(const std::string_view operations,
                     const Logger & /*logger*/) const {
   const nlohmann::json json = nlohmann::json::parse(operations);
-  if (json.value("version", 0) != 2) {
+  if (json.value("version", nlohmann::json{}) != 2) {
     throw std::invalid_argument("unsupported edit version");
+  }
+
+  if (!json.at("ops").is_array()) {
+    throw std::invalid_argument("edit operations must be an array");
   }
 
   // an operation that creates an element states a negative id for it, and a
@@ -277,22 +296,21 @@ void Document::edit(const std::string_view operations,
   // the element @p field names, checked to be one this document holds
   const auto element_of = [&](const nlohmann::json &operation,
                               const char *field) {
-    const auto address = operation.at(field).get<std::int64_t>();
+    const auto &address = operation.at(field);
     ElementIdentifier identifier{};
-    if (address < 0) {
-      const auto entry = minted.find(address);
+    if (address.is_number_integer() && address < 0) {
+      const auto entry = minted.find(integer<std::int64_t>(address));
       if (entry == std::end(minted)) {
-        throw std::invalid_argument("element " + std::to_string(address) +
+        throw std::invalid_argument("element " + address.dump() +
                                     " has not been created");
       }
       identifier = entry->second;
     } else {
-      identifier = static_cast<ElementIdentifier>(address);
+      identifier = integer<ElementIdentifier>(address);
     }
     const Element element = element_by_id(identifier);
     if (!element) {
-      throw std::invalid_argument("element " + std::to_string(address) +
-                                  " not found");
+      throw std::invalid_argument("element " + address.dump() + " not found");
     }
     return element;
   };
@@ -325,7 +343,7 @@ void Document::edit(const std::string_view operations,
   // the negative id an operation reserves, checked before anything is created
   // so that a refusal changes nothing
   const auto reserve = [&](const nlohmann::json &operation) {
-    const auto address = operation.at("id").get<std::int64_t>();
+    const auto address = integer<std::int64_t>(operation.at("id"));
     if (address >= 0) {
       throw std::invalid_argument("a created element needs a negative id");
     }
@@ -340,9 +358,9 @@ void Document::edit(const std::string_view operations,
     const auto name = operation.at("op").get<std::string>();
 
     if (name == "setCell") {
-      sheet_at(root_element(), operation.at("sheet").get<std::uint32_t>())
-          .set_cell(operation.at("column").get<std::uint32_t>(),
-                    operation.at("row").get<std::uint32_t>(),
+      sheet_at(root_element(), integer<std::uint32_t>(operation.at("sheet")))
+          .set_cell(integer<std::uint32_t>(operation.at("column")),
+                    integer<std::uint32_t>(operation.at("row")),
                     parse_cell_value(operation.at("value")));
       continue;
     }
@@ -350,46 +368,46 @@ void Document::edit(const std::string_view operations,
     if (name == "setCellStyle") {
       const auto [cell_style, text_style] =
           parse_cell_style(operation.at("style"));
-      sheet_at(root_element(), operation.at("sheet").get<std::uint32_t>())
-          .set_cell_style(operation.at("column").get<std::uint32_t>(),
-                          operation.at("row").get<std::uint32_t>(), cell_style,
-                          text_style);
+      sheet_at(root_element(), integer<std::uint32_t>(operation.at("sheet")))
+          .set_cell_style(integer<std::uint32_t>(operation.at("column")),
+                          integer<std::uint32_t>(operation.at("row")),
+                          cell_style, text_style);
       continue;
     }
 
     if (name == "setRowStyle") {
       const auto [cell_style, text_style] =
           parse_cell_style(operation.at("style"));
-      sheet_at(root_element(), operation.at("sheet").get<std::uint32_t>())
-          .set_row_style(operation.at("row").get<std::uint32_t>(), cell_style,
-                         text_style);
+      sheet_at(root_element(), integer<std::uint32_t>(operation.at("sheet")))
+          .set_row_style(integer<std::uint32_t>(operation.at("row")),
+                         cell_style, text_style);
       continue;
     }
 
     if (name == "setColumnStyle") {
       const auto [cell_style, text_style] =
           parse_cell_style(operation.at("style"));
-      sheet_at(root_element(), operation.at("sheet").get<std::uint32_t>())
-          .set_column_style(operation.at("column").get<std::uint32_t>(),
+      sheet_at(root_element(), integer<std::uint32_t>(operation.at("sheet")))
+          .set_column_style(integer<std::uint32_t>(operation.at("column")),
                             cell_style, text_style);
       continue;
     }
 
     if (name == "insertRows" || name == "deleteRows") {
-      const Sheet sheet =
-          sheet_at(root_element(), operation.at("sheet").get<std::uint32_t>());
-      const auto row = operation.at("row").get<std::uint32_t>();
-      const auto count = operation.at("count").get<std::uint32_t>();
+      const Sheet sheet = sheet_at(
+          root_element(), integer<std::uint32_t>(operation.at("sheet")));
+      const auto row = integer<std::uint32_t>(operation.at("row"));
+      const auto count = integer<std::uint32_t>(operation.at("count"));
       name == "insertRows" ? sheet.insert_rows(row, count)
                            : sheet.delete_rows(row, count);
       continue;
     }
 
     if (name == "insertColumns" || name == "deleteColumns") {
-      const Sheet sheet =
-          sheet_at(root_element(), operation.at("sheet").get<std::uint32_t>());
-      const auto column = operation.at("column").get<std::uint32_t>();
-      const auto count = operation.at("count").get<std::uint32_t>();
+      const Sheet sheet = sheet_at(
+          root_element(), integer<std::uint32_t>(operation.at("sheet")));
+      const auto column = integer<std::uint32_t>(operation.at("column"));
+      const auto count = integer<std::uint32_t>(operation.at("count"));
       name == "insertColumns" ? sheet.insert_columns(column, count)
                               : sheet.delete_columns(column, count);
       continue;

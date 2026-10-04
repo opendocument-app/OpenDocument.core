@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- JSON edits reject fractional and out-of-range indices before changing a
+  document, and preserve the full width of positive element identifiers.
+  Text and document edits validate the version and operations array.
+
 - Empty file and HTML handles throw instead of dereferencing null.
   Missing master pages and table rows/columns return empty element handles.
 
