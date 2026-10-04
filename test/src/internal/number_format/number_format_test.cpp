@@ -149,4 +149,6 @@ TEST(NumberFormat, a_format_says_whether_it_shows_a_date) {
   EXPECT_EQ(Format("0.00").category(), Category::number);
   EXPECT_EQ(Format().category(), Category::number);
   EXPECT_EQ(shown("yyyy-mm-dd", -1), "-1");
+  EXPECT_EQ(shown("yyyy-mm-dd", 2958465), "9999-12-31");
+  EXPECT_EQ(shown("yyyy-mm-dd", 1e12), "1000000000000");
 }

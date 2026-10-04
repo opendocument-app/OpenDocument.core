@@ -950,9 +950,12 @@ std::string Format::format(const double value, const Epoch epoch) const {
 
   const Section &section = m_sections[chosen];
   if (has(section, Kind::date_time)) {
-    // a spreadsheet shows a date before its epoch as `####`
-    return value < 0 ? format_general(value)
-                     : format_date_time(section.tokens, value, epoch);
+    // a spreadsheet shows a date before its epoch or after 9999-12-31 as
+    // `####`
+    constexpr double last_serial = 2958465;
+    return value < 0 || value >= last_serial + 1
+               ? format_general(value)
+               : format_date_time(section.tokens, value, epoch);
   }
   if (has(section, Kind::text) && !has(section, Kind::digit)) {
     return format_general(value);
