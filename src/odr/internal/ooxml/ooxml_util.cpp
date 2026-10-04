@@ -27,21 +27,8 @@ namespace {
 
 bool line_from_value(const char *value) {
   return std::strcmp("none", value) != 0 && std::strcmp("false", value) != 0 &&
+         std::strcmp("0", value) != 0 && std::strcmp("off", value) != 0 &&
          std::strcmp("noStrike", value) != 0;
-}
-
-std::optional<FontWeight> font_weight_from_value(const char *value) {
-  if (std::strcmp("false", value) == 0 || std::strcmp("0", value) == 0) {
-    return FontWeight::normal;
-  }
-  return FontWeight::bold;
-}
-
-std::optional<FontStyle> font_style_from_value(const char *value) {
-  if (std::strcmp("false", value) == 0) {
-    return {};
-  }
-  return FontStyle::italic;
 }
 
 } // namespace
@@ -317,16 +304,17 @@ bool ooxml::read_on_off_attribute(const pugi::xml_node node) {
   return read_on_off_attribute(value);
 }
 
-bool ooxml::read_line_attribute(const pugi::xml_node node) {
+std::optional<bool> ooxml::read_line_attribute(const pugi::xml_node node) {
   if (!node) {
-    return false;
+    return {};
   }
   return line_from_value(node.attribute("w:val").value());
 }
 
-bool ooxml::read_line_attribute(const pugi::xml_attribute attribute) {
+std::optional<bool>
+ooxml::read_line_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
-    return false;
+    return {};
   }
   return line_from_value(attribute.value());
 }
@@ -336,7 +324,7 @@ ooxml::read_shadow_attribute(const pugi::xml_node node) {
   if (!node) {
     return {};
   }
-  return "1pt 1pt";
+  return read_on_off_attribute(node) ? "1pt 1pt" : "none";
 }
 
 std::optional<std::string>
@@ -344,7 +332,7 @@ ooxml::read_shadow_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
-  return "1pt 1pt";
+  return read_on_off_attribute(attribute) ? "1pt 1pt" : "none";
 }
 
 std::optional<FontWeight>
@@ -352,7 +340,7 @@ ooxml::read_font_weight_attribute(const pugi::xml_node node) {
   if (!node) {
     return {};
   }
-  return font_weight_from_value(node.attribute("w:val").value());
+  return read_on_off_attribute(node) ? FontWeight::bold : FontWeight::normal;
 }
 
 std::optional<FontWeight>
@@ -360,7 +348,8 @@ ooxml::read_font_weight_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
-  return font_weight_from_value(attribute.value());
+  return read_on_off_attribute(attribute) ? FontWeight::bold
+                                          : FontWeight::normal;
 }
 
 std::optional<FontStyle>
@@ -368,7 +357,7 @@ ooxml::read_font_style_attribute(const pugi::xml_node node) {
   if (!node) {
     return {};
   }
-  return font_style_from_value(node.attribute("w:val").value());
+  return read_on_off_attribute(node) ? FontStyle::italic : FontStyle::normal;
 }
 
 std::optional<FontStyle>
@@ -376,7 +365,8 @@ ooxml::read_font_style_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
     return {};
   }
-  return font_style_from_value(attribute.value());
+  return read_on_off_attribute(attribute) ? FontStyle::italic
+                                          : FontStyle::normal;
 }
 
 /// [ECMA-376] 17.18.44 ST_Jc. `start`/`end` are relative to the direction,

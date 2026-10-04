@@ -658,3 +658,37 @@ TEST(ooxml_text_style, a_shading_is_the_background_where_no_highlight_is) {
           .text_style;
   EXPECT_EQ(automatic.background_color, std::nullopt);
 }
+
+TEST(ooxml_text_style, direct_off_values_clear_inherited_formatting) {
+  pugi::xml_document document;
+  const StyleRegistry registry = registry_of(
+      R"(<w:styles><w:style w:styleId="emphasis"><w:rPr><w:b/><w:i/>)"
+      R"(<w:u w:val="single"/><w:strike/><w:shadow/></w:rPr></w:style></w:styles>)",
+      document);
+  pugi::xml_document run;
+  for (const auto off : {"0", "false", "off"}) {
+    SCOPED_TRACE(off);
+    const std::string xml =
+        std::string(R"(<w:r><w:rPr><w:rStyle w:val="emphasis"/><w:b w:val=")") +
+        off + R"("/><w:i w:val=")" + off +
+        R"("/><w:u w:val="none"/><w:strike w:val=")" + off +
+        R"("/><w:shadow w:val=")" + off + R"("/></w:rPr></w:r>)";
+    const TextStyle style =
+        registry.partial_text_style(node_of(xml.c_str(), run)).text_style;
+    EXPECT_EQ(FontWeight::normal, style.font_weight);
+    EXPECT_EQ(FontStyle::normal, style.font_style);
+    EXPECT_EQ(false, style.font_underline);
+    EXPECT_EQ(false, style.font_line_through);
+    EXPECT_EQ("none", style.font_shadow);
+  }
+  const TextStyle inherited =
+      registry
+          .partial_text_style(node_of(
+              R"(<w:r><w:rPr><w:rStyle w:val="emphasis"/></w:rPr></w:r>)", run))
+          .text_style;
+  EXPECT_EQ(FontWeight::bold, inherited.font_weight);
+  EXPECT_EQ(FontStyle::italic, inherited.font_style);
+  EXPECT_EQ(true, inherited.font_underline);
+  EXPECT_EQ(true, inherited.font_line_through);
+  EXPECT_EQ("1pt 1pt", inherited.font_shadow);
+}
