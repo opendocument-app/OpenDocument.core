@@ -22,6 +22,10 @@ TEST(CryptoUtil, block_ciphers_reject_partial_blocks) {
         decrypt_triple_des(std::string(24, '\0'), std::string(8, '\0'), input),
         std::invalid_argument);
   }
+  // CFB is a stream mode: an ODF Blowfish stream has any length.
+  EXPECT_EQ(
+      decrypt_blowfish(key, std::string(8, '\0'), std::string(13, '\0')).size(),
+      13);
   const std::string cipher = hex_decode("66e94bd4ef8a2c3b884cfa59ca342b2e");
   EXPECT_EQ(encrypt_aes_cbc(key, iv, std::string(16, '\0')), cipher);
   EXPECT_EQ(decrypt_aes_cbc(key, iv, cipher), std::string(16, '\0'));
