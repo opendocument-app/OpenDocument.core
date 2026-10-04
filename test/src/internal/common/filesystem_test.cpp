@@ -3,11 +3,16 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/path.hpp>
+#include <odr/internal/common/random.hpp>
+#include <odr/internal/util/file_util.hpp>
 
 #include <gtest/gtest.h>
 
+#include <array>
+#include <filesystem>
 #include <memory>
 #include <string>
+#include <system_error>
 #include <vector>
 
 using namespace odr::internal;
@@ -39,6 +44,42 @@ filesystem_of(const std::vector<std::string> &files,
 }
 
 } // namespace
+
+TEST(Filesystem, copied_walkers_advance_independently) {
+  struct Directory final {
+    std::filesystem::path path = std::filesystem::temp_directory_path() /
+                                 ("odr-walker-" + random_string(12));
+    ~Directory() {
+      std::error_code error;
+      std::filesystem::remove_all(path, error);
+    }
+  } directory;
+  std::filesystem::create_directories(directory.path / "nested");
+  util::file::write("one", (directory.path / "nested/one").string());
+  util::file::write("two", (directory.path / "nested/two").string());
+  util::file::write("three", (directory.path / "three").string());
+  const SystemFilesystem disk{AbsPath(directory.path)};
+  const VirtualFilesystem memory =
+      filesystem_of({"/nested/one", "/nested/two", "/three"}, {"/nested"});
+
+  for (const abstract::ReadableFilesystem *filesystem :
+       std::array<const abstract::ReadableFilesystem *, 2>{&disk, &memory}) {
+    const auto walker = filesystem->file_walker(AbsPath("/"));
+    while (!walker->end()) {
+      const auto copy = walker->clone();
+      const AbsPath path = walker->path();
+      const auto depth = walker->depth();
+      EXPECT_TRUE(copy->equals(*walker));
+      walker->next();
+      ASSERT_FALSE(copy->end());
+      EXPECT_EQ(copy->path(), path);
+      EXPECT_EQ(copy->depth(), depth);
+      copy->next();
+      EXPECT_TRUE(copy->equals(*walker));
+    }
+    EXPECT_TRUE(walker->clone()->end());
+  }
+}
 
 TEST(VirtualFilesystem, walker_reports_the_depth_of_every_entry) {
   const VirtualFilesystem filesystem =

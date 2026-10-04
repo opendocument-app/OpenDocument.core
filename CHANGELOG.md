@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Copied filesystem walkers keep independent traversal positions on disk,
+  matching walkers over archives and memory filesystems.
+
 - Stream copies report failed reads and writes, and file writes check their
   final flush. Saving a text file over its source reads the text before truncation.
 
