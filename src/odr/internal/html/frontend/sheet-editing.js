@@ -341,9 +341,9 @@
     overlay = document.createElement("textarea");
     overlay.className = "odr-sheet-editor";
     overlay.value = typed !== null ? typed : spell(value);
-    place(cell);
+    // in the page first, so `place` can measure the lines it holds
     document.body.appendChild(overlay);
-    grow();
+    place(cell);
     overlay.addEventListener("keydown", overlayKey);
     overlay.addEventListener("input", grow);
     overlay.addEventListener("blur", finish);
