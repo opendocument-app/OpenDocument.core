@@ -152,9 +152,12 @@ parse_table(ElementRegistry &registry, const pugi::xml_node node) {
   return {element_id, node.next_sibling()};
 }
 
-/// Empty: no content and no span beyond the one cell.
+/// Empty: no content, no value, no formula and no span beyond the one cell.
+/// A formula cell whose result an edit dropped states no content.
 bool is_cell_empty(const pugi::xml_node cell_node) {
   return !cell_node.first_child() &&
+         !cell_node.attribute("office:value-type") &&
+         !cell_node.attribute("table:formula") &&
          cell_node.attribute("table:number-columns-spanned").as_uint(1) <= 1 &&
          cell_node.attribute("table:number-rows-spanned").as_uint(1) <= 1;
 }

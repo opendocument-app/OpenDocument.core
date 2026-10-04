@@ -2,6 +2,7 @@
 
 #include <odr/table_position.hpp>
 
+#include <odr/internal/formula/formula_value.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
@@ -108,26 +109,6 @@ std::string_view spelling_of(const BinaryOperator op) {
   return "+";
 }
 
-std::string_view spelling_of(const ErrorType type) {
-  switch (type) {
-  case ErrorType::null:
-    return "#NULL!";
-  case ErrorType::division:
-    return "#DIV/0!";
-  case ErrorType::value:
-    return "#VALUE!";
-  case ErrorType::reference:
-    return "#REF!";
-  case ErrorType::name:
-    return "#NAME?";
-  case ErrorType::number:
-    return "#NUM!";
-  case ErrorType::not_available:
-    return "#N/A";
-  }
-  return "#NULL!";
-}
-
 /// A quote inside a quoted run is written twice, which is how both syntaxes
 /// escape one.
 std::string quote(const std::string_view text, const char mark) {
@@ -209,7 +190,7 @@ private:
 
   [[nodiscard]] std::string write_content(const ErrorLiteral &content,
                                           const Node &) const {
-    return std::string(spelling_of(content.type));
+    return std::string(formula::to_string(content.type));
   }
 
   [[nodiscard]] std::string write_content(const Missing &, const Node &) const {

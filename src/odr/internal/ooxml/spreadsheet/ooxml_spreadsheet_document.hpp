@@ -26,6 +26,8 @@ public:
 
   /// Where a date serial counts from, as `workbookPr/@date1904` says.
   [[nodiscard]] number_format::Epoch epoch() const;
+  /// Excel's settings, and the epoch of the workbook.
+  [[nodiscard]] formula::Settings formula_settings() const override;
 
   /// The `workbook` element of `xl/workbook.xml`.
   [[nodiscard]] pugi::xml_node workbook() const;

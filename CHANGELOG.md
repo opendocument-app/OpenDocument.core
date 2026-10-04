@@ -16,6 +16,16 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A sheet cell that states no value reads as `ValueType::unknown` in an ods
+  and an xlsx, as a cell the file does not state does. A cell holding an
+  empty text stays a string. An ods error a formula computed reads as
+  `ValueType::error`.
+- An ods cell that states a value or a formula and no text is read. Before,
+  a formula cell whose result an edit dropped read as an empty cell without
+  its formula after a save and a decode. A formula after a merge in an ods
+  row is reported at its own position, so `Document::dependents` names it
+  right, and a position a merge covers reads as no cell instead of the next
+  cell of the row.
 - An inserted or deleted row or column moves the source and the place of an
   xlsx pivot table. An edit that would change part of a pivot table's place,
   or remove all of its source, refuses with `UnsupportedOperation`.

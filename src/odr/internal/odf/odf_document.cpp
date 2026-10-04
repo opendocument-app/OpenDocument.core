@@ -10,6 +10,7 @@
 #include <odr/internal/common/sheet_dependencies.hpp>
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/formula/formula_value.hpp>
 #include <odr/internal/number_format/number_format.hpp>
 #include <odr/internal/odf/odf_chart.hpp>
 #include <odr/internal/odf/odf_element_registry.hpp>
@@ -247,9 +248,13 @@ void remove_value_attributes(pugi::xml_node node) {
   }
 }
 
-/// [ODF 1.2] 19.385 `office:value-type`. A percentage and a currency stay a
-/// string until number formats are read, since only their text shows them.
+/// [ODF 1.2] 19.385 `office:value-type`. A cell stating neither a type nor
+/// any content is empty, which a cell holding an empty text is not.
 ValueType value_type_of(const pugi::xml_node node) {
+  // LibreOffice states an error a formula computed as a text of its spelling
+  if (std::strcmp("error", node.attribute("calcext:value-type").value()) == 0) {
+    return ValueType::error;
+  }
   const char *value_type = node.attribute("office:value-type").value();
   // a percentage and a currency state their number in `office:value` too
   if (std::strcmp("float", value_type) == 0 ||
@@ -265,6 +270,9 @@ ValueType value_type_of(const pugi::xml_node node) {
   }
   if (std::strcmp("time", value_type) == 0) {
     return ValueType::time;
+  }
+  if (*value_type == '\0' && !node.first_child()) {
+    return ValueType::unknown;
   }
   return ValueType::string;
 }
@@ -655,13 +663,11 @@ public:
         m_registry->sheet_element_at(element_id);
     std::uint32_t row = 0;
     for (const ElementRegistry::Sheet::Row &run : sheet.rows) {
-      std::uint32_t column = 0;
       for (const ElementRegistry::Sheet::Cell &cell : sheet.row_cells(run)) {
         if (const pugi::xml_attribute formula =
                 cell.node.attribute("table:formula")) {
-          visitor(column, row, formula.value());
+          visitor(cell.begin, row, formula.value());
         }
-        column = cell.end;
       }
       row = run.end;
     }
@@ -2515,5 +2521,33 @@ create_element_adapter(Document &document, ElementRegistry &registry) {
 }
 
 } // namespace
+
+formula::Settings Document::formula_settings() const {
+  formula::Settings result{.dialect = formula::Dialect::libreoffice,
+                           .case_sensitive = true,
+                           .wildcards = false,
+                           .regular_expressions = true};
+  const pugi::xml_node settings = m_content_xml.document_element()
+                                      .child("office:body")
+                                      .child("office:spreadsheet")
+                                      .child("table:calculation-settings");
+  const auto flag = [&](const char *name, const bool unstated) {
+    const pugi::xml_attribute attribute = settings.attribute(name);
+    return attribute ? std::string_view(attribute.value()) == "true" : unstated;
+  };
+  result.case_sensitive = flag("table:case-sensitive", result.case_sensitive);
+  result.wildcards = flag("table:use-wildcards", result.wildcards);
+  result.regular_expressions =
+      flag("table:use-regular-expressions", result.regular_expressions);
+  result.whole_cell =
+      flag("table:search-criteria-must-apply-to-whole-cell", result.whole_cell);
+  if (const std::optional<double> days =
+          date_days(settings.child("table:null-date")
+                        .attribute("table:date-value")
+                        .value())) {
+    result.null_date = static_cast<std::int64_t>(*days);
+  }
+  return result;
+}
 
 } // namespace odr::internal::odf

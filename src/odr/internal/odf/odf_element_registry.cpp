@@ -144,12 +144,14 @@ void ElementRegistry::Sheet::register_cell(const std::uint32_t column,
 
   const std::uint32_t end = column + columns_repeated;
   if (cells.size() > rows.back().first_cell && cells.back().end >= end) {
-    cells.back() = {.end = end,
+    cells.back() = {.begin = column,
+                    .end = end,
                     .element_id = static_cast<StoredId>(element_id),
                     .node = element};
     return;
   }
-  cells.push_back({.end = end,
+  cells.push_back({.begin = column,
+                   .end = end,
                    .element_id = static_cast<StoredId>(element_id),
                    .node = element});
 }
@@ -180,8 +182,11 @@ const ElementRegistry::Sheet::Cell *
 ElementRegistry::Sheet::cell(const std::uint32_t column,
                              const std::uint32_t row) const {
   const Row *row_entry = this->row(row);
-  return row_entry != nullptr ? lookup<Cell>(row_cells(*row_entry), column)
-                              : nullptr;
+  const Cell *cell = row_entry != nullptr
+                         ? lookup<Cell>(row_cells(*row_entry), column)
+                         : nullptr;
+  // a position in the gap a span leaves is a covered cell's
+  return cell != nullptr && cell->begin <= column ? cell : nullptr;
 }
 
 std::span<const ElementRegistry::Sheet::Cell>

@@ -40,6 +40,7 @@ add_executable(odr_test
         "src/odr_test.cpp"
         "src/pdf_annotate_test.cpp"
         "src/quantity_test.cpp"
+        "src/formula_corpus_test.cpp"
         "src/sheet_dependencies_test.cpp"
         "src/table_position_test.cpp"
 
@@ -56,12 +57,14 @@ add_executable(odr_test
         "src/internal/common/list_numbering_test.cpp"
         "src/internal/common/path_test.cpp"
         "src/internal/common/table_cursor_test.cpp"
+        "src/internal/common/sheet_cell_source_test.cpp"
         "src/internal/common/table_range_test.cpp"
 
         "src/internal/crypto/crypto_util_test.cpp"
 
         "src/internal/csv/csv_file_test.cpp"
         "src/internal/encoding/text_encoding_test.cpp"
+        "src/internal/formula/formula_evaluator_test.cpp"
         "src/internal/formula/formula_parser_test.cpp"
         "src/internal/formula/formula_writer_test.cpp"
         "src/internal/number_format/number_format_test.cpp"

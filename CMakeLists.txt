@@ -177,6 +177,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/common/media_file.cpp"
         "src/odr/internal/common/path.cpp"
         "src/odr/internal/common/random.cpp"
+        "src/odr/internal/common/sheet_cell_source.cpp"
         "src/odr/internal/common/sheet_dependencies.cpp"
         "src/odr/internal/common/style.cpp"
         "src/odr/internal/common/table_cursor.cpp"
@@ -192,7 +193,9 @@ set(ODR_SOURCE_FILES
 
         "src/odr/internal/formula/formula_ast.cpp"
         "src/odr/internal/formula/formula_dependencies.cpp"
+        "src/odr/internal/formula/formula_evaluator.cpp"
         "src/odr/internal/formula/formula_parser.cpp"
+        "src/odr/internal/formula/formula_value.cpp"
         "src/odr/internal/formula/formula_writer.cpp"
         "src/odr/internal/number_format/calendar_names.cpp"
         "src/odr/internal/number_format/number_format.cpp"
