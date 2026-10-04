@@ -34,6 +34,10 @@ namespace odr::internal {
 class SheetDependencies;
 } // namespace odr::internal
 
+namespace odr::internal::formula {
+struct Settings;
+} // namespace odr::internal::formula
+
 namespace odr::internal::abstract {
 class ReadableFilesystem;
 class ElementAdapter;
@@ -86,6 +90,10 @@ public:
   /// Built on the first question and kept: writing a formula is refused, so
   /// nothing a write does changes it.
   [[nodiscard]] virtual const SheetDependencies &sheet_dependencies() const = 0;
+
+  /// How the formulas of the document compute: what an `.ods` states, and
+  /// Excel's settings for every other format.
+  [[nodiscard]] virtual formula::Settings formula_settings() const = 0;
 };
 
 class ElementAdapter {

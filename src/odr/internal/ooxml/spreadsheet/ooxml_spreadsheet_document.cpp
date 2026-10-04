@@ -10,6 +10,7 @@
 #include <odr/internal/common/table_range.hpp>
 #include <odr/internal/formula/formula_ast.hpp>
 #include <odr/internal/formula/formula_parser.hpp>
+#include <odr/internal/formula/formula_value.hpp>
 #include <odr/internal/formula/formula_writer.hpp>
 #include <odr/internal/ooxml/ooxml_util.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_parser.hpp>
@@ -127,6 +128,10 @@ const StyleRegistry &Document::style_registry() const {
 StyleRegistry &Document::style_registry() { return m_style_registry; }
 
 number_format::Epoch Document::epoch() const { return m_epoch; }
+
+formula::Settings Document::formula_settings() const {
+  return formula::Settings{.epoch = m_epoch};
+}
 
 pugi::xml_node Document::workbook() const {
   return m_xml_documents_and_relations.at(AbsPath("/xl/workbook.xml"))
@@ -1074,7 +1079,8 @@ public:
       }
       return ValueType::float_number;
     }
-    return ValueType::string;
+    // a cell stating no value is empty, which one holding an empty text is not
+    return ValueType::unknown;
   }
   /// ECMA-376 18.3.1.4 `c`: `v` is the value, `f` the formula, whose
   /// expression a shared group spells on its master only.

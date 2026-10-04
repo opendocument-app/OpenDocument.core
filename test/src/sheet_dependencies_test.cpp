@@ -199,3 +199,15 @@ TEST(SheetDependencies, every_member_of_a_shared_group_reads_its_own_row) {
   EXPECT_EQ(spelled(document.dependents(SheetPosition(0, 0, 1))),
             (std::vector<std::string>{"0!C2"}));
 }
+
+TEST(SheetDependencies, a_formula_after_a_merge_is_at_its_own_position) {
+  const Document document = decode(flat_document(sheet(
+      "s",
+      row(R"(<table:table-cell table:number-columns-spanned="2">)"
+          R"(<text:p>m</text:p></table:table-cell><table:covered-table-cell/>)" +
+          computed("of:=[.A2]")) +
+          row(number("1")))));
+
+  EXPECT_EQ(spelled(document.dependents(SheetPosition(0, 0, 1))),
+            (std::vector<std::string>{"0!C1"}));
+}

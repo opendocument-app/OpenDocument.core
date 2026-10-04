@@ -92,6 +92,9 @@ public:
     };
 
     struct Cell final {
+      /// The first column of the run. A span leaves a gap before the next
+      /// run, whose positions the covered cells hold.
+      std::uint32_t begin{0};
       std::uint32_t end{0};
       StoredId element_id{null_element_id};
       pugi::xml_node node;

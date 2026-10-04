@@ -31,6 +31,9 @@ public:
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
   /// The language of the default style.
   [[nodiscard]] std::optional<std::string> locale() const override;
+  /// What `table:calculation-settings` states, and the ODF defaults where it
+  /// states nothing.
+  [[nodiscard]] formula::Settings formula_settings() const override;
 
   void save(std::ostream &out) const override;
   void save(std::ostream &out, const char *password) const override;

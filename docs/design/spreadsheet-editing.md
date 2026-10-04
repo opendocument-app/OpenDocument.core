@@ -37,6 +37,7 @@ text never had.
 | XLSX save | `ooxml_spreadsheet_document.cpp::save` writes the worksheets and `workbook.xml`, copies the rest, and sets `calcPr/@fullCalcOnLoad="1"` |
 | Formulas | `internal/formula/` parses OpenFormula and OOXML into one AST, writes it back, and shifts it for an ooxml shared formula |
 | Number formats | `internal/number_format/` parses a format code and formats a number with it; `odf/odf_number_format.cpp` turns an ods data style into a format code |
+| Evaluation | `formula::evaluate` computes a parsed formula, or gives no answer. `formula_value.hpp` holds the values and the `Settings`, `formula_function.hpp` the functions. `internal::SheetCellSource` reads the cells of a decoded document, and `abstract::Document::formula_settings` states how it computes. `test/src/formula_corpus_test.cpp` holds decision 29 |
 | Dependencies | `internal::SheetDependencies`, built off the decoded document and again after a row edit. `Document::dependents` and `Document::unresolved_formulas` expose it |
 | Row and column edits | `formula::SheetEdit` and `formula::move_references` move a reference along either axis, `formula::move_addresses` an address list. `odf_sheet_references.cpp` and `ooxml_spreadsheet_references.cpp` walk what each file addresses |
 | Stale results | An odf write drops the cached result of every dependent (`drop_stale_results`). An ooxml write keeps them, because every save sets `fullCalcOnLoad` |

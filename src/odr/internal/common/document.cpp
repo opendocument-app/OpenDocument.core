@@ -4,6 +4,7 @@
 
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/sheet_dependencies.hpp>
+#include <odr/internal/formula/formula_value.hpp>
 
 namespace odr::internal {
 
@@ -55,6 +56,8 @@ const SheetDependencies &Document::sheet_dependencies() const {
   }
   return *m_sheet_dependencies;
 }
+
+formula::Settings Document::formula_settings() const { return {}; }
 
 void Document::drop_sheet_dependencies() const noexcept {
   m_sheet_dependencies.reset();

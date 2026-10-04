@@ -3,6 +3,7 @@
 #include <odr/table_position.hpp>
 
 #include <odr/internal/common/text_cursor.hpp>
+#include <odr/internal/formula/formula_value.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
@@ -72,21 +73,6 @@ std::optional<CellReference> take_coordinates(std::string_view &text,
   text.remove_prefix(digits);
   return reference;
 }
-
-struct ErrorSpelling final {
-  std::string_view text;
-  ErrorType type;
-};
-
-constexpr std::array<ErrorSpelling, 7> error_spellings{{
-    {"#DIV/0!", ErrorType::division},
-    {"#VALUE!", ErrorType::value},
-    {"#NAME?", ErrorType::name},
-    {"#NULL!", ErrorType::null},
-    {"#NUM!", ErrorType::number},
-    {"#REF!", ErrorType::reference},
-    {"#N/A", ErrorType::not_available},
-}};
 
 Node make(Node::Content content, std::vector<Node> children = {}) {
   return Node{std::move(content), std::move(children)};
@@ -373,10 +359,11 @@ private:
   }
 
   [[nodiscard]] std::optional<Node> error_literal() {
-    for (const ErrorSpelling &spelling : error_spellings) {
-      if (rest().starts_with(spelling.text)) {
-        advance(spelling.text.size());
-        return make(ErrorLiteral{spelling.type});
+    for (const ErrorType type : error_types) {
+      if (const std::string_view spelling = to_string(type);
+          rest().starts_with(spelling)) {
+        advance(spelling.size());
+        return make(ErrorLiteral{type});
       }
     }
     return {};
