@@ -539,12 +539,12 @@ public:
   void sheet_insert_rows(const ElementIdentifier element_id,
                          const std::uint32_t row,
                          const std::uint32_t count) const override {
-    edit_rows(element_id, {.row = row, .count = count});
+    edit_rows(element_id, {.index = row, .count = count});
   }
   void sheet_delete_rows(const ElementIdentifier element_id,
                          const std::uint32_t row,
                          const std::uint32_t count) const override {
-    edit_rows(element_id, {.row = row, .count = count, .insert = false});
+    edit_rows(element_id, {.index = row, .count = count, .insert = false});
   }
 
   /// The rows of the grid (ECMA-376 18.3.1.73).
@@ -555,7 +555,7 @@ public:
   /// ranges of the sheet, its drawings and comments, every formula, every
   /// defined name and the calc chain move with them.
   void edit_rows(const ElementIdentifier element_id,
-                 formula::RowEdit edit) const {
+                 formula::SheetEdit edit) const {
     ElementRegistry::Sheet &sheet = m_registry->sheet_element_at(element_id);
     edit.sheet = sheet.name;
     pugi::xml_node sheet_node = get_node(element_id);
@@ -578,7 +578,7 @@ public:
         }
       }
     }
-    if (edit.insert && !sheet.rows.empty() && last_row >= edit.row &&
+    if (edit.insert && !sheet.rows.empty() && last_row >= edit.index &&
         static_cast<std::uint64_t>(last_row) + edit.count >= row_limit) {
       throw UnsupportedOperation();
     }
@@ -654,8 +654,8 @@ public:
       for (pugi::xml_node merge = merges.child("mergeCell"); merge;) {
         const pugi::xml_node next = merge.next_sibling("mergeCell");
         if (const std::optional<std::string> moved =
-                move_row_addresses(merge.attribute("ref").value(), edit,
-                                   sheet.name, formula::Syntax::ooxml)) {
+                move_addresses(merge.attribute("ref").value(), edit, sheet.name,
+                               formula::Syntax::ooxml)) {
           if (moved->empty()) {
             merges.remove_child(merge);
           } else {
@@ -675,17 +675,17 @@ public:
     if (pugi::xml_attribute ref =
             sheet_node.child("dimension").attribute("ref");
         ref) {
-      if (const std::optional<std::string> moved = move_row_addresses(
+      if (const std::optional<std::string> moved = move_addresses(
               ref.value(), edit, sheet.name, formula::Syntax::ooxml)) {
         ref.set_value(moved->empty() ? "A1" : moved->c_str());
       }
     }
-    if (edit.row < sheet.dimensions.rows) {
+    if (edit.index < sheet.dimensions.rows) {
       sheet.dimensions.rows =
           edit.insert
               ? sheet.dimensions.rows + edit.count
               : sheet.dimensions.rows -
-                    std::min(edit.count, sheet.dimensions.rows - edit.row);
+                    std::min(edit.count, sheet.dimensions.rows - edit.index);
     }
 
     decltype(sheet.rows) rows;
@@ -713,15 +713,17 @@ public:
 
   /// Whether @p ref, a cell or a range, reaches over an edge of the edit: an
   /// insert strictly inside it, or a delete taking part of it.
-  static bool cut_by(const std::string &ref, const formula::RowEdit &edit) {
+  static bool cut_by(const std::string &ref, const formula::SheetEdit &edit) {
     const TableRange range(ref.contains(':') ? ref : ref + ":" + ref);
     const std::uint32_t first = range.from().row;
     const std::uint32_t last = range.to().row;
     if (edit.insert) {
-      return first < edit.row && edit.row <= last;
+      return first < edit.index && edit.index <= last;
     }
-    const std::uint64_t end = static_cast<std::uint64_t>(edit.row) + edit.count;
-    return first < end && last >= edit.row && (first < edit.row || last >= end);
+    const std::uint64_t end =
+        static_cast<std::uint64_t>(edit.index) + edit.count;
+    return first < end && last >= edit.index &&
+           (first < edit.index || last >= end);
   }
 
   /// The masters of the shared groups, as the cells state them now.

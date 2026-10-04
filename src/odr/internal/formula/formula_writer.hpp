@@ -14,12 +14,13 @@ namespace odr::internal::formula {
 [[nodiscard]] std::string to_string(const Node &node, Syntax syntax);
 
 /// The cell and range addresses of @p list, split by spaces, moved by
-/// @p edit as @ref move_rows moves a reference, the unstated sheet being
-/// @p sheet. An address all inside removed rows is left out. Nothing where
-/// none moved. An opendocument address is a reference without its brackets
+/// @p edit as @ref move_references moves a reference, the unstated sheet being
+/// @p sheet. An address all inside removed rows or columns is left out. Nothing
+/// where none moved. An opendocument address is a reference without its
+/// brackets
 /// ([ODF 1.2] 9.2.5), an ooxml one a `sqref` item (ECMA-376 18.18.76).
 [[nodiscard]] std::optional<std::string>
-move_row_addresses(std::string_view list, const RowEdit &edit,
-                   const std::optional<std::string> &sheet, Syntax syntax);
+move_addresses(std::string_view list, const SheetEdit &edit,
+               const std::optional<std::string> &sheet, Syntax syntax);
 
 } // namespace odr::internal::formula

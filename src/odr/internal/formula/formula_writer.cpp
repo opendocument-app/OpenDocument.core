@@ -357,9 +357,9 @@ std::string formula::to_string(const formula::Node &node,
 }
 
 std::optional<std::string>
-formula::move_row_addresses(const std::string_view list, const RowEdit &edit,
-                            const std::optional<std::string> &sheet,
-                            const Syntax syntax) {
+formula::move_addresses(const std::string_view list, const SheetEdit &edit,
+                        const std::optional<std::string> &sheet,
+                        const Syntax syntax) {
   const bool bracketed = syntax == Syntax::opendocument;
   std::string result;
   bool moved = false;
@@ -380,7 +380,7 @@ formula::move_row_addresses(const std::string_view list, const RowEdit &edit,
     std::string spelled(address);
     if (std::optional<Node> node =
             formula::parse(bracketed ? "[" + spelled + "]" : spelled, syntax);
-        node.has_value() && formula::move_rows(*node, edit, sheet)) {
+        node.has_value() && formula::move_references(*node, edit, sheet)) {
       moved = true;
       if (node->holds<ErrorLiteral>()) {
         continue;
