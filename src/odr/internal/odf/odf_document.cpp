@@ -226,7 +226,10 @@ void remove_value_attributes(pugi::xml_node node) {
 /// string until number formats are read, since only their text shows them.
 ValueType value_type_of(const pugi::xml_node node) {
   const char *value_type = node.attribute("office:value-type").value();
-  if (std::strcmp("float", value_type) == 0) {
+  // a percentage and a currency state their number in `office:value` too
+  if (std::strcmp("float", value_type) == 0 ||
+      std::strcmp("percentage", value_type) == 0 ||
+      std::strcmp("currency", value_type) == 0) {
     return ValueType::float_number;
   }
   if (std::strcmp("boolean", value_type) == 0) {

@@ -26,6 +26,8 @@ The release run heads these entries with the version and opens a fresh
 - The sheet editor opens a formatted number on its value, in the locale's
   spelling, and a commit of it unchanged writes nothing. Before, it opened
   `€1.234,50` as text and a commit made the cell a string.
+- An ods cell typed `percentage` or `currency` is `ValueType::float_number`,
+  as its `office:value` is a number, and is right-aligned as one.
 
 - `odr::create_document(FileType)` makes a new odt with one empty paragraph,
   an A4 page and Liberation Serif 12pt, a new ods with one empty sheet

@@ -79,16 +79,20 @@ TEST(OdfSheetValue, a_formula_cell_states_both_formula_and_result) {
   EXPECT_DOUBLE_EQ(value.number(), 7);
 }
 
-/// The type is read from `office:value-type` alone; reading the number format
-/// is what would settle it.
-TEST(OdfSheetValue, a_percentage_states_a_number_the_type_does_not_admit) {
-  const CellValue value = value_of(
+/// A percentage and a currency state their number in `office:value`, as a
+/// float does; the data style is what shows them.
+TEST(OdfSheetValue, a_percentage_and_a_currency_are_numbers) {
+  const CellValue percentage = value_of(
       R"(<table:table-cell office:value-type="percentage" office:value="0.25">)"
       R"(<text:p>25%</text:p></table:table-cell>)");
+  const CellValue currency = value_of(
+      R"(<table:table-cell office:value-type="currency" office:currency="EUR")"
+      R"( office:value="1234.5"><text:p>1.234,50 €</text:p></table:table-cell>)");
 
-  EXPECT_EQ(value.type(), ValueType::string);
-  ASSERT_TRUE(value.has_number());
-  EXPECT_DOUBLE_EQ(value.number(), 0.25);
+  EXPECT_EQ(percentage.type(), ValueType::float_number);
+  EXPECT_DOUBLE_EQ(percentage.number(), 0.25);
+  EXPECT_EQ(currency.type(), ValueType::float_number);
+  EXPECT_DOUBLE_EQ(currency.number(), 1234.5);
 }
 
 TEST(OdfSheetValue, a_number_is_read_in_one_spelling_only) {
