@@ -1,14 +1,12 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <cstdint>
 #include <iterator>
 #include <stdexcept>
 
 #include <fmt/format.h>
 
-#include <utf8/unchecked.h>
 #include <utf8cpp/utf8/checked.h>
 #include <utf8cpp/utf8/cpp17.h>
 
@@ -23,7 +21,7 @@ bool string::ends_with(const std::string &string, const std::string &with) {
 }
 
 bool string::is_ascii_whitespace(const char c) {
-  return std::isspace(static_cast<std::uint8_t>(c)) != 0;
+  return c == ' ' || (c >= '\t' && c <= '\r');
 }
 
 bool string::is_ascii_digit(const char c) { return c >= '0' && c <= '9'; }
@@ -37,11 +35,11 @@ bool string::is_ascii_letter_or_digit(const char c) {
 }
 
 char string::to_lower(const char c) {
-  return static_cast<char>(std::tolower(static_cast<std::uint8_t>(c)));
+  return c >= 'A' && c <= 'Z' ? static_cast<char>(c + ('a' - 'A')) : c;
 }
 
 char string::to_upper(const char c) {
-  return static_cast<char>(std::toupper(static_cast<std::uint8_t>(c)));
+  return c >= 'a' && c <= 'z' ? static_cast<char>(c - ('a' - 'A')) : c;
 }
 
 std::string string::to_lower(const std::string_view string) {
@@ -70,6 +68,9 @@ std::size_t string::find_ignore_case(const std::string_view string,
                                      const std::size_t from) {
   if (from > string.size()) {
     return std::string_view::npos;
+  }
+  if (needle.empty()) {
+    return from;
   }
   const std::string_view rest = string.substr(from);
   const auto found =
@@ -141,6 +142,9 @@ std::string_view string::trim_view(std::string_view s,
 
 void string::replace_all(std::string &string, const std::string &search,
                          const std::string &replace) {
+  if (search.empty()) {
+    throw std::invalid_argument("search must not be empty");
+  }
   std::size_t pos = string.find(search);
   while (pos != std::string::npos) {
     string.replace(pos, search.size(), replace);
@@ -150,6 +154,12 @@ void string::replace_all(std::string &string, const std::string &search,
 
 std::string string::repeat(const std::string &unit, const std::size_t count) {
   std::string result;
+  if (unit.empty()) {
+    return result;
+  }
+  if (count > result.max_size() / unit.size()) {
+    throw std::length_error("repeated string is too large");
+  }
   result.reserve(unit.size() * count);
   for (std::size_t i = 0; i < count; ++i) {
     result += unit;
@@ -189,7 +199,7 @@ std::string string::to_string(const double d, const int precision) {
 }
 
 std::size_t string::utf8_length(const std::string &string) {
-  return utf8::unchecked::distance(string.begin(), string.end());
+  return utf8::distance(string.begin(), string.end());
 }
 
 std::vector<std::size_t>

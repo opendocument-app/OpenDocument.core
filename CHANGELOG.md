@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Shared text helpers keep ASCII matching independent of locale and reject
+  malformed UTF-8, empty replacement patterns and overflowing repetitions.
+  In-memory byte writes reject offsets that overflow their bounds checks.
+
 - Release automation preserves literal asset paths and rejects malformed
   version overrides before changing package metadata.
 

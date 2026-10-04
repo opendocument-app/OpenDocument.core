@@ -92,7 +92,7 @@ void byte_string::put_u32_be(std::string &out, const std::uint32_t value) {
 
 void byte_string::write_u16_be(std::string &out, const std::size_t pos,
                                const std::uint16_t value) {
-  if (pos + 2 > out.size()) {
+  if (pos > out.size() || out.size() - pos < 2) {
     throw std::runtime_error("byte_string: write past end");
   }
   out[pos] = static_cast<char>(value >> 8);
@@ -101,7 +101,7 @@ void byte_string::write_u16_be(std::string &out, const std::size_t pos,
 
 void byte_string::write_u32_be(std::string &out, const std::size_t pos,
                                const std::uint32_t value) {
-  if (pos + 4 > out.size()) {
+  if (pos > out.size() || out.size() - pos < 4) {
     throw std::runtime_error("byte_string: write past end");
   }
   out[pos] = static_cast<char>(value >> 24);
