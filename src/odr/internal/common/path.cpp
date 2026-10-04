@@ -140,6 +140,7 @@ bool Path::descendant_of(const Path &b) const {
   if (m_absolute != b.m_absolute) {
     throw std::invalid_argument("cannot compare absolute and relative path");
   }
+  // "../.." holds everything that goes up fewer levels, "a" and ".." alike
   if (b.m_downwards == 0 && m_upwards < b.m_upwards) {
     return true;
   }
