@@ -77,7 +77,6 @@ export interface Detection {
   mimeType: string;
 }
 
-/** What a view leaves out of the sheet it renders. */
 /** A cell of a sheet, by the sheet's ordinal. */
 export interface SheetPosition {
   sheet: number;
@@ -95,6 +94,7 @@ export interface Recalculation {
   unevaluated: SheetPosition[];
 }
 
+/** What a view leaves out of the sheet it renders. */
 export interface SheetCut {
   /** The extent the sheet's cells span. */
   contentRows: number;

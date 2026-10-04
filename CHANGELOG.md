@@ -16,10 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- `Document::recalculate` is bound as `recalculate` in python, java and
-  npm, and as `recalculate()` in objective-c and swift. Each returns the
-  changed, circular and unevaluated cells as positions: `SheetPosition` in
-  python, java and swift, `{sheet, column, row}` in npm.
+- `Document::recalculate` is bound as `recalculate` in python, java, npm
+  and swift, and as `-[ODRDocument recalculateWithError:]` in objective-c.
+  Each returns the changed, circular and unevaluated cells as positions:
+  `SheetPosition` in python, java and swift, `{sheet, column, row}` in npm.
 - `Document::recalculate` computes the stale formula cells of an ods and an
   xlsx and writes each result into the document. It returns the cells whose
   result changed, the cells of a cycle, and the cells nothing here computes.
