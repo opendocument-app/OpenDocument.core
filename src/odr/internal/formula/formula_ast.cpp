@@ -36,27 +36,27 @@ using RowMove =
         std::uint32_t first, std::uint32_t last)>;
 
 /// Moves the rows of two corners as one span, so a delete cutting a range
-/// shrinks it. A cell is a range of one corner. False where it is lost.
-[[nodiscard]] bool move_range(CellReference &from, CellReference &to,
-                              const EditedSheet &edited, const RowMove &move,
-                              bool &moved) {
+/// shrinks it. A cell is a range of one corner. Whether anything moved,
+/// nothing where the reference is lost.
+std::optional<bool> move_range(CellReference &from, CellReference &to,
+                               const EditedSheet &edited, const RowMove &move) {
   // the second corner's unstated sheet is the first's
   if (from.document.has_value() || to.document.has_value() ||
       !from.row.has_value() || !to.row.has_value() || !edited(from.sheet) ||
       !edited(to.sheet.has_value() ? to.sheet : from.sheet)) {
-    return true;
+    return false;
   }
   const bool ascending = from.row->index <= to.row->index;
   Coordinate &first = ascending ? *from.row : *to.row;
   Coordinate &last = ascending ? *to.row : *from.row;
   const auto rows = move(first.index, last.index);
   if (!rows.has_value()) {
-    return false;
+    return std::nullopt;
   }
-  moved = moved || rows->first != first.index || rows->second != last.index;
+  const bool moved = rows->first != first.index || rows->second != last.index;
   first.index = rows->first;
   last.index = rows->second;
-  return true;
+  return moved;
 }
 
 bool move_rows(Node &node, const EditedSheet &edited, const RowMove &move) {
@@ -79,15 +79,16 @@ bool move_rows(Node &node, const EditedSheet &edited, const RowMove &move) {
     }
   }
 
-  bool moved = false;
   if (from != nullptr) {
-    if (!move_range(*from, *to, edited, move, moved)) {
+    const std::optional<bool> moved = move_range(*from, *to, edited, move);
+    if (!moved.has_value()) {
       node.content = ErrorLiteral{ErrorType::reference};
       node.children.clear();
       return true;
     }
-    return moved;
+    return *moved;
   }
+  bool moved = false;
   for (Node &child : node.children) {
     moved = move_rows(child, edited, move) || moved;
   }
