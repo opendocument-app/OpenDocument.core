@@ -11,6 +11,7 @@
 #include <odr/internal/xml/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstring>
@@ -465,14 +466,30 @@ public:
   }
 
   /// [ECMA-376] Part 1 17.3.3.31: a `w:t` sits in a `w:r`, so a parent that
-  /// is no run gets a new one.
+  /// is no run gets a new one. In a paragraph the new run takes the
+  /// properties of the paragraph mark (17.3.1.29), as Word does for typed
+  /// text, without the revision marks that only the mark can carry.
   [[nodiscard]] ElementIdentifier
   element_append_text(const ElementIdentifier element_id,
                       const std::string &text) const override {
     ElementIdentifier run_id = element_id;
     if (element_type(element_id) != ElementType::span) {
-      const auto &[new_run_id, unused_run] = m_registry->create_element(
-          ElementType::span, get_node(element_id).append_child("w:r"));
+      pugi::xml_node parent = get_node(element_id);
+      pugi::xml_node run = parent.append_child("w:r");
+      if (const pugi::xml_node mark = parent.child("w:pPr").child("w:rPr");
+          mark && element_type(element_id) == ElementType::paragraph) {
+        static constexpr std::array<std::string_view, 5> revisions = {
+            "w:ins", "w:del", "w:moveFrom", "w:moveTo", "w:rPrChange"};
+        pugi::xml_node properties = run.append_child("w:rPr");
+        for (const pugi::xml_node child : mark.children()) {
+          if (std::ranges::find(revisions, std::string_view(child.name())) ==
+              std::end(revisions)) {
+            properties.append_copy(child);
+          }
+        }
+      }
+      const auto &[new_run_id, unused_run] =
+          m_registry->create_element(ElementType::span, run);
       m_registry->append_child(element_id, new_run_id);
       run_id = new_run_id;
     }
