@@ -127,6 +127,18 @@ TEST(OoxmlSpreadsheetColumns, the_column_declarations_move_and_cut) {
                        R"(<col min="4" max="4" width="9" customWidth="1"/>)"));
 }
 
+TEST(OoxmlSpreadsheetColumns, a_declaration_ends_at_the_last_column) {
+  const Document document = decode(
+      workbook(abc, "", "", "",
+               R"(<cols><col min="1" max="16384" width="20" customWidth="1"/>)"
+               R"(</cols>)"));
+  first_sheet(document).insert_columns(1, 2);
+  EXPECT_TRUE(contains(sheet_xml(document),
+                       R"(<col min="1" max="1" width="20" customWidth="1"/>)"
+                       R"(<col min="4" max="16384" width="20" )"
+                       R"(customWidth="1"/></cols>)"));
+}
+
 TEST(OoxmlSpreadsheetColumns, a_merge_moves_and_one_the_edit_cuts_refuses) {
   const Document document = decode(workbook(
       abc, R"(<mergeCells count="1"><mergeCell ref="B1:C1"/></mergeCells>)"));

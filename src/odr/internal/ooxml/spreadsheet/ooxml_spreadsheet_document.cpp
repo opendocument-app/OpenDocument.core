@@ -753,26 +753,35 @@ public:
 
   /// The `col` declarations (18.3.1.13) after a column edit: one past the edit
   /// moves, one an insert falls inside is cut and the new columns state none,
-  /// and a delete shrinks the ones it reaches. Reindexes the columns.
+  /// and a delete shrinks the ones it reaches. None reaches past `XFD`.
+  /// Reindexes the columns.
   static void move_columns(pugi::xml_node sheet_node,
                            ElementRegistry::Sheet &sheet,
                            const formula::SheetEdit &edit) {
     pugi::xml_node cols = sheet_node.child("cols");
+    const auto place = [&](const pugi::xml_node col, const std::uint64_t first,
+                           const std::uint64_t last) {
+      if (first >= column_limit) {
+        cols.remove_child(col);
+        return;
+      }
+      xml::set_attribute(col, "min", std::to_string(first + 1).c_str());
+      xml::set_attribute(
+          col, "max",
+          std::to_string(std::min<std::uint64_t>(last + 1, column_limit))
+              .c_str());
+    };
     for (pugi::xml_node col = cols.child("col"); col;) {
       const pugi::xml_node next = col.next_sibling("col");
       const std::uint32_t min = col.attribute("min").as_uint() - 1;
       const std::uint32_t max = col.attribute("max").as_uint() - 1;
       if (edit.insert && min < edit.index && edit.index <= max) {
-        const pugi::xml_node after = cols.insert_copy_after(col, col);
-        xml::set_attribute(after, "min",
-                           std::to_string(edit.index + edit.count + 1).c_str());
-        xml::set_attribute(after, "max",
-                           std::to_string(max + edit.count + 1).c_str());
-        xml::set_attribute(col, "max", std::to_string(edit.index).c_str());
+        place(cols.insert_copy_after(col, col),
+              std::uint64_t{edit.index} + edit.count,
+              std::uint64_t{max} + edit.count);
+        place(col, min, edit.index - 1);
       } else if (const auto span = edit.span(min, max)) {
-        xml::set_attribute(col, "min", std::to_string(span->first + 1).c_str());
-        xml::set_attribute(col, "max",
-                           std::to_string(span->second + 1).c_str());
+        place(col, span->first, span->second);
       } else {
         cols.remove_child(col);
       }
@@ -781,8 +790,13 @@ public:
     if (cols && !cols.child("col")) {
       sheet_node.remove_child(cols);
     }
+    register_columns(sheet, sheet_node.child("cols"));
+  }
+
+  static void register_columns(ElementRegistry::Sheet &sheet,
+                               const pugi::xml_node cols) {
     sheet.columns.clear();
-    for (const pugi::xml_node col : sheet_node.child("cols").children("col")) {
+    for (const pugi::xml_node col : cols.children("col")) {
       sheet.register_column(col.attribute("min").as_uint() - 1,
                             col.attribute("max").as_uint() - 1, col);
     }
@@ -925,11 +939,7 @@ public:
     xml::set_attribute(node, "min", std::to_string(column + 1).c_str());
     xml::set_attribute(node, "max", std::to_string(column + 1).c_str());
 
-    sheet.columns.clear();
-    for (const pugi::xml_node col : cols.children("col")) {
-      sheet.register_column(col.attribute("min").as_uint() - 1,
-                            col.attribute("max").as_uint() - 1, col);
-    }
+    register_columns(sheet, cols);
     return node;
   }
 
