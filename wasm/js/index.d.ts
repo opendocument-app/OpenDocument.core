@@ -78,6 +78,23 @@ export interface Detection {
 }
 
 /** What a view leaves out of the sheet it renders. */
+/** A cell of a sheet, by the sheet's ordinal. */
+export interface SheetPosition {
+  sheet: number;
+  column: number;
+  row: number;
+}
+
+/** What `Document.recalculate` did, each list in reading order. */
+export interface Recalculation {
+  /** The formula cells whose result changed, or that had none before. */
+  changed: SheetPosition[];
+  /** The cells of a cycle, which have no result. */
+  circular: SheetPosition[];
+  /** The stale formula cells nothing here computes. */
+  unevaluated: SheetPosition[];
+}
+
 export interface SheetCut {
   /** The extent the sheet's cells span. */
   contentRows: number;
@@ -277,6 +294,13 @@ export declare class Document {
    * @throws OdrError `unsupported_operation` where the edit would cut a merge
    */
   deleteColumns(sheet: number, column: number, count: number): this;
+  /**
+   * Computes the stale formula cells and writes each result into the
+   * document. `save` does so first where an edit left one stale.
+   * @throws OdrError `unsupported_operation` where the sheets repeat more
+   *         formula cells than a recalculation reads
+   */
+  recalculate(): Recalculation;
   /**
    * States `style` on one paragraph and leaves what it does not name. The
    * same object the page's `odr.editing.format` takes.

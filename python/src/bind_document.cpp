@@ -4,10 +4,12 @@
 #include <odr/document_element.hpp>
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
+#include <odr/sheet_position.hpp>
 #include <odr/style.hpp>
 #include <odr/table_dimension.hpp>
 #include <odr/table_position.hpp>
 
+#include <pybind11/operators.h>
 #include <pybind11/stl.h>
 
 #include <sstream>
@@ -121,6 +123,30 @@ void odr_python::bind_document(py::module_ &m) {
                   py::arg("column"))
       .def_static("to_row_string", &odr::TablePosition::to_row_string,
                   py::arg("row"));
+
+  py::class_<odr::SheetPosition>(m, "SheetPosition")
+      .def(py::init<std::uint32_t, std::uint32_t, std::uint32_t>(),
+           py::arg("sheet"), py::arg("column"), py::arg("row"))
+      .def_readonly("sheet", &odr::SheetPosition::sheet)
+      .def_property_readonly("column",
+                             [](const odr::SheetPosition &position) {
+                               return position.cell.column;
+                             })
+      .def_property_readonly(
+          "row",
+          [](const odr::SheetPosition &position) { return position.cell.row; })
+      .def(py::self == py::self)
+      .def("__repr__", [](const odr::SheetPosition &position) {
+        return "SheetPosition(" + position.to_string() + ")";
+      });
+
+  py::class_<odr::Recalculation>(m, "Recalculation")
+      .def("changed", &odr::Recalculation::changed,
+           "The formula cells whose result changed, or that had none before.")
+      .def("circular", &odr::Recalculation::circular,
+           "The cells of a cycle, which have no result.")
+      .def("unevaluated", &odr::Recalculation::unevaluated,
+           "The stale formula cells nothing here computes.");
 
   py::class_<odr::Element>(m, "Element")
       .def(py::init<>())
@@ -350,6 +376,10 @@ void odr_python::bind_document(py::module_ &m) {
       .def("insert_paragraph_after", &odr::Document::insert_paragraph_after,
            py::arg("paragraph"), keep_self_alive,
            "An empty paragraph after this one, of the same style.")
+      .def("recalculate", &odr::Document::recalculate,
+           py::call_guard<py::gil_scoped_release>(),
+           "Compute the stale formula cells and write each result into the "
+           "document. A save does so first where an edit left one stale.")
       .def("is_savable", &odr::Document::is_savable,
            py::arg("encrypted") = false)
       // saving serialises the whole document; holding the GIL for it blocks

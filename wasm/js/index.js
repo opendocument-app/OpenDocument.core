@@ -171,6 +171,10 @@ export class Document {
     return this;
   }
 
+  recalculate() {
+    return unwrap(this.#core.recalculate(this.#handle));
+  }
+
   // `afterId` of 0 splits before every child.
   splitParagraph(paragraphId, afterId = 0) {
     return unwrap(this.#core.splitParagraph(this.#handle, paragraphId, afterId));

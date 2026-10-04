@@ -156,6 +156,38 @@ describe('edit', () => {
     }
   });
 
+  it('recalculates the stale formulas', () => {
+    const doc = odr.open(
+      new TextEncoder().encode(
+        '<?xml version="1.0" encoding="UTF-8"?>' +
+          '<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"' +
+          ' xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0"' +
+          ' xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"' +
+          ' office:version="1.3" office:mimetype="application/vnd.oasis.opendocument.spreadsheet">' +
+          '<office:body><office:spreadsheet><table:table table:name="s"><table:table-row>' +
+          '<table:table-cell office:value-type="float" office:value="1"><text:p>1</text:p></table:table-cell>' +
+          '<table:table-cell table:formula="of:=[.A1]*2" office:value-type="float" office:value="2">' +
+          '<text:p>2</text:p></table:table-cell>' +
+          '<table:table-cell table:formula="of:=[.C1]+1"/>' +
+          '</table:table-row></table:table></office:spreadsheet></office:body></office:document>',
+      ),
+      { editable: true },
+    );
+    try {
+      doc.edit(
+        '{"version":2,"ops":[{"op":"setCell","sheet":0,"column":0,"row":0,' +
+          '"value":{"type":"number","number":5,"text":"5"}}]}',
+      );
+      const result = doc.recalculate();
+      assert.deepEqual(result.changed, [{ sheet: 0, column: 1, row: 0 }]);
+      assert.deepEqual(result.circular, [{ sheet: 0, column: 2, row: 0 }]);
+      assert.deepEqual(result.unevaluated, []);
+      assert.deepEqual(doc.recalculate().changed, []);
+    } finally {
+      doc.close();
+    }
+  });
+
   it('inserts and deletes columns', () => {
     const doc = odr.open(minimalOds('hello'));
     try {

@@ -378,4 +378,40 @@ class DocumentTest {
 
     assertTrue(walkText(reloaded.rootElement()).contains(TestFiles.ODT_TEXT.get(0)));
   }
+
+  private static final String FLAT_SPREADSHEET =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+          + "<office:document"
+          + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+          + " xmlns:table=\"urn:oasis:names:tc:opendocument:xmlns:table:1.0\""
+          + " xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\""
+          + " office:version=\"1.3\""
+          + " office:mimetype=\"application/vnd.oasis.opendocument.spreadsheet\">"
+          + "<office:body><office:spreadsheet><table:table table:name=\"s\">"
+          + "<table:table-row>"
+          + "<table:table-cell office:value-type=\"float\" office:value=\"1\">"
+          + "<text:p>1</text:p></table:table-cell>"
+          + "<table:table-cell table:formula=\"of:=[.A1]*2\""
+          + " office:value-type=\"float\" office:value=\"2\"><text:p>2</text:p>"
+          + "</table:table-cell>"
+          + "<table:table-cell table:formula=\"of:=[.C1]+1\"/>"
+          + "</table:table-row></table:table>"
+          + "</office:spreadsheet></office:body></office:document>";
+
+  @Test
+  void recalculateComputesTheStaleFormulas() throws IOException {
+    Path path = tempDir.resolve("formulas.fods");
+    Files.writeString(path, FLAT_SPREADSHEET);
+    Document document = Odr.open(path.toString()).asDocumentFile().document();
+
+    document.edit(
+        "{\"version\":2,\"ops\":[{\"op\":\"setCell\",\"sheet\":0,\"column\":0,\"row\":0,"
+            + "\"value\":{\"type\":\"number\",\"number\":5,\"text\":\"5\"}}]}");
+    Recalculation result = document.recalculate();
+
+    assertEquals(List.of(new SheetPosition(0, 1, 0)), result.changed());
+    assertEquals(List.of(new SheetPosition(0, 2, 0)), result.circular());
+    assertTrue(result.unevaluated().isEmpty());
+    assertTrue(document.recalculate().changed().isEmpty());
+  }
 }
