@@ -234,8 +234,8 @@ private:
   const Node *m_root{nullptr};
   /// Whether an operator reads a range as an array of its cells.
   bool m_array{false};
-  /// The names being read, one inside the other.
-  std::uint32_t m_names{0};
+  /// How many names are being read, one inside the other.
+  std::uint32_t m_name_depth{0};
 
   /// The most names one inside the other, so a name that names itself ends.
   static constexpr std::uint32_t name_limit = 16;
@@ -292,7 +292,7 @@ private:
   /// What a name stands for. A name whose references are relative reads
   /// from a base cell the two formats state apart, so it has no answer.
   [[nodiscard]] Value value_of(const NameReference &reference, const Node &) {
-    if (reference.document.has_value() || m_names >= name_limit) {
+    if (reference.document.has_value() || m_name_depth >= name_limit) {
       throw NoAnswer{};
     }
     const std::uint32_t scope = sheet_of(reference.sheet, m_cell.sheet);
@@ -300,9 +300,9 @@ private:
     if (!node.has_value() || is_relative(*node)) {
       throw NoAnswer{};
     }
-    ++m_names;
+    ++m_name_depth;
     Value result = value(*node);
-    --m_names;
+    --m_name_depth;
     return result;
   }
 

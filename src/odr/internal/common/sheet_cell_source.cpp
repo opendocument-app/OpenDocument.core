@@ -143,7 +143,7 @@ SheetCellSource::name(const std::string_view name,
     if (candidate.sheet == sheet) {
       return formula::parse(candidate.expression, *m_syntax);
     }
-    if (!candidate.sheet.has_value()) {
+    if (!candidate.sheet.has_value() && global == nullptr) {
       global = &candidate;
     }
   }

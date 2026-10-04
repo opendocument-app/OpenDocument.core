@@ -47,11 +47,11 @@ struct Settings final {
 /// A name a document defines for a formula to read: `Total` for
 /// `$Sheet1.$B$9`.
 struct Name final {
-  std::string name;
+  std::string name{};
   /// The sheet the name is local to, nothing for one of the whole document.
-  std::optional<std::uint32_t> sheet;
+  std::optional<std::uint32_t> sheet{};
   /// What the name stands for, in the syntax of the document.
-  std::string expression;
+  std::string expression{};
 };
 
 /// A cell that states nothing.

@@ -178,6 +178,19 @@ TEST(SheetCellSource, an_ods_name_is_local_to_its_sheet_first) {
   EXPECT_FALSE(source.name("nope", 0).has_value());
 }
 
+TEST(SheetCellSource, the_first_of_two_names_of_one_spelling_counts) {
+  const std::shared_ptr<abstract::Document> document =
+      decode(test::ooxml::workbook(
+          R"(<row r="1"><c r="A1"><v>2</v></c></row>)", "", "",
+          R"(<definedNames><definedName name="Rate">1</definedName>)"
+          R"(<definedName name="RATE">2</definedName></definedNames>)"));
+  const SheetCellSource source(*document);
+
+  const std::optional<formula::Node> rate = source.name("rate", 0);
+  ASSERT_TRUE(rate.has_value());
+  EXPECT_EQ(rate->get<formula::NumberLiteral>().value, 1);
+}
+
 TEST(SheetCellSource, an_xlsx_name_states_its_sheet_by_index) {
   const std::shared_ptr<abstract::Document> document =
       decode(test::ooxml::workbook(
