@@ -23,9 +23,8 @@ struct TextCFRun final {
 };
 
 /// Parses a StyleTextPropAtom body ([MS-PPT] 2.9.44): the paragraph-level runs
-/// are skipped, the character-level runs returned. `char_count` is the
-/// corresponding text's length in characters plus one (the runs also cover an
-/// implicit final paragraph mark); fewer covered characters end the parse.
+/// are skipped, the character runs returned. `char_count` includes the final
+/// paragraph mark.
 std::vector<TextCFRun> parse_style_text_prop_atom(std::string_view body,
                                                   std::size_t char_count);
 

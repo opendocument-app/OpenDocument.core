@@ -197,22 +197,28 @@ presentation::parse_style_text_prop_atom(const std::string_view body,
                                          const std::size_t char_count) {
   BodyCursor cursor(body);
 
-  // rgTextPFRun: skipped; the counts cover the whole corresponding text.
-  for (std::size_t covered = 0;
-       covered < char_count && cursor.remaining() > 0;) {
-    covered += cursor.read<std::uint32_t>(); // count
-    cursor.skip(2);                          // indentLevel
+  const auto read_count = [&](std::size_t &remaining) {
+    const auto count = cursor.read<std::uint32_t>();
+    if (count > remaining) {
+      throw std::runtime_error("ppt: formatting run exceeds text length");
+    }
+    remaining -= count;
+    return count;
+  };
+
+  // [MS-PPT] 2.9.44: both run arrays must cover the corresponding text.
+  for (std::size_t remaining = char_count; remaining > 0;) {
+    read_count(remaining);
+    cursor.skip(2); // indentLevel
     skip_text_pf_exception(cursor);
   }
 
   // rgTextCFRun.
   std::vector<TextCFRun> runs;
-  for (std::size_t covered = 0;
-       covered < char_count && cursor.remaining() > 0;) {
+  for (std::size_t remaining = char_count; remaining > 0;) {
     TextCFRun run;
-    run.count = cursor.read<std::uint32_t>();
+    run.count = read_count(remaining);
     read_text_cf_exception(cursor, run);
-    covered += run.count;
     runs.push_back(run);
   }
   return runs;
@@ -250,8 +256,12 @@ std::uint32_t presentation::resolve_style(const TextCFRun &run,
     }
     style.font_name = context.fonts[*run.font_ref];
   }
-  context.styles.push_back(style);
-  return static_cast<std::uint32_t>(context.styles.size() - 1);
+  if (!std::in_range<std::uint32_t>(context.styles.size())) {
+    throw std::length_error("ppt: too many character styles");
+  }
+  const auto index = static_cast<std::uint32_t>(context.styles.size());
+  context.styles.push_back(std::move(style));
+  return index;
 }
 
 } // namespace odr::internal::oldms

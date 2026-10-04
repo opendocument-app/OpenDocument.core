@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Legacy PowerPoint validates nested picture bounds, record lengths, and formatting
+  counts, limits text-container nesting, and avoids overflow in frame dimensions.
+
 - Markdown replaces NUL bytes in inline code and rejects oversized input.
   RTF rejects unreadable streams; legacy PowerPoint rejects truncated text records.
   Both binary readers safely propagate I/O exceptions.

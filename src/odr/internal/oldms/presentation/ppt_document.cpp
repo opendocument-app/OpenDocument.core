@@ -107,13 +107,15 @@ public:
   }
   [[nodiscard]] std::optional<Measure>
   frame_width(const ElementIdentifier element_id) const override {
-    return anchor_measure(element_id,
-                          [](const Anchor &a) { return a.right - a.left; });
+    return anchor_measure(element_id, [](const Anchor &a) {
+      return std::int64_t{a.right} - a.left;
+    });
   }
   [[nodiscard]] std::optional<Measure>
   frame_height(const ElementIdentifier element_id) const override {
-    return anchor_measure(element_id,
-                          [](const Anchor &a) { return a.bottom - a.top; });
+    return anchor_measure(element_id, [](const Anchor &a) {
+      return std::int64_t{a.bottom} - a.top;
+    });
   }
   [[nodiscard]] std::optional<std::int32_t>
   frame_z_index(const ElementIdentifier /*element_id*/) const override {

@@ -9,6 +9,10 @@
 #include <odr/style.hpp>
 
 #include <limits>
+#include <odr/internal/common/file.hpp>
+#include <odr/internal/common/filesystem.hpp>
+#include <odr/internal/common/path.hpp>
+#include <odr/internal/oldms/presentation/ppt_document.hpp>
 #include <odr/internal/oldms/presentation/ppt_io.hpp>
 #include <odr/internal/oldms/presentation/ppt_style.hpp>
 #include <sstream>
@@ -25,6 +29,55 @@ using namespace odr::test;
 using odr::test::oldms::append_u16;
 using odr::test::oldms::append_u32;
 using odr::test::oldms::collect_text;
+
+namespace {
+namespace ppt = internal::oldms::presentation;
+
+std::string ppt_record(const std::uint16_t type, const std::string &body,
+                       const std::uint16_t flags = 0) {
+  std::string record;
+  append_u16(record, flags);
+  append_u16(record, type);
+  append_u32(record, static_cast<std::uint32_t>(body.size()));
+  return record + body;
+}
+
+std::shared_ptr<internal::VirtualFilesystem>
+ppt_files(const std::string &document_body, const std::string &slide_body = {},
+          const std::string &directory_tail = {}) {
+  std::string document =
+      ppt_record(ppt::RT_DocumentContainer, document_body, 15);
+  const auto slide_offset = static_cast<std::uint32_t>(document.size());
+  document += ppt_record(ppt::RT_SlideContainer, slide_body, 15);
+  const auto directory_offset = static_cast<std::uint32_t>(document.size());
+  std::string directory;
+  append_u32(directory, (2u << 20) | 1u);
+  append_u32(directory, 0);
+  append_u32(directory, slide_offset);
+  document +=
+      ppt_record(ppt::RT_PersistDirectoryAtom, directory + directory_tail);
+  const auto edit_offset = static_cast<std::uint32_t>(document.size());
+  std::string edit(12, '\0');
+  append_u32(edit, directory_offset);
+  append_u32(edit, 1);
+  append_u32(edit, 3);
+  edit.resize(28, '\0');
+  document += ppt_record(ppt::RT_UserEditAtom, edit);
+  std::string user;
+  append_u32(user, 20);
+  append_u32(user, ppt::current_user_token_plain);
+  append_u32(user, edit_offset);
+  user.resize(20, '\0');
+  auto files = std::make_shared<internal::VirtualFilesystem>();
+  files->copy(std::make_shared<internal::MemoryFile>(document),
+              internal::AbsPath("/PowerPoint Document"));
+  files->copy(std::make_shared<internal::MemoryFile>(
+                  ppt_record(ppt::RT_CurrentUserAtom, user)),
+              internal::AbsPath("/Current User"));
+  return files;
+}
+
+} // namespace
 
 // A StyleTextPropAtom body ([MS-PPT] 2.9.44): the paragraph-level runs are
 // skipped (including their mask-dependent fields), the character-level runs
@@ -208,4 +261,80 @@ TEST(OldMs, ppt_text_bytes_require_complete_record) {
   std::istringstream throwing("ab");
   throwing.exceptions(std::ios::failbit | std::ios::badbit);
   EXPECT_THROW(read_raw_text_bytes(throwing, 3), std::ios_base::failure);
+}
+
+TEST(OldMs, ppt_rejects_invalid_record_boundaries) {
+  EXPECT_NO_THROW(ppt::Document{ppt_files({})});
+  EXPECT_THROW(ppt::Document{ppt_files({}, {}, "x")}, std::runtime_error);
+  std::string missing_offsets;
+  append_u32(missing_offsets, (2u << 20) | 3u);
+  EXPECT_THROW(ppt::Document{ppt_files({}, {}, missing_offsets)},
+               std::runtime_error);
+
+  std::string blip =
+      ppt_record(ppt::RT_OfficeArtBlipPNG, std::string(17, '\0'));
+  blip.pop_back();
+  const std::string fbse =
+      ppt_record(ppt::RT_OfficeArtFBSE, std::string(36, '\0') + blip);
+  const std::string store =
+      ppt_record(ppt::RT_OfficeArtBStoreContainer, fbse, 15);
+  const std::string drawing =
+      ppt_record(ppt::RT_DrawingGroup,
+                 ppt_record(ppt::RT_OfficeArtDggContainer, store, 15), 15);
+  EXPECT_THROW(ppt::Document{ppt_files(drawing)}, std::runtime_error);
+}
+
+TEST(OldMs, ppt_text_nesting_is_bounded) {
+  const auto files = [](const std::size_t depth) {
+    std::string text = ppt_record(ppt::RT_TextBytesAtom, "visible");
+    for (std::size_t i = 0; i < depth; ++i) {
+      text = ppt_record(0x7777, text, 15);
+    }
+    const std::string shape =
+        ppt_record(ppt::RT_OfficeArtSpContainer,
+                   ppt_record(ppt::RT_OfficeArtClientTextbox, text), 15);
+    const std::string slide = ppt_record(
+        ppt::RT_Drawing,
+        ppt_record(ppt::RT_OfficeArtDgContainer,
+                   ppt_record(ppt::RT_OfficeArtSpgrContainer, shape, 15), 15),
+        15);
+    std::string persist;
+    append_u32(persist, 2);
+    return ppt_files(ppt_record(ppt::RT_SlideListWithText,
+                                ppt_record(ppt::RT_SlidePersistAtom, persist),
+                                15),
+                     slide);
+  };
+  const Document shallow(std::make_shared<ppt::Document>(files(4)));
+  EXPECT_EQ(collect_text(shallow.root_element()), "visible");
+  EXPECT_THROW(ppt::Document{files(1024)}, std::runtime_error);
+}
+
+TEST(OldMs, ppt_style_runs_require_complete_coverage) {
+  std::string body;
+  append_u32(body, 3);
+  append_u16(body, 0);
+  append_u32(body, 0);
+  append_u32(body, 3);
+  append_u32(body, 0);
+  EXPECT_EQ(ppt::parse_style_text_prop_atom(body, 3).size(), 1);
+  EXPECT_THROW(ppt::parse_style_text_prop_atom(body, 2), std::runtime_error);
+  EXPECT_THROW(ppt::parse_style_text_prop_atom(body, 4), std::runtime_error);
+  body.pop_back();
+  EXPECT_THROW(ppt::parse_style_text_prop_atom(body, 3), std::runtime_error);
+}
+
+TEST(OldMs, ppt_anchor_differences_do_not_overflow) {
+  ppt::Document document(ppt_files({}));
+  auto [id, element, frame] =
+      document.element_registry().create_frame_element();
+  frame.anchor = ppt::Anchor{std::numeric_limits<std::int32_t>::min(),
+                             std::numeric_limits<std::int32_t>::min(),
+                             std::numeric_limits<std::int32_t>::max(),
+                             std::numeric_limits<std::int32_t>::max()};
+  const Frame handle = Element(document.element_adapter(), id).as_frame();
+  const Measure extent(4294967295.0 / ppt::master_units_per_inch,
+                       DynamicUnit("in"));
+  EXPECT_EQ(handle.width(), extent);
+  EXPECT_EQ(handle.height(), extent);
 }
