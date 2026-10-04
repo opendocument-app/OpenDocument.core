@@ -201,12 +201,17 @@ TEST(OoxmlSpreadsheetValue, a_date_format_types_a_date) {
   const CellValue date = sheet.cell(1, 0).value();
   EXPECT_EQ(date.type(), ValueType::date);
   EXPECT_DOUBLE_EQ(date.number(), 45658);
+  EXPECT_EQ(date.text(), "01-01-25");
   EXPECT_EQ(sheet.cell(3, 0).value().type(), ValueType::time);
+  EXPECT_DOUBLE_EQ(sheet.cell(3, 0).value().number(), 0.75);
   EXPECT_EQ(sheet.cell(2, 0).value().type(), ValueType::float_number);
 }
 
 TEST(OoxmlSpreadsheetValue, date1904_counts_from_1904) {
   const Document document = formatted(R"(<workbookPr date1904="1"/>)");
+  const Sheet sheet = first_sheet(document);
 
-  EXPECT_EQ(shown_at(first_sheet(document), 1), "01-02-29");
+  EXPECT_EQ(shown_at(sheet, 1), "01-02-29");
+  // the value counts from 1899-12-30, whatever the workbook does
+  EXPECT_DOUBLE_EQ(sheet.cell(1, 0).value().number(), 45658 + 1462);
 }

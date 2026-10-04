@@ -100,8 +100,9 @@ std::optional<std::string> Document::locale() const { return m_impl->locale(); }
 
 namespace {
 
-/// `{"type": "number", "number": …, "text": …}`, or `"string"` with the text
-/// alone, or `"empty"` for a cell stating nothing.
+/// `{"type": "number", "number": …, "text": …}`, `"date"` and `"time"` the
+/// same with days since 1899-12-30, or `"string"` with the text alone, or
+/// `"empty"` for a cell stating nothing.
 CellValue parse_cell_value(const nlohmann::json &json) {
   const auto type = json.at("type").get<std::string>();
   if (type == "empty") {
@@ -115,6 +116,15 @@ CellValue parse_cell_value(const nlohmann::json &json) {
     const auto text = json.find("text");
     return text != std::end(json) ? CellValue(number, text->get<std::string>())
                                   : CellValue(number);
+  }
+  if (type == "date" || type == "time") {
+    CellValue result =
+        CellValue(type == "date" ? ValueType::date : ValueType::time)
+            .with_number(json.at("number").get<double>());
+    if (const auto text = json.find("text"); text != std::end(json)) {
+      result = result.with_text(text->get<std::string>());
+    }
+    return result;
   }
   throw std::invalid_argument("unknown cell value type " + type);
 }

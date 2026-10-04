@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A date `CellValue` states its number as days since 1899-12-30, whatever
+  the file counts from, and a time its length in days: an ods date or time
+  now states one, and an xlsx date of a 1904 workbook counts 1462 days more. A `setCell` op takes
+  `"date"` and `"time"` values.
+
 - An xlsx cell shows its number formatted, as its `numFmt` or a built-in
   format says, and a date or time format types it `ValueType::date` or
   `time`, in the 1900 or the 1904 date system. A boolean shows `TRUE` or

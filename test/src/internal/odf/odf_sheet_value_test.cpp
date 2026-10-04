@@ -114,17 +114,39 @@ TEST(OdfSheetValue, a_boolean_cell_is_typed_and_states_one_or_zero) {
   EXPECT_DOUBLE_EQ(value.number(), 1);
 }
 
-/// A date and a time state their value as text, which is what the type says.
-TEST(OdfSheetValue, a_date_and_a_time_cell_are_typed_and_state_no_number) {
-  const CellValue date = value_of(
-      R"(<table:table-cell office:value-type="date" office:date-value="2024-01-31">)"
-      R"(<text:p>31.01.2024</text:p></table:table-cell>)");
-  EXPECT_EQ(date.type(), ValueType::date);
-  EXPECT_FALSE(date.has_number());
+TEST(OdfSheetValue, a_date_and_a_time_state_days_since_1899_12_30) {
+  const CellValue date =
+      value_of(R"(<table:table-cell office:value-type="date")"
+               R"( office:date-value="2025-01-01"><text:p>01/01/25</text:p>)"
+               R"(</table:table-cell>)");
+  const CellValue date_time =
+      value_of(R"(<table:table-cell office:value-type="date")"
+               R"( office:date-value="2025-01-01T18:00:00"><text:p>x</text:p>)"
+               R"(</table:table-cell>)");
+  const CellValue time =
+      value_of(R"(<table:table-cell office:value-type="time")"
+               R"( office:time-value="PT18H30M00S"><text:p>18:30</text:p>)"
+               R"(</table:table-cell>)");
+  const CellValue elapsed =
+      value_of(R"(<table:table-cell office:value-type="time")"
+               R"( office:time-value="P1DT12H"><text:p>36:00</text:p>)"
+               R"(</table:table-cell>)");
 
-  const CellValue time = value_of(
-      R"(<table:table-cell office:value-type="time" office:time-value="PT10H30M00S">)"
-      R"(<text:p>10:30</text:p></table:table-cell>)");
+  EXPECT_EQ(date.type(), ValueType::date);
+  EXPECT_DOUBLE_EQ(date.number(), 45658);
+  EXPECT_DOUBLE_EQ(date_time.number(), 45658.75);
   EXPECT_EQ(time.type(), ValueType::time);
-  EXPECT_FALSE(time.has_number());
+  EXPECT_DOUBLE_EQ(time.number(), 18.5 / 24);
+  EXPECT_DOUBLE_EQ(elapsed.number(), 1.5);
+}
+
+TEST(OdfSheetValue, a_date_that_does_not_parse_states_no_number) {
+  for (const char *date : {"soon", "2025-13-01", "2025-01-45"}) {
+    EXPECT_FALSE(value_of(std::string(R"(<table:table-cell)"
+                                      R"( office:value-type="date")"
+                                      R"( office:date-value=")") +
+                          date + R"("><text:p>x</text:p></table:table-cell>)")
+                     .has_number())
+        << date;
+  }
 }

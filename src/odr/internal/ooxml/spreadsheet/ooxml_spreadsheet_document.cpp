@@ -663,8 +663,14 @@ public:
         result.type() == ValueType::boolean) {
       if (const std::optional<double> number =
               util::number::parse(node.child("v").text().get())) {
-        result = result.with_number(*number).with_text(
-            shown_value(element_id, node, *number));
+        // a date states days since 1899-12-30, whatever the workbook counts;
+        // a time is a duration, which no epoch moves
+        result = result
+                     .with_number(result.type() == ValueType::date
+                                      ? number_format::days_from_serial(
+                                            *number, m_document->epoch())
+                                      : *number)
+                     .with_text(shown_value(element_id, node, *number));
       }
     }
     if (const pugi::xml_node formula = node.child("f")) {
