@@ -158,4 +158,6 @@ TEST(DocumentCreate, ods_takes_an_edit_and_keeps_it_through_a_save) {
       (*saved.root_element().children().begin()).as_sheet();
   EXPECT_EQ(saved_sheet.cell(0, 0).value().text(), "hello");
   EXPECT_EQ(saved_sheet.cell(2, 4).value().number(), 12.5);
+  EXPECT_EQ(saved_sheet.dimensions().rows, 5);
+  EXPECT_EQ(saved_sheet.dimensions().columns, 3);
 }
