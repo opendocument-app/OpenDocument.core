@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- XLSX resolves styles and shared strings through workbook relationships and
+  saves edited styles back to their original part.
+
 - iWork dates enforce the calendar range and format expanded years with their
   sign; oversized decimal128 coefficients consistently decode as zero.
 

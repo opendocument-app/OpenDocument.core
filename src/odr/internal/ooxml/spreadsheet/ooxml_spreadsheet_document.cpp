@@ -71,7 +71,9 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
           .as_bool()) {
     m_epoch = number_format::Epoch::from_1904;
   }
-  const AbsPath styles_path("/xl/styles.xml");
+  const AbsPath styles_path =
+      parse_relationship_target(*m_files, workbook_path, "styles")
+          .value_or(AbsPath("/xl/styles.xml"));
   const auto [styles_xml, _] = parse_xml_(styles_path);
   m_written_parts.push_back(styles_path);
 
@@ -92,11 +94,13 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
     }
   }
 
-  if (m_files->exists(AbsPath("/xl/sharedStrings.xml"))) {
-    const auto [shared_strings_xml, _] =
-        parse_xml_(AbsPath("/xl/sharedStrings.xml"));
+  const AbsPath shared_strings_path =
+      parse_relationship_target(*m_files, workbook_path, "sharedStrings")
+          .value_or(AbsPath("/xl/sharedStrings.xml"));
+  if (m_files->is_file(shared_strings_path)) {
+    const auto [shared_strings_xml, _] = parse_xml_(shared_strings_path);
     for (const pugi::xml_node shared_string :
-         shared_strings_xml.document_element()) {
+         shared_strings_xml.document_element().children("si")) {
       m_shared_strings.push_back(shared_string);
     }
   }

@@ -6,6 +6,8 @@
 #include <odr/odr.hpp>
 #include <odr/style.hpp>
 
+#include <odr/internal/zip/zip_util.hpp>
+
 #include <internal/ooxml/ooxml_spreadsheet_test_util.hpp>
 
 #include <gtest/gtest.h>
@@ -428,4 +430,48 @@ TEST(OoxmlSpreadsheetStyleWrite, a_cell_without_s_shows_its_row_and_column) {
             FontWeight::bold);
   EXPECT_NE(sheet.cell(2, 1).first_child().as_text().style().font_weight,
             FontWeight::bold);
+}
+
+TEST(OoxmlSpreadsheetStyleWrite, relocated_styles_and_strings_survive_edits) {
+  const internal::zip::ZipArchive source(
+      std::make_shared<internal::zip::util::Archive>(
+          workbook(R"(<row r="1"><c r="A1" t="s" s="1"><v>1</v></c></row>)", "",
+                   R"(<si><t>unused</t></si><extLst/><si><t>shared</t></si>)",
+                   "", "", red_styles)));
+  internal::zip::ZipArchive relocated;
+  for (const auto &entry : source) {
+    std::string path = entry.path().string();
+    if (path == "xl/_rels/workbook.xml.rels") {
+      insert(
+          relocated, path,
+          R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
+          R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>)"
+          R"(<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="../parts/formats.xml"/>)"
+          R"(<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="/parts/strings.xml"/>)"
+          R"(</Relationships>)");
+      continue;
+    }
+    if (path == "xl/styles.xml") {
+      path = "parts/formats.xml";
+    } else if (path == "xl/sharedStrings.xml") {
+      path = "parts/strings.xml";
+    }
+    relocated.insert_file(relocated.end(), internal::RelPath(path),
+                          entry.file());
+  }
+  std::ostringstream bytes;
+  relocated.save(bytes);
+  const Document document =
+      decode(std::make_shared<internal::MemoryFile>(bytes.str()));
+  const Sheet sheet = first_sheet(document);
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "shared");
+  EXPECT_EQ(fill_at(sheet, 0, 0), 0xff0000u);
+  sheet.set_cell_style(0, 0, fill(0x00ff00_rgb), bold());
+
+  const Document saved = reopened(document);
+  EXPECT_EQ(first_sheet(saved).cell(0, 0).value().text(), "shared");
+  EXPECT_EQ(fill_at(first_sheet(saved), 0, 0), 0x00ff00u);
+  EXPECT_EQ(text_style_at(first_sheet(saved), 0).font_weight, FontWeight::bold);
+  EXPECT_TRUE(saved.as_filesystem().is_file("/parts/formats.xml"));
+  EXPECT_FALSE(saved.as_filesystem().exists("/xl/styles.xml"));
 }
