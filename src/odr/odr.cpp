@@ -9,6 +9,7 @@
 #include <odr/internal/git_info.hpp>
 #include <odr/internal/magic.hpp>
 #include <odr/internal/odf/odf_blank.hpp>
+#include <odr/internal/ooxml/ooxml_blank.hpp>
 #include <odr/internal/open_strategy.hpp>
 #include <odr/internal/project_info.hpp>
 
@@ -212,6 +213,9 @@ odr::Document odr::create_document(const FileType type) {
   case FileType::opendocument_text:
   case FileType::opendocument_spreadsheet:
     package = internal::odf::blank_package(type);
+    break;
+  case FileType::office_open_xml_document:
+    package = internal::ooxml::blank_package(type);
     break;
   default:
     throw UnsupportedFileType(type);

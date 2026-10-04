@@ -277,6 +277,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/ooxml/text/ooxml_text_list.cpp"
         "src/odr/internal/ooxml/text/ooxml_text_parser.cpp"
         "src/odr/internal/ooxml/text/ooxml_text_style.cpp"
+        "src/odr/internal/ooxml/ooxml_blank.cpp"
         "src/odr/internal/ooxml/ooxml_crypto.cpp"
         "src/odr/internal/ooxml/ooxml_file.cpp"
         "src/odr/internal/ooxml/ooxml_meta.cpp"
