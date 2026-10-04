@@ -131,18 +131,26 @@ pugi::xml_node Document::workbook() const {
       .first.document_element();
 }
 
-pugi::xml_node Document::calc_chain() {
-  const std::optional<AbsPath> path = parse_relationship_target(
-      *m_files, AbsPath("/xl/workbook.xml"), "calcChain");
-  if (!path.has_value() || !m_files->is_file(*path)) {
+pugi::xml_node Document::part(const AbsPath &path) {
+  if (!m_files->is_file(path)) {
     return {};
   }
-  if (const auto parsed = m_xml_documents_and_relations.find(*path);
-      parsed != m_xml_documents_and_relations.end()) {
-    return parsed->second.first.document_element();
+  auto parsed = m_xml_documents_and_relations.find(path);
+  const pugi::xml_node root = parsed != m_xml_documents_and_relations.end()
+                                  ? parsed->second.first.document_element()
+                                  : parse_xml_(path).first.document_element();
+  // after the parse, so a part that does not parse is never written
+  if (std::ranges::find(m_written_parts, path) == m_written_parts.end()) {
+    m_written_parts.push_back(path);
   }
-  m_written_parts.push_back(*path);
-  return parse_xml_(*path).first.document_element();
+  return root;
+}
+
+pugi::xml_node Document::related_part(const AbsPath &origin,
+                                      const std::string_view type) {
+  const std::optional<AbsPath> path =
+      parse_relationship_target(*m_files, origin, type);
+  return path.has_value() ? part(*path) : pugi::xml_node();
 }
 
 bool Document::is_editable() const noexcept { return true; }
@@ -543,8 +551,9 @@ public:
   static constexpr std::uint32_t row_limit = 1048576;
 
   /// Every `row` and `c` states its number (18.3.1.73, 18.3.1.4), so the ones
-  /// past the edit are numbered again, and the merges, the dimension, every
-  /// formula, every defined name and the calc chain move with them.
+  /// past the edit are numbered again, and the merges, the dimension, the
+  /// ranges of the sheet, its drawings and comments, every formula, every
+  /// defined name and the calc chain move with them.
   void edit_rows(const ElementIdentifier element_id,
                  formula::RowEdit edit) const {
     ElementRegistry::Sheet &sheet = m_registry->sheet_element_at(element_id);
@@ -574,6 +583,30 @@ public:
       throw UnsupportedOperation();
     }
 
+    // the parts the edit moves anything in, read before anything is written
+    const ElementRegistry::ElementRelations &relations =
+        *m_registry->element_relations(element_id);
+    const auto related = [&](const char *child) {
+      const char *id = sheet_node.child(child).attribute("r:id").value();
+      const auto target = relations.relations->find(id);
+      return target == relations.relations->end()
+                 ? pugi::xml_node()
+                 : m_document->part(
+                       relations.origin.parent().join(RelPath(target->second)));
+    };
+    pugi::xml_node drawing;
+    pugi::xml_node notes;
+    pugi::xml_node comments;
+    pugi::xml_node threaded;
+    try {
+      drawing = related("drawing");
+      notes = related("legacyDrawing");
+      comments = m_document->related_part(relations.origin, "comments");
+      threaded = m_document->related_part(relations.origin, "threadedComment");
+    } catch (const std::exception &) {
+      throw UnsupportedOperation(); // a part that does not parse, as VML may
+    }
+
     std::vector<ElementIdentifier> sheet_ids;
     std::vector<NamedWorksheet> worksheets;
     std::string sheet_id;
@@ -589,8 +622,10 @@ public:
                             .node = get_node(id)});
       sheet_entry = sheet_entry.next_sibling("sheet");
     }
-    move_row_references(m_document->workbook(), worksheets,
-                        m_document->calc_chain(), sheet_id, edit);
+    move_row_references(
+        m_document->workbook(), worksheets,
+        m_document->related_part(AbsPath("/xl/workbook.xml"), "calcChain"),
+        sheet_id, edit);
 
     pugi::xml_node sheet_data = sheet_node.child("sheetData");
     for (pugi::xml_node row_node = sheet_data.child("row"); row_node;) {
@@ -610,6 +645,10 @@ public:
       }
       row_node = next;
     }
+
+    move_sheet_ranges(sheet_node, edit);
+    move_drawing(drawing, edit);
+    move_comments(comments, threaded, notes, edit);
 
     if (pugi::xml_node merges = sheet_node.child("mergeCells")) {
       for (pugi::xml_node merge = merges.child("mergeCell"); merge;) {

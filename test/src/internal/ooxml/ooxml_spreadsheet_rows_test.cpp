@@ -10,6 +10,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -73,6 +74,89 @@ two_sheets(const std::string &s_data, const std::string &t_data,
   std::stringstream out;
   zip.save(out);
   return std::make_shared<internal::MemoryFile>(out.str());
+}
+
+/// One sheet `s` with @p sheet_data, related to `drawing1.xml`,
+/// `comments1.xml` and `vmlDrawing1.vml` holding @p drawing, @p comments and
+/// @p notes.
+std::shared_ptr<internal::abstract::File>
+sheet_with_parts(const std::string &sheet_data, const std::string &drawing,
+                 const std::string &comments, const std::string &notes) {
+  internal::zip::ZipArchive zip;
+  insert(
+      zip, "[Content_Types].xml",
+      R"(<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">)"
+      R"(<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>)"
+      R"(</Types>)");
+  insert(
+      zip, "_rels/.rels",
+      R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
+      R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>)"
+      R"(</Relationships>)");
+  insert(
+      zip, "xl/workbook.xml",
+      R"(<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" )"
+      R"(xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">)"
+      R"(<sheets><sheet name="s" sheetId="1" r:id="rId1"/></sheets></workbook>)");
+  insert(
+      zip, "xl/_rels/workbook.xml.rels",
+      R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
+      R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>)"
+      R"(</Relationships>)");
+  insert(
+      zip, "xl/styles.xml",
+      R"(<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"/>)");
+  insert(
+      zip, "xl/worksheets/sheet1.xml",
+      R"(<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" )"
+      R"(xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">)"
+      R"(<sheetData>)" +
+          sheet_data +
+          R"(</sheetData><drawing r:id="rId1"/><legacyDrawing r:id="rId3"/>)"
+          R"(</worksheet>)");
+  insert(
+      zip, "xl/worksheets/_rels/sheet1.xml.rels",
+      R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
+      R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>)"
+      R"(<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments" Target="../comments1.xml"/>)"
+      R"(<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/vmlDrawing1.vml"/>)"
+      R"(</Relationships>)");
+  insert(
+      zip, "xl/drawings/drawing1.xml",
+      R"(<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing">)" +
+          drawing + R"(</xdr:wsDr>)");
+  insert(
+      zip, "xl/comments1.xml",
+      R"(<comments xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">)"
+      R"(<authors><author>a</author></authors><commentList>)" +
+          comments + R"(</commentList></comments>)");
+  insert(zip, "xl/drawings/vmlDrawing1.vml",
+         R"(<xml xmlns:v="urn:schemas-microsoft-com:vml" )"
+         R"(xmlns:x="urn:schemas-microsoft-com:office:excel">)" +
+             notes + R"(</xml>)");
+
+  std::stringstream out;
+  zip.save(out);
+  return std::make_shared<internal::MemoryFile>(out.str());
+}
+
+/// An anchor whose corners sit in rows @p from and @p to.
+std::string anchor(const std::string &edit_as, const std::uint32_t from,
+                   const std::uint32_t to) {
+  const auto corner = [](const char *name, const std::uint32_t row) {
+    return std::string("<xdr:") + name + "><xdr:col>0</xdr:col>" +
+           "<xdr:colOff>0</xdr:colOff><xdr:row>" + std::to_string(row) +
+           "</xdr:row><xdr:rowOff>5</xdr:rowOff></xdr:" + name + ">";
+  };
+  return R"(<xdr:twoCellAnchor editAs=")" + edit_as + R"(">)" +
+         corner("from", from) + corner("to", to) + "</xdr:twoCellAnchor>";
+}
+
+std::string note(const std::uint32_t row) {
+  return R"(<v:shape><x:ClientData ObjectType="Note"><x:Anchor>1, 15, )" +
+         std::to_string(row) + ", 2, 3, 15, " + std::to_string(row + 3) +
+         ", 16</x:Anchor><x:Row>" + std::to_string(row) +
+         "</x:Row><x:Column>0</x:Column></x:ClientData></v:shape>";
 }
 
 /// A part of the package @p document saves.
@@ -267,4 +351,82 @@ TEST(OoxmlSpreadsheetRows, the_ops_name_a_row_and_a_count) {
   const Sheet sheet = first_sheet(document);
   EXPECT_EQ(sheet.cell(0, 1).value().text(), "a");
   EXPECT_EQ(sheet.cell(0, 2).value().text(), "c");
+}
+
+TEST(OoxmlSpreadsheetRows, the_ranges_of_the_sheet_move) {
+  const Document document = decode(workbook(
+      abc,
+      R"(<conditionalFormatting sqref="A1:A3 C2"><cfRule/></conditionalFormatting>)"
+      R"(<dataValidations count="2"><dataValidation sqref="A2"/>)"
+      R"(<dataValidation sqref="A3"/></dataValidations>)"
+      R"(<hyperlinks><hyperlink ref="A2"/></hyperlinks>)",
+      "", "",
+      R"(<sheetViews><sheetView><selection activeCell="A2" sqref="A2"/>)"
+      R"(</sheetView></sheetViews>)"));
+
+  first_sheet(document).delete_rows(1, 1);
+
+  const std::string xml = sheet_xml(document);
+  EXPECT_TRUE(contains(xml, R"(<conditionalFormatting sqref="A1:A2">)"));
+  EXPECT_TRUE(
+      contains(xml, R"(<dataValidations count="1"><dataValidation sqref="A2"/>)"
+                    R"(</dataValidations>)"));
+  EXPECT_FALSE(contains(xml, "hyperlink"));
+  EXPECT_TRUE(contains(xml, R"(<selection activeCell="A2" sqref="A2"/>)"));
+}
+
+TEST(OoxmlSpreadsheetRows, a_selection_a_delete_takes_falls_back_to_a1) {
+  const Document document =
+      decode(workbook(abc, "", "", "",
+                      R"(<sheetViews><sheetView><selection sqref="A2"/>)"
+                      R"(</sheetView></sheetViews>)"));
+
+  first_sheet(document).delete_rows(1, 1);
+
+  EXPECT_TRUE(contains(sheet_xml(document), "<selection/>"));
+}
+
+TEST(OoxmlSpreadsheetRows, a_drawing_moves_with_its_cells) {
+  const Document document = decode(
+      sheet_with_parts(abc,
+                       anchor("twoCell", 0, 2) + anchor("oneCell", 1, 2) +
+                           anchor("absolute", 1, 2),
+                       "", ""));
+
+  first_sheet(document).insert_rows(1, 2);
+
+  const std::string xml = part_of(document, "/xl/drawings/drawing1.xml");
+  // the first stretches over the insert, the second moves whole
+  EXPECT_TRUE(contains(xml, anchor("twoCell", 0, 4)));
+  EXPECT_TRUE(contains(xml, anchor("oneCell", 3, 4)));
+  EXPECT_TRUE(contains(xml, anchor("absolute", 1, 2)));
+}
+
+TEST(OoxmlSpreadsheetRows, a_one_cell_box_keeps_its_size_over_an_insert) {
+  const Document document =
+      decode(sheet_with_parts(abc, anchor("oneCell", 0, 2), "", ""));
+
+  first_sheet(document).insert_rows(1, 2);
+
+  EXPECT_TRUE(contains(part_of(document, "/xl/drawings/drawing1.xml"),
+                       anchor("oneCell", 0, 2)));
+}
+
+TEST(OoxmlSpreadsheetRows, a_comment_moves_with_its_note) {
+  const Document document = decode(sheet_with_parts(
+      abc, "",
+      R"(<comment ref="A2" authorId="0"/><comment ref="A3" authorId="0"/>)",
+      note(1) + note(2)));
+
+  first_sheet(document).delete_rows(1, 1);
+
+  EXPECT_EQ(part_of(document, "/xl/comments1.xml")
+                    .find(R"(<commentList><comment ref="A2" authorId="0"/>)"
+                          R"(</commentList>)") != std::string::npos,
+            true);
+  const std::string notes = part_of(document, "/xl/drawings/vmlDrawing1.vml");
+  EXPECT_TRUE(contains(notes, "<x:Row>1</x:Row>"));
+  EXPECT_FALSE(contains(notes, "<x:Row>2</x:Row>"));
+  EXPECT_TRUE(
+      contains(notes, "<x:Anchor>1, 15, 1, 2, 3, 15, 4, 16</x:Anchor>"));
 }
