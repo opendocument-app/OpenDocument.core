@@ -309,6 +309,25 @@ def test_insert_and_delete_rows_move_the_cells(ods_path, tmp_path):
     assert walk_text(reloaded_sheet.cell(0, 0)) == text
 
 
+def test_insert_and_delete_columns_move_the_cells(ods_path, tmp_path):
+    document = pyodr.open(str(ods_path)).as_document_file().document()
+    sheet = next(iter(document.root_element().children())).as_sheet()
+    text = walk_text(sheet.cell(0, 0))
+    assert text
+
+    sheet.insert_columns(0, 2)
+
+    path = tmp_path / "columns.ods"
+    path.write_bytes(document.save_to_memory())
+    reloaded = pyodr.open(str(path)).as_document_file().document()
+    reloaded_sheet = next(iter(reloaded.root_element().children())).as_sheet()
+    assert walk_text(reloaded_sheet.cell(0, 0)) == []
+    assert walk_text(reloaded_sheet.cell(2, 0)) == text
+
+    reloaded_sheet.delete_columns(0, 2)
+    assert walk_text(reloaded_sheet.cell(0, 0)) == text
+
+
 def test_set_cell_style_refuses_what_no_engine_writes(ods_path):
     document = pyodr.open(str(ods_path)).as_document_file().document()
     sheet = next(iter(document.root_element().children())).as_sheet()

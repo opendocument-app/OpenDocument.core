@@ -161,6 +161,16 @@ export class Document {
     return this;
   }
 
+  insertColumns(sheet, column, count) {
+    unwrap(this.#core.insertColumns(this.#handle, sheet, column, count));
+    return this;
+  }
+
+  deleteColumns(sheet, column, count) {
+    unwrap(this.#core.deleteColumns(this.#handle, sheet, column, count));
+    return this;
+  }
+
   // `afterId` of 0 splits before every child.
   splitParagraph(paragraphId, afterId = 0) {
     return unwrap(this.#core.splitParagraph(this.#handle, paragraphId, afterId));
