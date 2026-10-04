@@ -1,5 +1,3 @@
-import zipfile
-
 import pyodr
 import pytest
 
@@ -277,21 +275,17 @@ def test_set_row_and_column_style_reach_past_the_cells(ods_path, tmp_path):
 def test_locale_is_the_language_of_the_default_style(ods_path, tmp_path):
     assert pyodr.open(str(ods_path)).as_document_file().document().locale() is None
 
-    path = tmp_path / "german.ods"
-    with zipfile.ZipFile(ods_path) as source, zipfile.ZipFile(path, "w") as target:
-        for item in source.infolist():
-            data = source.read(item.filename)
-            if item.filename == "styles.xml":
-                data = data.replace(
-                    b"<office:styles/>",
-                    b'<office:styles xmlns:style="urn:oasis:names:tc:opendocument'
-                    b':xmlns:style:1.0" xmlns:fo="urn:oasis:names:tc:opendocument'
-                    b':xmlns:xsl-fo-compatible:1.0"><style:default-style'
-                    b' style:family="table-cell"><style:text-properties'
-                    b' fo:language="de" fo:country="DE"/></style:default-style>'
-                    b"</office:styles>",
-                )
-            target.writestr(item, data)
+    path = tmp_path / "german.fods"
+    path.write_text(
+        '<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"'
+        ' xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"'
+        ' xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"'
+        ' office:mimetype="application/vnd.oasis.opendocument.spreadsheet">'
+        '<office:styles><style:default-style style:family="table-cell">'
+        '<style:text-properties fo:language="de" fo:country="DE"/>'
+        "</style:default-style></office:styles>"
+        "<office:body><office:spreadsheet/></office:body></office:document>"
+    )
 
     assert pyodr.open(str(path)).as_document_file().document().locale() == "de-DE"
 
