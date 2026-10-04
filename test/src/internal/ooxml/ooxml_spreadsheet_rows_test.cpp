@@ -76,70 +76,6 @@ two_sheets(const std::string &s_data, const std::string &t_data,
   return std::make_shared<internal::MemoryFile>(out.str());
 }
 
-/// One sheet `s` with @p sheet_data, related to `drawing1.xml`,
-/// `comments1.xml` and `vmlDrawing1.vml` holding @p drawing, @p comments and
-/// @p notes.
-std::shared_ptr<internal::abstract::File>
-sheet_with_parts(const std::string &sheet_data, const std::string &drawing,
-                 const std::string &comments, const std::string &notes) {
-  internal::zip::ZipArchive zip;
-  insert(
-      zip, "[Content_Types].xml",
-      R"(<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">)"
-      R"(<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>)"
-      R"(</Types>)");
-  insert(
-      zip, "_rels/.rels",
-      R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
-      R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>)"
-      R"(</Relationships>)");
-  insert(
-      zip, "xl/workbook.xml",
-      R"(<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" )"
-      R"(xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">)"
-      R"(<sheets><sheet name="s" sheetId="1" r:id="rId1"/></sheets></workbook>)");
-  insert(
-      zip, "xl/_rels/workbook.xml.rels",
-      R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
-      R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>)"
-      R"(</Relationships>)");
-  insert(
-      zip, "xl/styles.xml",
-      R"(<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"/>)");
-  insert(
-      zip, "xl/worksheets/sheet1.xml",
-      R"(<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" )"
-      R"(xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">)"
-      R"(<sheetData>)" +
-          sheet_data +
-          R"(</sheetData><drawing r:id="rId1"/><legacyDrawing r:id="rId3"/>)"
-          R"(</worksheet>)");
-  insert(
-      zip, "xl/worksheets/_rels/sheet1.xml.rels",
-      R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
-      R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>)"
-      R"(<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments" Target="../comments1.xml"/>)"
-      R"(<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/vmlDrawing1.vml"/>)"
-      R"(</Relationships>)");
-  insert(
-      zip, "xl/drawings/drawing1.xml",
-      R"(<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing">)" +
-          drawing + R"(</xdr:wsDr>)");
-  insert(
-      zip, "xl/comments1.xml",
-      R"(<comments xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">)"
-      R"(<authors><author>a</author></authors><commentList>)" +
-          comments + R"(</commentList></comments>)");
-  insert(zip, "xl/drawings/vmlDrawing1.vml",
-         R"(<xml xmlns:v="urn:schemas-microsoft-com:vml" )"
-         R"(xmlns:x="urn:schemas-microsoft-com:office:excel">)" +
-             notes + R"(</xml>)");
-
-  std::stringstream out;
-  zip.save(out);
-  return std::make_shared<internal::MemoryFile>(out.str());
-}
-
 /// An anchor whose corners sit in rows @p from and @p to.
 std::string anchor(const std::string &edit_as, const std::uint32_t from,
                    const std::uint32_t to) {
@@ -388,10 +324,10 @@ TEST(OoxmlSpreadsheetRows, a_selection_a_delete_takes_falls_back_to_a1) {
 
 TEST(OoxmlSpreadsheetRows, a_drawing_moves_with_its_cells) {
   const Document document = decode(
-      sheet_with_parts(abc,
-                       anchor("twoCell", 0, 2) + anchor("oneCell", 1, 2) +
-                           anchor("absolute", 1, 2),
-                       "", ""));
+      workbook_with_parts(abc,
+                          anchor("twoCell", 0, 2) + anchor("oneCell", 1, 2) +
+                              anchor("absolute", 1, 2),
+                          "", ""));
 
   first_sheet(document).insert_rows(1, 2);
 
@@ -404,7 +340,7 @@ TEST(OoxmlSpreadsheetRows, a_drawing_moves_with_its_cells) {
 
 TEST(OoxmlSpreadsheetRows, a_one_cell_box_keeps_its_size_over_an_insert) {
   const Document document =
-      decode(sheet_with_parts(abc, anchor("oneCell", 0, 2), "", ""));
+      decode(workbook_with_parts(abc, anchor("oneCell", 0, 2), "", ""));
 
   first_sheet(document).insert_rows(1, 2);
 
@@ -413,7 +349,7 @@ TEST(OoxmlSpreadsheetRows, a_one_cell_box_keeps_its_size_over_an_insert) {
 }
 
 TEST(OoxmlSpreadsheetRows, a_comment_moves_with_its_note) {
-  const Document document = decode(sheet_with_parts(
+  const Document document = decode(workbook_with_parts(
       abc, "",
       R"(<comment ref="A2" authorId="0"/><comment ref="A3" authorId="0"/>)",
       note(1) + note(2)));

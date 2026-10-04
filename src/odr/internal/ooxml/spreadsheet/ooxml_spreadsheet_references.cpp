@@ -2,6 +2,7 @@
 
 #include <odr/table_position.hpp>
 
+#include <odr/internal/common/table_range.hpp>
 #include <odr/internal/formula/formula_parser.hpp>
 #include <odr/internal/formula/formula_writer.hpp>
 
@@ -185,14 +186,44 @@ constexpr std::array<RangeAttribute, 7> removable_ranges{{
 }};
 
 /// The cell @p address names after the edit, the first one past the removed
-/// rows where a delete takes it.
+/// rows or columns where a delete takes it.
 std::string moved_cell(const std::string &address,
                        const formula::SheetEdit &edit) {
   const TablePosition position(address);
-  const auto rows = edit.span(position.row, position.row);
-  return TablePosition(position.column,
-                       rows.has_value() ? rows->first : edit.index)
+  if (const std::optional<TablePosition> moved =
+          move_position(position, edit)) {
+    return moved->to_string();
+  }
+  return (edit.axis == formula::Axis::row
+              ? TablePosition(position.column, edit.index)
+              : TablePosition(edit.index, position.row))
       .to_string();
+}
+
+/// A `filterColumn` counts its `colId` from the filter's first column, so a
+/// column edit moves it, and removes one whose column it takes.
+void move_filter_columns(pugi::xml_node filter,
+                         const formula::SheetEdit &edit) {
+  const std::string ref = filter.attribute("ref").value();
+  if (ref.empty()) {
+    return;
+  }
+  const TableRange range(ref.contains(':') ? ref : ref + ":" + ref);
+  const auto columns = edit.span(range.from().column, range.to().column);
+  if (!columns.has_value()) {
+    return; // the filter goes as a whole
+  }
+  for (pugi::xml_node column = filter.child("filterColumn"); column;) {
+    const pugi::xml_node next = column.next_sibling("filterColumn");
+    const std::uint32_t at =
+        range.from().column + column.attribute("colId").as_uint();
+    if (const auto moved = edit.span(at, at)) {
+      column.attribute("colId").set_value(moved->first - columns->first);
+    } else {
+      filter.remove_child(column);
+    }
+    column = next;
+  }
 }
 
 void collect_ranges(const pugi::xml_node node, const formula::SheetEdit &edit,
@@ -201,6 +232,9 @@ void collect_ranges(const pugi::xml_node node, const formula::SheetEdit &edit,
     const std::string_view name = child.name();
     if (child.type() != pugi::node_element || name == "sheetData") {
       continue;
+    }
+    if (name == "autoFilter" && edit.axis == formula::Axis::column) {
+      move_filter_columns(child, edit);
     }
     for (const RangeAttribute &range : removable_ranges) {
       pugi::xml_attribute attribute = child.attribute(range.attribute.data());
@@ -242,15 +276,22 @@ void collect_ranges(const pugi::xml_node node, const formula::SheetEdit &edit,
   }
 }
 
-/// The row of an anchor corner after the edit, at the edge of the rows that
-/// stay where a delete takes it.
+/// The child of an anchor corner stating the edit's axis.
+const char *corner_axis(const formula::SheetEdit &edit) {
+  return edit.axis == formula::Axis::row ? "xdr:row" : "xdr:col";
+}
+
+/// The row or column of an anchor corner after the edit, at the edge of the
+/// ones that stay where a delete takes it.
 void move_corner(pugi::xml_node corner, const formula::SheetEdit &edit) {
-  pugi::xml_text row = corner.child("xdr:row").text();
-  if (const auto rows = edit.span(row.as_uint(), row.as_uint())) {
-    row.set(rows->first);
+  pugi::xml_text at = corner.child(corner_axis(edit)).text();
+  if (const auto span = edit.span(at.as_uint(), at.as_uint())) {
+    at.set(span->first);
   } else {
-    row.set(edit.index);
-    corner.child("xdr:rowOff").text().set(0);
+    at.set(edit.index);
+    corner.child(edit.axis == formula::Axis::row ? "xdr:rowOff" : "xdr:colOff")
+        .text()
+        .set(0);
   }
 }
 
@@ -315,8 +356,8 @@ void ooxml::spreadsheet::move_drawing(const pugi::xml_node drawing,
     if (!from || edit_as == "absolute") {
       continue;
     }
-    const pugi::xml_text from_row = from.child("xdr:row").text();
-    const std::int64_t old = from_row.as_uint();
+    const pugi::xml_text from_at = from.child(corner_axis(edit)).text();
+    const std::int64_t old = from_at.as_uint();
     move_corner(from, edit);
     const pugi::xml_node to = anchor.child("xdr:to");
     if (!to) {
@@ -326,9 +367,9 @@ void ooxml::spreadsheet::move_drawing(const pugi::xml_node drawing,
       move_corner(to, edit);
     } else {
       // a `oneCell` box keeps its size, so its far corner moves as the first
-      pugi::xml_text to_row = to.child("xdr:row").text();
-      to_row.set(static_cast<std::uint32_t>(std::max<std::int64_t>(
-          0, to_row.as_llong() + from_row.as_llong() - old)));
+      pugi::xml_text to_at = to.child(corner_axis(edit)).text();
+      to_at.set(static_cast<std::uint32_t>(std::max<std::int64_t>(
+          0, to_at.as_llong() + from_at.as_llong() - old)));
     }
   }
 }
@@ -355,23 +396,25 @@ void ooxml::spreadsheet::move_comments(const pugi::xml_node comments,
   move_refs(comments.child("commentList"), "comment");
   move_refs(threaded, "threadedComment");
 
-  // a note states its cell in `x:Row`, and its box in `x:Anchor` as column,
-  // offset, row and offset of two corners
+  // a note states its cell in `x:Row` and `x:Column`, and its box in
+  // `x:Anchor` as column, offset, row and offset of two corners
   if (!vml) {
     return;
   }
+  const bool rows = edit.axis == formula::Axis::row;
+  const std::size_t first = rows ? 2 : 0;
   std::vector<pugi::xml_node> removed;
   for (const pugi::xpath_node found :
        vml.select_nodes("//*[local-name()='ClientData'][@ObjectType='Note']")) {
     const pugi::xml_node data = found.node();
-    pugi::xml_text row = data.child("x:Row").text();
-    const std::uint32_t old = row.as_uint();
-    const auto rows = edit.span(old, old);
-    if (!rows.has_value()) {
+    pugi::xml_text at = data.child(rows ? "x:Row" : "x:Column").text();
+    const std::uint32_t old = at.as_uint();
+    const auto span = edit.span(old, old);
+    if (!span.has_value()) {
       removed.push_back(data.parent());
       continue;
     }
-    row.set(rows->first);
+    at.set(span->first);
     pugi::xml_text anchor = data.child("x:Anchor").text();
     std::vector<std::int64_t> values;
     for (const std::string_view value :
@@ -382,8 +425,8 @@ void ooxml::spreadsheet::move_comments(const pugi::xml_node comments,
       values.push_back(std::strtoll(std::string(value).c_str(), nullptr, 10));
     }
     if (values.size() == 8) {
-      values[2] += static_cast<std::int64_t>(rows->first) - old;
-      values[6] += static_cast<std::int64_t>(rows->first) - old;
+      values[first] += static_cast<std::int64_t>(span->first) - old;
+      values[first + 4] += static_cast<std::int64_t>(span->first) - old;
       anchor.set(fmt::format("{}", fmt::join(values, ", ")).c_str());
     }
   }

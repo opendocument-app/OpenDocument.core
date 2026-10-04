@@ -10,6 +10,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <sstream>
 #include <string>
 
@@ -40,6 +41,26 @@ constexpr const char *abc =
 
 bool contains(const std::string &xml, const std::string &part) {
   return xml.find(part) != std::string::npos;
+}
+
+/// An anchor whose corners sit in columns @p from and @p to.
+std::string anchor(const std::string &edit_as, const std::uint32_t from,
+                   const std::uint32_t to) {
+  const auto corner = [](const char *name, const std::uint32_t column) {
+    return std::string("<xdr:") + name + "><xdr:col>" + std::to_string(column) +
+           "</xdr:col><xdr:colOff>5</xdr:colOff><xdr:row>0</xdr:row>"
+           "<xdr:rowOff>0</xdr:rowOff></xdr:" +
+           name + ">";
+  };
+  return R"(<xdr:twoCellAnchor editAs=")" + edit_as + R"(">)" +
+         corner("from", from) + corner("to", to) + "</xdr:twoCellAnchor>";
+}
+
+std::string note(const std::uint32_t column) {
+  return R"(<v:shape><x:ClientData ObjectType="Note"><x:Anchor>)" +
+         std::to_string(column) + ", 15, 0, 2, " + std::to_string(column + 2) +
+         ", 15, 3, 16</x:Anchor><x:Row>0</x:Row><x:Column>" +
+         std::to_string(column) + "</x:Column></x:ClientData></v:shape>";
 }
 
 } // namespace
@@ -190,4 +211,59 @@ TEST(OoxmlSpreadsheetColumns, the_ops_name_a_column_and_a_count) {
   const Sheet sheet = first_sheet(document);
   EXPECT_EQ(sheet.cell(1, 0).value().text(), "a");
   EXPECT_EQ(sheet.cell(2, 0).value().text(), "c");
+}
+
+TEST(OoxmlSpreadsheetColumns, the_ranges_of_the_sheet_move) {
+  const Document document = decode(workbook(
+      abc,
+      R"(<autoFilter ref="A1:C1"><filterColumn colId="0"/>)"
+      R"(<filterColumn colId="1"/><filterColumn colId="2"/></autoFilter>)"
+      R"(<conditionalFormatting sqref="A1:C1 C3"><cfRule/></conditionalFormatting>)"
+      R"(<hyperlinks><hyperlink ref="B1"/></hyperlinks>)",
+      "", "",
+      R"(<sheetViews><sheetView><selection activeCell="B1" sqref="B1"/>)"
+      R"(</sheetView></sheetViews>)"));
+
+  first_sheet(document).delete_columns(1, 1);
+
+  const std::string xml = sheet_xml(document);
+  EXPECT_TRUE(contains(xml,
+                       R"(<autoFilter ref="A1:B1"><filterColumn colId="0"/>)"
+                       R"(<filterColumn colId="1"/></autoFilter>)"));
+  EXPECT_TRUE(contains(xml, R"(<conditionalFormatting sqref="A1:B1 B3">)"));
+  EXPECT_FALSE(contains(xml, "hyperlink"));
+  EXPECT_TRUE(contains(xml, R"(<selection activeCell="B1" sqref="B1"/>)"));
+}
+
+TEST(OoxmlSpreadsheetColumns, a_drawing_moves_with_its_cells) {
+  const Document document = decode(
+      workbook_with_parts(abc,
+                          anchor("twoCell", 0, 2) + anchor("oneCell", 1, 2) +
+                              anchor("absolute", 1, 2),
+                          "", ""));
+
+  first_sheet(document).insert_columns(1, 2);
+
+  const std::string xml = part_of(document, "/xl/drawings/drawing1.xml");
+  EXPECT_TRUE(contains(xml, anchor("twoCell", 0, 4)));
+  EXPECT_TRUE(contains(xml, anchor("oneCell", 3, 4)));
+  EXPECT_TRUE(contains(xml, anchor("absolute", 1, 2)));
+}
+
+TEST(OoxmlSpreadsheetColumns, a_comment_moves_with_its_note) {
+  const Document document = decode(workbook_with_parts(
+      abc, "",
+      R"(<comment ref="B1" authorId="0"/><comment ref="C1" authorId="0"/>)",
+      note(1) + note(2)));
+
+  first_sheet(document).delete_columns(1, 1);
+
+  EXPECT_TRUE(contains(part_of(document, "/xl/comments1.xml"),
+                       R"(<commentList><comment ref="B1" authorId="0"/>)"
+                       R"(</commentList>)"));
+  const std::string notes = part_of(document, "/xl/drawings/vmlDrawing1.vml");
+  EXPECT_TRUE(contains(notes, "<x:Column>1</x:Column>"));
+  EXPECT_FALSE(contains(notes, "<x:Column>2</x:Column>"));
+  EXPECT_TRUE(
+      contains(notes, "<x:Anchor>1, 15, 0, 2, 3, 15, 3, 16</x:Anchor>"));
 }
