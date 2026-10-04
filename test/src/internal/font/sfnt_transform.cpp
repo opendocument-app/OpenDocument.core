@@ -333,7 +333,7 @@ TEST(SfntTransform, write_synthesizes_name_when_absent) {
   const std::string out = reencoded(font);
   const std::optional<std::string> name = table(out, "name");
   ASSERT_TRUE(name.has_value());
-  EXPECT_EQ(parse(out).name(), "ODR Font");
+  EXPECT_EQ(parse(out).name(), "ODR-Font");
   EXPECT_EQ(file_checksum(out), 0xb1b0afbaU);
 }
 
@@ -380,4 +380,52 @@ TEST(SfntTransform, write_keeps_existing_os2) {
 
   // The source `OS/2` is copied through verbatim, not replaced.
   EXPECT_EQ(table(out, "OS/2"), original_os2);
+}
+
+TEST(SfntTransform, cmap_format_tracks_encoded_size_and_unicode_range) {
+  std::map<char32_t, std::uint16_t> mapping;
+  for (char32_t code = 0; code < 8188 * 2; code += 2) {
+    mapping.emplace(code, 1);
+  }
+  EXPECT_EQ(bs::read_u16_be(serialize_cmap(mapping).substr(12)), 4);
+  mapping.emplace(8188 * 2, 1);
+  const std::string large = serialize_cmap(mapping);
+  EXPECT_EQ(bs::read_u16_be(large.substr(12)), 12);
+  EXPECT_EQ(parse(build_sfnt(0x00010000, {{"cmap", large}})).cmap(), mapping);
+
+  std::map<char32_t, std::uint16_t> edge{{0xFFFF, 1}};
+  EXPECT_EQ(bs::read_u16_be(serialize_cmap(edge).substr(12)), 12);
+  edge.emplace(0x10FFFF, 2);
+  const std::string cmap = serialize_cmap(edge);
+  EXPECT_EQ(parse(build_sfnt(0x00010000, {{"cmap", cmap}})).cmap(), edge);
+  EXPECT_THROW((void)serialize_cmap({{0x110000, 1}}), std::runtime_error);
+}
+
+TEST(SfntTransform, names_preserve_unicode_and_bound_postscript_names) {
+  const std::string name = serialize_name("Fönt / 😀");
+  const std::uint16_t storage = bs::read_u16_be(name.substr(4));
+  const auto value = [&](const std::size_t index) {
+    const std::size_t record = 6 + index * 12;
+    return name.substr(storage + bs::read_u16_be(name.substr(record + 10)),
+                       bs::read_u16_be(name.substr(record + 8)));
+  };
+  const std::string expected("\0F\0\xf6\0n\0t\0 \0/\0 \xd8\x3d\xde\0", 18);
+  EXPECT_EQ(value(0), expected);
+  EXPECT_EQ(value(2), expected);
+  EXPECT_EQ(parse(build_sfnt(0x00010000, {{"name", name}})).name(),
+            "F-nt-----");
+  const std::string long_name = serialize_name(std::string(30000, 'A'));
+  EXPECT_EQ(parse(build_sfnt(0x00010000, {{"name", long_name}})).name(),
+            std::string(63, 'A'));
+  EXPECT_LT(long_name.size(), 61000);
+  EXPECT_THROW((void)serialize_name(std::string(32768, 'A')),
+               std::runtime_error);
+}
+
+TEST(SfntTransform, rejects_unrepresentable_table_directories) {
+  EXPECT_THROW((void)build_sfnt(0x00010000, {{"abc", ""}}), std::runtime_error);
+  EXPECT_THROW((void)build_sfnt(0x00010000, {{"head", ""}, {"head", ""}}),
+               std::runtime_error);
+  const std::vector<std::pair<std::string, std::string>> tables(4096);
+  EXPECT_THROW((void)build_sfnt(0x00010000, tables), std::runtime_error);
 }

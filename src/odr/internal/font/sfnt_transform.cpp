@@ -2,13 +2,17 @@
 
 #include <odr/internal/font/sfnt_font.hpp>
 #include <odr/internal/util/byte_string.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
+#include <array>
 #include <bit>
 #include <cstdint>
 #include <limits>
 #include <map>
 #include <ranges>
+#include <stdexcept>
+#include <string_view>
 #include <utility>
 
 namespace odr::internal::font {
@@ -89,6 +93,10 @@ char32_t font::pua_code_point(const std::uint16_t glyph) noexcept {
 std::string
 font::build_sfnt(const std::uint32_t sfnt_version,
                  std::vector<std::pair<std::string, std::string>> tables) {
+  if (tables.size() > 4095) {
+    throw std::runtime_error(
+        "sfnt: table directory exceeds 16-bit search fields");
+  }
   std::ranges::sort(
       tables, {}, [](const auto &e) -> const std::string & { return e.first; });
 
@@ -111,6 +119,15 @@ font::build_sfnt(const std::uint32_t sfnt_version,
   std::uint32_t bodies_checksum = 0;
   for (std::size_t i = 0; i < tables.size(); ++i) {
     auto &[tag, data] = tables[i];
+    if (tag.size() != 4 || (i > 0 && tag == tables[i - 1].first)) {
+      throw std::runtime_error("sfnt: invalid or duplicate table tag");
+    }
+    const std::size_t padding = (4 - data.size() % 4) % 4;
+    const std::uint32_t remaining =
+        std::numeric_limits<std::uint32_t>::max() - offset;
+    if (data.size() > remaining || padding > remaining - data.size()) {
+      throw std::runtime_error("sfnt: table data exceeds 32-bit offsets");
+    }
     const auto length = static_cast<std::uint32_t>(data.size());
     pad4(data);
     if (tag == "head" && data.size() >= 12) {
@@ -201,9 +218,11 @@ serialize_cmap_format12(const std::map<char32_t, std::uint16_t> &map) {
 } // namespace
 
 std::string font::serialize_cmap(const std::map<char32_t, std::uint16_t> &map) {
-  // Format 4 tops out at the BMP; a map that overflows into the Supplementary
-  // PUA needs format 12's 32-bit code ranges instead.
-  if (!map.empty() && map.rbegin()->first > 0xffff) {
+  if (!map.empty() && map.rbegin()->first > 0x10FFFF) {
+    throw std::runtime_error("sfnt: character map exceeds Unicode range");
+  }
+  // Format 4 reserves U+FFFF for its terminator.
+  if (!map.empty() && map.rbegin()->first >= 0xffff) {
     return serialize_cmap_format12(map);
   }
 
@@ -228,6 +247,9 @@ std::string font::serialize_cmap(const std::map<char32_t, std::uint16_t> &map) {
   // Mandatory terminator segment: 0xFFFF -> 0 (delta 1).
   segments.push_back({0xffff, 0xffff, 1});
 
+  if (segments.size() > (std::numeric_limits<std::uint16_t>::max() - 16) / 8) {
+    return serialize_cmap_format12(map);
+  }
   const auto seg_count = static_cast<std::uint16_t>(segments.size());
   const auto [search_range, entry_selector, range_shift] =
       search_hints(seg_count, 2);
@@ -267,23 +289,33 @@ std::string font::serialize_cmap(const std::map<char32_t, std::uint16_t> &map) {
 
 std::string font::serialize_name(const std::string &font_name) {
   const std::string family = font_name.empty() ? "ODR Font" : font_name;
-  const auto utf16be = [](const std::string &ascii) {
+  const auto utf16be = [](const std::string &value) {
     std::string out;
-    for (const char c : ascii) {
-      bs::put_u16_be(out, static_cast<std::uint8_t>(c));
+    for (const char16_t c : util::string::string_to_u16string(value)) {
+      bs::put_u16_be(out, c);
     }
     return out;
   };
+  std::string postscript;
+  for (const char16_t c : util::string::string_to_u16string(family)) {
+    if (postscript.size() == 63) {
+      break;
+    }
+    postscript +=
+        c < 33 || c > 126 || std::u16string_view(u"[](){}<>/%").contains(c)
+            ? '-'
+            : static_cast<char>(c);
+  }
   struct Record {
     std::uint16_t name_id;
     std::string value;
   };
-  const std::vector<Record> records = {
+  const std::array<Record, 4> records = {{
       {1, utf16be(family)},
       {2, utf16be("Regular")},
       {4, utf16be(family)},
-      {6, utf16be(family)},
-  };
+      {6, utf16be(postscript)},
+  }};
 
   const auto count = static_cast<std::uint16_t>(records.size());
   const std::uint16_t storage_offset = 6 + count * 12;
@@ -294,14 +326,28 @@ std::string font::serialize_name(const std::string &font_name) {
   bs::put_u16_be(table, storage_offset);
 
   std::string storage;
+  std::map<std::string, std::uint16_t> offsets;
   for (const Record &record : records) {
+    if (!std::in_range<std::uint16_t>(record.value.size())) {
+      throw std::runtime_error("sfnt: name exceeds 16-bit length");
+    }
+    auto found = offsets.find(record.value);
+    if (found == offsets.end()) {
+      if (!std::in_range<std::uint16_t>(storage.size())) {
+        throw std::runtime_error("sfnt: name storage exceeds 16-bit offsets");
+      }
+      found =
+          offsets
+              .emplace(record.value, static_cast<std::uint16_t>(storage.size()))
+              .first;
+      storage += record.value;
+    }
     bs::put_u16_be(table, 3);     // platformID: Windows
     bs::put_u16_be(table, 1);     // encodingID: Unicode BMP
     bs::put_u16_be(table, 0x409); // languageID: en-US
     bs::put_u16_be(table, record.name_id);
     bs::put_u16_be(table, static_cast<std::uint16_t>(record.value.size()));
-    bs::put_u16_be(table, static_cast<std::uint16_t>(storage.size()));
-    storage += record.value;
+    bs::put_u16_be(table, found->second);
   }
   table += storage;
   return table;
@@ -327,7 +373,7 @@ std::string font::serialize_os2(const std::uint16_t units_per_em,
                                 const std::uint16_t first_char,
                                 const std::uint16_t last_char) {
   // Scale a default expressed against a 1000-unit em to this font's em.
-  const auto em = [&](const int per_1000) {
+  const auto em = [&](const std::int32_t per_1000) {
     return static_cast<std::uint16_t>(per_1000 * units_per_em / 1000);
   };
   // Ascender/descender from the bounding box, falling back to 0.8/0.2 em when

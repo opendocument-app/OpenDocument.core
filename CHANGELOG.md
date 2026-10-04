@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- SFNT output uses format 12 for large character maps and U+FFFF mappings,
+  writes Unicode font names correctly, and validates table and name sizes.
+  Synthesized PostScript names now obey OpenType character and length limits.
+
 - SFNT fonts check character-map ranges before they expand them. A broken or
   unsupported character map no longer hides the next supported one.
 
