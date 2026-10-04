@@ -356,4 +356,46 @@ std::string formula::to_string(const formula::Node &node,
   return formula::Writer(syntax).write(node);
 }
 
+std::optional<std::string>
+formula::move_row_addresses(const std::string_view list, const RowEdit &edit,
+                            const std::optional<std::string> &sheet,
+                            const Syntax syntax) {
+  const bool bracketed = syntax == Syntax::opendocument;
+  std::string result;
+  bool moved = false;
+  std::size_t begin = 0;
+  bool quoted = false;
+  for (std::size_t i = 0; i <= list.size(); ++i) {
+    if (i < list.size() && list[i] == '\'') {
+      quoted = !quoted;
+    }
+    if (i < list.size() && (quoted || list[i] != ' ')) {
+      continue;
+    }
+    const std::string_view address = list.substr(begin, i - begin);
+    begin = i + 1;
+    if (address.empty()) {
+      continue;
+    }
+    std::string spelled(address);
+    if (std::optional<Node> node =
+            formula::parse(bracketed ? "[" + spelled + "]" : spelled, syntax);
+        node.has_value() && formula::move_rows(*node, edit, sheet)) {
+      moved = true;
+      if (node->holds<ErrorLiteral>()) {
+        continue;
+      }
+      spelled = formula::to_string(*node, syntax);
+      if (bracketed) {
+        spelled = spelled.substr(1, spelled.size() - 2);
+      }
+    }
+    result += (result.empty() ? "" : " ") + spelled;
+  }
+  if (!moved) {
+    return std::nullopt;
+  }
+  return result;
+}
+
 } // namespace odr::internal

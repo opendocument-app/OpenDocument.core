@@ -45,11 +45,11 @@ std::string edited(const std::string &text, const bool insert,
   if (!node.has_value()) {
     return "<no parse>";
   }
-  const EditedSheet named = [&](const std::optional<std::string> &name) {
-    return name == sheet;
-  };
-  const bool moved = insert ? insert_rows(*node, named, row, count)
-                            : delete_rows(*node, named, row, count);
+  const RowEdit edit{.sheet = sheet.value_or("here"),
+                     .row = row,
+                     .count = count,
+                     .insert = insert};
+  const bool moved = move_rows(*node, edit, "here");
   return (moved ? "" : "unmoved ") + to_string(*node, syntax);
 }
 
@@ -174,4 +174,18 @@ TEST(FormulaWriter, a_deleted_row_shrinks_a_range_it_cuts) {
   EXPECT_EQ(deleted("SUM(A3:A6)", 1, 2), "SUM(A2:A4)");
   EXPECT_EQ(deleted("SUM(A1:A3)", 1, 2), "SUM(A1:A1)");
   EXPECT_EQ(deleted("SUM((A2):A5)", 1, 2), "SUM(A2:A3)");
+}
+
+TEST(FormulaWriter, a_row_edit_moves_each_address_of_a_list) {
+  const RowEdit insert{.sheet = "s", .row = 1, .count = 1};
+  EXPECT_EQ(move_row_addresses("A1:B3 D5", insert, "s", Syntax::ooxml),
+            "A1:B4 D6");
+  EXPECT_EQ(move_row_addresses("A1", insert, "s", Syntax::ooxml), std::nullopt);
+  EXPECT_EQ(move_row_addresses("$s.$A$1:.$A$3 $'a b'.A2", insert, "t",
+                               Syntax::opendocument),
+            "$s.$A$1:.$A$4 $'a b'.A2");
+
+  const RowEdit remove{.sheet = "s", .row = 1, .count = 1, .insert = false};
+  EXPECT_EQ(move_row_addresses("A2 A3", remove, "s", Syntax::ooxml), "A2");
+  EXPECT_EQ(move_row_addresses("A2", remove, "s", Syntax::ooxml), "");
 }
