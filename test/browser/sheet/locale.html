@@ -66,6 +66,8 @@
 
       value = type("2.1.2025");
       check("a date is day first here", value.type === "date" && value.number === 45659);
+      value = type("2. 1. 2025 18:00");
+      check("a date with spaces takes a time", value.type === "date" && value.number === 45659.75);
 
       odr.editing.editAt(0, 1);
       check("a string that reads as a number here opens quoted", editor().value === "'2,5");

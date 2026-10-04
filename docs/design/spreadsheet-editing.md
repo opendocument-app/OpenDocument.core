@@ -431,9 +431,10 @@ the file.
 ISO 8601 (`2025-01-02`) always reads as a date. Otherwise the order of day,
 month and year and the separator are the ones `Intl.DateTimeFormat` writes for
 the document's locale, else the reader's, since a file that states none has
-no order of its own, so `1/2/2025` is 2 January in `en-US` and 1 February in `en-GB`. A
-two-digit year below 30 is 20xx, else 19xx, as Excel reads one. A time is
-`h:mm`, `h:mm:ss`, with `AM`/`PM`, alone or after a date.
+no order of its own, so `1/2/2025` is 2 January in `en-US` and 1 February in
+`en-GB`. A two-digit year below 30 is 20xx, else 19xx, as Excel reads one. A
+time is `h:mm`, `h:mm:ss`, with `AM`/`PM`, alone or after a date. A time with a
+sign is a negative duration.
 
 An editable render states `data-odr-value` on a date or time cell, so the
 editor opens the cell on the locale's spelling of its serial, and a commit of

@@ -208,7 +208,8 @@
       escaped(DATE_ORDER.separator)
     )
   );
-  var TIME = /^(\d{1,4}):(\d{2})(?::(\d{2})(?:[.,](\d{1,3}))?)?(?:\s*([ap])\.?m?\.?)?$/i;
+  var TIME =
+    /^(-?)(\d{1,4}):(\d{2})(?::(\d{2})(?:[.,](\d{1,3}))?)?(?:\s*([ap])\.?m?\.?)?$/i;
 
   /// Days since 1899-12-30, or null where the date is none.
   function civilDays(year, month, day) {
@@ -246,25 +247,27 @@
     return civilDays(year, Number(parts.m), Number(parts.d));
   }
 
-  /// A typed time as days; an hour past 23 is a duration, without `AM`/`PM`.
+  /// A typed time as days; an hour past 23 or a sign is a duration, without
+  /// `AM`/`PM`.
   function readTime(text) {
     var time = TIME.exec(text);
     if (time === null) {
       return null;
     }
-    var hours = Number(time[1]);
-    var minutes = Number(time[2]);
-    var seconds = Number(time[3] || 0) + Number("0." + (time[4] || "0"));
+    var hours = Number(time[2]);
+    var minutes = Number(time[3]);
+    var seconds = Number(time[4] || 0) + Number("0." + (time[5] || "0"));
     if (minutes > 59 || seconds >= 60) {
       return null;
     }
-    if (time[5] !== undefined) {
-      if (hours < 1 || hours > 12) {
+    if (time[6] !== undefined) {
+      if (time[1] !== "" || hours < 1 || hours > 12) {
         return null;
       }
-      hours = (hours % 12) + (time[5].toLowerCase() === "p" ? 12 : 0);
+      hours = (hours % 12) + (time[6].toLowerCase() === "p" ? 12 : 0);
     }
-    return (hours * 3600 + minutes * 60 + seconds) / 86400;
+    var result = (hours * 3600 + minutes * 60 + seconds) / 86400;
+    return time[1] !== "" ? -result : result;
   }
 
   /// A date, a time, or a date and a time, or null.
@@ -277,13 +280,15 @@
     if (time !== null) {
       return { type: "time", number: time };
     }
-    var split = text.search(/\s/);
-    if (split > 0) {
+    // a date can hold spaces, `2. 1. 2025`, and so can a time, `6:00 PM`
+    for (var split = text.search(/\s/); split > 0; ) {
       date = readDate(text.slice(0, split));
       time = readTime(text.slice(split).trim());
-      if (date !== null && time !== null && time < 1) {
+      if (date !== null && time !== null && time >= 0 && time < 1) {
         return { type: "date", number: date + time };
       }
+      var next = text.slice(split + 1).search(/\s/);
+      split = next < 0 ? -1 : split + 1 + next;
     }
     return null;
   }
@@ -316,23 +321,30 @@
     return (value < 10 ? "0" : "") + value;
   }
 
-  /// @p days as `h:mm`, with seconds where it has them.
-  function spellTime(days) {
-    var seconds = Math.round(days * 86400);
+  /// @p seconds as `h:mm`, with seconds where it has them.
+  function spellTime(seconds) {
+    var magnitude = Math.abs(seconds);
     var result =
-      Math.floor(seconds / 3600) + ":" + twoDigits(Math.floor(seconds / 60) % 60);
-    return seconds % 60 !== 0 ? result + ":" + twoDigits(seconds % 60) : result;
+      (seconds < 0 ? "-" : "") +
+      Math.floor(magnitude / 3600) +
+      ":" +
+      twoDigits(Math.floor(magnitude / 60) % 60);
+    return magnitude % 60 !== 0
+      ? result + ":" + twoDigits(magnitude % 60)
+      : result;
   }
 
   /// A date or a time as the locale writes one, which `parse` reads back.
   function spellMoment(value) {
+    // rounded as a whole, so 23:59:59.6 is the next day
+    var seconds = Math.round(value.number * 86400);
     if (value.type === "time") {
-      return spellTime(value.number);
+      return spellTime(seconds);
     }
-    var days = Math.floor(value.number);
+    var days = Math.floor(seconds / 86400);
     var date = DATE_FORMAT.format(new Date((days - 25569) * 86400000));
-    var time = value.number - days;
-    return Math.round(time * 86400) > 0 ? date + " " + spellTime(time) : date;
+    var time = seconds - days * 86400;
+    return time > 0 ? date + " " + spellTime(time) : date;
   }
 
   /// What the editor opens on: a formatted number its value, and a string
