@@ -14,7 +14,8 @@ import java.util.function.LongConsumer;
  *
  * <p>Navigation results (e.g. document elements) keep the object they
  * originate from reachable through {@code owner}, so a root object is not
- * collected while handles into it are alive.
+ * collected while handles into it are alive. Explicitly closing an owner
+ * invalidates its dependent wrappers.
  *
  * <p>The post-mortem free is a {@link PhantomReference} drained by a daemon
  * thread, not a {@link java.lang.ref.Cleaner}: android ships Cleaner only from
@@ -65,6 +66,9 @@ public abstract class NativeResource implements AutoCloseable {
   final long handle() {
     if (closed) {
       throw new IllegalStateException(getClass().getSimpleName() + " is closed");
+    }
+    if (owner instanceof NativeResource) {
+      ((NativeResource) owner).handle();
     }
     return handle;
   }

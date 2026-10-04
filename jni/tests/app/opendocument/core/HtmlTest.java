@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -26,6 +27,17 @@ class HtmlTest {
     DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
     HtmlService service = Html.translate(file, config);
     return service.listViews().get(0).writeHtml().html;
+  }
+
+  @Test
+  void closingServiceInvalidatesItsViews() throws IOException {
+    try (DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString())) {
+      HtmlService service = Html.translate(file, new HtmlConfig());
+      try (HtmlView view = service.listViews().get(0)) {
+        service.close();
+        assertThrows(IllegalStateException.class, view::writeHtml);
+      }
+    }
   }
 
   @Test

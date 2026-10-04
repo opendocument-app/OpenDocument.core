@@ -80,22 +80,38 @@ public final class Document extends NativeResource {
    * for an element of another document.
    */
   public void remove(Element element) {
-    removeNative(handle(), element.handle());
+    try {
+      removeNative(handle(), element.handle());
+    } finally {
+      element.keepAlive();
+    }
   }
 
   /** A run before another, in the same parent, so it takes the same style. */
   public Text insertTextBefore(Text anchor, String text) {
-    return new Text(insertTextBeforeNative(handle(), anchor.handle(), text), this);
+    try {
+      return new Text(insertTextBeforeNative(handle(), anchor.handle(), text), this);
+    } finally {
+      anchor.keepAlive();
+    }
   }
 
   /** A run after another, in the same parent. */
   public Text insertTextAfter(Text anchor, String text) {
-    return new Text(insertTextAfterNative(handle(), anchor.handle(), text), this);
+    try {
+      return new Text(insertTextAfterNative(handle(), anchor.handle(), text), this);
+    } finally {
+      anchor.keepAlive();
+    }
   }
 
   /** A run as the last child of an element. */
   public Text appendText(Element parent, String text) {
-    return new Text(appendTextNative(handle(), parent.handle(), text), this);
+    try {
+      return new Text(appendTextNative(handle(), parent.handle(), text), this);
+    } finally {
+      parent.keepAlive();
+    }
   }
 
   /** Splits before every child of the paragraph. */
@@ -108,20 +124,35 @@ public final class Document extends NativeResource {
    * paragraph of the same style. A {@code null} {@code after} moves every child.
    */
   public Paragraph splitParagraph(Paragraph paragraph, Element after) {
-    long handle =
-        splitParagraphNative(
-            handle(), paragraph.handle(), after == null ? 0 : after.handle());
-    return new Paragraph(handle, this);
+    try {
+      long handle =
+          splitParagraphNative(
+              handle(), paragraph.handle(), after == null ? 0 : after.handle());
+      return new Paragraph(handle, this);
+    } finally {
+      paragraph.keepAlive();
+      if (after != null) {
+        after.keepAlive();
+      }
+    }
   }
 
   /** Takes the children of the paragraph after this one, which then goes. */
   public void mergeParagraphWithNext(Paragraph paragraph) {
-    mergeParagraphWithNextNative(handle(), paragraph.handle());
+    try {
+      mergeParagraphWithNextNative(handle(), paragraph.handle());
+    } finally {
+      paragraph.keepAlive();
+    }
   }
 
   /** An empty paragraph after this one, of the same style. */
   public Paragraph insertParagraphAfter(Paragraph paragraph) {
-    return new Paragraph(insertParagraphAfterNative(handle(), paragraph.handle()), this);
+    try {
+      return new Paragraph(insertParagraphAfterNative(handle(), paragraph.handle()), this);
+    } finally {
+      paragraph.keepAlive();
+    }
   }
 
   private static native void destroy(long handle);

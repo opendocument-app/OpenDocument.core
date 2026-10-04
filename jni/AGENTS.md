@@ -28,7 +28,8 @@ bindings (`python/`).
   typed C++ subobject behind a base-typed handle.
 - Keep-alive: a navigation result carries an `owner` reference
   (`Element.owner()` is the `Document`), so the GC cannot free the root while
-  a handle into it is alive.
+  a handle into it is alive. Explicitly closing an owner invalidates its
+  dependent wrappers; `handle()` checks the owner chain before entering C++.
 - GC safety: a native that uses a handle is an instance method of the object
   that owns it. The `this` reference keeps the wrapper and its owner chain
   reachable during the call. Only factories and `destroy` are static. A static
