@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 #include <variant>
@@ -171,5 +172,22 @@ struct Node final {
 /// Moves every relative reference in @p node by (@p columns, @p rows). An
 /// absolute (`$`) axis stays, and one moved off the grid becomes `#REF!`.
 void shift(Node &node, std::int64_t columns, std::int64_t rows);
+
+/// Whether a reference names the sheet a structural edit is on: the sheet name
+/// it spells, none for the sheet the formula sits on.
+using EditedSheet = std::function<bool(const std::optional<std::string> &)>;
+
+/// Moves every reference in @p node to a row of the edited sheet as inserting
+/// @p count rows before @p row moves the cells, an absolute (`$`) axis too. A
+/// reference into another document or over several sheets stays. True where
+/// anything moved.
+bool insert_rows(Node &node, const EditedSheet &edited, std::uint32_t row,
+                 std::uint32_t count);
+
+/// The same for removing @p count rows from @p row on. A corner inside them
+/// moves to the edge of the rows that stay, and a reference all inside them
+/// becomes `#REF!`.
+bool delete_rows(Node &node, const EditedSheet &edited, std::uint32_t row,
+                 std::uint32_t count);
 
 } // namespace odr::internal::formula
