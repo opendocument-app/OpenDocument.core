@@ -209,6 +209,7 @@ struct FileTypeCapabilities final {
   bool annotate{}; ///< @ref PdfFile::annotate is supported; a concrete file
                    ///< still answers for itself with
                    ///< @ref PdfFile::is_annotatable
+  bool create{};   ///< @ref create_document makes a new one
 };
 
 /// Collection of encryption states.

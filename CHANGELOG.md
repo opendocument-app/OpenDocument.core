@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `odr::create_document(FileType)` makes a new odt with one empty paragraph,
+  an A4 page and Liberation Serif 12pt. `FileTypeCapabilities::create` names
+  the types it can make.
+
 ## v7.4.0 - 2026-10-03
 
 - `PdfFile::permissions` reports the permission bits of an encrypted pdf, in
