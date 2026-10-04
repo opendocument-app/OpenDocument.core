@@ -215,3 +215,7 @@ unknown mimetype are tolerated.
    it, once to build the tree.
 6. **Formulas are read, not evaluated.** A written cell empties its
    dependents until an evaluator exists.
+7. **A font name keeps its quotes.** `TextStyle::font_name` comes from
+   `svg:font-family`, which is a css value, so `Liberation Serif` arrives as
+   `'Liberation Serif'`. The renderer copes, but the public value shows the
+   quotes.
