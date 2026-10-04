@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Type1 conversion honors subroutine returns, fractional widths and vertical
+  side bearings, and drops hint commands that Type2 cannot take in order.
+
 - Type1 fonts avoid signed overflow when they decrypt, keep binary ciphertext
   bytes, and support unencrypted charstrings.
 
