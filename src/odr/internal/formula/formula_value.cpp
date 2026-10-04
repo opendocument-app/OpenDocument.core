@@ -93,7 +93,7 @@ bool formula::approximately_equal(const double a, const double b) {
          difference < std::abs(b) * tolerance;
 }
 
-std::optional<std::variant<double, formula::ErrorType>>
+std::optional<formula::Number>
 formula::number_of_text(const std::string_view text) {
   std::string_view trimmed = text;
   while (!trimmed.empty() && trimmed.front() == ' ') {

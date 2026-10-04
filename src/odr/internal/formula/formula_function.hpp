@@ -9,7 +9,6 @@
 #include <functional>
 #include <string>
 #include <string_view>
-#include <variant>
 
 namespace odr::internal::formula {
 
@@ -19,11 +18,6 @@ class Evaluator;
 /// function throws it for an argument it cannot read the way the
 /// application would.
 struct NoAnswer final {};
-
-/// A number, or the error that stands in for one.
-using Number = std::variant<double, ErrorType>;
-/// A text, or the error that stands in for one.
-using Text = std::variant<std::string, ErrorType>;
 
 /// What a function is called with. The arguments are evaluated on demand, so
 /// `IF` reads only the branch it takes.

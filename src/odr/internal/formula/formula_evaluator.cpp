@@ -48,24 +48,21 @@ std::optional<char> primary_of(const char c) {
 std::strong_ordering order_of_texts(const std::string_view a,
                                     const std::string_view b,
                                     const bool case_sensitive) {
-  for (std::size_t i = 0; i < std::min(a.size(), b.size()); ++i) {
-    const std::optional<char> left = primary_of(a[i]);
-    const std::optional<char> right = primary_of(b[i]);
-    if (!left.has_value() || !right.has_value()) {
-      throw NoAnswer{};
-    }
-    if (*left != *right) {
-      return *left <=> *right;
-    }
+  if (a == b) {
+    return std::strong_ordering::equal;
   }
-  const auto rest_known = [](const std::string_view text, std::size_t from) {
-    return std::ranges::all_of(text.substr(from), [](const char c) {
-      return primary_of(c).has_value();
-    });
+  const auto known = [](const std::string_view text) {
+    return std::ranges::all_of(
+        text, [](const char c) { return primary_of(c).has_value(); });
   };
-  const std::size_t common = std::min(a.size(), b.size());
-  if (!rest_known(a, common) || !rest_known(b, common)) {
+  if (!known(a) || !known(b)) {
     throw NoAnswer{};
+  }
+  for (std::size_t i = 0; i < std::min(a.size(), b.size()); ++i) {
+    if (const char left = *primary_of(a[i]), right = *primary_of(b[i]);
+        left != right) {
+      return left <=> right;
+    }
   }
   if (a.size() != b.size()) {
     return a.size() <=> b.size();

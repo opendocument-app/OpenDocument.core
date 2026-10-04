@@ -34,8 +34,6 @@ public:
 
   /// The settings the document states, which a cell's date is read with.
   [[nodiscard]] const formula::Settings &settings() const noexcept;
-  /// The sheets of the document, in order.
-  [[nodiscard]] const std::vector<Sheet> &sheets() const noexcept;
 
 private:
   std::vector<Sheet> m_sheets;

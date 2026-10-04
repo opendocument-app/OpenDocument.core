@@ -115,6 +115,22 @@ TEST(SheetCellSource, an_xlsx_cell_reads_as_the_evaluator_reads_it) {
   EXPECT_EQ(source.settings().dialect, formula::Dialect::excel);
 }
 
+TEST(SheetCellSource, an_old_ods_error_is_a_number_showing_its_spelling) {
+  const std::shared_ptr<abstract::Document> document = ods(row(
+      R"x(<table:table-cell table:formula="oooc:=NA()" office:value-type="float")x"
+      R"( office:value="0"><text:p>#N/A</text:p></table:table-cell>)"
+      R"(<table:table-cell table:formula="oooc:=1/0" office:value-type="float")"
+      R"( office:value="0"><text:p>Err:503</text:p></table:table-cell>)"
+      R"(<table:table-cell table:formula="of:=&quot;#N/A&quot;")"
+      R"( office:value-type="string" office:string-value="#N/A">)"
+      R"(<text:p>#N/A</text:p></table:table-cell>)"));
+  const SheetCellSource source(*document);
+
+  EXPECT_EQ(at(source, 0, 0), Value{ErrorType::not_available});
+  EXPECT_EQ(at(source, 1, 0), std::nullopt);
+  EXPECT_EQ(at(source, 2, 0), Value{std::string("#N/A")});
+}
+
 TEST(SheetCellSource, a_position_a_merge_covers_is_empty) {
   const std::shared_ptr<abstract::Document> document = ods(
       row(R"(<table:table-cell table:number-columns-spanned="2")"

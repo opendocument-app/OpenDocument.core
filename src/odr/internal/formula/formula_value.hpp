@@ -95,6 +95,11 @@ inline bool operator==(const Matrix &a, const Matrix &b) {
   return a.columns == b.columns && a.rows == b.rows && a.cells == b.cells;
 }
 
+/// A number, or the error that stands in for one.
+using Number = std::variant<double, ErrorType>;
+/// A text, or the error that stands in for one.
+using Text = std::variant<std::string, ErrorType>;
+
 /// Whether @p a and @p b are one number, as a sheet compares two: equal where
 /// they agree to about 15 significant digits.
 [[nodiscard]] bool approximately_equal(double a, double b);
@@ -102,8 +107,7 @@ inline bool operator==(const Matrix &a, const Matrix &b) {
 /// The number a text reads as in arithmetic. `#VALUE!` where the text holds no
 /// digit, and nothing where it holds one in a form whose reading depends on
 /// the locale: a currency, a date, a grouped number.
-[[nodiscard]] std::optional<std::variant<double, ErrorType>>
-number_of_text(std::string_view text);
+[[nodiscard]] std::optional<Number> number_of_text(std::string_view text);
 
 /// The text a number reads as in a concatenation: up to 15 significant
 /// digits. Nothing where the two applications spell it apart, past 15

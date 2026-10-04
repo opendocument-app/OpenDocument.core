@@ -14,10 +14,11 @@ namespace {
 std::optional<formula::Value> value_of(const CellValue &value,
                                        const formula::Settings &settings) {
   using formula::Value;
-  if (value.has_formula() && value.has_text()) {
-    // LibreOffice before 4 and OpenOffice stated an error as the number 0
-    // showing it: in the language of the user (`#VALORE!`), and as its own
-    // codes (`Err:502`)
+  // LibreOffice before 4 and OpenOffice stated an error as the number 0
+  // showing it: in the language of the user (`#VALORE!`), and as its own codes
+  // (`Err:502`)
+  if (value.has_formula() && value.type() == ValueType::float_number &&
+      value.has_text()) {
     if (const std::optional<formula::ErrorType> error =
             formula::error_of_text(value.text())) {
       return Value{*error};
@@ -128,10 +129,6 @@ TableDimensions SheetCellSource::extent(const std::uint32_t sheet) const {
 
 const formula::Settings &SheetCellSource::settings() const noexcept {
   return m_settings;
-}
-
-const std::vector<Sheet> &SheetCellSource::sheets() const noexcept {
-  return m_sheets;
 }
 
 } // namespace odr::internal
