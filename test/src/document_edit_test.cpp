@@ -1080,7 +1080,8 @@ TEST(DocumentEdit, docx_text_typed_into_an_empty_paragraph_gets_a_w_r) {
                 .find(R"(<w:p><w:r><w:rPr><w:b/><w:bCs/></w:rPr>)"
                       R"(<w:t>typed</w:t></w:r></w:p>)"),
             std::string::npos);
-  EXPECT_EQ(nth_run(reopened(document), 0).as_text().content(), "typed");
+  const Document saved = reopened(document);
+  EXPECT_EQ(nth_run(saved, 0).as_text().content(), "typed");
 }
 
 TEST(DocumentEdit, pptx_text_typed_into_an_empty_paragraph_gets_an_a_r) {
