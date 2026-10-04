@@ -17,10 +17,11 @@ The release run heads these entries with the version and opens a fresh
 ## Unreleased
 
 - `Sheet::insert_rows(row, count)` and `Sheet::delete_rows(row, count)`, and
-  the `insertRows` and `deleteRows` ops, for an ods. Every formula, named
-  range and cell address that names a moved row moves with it, absolute or
-  not, and a reference into a removed row becomes `#REF!`. An edit that cuts
-  a merge refuses with `UnsupportedOperation`.
+  the `insertRows` and `deleteRows` ops, for an ods and an xlsx. Every
+  formula, named range and cell address that names a moved row moves with
+  it, absolute or not, and a reference into a removed row becomes `#REF!`.
+  An edit that cuts a merge, or an xlsx array formula, refuses with
+  `UnsupportedOperation`.
 - A date `CellValue` states its number as days since 1899-12-30, whatever
   the file counts from, and a time its length in days: an ods date or time
   now states one, and an xlsx date of a 1904 workbook counts 1462 days more. A `setCell` op takes

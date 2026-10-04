@@ -175,7 +175,7 @@ void shift(Node &node, std::int64_t columns, std::int64_t rows);
 
 /// Rows inserted into or removed from one sheet.
 struct RowEdit final {
-  std::string sheet; ///< the name a reference spells the edited sheet by
+  std::string sheet{}; ///< the name a reference spells the edited sheet by
   std::uint32_t row{0};
   std::uint32_t count{0};
   bool insert{true};
