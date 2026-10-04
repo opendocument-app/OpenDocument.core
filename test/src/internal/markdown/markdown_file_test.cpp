@@ -457,6 +457,9 @@ TEST(MarkdownDocument, a_null_byte_becomes_the_replacement_character) {
   const std::string in_text("a\0b\n", 4);
   const std::string in_code("```\na\0b\n```\n", 12);
   const std::string in_html("<div>\0</div>\n", 13);
+  const Document inline_code =
+      document_of(std::string("`a\0b`", 5), TextEncoding::utf8);
+  EXPECT_EQ(text_of(root(inline_code)), "a\ufffdb");
 
   const Document text = document_of(in_text, TextEncoding::utf8);
   const Document code = document_of(in_code, TextEncoding::utf8);

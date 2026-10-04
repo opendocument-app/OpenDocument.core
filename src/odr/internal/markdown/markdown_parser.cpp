@@ -213,7 +213,7 @@ public:
                                          table_detail->col_count);
       push_(element_id);
 
-      for (unsigned i = 0; i < table_detail->col_count; ++i) {
+      for (std::size_t i = 0; i < table_detail->col_count; ++i) {
         const auto &[column_id, column] =
             m_registry->create_element(ElementType::table_column);
         m_registry->append_column(element_id, column_id);
@@ -350,7 +350,15 @@ public:
           }
         }
       } else {
-        append_text_(text);
+        // Inline code delivers NUL bytes without a separate NULLCHAR callback.
+        std::string_view remaining = text;
+        for (auto pos = remaining.find('\0'); pos != std::string_view::npos;
+             pos = remaining.find('\0')) {
+          append_text_(remaining.substr(0, pos));
+          append_text_(replacement_character);
+          remaining.remove_prefix(pos + 1);
+        }
+        append_text_(remaining);
       }
       break;
     case MD_TEXT_HTML:
@@ -523,6 +531,9 @@ namespace odr::internal {
 ElementIdentifier markdown::parse_tree(ElementRegistry &registry,
                                        StyleRegistry &style_registry,
                                        const std::string_view text) {
+  if (!std::in_range<MD_SIZE>(text.size())) {
+    throw std::length_error("markdown: input exceeds md4c's size limit");
+  }
   Parser parser(registry, style_registry);
 
   MD_PARSER md_parser{};
