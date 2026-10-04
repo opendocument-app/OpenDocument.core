@@ -5,6 +5,8 @@
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
+#include <odr/internal/common/text_cursor.hpp>
+#include <odr/internal/util/stream_util.hpp>
 
 #include <pugixml.hpp>
 
@@ -12,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <limits>
 #include <memory>
 #include <new>
 #include <string_view>
@@ -74,21 +77,15 @@ std::string xml::escape_attribute(const std::string_view value) {
 
 pugi::xml_document xml::parse(const std::string &in) {
   pugi::xml_document result;
-  if (const auto success = result.load_string(in.c_str()); !success) {
+  if (const auto success = result.load_buffer(in.data(), in.size()); !success) {
     throw NoXmlFile();
   }
   return result;
 }
 
 pugi::xml_document xml::parse(std::istream &in) {
-  pugi::xml_document result;
-  if (const auto success = result.load(in); !success) {
-    throw NoXmlFile();
-  }
-  return result;
+  return parse(util::stream::read(in));
 }
-
-void xml::check_xml_file(std::istream &in) { std::ignore = parse(in); }
 
 void xml::set_attribute(pugi::xml_node node, const char *name,
                         const char *value) {
@@ -118,54 +115,50 @@ xml::insert_in_sequence(pugi::xml_node parent, const char *name,
 }
 
 std::string xml::read_declared_encoding(std::istream &in) {
-  static constexpr std::size_t probe_size = 1024;
-  static constexpr std::string_view space = " \t\r\n";
-
-  std::string probe(probe_size, '\0');
-  in.read(probe.data(), static_cast<std::streamsize>(probe.size()));
-  probe.resize(static_cast<std::size_t>(in.gcount()));
-
+  const std::string probe = util::stream::read(in, 1024);
   std::string_view head(probe);
   if (head.starts_with("\xef\xbb\xbf")) {
     head.remove_prefix(3);
   }
-  if (!head.starts_with("<?xml")) {
+  if (!head.starts_with("<?xml") || head.size() <= 5 ||
+      !util::string::is_ascii_whitespace(head[5])) {
     return {};
   }
-  const std::size_t declaration_end = head.find("?>");
-  if (declaration_end == std::string_view::npos) {
+  const std::size_t end = head.find("?>");
+  if (end == std::string_view::npos) {
     return {};
   }
-  head = head.substr(0, declaration_end);
-
-  const std::size_t name = head.find("encoding");
-  if (name == std::string_view::npos) {
-    return {};
+  TextCursor cursor(head.substr(5, end - 5));
+  while (!cursor.empty()) {
+    cursor.skip_whitespace();
+    const auto name = cursor.take_while(util::string::is_ascii_letter);
+    if (name.empty() || !cursor.consume('=')) {
+      return {};
+    }
+    cursor.skip_whitespace();
+    const char quote = cursor.take();
+    if (quote != '\'' && quote != '"') {
+      return {};
+    }
+    const auto value = cursor.rest();
+    const auto close = value.find(quote);
+    if (close == std::string_view::npos) {
+      return {};
+    }
+    if (name == "encoding") {
+      return std::string(value.substr(0, close));
+    }
+    cursor.advance(close + 1);
   }
-  head.remove_prefix(name + std::string_view("encoding").size());
-
-  std::size_t at = head.find_first_not_of(space);
-  if (at == std::string_view::npos || head[at] != '=') {
-    return {};
-  }
-  at = head.find_first_not_of(space, at + 1);
-  if (at == std::string_view::npos || (head[at] != '"' && head[at] != '\'')) {
-    return {};
-  }
-  const char quote = head[at];
-  ++at;
-  const std::size_t value_end = head.find(quote, at);
-  if (value_end == std::string_view::npos) {
-    return {};
-  }
-  return std::string(head.substr(at, value_end - at));
+  return {};
 }
 
 /// Reads @p file once; pugixml's stream loader buffers it twice. The buffer is
 /// `malloc`ed because pugixml takes it over and frees it, parse or no parse.
 pugi::xml_document xml::parse(const abstract::File &file) {
   const std::size_t size = file.size();
-  if (size == 0) {
+  if (size == 0 || size > static_cast<std::size_t>(
+                              std::numeric_limits<std::streamsize>::max())) {
     throw NoXmlFile();
   }
   // before the buffer: opening an entry that is encrypted or compressed by a
@@ -179,7 +172,7 @@ pugi::xml_document xml::parse(const abstract::File &file) {
   }
 
   stream->read(buffer.get(), static_cast<std::streamsize>(size));
-  if (stream->gcount() != static_cast<std::streamsize>(size)) {
+  if (stream->bad() || stream->gcount() != static_cast<std::streamsize>(size)) {
     throw NoXmlFile();
   }
 
@@ -208,8 +201,8 @@ std::vector<xml::StringToken> xml::tokenize_text(const std::string &text) {
   std::vector<StringToken> result;
 
   auto token_type{StringToken::Type::none};
-  std::uint32_t token_start{0};
-  auto close_token = [&](const std::uint32_t token_end,
+  std::size_t token_start{0};
+  auto close_token = [&](const std::size_t token_end,
                          const StringToken::Type new_token_type) {
     if (token_type == new_token_type) {
       return;
@@ -222,7 +215,7 @@ std::vector<xml::StringToken> xml::tokenize_text(const std::string &text) {
     token_type = new_token_type;
   };
 
-  for (std::uint32_t i = 0; i < text.size(); ++i) {
+  for (std::size_t i = 0; i < text.size(); ++i) {
     if (text[i] == '\t') {
       close_token(i, StringToken::Type::tabs);
     } else if (text[i] == ' ' &&

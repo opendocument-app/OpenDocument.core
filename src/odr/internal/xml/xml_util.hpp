@@ -42,9 +42,6 @@ void set_attribute(pugi::xml_node node, const char *name, const char *value);
 pugi::xml_node insert_in_sequence(pugi::xml_node parent, const char *name,
                                   std::span<const std::string_view> order);
 
-/// Throws unless @p in holds a well formed xml document.
-void check_xml_file(std::istream &in);
-
 /// The `encoding` pseudo-attribute of an `<?xml …?>` declaration at the head of
 /// @p in, empty if there is none. Ascii only - utf-16 and utf-32 are named by
 /// their byte order mark.
