@@ -22,6 +22,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <iterator>
 #include <optional>
 #include <ostream>
 #include <ranges>
@@ -610,8 +611,8 @@ public:
     // the parts the edit moves anything in, read before anything is written
     const ElementRegistry::ElementRelations &relations =
         *m_registry->element_relations(element_id);
-    const auto related = [&](const char *child) {
-      const char *id = sheet_node.child(child).attribute("r:id").value();
+    const auto related = [&](const pugi::xml_node reference) {
+      const char *id = reference.attribute("r:id").value();
       const auto target = relations.relations->find(id);
       return target == relations.relations->end()
                  ? pugi::xml_node()
@@ -622,13 +623,25 @@ public:
     pugi::xml_node notes;
     pugi::xml_node comments;
     pugi::xml_node threaded;
+    std::vector<pugi::xml_node> tables;
     try {
-      drawing = related("drawing");
-      notes = related("legacyDrawing");
+      drawing = related(sheet_node.child("drawing"));
+      notes = related(sheet_node.child("legacyDrawing"));
       comments = m_document->related_part(relations.origin, "comments");
       threaded = m_document->related_part(relations.origin, "threadedComment");
+      for (const pugi::xml_node part :
+           sheet_node.child("tableParts").children("tablePart")) {
+        if (const pugi::xml_node table = related(part)) {
+          tables.push_back(table);
+        }
+      }
     } catch (const std::exception &) {
       throw UnsupportedOperation(); // a part that does not parse, as VML may
+    }
+    if (std::ranges::any_of(tables, [&](const pugi::xml_node table) {
+          return cuts_table(table, edit);
+        })) {
+      throw UnsupportedOperation();
     }
 
     std::vector<ElementIdentifier> sheet_ids;
@@ -686,6 +699,10 @@ public:
     move_sheet_ranges(sheet_node, edit);
     move_drawing(drawing, edit);
     move_comments(comments, threaded, notes, edit);
+    std::vector<TableHeader> headers;
+    for (const pugi::xml_node table : tables) {
+      std::ranges::move(move_table(table, edit), std::back_inserter(headers));
+    }
 
     if (pugi::xml_node merges = sheet_node.child("mergeCells")) {
       for (pugi::xml_node merge = merges.child("mergeCell"); merge;) {
@@ -747,6 +764,11 @@ public:
       index_shared_formulas(m_registry->sheet_element_at(id));
     }
     m_document->drop_sheet_dependencies();
+
+    for (const TableHeader &header : headers) {
+      sheet_set_cell(element_id, header.position.column, header.position.row,
+                     CellValue(header.name));
+    }
   }
 
   /// The `col` declarations (18.3.1.13) after a column edit: one past the edit
