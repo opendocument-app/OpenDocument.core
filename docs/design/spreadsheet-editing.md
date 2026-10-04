@@ -124,8 +124,16 @@ changes it freely, so a cell has no fixed type. A number cell writes
 `office:value`, or becomes `t="inlineStr"` with `<is><t>`.
 
 Number formats are not parsed, so a formatted cell edited to `2000` shows
-`2000` until a producer reopens the file. Only `.` is a decimal separator,
-because no locale is read anywhere.
+`2000` until a producer reopens the file.
+
+The decimal separator is the one of `Document::locale`, which an `.ods`
+states on its default style (`fo:language`, `fo:script`, `fo:country`). An
+editable sheet page carries it as `data-odr-locale`, and the editor asks
+`Intl.NumberFormat` for the separator, so no table of locales ships. The
+op states the number with `.` and the text as typed. A point in a German
+sheet makes a string, as a comma in an English one does. An `.xlsx` states
+no locale and shows its numbers with `.` until number formats are read, so
+it keeps `.`.
 
 ### 5. Formulas are recomputed in C++, once, and reached through the host
 
@@ -347,7 +355,7 @@ reaches a cell in common, so a cell style after a row style stays after it.
   incremental recompute in topological order with cycles reported, and
   `Document::recalculate(operations)` returning the changed cells. Formula
   input in the editor comes with it.
-- Number formats (`number:number-style`, `numFmt`), dates and booleans as
-  their own kinds. This also fixes `.xlsx` serials on the read side.
+- Number formats (`number:number-style`, `numFmt`). `ValueType` already has
+  the date, time and boolean kinds; with the formats an `.xlsx` date serial
+  reads as a date.
 - Insert and delete of rows and columns.
-- The decimal separator and the document locale are read nowhere.

@@ -7,6 +7,7 @@
 
 #include <iosfwd>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -49,6 +50,9 @@ public:
 
   [[nodiscard]] FileType file_type() const noexcept;
   [[nodiscard]] DocumentType document_type() const noexcept;
+  /// The language the document states for its content, as a BCP 47 tag such
+  /// as `de-DE`. Nothing where it states none; only odf states one.
+  [[nodiscard]] std::optional<std::string> locale() const;
 
   /// @brief Applies @p operations to the document, in order.
   ///

@@ -70,6 +70,9 @@ public:
                 pugi::xml_node styles_root);
 
   [[nodiscard]] Style *style(const char *name) const;
+  /// The `style:default-style` of @p family, null where there is none.
+  [[nodiscard]] pugi::xml_node
+  default_style_node(const std::string &family) const;
 
   [[nodiscard]] PageLayout page_layout(const std::string &name) const;
 

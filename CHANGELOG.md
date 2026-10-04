@@ -64,6 +64,10 @@ The release run heads these entries with the version and opens a fresh
   `set_column_style` in python, `setRowStyle` and `setColumnStyle` in java
   and npm, and `setStyle(_:textStyle:row:)` and `setStyle(_:textStyle:column:)`
   in swift.
+
+- `Document::locale` answers the language an odf document states on its
+  default style, as a BCP 47 tag such as `de-DE`. The sheet editor reads a
+  typed number with the decimal separator of that locale.
 - An xlsx cell without its own style shows the style of its row, where the
   row states `customFormat`, else the style of its column.
 

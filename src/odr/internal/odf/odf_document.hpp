@@ -27,6 +27,8 @@ public:
 
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
+  /// `fo:language`, `fo:script` and `fo:country` of the default style.
+  [[nodiscard]] std::optional<std::string> locale() const override;
 
   void save(std::ostream &out) const override;
   void save(std::ostream &out, const char *password) const override;

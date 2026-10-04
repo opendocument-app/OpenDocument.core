@@ -135,7 +135,28 @@
     reportSelection(true);
   }
 
-  var NUMBER = /^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([eE][+-]?[0-9]+)?$/;
+  /// The decimal separator of the document's locale, `.` where it states
+  /// none: an xlsx shows its numbers with `.` until number formats are read.
+  var DECIMAL = (function () {
+    var locale = document.body.getAttribute("data-odr-locale");
+    try {
+      var parts = new Intl.NumberFormat(locale || "en").formatToParts(1.5);
+      for (var i = 0; i < parts.length; ++i) {
+        if (parts[i].type === "decimal") {
+          return parts[i].value;
+        }
+      }
+    } catch (e) {
+      // a tag the browser does not know
+    }
+    return ".";
+  })();
+  var NUMBER = new RegExp(
+    "^[+-]?([0-9]+(D[0-9]*)?|D[0-9]+)([eE][+-]?[0-9]+)?$".replace(
+      /D/g,
+      DECIMAL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    )
+  );
 
   /// The type follows the string the user typed: a number where the grammar
   /// says so, a string otherwise, and a leading `'` forces one.
@@ -146,7 +167,11 @@
       return { type: "empty" };
     }
     if (!quoted && NUMBER.test(content)) {
-      return { type: "number", number: Number(content), text: content };
+      return {
+        type: "number",
+        number: Number(content.replace(DECIMAL, ".")),
+        text: content,
+      };
     }
     return { type: "string", text: content };
   }

@@ -74,6 +74,8 @@ public:
 
   [[nodiscard]] virtual FileType file_type() const noexcept = 0;
   [[nodiscard]] virtual DocumentType document_type() const noexcept = 0;
+  /// A BCP 47 tag such as `de-DE`, or nothing where the file states none.
+  [[nodiscard]] virtual std::optional<std::string> locale() const = 0;
 
   [[nodiscard]] virtual std::shared_ptr<ReadableFilesystem>
   as_filesystem() const noexcept = 0;

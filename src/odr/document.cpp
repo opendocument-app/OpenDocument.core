@@ -96,6 +96,8 @@ DocumentType Document::document_type() const noexcept {
   return m_impl->document_type();
 }
 
+std::optional<std::string> Document::locale() const { return m_impl->locale(); }
+
 namespace {
 
 /// `{"type": "number", "number": …, "text": …}`, or `"string"` with the text

@@ -6,6 +6,8 @@
 #include <odr/internal/abstract/document.hpp>
 
 #include <memory>
+#include <optional>
+#include <string>
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
@@ -30,6 +32,7 @@ public:
 
   [[nodiscard]] FileType file_type() const noexcept final;
   [[nodiscard]] DocumentType document_type() const noexcept final;
+  [[nodiscard]] std::optional<std::string> locale() const override;
 
   [[nodiscard]] std::shared_ptr<abstract::ReadableFilesystem>
   as_filesystem() const noexcept final;
