@@ -34,6 +34,8 @@ std::optional<char> primary_of(const char c) {
   return std::nullopt;
 }
 
+} // namespace
+
 /// The order of two texts as both applications sort them: ignoring case
 /// first, then, where @p case_sensitive, a lower case letter before its upper
 /// case one. Only for letters and digits, the rest is for the collator.
@@ -89,8 +91,6 @@ bool equal_texts(const std::string_view a, const std::string_view b,
   return *left == *right;
 }
 
-} // namespace
-
 /// Evaluates the nodes of one formula. A reference stays one until an
 /// operator or a function reads it.
 class Evaluator final {
@@ -132,6 +132,17 @@ public:
     Value result = value(node);
     m_array = outer;
     return matrix_of(std::move(result));
+  }
+
+  /// The cell at @p position, without reading one past the extent of its
+  /// sheet, which is empty.
+  [[nodiscard]] Value cell(const SheetPosition &position) const {
+    const TableDimensions extent = m_source->extent(position.sheet);
+    if (position.cell.row >= extent.rows ||
+        position.cell.column >= extent.columns) {
+      return Value{Empty{}};
+    }
+    return read(position);
   }
 
   [[nodiscard]] Value read(const SheetPosition &position) const {
@@ -366,10 +377,13 @@ private:
     const std::uint32_t to_column = last(to.column, extent.columns);
     const std::uint32_t from_row = first(from.row);
     const std::uint32_t to_row = last(to.row, extent.rows);
-    return Area{sheet, TableRange({std::min(from_column, to_column),
-                                   std::min(from_row, to_row)},
-                                  {std::max(from_column, to_column),
-                                   std::max(from_row, to_row)})};
+    return Area{
+        sheet,
+        TableRange(
+            {std::min(from_column, to_column), std::min(from_row, to_row)},
+            {std::max(from_column, to_column), std::max(from_row, to_row)}),
+        !from.row.has_value() || !to.row.has_value(),
+        !from.column.has_value() || !to.column.has_value()};
   }
 
   [[nodiscard]] std::uint32_t sheet_of(const std::optional<std::string> &name,
@@ -719,6 +733,10 @@ void Call::for_each(const Reference &reference,
                     const std::function<void(const SheetPosition &,
                                              const Value &)> &visit) const {
   m_evaluator->for_each(reference, visit);
+}
+
+Value Call::cell(const SheetPosition &position) const {
+  return m_evaluator->cell(position);
 }
 
 Number Call::number(const Value &value) const {

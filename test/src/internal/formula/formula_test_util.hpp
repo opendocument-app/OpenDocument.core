@@ -69,6 +69,33 @@ inline Cells cells() {
   return result;
 }
 
+/// Column A of `s` as the criteria probes state it: `Sp`, `sp`, `Sa`,
+/// `x Sp`, 5, the text `5`, true, nothing, an empty text, `a*b`, `ab`, `Ü`,
+/// `ü` and `Sp ` with a space.
+inline Cells criteria_cells() {
+  Cells result;
+  const Value column[] = {Value{std::string("Sp")},
+                          Value{std::string("sp")},
+                          Value{std::string("Sa")},
+                          Value{std::string("x Sp")},
+                          Value{5.0},
+                          Value{std::string("5")},
+                          Value{true},
+                          Value{Empty{}},
+                          Value{std::string()},
+                          Value{std::string("a*b")},
+                          Value{std::string("ab")},
+                          Value{std::string("Ü")},
+                          Value{std::string("ü")},
+                          Value{std::string("Sp ")}};
+  for (std::uint32_t row = 0; row < std::size(column); ++row) {
+    if (!column[row].holds<Empty>()) {
+      result.values[SheetPosition(0, 0, row)] = column[row];
+    }
+  }
+  return result;
+}
+
 inline const SheetPosition formula_cell(0, 5, 29);
 
 inline std::optional<Value> evaluated(const std::string &formula,
