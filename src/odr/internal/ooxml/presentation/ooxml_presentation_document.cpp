@@ -388,7 +388,9 @@ public:
   }
 
   /// An `a:t` sits in an `a:r`, so a parent that is no run gets a new one,
-  /// ahead of the `a:endParaRPr` that the schema puts last.
+  /// ahead of the `a:endParaRPr` that the schema puts last. The run takes a
+  /// copy of that `a:endParaRPr` as its `a:rPr`, as PowerPoint does for
+  /// typed text: both are a `CT_TextCharacterProperties`.
   [[nodiscard]] ElementIdentifier
   element_append_text(const ElementIdentifier element_id,
                       const std::string &text) const override {
@@ -396,8 +398,11 @@ public:
     if (element_type(element_id) != ElementType::span) {
       pugi::xml_node parent = get_node(element_id);
       const pugi::xml_node end = parent.child("a:endParaRPr");
-      const pugi::xml_node run = end ? parent.insert_child_before("a:r", end)
-                                     : parent.append_child("a:r");
+      pugi::xml_node run = end ? parent.insert_child_before("a:r", end)
+                               : parent.append_child("a:r");
+      if (end) {
+        run.append_copy(end).set_name("a:rPr");
+      }
       const auto &[new_run_id, unused_run] =
           m_registry->create_element(ElementType::span, run);
       m_registry->append_child(element_id, new_run_id);

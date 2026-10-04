@@ -29,6 +29,10 @@ The release run heads these entries with the version and opens a fresh
   Before, the text sat straight in the paragraph, where Word, PowerPoint and
   LibreOffice do not show it, and a format on it refused.
 
+- Text typed into an empty paragraph of a docx or pptx takes the formatting
+  of the paragraph mark (`w:pPr/w:rPr`, `a:endParaRPr`), as Word and
+  PowerPoint do. Before, it fell back to the default style.
+
 ## v7.4.0 - 2026-10-03
 
 - `PdfFile::permissions` reports the permission bits of an encrypted pdf, in
