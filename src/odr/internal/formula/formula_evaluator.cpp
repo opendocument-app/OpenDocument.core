@@ -1,6 +1,7 @@
 #include <odr/internal/formula/formula_evaluator.hpp>
 
 #include <odr/internal/formula/formula_function.hpp>
+#include <odr/internal/formula/formula_text.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
@@ -79,19 +80,13 @@ bool equal_texts(const std::string_view a, const std::string_view b,
   if (case_sensitive) {
     return false;
   }
-  if (str::equals_ignore_case(a, b)) {
-    return true;
-  }
-  const auto ascii = [](const std::string_view text) {
-    return std::ranges::all_of(text, [](const char c) {
-      return static_cast<unsigned char>(c) < 0x80;
-    });
-  };
+  const std::optional<std::string> left = folded(a);
+  const std::optional<std::string> right = folded(b);
   // folding the case of the rest of Unicode is for the collator
-  if (!ascii(a) || !ascii(b)) {
+  if (!left.has_value() || !right.has_value()) {
     throw NoAnswer{};
   }
-  return false;
+  return *left == *right;
 }
 
 } // namespace
@@ -295,7 +290,11 @@ private:
     if (function == nullptr || m_array) {
       throw NoAnswer{};
     }
-    return function(Call(this, &node));
+    try {
+      return function(Call(this, &node));
+    } catch (const ErrorResult &result) {
+      return Value{result.error};
+    }
   }
 
   [[nodiscard]] Value value_of(const ArrayLiteral &array, const Node &node) {
@@ -702,7 +701,11 @@ Value Call::value(const std::size_t index) const {
 }
 
 Value Call::scalar(const std::size_t index) const {
-  return m_evaluator->scalar(value(index));
+  return scalar_of(value(index));
+}
+
+Value Call::scalar_of(Value value) const {
+  return m_evaluator->scalar(std::move(value));
 }
 
 Matrix Call::array(const std::size_t index) const {

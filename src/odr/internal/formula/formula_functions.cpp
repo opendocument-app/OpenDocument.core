@@ -41,8 +41,8 @@ const std::unordered_map<std::string, Function> &functions() {
   static const std::unordered_map<std::string, Function> result = [] {
     std::unordered_map<std::string, Function> table;
     for (const std::span<const FunctionEntry> entries :
-         {std::span<const FunctionEntry>(constant_functions),
-          math_functions()}) {
+         {std::span<const FunctionEntry>(constant_functions), math_functions(),
+          logic_functions(), text_functions()}) {
       for (const FunctionEntry &entry : entries) {
         table.emplace(entry.name, entry.function);
       }
@@ -57,6 +57,29 @@ const std::unordered_map<std::string, Function> &functions() {
 } // namespace odr::internal::formula
 
 namespace odr::internal {
+
+bool formula::is_libreoffice(const Call &call) {
+  return call.settings().dialect == Dialect::libreoffice;
+}
+
+formula::Value formula::refused(const Call &call, const ErrorType excel) {
+  if (is_libreoffice(call)) {
+    throw NoAnswer{};
+  }
+  return Value{excel};
+}
+
+void formula::expect_arguments(const Call &call, const std::size_t least,
+                               const std::size_t most) {
+  if (call.size() < least || call.size() > most) {
+    throw NoAnswer{};
+  }
+  for (std::size_t i = 0; i < call.size(); ++i) {
+    if (call.missing(i)) {
+      throw NoAnswer{};
+    }
+  }
+}
 
 formula::Function formula::find_function(const std::string_view name) {
   const auto found = functions().find(canonical_name(name));

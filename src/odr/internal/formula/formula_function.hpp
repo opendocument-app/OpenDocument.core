@@ -20,6 +20,12 @@ class Evaluator;
 /// application would.
 struct NoAnswer final {};
 
+/// Thrown by a function for an argument that is an error, which is then
+/// what the function gives back.
+struct ErrorResult final {
+  ErrorType error{ErrorType::value};
+};
+
 /// What a function is called with. The arguments are evaluated on demand, so
 /// `IF` reads only the branch it takes.
 class Call final {
@@ -34,6 +40,8 @@ public:
   /// Argument @p index read as one value: a range gives the cell the
   /// formula's row or column crosses, an array its first element.
   [[nodiscard]] Value scalar(std::size_t index) const;
+  /// @p value read as one value, as @ref scalar reads an argument.
+  [[nodiscard]] Value scalar_of(Value value) const;
   /// Argument @p index read in an array context, as `SUMPRODUCT` reads it:
   /// an operator reads every cell of a range.
   [[nodiscard]] Matrix array(std::size_t index) const;
@@ -67,8 +75,24 @@ struct FunctionEntry final {
 /// `x^y`, which LibreOffice and Excel compute apart at 0 and below.
 [[nodiscard]] Value power(double x, double y, Dialect dialect);
 
+/// Whether @p call follows LibreOffice's rules.
+[[nodiscard]] bool is_libreoffice(const Call &call);
+
+/// An argument a function refuses: @p excel in Excel. LibreOffice states a
+/// code of its own (`Err:502`), which a file cannot hold as an error, so it
+/// has no answer.
+[[nodiscard]] Value refused(const Call &call, ErrorType excel);
+
+/// Fails where @p call does not have @p least to @p most arguments, or
+/// leaves one out.
+void expect_arguments(const Call &call, std::size_t least, std::size_t most);
+
 /// The functions of mathematics and aggregation: `SUM`, `ROUND`, `SIN`.
 [[nodiscard]] std::span<const FunctionEntry> math_functions();
+/// The functions of logic and information: `IF`, `AND`, `ISBLANK`.
+[[nodiscard]] std::span<const FunctionEntry> logic_functions();
+/// The functions of text: `LEFT`, `FIND`, `SUBSTITUTE`.
+[[nodiscard]] std::span<const FunctionEntry> text_functions();
 
 /// The function a formula names as @p name, with or without the prefix a
 /// format writes in front of it (`_xlfn.`, `COM.MICROSOFT.`). Nothing for one

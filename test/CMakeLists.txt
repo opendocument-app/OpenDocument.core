@@ -66,6 +66,7 @@ add_executable(odr_test
         "src/internal/encoding/text_encoding_test.cpp"
         "src/internal/formula/formula_evaluator_test.cpp"
         "src/internal/formula/formula_functions_math_test.cpp"
+        "src/internal/formula/formula_functions_text_test.cpp"
         "src/internal/formula/formula_parser_test.cpp"
         "src/internal/formula/formula_writer_test.cpp"
         "src/internal/number_format/number_format_test.cpp"
