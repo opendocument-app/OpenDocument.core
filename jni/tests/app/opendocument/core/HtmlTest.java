@@ -231,6 +231,10 @@ class HtmlTest {
     List<HtmlView> views = service.listViews();
     assertEquals(1, views.size());
     assertTrue(service.exists(views.get(0).path()));
+    String missing = "missing-😀.html";
+    OdrException error =
+        assertThrows(OdrException.FileNotFound.class, () -> service.write(missing));
+    assertEquals("file not found: Unknown path: " + missing, error.getMessage());
 
     Html.Content content = views.get(0).writeHtml();
     assertTrue(content.html.contains(TestFiles.ODT_WORD));

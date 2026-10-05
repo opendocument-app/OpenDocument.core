@@ -11,17 +11,17 @@
 
 namespace odr_jni {
 
-/// Java string (UTF-16) to UTF-8. Handles nullptr and supplementary planes
-/// (unlike JNI's modified UTF-8 accessors).
+/// Converts UTF-16 to UTF-8; nullptr is empty and unpaired surrogates are
+/// rejected.
 std::string to_string(JNIEnv *env, jstring string);
-/// UTF-8 to Java string (UTF-16).
+/// Converts UTF-8 to UTF-16, replacing invalid sequences with U+FFFD.
 jstring to_jstring(JNIEnv *env, std::string_view string);
 
 jbyteArray to_jbytes(JNIEnv *env, std::string_view bytes);
 
 /// Rethrows the pending C++ exception as the matching Java exception
 /// (`app.opendocument.core.OdrException` and subclasses).
-void throw_java(JNIEnv *env);
+void throw_java(JNIEnv *env) noexcept;
 
 /// Runs `f`, converting any C++ exception into a pending Java exception and
 /// returning a value-initialized result (ignored by the JVM in that case).
