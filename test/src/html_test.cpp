@@ -1131,7 +1131,7 @@ TEST(html, an_editable_csv_states_that_it_takes_no_style) {
 }
 
 // The rows a sheet keeps follow how wide it turns out to be.
-TEST(html, the_cell_budget_bounds_the_rows_by_the_width) {
+TEST(html, the_cell_budget_bounds_columns_and_rows) {
   HtmlConfig config;
   config.spreadsheet_limit = TableDimensions(1000, 1000);
   config.spreadsheet_cell_limit = 60;
@@ -1153,6 +1153,12 @@ TEST(html, the_cell_budget_bounds_the_rows_by_the_width) {
   // the rectangle still caps a sheet the budget would let through
   config.spreadsheet_limit = TableDimensions(5, 1000);
   EXPECT_EQ(rendered(30, 3).rows, 5);
+  config.spreadsheet_limit.reset();
+  EXPECT_EQ(rendered(2, 80).columns, 60);
+  EXPECT_EQ(rendered(2, 80).rows, 1);
+  config.spreadsheet_cell_limit = 0;
+  EXPECT_EQ(rendered(2, 80).columns, 1);
+  EXPECT_EQ(rendered(2, 80).rows, 1);
 }
 
 // #822: an inline `style` is the one shape a browser cannot share across the
@@ -1622,6 +1628,7 @@ TEST(html, a_cell_spills_over_a_blank_neighbour_and_is_cut_by_a_full_one) {
   EXPECT_NE(spills.find("max-width:0;white-space:nowrap;"
                         "clip-path:inset(0 -96px 0 0)"),
             std::string::npos);
+  EXPECT_EQ(spills.find("nowrap;overflow:hidden"), std::string::npos);
 }
 
 // #822: and where nothing follows it at all, out onto the canvas — there is no

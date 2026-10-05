@@ -165,7 +165,11 @@ TableDimensions html::sheet_rendered_extent(const Sheet &sheet,
   }
   end_column = std::max(1u, end_column);
   if (config.spreadsheet_cell_limit) {
-    const std::uint64_t rows = *config.spreadsheet_cell_limit / end_column;
+    const std::uint64_t limit =
+        std::max<std::uint64_t>(1, *config.spreadsheet_cell_limit);
+    end_column =
+        static_cast<std::uint32_t>(std::min<std::uint64_t>(end_column, limit));
+    const std::uint64_t rows = limit / end_column;
     end_row = static_cast<std::uint32_t>(
         std::min<std::uint64_t>(end_row, std::max<std::uint64_t>(1, rows)));
   }
@@ -769,10 +773,9 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
         // the bottom and would paint over the row below.
         cell_css += "overflow:hidden;";
       }
-      // Over the empty cells beside it, cut where the next one has something
-      // to show, unbounded where nothing follows. Each blank cell is walked by
-      // the one cell that may spill over it, so the row costs one pass.
-      if (!wraps && cuts_its_text && column_pixels[column_index].has_value()) {
+      // Only nonblank cells spill, so each blank span is scanned once.
+      if (!wraps && cuts_its_text && column_pixels[column_index].has_value() &&
+          !is_blank(cell)) {
         std::optional<double> spill(0);
         bool bounded = false;
         for (std::uint32_t ahead = next_column; ahead < end_column; ++ahead) {
