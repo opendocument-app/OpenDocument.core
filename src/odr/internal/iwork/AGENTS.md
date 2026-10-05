@@ -56,10 +56,10 @@ unmapped type id is skipped.
 
 What does throw: framing that overruns the file, a Snappy block that does not
 fill its declared length, a varint that does not terminate, an identifier the
-package does not hold, and text that is not UTF-8. The spine entry points
-throw on a wrong root type, because a mismatch there leaves nothing to render.
-`read_table` is per drawable, so a wrong archive there loses one table and not
-the document.
+package does not hold, a table dimension or tile row that does not fit 32 bits,
+and text that is not UTF-8. The spine entry points throw on a wrong root type,
+because a mismatch there leaves nothing to render. `read_table` is per drawable,
+so a wrong archive there loses one table and not the document.
 
 ## Every declared size is the file's word
 
