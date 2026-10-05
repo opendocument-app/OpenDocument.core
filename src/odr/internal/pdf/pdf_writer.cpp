@@ -2,6 +2,7 @@
 
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
+#include <odr/internal/pdf/pdf_file_object.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <algorithm>
@@ -47,7 +48,7 @@ std::string xref_stream_table(const Placements &placements) {
   std::string result;
   for (const auto &[id, placement] : placements) {
     result.push_back(1);
-    for (int shift = 24; shift >= 0; shift -= 8) {
+    for (std::int32_t shift = 24; shift >= 0; shift -= 8) {
       result.push_back(static_cast<char>((placement.offset >> shift) & 0xff));
     }
     result.push_back(static_cast<char>((placement.gen >> 8) & 0xff));
@@ -55,6 +56,42 @@ std::string xref_stream_table(const Placements &placements) {
   }
   return result;
 }
+
+class InputPosition final {
+public:
+  explicit InputPosition(std::istream &in) : m_in(in) {
+    m_in.clear();
+    m_position = m_in.tellg();
+    if (m_position == std::streampos{-1}) {
+      throw std::ios_base::failure("cannot save PDF input position");
+    }
+  }
+
+  ~InputPosition() {
+    try {
+      restore();
+    } catch (...) { // NOLINT(bugprone-empty-catch)
+      // Preserve the original exception if restoring also fails.
+    }
+  }
+
+  void restore() {
+    if (m_restored) {
+      return;
+    }
+    m_in.clear();
+    m_in.seekg(m_position);
+    if (!m_in) {
+      throw std::ios_base::failure("cannot restore PDF input position");
+    }
+    m_restored = true;
+  }
+
+private:
+  std::istream &m_in;
+  std::streampos m_position;
+  bool m_restored{false};
+};
 
 struct SourceExtent {
   std::uint32_t size{0};
@@ -64,12 +101,15 @@ struct SourceExtent {
 SourceExtent measure(std::istream &in) {
   in.clear();
   in.seekg(0, std::ios::end);
-  const auto size = static_cast<std::uint32_t>(in.tellg());
+  const auto size = checked_file_index(static_cast<std::streamoff>(in.tellg()));
   if (size == 0) {
     return {0, true};
   }
   in.seekg(-1, std::ios::end);
   const char last = static_cast<char>(in.get());
+  if (!in) {
+    throw std::ios_base::failure("cannot read PDF source");
+  }
   return {size, last == '\n' || last == '\r'};
 }
 
@@ -95,21 +135,35 @@ IncrementalWriter::IncrementalWriter(DocumentParser &parser)
 }
 
 ObjectReference IncrementalWriter::mint_object() {
+  checked_file_index(m_next_id, UINT32_MAX - 1);
   return ObjectReference(m_next_id++, 0);
 }
 
 void IncrementalWriter::set_object(const ObjectReference &reference,
                                    Object object) {
-  m_entries[reference] = Entry{std::move(object), std::nullopt};
-  m_next_id = std::max(m_next_id, reference.id + 1);
+  set_entry(reference, Entry{std::move(object), std::nullopt});
 }
 
 void IncrementalWriter::set_stream_object(const ObjectReference &reference,
                                           Dictionary dictionary,
                                           std::string stream) {
-  dictionary["Length"] = Object(static_cast<Integer>(stream.size()));
-  m_entries[reference] =
-      Entry{Object(std::move(dictionary)), std::move(stream)};
+  dictionary["Length"] = Object(Integer{checked_file_index(stream.size())});
+  set_entry(reference, Entry{Object(std::move(dictionary)), std::move(stream)});
+}
+
+void IncrementalWriter::set_entry(const ObjectReference &reference,
+                                  Entry entry) {
+  checked_file_index(reference.id, UINT32_MAX - 1);
+  checked_file_index(reference.gen, UINT16_MAX);
+  if (reference.id == 0) {
+    throw std::runtime_error("PDF object zero is reserved");
+  }
+  const auto existing = m_entries.lower_bound(ObjectReference{reference.id, 0});
+  if (existing != m_entries.end() && existing->first.id == reference.id &&
+      existing->first.gen != reference.gen) {
+    throw std::runtime_error("conflicting PDF object generations");
+  }
+  m_entries[reference] = std::move(entry);
   m_next_id = std::max(m_next_id, reference.id + 1);
 }
 
@@ -119,7 +173,7 @@ IncrementalWriter::build_trailer(const std::uint64_t size,
   const Dictionary &source = m_parser->trailer();
 
   Dictionary result;
-  result["Size"] = Object(static_cast<Integer>(size));
+  result["Size"] = Object(Integer{checked_file_index(size)});
   result["Root"] = source.get("Root");
   if (source.has_value("Info")) {
     result["Info"] = source.get("Info");
@@ -143,7 +197,7 @@ IncrementalWriter::build_trailer(const std::uint64_t size,
 
 void IncrementalWriter::write(std::ostream &out) const {
   std::istream &in = m_parser->in();
-  const std::streampos resume = in.tellg();
+  InputPosition resume(in);
 
   const SourceExtent source = measure(in);
   // An object must start on its own line; a `%%EOF` may end the file bare.
@@ -152,7 +206,7 @@ void IncrementalWriter::write(std::ostream &out) const {
   // Only the update is buffered; the source is piped.
   std::string update = separator;
   const auto position = [&] {
-    return static_cast<std::uint32_t>(source.size + update.size());
+    return checked_file_index(std::uint64_t{source.size} + update.size());
   };
 
   Placements placements;
@@ -223,13 +277,19 @@ void IncrementalWriter::write(std::ostream &out) const {
 
   update += fmt::format("startxref\n{}\n%%EOF\n", xref_position);
 
+  position();
+  if (!std::in_range<std::streamsize>(update.size())) {
+    throw std::length_error("PDF update is too large");
+  }
   in.clear();
   in.seekg(0);
   util::stream::pipe(in, out);
   out.write(update.data(), static_cast<std::streamsize>(update.size()));
 
-  in.clear();
-  in.seekg(resume);
+  if (!out) {
+    throw std::ios_base::failure("cannot write PDF update");
+  }
+  resume.restore();
 }
 
 } // namespace odr::internal::pdf

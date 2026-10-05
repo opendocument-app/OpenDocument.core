@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF incremental writes reject invalid or conflicting object references and
+  oversized output, report write failures and restore the parser position.
+
 - PDF Lab and ICC colors, indexed palettes and image samples honor component
   ranges. Invalid Lab white points and malformed range arrays are rejected.
 

@@ -35,7 +35,7 @@ public:
 
   [[nodiscard]] std::size_t size() const noexcept { return m_entries.size(); }
 
-  /// Legal with nothing set: the result parses identically.
+  /// Copy and append, restoring the parser position even on failure.
   void write(std::ostream &out) const;
 
 private:
@@ -43,6 +43,8 @@ private:
     Object object;
     std::optional<std::string> stream;
   };
+
+  void set_entry(const ObjectReference &reference, Entry entry);
 
   /// `/Root`, `/Info` and `/ID` from the source, plus `/Size` and `/Prev`.
   [[nodiscard]] Dictionary build_trailer(std::uint64_t size,
