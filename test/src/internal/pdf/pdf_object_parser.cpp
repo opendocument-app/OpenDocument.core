@@ -95,7 +95,10 @@ TEST(PdfObjectParser, read_number) {
                    0.12345678901234568);
   EXPECT_DOUBLE_EQ(read_number("18446744073709551616.0"),
                    18446744073709551616.0);
-  for (const std::string input : {".", "+.", "-.", "1.2.3", "1e3", "123abc"}) {
+  EXPECT_DOUBLE_EQ(read_number("1e3"), 1000.0);
+  EXPECT_DOUBLE_EQ(read_number("-2.5E-1"), -0.25);
+  for (const std::string input :
+       {".", "+.", "-.", "1.2.3", "1e", "1e+", "e3", "123abc", "+-5"}) {
     SCOPED_TRACE(input);
     EXPECT_THROW(read_number(input), std::runtime_error);
   }
@@ -142,7 +145,7 @@ TEST(PdfObjectParser, read_integer) {
        {"9223372036854775808", "-9223372036854775809"}) {
     SCOPED_TRACE(input);
     EXPECT_THROW(read_integer(input), std::runtime_error);
-    EXPECT_THROW(read_object(input), std::runtime_error);
+    EXPECT_DOUBLE_EQ(read_object(input).first.as_real(), std::stod(input));
   }
 }
 

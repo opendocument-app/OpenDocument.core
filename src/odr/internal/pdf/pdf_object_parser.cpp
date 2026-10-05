@@ -270,23 +270,43 @@ Real ObjectParser::read_number() {
 
 std::variant<Integer, Real> ObjectParser::read_integer_or_real() {
   const std::string token = read_keyword();
-  if (token.find('.') == std::string::npos) {
-    return parse_integer<Integer>(token);
-  }
-
-  // ISO 32000-1 7.3.3: one decimal point, at least one digit, no exponent.
   std::string_view magnitude(token);
   if (magnitude.starts_with('+') || magnitude.starts_with('-')) {
     magnitude.remove_prefix(1);
   }
-  if (magnitude == "." ||
-      magnitude.find_first_not_of("0123456789.") != std::string_view::npos ||
-      std::ranges::count(magnitude, '.') != 1) {
-    throw std::runtime_error("invalid PDF real");
+
+  // ISO 32000-1 7.3.3 has neither an exponent nor a limit, but producers write
+  // both; like pdf.js, `1e3` and an integer past the range read as reals.
+  const std::size_t exponent = magnitude.find_first_of("eE");
+  const std::string_view mantissa = magnitude.substr(0, exponent);
+  if (mantissa.empty() || mantissa == "." ||
+      mantissa.find_first_not_of("0123456789.") != std::string_view::npos ||
+      std::ranges::count(mantissa, '.') > 1) {
+    throw std::runtime_error("invalid PDF number");
   }
+  if (exponent != std::string_view::npos) {
+    std::string_view power = magnitude.substr(exponent + 1);
+    if (power.starts_with('+') || power.starts_with('-')) {
+      power.remove_prefix(1);
+    }
+    if (power.empty() ||
+        power.find_first_not_of("0123456789") != std::string_view::npos) {
+      throw std::runtime_error("invalid PDF number");
+    }
+  } else if (mantissa.find('.') == std::string_view::npos) {
+    const std::string_view digits =
+        token.starts_with('+') ? std::string_view(token).substr(1) : token;
+    Integer value{};
+    const auto [end, error] =
+        std::from_chars(digits.data(), digits.data() + digits.size(), value);
+    if (error == std::errc{} && end == digits.data() + digits.size()) {
+      return value;
+    }
+  }
+
   const auto value = util::number::parse(token);
   if (!value || !std::isfinite(*value)) {
-    throw std::runtime_error("out-of-range PDF real");
+    throw std::runtime_error("out-of-range PDF number");
   }
   return *value;
 }
