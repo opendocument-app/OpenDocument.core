@@ -10,6 +10,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <utility>
@@ -82,9 +83,16 @@ std::string get_rgb_rows(const std::string &bmp, const DibLayout &layout) {
 
   const auto width = static_cast<std::size_t>(layout.width);
   const auto height = static_cast<std::size_t>(std::abs(layout.height));
-  const std::size_t stride = ((width * layout.bit_count + 31) / 32) * 4;
-  if (bmp.size() < layout.off_bits + stride * height) {
+  const std::uint64_t row_size =
+      ((std::uint64_t{width} * layout.bit_count + 31) / 32) * 4;
+  if (layout.off_bits > bmp.size() ||
+      row_size > (bmp.size() - layout.off_bits) / height) {
     return {};
+  }
+
+  const auto stride = static_cast<std::size_t>(row_size);
+  if (width > std::string().max_size() / height / 3) {
+    throw MalformedSvmFile();
   }
 
   // a palette sits between the header and the pixels, three bytes an entry in
@@ -254,6 +262,14 @@ std::u16string read_u16string(std::istream &in, const std::uint32_t length) {
 }
 
 } // namespace
+
+void svm::skip_bytes(std::istream &in, const std::uint64_t count) {
+  try {
+    util::byte_stream::skip(in, count);
+  } catch (const std::runtime_error &) {
+    throw MalformedSvmFile();
+  }
+}
 
 std::string svm::read_ascii_string(std::istream &in,
                                    const std::uint32_t length) {
@@ -509,8 +525,7 @@ svm::Header svm::read_header(std::istream &in) {
   if (const std::int64_t left =
           result.vl.length - (static_cast<std::int64_t>(in.tellg()) - start);
       left > 0) {
-    // TODO log header skipping bytes
-    in.ignore(static_cast<std::streamsize>(left));
+    skip_bytes(in, static_cast<std::uint64_t>(left));
   }
 
   return result;
@@ -813,19 +828,27 @@ svm::read_text_rectangle_action(std::istream &in, const VersionLength &vl,
 svm::Image svm::read_dib(std::istream &in, const std::uint32_t limit) {
   Image result;
   DibLayout layout;
+  std::uint64_t remaining = limit;
+  const auto read = [&](const std::uint64_t count) {
+    if (count > remaining) {
+      throw MalformedSvmFile();
+    }
+    remaining -= count;
+    return read_bytes(in, count);
+  };
 
-  std::string bytes = read_bytes(in, bmp_file_header_size);
+  std::string bytes = read(bmp_file_header_size);
   if (read_u16(bytes, 0) != bmp_magic) {
     throw MalformedSvmFile();
   }
   layout.off_bits = read_u32(bytes, 10);
 
-  bytes += read_bytes(in, sizeof(std::uint32_t));
+  bytes += read(sizeof(std::uint32_t));
   layout.header_size = read_u32(bytes, bmp_file_header_size);
-  if (layout.header_size < dib_core_header_size || layout.header_size > limit) {
+  if (layout.header_size != dib_core_header_size && layout.header_size < 40) {
     throw MalformedSvmFile();
   }
-  bytes += read_bytes(in, layout.header_size - sizeof(std::uint32_t));
+  bytes += read(layout.header_size - sizeof(std::uint32_t));
 
   std::uint32_t size_image{};
   if (layout.header_size == dib_core_header_size) {
@@ -839,14 +862,18 @@ svm::Image svm::read_dib(std::istream &in, const std::uint32_t limit) {
     layout.compression = read_u32(bytes, 30);
     size_image = read_u32(bytes, 34);
   }
-  // a negative height is a top-down dib; it is still that many rows
+  if (layout.width <= 0 || layout.height == 0 ||
+      layout.height == std::numeric_limits<std::int32_t>::min()) {
+    throw MalformedSvmFile();
+  }
+  // A negative height denotes top-down rows.
   result.size_pixel = {layout.width, std::abs(layout.height)};
 
   if (layout.compression == dib_zcompress) {
     // the palette and the pixels are inside the stream, so nothing but its
     // length can be read without inflating it
-    const std::string prefix = read_bytes(in, 3 * sizeof(std::uint32_t));
-    read_bytes(in, read_u32(prefix, 0));
+    const std::string prefix = read(3 * sizeof(std::uint32_t));
+    read(read_u32(prefix, 0));
     return result;
   }
 
@@ -854,7 +881,7 @@ svm::Image svm::read_dib(std::istream &in, const std::uint32_t limit) {
     throw MalformedSvmFile();
   }
   // the palette, and any gap the writer left before the pixels
-  bytes += read_bytes(in, layout.off_bits - bytes.size());
+  bytes += read(layout.off_bits - bytes.size());
 
   // `bfSize` is written from the uncompressed size, so it says nothing about a
   // compressed dib; the header's own numbers do
@@ -863,13 +890,17 @@ svm::Image svm::read_dib(std::istream &in, const std::uint32_t limit) {
         31) /
        32) *
       4;
+  if (layout.compression == 0 &&
+      stride > remaining / static_cast<std::uint32_t>(result.size_pixel.y)) {
+    throw MalformedSvmFile();
+  }
   const std::uint64_t pixels = layout.compression == 0
                                    ? stride * result.size_pixel.y
                                    : static_cast<std::uint64_t>(size_image);
   if (pixels == 0 || pixels > limit) {
     throw MalformedSvmFile();
   }
-  bytes += read_bytes(in, pixels);
+  bytes += read(pixels);
 
   if (const std::string rows = get_rgb_rows(bytes, layout); !rows.empty()) {
     result.data = png::write(rows, result.size_pixel.x, result.size_pixel.y, 3);

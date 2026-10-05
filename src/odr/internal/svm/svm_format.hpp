@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -453,11 +454,22 @@ struct TextLineAction final {
 /// The action type's name as `metaact.hxx` spells it, or `"UNKNOWN"`.
 [[nodiscard]] std::string_view action_type_name(std::uint16_t type);
 
-/// Reads a fixed-size field. A short read leaves the destination untouched, so
-/// the stream ending mid-field is malformed input rather than a stale value.
+/// Skips exactly @p count bytes; throws `MalformedSvmFile` where the stream
+/// ends first.
+void skip_bytes(std::istream &in, std::uint64_t count);
+
+/// Reads one field, leaving the destination unchanged on a short read.
 template <typename T> void read_primitive(std::istream &in, T &out) {
-  if (!in.read(reinterpret_cast<char *>(&out), sizeof(out))) {
-    throw MalformedSvmFile();
+  if constexpr (std::is_same_v<T, bool>) {
+    std::uint8_t byte{};
+    read_primitive(in, byte);
+    out = byte != 0;
+  } else {
+    T value{};
+    if (!in.read(reinterpret_cast<char *>(&value), sizeof(value))) {
+      throw MalformedSvmFile();
+    }
+    out = value;
   }
 }
 
