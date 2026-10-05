@@ -48,6 +48,10 @@ public:
   /// Removes @p element_id and its subtree; it keeps its id and stops being
   /// reachable.
   void remove(const ElementIdentifier element_id) const {
+    const ElementType type = m_registry->element_at(element_id).type;
+    if (type == ElementType::sheet_cell || type == ElementType::table_column) {
+      throw UnsupportedOperation();
+    }
     const NodeSpan span = node_span(element_id);
     m_registry->unlink_child(element_id);
     m_registry->invalidate(element_id);

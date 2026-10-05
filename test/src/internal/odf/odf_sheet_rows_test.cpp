@@ -123,7 +123,11 @@ TEST(OdfSheetRows, a_delete_moves_the_rows_below_up) {
   const Document document = document_of(flat_spreadsheet(abc()));
   const Sheet sheet = sheet_at(document, 0);
 
+  const SheetCell removed = sheet.cell(0, 0);
+  const SheetCell kept = sheet.cell(0, 2);
   sheet.delete_rows(0, 2);
+  EXPECT_THROW((void)removed.value(), std::out_of_range);
+  EXPECT_EQ(kept.value().text(), "c");
 
   EXPECT_EQ(text_at(sheet, 0, 0), "c");
   EXPECT_EQ(sheet.dimensions().rows, 1);

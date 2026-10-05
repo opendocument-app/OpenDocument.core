@@ -820,6 +820,11 @@ public:
         m_document->related_part(AbsPath("/xl/workbook.xml"), "calcChain"),
         sheet_id, edit);
 
+    for (const auto &[position, cell] : sheet.cells) {
+      if (!move_position(position, edit)) {
+        m_registry->invalidate(cell.element_id);
+      }
+    }
     pugi::xml_node sheet_data = sheet_node.child("sheetData");
     for (pugi::xml_node row_node = sheet_data.child("row"); row_node;) {
       const pugi::xml_node next = row_node.next_sibling("row");

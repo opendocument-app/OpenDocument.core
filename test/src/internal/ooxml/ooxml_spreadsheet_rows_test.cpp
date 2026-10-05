@@ -147,7 +147,11 @@ TEST(OoxmlSpreadsheetRows, a_delete_removes_the_rows_and_numbers_the_rest) {
   const Document document = decode(workbook(abc));
   const Sheet sheet = first_sheet(document);
 
+  const SheetCell removed = sheet.cell(0, 0);
+  const SheetCell kept = sheet.cell(0, 2);
   sheet.delete_rows(0, 2);
+  EXPECT_THROW((void)removed.value(), std::out_of_range);
+  EXPECT_EQ(kept.value().text(), "c");
 
   EXPECT_EQ(sheet.cell(0, 0).value().text(), "c");
   EXPECT_EQ(sheet.cell(0, 1).value().type(), ValueType::unknown);
