@@ -121,12 +121,16 @@ odr::Color unbox_color(NSValue *const value) {
   return guarded_value([&] { return to_nsstring(_handle->to_string()); }, @"");
 }
 
-- (instancetype)initWithString:(NSString *)string {
+- (nullable instancetype)initWithString:(NSString *)string {
   if ((self = [super init]) == nil) {
     return nil;
   }
-  _handle = odr::Measure(to_string(string));
-  return self;
+  return guarded_value(
+      [&]() -> ODRMeasure * {
+        _handle = odr::Measure(to_string(string));
+        return self;
+      },
+      nil);
 }
 
 - (instancetype)initWithMagnitude:(double)magnitude unit:(NSString *)unit {

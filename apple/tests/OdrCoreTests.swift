@@ -778,6 +778,19 @@ final class PdfAnnotationTests: XCTestCase {
   }
 }
 
+final class MeasureTests: XCTestCase {
+  func testConstructionReturnsNilOnFailure() throws {
+    let parsed = try XCTUnwrap(Measure(string: "2.5cm"))
+    XCTAssertEqual(parsed.magnitude, 2.5)
+    XCTAssertEqual(parsed.unit, "cm")
+    XCTAssertEqual(Measure(magnitude: 2.5, unit: "cm").stringValue, "2.5cm")
+    XCTAssertEqual(Measure(string: "12")?.unit, "")
+    for invalid in ["", "invalid", "1e999px"] {
+      XCTAssertNil(Measure(string: invalid), invalid)
+    }
+  }
+}
+
 final class TableAddressTests: XCTestCase {
   func testRoundTrips() throws {
     XCTAssertEqual(TableAddress.columnNumber(from: "C"), 2)
