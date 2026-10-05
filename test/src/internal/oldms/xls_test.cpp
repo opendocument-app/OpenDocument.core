@@ -1,3 +1,5 @@
+#include <locale_util.hpp>
+
 #include <test_util.hpp>
 
 #include <gtest/gtest.h>
@@ -465,10 +467,7 @@ TEST(OldMs, xls_mulrk_takes_its_cells_from_the_body_size) {
 }
 
 TEST(OldMs, xls_number_format_ignores_numeric_locale) {
-  struct LocaleGuard final {
-    std::string previous{std::setlocale(LC_NUMERIC, nullptr)};
-    ~LocaleGuard() { std::setlocale(LC_NUMERIC, previous.c_str()); }
-  } guard;
+  const odr::test::LocaleGuard guard;
   if (std::setlocale(LC_NUMERIC, "de_DE.UTF-8") == nullptr &&
       std::setlocale(LC_NUMERIC, "de_DE.utf8") == nullptr) {
     GTEST_SKIP() << "German locale unavailable";

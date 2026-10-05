@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- ODF geometry reads decimal numbers independently of the host locale and
+  bounds numeric scans to the current token instead of copying expression tails.
+
 - ODF geometry parsing terminates on invalid text after a closed path and
   rejects excessive polygon/arc expansion, deep formulas and nonfinite results.
 

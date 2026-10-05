@@ -7,6 +7,7 @@
 #include <odr/internal/util/byte_string.hpp>
 
 #include <internal/font/type1_test_util.hpp>
+#include <locale_util.hpp>
 
 #include <gtest/gtest.h>
 
@@ -88,10 +89,7 @@ TEST(Type1FontTest, IsType1Magic) {
 }
 
 TEST(Type1FontTest, ParsesHeaderAndEncoding) {
-  struct LocaleGuard final {
-    std::string previous{std::setlocale(LC_NUMERIC, nullptr)};
-    ~LocaleGuard() { std::setlocale(LC_NUMERIC, previous.c_str()); }
-  } guard;
+  const odr::test::LocaleGuard guard;
   if (std::setlocale(LC_NUMERIC, "de_DE.UTF-8") == nullptr) {
     std::setlocale(LC_NUMERIC, "de_DE.utf8");
   }
