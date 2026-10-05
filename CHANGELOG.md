@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Table spans use storage proportional to merged cells, survive skipped rows,
+  and reject overflowing dimensions. Recalculation bounds formula spans before
+  multiplying or accumulating their size.
+
 - CSV preserves carriage-return record endings and separator directives when
   options are reapplied. Out-of-range coordinates and growth are rejected
   before cell IDs or allocation sizes can wrap.

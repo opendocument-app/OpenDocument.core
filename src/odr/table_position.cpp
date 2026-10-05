@@ -91,7 +91,7 @@ std::string TablePosition::to_column_string(const std::uint32_t column) {
 }
 
 std::string TablePosition::to_row_string(const std::uint32_t row) {
-  return std::to_string(row + 1);
+  return std::to_string(std::uint64_t{row} + 1);
 }
 
 TablePosition::TablePosition(const std::string &s) {

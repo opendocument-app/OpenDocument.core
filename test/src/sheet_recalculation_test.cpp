@@ -1,5 +1,6 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
+#include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/logger.hpp>
 #include <odr/sheet_position.hpp>
@@ -287,4 +288,12 @@ TEST(SheetRecalculation, an_unedited_document_keeps_its_results) {
       ods(row(number("1") + computed("of:=[.A1]*2", "2")));
 
   EXPECT_TRUE(document.recalculate().changed().empty());
+}
+
+TEST(SheetRecalculation, oversized_array_spans_are_rejected_before_expansion) {
+  const Document document =
+      ods(row(R"(<table:table-cell table:formula="of:=1" )"
+              R"(table:number-matrix-columns-spanned="65536" )"
+              R"(table:number-matrix-rows-spanned="65536"/> )"));
+  EXPECT_THROW((void)document.recalculate(), UnsupportedOperation);
 }

@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <string>
 
 using namespace odr;
@@ -25,6 +26,9 @@ TEST(TablePosition, a_column_letter_is_read_without_case) {
 }
 
 TEST(TablePosition, a_spelling_past_the_index_range_is_nothing) {
+  EXPECT_EQ(
+      TablePosition::to_row_string(std::numeric_limits<std::uint32_t>::max()),
+      "4294967296");
   EXPECT_FALSE(TablePosition::try_to_column_num("ABCDEFGHI").has_value());
   EXPECT_FALSE(TablePosition::try_to_row_num("99999999999").has_value());
   EXPECT_FALSE(TablePosition::try_to_row_num("0").has_value());

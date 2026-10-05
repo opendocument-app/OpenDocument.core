@@ -2,6 +2,9 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
+#include <stdexcept>
+
 using namespace odr::internal;
 
 TEST(TableCursor, test) {
@@ -44,4 +47,32 @@ TEST(TableCursor, out_of_order_rowspans) {
   cursor.add_cell(1, 1);         // C2
   cursor.add_row();
   EXPECT_EQ(2, cursor.column()); // A3 and B3 covered, skipped
+}
+
+TEST(TableCursor, long_spans_survive_skipped_rows) {
+  constexpr auto max = std::numeric_limits<std::uint32_t>::max();
+  TableCursor cursor;
+  cursor.add_cell(2, max);
+  cursor.add_row(max - 1);
+  EXPECT_EQ(cursor.row(), max - 1);
+  EXPECT_EQ(cursor.column(), 2);
+  cursor.add_row();
+  EXPECT_EQ(cursor.column(), 0);
+}
+
+TEST(TableCursor, rejects_invalid_extents_before_advancing) {
+  constexpr auto max = std::numeric_limits<std::uint32_t>::max();
+  TableCursor cursor;
+  cursor.add_column(1);
+  EXPECT_THROW(cursor.add_column(max), std::out_of_range);
+  EXPECT_THROW(cursor.add_cell(max, 1, max), std::out_of_range);
+  EXPECT_EQ(cursor.column(), 1);
+  // a zero count from a damaged file is no extent
+  cursor.add_cell(0);
+  EXPECT_EQ(cursor.column(), 1);
+  cursor.add_row(0);
+  EXPECT_EQ(cursor.row(), 0);
+  cursor.add_row(max);
+  EXPECT_THROW(cursor.add_row(), std::out_of_range);
+  EXPECT_EQ(cursor.row(), max);
 }

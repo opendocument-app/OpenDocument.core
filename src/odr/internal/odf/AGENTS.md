@@ -206,8 +206,7 @@ unknown mimetype are tolerated.
 2. **No streaming.** Crypto and save read whole files into memory and rebuild
    the whole ZIP (`// TODO stream`).
 3. **Covered and repeated cells are heuristic.** `// TODO covered cells` and
-   `// TODO mark as repeated` in `odf_parser.cpp`. A rowspan out of a repeated
-   row is dropped.
+   `// TODO mark as repeated` in `odf_parser.cpp`.
 4. **Style gaps.** `transparent` and alpha colours give `nullopt`
    (`// TODO use alpha`). The style-versus-element cascade is provisional
    (`// TODO use override?`). `text:outline-style` is indexed but not applied

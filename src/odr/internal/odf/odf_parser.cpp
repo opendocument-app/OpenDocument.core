@@ -226,8 +226,6 @@ void index_sheet_rows(ElementRegistry &registry,
       cursor.add_cell(colspan, rowspan, columns_repeated);
     }
 
-    // TODO a rowspan out of a repeated row is dropped - `add_row` clears the
-    // cursor's pending ranges for a repeat > 1
     cursor.add_row(rows_repeated);
   });
 
