@@ -18,17 +18,8 @@ struct Glyph {
   std::string charstring;
 };
 
-/// @brief Parses an Adobe Type1 font program into its decrypted parts.
-///
-/// A Type1 program has three sections: a clear-text header (font dictionary up
-/// to `eexec`), an `eexec`-encrypted private portion (`/Subrs`,
-/// `/CharStrings`), and a zero-padded trailer. This reads `/FontMatrix`,
-/// `/FontBBox`, `/Encoding` and `/FontName` from the header, decrypts the
-/// `eexec` section (`type1_crypt`) and keeps every glyph's decrypted
-/// charstring plus the `/Subrs`; interpreting them is `type1_charstring`.
-///
-/// Throws `std::runtime_error` when the program has no `eexec` section or no
-/// `/CharStrings`.
+/// Parse Type1 metadata and decrypt its charstrings and subroutines.
+/// Throws on invalid numbers, framing, or missing eexec/CharStrings data.
 class Type1Font {
 public:
   /// Cheap magic test: the PostScript font sentinel (`%!PS-AdobeFont`,

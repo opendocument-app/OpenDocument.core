@@ -1,10 +1,13 @@
 #include <odr/internal/font/type1_font.hpp>
 
 #include <odr/internal/font/type1_crypt.hpp>
+#include <odr/internal/pdf/pdf_object_parser.hpp>
 #include <odr/internal/util/byte_util.hpp>
+#include <odr/internal/util/number_util.hpp>
 
 #include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
@@ -16,14 +19,15 @@ namespace odr::internal::font::type1 {
 
 namespace {
 
-[[nodiscard]] bool is_ps_space(const char c) {
-  return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' ||
-         c == '\0';
+/// The white space after `eexec`. NUL and form feed can start the binary
+/// ciphertext, so they are not skipped here.
+[[nodiscard]] bool is_eexec_space(const char c) {
+  return c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 
 /// Skip PostScript whitespace starting at @p p.
 [[nodiscard]] std::size_t skip_space(const std::string_view s, std::size_t p) {
-  while (p < s.size() && is_ps_space(s[p])) {
+  while (p < s.size() && pdf::ObjectParser::is_whitespace(s[p])) {
     ++p;
   }
   return p;
@@ -34,7 +38,7 @@ namespace {
                                           std::size_t &p) {
   p = skip_space(s, p);
   const std::size_t begin = p;
-  while (p < s.size() && !is_ps_space(s[p])) {
+  while (p < s.size() && !pdf::ObjectParser::is_whitespace(s[p])) {
     ++p;
   }
   return s.substr(begin, p - begin);
@@ -48,13 +52,9 @@ namespace {
 }
 
 [[nodiscard]] double parse_double(const std::string_view token) {
-  // std::from_chars for double is not universally available; std::stod needs a
-  // null-terminated copy.
-  try {
-    return std::stod(std::string(token));
-  } catch (const std::exception &) {
-    return 0.0;
-  }
+  // An unreadable number reads as zero, so it does not refuse the font.
+  const std::optional<double> value = util::number::parse(token);
+  return value && std::isfinite(*value) ? *value : 0.0;
 }
 
 /// A `/FontBBox` number as an FWord. Clamping keeps an out-of-range number out
@@ -71,7 +71,7 @@ parse_number_array(const std::string_view s, const std::string_view key) {
   if (k == std::string_view::npos) {
     return out;
   }
-  std::size_t open = s.find_first_of("[{", k);
+  const std::size_t open = s.find_first_of("[{", k);
   if (open == std::string_view::npos) {
     return out;
   }
@@ -111,7 +111,7 @@ read_rd_binary(const std::string_view s, std::size_t &p) {
     return std::nullopt;
   }
   ++q; // the single delimiter space
-  if (q + static_cast<std::size_t>(length) > s.size()) {
+  if (static_cast<std::size_t>(length) > s.size() - q) {
     return std::nullopt;
   }
   const std::string_view bytes = s.substr(q, static_cast<std::size_t>(length));
@@ -135,16 +135,22 @@ Type1Font::Type1Font(std::string_view data) {
   std::string unframed;
   if (!data.empty() && static_cast<std::uint8_t>(data[0]) == 0x80) {
     std::size_t p = 0;
-    while (p + 6 <= data.size() && static_cast<std::uint8_t>(data[p]) == 0x80) {
+    while (p < data.size()) {
+      if (data.size() - p < 2 || static_cast<std::uint8_t>(data[p]) != 0x80) {
+        throw std::runtime_error("type1: invalid PFB segment");
+      }
       const std::uint8_t type = static_cast<std::uint8_t>(data[p + 1]);
       if (type == 3) {
         break;
       }
+      if ((type != 1 && type != 2) || data.size() - p < 6) {
+        throw std::runtime_error("type1: invalid PFB segment header");
+      }
       const auto len =
           util::byte::from_little_endian<std::uint32_t>(data.substr(p + 2, 4));
       p += 6;
-      if (p + len > data.size()) {
-        break;
+      if (len > data.size() - p) {
+        throw std::runtime_error("type1: truncated PFB segment");
       }
       unframed.append(data.substr(p, len));
       p += len;
@@ -160,7 +166,10 @@ Type1Font::Type1Font(std::string_view data) {
   parse_clear(data.substr(0, eexec));
 
   // The encrypted blob begins after `eexec` and its trailing whitespace.
-  const std::size_t blob = skip_space(data, eexec + 5);
+  std::size_t blob = eexec + 5;
+  while (blob < data.size() && is_eexec_space(data[blob])) {
+    ++blob;
+  }
   const std::string decrypted = decrypt_eexec(data.substr(blob));
   parse_private(decrypted);
 
@@ -218,18 +227,23 @@ void Type1Font::parse_clear(const std::string_view clear) {
 }
 
 void Type1Font::parse_private(const std::string_view decrypted) {
-  std::size_t len_iv = 4;
+  std::int32_t len_iv = 4;
   if (const std::size_t k = decrypted.find("/lenIV");
       k != std::string_view::npos) {
     std::size_t p = k + 6;
     std::int32_t value = 0;
     if (parse_int(read_token(decrypted, p), value)) {
-      if (value < 0) {
-        throw std::runtime_error("type1: negative /lenIV");
+      if (value < -1) {
+        throw std::runtime_error("type1: invalid /lenIV");
       }
-      len_iv = static_cast<std::size_t>(value);
+      len_iv = value;
     }
   }
+  const auto decode = [len_iv](const std::string_view bytes) {
+    return len_iv == -1
+               ? std::string(bytes)
+               : decrypt_charstring(bytes, static_cast<std::size_t>(len_iv));
+  };
 
   // /CharStrings starts where /Subrs ends (Subrs precede it).
   const std::size_t cs = decrypted.find("/CharStrings");
@@ -257,10 +271,10 @@ void Type1Font::parse_private(const std::string_view decrypted) {
         p += 4;
         continue;
       }
-      if (static_cast<std::int32_t>(m_subrs.size()) <= index) {
-        m_subrs.resize(index + 1);
+      if (m_subrs.size() <= static_cast<std::size_t>(index)) {
+        m_subrs.resize(static_cast<std::size_t>(index) + 1);
       }
-      m_subrs[index] = decrypt_charstring(*bytes, len_iv);
+      m_subrs[index] = decode(*bytes);
       p = q;
     }
   }
@@ -284,7 +298,7 @@ void Type1Font::parse_private(const std::string_view decrypted) {
       p = slash + 1;
       continue;
     }
-    m_glyphs.push_back({std::move(name), decrypt_charstring(*bytes, len_iv)});
+    m_glyphs.push_back({std::move(name), decode(*bytes)});
     p = q;
   }
 }

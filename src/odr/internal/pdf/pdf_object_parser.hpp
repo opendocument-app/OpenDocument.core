@@ -41,6 +41,7 @@ public:
   static char_type three_octet_to_char(char_type first, char_type second,
                                        char_type third);
 
+  /// PostScript white space, which PDF shares (7.2.2).
   static bool is_whitespace(char c);
   /// The delimiters of 7.2.2, each of which opens a token of its own.
   static bool is_delimiter(char c);

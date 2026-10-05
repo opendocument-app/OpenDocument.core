@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -16,16 +17,11 @@ namespace str = util::string;
 namespace {
 
 std::uint8_t hex_char_to_int(const char c) {
-  if (c >= '0' && c <= '9') {
-    return static_cast<std::uint8_t>(c - '0');
+  const std::optional<std::uint8_t> value = str::hex_digit(c);
+  if (!value) {
+    throw std::runtime_error("invalid hex digit");
   }
-  if (c >= 'a' && c <= 'f') {
-    return static_cast<std::uint8_t>(c - 'a' + 10);
-  }
-  if (c >= 'A' && c <= 'F') {
-    return static_cast<std::uint8_t>(c - 'A' + 10);
-  }
-  throw std::runtime_error("invalid hex digit");
+  return *value;
 }
 
 char two_hex_to_char(const char first, const char second) {

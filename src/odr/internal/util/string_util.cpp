@@ -34,6 +34,19 @@ bool string::is_ascii_letter_or_digit(const char c) {
   return is_ascii_letter(c) || is_ascii_digit(c);
 }
 
+std::optional<std::uint8_t> string::hex_digit(const char c) {
+  if (c >= '0' && c <= '9') {
+    return static_cast<std::uint8_t>(c - '0');
+  }
+  if (c >= 'A' && c <= 'F') {
+    return static_cast<std::uint8_t>(c - 'A' + 10);
+  }
+  if (c >= 'a' && c <= 'f') {
+    return static_cast<std::uint8_t>(c - 'a' + 10);
+  }
+  return std::nullopt;
+}
+
 char string::to_lower(const char c) {
   return c >= 'A' && c <= 'Z' ? static_cast<char>(c + ('a' - 'A')) : c;
 }
