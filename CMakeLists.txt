@@ -21,6 +21,14 @@ option(ODR_JNI "Build JNI bindings" OFF)
 option(ODR_APPLE "Build Objective-C bindings as a framework" OFF)
 option(ODR_WASM "Build WebAssembly bindings" OFF)
 
+if (ODR_CLANG_TIDY)
+    find_program(CLANG_TIDY_COMMAND NAMES clang-tidy)
+    if (NOT CLANG_TIDY_COMMAND)
+        message(FATAL_ERROR "ODR_CLANG_TIDY is ON but clang-tidy was not found")
+    endif ()
+    set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}")
+endif ()
+
 include(GNUInstallDirs)
 
 # TODO defining global compiler flags seems to be bad practice with conan
@@ -450,10 +458,6 @@ endif ()
 
 if (ODR_TEST)
     add_subdirectory("test")
-endif ()
-
-if (ODR_CLANG_TIDY)
-    add_subdirectory("static_analysis/clang-tidy")
 endif ()
 
 if (NOT ODR_WITH_HTTP_SERVER)

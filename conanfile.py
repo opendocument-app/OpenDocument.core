@@ -37,7 +37,7 @@ class OpenDocumentCoreConan(ConanFile):
         "pugixml/*:header_only": True,
     }
 
-    exports_sources = ["apple/*", "cli/*", "cmake/*", "jni/*", "python/*", "resources/dist/*", "wasm/*", "src/*", "CMakeLists.txt"]
+    exports_sources = [".clang-tidy", "apple/*", "cli/*", "cmake/*", "jni/*", "python/*", "resources/dist/*", "wasm/*", "src/*", "CMakeLists.txt"]
 
     def config_options(self):
         if self.settings.os == "Windows":
