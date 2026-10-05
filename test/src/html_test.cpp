@@ -1005,26 +1005,38 @@ TEST(html, an_editable_cut_sheet_states_its_whole_extent) {
 }
 
 TEST(html, an_editable_sheet_states_its_locale) {
-  const DecodedFile file = open(File::from_memory(
-      R"(<?xml version="1.0" encoding="UTF-8"?>)"
-      R"(<office:document)"
-      R"( xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0")"
-      R"( xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0")"
-      R"( xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0")"
-      R"( xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0")"
-      R"( office:mimetype="application/vnd.oasis.opendocument.spreadsheet">)"
-      R"(<office:styles><style:default-style style:family="table-cell">)"
-      R"(<style:text-properties fo:language="de" fo:country="DE"/>)"
-      R"(</style:default-style></office:styles>)"
-      R"(<office:body><office:spreadsheet><table:table table:name="s">)"
-      R"(<table:table-row><table:table-cell/></table:table-row>)"
-      R"(</table:table></office:spreadsheet></office:body></office:document>)"));
+  const std::string source =
+      (R"(<?xml version="1.0" encoding="UTF-8"?>)"
+       R"(<office:document)"
+       R"( xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0")"
+       R"( xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0")"
+       R"( xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0")"
+       R"( xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0")"
+       R"( office:mimetype="application/vnd.oasis.opendocument.spreadsheet">)"
+       R"(<office:styles><style:default-style style:family="table-cell">)"
+       R"(<style:text-properties fo:language="de" fo:country="DE"/>)"
+       R"(</style:default-style></office:styles>)"
+       R"(<office:body><office:spreadsheet><table:table table:name="s">)"
+       R"(<table:table-row><table:table-cell/></table:table-row>)"
+       R"(</table:table></office:spreadsheet></office:body></office:document>)");
 
+  const DecodedFile file = open(File::from_memory(source));
   EXPECT_NE(
       render_sheet(file, editing_config()).find(R"(data-odr-locale="de-DE")"),
       std::string::npos);
   EXPECT_EQ(render_sheet(file, HtmlConfig()).find(R"(data-odr-locale=")"),
             std::string::npos);
+  std::string malformed = source;
+  const std::string language = R"(fo:language="de")";
+  malformed.replace(malformed.find(language), language.size(),
+                    R"(fo:language="de&amp;&quot; data-injected=&quot;yes")");
+  const std::string page =
+      render_sheet(open(File::from_memory(malformed)), editing_config());
+  EXPECT_NE(
+      page.find(
+          R"(data-odr-locale="de&amp;&quot; data-injected=&quot;yes-DE")"),
+      std::string::npos);
+  EXPECT_EQ(page.find(R"( data-injected="yes)"), std::string::npos);
 }
 
 TEST(html, a_formatted_number_states_its_value) {
@@ -1716,4 +1728,20 @@ TEST(html, document_lengths_cannot_inject_styles_or_attributes) {
     EXPECT_EQ(page.find("odr-injected"), std::string::npos);
     EXPECT_NE(page.find("text"), std::string::npos);
   }
+}
+
+TEST(html, a_sheet_named_document_keeps_its_own_view) {
+  const auto file = fods_file(
+      fods_row(fods_cell("first")), "",
+      R"(<table:table table:name="document"><table:table-row><table:table-cell>)"
+      R"(<text:p>second</text:p></table:table-cell></table:table-row></table:table>)");
+  const HtmlService service = html::translate(file, HtmlConfig());
+  ASSERT_EQ(service.list_views().size(), 3u);
+  const HtmlView &view = view_at(service, "sheet1.html");
+  EXPECT_EQ(view.name(), "document");
+  EXPECT_TRUE(service.exists(view.path()));
+  std::ostringstream page;
+  service.write(view.path(), page);
+  EXPECT_NE(page.str().find("second</td>"), std::string::npos);
+  EXPECT_EQ(page.str().find("first</td>"), std::string::npos);
 }

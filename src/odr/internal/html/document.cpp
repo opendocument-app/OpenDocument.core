@@ -19,6 +19,7 @@
 #include <odr/internal/html/style_registry.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <algorithm>
 #include <mutex>
@@ -248,7 +249,7 @@ void write_body_begin(const Document &document, const WritingState &state) {
               if (const std::optional<std::string> locale = document.locale();
                   locale.has_value() &&
                   document.document_type() == DocumentType::spreadsheet) {
-                clb("data-odr-locale", *locale);
+                clb("data-odr-locale", xml::escape_attribute(*locale));
               }
             }
             // not an editing fact: a read-only sheet has a pin to clear
@@ -461,7 +462,7 @@ public:
     m_views.emplace_back(std::make_shared<HtmlDocumentView>(
         *this, "document", 0, "document.html", m_fragments));
     for (const auto &fragment : m_fragments) {
-      if (fragment->name() == "document") {
+      if (m_document.document_type() == DocumentType::text) {
         continue;
       }
       m_views.emplace_back(std::make_shared<HtmlFragmentView>(*this, fragment));
