@@ -22,6 +22,7 @@ class LoggerTest {
     final List<String> messages = Collections.synchronizedList(new ArrayList<>());
     final List<SourceLocation> locations = Collections.synchronizedList(new ArrayList<>());
     volatile int flushes = 0;
+    volatile boolean consulted = false;
     private final LogLevel level;
 
     Collecting(LogLevel level) {
@@ -30,6 +31,7 @@ class LoggerTest {
 
     @Override
     public boolean willLog(LogLevel level) {
+      consulted = true;
       return level.ordinal() >= this.level.ordinal();
     }
 
@@ -88,9 +90,7 @@ class LoggerTest {
         DecodedFile file = Odr.open(odt.toString(), logger)) {
       assertEquals(FileType.OPENDOCUMENT_TEXT, file.fileType());
     }
-    // The sink survived the native call; whether anything was logged is up to
-    // the backend, so only the fact that it did not crash is asserted here.
-    assertNotNull(sink.messages);
+    assertTrue(sink.consulted);
   }
 
   @Test
