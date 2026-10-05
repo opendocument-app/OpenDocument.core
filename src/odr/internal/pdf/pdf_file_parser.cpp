@@ -213,23 +213,19 @@ ObjectStream FileParser::read_object_stream(const std::uint32_t n,
 }
 
 void FileParser::read_header() {
-  const std::string header1 = m_parser.read_line();
-  // the second line is an optional binary-marker comment; read past it
-  m_parser.read_line();
-
-  if (!util::string::starts_with(header1, "%PDF-")) {
+  if (!m_parser.read_line().starts_with("%PDF-")) {
     throw std::runtime_error("illegal header");
   }
-
-  m_parser.skip_whitespace();
+  m_parser.skip_whitespace_and_comments();
 }
 
 Entry FileParser::read_entry() {
   const std::uint32_t position = in().tellg();
   const std::string entry_header = m_parser.read_line();
+  in().clear();
   in().seekg(position);
 
-  if (util::string::ends_with(entry_header, "obj")) {
+  if (m_parser.peek_number()) {
     return {read_indirect_object(), position};
   }
   if (entry_header == "xref") {
@@ -241,11 +237,12 @@ Entry FileParser::read_entry() {
   if (entry_header == "startxref") {
     return {read_start_xref(), position};
   }
-  if (entry_header == "%PDF-") {
+  if (entry_header.starts_with("%PDF-")) {
     read_header();
     return {Header{}, position};
   }
   if (entry_header == "%%EOF") {
+    m_parser.skip_line();
     return {Eof{}, position};
   }
 
@@ -253,20 +250,33 @@ Entry FileParser::read_entry() {
 }
 
 void FileParser::seek_start_xref(const std::uint32_t margin) {
+  in().clear();
   in().seekg(0, std::ios::end);
-  const std::int64_t size = in().tellg();
-  in().seekg(std::max(static_cast<std::int64_t>(0), size - margin),
-             std::ios::beg);
-
-  while (!m_parser.in().eof()) {
-    const std::uint32_t position = m_parser.in().tellg();
-    if (const std::string line = m_parser.read_line(); line == "startxref") {
-      m_parser.in().seekg(position);
-      return;
+  const std::streamoff size = in().tellg();
+  if (size < 0) {
+    throw std::runtime_error("cannot seek PDF trailer");
+  }
+  const std::streamoff start = std::max(std::streamoff{0}, size - margin);
+  in().seekg(start > 0 ? start - 1 : start, std::ios::beg);
+  if (start > 0) {
+    const char previous = m_parser.bumpc();
+    if (previous != '\r' && previous != '\n') {
+      m_parser.skip_line();
     }
   }
 
-  throw std::runtime_error("unexpected stream exhaust");
+  std::optional<std::streampos> last;
+  while (in().good()) {
+    const std::streampos position = in().tellg();
+    if (m_parser.read_line() == "startxref") {
+      last = position;
+    }
+  }
+  if (!last.has_value() || in().bad()) {
+    throw std::runtime_error("missing PDF startxref");
+  }
+  in().clear();
+  in().seekg(*last);
 }
 
 Xref FileParser::read_xref_stream_table(

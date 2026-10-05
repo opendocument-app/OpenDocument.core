@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF file traversal preserves the first object without a binary comment,
+  handles objects sharing a line, and uses the last trailing `startxref`.
+
 - PDF color-space parsing bounds recursive definitions and rejects invalid
   component counts and palette ranges. Large finite palette indices clip
   correctly.
