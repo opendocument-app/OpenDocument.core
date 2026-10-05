@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF file indices are checked before narrowing; malformed cross-reference
+  widths, counts and object-stream offsets cannot wrap or drive unchecked
+  allocation. Incomplete cross-reference index pairs trigger recovery.
+
 - PDF object reads reject mismatched cross-reference targets and recover
   from a stream error before seeking to another object.
 
