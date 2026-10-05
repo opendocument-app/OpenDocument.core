@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -211,6 +212,8 @@ TEST(OdfPath, an_unreadable_path_is_dropped_whole) {
   EXPECT_FALSE(parse_path_data("10 20").has_value());
   EXPECT_FALSE(parse_path_data("M 10").has_value());
   EXPECT_FALSE(parse_path_data("M 0 0 W 1 2").has_value());
+  EXPECT_FALSE(parse_path_data("M 0 0 Z 1").has_value());
+  EXPECT_FALSE(parse_path_data("M 0 0 Z junk").has_value());
 }
 
 TEST(OdfShape, draw_path_is_written_in_its_view_box) {
@@ -314,4 +317,23 @@ TEST(OdfShape, an_arc_over_half_the_ellipse_sets_the_large_arc_flag) {
                             R"(draw:start-angle="0" draw:end-angle="270"/>)"));
   ASSERT_TRUE(path.has_value());
   EXPECT_NE(std::string::npos, path->data.find(" 0 1 0 "));
+}
+
+TEST(OdfShape, generated_geometry_has_bounded_expansion_and_equation_depth) {
+  pugi::xml_document document;
+  for (const std::string corners :
+       {"65537", "2147483647", "4294967295", "18446744073709551615"}) {
+    EXPECT_FALSE(read_path(
+        parse_shape(document, "<draw:regular-polygon draw:corners=\"" +
+                                  corners + "\" draw:concave=\"true\"/>")));
+  }
+  std::string xml =
+      R"(<draw:custom-shape><draw:enhanced-geometry draw:enhanced-path="M ?f0 0">)";
+  for (std::uint32_t i = 0; i < 500; ++i) {
+    xml += "<draw:equation draw:name=\"f" + std::to_string(i) +
+           "\" draw:formula=\"?f" + std::to_string(i + 1) + "\"/>";
+  }
+  xml +=
+      R"(<draw:equation draw:name="f500" draw:formula="0"/></draw:enhanced-geometry></draw:custom-shape>)";
+  EXPECT_FALSE(read_path(parse_shape(document, xml)));
 }

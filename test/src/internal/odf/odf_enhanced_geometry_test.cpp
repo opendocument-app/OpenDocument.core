@@ -22,16 +22,17 @@ EnhancedGeometryContext square(std::vector<double> modifiers = {}) {
 /// Resolves `?name` against a fixed table, which is all a formula sees of the
 /// equations around it.
 EquationResolver table(std::map<std::string, double> equations) {
-  return [equations = std::move(equations)](
-             const std::string_view name) -> std::optional<double> {
-    const auto it = equations.find(std::string(name));
-    return it == equations.end() ? std::nullopt
-                                 : std::optional<double>(it->second);
-  };
+  return
+      [equations = std::move(equations)](const std::string_view name,
+                                         std::size_t) -> std::optional<double> {
+        const auto it = equations.find(std::string(name));
+        return it == equations.end() ? std::nullopt
+                                     : std::optional<double>(it->second);
+      };
 }
 
 EquationResolver none() {
-  return [](std::string_view) { return std::optional<double>(); };
+  return [](std::string_view, std::size_t) { return std::optional<double>(); };
 }
 
 std::optional<double> evaluate(const std::string &formula,
@@ -181,4 +182,39 @@ TEST(OdfEnhancedPath, an_unreadable_path_is_dropped_whole) {
   EXPECT_FALSE(convert_enhanced_path("M 0", square(), none()).has_value());
   EXPECT_FALSE(convert_enhanced_path("R 0 0", square(), none()).has_value());
   EXPECT_FALSE(convert_enhanced_path("M ?f0 0", square(), none()).has_value());
+}
+
+TEST(OdfFormula, nesting_is_bounded_and_results_must_be_finite) {
+  EXPECT_EQ(evaluate(std::string(10000, '-') + "1", square(), none()), 1);
+  EXPECT_EQ(evaluate(std::string(128, '(') + "1" + std::string(128, ')'),
+                     square(), none()),
+            1);
+  EXPECT_FALSE(evaluate(std::string(10000, '(') + "1" + std::string(10000, ')'),
+                        square(), none()));
+  EXPECT_FALSE(evaluate("1e308*1e308", square(), none()));
+}
+
+TEST(OdfFormula, an_equation_continues_the_nesting_of_its_reference) {
+  for (const std::size_t parentheses : {100, 200}) {
+    const EquationResolver nested = [&](const std::string_view name,
+                                        const std::size_t depth) {
+      return evaluate_formula(std::string(parentheses, '(') +
+                                  (name == "f0" ? "?f1" : "1") +
+                                  std::string(parentheses, ')'),
+                              square(), nested, depth);
+    };
+    EXPECT_EQ(evaluate("?f0", square(), nested).has_value(),
+              parentheses == 100);
+  }
+}
+
+TEST(OdfEnhancedPath,
+     arcs_reject_unbounded_expansion_and_nonfinite_coordinates) {
+  for (const std::string path : {"U 0 0 1 1 0 1e20", "U 0 0 1 1 0 1e999",
+                                 "U 0 0 1 1 0 6000000 U 0 0 1 1 0 6000000",
+                                 "M 1e999 0", "M 0 0 X 1e999 1"}) {
+    SCOPED_TRACE(path);
+    EXPECT_FALSE(convert_enhanced_path(path, square(), none()));
+  }
+  EXPECT_TRUE(convert_enhanced_path("U 0 0 -1 1 0 90", square(), none()));
 }

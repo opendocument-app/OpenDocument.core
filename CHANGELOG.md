@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- ODF geometry parsing terminates on invalid text after a closed path and
+  rejects excessive polygon/arc expansion, deep formulas and nonfinite results.
+
 - XLSX infers omitted row and cell coordinates and preserves them through edits.
   An invalid row index counts as omitted; an invalid column range or
   shared-string index is ignored.
