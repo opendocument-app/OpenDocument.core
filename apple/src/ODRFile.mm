@@ -145,7 +145,8 @@ std::vector<odr::FileType> to_file_types(NSArray<NSNumber *> *numbers) {
 }
 
 std::optional<char> csv_delimiter(NSString *const value) {
-  if (value == nil) {
+  // an empty string means unset rather than a NUL
+  if (value.length == 0) {
     return std::nullopt;
   }
   const std::string bytes = to_string(value);

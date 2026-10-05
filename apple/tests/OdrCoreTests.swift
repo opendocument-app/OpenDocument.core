@@ -131,7 +131,9 @@ final class DecodeTests: XCTestCase {
     let root = try XCTUnwrap(try csv.document().rootElement())
     let sheet = try XCTUnwrap(root.firstDescendant(ofType: Sheet.self))
     XCTAssertEqual(sheet.dimensions.columns, 2)
-    for invalid in ["", ";,", "é", "😀"] {
+    options.csv.quote = ""
+    XCTAssertNoThrow(try DecodedFile.decode(path: path, options: options))
+    for invalid in [";,", "é", "😀"] {
       options.csv.separator = invalid
       XCTAssertThrowsError(try DecodedFile.decode(path: path, options: options), invalid)
       options.csv.separator = ";"
