@@ -176,20 +176,20 @@ public:
 
   [[nodiscard]] auto &text_element_at(this auto &self,
                                       const ElementIdentifier id) {
-    return self.m_texts.at(self.resolve_id(id));
+    return self.m_texts.at(self.checked_id(id));
   }
   [[nodiscard]] auto &table_element_at(this auto &self,
                                        const ElementIdentifier id) {
-    return self.m_tables.at(self.resolve_id(id));
+    return self.m_tables.at(self.checked_id(id));
   }
   [[nodiscard]] auto &sheet_element_at(this auto &self,
                                        const ElementIdentifier id) {
-    return self.m_sheets.at(self.resolve_id(id));
+    return self.m_sheets.at(self.checked_id(id));
   }
 
   [[nodiscard]] auto &sheet_cell_element_at(this auto &self,
                                             const ElementIdentifier id) {
-    return self.m_sheet_cells.at(self.resolve_id(id));
+    return self.m_sheet_cells.at(self.checked_id(id));
   }
 
   [[nodiscard]] const SheetCell *

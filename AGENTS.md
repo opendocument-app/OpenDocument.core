@@ -39,8 +39,8 @@ A compact example is `rtf/rtf_element_registry.*` plus `rtf/rtf_document.cpp`.
   index plus one. The engine derives `struct RegistryElement final :
   ElementNode<Id>` and adds a field only if it has one. Per-type payloads are
   `SideTable<T>` (hashed) or `SortedSideTable<T, Id>` (binary search, for
-  payloads written in id order). Both check their bounds, so an accessor is
-  `return m_texts.at(id);` and nothing else.
+  payloads written in id order). Both check their bounds. Editable XML engines
+  pass `checked_id(id)` to reject retired elements before reading a payload.
 - `ElementIdentifier` is opaque and 64 bits wide. Registry engines use index
   plus one. `csv` packs a kind, a row and a column into it. An engine that wants
   a narrower id passes it as the registry's `Id` (`odf::StoredId`) and widens
@@ -52,6 +52,10 @@ A compact example is `rtf/rtf_element_registry.*` plus `rtf/rtf_document.cpp`.
   `element_is_self_locatable` default to true, `element_is_editable` to false.
   Override only where that is wrong. An engine with no registry (`csv`) derives
   from `internal::ElementAdapter` and writes its own navigation.
+
+Removing XML elements retires their ids. After the first removal, registry
+lookups check ancestors too, covering off-tree cells and table columns without
+adding a liveness field to every stored node.
 
 Two model rules that every engine follows:
 

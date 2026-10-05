@@ -36,11 +36,11 @@ public:
 
   [[nodiscard]] auto &table_element_at(this auto &self,
                                        const ElementIdentifier id) {
-    return self.m_tables.at(id);
+    return self.m_tables.at(self.checked_id(id));
   }
   [[nodiscard]] auto &text_element_at(this auto &self,
                                       const ElementIdentifier id) {
-    return self.m_texts.at(id);
+    return self.m_texts.at(self.checked_id(id));
   }
 
   void append_column(ElementIdentifier table_id, ElementIdentifier column_id);

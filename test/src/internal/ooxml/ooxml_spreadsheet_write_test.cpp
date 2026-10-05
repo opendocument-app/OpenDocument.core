@@ -45,8 +45,11 @@ TEST(OoxmlSpreadsheetWrite, a_string_lands_in_the_cell_it_was_written_to) {
       R"(<row r="1"><c r="A1" t="inlineStr"><is><t>old</t></is></c></row>)"));
   const Sheet sheet = first_sheet(document);
 
+  const Text old = sheet.cell(0, 0).first_child().as_text();
+  ASSERT_TRUE(old);
   sheet.set_cell(0, 0, CellValue("new"));
 
+  EXPECT_THROW((void)old.content(), std::out_of_range);
   EXPECT_EQ(sheet.cell(0, 0).value().text(), "new");
   EXPECT_EQ(sheet.cell(0, 0).value().type(), ValueType::string);
 }

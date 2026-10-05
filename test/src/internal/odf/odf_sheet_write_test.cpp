@@ -481,7 +481,10 @@ TEST(OdfSheetWrite, a_cell_of_several_runs_is_written) {
                  R"(</table:table-cell>)"));
   const Sheet sheet = first_sheet(document);
 
+  const Text old = sheet.cell(0, 0).first_child().first_child().as_text();
+  ASSERT_TRUE(old);
   sheet.set_cell(0, 0, CellValue("one"));
+  EXPECT_THROW((void)old.content(), std::out_of_range);
 
   EXPECT_EQ(sheet.cell(0, 0).value().text(), "one");
 
