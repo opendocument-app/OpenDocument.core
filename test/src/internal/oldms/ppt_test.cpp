@@ -310,7 +310,7 @@ TEST(OldMs, ppt_text_nesting_is_bounded) {
   EXPECT_THROW(ppt::Document{files(1024)}, std::runtime_error);
 }
 
-TEST(OldMs, ppt_style_runs_require_complete_coverage) {
+TEST(OldMs, ppt_style_runs_are_bounded_by_the_text) {
   std::string body;
   append_u32(body, 3);
   append_u16(body, 0);
@@ -318,7 +318,11 @@ TEST(OldMs, ppt_style_runs_require_complete_coverage) {
   append_u32(body, 3);
   append_u32(body, 0);
   EXPECT_EQ(ppt::parse_style_text_prop_atom(body, 3).size(), 1);
-  EXPECT_THROW(ppt::parse_style_text_prop_atom(body, 2), std::runtime_error);
+  // a run past the end of the text is cut, not refused
+  const auto cut = ppt::parse_style_text_prop_atom(body, 2);
+  ASSERT_EQ(cut.size(), 1);
+  EXPECT_EQ(cut[0].count, 2);
+  // too short a run array reads into the next one and runs out of bytes
   EXPECT_THROW(ppt::parse_style_text_prop_atom(body, 4), std::runtime_error);
   body.pop_back();
   EXPECT_THROW(ppt::parse_style_text_prop_atom(body, 3), std::runtime_error);

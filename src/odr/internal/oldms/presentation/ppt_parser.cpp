@@ -651,11 +651,11 @@ std::vector<BlipSlot> read_blip_store(std::istream &in,
           throw std::runtime_error("ppt: truncated embedded BLIP header");
         }
         const RecordHeader blip = read_record_header(in);
-        if (blip.recLen != remaining - sizeof(RecordHeader)) {
+        if (blip.recLen > remaining - sizeof(RecordHeader)) {
           throw std::runtime_error("ppt: embedded BLIP exceeds store entry");
         }
         slot.data = read_blip_body(in, blip);
-        entries.consume(remaining);
+        entries.consume(sizeof(RecordHeader) + blip.recLen);
       } else {
         slot.fo_delay = fbse.foDelay;
       }

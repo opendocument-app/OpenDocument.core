@@ -2,6 +2,8 @@
 
 #include <odr/internal/util/byte_string.hpp>
 
+#include <algorithm>
+#include <stdexcept>
 #include <utility>
 
 namespace odr::internal::oldms::presentation {
@@ -197,17 +199,18 @@ presentation::parse_style_text_prop_atom(const std::string_view body,
                                          const std::size_t char_count) {
   BodyCursor cursor(body);
 
+  // [MS-PPT] 2.9.44: both run arrays cover the text. A run past its end is
+  // cut, as LibreOffice does, so a slightly wrong count does not refuse the
+  // file; `style_pending` gives characters after the last run the default.
   const auto read_count = [&](std::size_t &remaining) {
-    const auto count = cursor.read<std::uint32_t>();
-    if (count > remaining) {
-      throw std::runtime_error("ppt: formatting run exceeds text length");
-    }
+    const auto count =
+        std::min<std::size_t>(cursor.read<std::uint32_t>(), remaining);
     remaining -= count;
-    return count;
+    return static_cast<std::uint32_t>(count);
   };
 
-  // [MS-PPT] 2.9.44: both run arrays must cover the corresponding text.
-  for (std::size_t remaining = char_count; remaining > 0;) {
+  for (std::size_t remaining = char_count;
+       remaining > 0 && cursor.remaining() > 0;) {
     read_count(remaining);
     cursor.skip(2); // indentLevel
     skip_text_pf_exception(cursor);
@@ -215,7 +218,8 @@ presentation::parse_style_text_prop_atom(const std::string_view body,
 
   // rgTextCFRun.
   std::vector<TextCFRun> runs;
-  for (std::size_t remaining = char_count; remaining > 0;) {
+  for (std::size_t remaining = char_count;
+       remaining > 0 && cursor.remaining() > 0;) {
     TextCFRun run;
     run.count = read_count(remaining);
     read_text_cf_exception(cursor, run);
