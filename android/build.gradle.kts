@@ -77,11 +77,20 @@ val checkNative =
         dependsOn(buildNative)
         val jniLibs = layout.projectDirectory.dir("native/prebuilt/jniLibs").asFile
         doLast {
-            if (jniLibs.list().isNullOrEmpty()) {
+            val abiDirectories = jniLibs.listFiles()?.filter { it.isDirectory }.orEmpty()
+            if (abiDirectories.isEmpty()) {
                 throw GradleException(
                     "nothing in $jniLibs — run android/build_native.py, " +
                         "or pass -Podr.abis=<abis> to have the build run it"
                 )
+            }
+            for (directory in abiDirectories) {
+                for (name in listOf("libodr_jni.so", "libc++_shared.so")) {
+                    val library = directory.resolve(name)
+                    if (!library.isFile || library.length() == 0L) {
+                        throw GradleException("missing or empty native library: $library")
+                    }
+                }
             }
         }
     }

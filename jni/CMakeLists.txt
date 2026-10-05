@@ -32,7 +32,7 @@ endif ()
 # quietly shipping half a package.
 option(ODR_JNI_JAR "Build the java half, `odr-core-java.jar`" ON)
 if (ODR_JNI_JAR)
-    find_package(Java 11 REQUIRED COMPONENTS Development)
+    find_package(Java 17 REQUIRED COMPONENTS Development)
     include(UseJava)
 endif ()
 
