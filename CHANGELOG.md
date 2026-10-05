@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Apple CSV decoding rejects multi-character and multibyte delimiters.
+  Roots without a text-root interface are exposed as `Element`, not `TextRoot`.
+
 - Apple `Measure(string:)` is now failable. An invalid length returns `nil`
   instead of letting a C++ exception escape into Swift.
 

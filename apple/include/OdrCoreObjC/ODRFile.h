@@ -228,9 +228,9 @@ NS_SWIFT_NAME(CsvOptions)
 @interface ODRCsvOptions : NSObject
 /// `nil` to detect.
 @property(nonatomic, strong, nullable) NSNumber *encoding;
-/// A one-character string, `nil` to detect.
+/// One ASCII character, `nil` or empty to detect. Other strings fail decoding.
 @property(nonatomic, copy, nullable) NSString *separator;
-/// A one-character string, `nil` to detect.
+/// One ASCII character, `nil` or empty to detect. Other strings fail decoding.
 @property(nonatomic, copy, nullable) NSString *quote;
 @end
 
