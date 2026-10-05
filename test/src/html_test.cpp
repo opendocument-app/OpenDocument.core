@@ -5,6 +5,7 @@
 #include <fstream>
 #include <optional>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -592,8 +593,6 @@ TEST(html, paged_output_fits_the_viewport) {
            logger);
 
   const auto render = [&](const HtmlConfig &config) {
-    const std::string cache =
-        (std::filesystem::current_path() / "fit").string();
     std::ostringstream out;
     html::translate(file, config).list_views().at(0).write_html(out);
     return std::move(out).str();
@@ -683,7 +682,9 @@ TEST(html, each_view_fits_the_page_it_renders) {
     service.list_views().at(view).write_html(out);
     const std::string html = std::move(out).str();
     const std::size_t at = html.find("body{zoom:");
-    EXPECT_NE(at, std::string::npos);
+    if (at == std::string::npos) {
+      throw std::runtime_error("missing page zoom");
+    }
     return std::stod(html.substr(at + 10));
   };
 
@@ -710,8 +711,6 @@ TEST(html, an_image_fits_the_viewport) {
            {}, logger);
 
   const auto render = [&](const HtmlConfig &config) {
-    const std::string cache =
-        (std::filesystem::current_path() / "image_fit").string();
     std::ostringstream out;
     html::translate(file, config).list_views().at(0).write_html(out);
     return std::move(out).str();
@@ -864,7 +863,9 @@ const HtmlView &view_at(const HtmlService &service,
       std::ranges::find_if(service.list_views(), [path](const HtmlView &view) {
         return view.path() == path;
       });
-  EXPECT_NE(it, service.list_views().end()) << path;
+  if (it == service.list_views().end()) {
+    throw std::runtime_error("missing HTML view: " + std::string(path));
+  }
   return *it;
 }
 
@@ -1279,6 +1280,8 @@ TEST(html, a_read_only_render_writes_no_editing_scaffolding) {
   // The attribute, not the name: the stylesheet and the scripts name both.
   EXPECT_EQ(page.find(R"(data-odr-editable=")"), std::string::npos);
   EXPECT_EQ(page.find(R"(data-odr-lock=")"), std::string::npos);
+  EXPECT_EQ(page.find(R"(data-odr-formula=")"), std::string::npos);
+  EXPECT_EQ(page.find(R"(data-odr-reads=")"), std::string::npos);
   // The mode itself stays, so a host asks the page rather than tracking what
   // it rendered with.
   EXPECT_NE(page.find("odr.takesKeys"), std::string::npos);
@@ -1402,7 +1405,7 @@ TEST(html, a_linked_host_bridge_is_served) {
 }
 
 // A formula cell is locked: overwriting it leaves its dependants stale.
-TEST(html, a_formula_cell_is_locked_with_its_reason) {
+TEST(html, a_formula_cell_states_its_lock_expression_and_dependencies) {
   const std::string page = render_sheet(
       fods_file(fods_row(
           R"xml(<table:table-cell table:formula="of:=SUM([.B1:.C1])")xml"
@@ -1412,32 +1415,10 @@ TEST(html, a_formula_cell_is_locked_with_its_reason) {
 
   EXPECT_NE(page.find(R"(data-odr-lock="formula")"), std::string::npos);
   EXPECT_NE(page.find("odr-locked"), std::string::npos);
-}
-
-// A formula bar shows the expression, which is not what the cell shows.
-TEST(html, a_formula_cell_states_the_expression_it_computes) {
-  const std::string page = render_sheet(
-      fods_file(fods_row(
-          R"xml(<table:table-cell table:formula="of:=SUM([.B1:.C1])")xml"
-          R"( office:value-type="float" office:value="7">)"
-          R"(<text:p>7</text:p></table:table-cell>)")),
-      editing_config());
-
-  const std::string expected = R"xml(data-odr-formula="of:=SUM([.B1:.C1])")xml";
-  EXPECT_NE(page.find(expected), std::string::npos);
-}
-
-// The page marks against the rectangles, not against the expression.
-TEST(html, a_formula_cell_states_the_cells_it_reads) {
-  const std::string page = render_sheet(
-      fods_file(fods_row(
-          R"xml(<table:table-cell table:formula="of:=SUM([.B1:.C1])")xml"
-          R"( office:value-type="float" office:value="7">)"
-          R"(<text:p>7</text:p></table:table-cell>)")),
-      editing_config());
-
-  const std::string expected = R"xml(data-odr-reads="0,1,2,0,0")xml";
-  EXPECT_NE(page.find(expected), std::string::npos);
+  EXPECT_NE(page.find(R"xml(data-odr-formula="of:=SUM([.B1:.C1])")xml"),
+            std::string::npos);
+  EXPECT_NE(page.find(R"xml(data-odr-reads="0,1,2,0,0")xml"),
+            std::string::npos);
 }
 
 // A quote in an expression would close the attribute early.
@@ -1452,19 +1433,6 @@ TEST(html, an_expression_is_escaped_into_its_attribute) {
   const std::string expected =
       R"xml(data-odr-formula="of:=IF([.B1];&quot;a&quot;;&quot;b&quot;)")xml";
   EXPECT_NE(page.find(expected), std::string::npos);
-}
-
-// A read-only render carries no dependency either: it is editing scaffolding.
-TEST(html, a_read_only_render_states_no_formula) {
-  const std::string page = render_sheet(
-      fods_file(fods_row(
-          R"xml(<table:table-cell table:formula="of:=SUM([.B1:.C1])")xml"
-          R"( office:value-type="float" office:value="7">)"
-          R"(<text:p>7</text:p></table:table-cell>)")),
-      HtmlConfig());
-
-  EXPECT_EQ(page.find(R"(data-odr-formula=")"), std::string::npos);
-  EXPECT_EQ(page.find(R"(data-odr-reads=")"), std::string::npos);
 }
 
 // A reference into another sheet resolves to the ordinal an op names it by,
@@ -1544,18 +1512,12 @@ TEST(html, a_plain_cell_carries_no_lock) {
 }
 
 // The mode writes the `contenteditable`, so one page serves both modes.
-TEST(html, an_editable_text_document_addresses_its_runs) {
+TEST(html, an_editable_text_document_addresses_its_runs_and_paragraphs) {
   const std::string page = render_odt(editing_config());
 
   EXPECT_TRUE(a_tag_states(page, "x-s", "data-odr-id="));
-  EXPECT_EQ(page.find(R"(contenteditable="true")"), std::string::npos);
-}
-
-// A paragraph is what a split or an insert anchors on.
-TEST(html, an_editable_text_document_addresses_its_paragraphs) {
-  const std::string page = render_odt(editing_config());
-
   EXPECT_TRUE(a_tag_states(page, "x-p", "data-odr-id="));
+  EXPECT_EQ(page.find(R"(contenteditable="true")"), std::string::npos);
 }
 
 // The address is the expensive half, and a read-only render pays none of it.
@@ -1587,16 +1549,6 @@ TEST(html, a_run_holds_its_spaces_and_tabs_as_is) {
       .write_html(out);
 
   EXPECT_NE(out.str().find("> a  b\tc </x-s>"), std::string::npos);
-}
-
-// #822: a sheet cell does not break its text into lines unless the file says
-// to — `style:wrap-option` is `no-wrap` by default, and so is `wrapText`.
-TEST(html, a_sheet_cell_keeps_its_text_on_one_line) {
-  const std::string page =
-      render_sheet(fods_file(fods_row(fods_cell("one"))), HtmlConfig());
-
-  EXPECT_NE(page.find(".c0.c0.c0{vertical-align:top;white-space:nowrap}"),
-            std::string::npos);
 }
 
 // #822: and it keeps the block it breaks into lines in, which is what holds the

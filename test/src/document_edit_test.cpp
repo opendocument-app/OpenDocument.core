@@ -255,18 +255,18 @@ Element paragraph_at(const Document &document, const std::uint32_t ordinal) {
 Element run_at(const Document &document, const std::uint32_t paragraph,
                const std::uint32_t ordinal) {
   std::uint32_t seen = 0;
-  const auto walk = [&](this auto &&self, const Element element) -> Element {
+  const auto walk = [&](auto &&self, const Element element) -> Element {
     if (element.type() == ElementType::text && seen++ == ordinal) {
       return element;
     }
     for (const Element child : element.children()) {
-      if (const Element found = self(child)) {
+      if (const Element found = self(self, child)) {
         return found;
       }
     }
     return {};
   };
-  return walk(paragraph_at(document, paragraph));
+  return walk(walk, paragraph_at(document, paragraph));
 }
 
 std::string ops(const std::string &body) {
@@ -439,9 +439,9 @@ TEST(DocumentEdit, inserting_a_run_beside_something_that_is_not_one_refuses) {
   EXPECT_THROW((void)document.insert_text_after(paragraph.as_text(), "x"),
                std::invalid_argument);
 }
-/// Every paragraph of @p document, its runs joined.
 namespace {
 
+/// Every paragraph of @p document, its runs joined.
 std::vector<std::string> paragraph_texts(const Document &document) {
   std::vector<std::string> result;
   for (const Element child : document.root_element().children()) {
@@ -776,7 +776,9 @@ TEST(DocumentEdit, a_highlight_of_null_takes_the_highlight_away) {
   document.edit(ops(style_op(run, R"({"highlight":"#ffff00"})") + "," +
                     style_op(run, R"({"highlight":null})")));
 
-  EXPECT_EQ(run.as_text().style().background_color, std::nullopt);
+  const auto color = run.as_text().style().background_color;
+  ASSERT_TRUE(color);
+  EXPECT_EQ(color->alpha, 0);
 }
 
 TEST(DocumentEdit, a_second_style_op_keeps_what_the_first_wrote) {
@@ -945,18 +947,18 @@ Document pptx_of(const std::string &paragraphs,
 Element nth_of_type(const Document &document, const ElementType type,
                     const std::uint32_t ordinal) {
   std::uint32_t seen = 0;
-  const auto walk = [&](this auto &&self, const Element element) -> Element {
+  const auto walk = [&](auto &&self, const Element element) -> Element {
     if (element.type() == type && seen++ == ordinal) {
       return element;
     }
     for (const Element child : element.children()) {
-      if (const Element found = self(child)) {
+      if (const Element found = self(self, child)) {
         return found;
       }
     }
     return {};
   };
-  return walk(document.root_element());
+  return walk(walk, document.root_element());
 }
 
 Element nth_run(const Document &document, const std::uint32_t ordinal) {

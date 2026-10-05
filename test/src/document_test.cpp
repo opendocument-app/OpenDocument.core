@@ -19,6 +19,7 @@
 #include <functional>
 #include <optional>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -45,24 +46,29 @@ Element find_paragraph_with_text_prefix(const Element root,
   return {};
 }
 
-// Both skip empty texts — TODO make editing empty text possible.
-
-void set_every_text(const Element element, const std::string &content) {
+std::size_t set_every_text(const Element element, const std::string &content) {
+  std::size_t count = 0;
   for (const Element child : element.children()) {
-    set_every_text(child, content);
+    count += set_every_text(child, content);
   }
   if (const Text text = element.as_text(); text && !text.content().empty()) {
     text.set_content(content);
+    ++count;
   }
+  return count;
 }
 
-void expect_every_text(const Element element, const std::string &content) {
+std::size_t expect_every_text(const Element element,
+                              const std::string &content) {
+  std::size_t count = 0;
   for (const Element child : element.children()) {
-    expect_every_text(child, content);
+    count += expect_every_text(child, content);
   }
   if (const Text text = element.as_text(); text && !text.content().empty()) {
     EXPECT_EQ(content, text.content());
+    ++count;
   }
+  return count;
 }
 
 /// The element `/child:N/cell:A1/...` names under @p root: a child by its
@@ -127,7 +133,9 @@ std::string set_text_ops(const Document &document, const TextEdits &edits) {
   nlohmann::json ops = nlohmann::json::array();
   for (const auto &[path, text] : edits) {
     const Element element = navigate(document.root_element(), path);
-    EXPECT_TRUE(element) << "no element at " << path;
+    if (!element) {
+      throw std::runtime_error("no element at " + path);
+    }
     ops.push_back(
         {{"op", "setText"}, {"id", element.identifier()}, {"text", text}});
   }
@@ -404,14 +412,16 @@ void edit_every_text_and_reload(const std::string &path,
       open(TestData::test_file_path(path), {}, logger).as_document_file();
   const Document document = document_file.document();
 
-  set_every_text(document.root_element(), "hello world!");
+  const std::size_t edited =
+      set_every_text(document.root_element(), "hello world!");
+  ASSERT_GT(edited, 0u);
 
   const std::string output_path =
       (std::filesystem::current_path() / output_name).string();
   document.save(output_path);
 
   const Document reloaded = open(output_path).as_document_file().document();
-  expect_every_text(reloaded.root_element(), "hello world!");
+  EXPECT_EQ(expect_every_text(reloaded.root_element(), "hello world!"), edited);
 }
 
 } // namespace
@@ -494,15 +504,15 @@ std::string text_of(const Element element) {
 /// Every run under @p element, in document order.
 std::vector<Element> runs_of(const Element element) {
   std::vector<Element> runs;
-  const auto walk = [&](this auto &&self, const Element at) -> void {
+  const auto walk = [&](auto &&self, const Element at) -> void {
     if (at.type() == ElementType::text) {
       runs.push_back(at);
     }
     for (const Element child : at.children()) {
-      self(child);
+      self(self, child);
     }
   };
-  walk(element);
+  walk(walk, element);
   return runs;
 }
 
@@ -544,7 +554,9 @@ std::string edit_across_runs(const std::string &path,
       path,
       [&](const Document &opened) {
         const Element paragraph = paragraph_of_several_runs(opened);
-        EXPECT_TRUE(paragraph) << path << " holds no paragraph of three runs";
+        if (!paragraph) {
+          throw std::runtime_error(path + " holds no paragraph of three runs");
+        }
         paragraph_path = path_of(paragraph);
         return rewrite_paragraph_ops(runs_of(paragraph));
       },
@@ -580,7 +592,9 @@ split_a_paragraph(const std::string &path, const std::string &output_name) {
       path,
       [&](const Document &opened) {
         const Element paragraph = paragraph_of_several_runs(opened);
-        EXPECT_TRUE(paragraph) << path << " holds no paragraph of three runs";
+        if (!paragraph) {
+          throw std::runtime_error(path + " holds no paragraph of three runs");
+        }
         paragraph_path = path_of(paragraph);
         const std::vector<Element> runs = runs_of(paragraph);
         return nlohmann::json{{"version", 2},
@@ -629,19 +643,19 @@ namespace {
 /// The first paragraph of at least three runs, found anywhere in the tree - a
 /// presentation puts its text inside frames rather than under the root.
 Element slide_paragraph_of_several_runs(const Document &document) {
-  const auto walk = [](this auto &&self, const Element element) -> Element {
+  const auto walk = [](auto &&self, const Element element) -> Element {
     if (element.type() == ElementType::paragraph &&
         runs_of(element).size() >= 3) {
       return element;
     }
     for (const Element child : element.children()) {
-      if (const Element found = self(child)) {
+      if (const Element found = self(self, child)) {
         return found;
       }
     }
     return {};
   };
-  return walk(document.root_element());
+  return walk(walk, document.root_element());
 }
 
 } // namespace
@@ -656,7 +670,9 @@ TEST(Document, edit_pptx_across_runs) {
         EXPECT_TRUE(opened.is_editable());
         EXPECT_TRUE(opened.is_savable());
         const Element paragraph = slide_paragraph_of_several_runs(opened);
-        EXPECT_TRUE(paragraph) << path << " holds no paragraph of three runs";
+        if (!paragraph) {
+          throw std::runtime_error(path + " holds no paragraph of three runs");
+        }
         paragraph_path = path_of(paragraph);
         return rewrite_paragraph_ops(runs_of(paragraph));
       },
@@ -674,7 +690,9 @@ TEST(Document, edit_pptx_splits_a_paragraph) {
       path,
       [&](const Document &opened) {
         const Element paragraph = slide_paragraph_of_several_runs(opened);
-        EXPECT_TRUE(paragraph) << path << " holds no paragraph of three runs";
+        if (!paragraph) {
+          throw std::runtime_error(path + " holds no paragraph of three runs");
+        }
         paragraph_path = path_of(paragraph);
         const std::vector<Element> runs = runs_of(paragraph);
         return nlohmann::json{{"version", 2},
@@ -726,13 +744,15 @@ TEST(Document, save_to_memory_round_trips_a_flat_document) {
   const Document document =
       open(File::from_memory(flat_odt)).as_document_file().document();
 
-  set_every_text(document.root_element(), "hello world!");
+  const std::size_t edited =
+      set_every_text(document.root_element(), "hello world!");
+  ASSERT_GT(edited, 0u);
 
   const File saved = document.save_to_memory();
   EXPECT_EQ(FileLocation::memory, saved.location());
 
   const Document reloaded = open(saved).as_document_file().document();
-  expect_every_text(reloaded.root_element(), "hello world!");
+  EXPECT_EQ(expect_every_text(reloaded.root_element(), "hello world!"), edited);
 }
 
 TEST(Document, save_to_a_stream_writes_what_save_to_memory_holds) {
@@ -751,11 +771,13 @@ TEST(Document, save_to_memory_round_trips_a_package) {
           .as_document_file()
           .document();
 
-  set_every_text(document.root_element(), "hello world!");
+  const std::size_t edited =
+      set_every_text(document.root_element(), "hello world!");
+  ASSERT_GT(edited, 0u);
 
   const Document reloaded =
       open(document.save_to_memory()).as_document_file().document();
-  expect_every_text(reloaded.root_element(), "hello world!");
+  EXPECT_EQ(expect_every_text(reloaded.root_element(), "hello world!"), edited);
 }
 
 // `.doc` throws its source away as it parses, so there is nothing to write
