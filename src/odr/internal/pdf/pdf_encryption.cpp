@@ -45,14 +45,16 @@ std::string pad_password(const std::string &password) {
   return pw;
 }
 
-/// Strip PKCS#7 padding (1-16 bytes) from decrypted AES data; leave the input
-/// untouched if the trailer is not valid padding (lenient — real files vary).
+/// Strip valid AES padding (ISO 32000-1 7.6.2); preserve an invalid trailer.
 std::string strip_pkcs7(std::string data) {
   if (data.empty()) {
     return data;
   }
   const auto n = static_cast<std::uint8_t>(data.back());
-  if (n >= 1 && n <= aes_block && n <= data.size()) {
+  if (n >= 1 && n <= aes_block && n <= data.size() &&
+      std::ranges::all_of(
+          std::string_view(data).substr(data.size() - n),
+          [n](const char c) { return static_cast<std::uint8_t>(c) == n; })) {
     data.resize(data.size() - n);
   }
   return data;
@@ -84,7 +86,7 @@ std::string recover_user_password(const std::string &owner_password,
   // /O to recover the user password.
   std::string hash = crypto::util::md5(pad_password(owner_password));
   if (r >= 3) {
-    for (int i = 0; i < 50; ++i) {
+    for (std::uint32_t i = 0; i < 50; ++i) {
       hash = crypto::util::md5(hash.substr(0, key_length));
     }
   }
@@ -94,7 +96,7 @@ std::string recover_user_password(const std::string &owner_password,
   if (r == 2) {
     return crypto::util::rc4(rc4_key, user);
   }
-  for (int i = 19; i >= 0; --i) {
+  for (std::int32_t i = 19; i >= 0; --i) {
     user =
         crypto::util::rc4(xor_key(rc4_key, static_cast<std::uint8_t>(i)), user);
   }
@@ -110,7 +112,7 @@ std::string hash_r6(const std::string &password, const std::string &salt,
   // rounds; stop once the last byte of E is small enough.
   std::string k = crypto::util::sha256(password + salt + udata);
   std::string e;
-  for (int round = 0;
+  for (std::uint32_t round = 0;
        round < 64 || static_cast<std::uint8_t>(e.back()) > round - 32;
        ++round) {
     std::string block;
@@ -120,12 +122,13 @@ std::string hash_r6(const std::string &password, const std::string &salt,
     block += udata;
     std::string k1;
     k1.reserve(block.size() * 64);
-    for (int i = 0; i < 64; ++i) {
+    for (std::uint32_t i = 0; i < 64; ++i) {
       k1 += block;
     }
     e = crypto::util::encrypt_aes_cbc(k.substr(0, 16), k.substr(16, 16), k1);
 
-    int mod = 0; // the first 16 bytes of E as a big-endian integer, mod 3
+    std::uint32_t mod =
+        0; // the first 16 bytes of E as a big-endian integer, mod 3
     for (std::size_t i = 0; i < 16; ++i) {
       mod = (mod * 256 + static_cast<std::uint8_t>(e[i])) % 3;
     }
@@ -155,7 +158,7 @@ std::string standard_security::compute_key_r2_r4(
   }
   std::string hash = crypto::util::md5(input);
   if (r >= 3) {
-    for (int i = 0; i < 50; ++i) {
+    for (std::uint32_t i = 0; i < 50; ++i) {
       hash = crypto::util::md5(hash.substr(0, key_length));
     }
   }

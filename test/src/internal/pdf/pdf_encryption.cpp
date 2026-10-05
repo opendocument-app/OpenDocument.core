@@ -224,3 +224,24 @@ TEST(PdfEncryption, qpdf_aes_128_r4_owner_password) {
   EXPECT_NE(decryptor_owner->decrypt_stream(kContentRef, stream).find(kMarker),
             std::string::npos);
 }
+
+TEST(PdfEncryption, aes_padding_requires_every_trailer_byte) {
+  const std::string key(32, 'k');
+  const std::string iv(16, 'i');
+  const Decryptor decryptor(key, EncryptionMethod::aes_v3,
+                            EncryptionMethod::aes_v3);
+  for (std::uint8_t length = 1; length <= 16; ++length) {
+    const std::string message(16 - length, 'x');
+    std::string padded =
+        message + std::string(length, static_cast<char>(length));
+    const auto decode = [&] {
+      return decryptor.decrypt_stream({1, 0},
+                                      iv + encrypt_aes_cbc(key, iv, padded));
+    };
+    EXPECT_EQ(decode(), message);
+    if (length > 1) {
+      padded[message.size()] = 'x';
+      EXPECT_EQ(decode(), padded);
+    }
+  }
+}
