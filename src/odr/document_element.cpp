@@ -8,6 +8,7 @@
 
 #include <odr/internal/abstract/document.hpp>
 
+#include <cmath>
 #include <utility>
 
 #include <fmt/format.h>
@@ -414,6 +415,9 @@ void Sheet::set_cell(const std::uint32_t column, const std::uint32_t row,
   // as it was
   if (value.type() == ValueType::float_number && !value.has_number()) {
     throw ValueNotStated();
+  }
+  if (value.has_number() && !std::isfinite(value.number())) {
+    throw UnsupportedOperation();
   }
   m_adapter2->sheet_set_cell(m_identifier, column, row, value);
 }

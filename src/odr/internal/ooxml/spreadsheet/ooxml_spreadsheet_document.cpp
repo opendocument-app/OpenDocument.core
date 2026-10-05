@@ -397,7 +397,7 @@ public:
                       const CellValue &value) const override {
     if (value.type() == ValueType::error ||
         ((value.type() == ValueType::date || value.type() == ValueType::time) &&
-         (!value.has_number() || !std::isfinite(value.number())))) {
+         !value.has_number())) {
       throw UnsupportedOperation(); // no form to write it in
     }
     const ElementRegistry::Sheet &sheet =

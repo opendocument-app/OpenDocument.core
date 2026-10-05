@@ -1,7 +1,13 @@
+#include <odr/document.hpp>
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
+#include <odr/file.hpp>
+#include <odr/odr.hpp>
+#include <odr/table_dimension.hpp>
 
 #include <gtest/gtest.h>
+
+#include <limits>
 
 using namespace odr;
 
@@ -61,4 +67,34 @@ TEST(CellValue, a_wither_leaves_the_value_it_was_asked_of_alone) {
   EXPECT_FALSE(value.has_formula());
   EXPECT_EQ(with.formula(), "of:=A1");
   EXPECT_EQ(with.text(), "hello");
+}
+
+TEST(SheetValue, nonfinite_numbers_leave_cells_and_dimensions_unchanged) {
+  for (const FileType format :
+       {FileType::opendocument_spreadsheet, FileType::office_open_xml_workbook,
+        FileType::comma_separated_values}) {
+    SCOPED_TRACE(file_type_to_string(format));
+    const Document document = format == FileType::comma_separated_values
+                                  ? open(File::from_memory("old,next\n1,2\n"),
+                                         DecodeOptions::as(format))
+                                        .as_csv_file()
+                                        .document()
+                                  : create_document(format);
+    const Sheet sheet = document.root_element().first_child().as_sheet();
+    sheet.set_cell(0, 0, CellValue("old"));
+    const TableDimensions before = sheet.dimensions();
+    for (const ValueType type : {ValueType::float_number, ValueType::boolean,
+                                 ValueType::date, ValueType::time}) {
+      for (const double number : {std::numeric_limits<double>::infinity(),
+                                  -std::numeric_limits<double>::infinity(),
+                                  std::numeric_limits<double>::quiet_NaN()}) {
+        const CellValue value = CellValue(type).with_number(number);
+        EXPECT_THROW(sheet.set_cell(0, 0, value), UnsupportedOperation);
+        EXPECT_THROW(sheet.set_cell(9, 9, value), UnsupportedOperation);
+        EXPECT_EQ(sheet.cell(0, 0).value().text(), "old");
+        EXPECT_EQ(sheet.dimensions().rows, before.rows);
+        EXPECT_EQ(sheet.dimensions().columns, before.columns);
+      }
+    }
+  }
 }
