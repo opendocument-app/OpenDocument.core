@@ -462,7 +462,7 @@ bool writable(const CellValue &value) {
            value.number() >= number_format::days_from_civil(1, 1, 1) &&
            value.number() < number_format::days_from_civil(10000, 1, 1);
   case ValueType::time:
-    return value.has_number() && std::isfinite(value.number()) &&
+    return value.has_number() &&
            std::abs(value.number()) <
                static_cast<double>(std::numeric_limits<std::int64_t>::max()) /
                    86400;

@@ -411,14 +411,12 @@ void Sheet::set_cell(const std::uint32_t column, const std::uint32_t row,
   if (value.has_formula()) {
     throw UnsupportedOperation();
   }
+  // checked before the engine writes anything, so a refusal leaves the cell
+  // as it was
   if (value.type() == ValueType::float_number && !value.has_number()) {
     throw ValueNotStated();
   }
-  const bool numeric = value.type() == ValueType::float_number ||
-                       value.type() == ValueType::boolean ||
-                       value.type() == ValueType::date ||
-                       value.type() == ValueType::time;
-  if (numeric && value.has_number() && !std::isfinite(value.number())) {
+  if (value.has_number() && !std::isfinite(value.number())) {
     throw UnsupportedOperation();
   }
   m_adapter2->sheet_set_cell(m_identifier, column, row, value);
