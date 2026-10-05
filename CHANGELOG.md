@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- XLSX workbooks without a styles part open and accept formatting edits;
+  saving adds the styles part and its package declarations.
+
 - XLSX resolves styles and shared strings through workbook relationships and
   saves edited styles back to their original part.
 

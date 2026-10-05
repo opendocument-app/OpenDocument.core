@@ -475,3 +475,45 @@ TEST(OoxmlSpreadsheetStyleWrite, relocated_styles_and_strings_survive_edits) {
   EXPECT_TRUE(saved.as_filesystem().is_file("/parts/formats.xml"));
   EXPECT_FALSE(saved.as_filesystem().exists("/xl/styles.xml"));
 }
+
+TEST(OoxmlSpreadsheetStyleWrite,
+     a_missing_styles_part_can_be_created_and_saved) {
+  const internal::zip::ZipArchive source(std::make_shared<
+                                         internal::zip::util::Archive>(workbook(
+      R"(<row r="1"><c r="A1" s="0" t="inlineStr"><is><t>a</t></is></c></row>)")));
+  internal::zip::ZipArchive without_styles;
+  for (const auto &entry : source) {
+    if (entry.path().string() != "xl/styles.xml") {
+      without_styles.insert_file(without_styles.end(), entry.path(),
+                                 entry.file());
+    }
+  }
+  std::ostringstream bytes;
+  without_styles.save(bytes);
+  const Document document =
+      decode(std::make_shared<internal::MemoryFile>(bytes.str()));
+  const Sheet sheet = first_sheet(document);
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "a");
+  EXPECT_EQ(fill_at(sheet, 0, 0), std::nullopt);
+  EXPECT_EQ(first_sheet(reopened(document)).cell(0, 0).value().text(), "a");
+  sheet.set_cell_style(0, 0, fill(0x00ff00_rgb), bold());
+  const Document saved = reopened(document);
+  EXPECT_EQ(fill_at(first_sheet(saved), 0, 0), 0x00ff00u);
+  EXPECT_EQ(text_style_at(first_sheet(saved), 0).font_weight, FontWeight::bold);
+  for (const char *path :
+       {"/xl/_rels/workbook.xml.rels", "/[Content_Types].xml"}) {
+    std::ostringstream xml;
+    xml << saved.as_filesystem().open(path).stream()->rdbuf();
+    EXPECT_NE(xml.str().find("styles.xml"), std::string::npos) << path;
+  }
+  EXPECT_EQ(fill_at(first_sheet(reopened(saved)), 0, 0), 0x00ff00u);
+}
+
+TEST(OoxmlSpreadsheetStyleWrite, an_unknown_style_index_keeps_the_default) {
+  const Document document = decode(workbook(
+      R"(<row r="1"><c r="A1" s="9" t="inlineStr"><is><t>a</t></is></c></row>)",
+      "", "", "", "", red_styles));
+  const Sheet sheet = first_sheet(document);
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "a");
+  EXPECT_EQ(fill_at(sheet, 0, 0), std::nullopt);
+}

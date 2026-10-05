@@ -204,6 +204,10 @@ StyleRegistry::StyleRegistry(const pugi::xml_node styles_root,
 ResolvedStyle StyleRegistry::cell_style(const std::uint32_t i) const {
   ResolvedStyle result;
 
+  // Like LibreOffice, an unknown style index keeps the default style.
+  if (i >= m_cell_formats_index.size()) {
+    return result;
+  }
   const pugi::xml_node cell_format = m_cell_formats_index.at(i);
 
   if (const pugi::xml_attribute font_id = cell_format.attribute("fontId");
