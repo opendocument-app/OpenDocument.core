@@ -315,10 +315,34 @@ describe('edit', () => {
     }
   });
 
-  it('refuses an id the document does not hold', () => {
-    const doc = odr.open(minimalOdt('hello'));
+  it('refuses unknown or nonintegral element ids', () => {
+    const doc = odr.open(minimalOdt('hello'), { editable: true });
     try {
-      assert.throws(() => doc.removeElement(999999), OdrError);
+      const id = firstEditableRunId(doc.render().html);
+      for (const invalid of [999999, id + 0.5, -1, NaN, Infinity, 2 ** 64]) {
+        assert.throws(() => doc.removeElement(invalid), OdrError);
+      }
+      assert.match(doc.render().html, /hello/);
+    } finally {
+      doc.close();
+    }
+  });
+
+  it('rejects invalid sheet coordinates before an edit', () => {
+    const doc = odr.open(minimalOds());
+    try {
+      for (const invalid of [-1, 0.5, NaN, Infinity, 2 ** 32]) {
+        for (const call of [
+          () => doc.setCellStyle(0, invalid, 0, { bold: true }),
+          () => doc.setRowStyle(0, invalid, { bold: true }),
+          () => doc.setColumnStyle(invalid, 0, { bold: true }),
+          () => doc.insertRows(0, 0, invalid),
+          () => doc.deleteColumns(0, invalid, 1),
+        ]) {
+          assert.throws(call, OdrError);
+        }
+      }
+      assert.doesNotMatch(doc.render().html, /font-weight:bold/);
     } finally {
       doc.close();
     }

@@ -8,8 +8,13 @@
 
 #include <emscripten/val.h>
 
+#include <algorithm>
+#include <cmath>
+#include <concepts>
 #include <cstdint>
+#include <limits>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -18,6 +23,20 @@
 namespace odr::wasm {
 
 using Handle = std::uint32_t;
+
+/// Rejects fractional, out-of-range and imprecise JavaScript integers.
+template <std::integral T> T checked_integer(const double value) {
+  constexpr double exact = 9007199254740991.0; // 2^53 - 1
+  const double minimum =
+      std::max(static_cast<double>(std::numeric_limits<T>::lowest()), -exact);
+  const double maximum =
+      std::min(static_cast<double>(std::numeric_limits<T>::max()), exact);
+  if (!std::isfinite(value) || std::trunc(value) != value || value < minimum ||
+      value > maximum) {
+    throw std::invalid_argument("number is not a representable integer");
+  }
+  return static_cast<T>(value);
+}
 
 /// One open document. Owns everything reachable from it, because the pieces do
 /// not own each other: `HtmlView` holds a bare pointer into its service, so the

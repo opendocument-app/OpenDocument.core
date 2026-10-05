@@ -78,7 +78,7 @@ emscripten::val recalculate(const Handle handle) {
 /// the page as `data-odr-id`, and a plain number needs no handle.
 Element element_of(Session &session, const double identifier) {
   const Element element = document_of(session).element_by_id(
-      static_cast<ElementIdentifier>(identifier));
+      checked_integer<ElementIdentifier>(identifier));
   if (!element) {
     throw std::invalid_argument("element not found");
   }
@@ -168,48 +168,53 @@ emscripten::val set_paragraph_style(const Handle handle, const double id,
 emscripten::val edit_style(const Handle handle, const std::string &op,
                            const std::string &place,
                            const emscripten::val style) {
-  return guarded([&] {
-    Session &s = session(handle);
-    if (style.isUndefined() || style.isNull() ||
-        style.typeOf().as<std::string>() != "object") {
-      throw std::invalid_argument(op + " takes a style object");
-    }
-    const std::string json =
-        emscripten::val::global("JSON").call<std::string>("stringify", style);
-    document_of(s).edit(R"({"version":2,"ops":[{"op":")" + op + R"(",)" +
-                        place + R"(,"style":)" + json + "}]}");
-    return ok();
-  });
+  Session &s = session(handle);
+  if (style.isUndefined() || style.isNull() ||
+      style.typeOf().as<std::string>() != "object") {
+    throw std::invalid_argument(op + " takes a style object");
+  }
+  const std::string json =
+      emscripten::val::global("JSON").call<std::string>("stringify", style);
+  document_of(s).edit(R"({"version":2,"ops":[{"op":")" + op + R"(",)" + place +
+                      R"(,"style":)" + json + "}]}");
+  return ok();
 }
 
 std::string index_field(const std::string &name, const double index) {
   return '"' + name + R"(":)" +
-         std::to_string(static_cast<std::uint32_t>(index));
+         std::to_string(checked_integer<std::uint32_t>(index));
 }
 
 emscripten::val set_cell_style(const Handle handle, const double sheet,
                                const double column, const double row,
                                const emscripten::val style) {
-  return edit_style(handle, "setCellStyle",
-                    index_field("sheet", sheet) + "," +
-                        index_field("column", column) + "," +
-                        index_field("row", row),
-                    style);
+  return guarded([&] {
+    return edit_style(handle, "setCellStyle",
+                      index_field("sheet", sheet) + "," +
+                          index_field("column", column) + "," +
+                          index_field("row", row),
+                      style);
+  });
 }
 
 emscripten::val set_row_style(const Handle handle, const double sheet,
                               const double row, const emscripten::val style) {
-  return edit_style(handle, "setRowStyle",
-                    index_field("sheet", sheet) + "," + index_field("row", row),
-                    style);
+  return guarded([&] {
+    return edit_style(
+        handle, "setRowStyle",
+        index_field("sheet", sheet) + "," + index_field("row", row), style);
+  });
 }
 
 emscripten::val set_column_style(const Handle handle, const double sheet,
                                  const double column,
                                  const emscripten::val style) {
-  return edit_style(
-      handle, "setColumnStyle",
-      index_field("sheet", sheet) + "," + index_field("column", column), style);
+  return guarded([&] {
+    return edit_style(handle, "setColumnStyle",
+                      index_field("sheet", sheet) + "," +
+                          index_field("column", column),
+                      style);
+  });
 }
 
 /// A row or column op, @p axis naming its index, replayed through the
