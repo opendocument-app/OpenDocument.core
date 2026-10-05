@@ -16,7 +16,6 @@
 #include <odr/internal/xml/xml_util.hpp>
 
 #include <algorithm>
-
 #include <array>
 
 #include <fmt/format.h>
