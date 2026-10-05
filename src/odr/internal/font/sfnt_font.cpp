@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -18,15 +19,6 @@ namespace odr::internal::font::sfnt {
 namespace bs = util::byte_string;
 
 namespace {
-
-std::string_view checked_slice(const std::string_view bytes,
-                               const std::size_t offset,
-                               const std::size_t length) {
-  if (offset > bytes.size() || length > bytes.size() - offset) {
-    throw std::runtime_error("sfnt: table range exceeds its container");
-  }
-  return bytes.substr(offset, length);
-}
 
 // The enumerators below are the on-disk codes (OpenType spec).
 
@@ -115,9 +107,6 @@ struct NameEntry {
 /// included, into UTF-8. @p d is exactly the string's bytes.
 [[nodiscard]] std::string read_utf16be(const std::string_view d) {
   const std::size_t len = d.size();
-  if (len % 2 != 0) {
-    throw std::runtime_error("sfnt: odd UTF-16 name length");
-  }
   std::string out;
   for (std::size_t i = 0; i + 1 < len; i += 2) {
     char32_t cp = bs::read_u16_be(d.substr(i));
@@ -226,7 +215,11 @@ void SfntFont::parse() {
 }
 
 std::string_view SfntFont::table_data(const Table table) const {
-  return checked_slice(m_data, table.offset, table.length);
+  if (table.offset > m_data.size()) {
+    throw std::runtime_error("sfnt: table offset exceeds the font");
+  }
+  // Like FreeType, clip a table that runs past the end of the font.
+  return std::string_view{m_data}.substr(table.offset, table.length);
 }
 
 void SfntFont::read_directory(const std::string_view sfnt) {
@@ -247,9 +240,7 @@ void SfntFont::read_directory(const std::string_view sfnt) {
     std::string tag{sfnt.substr(entry, 4)};
     const std::uint32_t offset = bs::read_u32_be(sfnt.substr(entry + 8));
     const std::uint32_t length = bs::read_u32_be(sfnt.substr(entry + 12));
-    if (!m_tables.emplace(std::move(tag), Table{offset, length}).second) {
-      throw std::runtime_error("sfnt: duplicate table tag");
-    }
+    m_tables.emplace(std::move(tag), Table{offset, length});
   }
 }
 
@@ -319,6 +310,9 @@ void SfntFont::read_cmap() {
   });
 
   const auto score = [t](const CmapEntry &entry) -> std::uint32_t {
+    if (t.size() < 2 || entry.offset > t.size() - 2) {
+      return 0;
+    }
     switch (static_cast<CmapFormat>(bs::read_u16_be(t.substr(entry.offset)))) {
     case CmapFormat::byte_encoding:
     case CmapFormat::segment_mapping:
@@ -329,12 +323,22 @@ void SfntFont::read_cmap() {
       return 0;
     }
   };
-  const auto best_entry = std::ranges::max_element(entries, {}, score);
+  std::ranges::stable_sort(entries, std::ranges::greater{}, score);
 
-  if (best_entry != entries.end() && score(*best_entry) > 0) {
-    // The encoding record's offset is relative to the start of the `cmap`
-    // table.
-    read_cmap_subtable(t.substr(best_entry->offset));
+  for (const CmapEntry &entry : entries) {
+    if (score(entry) == 0) {
+      break;
+    }
+    // Like FreeType, a broken subtable drops only itself, because a PDF
+    // addresses the glyphs of an embedded font by ID.
+    try {
+      // The encoding record's offset is relative to the start of the `cmap`
+      // table.
+      read_cmap_subtable(t.substr(entry.offset));
+      break;
+    } catch (const std::exception &) {
+      m_cmap.clear();
+    }
   }
 
   update_reverse();
@@ -354,7 +358,7 @@ void SfntFont::read_cmap_subtable(std::string_view s) {
   const std::size_t length = format == CmapFormat::segmented_coverage
                                  ? bs::read_u32_be(s.substr(4))
                                  : bs::read_u16_be(s.substr(2));
-  s = checked_slice(s, 0, length);
+  s = s.substr(0, length);
   const auto map = [this](const char32_t code, const std::uint16_t glyph) {
     if (glyph == 0) {
       return;
@@ -405,15 +409,19 @@ void SfntFont::read_cmap_subtable(std::string_view s) {
     }
     const std::vector<std::uint16_t> glyph_ids =
         read_u16_vector(s.substr(header), (length - header) / 2);
+    std::int32_t previous_end = -1;
     for (std::size_t seg = 0; seg < segs; ++seg) {
       const std::uint16_t start = start_codes.at(seg);
       const std::uint16_t end = end_codes.at(seg);
       const std::uint16_t delta = id_deltas.at(seg);
       const std::uint16_t range = id_range_offsets.at(seg);
-      if (start > end || (seg > 0 && start <= end_codes[seg - 1]) ||
+      // Skip a bad segment and keep the rest. In ascending order, the
+      // segments cover each code once.
+      if (start > end || start <= previous_end ||
           (start != 0xFFFF && range % 2 != 0)) {
-        throw std::runtime_error("sfnt: invalid cmap segment");
+        continue;
       }
+      previous_end = end;
       for (std::uint32_t code = start; code <= end && code != 0xffff; ++code) {
         std::uint16_t glyph = 0;
         if (range == 0) {
@@ -508,11 +516,12 @@ void SfntFont::read_name() {
 
   if (best_entry != entries.end() && score_entry(*best_entry) > 0) {
     // name_local_offset is relative to the string storage (string_offset).
-    const std::string_view value = checked_slice(
-        t,
-        static_cast<std::size_t>(string_offset) + best_entry->name_local_offset,
-        best_entry->name_length);
-    m_name = best_entry->utf16() ? read_utf16be(value) : read_latin1(value);
+    const std::size_t offset =
+        static_cast<std::size_t>(string_offset) + best_entry->name_local_offset;
+    if (offset <= t.size()) {
+      const std::string_view value = t.substr(offset, best_entry->name_length);
+      m_name = best_entry->utf16() ? read_utf16be(value) : read_latin1(value);
+    }
   }
 }
 

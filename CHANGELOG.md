@@ -16,9 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- SFNT fonts validate table and character-map ranges before expanding them,
-  preventing overflow and unbounded loops. Unsupported character-map formats no
-  longer hide supported alternatives; truncated names and zero em sizes refuse.
+- SFNT fonts check character-map ranges before they expand them. A broken or
+  unsupported character map no longer hides the next supported one.
 
 - Legacy Office reports unencrypted documents as decodable and derives metadata
   from the shared file-type table.
