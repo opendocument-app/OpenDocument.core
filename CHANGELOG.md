@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- ODF charts reject unrepresentable geometry, bound axis/label conversions,
+  and draw complete single-slice pies and rings without overflowing totals.
+
 - ODF charts keep missing points aligned with their categories, honor repeated
   rows, and retain implicit series. Expanded chart tables are bounded.
 
