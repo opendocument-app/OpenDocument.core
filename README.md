@@ -44,7 +44,8 @@ every accepted extension and MIME type, including aliases such as `docm`,
 
 ## Build
 
-The build uses CMake and Conan. See [`AGENTS.md`](AGENTS.md) for the build and
+The build requires CMake 3.20 or newer, Conan 2 and a C++23 compiler. Public
+headers support C++20 consumers. See [`AGENTS.md`](AGENTS.md) for the build and
 test loop and the coding conventions.
 
 A Conan remote is at https://artifactory.opendocument.app/. You can also export
