@@ -10,7 +10,6 @@
 
 #include <cstdint>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 
 using namespace odr;
@@ -313,29 +312,30 @@ TEST(OoxmlSpreadsheetValue, omitted_coordinates_follow_the_previous_entry) {
   EXPECT_DOUBLE_EQ(first_sheet(saved).cell(0, 5).value().number(), 6);
 }
 
-TEST(OoxmlSpreadsheetValue, integer_indices_reject_junk_and_overflow) {
+TEST(OoxmlSpreadsheetValue, an_invalid_index_keeps_the_rest_of_the_sheet) {
   for (const std::string index :
        {"", "-1", "1x", "4294967296", "18446744073709551616"}) {
     SCOPED_TRACE(index);
-    EXPECT_THROW(decode(workbook("<row r=\"" + index + "\"/>")),
-                 std::runtime_error);
-    EXPECT_THROW(
-        decode(workbook("", "", "", "",
-                        "<cols><col min=\"1\" max=\"" + index + "\"/></cols>")),
-        std::runtime_error);
-    EXPECT_THROW(
-        decode(workbook("<row r=\"1\"><c r=\"A1\" t=\"s\"><v>" + index +
-                            "</v></c></row>",
-                        "", "<si><t>zero</t></si><si><t>one</t></si>")),
-        std::runtime_error);
+    const Document document = decode(workbook(
+        R"(<row r="1"><c><v>1</v></c></row><row r=")" + index +
+            R"("><c><v>2</v></c><c t="s"><v>)" + index + "</v></c></row>",
+        "", "<si><t>zero</t></si><si><t>one</t></si>", "",
+        R"(<cols><col min="1" max=")" + index + R"("/><col min=")" + index +
+            R"(" max="1"/></cols>)"));
+    const Sheet sheet = first_sheet(document);
+    EXPECT_DOUBLE_EQ(sheet.cell(0, 1).value().number(), 2);
+    EXPECT_FALSE(sheet.cell(1, 1).first_child());
   }
-  EXPECT_THROW(decode(workbook(R"(<row r="0"/>)")), std::runtime_error);
-  for (const std::string columns :
-       {R"(<col min="0" max="1"/>)", R"(<col min="2" max="1"/>)"}) {
-    EXPECT_THROW(
-        decode(workbook("", "", "", "", "<cols>" + columns + "</cols>")),
-        std::runtime_error);
-  }
+  EXPECT_NO_THROW(decode(workbook("", "", "", "",
+                                  R"(<cols><col min="0" max="1"/>)"
+                                  R"(<col min="2" max="1"/></cols>)")));
+  EXPECT_DOUBLE_EQ(
+      first_sheet(
+          decode(workbook(R"(<row r="1"/><row r="0"><c><v>2</v></c></row>)")))
+          .cell(0, 1)
+          .value()
+          .number(),
+      2);
   const Document document =
       decode(workbook(R"(<row r=" +1 "><c r="A1" t="s"><v> +0 </v></c></row>)",
                       "", "<si><t>zero</t></si>"));

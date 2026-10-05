@@ -10,6 +10,7 @@
 #include <charconv>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -21,7 +22,7 @@ namespace odr::internal::ooxml::spreadsheet {
 
 namespace {
 
-std::uint32_t read_index(std::string_view text) {
+std::optional<std::uint32_t> read_index(std::string_view text) {
   text = util::string::trim_view(text);
   if (text.starts_with('+')) {
     text.remove_prefix(1);
@@ -30,7 +31,7 @@ std::uint32_t read_index(std::string_view text) {
   const auto [end, error] =
       std::from_chars(text.data(), text.data() + text.size(), result);
   if (error != std::errc{} || end != text.data() + text.size()) {
-    throw std::runtime_error("invalid spreadsheet index");
+    return std::nullopt;
   }
   return result;
 }
@@ -108,9 +109,13 @@ void parse_sheet_cell_children(ElementRegistry &registry,
   // one carries the same content model under `is`. Both hold the text one
   // level below the cell, where the walker does not descend on its own.
   if (type == "s") {
-    const std::uint32_t ref = read_index(node.child("v").text().get());
-    const pugi::xml_node shared_node = context.shared_strings().at(ref);
-    parse_any_element_children(registry, context, parent_id, shared_node);
+    // Like LibreOffice, an unknown shared string leaves the cell empty.
+    const std::optional<std::uint32_t> ref =
+        read_index(node.child("v").text().get());
+    if (ref && *ref < context.shared_strings().size()) {
+      parse_any_element_children(registry, context, parent_id,
+                                 context.shared_strings()[*ref]);
+    }
     return;
   }
   if (type == "inlineStr") {
@@ -133,30 +138,37 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
                                     context.document_path());
 
   for (const pugi::xml_node col_node : node.child("cols").children("col")) {
-    const std::uint32_t min = read_index(col_node.attribute("min").value());
-    const std::uint32_t max = read_index(col_node.attribute("max").value());
-    if (min == 0 || max < min) {
-      throw std::runtime_error("invalid spreadsheet column range");
+    // Like LibreOffice, an invalid range drops only its `col`.
+    const std::optional<std::uint32_t> min =
+        read_index(col_node.attribute("min").value());
+    const std::optional<std::uint32_t> max =
+        read_index(col_node.attribute("max").value());
+    if (!min || !max || *min == 0 || *max < *min) {
+      continue;
     }
-    sheet.register_column(min - 1, max - 1, col_node);
+    sheet.register_column(*min - 1, *max - 1, col_node);
   }
 
   TableDimensions used;
   // State inferred coordinates so later edits read the same positions.
   std::uint64_t next_row = 1;
   for (pugi::xml_node row_node : node.child("sheetData").children("row")) {
-    const pugi::xml_attribute row_attribute = row_node.attribute("r");
+    // An invalid `r` counts as omitted.
+    pugi::xml_attribute row_attribute = row_node.attribute("r");
+    const std::optional<std::uint32_t> stated =
+        row_attribute ? read_index(row_attribute.value()) : std::nullopt;
     const std::uint64_t row_number =
-        row_attribute ? read_index(row_attribute.value()) : next_row;
-    if (row_number == 0 ||
-        row_number > std::numeric_limits<std::uint32_t>::max()) {
+        stated && *stated != 0 ? *stated : next_row;
+    if (row_number > std::numeric_limits<std::uint32_t>::max()) {
       throw std::runtime_error("invalid spreadsheet row");
     }
     const std::uint32_t row = static_cast<std::uint32_t>(row_number - 1);
     next_row = row_number + 1;
-    if (!row_attribute) {
-      row_node.append_attribute("r").set_value(
-          static_cast<std::uint32_t>(row_number));
+    if (!stated || *stated != row_number) {
+      if (!row_attribute) {
+        row_attribute = row_node.append_attribute("r");
+      }
+      row_attribute.set_value(static_cast<std::uint32_t>(row_number));
     }
     sheet.register_row(row, row_node);
 

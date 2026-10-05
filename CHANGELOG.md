@@ -17,7 +17,8 @@ The release run heads these entries with the version and opens a fresh
 ## Unreleased
 
 - XLSX infers omitted row and cell coordinates and preserves them through edits.
-  Invalid or overflowing row, column and shared-string indices are rejected.
+  An invalid row index counts as omitted; an invalid column range or
+  shared-string index is ignored.
 
 - Spreadsheet edits reject NaN and infinite numeric values before changing
   cells or dimensions, consistently across CSV, ODS and XLSX.
