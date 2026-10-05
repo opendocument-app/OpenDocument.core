@@ -4,10 +4,10 @@
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/common/table_range.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element_registry.hpp>
+#include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
-#include <charconv>
 #include <cstdint>
 #include <limits>
 #include <optional>
@@ -22,18 +22,9 @@ namespace odr::internal::ooxml::spreadsheet {
 
 namespace {
 
-std::optional<std::uint32_t> read_index(std::string_view text) {
-  text = util::string::trim_view(text);
-  if (text.starts_with('+')) {
-    text.remove_prefix(1);
-  }
-  std::uint32_t result = 0;
-  const auto [end, error] =
-      std::from_chars(text.data(), text.data() + text.size(), result);
-  if (error != std::errc{} || end != text.data() + text.size()) {
-    return std::nullopt;
-  }
-  return result;
+std::optional<std::uint32_t> read_index(const std::string_view text) {
+  return util::number::parse_integer<std::uint32_t>(
+      util::string::trim_view(text), {.allow_plus = true});
 }
 
 using TreeParser = std::function<std::tuple<ElementIdentifier, pugi::xml_node>(

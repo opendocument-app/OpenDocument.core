@@ -320,38 +320,41 @@ ValueType value_type_of(const pugi::xml_node node) {
 /// An `office:date-value`, `YYYY-MM-DD` with an optional `THH:MM:SS` and a
 /// fraction of a second, as days since 1899-12-30. Nothing where it is none.
 std::optional<double> date_days(const std::string_view text) {
-  const auto integer = [](const std::string_view digits, auto &out) {
-    const auto [end, error] =
-        std::from_chars(digits.data(), digits.data() + digits.size(), out);
-    return error == std::errc() && end == digits.data() + digits.size();
-  };
-  std::int64_t year = 0;
-  std::uint32_t month = 0;
-  std::uint32_t day = 0;
-  if (text.size() < 10 || text[4] != '-' || text[7] != '-' ||
-      !integer(text.substr(0, 4), year) || !integer(text.substr(5, 2), month) ||
-      !integer(text.substr(8, 2), day) || month < 1 || month > 12 || day < 1 ||
-      day > 31) {
+  if (text.size() < 10 || text[4] != '-' || text[7] != '-') {
     return std::nullopt;
   }
-  double result =
-      static_cast<double>(number_format::days_from_civil(year, month, day));
+  const auto year =
+      util::number::parse_integer<std::int64_t>(text.substr(0, 4));
+  const auto month =
+      util::number::parse_integer<std::uint32_t>(text.substr(5, 2));
+  const auto day =
+      util::number::parse_integer<std::uint32_t>(text.substr(8, 2));
+  if (!year || !month || !day || *month < 1 || *month > 12 || *day < 1 ||
+      *day > 31) {
+    return std::nullopt;
+  }
+  const double result =
+      static_cast<double>(number_format::days_from_civil(*year, *month, *day));
   if (text.size() == 10) {
     return result;
   }
-  std::uint32_t hours = 0;
-  std::uint32_t minutes = 0;
-  std::string_view seconds = text.size() > 17 ? text.substr(17) : "";
+  if (text.size() < 19 || text[10] != 'T' || text[13] != ':' ||
+      text[16] != ':') {
+    return std::nullopt;
+  }
+  const auto hours =
+      util::number::parse_integer<std::uint32_t>(text.substr(11, 2));
+  const auto minutes =
+      util::number::parse_integer<std::uint32_t>(text.substr(14, 2));
+  std::string_view seconds = text.substr(17);
   if (seconds.ends_with('Z')) {
     seconds.remove_suffix(1);
   }
   const std::optional<double> second = util::number::parse(seconds);
-  if (text[10] != 'T' || text.size() < 19 || text[13] != ':' ||
-      text[16] != ':' || !integer(text.substr(11, 2), hours) ||
-      !integer(text.substr(14, 2), minutes) || !second) {
+  if (!hours || !minutes || !second) {
     return std::nullopt;
   }
-  return result + (hours * 3600.0 + minutes * 60.0 + *second) / 86400;
+  return result + (*hours * 3600.0 + *minutes * 60.0 + *second) / 86400;
 }
 
 /// An `office:time-value`, an ISO 8601 duration such as `PT18H30M00S`, as
