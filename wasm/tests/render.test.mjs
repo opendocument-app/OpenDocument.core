@@ -10,6 +10,30 @@ describe('render', () => {
   });
   after(() => odr.closeAll());
 
+  it('rejects invalid numeric config and view indices', () => {
+    const bytes = minimalOdt();
+    for (const invalid of [-1, 0.5, NaN, Infinity, 2 ** 64]) {
+      for (const config of [
+        { pageRangeBegin: invalid }, { pageRangeEnd: invalid },
+        { viewportWidth: invalid }, { spreadsheetStyleBuffer: invalid },
+        { spreadsheetCellLimit: invalid },
+        { spreadsheetLimit: { rows: invalid, columns: 1 } },
+        { spreadsheetLimit: { rows: 1, columns: invalid } },
+      ]) {
+        assert.throws(() => odr.open(bytes, config), OdrError);
+      }
+    }
+    const doc = odr.open(bytes);
+    try {
+      for (const invalid of [-1, 0.5, NaN, Infinity, 2 ** 32]) {
+        assert.throws(() => doc.render(invalid), OdrError);
+      }
+      assert.match(doc.render(0).html, /hello/);
+    } finally {
+      doc.close();
+    }
+  });
+
   it('renders a view to self-contained html', () => {
     const doc = odr.open(fixture('mixed-layout.odt'));
     try {

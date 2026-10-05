@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- WebAssembly rejects fractional, nonfinite and out-of-range element IDs,
+  sheet coordinates, rendering limits and view indices before conversion.
+
 - Apple CSV decoding rejects multi-character and multibyte delimiters.
   Roots without a text-root interface are exposed as `Element`, not `TextRoot`.
 

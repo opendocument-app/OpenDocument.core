@@ -23,7 +23,11 @@ void read(const emscripten::val &value, const char *key, T &target) {
   if (field.isUndefined() || field.isNull()) {
     return;
   }
-  target = field.as<T>();
+  if constexpr (std::integral<T> && !std::same_as<T, bool>) {
+    target = checked_integer<T>(field.as<double>());
+  } else {
+    target = field.as<T>();
+  }
 }
 
 /// @ref read for an enum, which JS carries as its ordinal.
@@ -33,7 +37,7 @@ void read_enum(const emscripten::val &value, const char *key, T &target) {
   if (field.isUndefined() || field.isNull()) {
     return;
   }
-  target = static_cast<T>(field.as<int>());
+  target = static_cast<T>(checked_integer<std::int32_t>(field.as<double>()));
 }
 
 /// A css length a caller states as a string, e.g. `"3mm"`.
@@ -87,8 +91,9 @@ emscripten::val list_views(const Handle handle) {
 
 /// The rendered view as one HTML string, self-contained under the default
 /// `embedImages` — which is what lets a viewer drop it into a `blob:` iframe.
-emscripten::val render_view(const Handle handle, const std::size_t index) {
+emscripten::val render_view(const Handle handle, const double requested_index) {
   return guarded([&] {
+    const std::size_t index = checked_integer<std::size_t>(requested_index);
     const Session &s = warm(handle);
     if (index >= s.views.size()) {
       return error(ErrorCode::unknown,
@@ -178,7 +183,7 @@ HtmlConfig to_html_config(const emscripten::val &value) {
   read(value, "pageRangeBegin", config.page_range_begin);
   if (const emscripten::val end = value["pageRangeEnd"];
       !end.isUndefined() && !end.isNull()) {
-    config.page_range_end = end.as<std::uint32_t>();
+    config.page_range_end = checked_integer<std::uint32_t>(end.as<double>());
   }
 
   read_enum(value, "colorScheme", config.color_scheme);
@@ -187,16 +192,18 @@ HtmlConfig to_html_config(const emscripten::val &value) {
   // absent leaves the default in place.
   if (const emscripten::val limit = value["spreadsheetLimit"];
       !limit.isUndefined()) {
-    config.spreadsheet_limit = limit.isNull()
-                                   ? std::optional<TableDimensions>()
-                                   : std::optional(TableDimensions(
-                                         limit["rows"].as<std::uint32_t>(),
-                                         limit["columns"].as<std::uint32_t>()));
+    config.spreadsheet_limit =
+        limit.isNull()
+            ? std::optional<TableDimensions>()
+            : std::optional(TableDimensions(
+                  checked_integer<std::uint32_t>(limit["rows"].as<double>()),
+                  checked_integer<std::uint32_t>(
+                      limit["columns"].as<double>())));
   }
   if (const emscripten::val buffer = value["spreadsheetStyleBuffer"];
       !buffer.isUndefined() && !buffer.isNull()) {
     config.spreadsheet_style_buffer =
-        static_cast<std::uint64_t>(buffer.as<double>());
+        checked_integer<std::uint64_t>(buffer.as<double>());
   }
   if (const emscripten::val limit = value["spreadsheetCellLimit"];
       !limit.isUndefined()) {
@@ -204,12 +211,12 @@ HtmlConfig to_html_config(const emscripten::val &value) {
     config.spreadsheet_cell_limit =
         limit.isNull()
             ? std::optional<std::uint64_t>()
-            : std::optional(static_cast<std::uint64_t>(limit.as<double>()));
+            : std::optional(checked_integer<std::uint64_t>(limit.as<double>()));
   }
   read_enum(value, "viewportMode", config.viewport_mode);
   if (const emscripten::val width = value["viewportWidth"];
       !width.isUndefined() && !width.isNull()) {
-    config.viewport_width = width.as<std::uint32_t>();
+    config.viewport_width = checked_integer<std::uint32_t>(width.as<double>());
   }
   if (const emscripten::val zoom = value["initialZoom"];
       !zoom.isUndefined() && !zoom.isNull()) {
