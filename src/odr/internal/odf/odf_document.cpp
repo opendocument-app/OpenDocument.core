@@ -1447,7 +1447,7 @@ public:
 
   /// Retires old cell ids before their DOM addresses can be reused.
   void retire_cells(const ElementIdentifier sheet_id,
-                    const std::vector<Run> &runs) const {
+                    const std::span<const Run> runs) const {
     std::unordered_set<const void *> removed;
     for (const Run &run : runs) {
       if (std::string_view(run.node.name()) == "table:table-row") {
