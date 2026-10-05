@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <limits>
 #include <map>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <utility>
@@ -172,16 +173,12 @@ using Dict = std::map<std::uint16_t, std::vector<double>>;
           } else if (nibble == nibble_end) {
             done = true;
             break;
-          } else {
-            throw std::runtime_error("cff: invalid real-number nibble");
           }
         }
       }
+      // An unreadable real reads as zero, so it does not refuse the font.
       const std::optional<double> value = util::number::parse(number);
-      if (!done || !value || !std::isfinite(*value)) {
-        throw std::runtime_error("cff: invalid real-number operand");
-      }
-      operands.push_back(*value);
+      operands.push_back(value && std::isfinite(*value) ? *value : 0.0);
     } else if (b0 >= 32 && b0 <= 246) {
       operands.push_back(static_cast<std::int32_t>(b0) - 139);
       ++p;
@@ -199,9 +196,6 @@ using Dict = std::map<std::uint16_t, std::vector<double>>;
     if (operands.size() > 48) {
       throw std::runtime_error("cff: too many DICT operands");
     }
-  }
-  if (!operands.empty()) {
-    throw std::runtime_error("cff: DICT ends with operands");
   }
   return dict;
 }
@@ -267,9 +261,6 @@ std::vector<CffFont::Range> CffFont::read_index(const std::uint32_t offset,
   const std::size_t data_base = 3 + (std::size_t{count} + 1) * off_size;
   (void)checked_slice(d, 0, data_base);
   std::uint32_t prev = read_be(d, 3, off_size);
-  if (prev != 1) {
-    throw std::runtime_error("cff: INDEX must start at offset one");
-  }
   std::vector<Range> members;
   members.reserve(count);
   for (std::size_t i = 1; i <= count; ++i) {
@@ -436,11 +427,7 @@ void CffFont::parse_fd_select(const std::uint32_t offset) {
   if (format == 0) {
     m_fd_select.reserve(glyphs);
     for (std::uint16_t gid = 0; gid < glyphs; ++gid) {
-      const std::uint8_t fd = u8(d, 1 + gid);
-      if (fd >= m_fd_widths.size()) {
-        throw std::runtime_error("cff: invalid font dictionary index");
-      }
-      m_fd_select.push_back(fd);
+      m_fd_select.push_back(u8(d, 1 + gid));
     }
     return;
   }
@@ -450,20 +437,14 @@ void CffFont::parse_fd_select(const std::uint32_t offset) {
 
   // format 3: ranges of [first, next first) sharing one FD, then a sentinel
   const auto ranges = static_cast<std::uint16_t>(read_be(d, 1, 2));
-  if (ranges == 0) {
-    throw std::runtime_error("cff: empty FDSelect ranges");
-  }
   m_fd_select.assign(glyphs, 0);
   for (std::uint16_t i = 0; i < ranges; ++i) {
     const std::size_t entry = 3 + 3 * std::size_t{i};
     const auto first = static_cast<std::uint16_t>(read_be(d, entry, 2));
     const std::uint8_t fd = u8(d, entry + 2);
     const auto next = static_cast<std::uint16_t>(read_be(d, entry + 3, 2));
-    if ((i == 0 && first != 0) || next <= first || next > glyphs ||
-        (i + 1 == ranges && next != glyphs) || fd >= m_fd_widths.size()) {
-      throw std::runtime_error("cff: invalid FDSelect range");
-    }
-    for (std::uint32_t gid = first; gid < next; ++gid) {
+    // An FD index out of range falls back in `widths_for_glyph`.
+    for (std::uint32_t gid = first; gid < next && gid < glyphs; ++gid) {
       m_fd_select[gid] = fd;
     }
   }
@@ -500,11 +481,9 @@ void CffFont::parse_charset(const std::uint32_t offset) {
       p += 2;
       const std::uint32_t n_left = read_be(d, p, n_left_size);
       p += n_left_size;
-      if (n_left >= std::uint32_t{glyphs} - gid || n_left > 0xFFFFU - first) {
-        throw std::runtime_error(
-            "cff: charset range exceeds glyph or SID limits");
-      }
-      for (std::uint32_t i = 0; i <= n_left; ++i, ++gid) {
+      // A last range past the glyph count is clipped.
+      for (std::uint32_t i = 0;
+           i <= n_left && gid < glyphs && first + i <= 0xFFFF; ++i, ++gid) {
         m_charset[gid] = static_cast<std::uint16_t>(first + i);
       }
     }

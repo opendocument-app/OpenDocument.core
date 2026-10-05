@@ -532,25 +532,22 @@ TEST(CffFontTest, IndexCountAndRangesAreBounded) {
   const std::string valid = cff_with_top_dict({});
   for (const std::uint8_t offset : {0, 255}) {
     std::string bytes = valid;
-    bytes[7] = static_cast<char>(offset);
-    EXPECT_THROW(CffFont{bytes}, std::runtime_error);
-    bytes = valid;
     bytes[8] = static_cast<char>(offset);
     EXPECT_THROW(CffFont{bytes}, std::runtime_error);
   }
+  std::string past_the_data = valid;
+  past_the_data[7] = static_cast<char>(255);
+  EXPECT_THROW(CffFont{past_the_data}, std::runtime_error);
   const std::string oversized(
       "\x01\0\x04\x04\0\x01\x04\0\0\0\x01\xff\xff\xff\xff", 15);
   EXPECT_THROW(CffFont{oversized}, std::runtime_error);
 }
 
 TEST(CffFontTest, DictOperandsStayWithinTheirDeclaredRange) {
-  const std::array<std::string, 7> invalid{
-      std::string("\x1d", 1),
-      std::string("\x0c", 1),
-      std::string("\x1e\x1a\x5f\x11", 4),     // fractional CharStrings offset
-      std::string("\x8a\x11", 2),             // negative CharStrings offset
-      std::string("\x1e\x1b\x99\x9f\x11", 5), // overflowing real
-      std::string("\x1e\x1d\xff\x11", 4),     // reserved nibble
+  const std::array<std::string, 5> invalid{
+      std::string("\x1d", 1), std::string("\x0c", 1),
+      std::string("\x1e\x1a\x5f\x11", 4), // fractional CharStrings offset
+      std::string("\x8a\x11", 2),         // negative CharStrings offset
       std::string(49, static_cast<char>(139)) + static_cast<char>(5)};
   for (const std::string &dict : invalid) {
     EXPECT_THROW(CffFont(cff_with_top_dict(dict)), std::runtime_error);
@@ -578,7 +575,21 @@ TEST(CffFontTest, RealOperandsIgnoreNumericLocale) {
   EXPECT_EQ(font.units_per_em(), 2000);
 }
 
-TEST(CffFontTest, FontDictionarySelectionCoversExactlyTheGlyphs) {
+TEST(CffFontTest, QuirkyDictOperandsDoNotRefuseTheFont) {
+  const std::string zero(1, static_cast<char>(139));
+  const auto units_per_em = [&](const std::string &scale) {
+    return CffFont(cff_with_top_dict(scale + zero + zero + scale + zero + zero +
+                                     std::string("\x0c\x07", 2)))
+        .units_per_em();
+  };
+  // A reserved nibble is skipped: 0.0005 gives 2000 units per em.
+  EXPECT_EQ(units_per_em(std::string("\x1e\x0a\x00\x0d\x5f", 5)), 2000);
+  // An overflowing real reads as zero, so the default stays.
+  EXPECT_EQ(units_per_em(std::string("\x1e\x1b\x99\x9f", 4)), 1000);
+  EXPECT_EQ(CffFont(cff_with_top_dict(zero)).name(), "TestFont");
+}
+
+TEST(CffFontTest, FontDictionarySelectionToleratesQuirkyRanges) {
   const auto font_bytes = [](const std::string &selection) {
     const std::string glyphs = build_index({"\x0e", "\x0e", "\x0e"});
     const std::string dictionaries = build_index({""});
@@ -600,11 +611,12 @@ TEST(CffFontTest, FontDictionarySelectionCoversExactlyTheGlyphs) {
   const std::string ranges("\x03\0\x01\0\0\0\0\x03", 8);
   EXPECT_EQ(CffFont(font_bytes(ranges)).glyph_count(), 3);
   EXPECT_EQ(CffFont(font_bytes(std::string(4, '\0'))).advance_width(2), 0);
+  // A range past the glyphs, a missing sentinel or an unknown FD is tolerated.
   for (const std::size_t index : {2, 4, 5, 7}) {
-    std::string invalid = ranges;
-    invalid[index] = index == 2 ? 0 : 1;
-    EXPECT_THROW(CffFont(font_bytes(invalid)), std::runtime_error);
+    std::string quirky = ranges;
+    quirky[index] = index == 2 ? 0 : 1;
+    EXPECT_EQ(CffFont(font_bytes(quirky)).advance_width(2), 0);
   }
-  EXPECT_THROW(CffFont(font_bytes(std::string("\0\0\x01\0", 4))),
-               std::runtime_error);
+  EXPECT_EQ(CffFont(font_bytes(std::string("\0\0\x01\0", 4))).advance_width(1),
+            0);
 }
