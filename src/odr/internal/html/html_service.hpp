@@ -5,6 +5,8 @@
 
 #include <odr/internal/abstract/html_service.hpp>
 
+#include <string_view>
+
 namespace odr::internal::html {
 
 class HtmlService : public abstract::HtmlService {
@@ -47,6 +49,10 @@ private:
 /// has no location and so is never served.
 const odr::HtmlResource *resource_at(const HtmlResources &resources,
                                      const std::string &path);
+
+/// Whether a location is already used, including case-insensitive filesystems.
+bool resource_location_taken(const HtmlResources &resources,
+                             std::string_view location);
 
 class HtmlResource : public abstract::HtmlResource {
 public:

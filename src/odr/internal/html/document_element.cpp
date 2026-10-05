@@ -1163,6 +1163,18 @@ void html::translate_image(const Element &element, const WritingState &state) {
                                     path, image.file(), false, false, true);
     resource_location =
         state.config().resource_locator(resource, state.config());
+    if (resource_location) {
+      // a location taken by anything but this same image embeds instead
+      const odr::HtmlResource *existing =
+          resource_at(state.resources(), *resource_location);
+      const bool same_image = existing != nullptr && !existing->is_shipped() &&
+                              existing->path() == resource.path();
+      if (uri_kind(*resource_location) == UriKind::refused ||
+          (!same_image &&
+           resource_location_taken(state.resources(), *resource_location))) {
+        resource_location.reset();
+      }
+    }
   } else if (loads_external_source(image.href(), state.config())) {
     resource =
         HtmlResource::create(HtmlResourceType::image, "image/jpg", "image",

@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Document images cannot replace viewer scripts or stylesheets at shared output
+  paths; colliding images are embedded instead.
+
 - Document HTML escapes locale metadata and keeps individual views for sheets,
   slides and pages named `document`.
 

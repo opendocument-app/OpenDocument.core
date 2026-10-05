@@ -1,8 +1,11 @@
 #include <odr/internal/html/html_service.hpp>
 
 #include <odr/internal/util/stream_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <odr/exceptions.hpp>
+
+#include <algorithm>
 
 namespace odr::internal::html {
 
@@ -88,6 +91,14 @@ void HtmlResource::write_resource(std::ostream &os) const {
 } // namespace odr::internal::html
 
 namespace odr::internal {
+
+bool html::resource_location_taken(const HtmlResources &resources,
+                                   const std::string_view location) {
+  return std::ranges::any_of(resources, [&](const auto &entry) {
+    return entry.second &&
+           util::string::equals_ignore_case(*entry.second, location);
+  });
+}
 
 const odr::HtmlResource *html::resource_at(const HtmlResources &resources,
                                            const std::string &path) {
