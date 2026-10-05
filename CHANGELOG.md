@@ -16,8 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- **Breaking:** Apple `Measure` initializers are now failable. Invalid lengths
-  return `nil` instead of letting a C++ exception escape into Swift.
+- **Breaking:** Apple `Measure(string:)` is now failable. An invalid length
+  returns `nil` instead of letting a C++ exception escape into Swift.
 
 - Python, Java and Apple file/image/font reads report stream failures instead
   of returning partial data after a ZIP checksum or other read error.

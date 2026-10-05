@@ -133,17 +133,12 @@ odr::Color unbox_color(NSValue *const value) {
       nil);
 }
 
-- (nullable instancetype)initWithMagnitude:(double)magnitude
-                                      unit:(NSString *)unit {
+- (instancetype)initWithMagnitude:(double)magnitude unit:(NSString *)unit {
   if ((self = [super init]) == nil) {
     return nil;
   }
-  return guarded_value(
-      [&]() -> ODRMeasure * {
-        _handle = odr::Measure(magnitude, odr::DynamicUnit(to_string(unit)));
-        return self;
-      },
-      nil);
+  _handle = odr::Measure(magnitude, odr::DynamicUnit(to_string(unit)));
+  return self;
 }
 
 - (const std::optional<odr::Measure> &)handle {

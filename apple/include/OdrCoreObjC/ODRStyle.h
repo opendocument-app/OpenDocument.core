@@ -99,8 +99,7 @@ NS_SWIFT_NAME(Measure)
 /// Parses a length such as `3mm` or a unitless magnitude; returns nil on
 /// failure.
 - (nullable instancetype)initWithString:(NSString *)string;
-- (nullable instancetype)initWithMagnitude:(double)magnitude
-                                      unit:(NSString *)unit;
+- (instancetype)initWithMagnitude:(double)magnitude unit:(NSString *)unit;
 
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;
