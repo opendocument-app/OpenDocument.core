@@ -8,9 +8,11 @@ class CollectingLogger(pyodr.ILogger):
         super().__init__()
         self.level = level
         self.messages = []
+        self.consulted = []
         self.flushes = 0
 
     def will_log(self, level):
+        self.consulted.append(level)
         return level >= self.level
 
     def log(self, time, level, message, location):
@@ -56,9 +58,7 @@ def test_custom_sink_receives_library_diagnostics(odt_path):
     """A logger passed to `open` is actually used by the library."""
     sink = CollectingLogger()
     pyodr.open(str(odt_path), logger=pyodr.Logger(sink))
-    # The odt path logs at least one diagnostic; at minimum it must not crash
-    # and the sink must have been consulted.
-    assert isinstance(sink.messages, list)
+    assert sink.consulted
 
 
 def test_logger_accepted_by_entry_points(odt_path):

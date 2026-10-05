@@ -98,12 +98,6 @@ def test_open_as_type(txt_path):
     assert file.file_type() == pyodr.FileType.text_file
 
 
-def test_open_with_options(txt_path):
-    options = pyodr.DecodeOptions(as_file_type=pyodr.FileType.text_file)
-    file = pyodr.open(str(txt_path), options)
-    assert file.file_type() == pyodr.FileType.text_file
-
-
 def test_open_carries_csv_options(tmp_path):
     path = tmp_path / "semicolons.csv"
     path.write_text("a;b\n1;2\n", encoding="utf-8")
@@ -170,28 +164,6 @@ def test_open_from_memory_as_type(odt_path):
     assert pyodr.open(file, options).is_archive_file()
 
 
-def test_decoded_file_from_file(odt_path):
-    file = pyodr.File.from_memory(odt_path.read_bytes())
-
-    assert pyodr.open(file).file_type() == pyodr.FileType.opendocument_text
-    assert pyodr.open(
-        file, pyodr.DecodeOptions(as_file_type=pyodr.FileType.zip)
-    ).is_archive_file()
-
-    options = pyodr.DecodeOptions(as_file_type=pyodr.FileType.zip)
-    assert pyodr.open(file, options).is_archive_file()
-
-
-def test_document_file_from_file(odt_path):
-    file = pyodr.File.from_memory(odt_path.read_bytes())
-
-    document_file = pyodr.open(file).as_document_file()
-    assert document_file.file_type() == pyodr.FileType.opendocument_text
-    assert document_file.file_meta().type == pyodr.FileType.opendocument_text
-
-    assert document_file.document_type() == pyodr.DocumentType.text
-
-
 def test_document_file_from_disk_and_from_memory(odt_path):
     from_disk = pyodr.open(str(odt_path)).as_document_file()
     from_memory = pyodr.open(
@@ -199,6 +171,7 @@ def test_document_file_from_disk_and_from_memory(odt_path):
     ).as_document_file()
 
     assert from_disk.file_type() == pyodr.FileType.opendocument_text
+    assert from_memory.file_meta().type == from_disk.file_type()
     assert from_memory.file_type() == from_disk.file_type()
     assert from_memory.document_type() == from_disk.document_type()
     assert (
