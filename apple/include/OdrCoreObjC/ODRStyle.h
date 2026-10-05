@@ -96,10 +96,11 @@ NS_SWIFT_NAME(Measure)
 /// Magnitude and unit as odrcore writes them, e.g. `12pt`.
 @property(nonatomic, readonly, copy) NSString *stringValue;
 
-/// A css length as odrcore writes one, e.g. `3mm`. A magnitude with no unit
-/// reads as unitless.
-- (instancetype)initWithString:(NSString *)string;
-- (instancetype)initWithMagnitude:(double)magnitude unit:(NSString *)unit;
+/// Parses a length such as `3mm` or a unitless magnitude; returns nil on
+/// failure.
+- (nullable instancetype)initWithString:(NSString *)string;
+- (nullable instancetype)initWithMagnitude:(double)magnitude
+                                      unit:(NSString *)unit;
 
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;
