@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -59,13 +60,24 @@ class LoggerTest {
       assertTrue(logger.willLog(LogLevel.ERROR));
 
       logger.log(LogLevel.DEBUG, "dropped");
-      logger.log(LogLevel.ERROR, "kept");
+      logger.log(LogLevel.ERROR, "kept é😀\u0000");
       logger.flush();
     }
 
-    assertEquals(List.of("kept"), sink.messages);
+    assertEquals(List.of("kept é😀\u0000"), sink.messages);
     assertEquals(1, sink.flushes);
     assertNotNull(sink.locations.get(0).fileName);
+  }
+
+  @Test
+  void malformedUnicodeIsRejected() {
+    Collecting sink = new Collecting(LogLevel.ERROR);
+    try (Logger logger = new Logger(sink)) {
+      for (String text : new String[] {"\ud800", "\udc00", "\ud800x", "\udc00\ud800"}) {
+        assertThrows(OdrException.class, () -> logger.log(LogLevel.ERROR, text));
+      }
+    }
+    assertTrue(sink.messages.isEmpty());
   }
 
   @Test

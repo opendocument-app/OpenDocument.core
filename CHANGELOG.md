@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Java bindings preserve supplementary Unicode in exception messages, reject
+  unpaired UTF-16 surrogates, and replace invalid native UTF-8 sequences.
+
 - Python `Frame.line()` returns a bound `DrawingLine` with its endpoints instead
   of raising a conversion error.
 
