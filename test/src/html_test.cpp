@@ -1006,19 +1006,19 @@ TEST(html, an_editable_cut_sheet_states_its_whole_extent) {
 
 TEST(html, an_editable_sheet_states_its_locale) {
   const std::string source =
-      (R"(<?xml version="1.0" encoding="UTF-8"?>)"
-       R"(<office:document)"
-       R"( xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0")"
-       R"( xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0")"
-       R"( xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0")"
-       R"( xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0")"
-       R"( office:mimetype="application/vnd.oasis.opendocument.spreadsheet">)"
-       R"(<office:styles><style:default-style style:family="table-cell">)"
-       R"(<style:text-properties fo:language="de" fo:country="DE"/>)"
-       R"(</style:default-style></office:styles>)"
-       R"(<office:body><office:spreadsheet><table:table table:name="s">)"
-       R"(<table:table-row><table:table-cell/></table:table-row>)"
-       R"(</table:table></office:spreadsheet></office:body></office:document>)");
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document)"
+      R"( xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0")"
+      R"( xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0")"
+      R"( xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0")"
+      R"( xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0")"
+      R"( office:mimetype="application/vnd.oasis.opendocument.spreadsheet">)"
+      R"(<office:styles><style:default-style style:family="table-cell">)"
+      R"(<style:text-properties fo:language="de" fo:country="DE"/>)"
+      R"(</style:default-style></office:styles>)"
+      R"(<office:body><office:spreadsheet><table:table table:name="s">)"
+      R"(<table:table-row><table:table-cell/></table:table-row>)"
+      R"(</table:table></office:spreadsheet></office:body></office:document>)";
 
   const DecodedFile file = open(File::from_memory(source));
   EXPECT_NE(

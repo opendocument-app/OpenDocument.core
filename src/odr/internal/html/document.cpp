@@ -461,11 +461,12 @@ public:
         m_fragments{std::move(fragments)} {
     m_views.emplace_back(std::make_shared<HtmlDocumentView>(
         *this, "document", 0, "document.html", m_fragments));
-    for (const auto &fragment : m_fragments) {
-      if (m_document.document_type() == DocumentType::text) {
-        continue;
+    // the one fragment of a text document is the document view itself
+    if (m_document.document_type() != DocumentType::text) {
+      for (const auto &fragment : m_fragments) {
+        m_views.emplace_back(
+            std::make_shared<HtmlFragmentView>(*this, fragment));
       }
-      m_views.emplace_back(std::make_shared<HtmlFragmentView>(*this, fragment));
     }
   }
 
