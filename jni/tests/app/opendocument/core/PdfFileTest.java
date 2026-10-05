@@ -22,24 +22,15 @@ class PdfFileTest {
           + " \"color\": [1, 0.9, 0.2]}]}";
 
   @Test
-  void annotateIsDeclaredForPdf() {
-    assertTrue(Odr.capabilitiesByFileType(FileType.PORTABLE_DOCUMENT_FORMAT).annotate);
-  }
-
-  @Test
-  void anUnencryptedPdfStatesNoPermissions() throws IOException {
-    try (DecodedFile file = Odr.open(TestFiles.pdfFile(tempDir).toString())) {
-      assertNull(file.asPdfFile().permissions());
-    }
-  }
-
-  @Test
   void annotateAppendsToTheSource() throws IOException {
     Path pdf = TestFiles.pdfFile(tempDir);
     byte[] source = Files.readAllBytes(pdf);
 
     try (DecodedFile file = Odr.open(pdf.toString())) {
-      byte[] result = file.asPdfFile().annotate(HIGHLIGHT);
+      PdfFile pdfFile = file.asPdfFile();
+      assertNull(pdfFile.permissions());
+      assertTrue(pdfFile.isAnnotatable());
+      byte[] result = pdfFile.annotate(HIGHLIGHT);
 
       assertTrue(result.length > source.length);
       // the source is copied and the annotation appended after it

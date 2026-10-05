@@ -93,6 +93,7 @@ class MetaTest {
     // a pdf renders, but paints its own page backgrounds
     FileTypeCapabilities pdf = Odr.capabilitiesByFileType(FileType.PORTABLE_DOCUMENT_FORMAT);
     assertTrue(pdf.translateHtml);
+    assertTrue(pdf.annotate);
     assertFalse(pdf.colorScheme);
   }
 

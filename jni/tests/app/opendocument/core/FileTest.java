@@ -23,6 +23,10 @@ class FileTest {
       assertEquals(FileCategory.DOCUMENT, file.fileCategory());
       assertTrue(file.isDocumentFile());
       assertFalse(file.passwordEncrypted());
+      FileMeta meta = file.fileMeta();
+      assertEquals(FileType.OPENDOCUMENT_TEXT, meta.type);
+      assertFalse(meta.passwordEncrypted);
+      assertEquals(DocumentType.TEXT, meta.documentType);
 
       DocumentFile documentFile = file.asDocumentFile();
       assertEquals(DocumentType.TEXT, documentFile.documentType());
@@ -141,17 +145,6 @@ class FileTest {
   }
 
   @Test
-  void fileMeta() throws IOException {
-    Path odt = TestFiles.odtFile(tempDir);
-    try (DecodedFile file = Odr.open(odt.toString())) {
-      FileMeta meta = file.fileMeta();
-      assertEquals(FileType.OPENDOCUMENT_TEXT, meta.type);
-      assertFalse(meta.passwordEncrypted);
-      assertEquals(DocumentType.TEXT, meta.documentType);
-    }
-  }
-
-  @Test
   void openMissingFileThrows() {
     assertThrows(
         OdrException.FileNotFound.class,
@@ -179,13 +172,5 @@ class FileTest {
   void listFileTypes() throws IOException {
     Path odt = TestFiles.odtFile(tempDir);
     assertTrue(Odr.listFileTypes(odt.toString()).contains(FileType.OPENDOCUMENT_TEXT));
-  }
-
-  @Test
-  void documentFileByPath() throws IOException {
-    Path odt = TestFiles.odtFile(tempDir);
-    DecodedFile file = Odr.open(odt.toString());
-    assertEquals(FileType.OPENDOCUMENT_TEXT, file.fileType());
-    assertEquals(FileType.OPENDOCUMENT_TEXT, file.fileMeta().type);
   }
 }

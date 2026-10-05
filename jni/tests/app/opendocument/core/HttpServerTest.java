@@ -121,10 +121,19 @@ class HttpServerTest {
     Thread thread = new Thread(server::listen);
     thread.setDaemon(true);
     thread.start();
-    while (!server.isRunning()) {
-      Thread.sleep(1);
+    long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
+    try {
+      while (!server.isRunning()) {
+        if (!thread.isAlive() || System.nanoTime() >= deadline) {
+          throw new AssertionError("server did not start listening");
+        }
+        Thread.sleep(1);
+      }
+      return thread;
+    } catch (InterruptedException | AssertionError failure) {
+      server.stop();
+      throw failure;
     }
-    return thread;
   }
 
   @Test
