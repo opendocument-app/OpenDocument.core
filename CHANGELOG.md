@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF functions reject non-finite values and invalid exponential domains,
+  and interpolate large finite intervals without intermediate overflow.
+
 - PDF AES decryption validates every padding byte before removing a trailer,
   preserving data with malformed padding.
 

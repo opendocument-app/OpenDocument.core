@@ -17,7 +17,7 @@ class Function {
 public:
   virtual ~Function() = default;
 
-  /// Evaluate after padding or truncating `in` to `input_arity` values.
+  /// Pad or truncate to `input_arity`; reject non-finite inputs and results.
   [[nodiscard]] std::vector<double> eval(std::vector<double> in) const;
 
   [[nodiscard]] std::size_t input_arity() const { return m_domain.size() / 2; }
