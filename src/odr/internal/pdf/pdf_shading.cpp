@@ -31,7 +31,7 @@ parse_shading_functions(const Object &function, const ShadingContext &context) {
       functions.push_back(parse_function(item, function_context));
     }
   } else {
-    functions.push_back(parse_function(resolved, function_context));
+    functions.push_back(parse_function(function, function_context));
   }
   // A null entry (an unsupported function type) makes the whole shading
   // unusable: sampling would yield wrong colours silently.

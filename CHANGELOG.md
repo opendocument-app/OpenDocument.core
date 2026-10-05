@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF gradients read sampled and calculator function streams correctly.
+
 - PDF font indices are checked before conversion. Invalid CID width ranges
   can no longer wrap or hang document parsing.
 
