@@ -15,7 +15,8 @@ namespace odr::wasm {
 
 namespace {
 
-/// Updates @p target from a set, non-null key.
+/// An absent or null key leaves @p target alone, so a caller sends only what it
+/// changes.
 template <typename T>
 void read(const emscripten::val &value, const char *key, T &target) {
   const emscripten::val field = value[key];
@@ -49,7 +50,8 @@ void read_measure(const emscripten::val &value, const char *key,
   target = Measure(field.as<std::string>());
 }
 
-/// Lazily translates the session and caches its views.
+/// Translates on first use, so a caller that only wants metadata does not pay
+/// for a render at open.
 Session &warm(const Handle handle) {
   Session &s = session(handle);
   if (!s.service.has_value()) {
@@ -89,7 +91,9 @@ emscripten::val list_views(const Handle handle) {
   });
 }
 
-/// Returns rendered HTML and the resources it references externally.
+/// Returns rendered HTML and the resources it references externally. Under the
+/// default `embedImages` the HTML is self-contained, so it fits a `blob:`
+/// iframe.
 emscripten::val render_view(const Handle handle, const double requested_index) {
   return guarded([&] {
     const std::size_t index = checked_integer<std::size_t>(requested_index);
@@ -124,7 +128,8 @@ emscripten::val render_view(const Handle handle, const double requested_index) {
   });
 }
 
-/// Reads a view or resource from the translated service.
+/// Reads a view or resource from the translated service, with the contract of
+/// `HttpServer::serve_file`.
 emscripten::val read_path(const Handle handle, const std::string &path) {
   return guarded([&] {
     const Session &s = warm(handle);

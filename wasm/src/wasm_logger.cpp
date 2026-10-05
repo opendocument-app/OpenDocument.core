@@ -12,7 +12,8 @@ namespace odr::wasm {
 
 namespace {
 
-/// Forwards logs to a synchronous, worker-local callback.
+/// Forwards logs to a synchronous, worker-local callback: one that needed the
+/// main thread would deadlock a render behind a `postMessage` round trip.
 class JsLogger final : public ILogger {
 public:
   JsLogger(emscripten::val sink, const LogLevel level)

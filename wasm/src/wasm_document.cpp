@@ -74,6 +74,7 @@ emscripten::val recalculate(const Handle handle) {
 }
 
 /// Resolves a rendered `data-odr-id`; rejects invalid or absent identifiers.
+/// Ids cross the boundary instead of elements because a number needs no handle.
 Element element_of(Session &session, const double identifier) {
   const Element element = document_of(session).element_by_id(
       checked_integer<ElementIdentifier>(identifier));

@@ -37,7 +37,9 @@ template <std::integral T> T checked_integer(const double value) {
   return static_cast<T>(value);
 }
 
-/// Owns one file, its editable tree and the service backing its views.
+/// Owns one file, its editable tree and the service backing its views. The
+/// service has to outlive the views: an `HtmlView` holds a bare pointer into
+/// it.
 struct Session final {
   DecodedFile file;
   Logger logger;

@@ -97,7 +97,8 @@ emscripten::val is_password_encrypted(const Handle handle) {
   });
 }
 
-/// Decrypts the session in place and discards cached views.
+/// Decrypts in place, because a new handle would leave the caller holding two,
+/// one of them useless.
 emscripten::val decrypt(const Handle handle, const std::string &password) {
   return guarded([&] {
     Session &s = session(handle);
