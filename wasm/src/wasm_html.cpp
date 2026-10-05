@@ -15,8 +15,7 @@ namespace odr::wasm {
 
 namespace {
 
-/// An absent or null key leaves @p target alone, so a caller sends only what it
-/// means to change.
+/// Updates @p target from a set, non-null key.
 template <typename T>
 void read(const emscripten::val &value, const char *key, T &target) {
   const emscripten::val field = value[key];
@@ -50,8 +49,7 @@ void read_measure(const emscripten::val &value, const char *key,
   target = Measure(field.as<std::string>());
 }
 
-/// Translates on first use, so a caller that only wants metadata does not pay
-/// for a render at open.
+/// Lazily translates the session and caches its views.
 Session &warm(const Handle handle) {
   Session &s = session(handle);
   if (!s.service.has_value()) {
@@ -91,8 +89,7 @@ emscripten::val list_views(const Handle handle) {
   });
 }
 
-/// The rendered view as one HTML string, self-contained under the default
-/// `embedImages` — which is what lets a viewer drop it into a `blob:` iframe.
+/// Returns rendered HTML and the resources it references externally.
 emscripten::val render_view(const Handle handle, const double requested_index) {
   return guarded([&] {
     const std::size_t index = checked_integer<std::size_t>(requested_index);
@@ -116,7 +113,7 @@ emscripten::val render_view(const Handle handle, const double requested_index) {
       emscripten::val entry = emscripten::val::object();
       entry.set("path", *location);
       entry.set("mimeType", resource.mime_type());
-      entry.set("type", static_cast<int>(resource.type()));
+      entry.set("type", static_cast<std::int32_t>(resource.type()));
       external.call<void>("push", entry);
     }
 
@@ -127,8 +124,7 @@ emscripten::val render_view(const Handle handle, const double requested_index) {
   });
 }
 
-/// The bytes behind a path the service knows — a view, or a resource
-/// `renderView` reported. Same contract as `HttpServer::serve_file`.
+/// Reads a view or resource from the translated service.
 emscripten::val read_path(const Handle handle, const std::string &path) {
   return guarded([&] {
     const Session &s = warm(handle);
@@ -162,7 +158,11 @@ emscripten::val edit(const Handle handle, const std::string &diff) {
 
 } // namespace
 
-HtmlConfig to_html_config(const emscripten::val &value) {
+} // namespace odr::wasm
+
+namespace odr {
+
+HtmlConfig wasm::to_html_config(const emscripten::val &value) {
   HtmlConfig config;
   if (value.isUndefined() || value.isNull()) {
     return config;
@@ -240,7 +240,7 @@ HtmlConfig to_html_config(const emscripten::val &value) {
   return config;
 }
 
-} // namespace odr::wasm
+} // namespace odr
 
 EMSCRIPTEN_BINDINGS(odr_html) {
   emscripten::function("listViews", &odr::wasm::list_views);

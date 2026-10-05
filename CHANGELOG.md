@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- WebAssembly TypeScript declarations include the existing `ErrorCode` table
+  and `spreadsheetStyleBuffer` setting.
+
 - CLI `meta` accepts every decoded file type, `server` detects the input instead
   of forcing ZIP, and `back_translate` supports editable text and CSV files.
   The CLI container preserves executable permissions and forwards arguments.

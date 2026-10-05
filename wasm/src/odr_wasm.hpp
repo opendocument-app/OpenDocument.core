@@ -18,8 +18,7 @@
 #include <string>
 #include <utility>
 
-/// Shared plumbing for the WebAssembly bindings. Nothing throws across the
-/// boundary and nothing escapes as an embind handle; `wasm/AGENTS.md` says why.
+/// Shared WebAssembly handles and error envelopes; see `wasm/AGENTS.md`.
 namespace odr::wasm {
 
 using Handle = std::uint32_t;
@@ -38,9 +37,7 @@ template <std::integral T> T checked_integer(const double value) {
   return static_cast<T>(value);
 }
 
-/// One open document. Owns everything reachable from it, because the pieces do
-/// not own each other: `HtmlView` holds a bare pointer into its service, so the
-/// service has to outlive the views.
+/// Owns one file, its editable tree and the service backing its views.
 struct Session final {
   DecodedFile file;
   Logger logger;
@@ -91,8 +88,8 @@ template <typename F> emscripten::val guarded(F &&f) {
   }
 }
 
-/// A `Uint8Array` copy of @p bytes. A copy because `typed_memory_view` aliases
-/// the wasm heap, which `ALLOW_MEMORY_GROWTH` detaches on the next allocation.
+/// Copies bytes into JavaScript; heap growth invalidates a borrowed memory
+/// view.
 emscripten::val to_uint8_array(const std::string &bytes);
 
 emscripten::val to_capabilities(const FileTypeCapabilities &capabilities);

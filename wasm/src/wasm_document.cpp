@@ -73,9 +73,7 @@ emscripten::val recalculate(const Handle handle) {
   });
 }
 
-/// The element the operation names, refusing an id this document does not
-/// hold. Ids are what crosses instead of elements: the render writes them into
-/// the page as `data-odr-id`, and a plain number needs no handle.
+/// Resolves a rendered `data-odr-id`; rejects invalid or absent identifiers.
 Element element_of(Session &session, const double identifier) {
   const Element element = document_of(session).element_by_id(
       checked_integer<ElementIdentifier>(identifier));
@@ -124,47 +122,7 @@ emscripten::val append_text(const Handle handle, const double parent,
   });
 }
 
-/// @p style as the page spells it - `{bold: true, highlight: null, size:
-/// "14pt"}` - which is the envelope's own shape, so the envelope parses it.
-emscripten::val set_text_style(const Handle handle, const double id,
-                               const emscripten::val style) {
-  return guarded([&] {
-    Session &s = session(handle);
-    if (style.isUndefined() || style.isNull() ||
-        style.typeOf().as<std::string>() != "object") {
-      throw std::invalid_argument("setTextStyle takes a style object");
-    }
-    const std::string json =
-        emscripten::val::global("JSON").call<std::string>("stringify", style);
-    document_of(s).edit(R"({"version":2,"ops":[{"op":"setTextStyle","id":)" +
-                        std::to_string(element_of(s, id).identifier()) +
-                        R"(,"style":)" + json + "}]}");
-    return ok();
-  });
-}
-
-/// @p style as the page spells it - `{align: "center"}` - replayed through
-/// the envelope, which parses it.
-emscripten::val set_paragraph_style(const Handle handle, const double id,
-                                    const emscripten::val style) {
-  return guarded([&] {
-    Session &s = session(handle);
-    if (style.isUndefined() || style.isNull() ||
-        style.typeOf().as<std::string>() != "object") {
-      throw std::invalid_argument("setParagraphStyle takes a style object");
-    }
-    const std::string json =
-        emscripten::val::global("JSON").call<std::string>("stringify", style);
-    document_of(s).edit(
-        R"({"version":2,"ops":[{"op":"setParagraphStyle","id":)" +
-        std::to_string(element_of(s, id).identifier()) + R"(,"style":)" + json +
-        "}]}");
-    return ok();
-  });
-}
-
-/// Replays a style operation for @p place through the editor envelope's
-/// parser.
+/// Replays a style operation through the shared editor envelope parser.
 emscripten::val edit_style(const Handle handle, const std::string &op,
                            const std::string &place,
                            const emscripten::val style) {
@@ -178,6 +136,28 @@ emscripten::val edit_style(const Handle handle, const std::string &op,
   document_of(s).edit(R"({"version":2,"ops":[{"op":")" + op + R"(",)" + place +
                       R"(,"style":)" + json + "}]}");
   return ok();
+}
+
+emscripten::val set_text_style(const Handle handle, const double id,
+                               const emscripten::val style) {
+  return guarded([&] {
+    return edit_style(
+        handle, "setTextStyle",
+        "\"id\":" +
+            std::to_string(element_of(session(handle), id).identifier()),
+        style);
+  });
+}
+
+emscripten::val set_paragraph_style(const Handle handle, const double id,
+                                    const emscripten::val style) {
+  return guarded([&] {
+    return edit_style(
+        handle, "setParagraphStyle",
+        "\"id\":" +
+            std::to_string(element_of(session(handle), id).identifier()),
+        style);
+  });
 }
 
 std::string index_field(const std::string &name, const double index) {
@@ -217,8 +197,7 @@ emscripten::val set_column_style(const Handle handle, const double sheet,
   });
 }
 
-/// A row or column op, @p axis naming its index, replayed through the
-/// envelope.
+/// Replays a row or column operation; @p axis names its index.
 emscripten::val edit_structure(const Handle handle, const std::string &op,
                                const std::string &axis, const double sheet,
                                const double index, const double count) {
