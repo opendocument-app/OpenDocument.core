@@ -6,7 +6,6 @@
 #include <odr/file.hpp>
 #include <odr/odr.hpp>
 
-#include <istream>
 #include <optional>
 #include <sstream>
 #include <vector>

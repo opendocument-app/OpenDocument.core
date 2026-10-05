@@ -1,4 +1,3 @@
-import io
 import zipfile
 
 import pytest
@@ -163,15 +162,3 @@ def json_path(tmp_path):
     path = tmp_path / "data.json"
     path.write_text('{\n  "name": "pyodr",\n  "values": [1, 2, 3]\n}\n')
     return path
-
-
-@pytest.fixture
-def corrupt_image_archive():
-    # Corrupt stored image bytes beyond the format-detection probe.
-    content = b"\x89PNG\r\n\x1a\n" + b"x" * 1_000_000
-    output = io.BytesIO()
-    with zipfile.ZipFile(output, "w") as archive:
-        archive.writestr("image.png", content)
-    data = bytearray(output.getvalue())
-    data[data.index(b"x") + 900_000] ^= 1
-    return bytes(data)

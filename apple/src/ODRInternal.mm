@@ -8,7 +8,6 @@
 #include <odr/file.hpp>
 
 #include <exception>
-#include <istream>
 #include <sstream>
 
 NSErrorDomain const ODRErrorDomain = @"app.opendocument.OdrCore.ErrorDomain";
