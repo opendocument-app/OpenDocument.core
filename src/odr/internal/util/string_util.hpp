@@ -83,6 +83,13 @@ std::string to_string(double d, int precision);
 
 std::size_t utf8_length(const std::string &string);
 
+bool is_valid_utf8(std::string_view string);
+/// Replace malformed UTF-8 sequences with U+FFFD.
+std::string replace_invalid_utf8(std::string_view string);
+/// Consume one code point; empty or invalid input throws without consuming
+/// bytes.
+char32_t next_utf8(std::string_view &remaining);
+
 /// The byte offsets into @p string of the ascending UTF-16 code unit
 /// @p indices — the indexing a format that counts UTF-16 uses over UTF-8 text.
 /// Throws when @p string is not UTF-8 or an index is past its end.

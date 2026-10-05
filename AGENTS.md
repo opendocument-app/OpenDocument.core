@@ -161,6 +161,8 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file to HTML
 - Format numbers with `fmt`, never a stream. A stream carries the host locale,
   and a German one writes `1,5` into a css length.
   `util::number::to_string_significant` is the css and svg spelling.
+- UTF operations go through `internal/util/string_util.hpp`; only its
+  implementation includes utfcpp.
 - Use fixed-width integer types from `<cstdint>`. Use `int` and friends only
   for index-like values (`std::size_t`) or where an API forces them.
 - Use `std::array`, never a C array.

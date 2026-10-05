@@ -7,6 +7,7 @@
 #include <odr/internal/svg/svg_writer.hpp>
 #include <odr/internal/svm/svm_file.hpp>
 #include <odr/internal/svm/svm_format.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -16,10 +17,9 @@
 #include <ranges>
 #include <span>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
-
-#include <utf8cpp/utf8/checked.h>
 
 namespace odr::internal::svm {
 
@@ -734,8 +734,8 @@ get_x_list_string(const IntPair &point, const std::string &text,
                   const Context &context) {
   std::string result;
   std::size_t unit = 0;
-  auto position = text.begin();
-  while (position != text.end()) {
+  std::string_view remaining = text;
+  while (!remaining.empty()) {
     if (unit > dx_array.size()) {
       return std::nullopt;
     }
@@ -744,7 +744,7 @@ get_x_list_string(const IntPair &point, const std::string &text,
       result += " ";
     }
     result += svg::format_number(transform_x(point.x + advance, context));
-    unit += utf8::next(position, text.end()) >= 0x10000 ? 2 : 1;
+    unit += util::string::next_utf8(remaining) >= 0x10000 ? 2 : 1;
   }
   return unit == dx_array.size() ? std::optional(std::move(result))
                                  : std::nullopt;

@@ -2,13 +2,10 @@
 
 #include <odr/internal/encoding/encoding_data.hpp>
 #include <odr/internal/encoding/text_encoding_table.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <cstdint>
-#include <iterator>
 #include <stdexcept>
-
-#include <utf8cpp/utf8/checked.h>
-#include <utf8cpp/utf8/cpp17.h>
 
 namespace odr::internal {
 
@@ -127,7 +124,7 @@ std::string decode_single_byte(const std::string_view bytes,
   std::string result;
   result.reserve(bytes.size());
   for (std::size_t i = 0; i < bytes.size(); ++i) {
-    utf8::append(table[byte_at(bytes, i)], std::back_inserter(result));
+    util::string::append_c32(table[byte_at(bytes, i)], result);
   }
   return result;
 }
@@ -147,27 +144,27 @@ std::string decode_utf16(const std::string_view bytes, const bool little) {
     const char32_t first = unit(i);
 
     if (first < 0xd800 || first > 0xdfff) {
-      utf8::append(first, std::back_inserter(result));
+      util::string::append_c32(first, result);
       continue;
     }
     // a low surrogate first, or a high one with nothing to pair with
     if (first > 0xdbff || i + 3 >= bytes.size()) {
-      utf8::append(replacement, std::back_inserter(result));
+      util::string::append_c32(replacement, result);
       continue;
     }
     const char32_t second = unit(i + 2);
     if (second < 0xdc00 || second > 0xdfff) {
-      utf8::append(replacement, std::back_inserter(result));
+      util::string::append_c32(replacement, result);
       continue;
     }
-    utf8::append(0x10000 + ((first - 0xd800) << 10) + (second - 0xdc00),
-                 std::back_inserter(result));
+    util::string::append_c32(
+        0x10000 + ((first - 0xd800) << 10) + (second - 0xdc00), result);
     i += 2;
   }
 
   // a trailing odd byte cannot form a unit
   if (i < bytes.size()) {
-    utf8::append(replacement, std::back_inserter(result));
+    util::string::append_c32(replacement, result);
   }
   return result;
 }
@@ -182,12 +179,12 @@ std::string decode_utf32(const std::string_view bytes, const bool little) {
     for (std::size_t b = 0; b < 4; ++b) {
       code_point = code_point << 8 | byte_at(bytes, i + (little ? 3 - b : b));
     }
-    utf8::append(is_code_point_valid(code_point) ? code_point : replacement,
-                 std::back_inserter(result));
+    util::string::append_c32(
+        is_code_point_valid(code_point) ? code_point : replacement, result);
   }
 
   if (i < bytes.size()) {
-    utf8::append(replacement, std::back_inserter(result));
+    util::string::append_c32(replacement, result);
   }
   return result;
 }
@@ -207,7 +204,7 @@ std::string encoding::to_utf8(const std::string_view bytes,
 
   switch (encoding) {
   case TextEncoding::utf8:
-    return utf8::replace_invalid(body);
+    return util::string::replace_invalid_utf8(body);
   case TextEncoding::utf16le:
     return decode_utf16(body, true);
   case TextEncoding::utf16be:

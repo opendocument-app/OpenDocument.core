@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <clocale>
 #include <cstddef>
 #include <cstdint>
@@ -230,6 +231,29 @@ TEST(string_util, utf8_length_checks_incomplete_sequences) {
   EXPECT_EQ(utf8_length("a\xf0\x9f\x98\x80z"), 3);
   EXPECT_ANY_THROW(utf8_length("\xf0\x9f"));
   EXPECT_ANY_THROW(utf8_length("\x80"));
+}
+
+TEST(string_util, utf8_iteration_consumes_only_complete_code_points) {
+  using namespace std::string_view_literals;
+  std::string_view remaining = "A\0¢€😀"sv;
+  for (const char32_t expected : std::array{U'A', U'\0', U'¢', U'€', U'😀'}) {
+    EXPECT_EQ(next_utf8(remaining), expected);
+  }
+  EXPECT_TRUE(remaining.empty());
+  EXPECT_THROW(next_utf8(remaining), std::out_of_range);
+
+  for (const std::string_view invalid :
+       std::array<std::string_view, 5>{"\x80", "\xc0\xaf", "\xed\xa0\x80",
+                                       "\xf4\x90\x80\x80", "\xf0\x9f"}) {
+    remaining = invalid;
+    EXPECT_ANY_THROW(next_utf8(remaining));
+    EXPECT_EQ(remaining, invalid);
+  }
+
+  remaining = {};
+  EXPECT_THROW(next_utf8(remaining), std::out_of_range);
+  EXPECT_TRUE(is_valid_utf8(remaining));
+  EXPECT_TRUE(replace_invalid_utf8(remaining).empty());
 }
 
 namespace {

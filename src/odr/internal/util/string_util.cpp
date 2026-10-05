@@ -215,6 +215,25 @@ std::size_t string::utf8_length(const std::string &string) {
   return utf8::distance(string.begin(), string.end());
 }
 
+bool string::is_valid_utf8(const std::string_view string) {
+  return string.empty() || utf8::is_valid(string.begin(), string.end());
+}
+
+std::string string::replace_invalid_utf8(const std::string_view string) {
+  return string.empty() ? std::string{} : utf8::replace_invalid(string);
+}
+
+char32_t string::next_utf8(std::string_view &remaining) {
+  if (remaining.empty()) {
+    throw std::out_of_range("empty UTF-8 input");
+  }
+  auto position = remaining.begin();
+  const char32_t result = utf8::next(position, remaining.end());
+  remaining.remove_prefix(
+      static_cast<std::size_t>(position - remaining.begin()));
+  return result;
+}
+
 std::vector<std::size_t>
 string::utf16_offsets(const std::string_view string,
                       const std::span<const std::uint64_t> indices) {
