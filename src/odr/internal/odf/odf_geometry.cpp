@@ -9,10 +9,9 @@
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <cmath>
 #include <cstddef>
-#include <cstdlib>
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <numbers>
@@ -261,8 +260,8 @@ private:
   }
 
   /// Numbers per repetition; `-1` for a letter that is not a command.
-  [[nodiscard]] static int arity(const char command) {
-    switch (std::tolower(static_cast<unsigned char>(command))) {
+  [[nodiscard]] static std::int32_t arity(const char command) {
+    switch (str::to_lower(command)) {
     case 'z':
       return 0;
     case 'h':
@@ -288,7 +287,7 @@ private:
   [[nodiscard]] bool parse_command() {
     if (arity(peek()) >= 0) {
       m_command = take();
-    } else if (m_command == '\0') {
+    } else if (arity(m_command) <= 0) {
       return false;
     }
     do {
@@ -302,7 +301,7 @@ private:
 
   [[nodiscard]] bool write_arguments() {
     const char command = m_command;
-    const int count = arity(command);
+    const std::int32_t count = arity(command);
     const bool relative = command >= 'a' && command <= 'z';
 
     if (count == 0) {
@@ -329,7 +328,7 @@ private:
     const double origin_x = relative ? m_x : 0;
     const double origin_y = relative ? m_y : 0;
 
-    switch (std::tolower(static_cast<unsigned char>(command))) {
+    switch (str::to_lower(command)) {
     case 'h':
       m_x = origin_x + arguments[0];
       break;
@@ -430,7 +429,7 @@ std::optional<std::string> read_points(const pugi::xml_node node,
 /// `draw:regular-polygon` (10.3.9): `draw:corners` vertices from the top, a
 /// concave one alternating with a vertex `draw:sharpness` of the way in.
 std::optional<DrawingPath> read_regular_polygon(const pugi::xml_node node) {
-  const int corners = node.attribute("draw:corners").as_int(0);
+  const std::uint64_t corners = node.attribute("draw:corners").as_ullong();
   if (corners < 3) {
     return {};
   }
@@ -438,10 +437,16 @@ std::optional<DrawingPath> read_regular_polygon(const pugi::xml_node node) {
   const double sharpness =
       node.attribute("draw:sharpness").as_double(50.0) / 100.0;
 
-  const int vertices = concave ? corners * 2 : corners;
+  const std::uint32_t per_corner = concave ? 2 : 1;
+  if (corners > max_generated_segments / per_corner ||
+      !std::isfinite(sharpness)) {
+    return {};
+  }
+  const std::uint32_t vertices =
+      static_cast<std::uint32_t>(corners) * per_corner;
 
   std::string result;
-  for (int i = 0; i < vertices; ++i) {
+  for (std::uint32_t i = 0; i < vertices; ++i) {
     const double radius = (concave && i % 2 == 1)
                               ? view_box_centre * (1 - sharpness)
                               : view_box_centre;
@@ -490,7 +495,8 @@ public:
     if (const auto it = m_resolved.find(key); it != m_resolved.end()) {
       return it->second;
     }
-    if (!m_resolving.insert(key).second) {
+    if (m_resolving.size() >= max_geometry_depth ||
+        !m_resolving.insert(key).second) {
       return {};
     }
     std::optional<double> value;

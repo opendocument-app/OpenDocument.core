@@ -182,3 +182,24 @@ TEST(OdfEnhancedPath, an_unreadable_path_is_dropped_whole) {
   EXPECT_FALSE(convert_enhanced_path("R 0 0", square(), none()).has_value());
   EXPECT_FALSE(convert_enhanced_path("M ?f0 0", square(), none()).has_value());
 }
+
+TEST(OdfFormula, nesting_is_bounded_and_results_must_be_finite) {
+  EXPECT_EQ(evaluate(std::string(10000, '-') + "1", square(), none()), 1);
+  EXPECT_EQ(evaluate(std::string(128, '(') + "1" + std::string(128, ')'),
+                     square(), none()),
+            1);
+  EXPECT_FALSE(evaluate(std::string(10000, '(') + "1" + std::string(10000, ')'),
+                        square(), none()));
+  EXPECT_FALSE(evaluate("1e308*1e308", square(), none()));
+}
+
+TEST(OdfEnhancedPath,
+     arcs_reject_unbounded_expansion_and_nonfinite_coordinates) {
+  for (const std::string path :
+       {"U 0 0 1 1 0 1e20", "U 0 0 1 1 0 1e999", "U 0 0 -1 1 0 90",
+        "U 0 0 1 1 0 6000000 U 0 0 1 1 0 6000000", "M 1e999 0",
+        "M 0 0 X 1e999 1"}) {
+    SCOPED_TRACE(path);
+    EXPECT_FALSE(convert_enhanced_path(path, square(), none()));
+  }
+}

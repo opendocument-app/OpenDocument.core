@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <string>
@@ -7,6 +9,9 @@
 #include <vector>
 
 namespace odr::internal::odf {
+
+inline constexpr std::uint32_t max_generated_segments = 65536;
+inline constexpr std::size_t max_geometry_depth = 256;
 
 /// What a `draw:enhanced-geometry` formula can name (20.36) besides its own
 /// equations. The defaults are ODF's own 21600 square.

@@ -29,13 +29,14 @@ public:
   [[nodiscard]] std::optional<double> parse() {
     const std::optional<double> value = expression();
     skip_whitespace();
-    if (!value.has_value() || !empty()) {
+    if (!value.has_value() || !std::isfinite(*value) || !empty()) {
       return {};
     }
     return value;
   }
 
 private:
+  std::size_t m_depth{0};
   const EnhancedGeometryContext *m_context{nullptr};
   const EquationResolver *m_equations{nullptr};
 
@@ -79,17 +80,19 @@ private:
   }
 
   [[nodiscard]] std::optional<double> unary() {
+    bool negate = false;
     skip_whitespace();
-    if (peek() == '-') {
-      take();
-      const std::optional<double> value = unary();
-      return value.has_value() ? std::optional<double>(-*value) : std::nullopt;
+    while (peek() == '+' || peek() == '-') {
+      negate = (take() == '-') != negate;
+      skip_whitespace();
     }
-    if (peek() == '+') {
-      take();
-      return unary();
+    if (m_depth >= max_geometry_depth) {
+      return {};
     }
-    return primary();
+    ++m_depth;
+    const std::optional<double> value = primary();
+    --m_depth;
+    return value && negate ? std::optional(-*value) : value;
   }
 
   [[nodiscard]] std::optional<double> primary() {
@@ -252,7 +255,7 @@ public:
       if (empty()) {
         break;
       }
-      if (!parse_command()) {
+      if (!parse_command() || !m_valid) {
         return {};
       }
     }
@@ -267,6 +270,8 @@ private:
   const EquationResolver *m_equations{nullptr};
 
   std::string m_out;
+  bool m_valid{true};
+  std::uint32_t m_generated_segments{0};
   double m_x{0};
   double m_y{0};
 
@@ -298,6 +303,10 @@ private:
   }
 
   void write(const double value) {
+    if (!std::isfinite(value)) {
+      m_valid = false;
+      return;
+    }
     m_out += ' ';
     // A cancelled sine or cosine lands on negative zero, which prints as `-0`.
     m_out += util::number::to_string_significant(value == 0 ? 0 : value, 7);
@@ -326,7 +335,7 @@ private:
 
   /// An elliptical arc from @p from to @p to degrees, in segments of at most
   /// a half turn, so a full turn — which one `A` cannot express — still draws.
-  void write_arc(const double cx, const double cy, const double rx,
+  bool write_arc(const double cx, const double cy, const double rx,
                  const double ry, const double from, const double to) {
     const auto point = [&](const double degrees) {
       const double radians = degrees * std::numbers::pi / 180;
@@ -334,17 +343,23 @@ private:
                                    cy + ry * std::sin(radians)};
     };
     const double swept = to - from;
-    const auto segments =
-        static_cast<int>(std::ceil(std::abs(swept) / 180.0 - 1e-9));
-    for (int i = 1; i <= std::max(1, segments); ++i) {
-      const std::array<double, 2> end =
-          point(from + swept * i / std::max(1, segments));
+    const double required =
+        std::max(1.0, std::ceil(std::abs(swept) / 180.0 - 1e-9));
+    if (!std::isfinite(swept) ||
+        required > max_generated_segments - m_generated_segments) {
+      return false;
+    }
+    const auto segments = static_cast<std::uint32_t>(required);
+    m_generated_segments += segments;
+    for (std::uint32_t i = 1; i <= segments; ++i) {
+      const std::array<double, 2> end = point(from + swept * i / segments);
       write('A');
       write(rx);
       write(ry);
       write_sweep(swept >= 0);
       write_point(end[0], end[1]);
     }
+    return m_valid;
   }
 
   /// `A`, `B`, `W`, `V` (19.145): a box, and two points whose direction from
@@ -385,8 +400,7 @@ private:
     const double start_y = cy + ry * std::sin(from * std::numbers::pi / 180);
     write(move_first ? 'M' : 'L');
     write_point(start_x, start_y);
-    write_arc(cx, cy, rx, ry, from, to);
-    return true;
+    return write_arc(cx, cy, rx, ry, from, to);
   }
 
   /// `T`, `U` (19.145): a centre, radii and the two angles to sweep between.
@@ -405,13 +419,15 @@ private:
     const double ry = values[3];
     const double from = values[4];
     const double to = values[5];
+    if (rx < 0 || ry < 0) {
+      return false;
+    }
 
     const double start_x = cx + rx * std::cos(from * std::numbers::pi / 180);
     const double start_y = cy + ry * std::sin(from * std::numbers::pi / 180);
     write(move_first ? 'M' : 'L');
     write_point(start_x, start_y);
-    write_arc(cx, cy, rx, ry, from, to);
-    return true;
+    return write_arc(cx, cy, rx, ry, from, to);
   }
 
   /// `X`, `Y` (19.145): a quarter ellipse to the given point, leaving the
