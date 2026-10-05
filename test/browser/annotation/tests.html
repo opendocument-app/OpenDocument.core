@@ -247,16 +247,42 @@
     page1.setPointerCapture = () => {};
     document.dispatchEvent(new PointerEvent("pointerdown", at(100, 100)));
     document.dispatchEvent(new PointerEvent("pointermove", at(140, 140)));
+    document.dispatchEvent(
+      new PointerEvent("pointerdown", { ...at(150, 150), pointerId: 2 })
+    );
+    document.dispatchEvent(
+      new PointerEvent("pointerup", { ...at(160, 160), pointerId: 2 })
+    );
     document.dispatchEvent(new PointerEvent("pointermove", at(180, 100)));
-    document.dispatchEvent(new PointerEvent("pointerup", at(180, 100)));
+    document.dispatchEvent(new PointerEvent("pointerup", at(220, 120)));
+    check("another pointer does not split the stroke", api.list().length === 1);
 
     const ink = payload().annotations[0];
     check("a drag makes an ink annotation", ink && ink.type === "ink", ink);
     check("its width carries", ink && ink.width === 3, ink && ink.width);
     check(
+      "the pointer-up position ends the stroke",
+      ink && near(ink.strokes[0].at(-2), 220) && near(ink.strokes[0].at(-1), 672),
+      ink
+    );
+
+    check(
       "its first point is where the pointer went down",
       ink && near(ink.strokes[0][0], 100) && near(ink.strokes[0][1], 692),
       ink && ink.strokes[0].slice(0, 2)
+    );
+
+    api.clear();
+    document.dispatchEvent(new PointerEvent("pointerdown", at(100, 100)));
+    document.dispatchEvent(new PointerEvent("pointermove", at(140, 140)));
+    document.dispatchEvent(new PointerEvent("pointercancel", at(0, 0)));
+    const cancelled = payload().annotations[0];
+    check(
+      "cancellation keeps the last real sample",
+      cancelled &&
+        near(cancelled.strokes[0].at(-2), 140) &&
+        near(cancelled.strokes[0].at(-1), 652),
+      cancelled
     );
 
     // --- ink where the rects leave the fit out ----------------------------

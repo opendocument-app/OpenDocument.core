@@ -500,6 +500,9 @@
   }
 
   function onPointerDown(event) {
+    if (stroke) {
+      return;
+    }
     pointerDown = true;
     // a new gesture supersedes a mark the previous one had queued
     window.clearTimeout(settle);
@@ -574,12 +577,18 @@
   }
 
   function onPointerUp(event) {
+    if (stroke && event.pointerId !== strokePointer) {
+      return;
+    }
     pointerDown = false;
     dragging = false;
     updateSelecting();
     scheduleMark();
-    if (!stroke || (event && event.pointerId !== strokePointer)) {
+    if (!stroke) {
       return;
+    }
+    if (event.type === "pointerup") {
+      onPointerMove(event);
     }
     var points = stroke.strokes[0];
     if (points.length < 4) {

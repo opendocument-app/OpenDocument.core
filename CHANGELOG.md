@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF ink annotations retain their final pointer-up position and ignore
+  competing pointers until the active stroke ends.
+
 - The declared CMake minimum is now 3.20, the first version that recognizes
   the build's existing C++23 requirement.
 
