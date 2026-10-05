@@ -205,6 +205,9 @@ private:
     const std::size_t leading = std::max<std::size_t>(
         1, count_cells(table.child("table:table-header-columns")
                            .child("table:table-column")));
+    if (leading > max_cells) {
+      return false;
+    }
 
     std::vector<std::string> labels;
     if (const pugi::xml_node header =
