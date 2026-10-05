@@ -76,8 +76,8 @@ returns the fill.
 - Fills (§2.5.20): `fls` 0 is none, solid (1) renders `icvFore`, every other
   pattern is approximated by its foreground color.
 - A `dyHeight` of 0 (allowed by §2.4.122) leaves `font_size` unset. The
-  `StyleRegistry` owns the parsed `Font` records, so `TextStyle::font_name`
-  (`const char *`) points into them and stays valid.
+  resolved `TextStyle` owns its font name; the raw Font records are discarded
+  after resolving the XF records.
 
 **Adapters** expose `ValueType::string` for every cell, `sheet_cell_span` of
 `{1,1}` and `sheet_cell_is_covered` false. Sheet, column and row styles are

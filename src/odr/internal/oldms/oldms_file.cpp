@@ -1,6 +1,7 @@
 #include <odr/internal/oldms/oldms_file.hpp>
 
 #include <odr/exceptions.hpp>
+#include <odr/odr.hpp>
 
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/oldms/presentation/ppt_document.hpp>
@@ -10,16 +11,16 @@
 #include <odr/internal/oldms/text/doc_document.hpp>
 #include <odr/internal/oldms/text/doc_parser.hpp>
 
+#include <array>
 #include <memory>
 #include <optional>
-#include <unordered_map>
+#include <utility>
 
 namespace odr::internal::oldms {
 
 namespace {
-/// Each format keeps the bytes that say so in the clear, so this is readable
-/// without the password. Detection only — odrcore cannot decrypt any of them.
-/// Nothing where the format's own probe could not read the signal.
+/// Probes the cleartext encryption marker; an unreadable marker leaves it
+/// unknown.
 std::optional<bool>
 parse_password_encrypted(const FileType type,
                          const abstract::ReadableFilesystem &files) {
@@ -36,37 +37,21 @@ parse_password_encrypted(const FileType type,
 }
 
 FileMeta parse_meta(const abstract::ReadableFilesystem &files) {
-  struct Variant {
-    FileType type{FileType::unknown};
-    DocumentType document_type{DocumentType::unknown};
-    std::string_view mimetype;
-  };
-
-  static const std::unordered_map<AbsPath, Variant> types = {
-      // MS-DOC: The "WordDocument" stream MUST be present in the file.
-      // https://msdn.microsoft.com/en-us/library/dd926131(v=office.12).aspx
-      {AbsPath("/WordDocument"),
-       {FileType::legacy_word_document, DocumentType::text,
-        "application/msword"}},
-      // MS-PPT: The "PowerPoint Document" stream MUST be present in the file.
-      // https://msdn.microsoft.com/en-us/library/dd911009(v=office.12).aspx
-      {AbsPath("/PowerPoint Document"),
-       {FileType::legacy_powerpoint_presentation, DocumentType::presentation,
-        "application/vnd.ms-powerpoint"}},
-      // MS-XLS: The "Workbook" stream MUST be present in the file.
-      // https://docs.microsoft.com/en-us/openspecs/office_file_formats/ms-ppt/1fc22d56-28f9-4818-bd45-67c2bf721ccf
-      {AbsPath("/Workbook"),
-       {FileType::legacy_excel_worksheets, DocumentType::spreadsheet,
-        "application/vnd.ms-excel"}},
+  // Each format MUST have its stream ([MS-DOC], [MS-PPT], [MS-XLS]).
+  static constexpr std::array types{
+      std::pair{"/WordDocument", FileType::legacy_word_document},
+      std::pair{"/PowerPoint Document",
+                FileType::legacy_powerpoint_presentation},
+      std::pair{"/Workbook", FileType::legacy_excel_worksheets},
   };
 
   FileMeta result;
 
-  for (const auto &[path, variant] : types) {
-    if (files.is_file(path)) {
-      result.type = variant.type;
-      result.mimetype = variant.mimetype;
-      result.document_type = variant.document_type;
+  for (const auto &[path, type] : types) {
+    if (files.is_file(AbsPath(path))) {
+      result.type = type;
+      result.mimetype = mimetype_by_file_type(type);
+      result.document_type = document_type_by_file_type(type);
       break;
     }
   }
@@ -84,9 +69,7 @@ LegacyMicrosoftFile::LegacyMicrosoftFile(
     : m_files{std::move(files)} {
   m_file_meta = parse_meta(*m_files);
 
-  // `EncryptionState::unknown` where the probe could not read the signal: a
-  // stream that cannot be inspected is not a document that said it is in the
-  // clear, and `FileMeta` has only the boolean to carry it.
+  // An unreadable encryption marker leaves the state unknown.
   const std::optional<bool> encrypted =
       parse_password_encrypted(m_file_meta.type, *m_files);
   m_file_meta.password_encrypted = encrypted.value_or(false);
@@ -127,11 +110,13 @@ std::shared_ptr<abstract::DecodedFile> LegacyMicrosoftFile::decrypt(
       "odrcore does not support decryption of legacy Microsoft files");
 }
 
-bool LegacyMicrosoftFile::is_decodable() const noexcept { return false; }
+bool LegacyMicrosoftFile::is_decodable() const noexcept {
+  return m_encryption_state != EncryptionState::encrypted;
+}
 
 std::shared_ptr<abstract::Document> LegacyMicrosoftFile::document() const {
-  // otherwise the encrypted bytes get read as structure, and the caller sees a
-  // parse error where a password prompt belongs
+  // The parser would read the ciphertext as structure, and the caller would see
+  // a parse error and not a password prompt.
   if (m_encryption_state == EncryptionState::encrypted) {
     throw FileEncryptedError();
   }

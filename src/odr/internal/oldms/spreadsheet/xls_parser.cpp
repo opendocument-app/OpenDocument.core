@@ -244,8 +244,7 @@ spreadsheet::parse_tree(ElementRegistry &registry,
   std::vector<std::string> shared_strings;
   GlobalStyles styles;
   parse_globals(reader, bound_sheets, shared_strings, styles);
-  style_registry =
-      StyleRegistry(std::move(styles.fonts), styles.xfs, styles.palette);
+  style_registry = StyleRegistry(styles.fonts, styles.xfs, styles.palette);
 
   auto [root_id, root] = registry.create_element(ElementType::root);
 

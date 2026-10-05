@@ -308,6 +308,8 @@ TEST(OldMs, xls_empty) {
 
   EXPECT_EQ(document_file.file_type(), FileType::legacy_excel_worksheets);
 
+  EXPECT_TRUE(document_file.is_decodable());
+
   const Document document = document_file.document();
   EXPECT_EQ(document.document_type(), DocumentType::spreadsheet);
 

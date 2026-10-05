@@ -75,8 +75,7 @@ run's `Chpx.grpprl` applied over the default style.
 - Colors: `sprmCCv` is a `COLORREF` (`fAuto` leaves it unset). `sprmCIco` and
   `sprmCHighlight` use the `Ico` palette (§2.9.119). The spec's extracted
   table repeats `0x0C` for `0x0D`, which is dark red (`0x800000`).
-- Font names from `SttbfFfn` live in the `StyleRegistry` and never move, so
-  `TextStyle::font_name` (`const char *`) stays valid.
+- Resolved `TextStyle` values own their font names, copied from `SttbfFfn`.
 
 **`TextCleaner`.** `0x0D`, `0x0C` and `0x0B` never reach it, because the
 caller splits paragraphs, pages and lines on them. `0x13`, `0x14` and `0x15`
