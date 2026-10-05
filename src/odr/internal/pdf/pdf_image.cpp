@@ -275,8 +275,11 @@ std::vector<std::uint8_t> pdf::decode_mask_alpha(
     return {};
   }
   const auto row_bytes = static_cast<std::size_t>(row_bytes_wide);
-  // A /Decode of [1 0] inverts the mask sense (8.9.5.4).
-  const bool invert = decode.size() >= 2 && decode[0] > decode[1];
+  const double low = decode.size() >= 2 ? decode[0] : 0;
+  const double high = decode.size() >= 2 ? decode[1] : 1;
+  if (!std::isfinite(low) || !std::isfinite(high)) {
+    return {};
+  }
 
   // Decode the mask at its native resolution first, then resample.
   std::vector<std::uint8_t> native(*native_size);
@@ -285,10 +288,9 @@ std::vector<std::uint8_t> pdf::decode_mask_alpha(
     BitReader reader(samples, static_cast<std::size_t>(y) * row_bytes);
     for (std::int32_t x = 0; x < width; ++x) {
       const std::uint32_t sample = reader.read(bits_per_component);
-      double value = static_cast<double>(sample) / max_sample;
-      if (invert) {
-        value = 1.0 - value;
-      }
+      // ISO 32000-1, 8.9.5.2: map samples through the Decode interval.
+      const double value =
+          std::lerp(low, high, static_cast<double>(sample) / max_sample);
       if (stencil) {
         // An explicit stencil /Mask: a decoded 1 masks the base pixel out.
         native[i++] = value >= 0.5 ? 0x00 : 0xFF;
