@@ -26,6 +26,25 @@ describe('edit', () => {
   });
   after(() => odr.closeAll());
 
+  it('edits and renders the same CSV document', () => {
+    const doc = odr.open(new TextEncoder().encode('a,b\nc,d\n'), { name: 'table.csv' });
+    try {
+      assert.equal(doc.isEditable(), true);
+      assert.equal(doc.isSavable(), true);
+      assert.equal(doc.locale(), null);
+      doc.render();
+      doc.edit(JSON.stringify({
+        version: 2,
+        ops: [{ op: 'setCell', sheet: 0, column: 0, row: 0,
+          value: { type: 'string', text: 'edited' } }],
+      }));
+      assert.match(doc.render().html, /edited/);
+      assert.match(new TextDecoder().decode(doc.save()), /^edited,b/);
+    } finally {
+      doc.close();
+    }
+  });
+
   it('reports what this document can do', () => {
     const doc = odr.open(minimalOdt());
     try {

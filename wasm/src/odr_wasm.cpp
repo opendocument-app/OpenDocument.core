@@ -52,7 +52,13 @@ Session &session(const Handle handle) {
 
 Document &document_of(Session &session) {
   if (!session.document.has_value()) {
-    session.document = session.file.as_document_file().document();
+    if (session.file.is_csv_file()) {
+      session.document = session.file.as_csv_file().document();
+    } else if (session.file.is_markdown_file()) {
+      session.document = session.file.as_markdown_file().document();
+    } else {
+      session.document = session.file.as_document_file().document();
+    }
   }
   return *session.document;
 }
