@@ -89,8 +89,13 @@ def cliff(*arguments: str, capture: bool = False) -> str:
 def release_version(value: str) -> str:
     """A version tag safe to embed in package metadata and workflow outputs."""
     suffix = r"[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*"
-    pattern = rf"v[0-9]+\.[0-9]+\.[0-9]+(?:-{suffix})?(?:\+{suffix})?"
-    if not re.fullmatch(pattern, value):
+    number = r"(?:0|[1-9][0-9]*)"
+    pattern = rf"v{number}\.{number}\.{number}(?:-(?P<pre>{suffix}))?(?:\+{suffix})?"
+    match = re.fullmatch(pattern, value)
+    if not match or any(
+        part.isdigit() and len(part) > 1 and part.startswith("0")
+        for part in (match.group("pre") or "").split(".")
+    ):
         raise argparse.ArgumentTypeError(
             "expected vMAJOR.MINOR.PATCH with optional prerelease/build suffixes"
         )
@@ -111,11 +116,9 @@ def command_version(arguments: argparse.Namespace) -> None:
         cwd=REPO_ROOT,
         capture_output=True,
     ).returncode == 0
-    if tagged and not arguments.version:
+    if tagged:
         raise SystemExit(
-            f"the commits say {version}, but {version} is already tagged — a "
-            f"maintenance line has bumped into a version the mainline used. "
-            f"Re-run with an explicit --version."
+            f"{version} is already tagged — select an unused --version"
         )
 
     print(version)

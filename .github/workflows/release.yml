@@ -130,7 +130,9 @@ jobs:
           pattern: release-asset-*
           path: ${{ runner.temp }}/assets
           merge-multiple: true
-        continue-on-error: true
+
+      - name: verify required release asset
+        run: test -s "$RUNNER_TEMP/assets/OdrCoreObjC.xcframework.zip"
 
       # Whatever the release has to record about itself is written into the tree
       # here; `stamp` commits all of it as one commit.

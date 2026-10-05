@@ -19,6 +19,7 @@ import os
 import subprocess
 import sys
 import time
+from urllib.parse import quote
 
 # workflow `name:` -> what publishing it means; not listed is not watched
 EXPECTED = {
@@ -57,19 +58,21 @@ def repository() -> str:
 
 
 def release_commit(tag: str) -> str:
-    return gh("api", f"repos/{repository()}/git/ref/tags/{tag}", "--jq",
-              ".object.sha")
+    ref = quote(f"tags/{tag}", safe="")
+    return gh("api", f"repos/{repository()}/commits/{ref}", "--jq", ".sha")
 
 
-def runs_for(commit: str, self_run_id: str | None) -> dict[str, dict]:
+def runs_for(commit: str, self_run_id: str | None, tag: str) -> dict[str, dict]:
     """Latest release-triggered run per workflow — a re-run replaces the failure."""
-    payload = json.loads(gh(
-        "api", "-X", "GET", f"repos/{repository()}/actions/runs",
+    pages = json.loads(gh(
+        "api", "--paginate", "--slurp", "-X", "GET", f"repos/{repository()}/actions/runs",
         "-f", "event=release", "-f", f"head_sha={commit}", "-f", "per_page=100",
     ))
 
     latest: dict[str, dict] = {}
-    for run in payload.get("workflow_runs", []):
+    for run in (run for page in pages for run in page.get("workflow_runs", [])):
+        if run["head_branch"] != tag:
+            continue
         if self_run_id and str(run["id"]) == str(self_run_id):
             continue
         name = run["name"]
@@ -106,7 +109,7 @@ def report(tag: str, runs: dict[str, dict]) -> tuple[str, bool]:
 
 def amend_release_notes(tag: str, block: str, *, dry_run: bool) -> None:
     """Replace the status block in the release body, or append one."""
-    body = gh("api", f"repos/{repository()}/releases/tags/{tag}", "--jq", ".body")
+    body = gh("api", f"repos/{repository()}/releases/tags/{quote(tag, safe='')}", "--jq", ".body")
 
     if BEGIN in body and END in body:
         head, _, rest = body.partition(BEGIN)
@@ -144,7 +147,7 @@ def main() -> None:
 
     deadline = time.monotonic() + arguments.timeout_minutes * 60
     while True:
-        runs = runs_for(commit, arguments.self_run_id)
+        runs = runs_for(commit, arguments.self_run_id, arguments.tag)
         pending = [
             name for name in EXPECTED
             if name in runs and runs[name]["status"] != "completed"
