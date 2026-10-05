@@ -62,6 +62,11 @@ docx. `text_set_style` cuts the `a:r` around the run and writes the toggles
 and the size as `a:rPr` attributes, the colour as `a:solidFill` and the
 highlight as `a:highlight`, each at its place in the
 `CT_TextCharacterProperties` sequence ([ECMA-376] 21.1.2.3.9).
+Each `a:r` owns exactly one `a:t` ([ECMA-376] A.4.1). Tabs stay in that text;
+insertion creates a sibling run with copied properties. Removing its only
+text removes the run. Appending accepts paragraphs and spans; slide removal
+refuses because it also needs package metadata updates.
+
 `paragraph_set_style` writes `algn` on the `a:pPr` of the paragraph and
 refuses `start` and `end`, which `ST_TextAlignType` does not name. `save`
 re-serialises the slide parts and byte-copies the rest. The slides are held by

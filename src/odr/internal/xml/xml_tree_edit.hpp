@@ -86,7 +86,9 @@ public:
     }
 
     while (level_id != element_id) {
-      split_level_(level_id, stays_id);
+      if (m_registry->element_at(stays_id).next_sibling_id != null_element_id) {
+        split_level_(level_id, stays_id);
+      }
       stays_id = level_id;
       level_id = m_registry->element_at(level_id).parent_id;
     }

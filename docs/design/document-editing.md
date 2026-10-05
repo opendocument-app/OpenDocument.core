@@ -98,7 +98,7 @@ Version 2. Version 1 addressed by path, and replay refuses it.
 | op | fields | what it does |
 |---|---|---|
 | `setText` | `id`, `text` | replaces the whole text of one run |
-| `insertText` | `after` or `before`, `text`, `id` | a new run beside the named one, in the same parent, so it takes the same style |
+| `insertText` | `after` or `before`, `text`, `id` | a new run beside the named one with the same style; may create a format wrapper |
 | `removeElement` | `id` | unlinks the element and removes its nodes |
 | `splitParagraph` | `paragraph`, `after` (optional), `id` | the children after `after` move into a new paragraph that copies the style; no `after` moves all of them |
 | `mergeParagraph` | `paragraph` | takes the children of the next sibling paragraph and removes it |

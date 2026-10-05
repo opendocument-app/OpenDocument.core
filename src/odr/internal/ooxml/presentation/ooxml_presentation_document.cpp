@@ -368,23 +368,21 @@ public:
   [[nodiscard]] ElementIdentifier
   text_insert(const ElementIdentifier element_id, const Placement where,
               const std::string &text) const override {
-    const ElementRegistry::Text &anchor =
-        m_registry->text_element_at(element_id);
-    const pugi::xml_node first = get_node(element_id);
-    pugi::xml_node parent = first.parent();
-    // a run beside this one in the same `a:r` carries the same `a:rPr`
-    const pugi::xml_node before =
-        where == Placement::after ? anchor.last.next_sibling() : first;
-
-    const NodeSpan span = write_text_nodes(parent, before, text, "a");
-    const auto &[new_id, unused_element, unused_text] =
-        m_registry->create_text_element(span.first, span.last);
-    if (where == Placement::after) {
-      m_registry->insert_sibling_after(element_id, new_id);
-    } else {
-      m_registry->insert_sibling_before(element_id, new_id);
+    const ElementIdentifier parent_id = element_parent(element_id);
+    if (parent_id == null_element_id ||
+        element_type(parent_id) != ElementType::span) {
+      throw UnsupportedOperation();
     }
-    return new_id;
+    const TreeEditor editor(*m_registry);
+    const ElementIdentifier run_id = editor.isolate(element_id);
+    const ElementIdentifier new_run_id = editor.insert_sibling_after(run_id);
+    if (where == Placement::before) {
+      pugi::xml_node parent = get_node(run_id).parent();
+      parent.insert_move_before(get_node(new_run_id), get_node(run_id));
+      m_registry->unlink_child(new_run_id);
+      m_registry->insert_sibling_before(run_id, new_run_id);
+    }
+    return element_append_text(new_run_id, text);
   }
 
   /// Creates a missing `a:r` before `a:endParaRPr`, copying its text
@@ -392,8 +390,18 @@ public:
   [[nodiscard]] ElementIdentifier
   element_append_text(const ElementIdentifier element_id,
                       const std::string &text) const override {
+    const ElementType type = element_type(element_id);
+    if (type != ElementType::paragraph && type != ElementType::span) {
+      throw UnsupportedOperation();
+    }
+    if (type == ElementType::span) {
+      const ElementIdentifier child_id = element_first_child(element_id);
+      if (child_id != null_element_id) {
+        return text_insert(child_id, Placement::after, text);
+      }
+    }
     ElementIdentifier run_id = element_id;
-    if (element_type(element_id) != ElementType::span) {
+    if (type != ElementType::span) {
       pugi::xml_node parent = get_node(element_id);
       const pugi::xml_node end = parent.child("a:endParaRPr");
       pugi::xml_node run = end ? parent.insert_child_before("a:r", end)
@@ -415,6 +423,18 @@ public:
   }
 
   void element_remove(const ElementIdentifier element_id) const override {
+    if (element_type(element_id) == ElementType::slide) {
+      throw UnsupportedOperation();
+    }
+    const ElementIdentifier parent_id = element_parent(element_id);
+    if (element_type(element_id) == ElementType::text &&
+        parent_id != null_element_id &&
+        element_type(parent_id) == ElementType::span &&
+        element_first_child(parent_id) == element_id &&
+        element_next_sibling(element_id) == null_element_id) {
+      TreeEditor(*m_registry).remove(parent_id);
+      return;
+    }
     TreeEditor(*m_registry).remove(element_id);
   }
   /// Cuts the `a:r` around the run, each part keeping the `a:rPr`, and
