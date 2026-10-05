@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- CSV preserves carriage-return record endings and separator directives when
+  options are reapplied. Out-of-range coordinates and growth are rejected
+  before cell IDs or allocation sizes can wrap.
+
 - Quantity parsing and integer formatting are locale independent. Invalid or
   out-of-range integer magnitudes throw instead of silently converting.
 

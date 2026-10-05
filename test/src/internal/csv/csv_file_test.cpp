@@ -14,6 +14,7 @@
 #include <odr/internal/csv/csv_file.hpp>
 #include <odr/internal/csv/csv_util.hpp>
 
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -72,7 +73,8 @@ TEST(CsvFile, csv) {
 
 TEST(CsvProbe, a_consistent_field_count_is_what_makes_it_a_csv) {
   EXPECT_TRUE(probe("a,b,c\n1,2,3\n").is_csv);
-  EXPECT_TRUE(probe("a,b,c\n1,2,3").is_csv);        // no trailing newline
+  EXPECT_TRUE(probe("a,b,c\n1,2,3").is_csv); // no trailing newline
+  EXPECT_TRUE(probe("a,b\r1,2\r").is_csv);
   EXPECT_TRUE(probe("a,b\r\n1,2\r\n").is_csv);      // crlf
   EXPECT_TRUE(probe("a,b\n\"x,y\",2\n").is_csv);    // a quoted separator
   EXPECT_TRUE(probe("a,b\n\"x\ny\",2\n").is_csv);   // a quoted newline
@@ -183,6 +185,10 @@ TEST(CsvProbe, excel_declares_its_separator) {
 }
 
 TEST(RecordReader, parses_rfc4180) {
+  EXPECT_EQ(records("a,b\r1,2\r", {}),
+            (std::vector<std::vector<std::string>>{{"a", "b"}, {"1", "2"}}));
+  EXPECT_EQ(records("\r\n\r\"a\rb\",c\r\n", {}),
+            (std::vector<std::vector<std::string>>{{"a\rb", "c"}}));
   EXPECT_EQ(records("a,b\n1,2\n", {}),
             (std::vector<std::vector<std::string>>{{"a", "b"}, {"1", "2"}}));
   EXPECT_EQ(records("\"x,y\",2\n", {}),
@@ -258,6 +264,10 @@ TEST(CsvOptions, a_declared_separator_makes_anything_readable) {
 }
 
 TEST(CsvOptions, an_incoherent_dialect_is_a_caller_mistake) {
+  EXPECT_THROW(
+      (void)open(File::from_memory("a,b\n"),
+                 DecodeOptions::as_csv({.separator = ',', .quote = '\r'})),
+      std::invalid_argument);
   EXPECT_THROW(
       (void)open(File::from_memory("a,b\n"),
                  DecodeOptions::as_csv({.separator = '"', .quote = '"'}))
@@ -522,6 +532,8 @@ std::string edited(
 } // namespace
 
 TEST(CsvDocument, an_unedited_file_saves_as_it_reads) {
+  EXPECT_EQ(edited("\"a\nb\",c\r\n1,2\r\n", ""), "\"a\nb\",c\r\n1,2\r\n");
+  EXPECT_EQ(edited("a,b\r1,2\r", ""), "a,b\r1,2\r");
   EXPECT_EQ(edited("a,b\n1,2\n", ""), "a,b\n1,2\n");
   EXPECT_EQ(edited("a,b\r\n1,2", ""), "a,b\r\n1,2");
   EXPECT_EQ(edited("a\nb,c,d\n", ""), "a\nb,c,d\n");
@@ -577,6 +589,9 @@ TEST(CsvDocument, a_written_number_types_its_column_again) {
 }
 
 TEST(CsvDocument, the_separator_directive_is_kept) {
+  EXPECT_EQ(edited("sep=;\ra;b\r1;2\r", "",
+                   DecodeOptions::as_csv({.separator = ';'})),
+            "sep=;\ra;b\r1;2\r");
   EXPECT_EQ(edited("sep=;\na;b\n1;2\n", "",
                    DecodeOptions::as(FileType::comma_separated_values)),
             "sep=;\na;b\n1;2\n");
@@ -680,4 +695,29 @@ TEST(CsvDocument, a_column_edit_keeps_the_numbers_of_a_column) {
   sheet.delete_columns(0, 2);
   EXPECT_EQ(sheet.cell(0, 1).value_type(), ValueType::float_number);
   EXPECT_EQ(sheet.dimensions().columns, 1);
+}
+
+TEST(CsvDocument, coordinates_and_growth_cannot_wrap) {
+  const Document document = open(File::from_memory("a,b\n1,2\n"),
+                                 DecodeOptions::as_csv({.separator = ','}))
+                                .as_csv_file()
+                                .document();
+  const Sheet sheet = document.root_element().first_child().as_sheet();
+  constexpr auto max = std::numeric_limits<std::uint32_t>::max();
+  constexpr std::uint32_t columns = std::uint32_t{1} << 24;
+  EXPECT_THROW((void)sheet.cell(columns, 0), std::out_of_range);
+  EXPECT_THROW(sheet.set_cell(columns, 0, CellValue("x")), std::out_of_range);
+  EXPECT_THROW(sheet.set_cell(0, max, CellValue("x")), std::out_of_range);
+  EXPECT_THROW(sheet.insert_rows(0, max), std::length_error);
+  EXPECT_THROW(sheet.insert_columns(0, columns), std::length_error);
+  EXPECT_EQ(sheet.dimensions().rows, 2);
+  EXPECT_EQ(sheet.dimensions().columns, 2);
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "a");
+  EXPECT_EQ(document
+                .element_by_id(sheet.cell(0, 0).identifier() |
+                               (std::uint64_t{1} << 56))
+                .type(),
+            ElementType::none);
+  sheet.delete_rows(1, max);
+  EXPECT_EQ(sheet.dimensions().rows, 1);
 }
