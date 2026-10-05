@@ -2,6 +2,7 @@
 
 #include <odr/internal/common/text_cursor.hpp>
 #include <odr/internal/util/number_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <functional>
 #include <memory>
@@ -44,6 +45,8 @@ double QuantityBase::parse_magnitude(std::string_view &text) {
   return *magnitude;
 }
 
+/// 7 digits: enough for drawing coordinates in the thousands of mm, and no more
+/// than a `float` carries, so `68.55` does not come back as `68.550003`.
 std::string QuantityBase::format_magnitude(const double magnitude) {
   return internal::util::number::to_string_significant(magnitude, 7);
 }
@@ -98,6 +101,7 @@ private:
   }
 };
 
+/// Registered, not null, so that it equals the unit `Measure("5")` parses.
 DynamicUnit::DynamicUnit() : m_unit{Registry::unit("")} {}
 
 DynamicUnit::DynamicUnit(const std::string_view name)
