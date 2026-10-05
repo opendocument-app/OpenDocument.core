@@ -11,8 +11,6 @@
 #include <string>
 #include <utility>
 
-#include <utility>
-
 namespace odr::internal::cfb::util {
 
 namespace {
