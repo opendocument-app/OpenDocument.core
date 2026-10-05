@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF calculator functions bound execution and validate stack operands and
+  results, preventing malformed programs from crashing or exhausting memory.
+
 - PDF calculator functions ignore comments, parse complete numeric tokens
   independent of locale, and reject unbalanced or excessively nested braces.
 

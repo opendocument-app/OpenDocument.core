@@ -158,6 +158,10 @@ above. So each run is raised by one font ascent:
   them one `ClipPath`. The HTML writer draws it as `<text>` in the glyph
   layer's `@font-face`. Every glyph has its own `x`, so SVG white-space
   handling moves nothing.
+- Calculator functions cap evaluation at 100,000 tokens, 4,096 stack entries
+  and 64 nested calls. Invalid operands or results use the existing zero-result
+  fallback, before range clipping. ISO 32000-1 7.10.5 requires at least 100
+  stack entries; the larger bound accommodates ordinary tint transforms.
 - CMYK is naive (no ICC) and overprint is ignored. CIE, ICCBased, Indexed,
   Separation, DeviceN and Lab resolve to RGB at emission by sampling the tint
   `/Function` (types 0, 2, 3, 4).
