@@ -156,6 +156,15 @@ std::optional<Measure> css_margin(const std::optional<Measure> &measure) {
 
 } // namespace
 
+std::string html::css_length(const Measure &measure) {
+  if (!std::isfinite(measure.magnitude()) ||
+      (!measure.unit().name().empty() &&
+       !is_css_length_unit(unit_name(measure)))) {
+    return "0";
+  }
+  return measure.to_string();
+}
+
 std::optional<double> html::css_pixels(const std::optional<Measure> &measure) {
   if (!measure.has_value()) {
     return {};

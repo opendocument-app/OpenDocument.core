@@ -718,8 +718,8 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                         if (!height.has_value()) {
                           return {};
                         }
-                        return "height:" + height->to_string() +
-                               ";max-height:" + height->to_string() + ";";
+                        return "height:" + css_length(*height) +
+                               ";max-height:" + css_length(*height) + ";";
                       }(),
                       state.styles()));
     state.out().write_raw(TablePosition::to_row_string(row_index));
@@ -1268,10 +1268,10 @@ void translate_line(const Frame &frame, const GraphicStyle &style,
       "line",
       HtmlElementOptions()
           .set_close_type(HtmlCloseType::trailing)
-          .set_attributes(HtmlAttributesVector{{"x1", line.x1.to_string()},
-                                               {"y1", line.y1.to_string()},
-                                               {"x2", line.x2.to_string()},
-                                               {"y2", line.y2.to_string()}}));
+          .set_attributes(HtmlAttributesVector{{"x1", css_length(line.x1)},
+                                               {"y1", css_length(line.y1)},
+                                               {"x2", css_length(line.x2)},
+                                               {"y2", css_length(line.y2)}}));
 
   state.out().write_element_end("svg");
 
@@ -1281,9 +1281,9 @@ void translate_line(const Frame &frame, const GraphicStyle &style,
         return has_content(child.children());
       })) {
     const std::string middle =
-        "position:absolute;left:calc((" + line.x1.to_string() + " + " +
-        line.x2.to_string() + ")/2);top:calc((" + line.y1.to_string() + " + " +
-        line.y2.to_string() + ")/2);transform:translate(-50%,-100%);";
+        "position:absolute;left:calc((" + css_length(line.x1) + " + " +
+        css_length(line.x2) + ")/2);top:calc((" + css_length(line.y1) + " + " +
+        css_length(line.y2) + ")/2);transform:translate(-50%,-100%);";
     state.out().write_element_begin("div",
                                     HtmlElementOptions().set_style(middle));
     translate_children(frame.children(), state);

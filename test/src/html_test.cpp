@@ -1659,3 +1659,33 @@ TEST(html, a_view_that_renders_no_sheet_has_no_cut) {
 
   EXPECT_FALSE(service.list_views().at(0).sheet_cut().has_value());
 }
+
+TEST(html, document_lengths_cannot_inject_styles_or_attributes) {
+  const std::string styles =
+      R"(<office:automatic-styles>)"
+      R"(<style:style style:name="p" style:family="paragraph">)"
+      R"(<style:text-properties fo:font-size="1px&quot; data-odr-injected=&quot;yes"/>)"
+      R"(</style:style><style:style style:name="r" style:family="table-row">)"
+      R"(<style:table-row-properties style:row-height="1px;&lt;/style&gt;&lt;b id='odr-injected'&gt;"/>)"
+      R"(</style:style></office:automatic-styles>)";
+  for (
+      const std::string body :
+      {R"(<office:text><text:p text:style-name="p">text</text:p>)"
+       R"(<draw:line svg:x1="1px&quot; data-odr-injected=&quot;yes"/>)"
+       R"(</office:text>)",
+       R"(<office:spreadsheet><table:table table:name="s">)"
+       R"(<table:table-column/><table:table-row table:style-name="r">)"
+       R"(<table:table-cell><text:p text:style-name="p">text</text:p>)"
+       R"(</table:table-cell></table:table-row></table:table></office:spreadsheet>)"}) {
+    const std::string source =
+        R"(<?xml version="1.0"?><office:document office:mimetype="application/vnd.oasis.opendocument.)" +
+        std::string(body.starts_with("<office:text>") ? "text"
+                                                      : "spreadsheet") +
+        R"(">)" + styles + "<office:body>" + body +
+        "</office:body></office:document>";
+    const DecodedFile file = open(File::from_memory(source));
+    const std::string page = render_sheet(file, HtmlConfig());
+    EXPECT_EQ(page.find("odr-injected"), std::string::npos);
+    EXPECT_NE(page.find("text"), std::string::npos);
+  }
+}
