@@ -194,6 +194,22 @@
       check("with the log empty", ops().length === 0);
       check("and a host told it is clean", changes.pop().dirty === false);
 
+      note("Fallback deletes keep surrogate pairs whole");
+      ["deleteContentBackward", "deleteContentForward"].forEach(function (type) {
+        body.children[0].textContent = "A😀B";
+        odr.editing.committed();
+        caretAt(0, type === "deleteContentBackward" ? 3 : 1);
+        input(type);
+        check(type + " removes the whole emoji", body.children[0].textContent === "AB");
+        check("the saved content carries the deletion", ops()[0].text.split("\n")[0] === "AB");
+        odr.editing.undo();
+        check("undo restores both UTF-16 units", body.children[0].textContent === "A😀B");
+        odr.editing.redo();
+        check("redo removes both units", body.children[0].textContent === "AB");
+      });
+      body.children[0].textContent = "first line";
+      odr.editing.committed();
+
       // ------------------------------------------------------------- the host
 
       odr.editing.enable();

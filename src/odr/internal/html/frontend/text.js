@@ -338,6 +338,14 @@
     this.placeCursorAt(newPosition);
   };
 
+  TextEditor.prototype.adjacentCharacter = function (position, direction) {
+    var text = this.getLineText(this.getLine(position.line));
+    var next = odr.editing.characterOffset(text, position.offset, direction);
+    return next === position.offset
+      ? this.movePosition(position, direction)
+      : { line: position.line, offset: next };
+  };
+
   TextEditor.prototype.removeTextAction = function (mode) {
     var selection = window.getSelection();
     if (selection.rangeCount !== 1) {
@@ -355,11 +363,11 @@
       ? startPosition
       : mode === "forward"
         ? startPosition
-        : this.movePosition(startPosition, -1);
+        : this.adjacentCharacter(startPosition, -1);
     var to = isSelected
       ? endPosition
       : mode === "forward"
-        ? this.movePosition(endPosition, 1)
+        ? this.adjacentCharacter(endPosition, 1)
         : endPosition;
 
     if (from.line === to.line && from.offset === to.offset) {
