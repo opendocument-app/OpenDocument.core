@@ -7,6 +7,8 @@
 #include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/util/byte_string.hpp>
 
+#include <internal/font/sfnt_test_util.hpp>
+
 #include <gtest/gtest.h>
 
 #include <array>
@@ -21,110 +23,18 @@ using odr::internal::pdf::Font;
 
 namespace {
 
+using namespace odr::test::font;
+
 namespace bs = odr::internal::util::byte_string;
-
-// A compact SFNT builder, just enough for an `SfntFont` that maps a contiguous
-// run of code points to glyph ids 1..n (mirrors the font unit test's builder).
-
-std::string head_table() {
-  std::string t(54, '\0');
-  t[18] = 0x03;
-  t[19] = static_cast<char>(0xe8); // unitsPerEm = 1000
-  return t;
-}
-
-std::string maxp_table(const std::uint16_t glyphs) {
-  std::string t;
-  bs::put_u32_be(t, 0x00010000);
-  bs::put_u16_be(t, glyphs);
-  t.resize(32, '\0');
-  return t;
-}
-
-std::string hhea_table(const std::uint16_t h_metrics) {
-  std::string t(36, '\0');
-  t[34] = static_cast<char>(h_metrics >> 8);
-  t[35] = static_cast<char>(h_metrics & 0xff);
-  return t;
-}
-
-std::string hmtx_table(const std::uint16_t count) {
-  std::string t;
-  for (std::uint16_t i = 0; i < count; ++i) {
-    bs::put_u16_be(t, 500);
-    bs::put_u16_be(t, 0);
-  }
-  return t;
-}
-
-/// Format-4 (3,1) subtable mapping [start, start+count) to glyph ids [1,
-/// count].
-std::string cmap_format4(const char16_t start, const std::uint16_t count) {
-  std::string t;
-  bs::put_u16_be(t, 4);
-  bs::put_u16_be(t, 32);
-  bs::put_u16_be(t, 0);
-  bs::put_u16_be(t, 4); // segCountX2
-  bs::put_u16_be(t, 0);
-  bs::put_u16_be(t, 0);
-  bs::put_u16_be(t, 0);
-  bs::put_u16_be(t,
-                 static_cast<std::uint16_t>(start + count - 1)); // endCode[0]
-  bs::put_u16_be(t, 0xffff);
-  bs::put_u16_be(t, 0);
-  bs::put_u16_be(t, start); // startCode[0]
-  bs::put_u16_be(t, 0xffff);
-  bs::put_u16_be(t, static_cast<std::uint16_t>(1 - start)); // idDelta[0]
-  bs::put_u16_be(t, 1);
-  bs::put_u16_be(t, 0); // idRangeOffset[0]
-  bs::put_u16_be(t, 0);
-  return t;
-}
-
-std::string cmap_table(const std::string &subtable,
-                       const std::uint16_t encoding = 1 /* Unicode BMP */) {
-  std::string t;
-  bs::put_u16_be(t, 0);
-  bs::put_u16_be(t, 1);
-  bs::put_u16_be(t, 3); // Windows
-  bs::put_u16_be(t, encoding);
-  bs::put_u32_be(t, 12);
-  t += subtable;
-  return t;
-}
-
-std::string
-build_sfnt(const std::vector<std::pair<std::string, std::string>> &tables) {
-  const auto count = static_cast<std::uint16_t>(tables.size());
-  std::string out;
-  bs::put_u32_be(out, 0x00010000);
-  bs::put_u16_be(out, count);
-  bs::put_u16_be(out, 0);
-  bs::put_u16_be(out, 0);
-  bs::put_u16_be(out, 0);
-  std::uint32_t offset = 12 + count * 16U;
-  std::string body;
-  for (const auto &[tag, data] : tables) {
-    out += tag;
-    bs::put_u32_be(out, 0);
-    bs::put_u32_be(out, offset);
-    bs::put_u32_be(out, static_cast<std::uint32_t>(data.size()));
-    body += data;
-    while (body.size() % 4 != 0) {
-      body += '\0';
-    }
-    offset = 12 + count * 16U + static_cast<std::uint32_t>(body.size());
-  }
-  return out + body;
-}
 
 /// A 5-glyph font whose `cmap` maps 'A','B','C' (U+0041..0043) to gids 1,2,3.
 std::shared_ptr<abstract::Font> sample_font() {
-  std::string sfnt = build_sfnt({{"cmap", cmap_table(cmap_format4('A', 3))},
-                                 {"head", head_table()},
-                                 {"hhea", hhea_table(5)},
-                                 {"hmtx", hmtx_table(5)},
-                                 {"maxp", maxp_table(5)}});
+  std::string sfnt =
+      sfnt_bytes({{"cmap", cmap_table(3, 1, cmap_format4('A', 3))},
+                  {"head", head_table()},
+                  {"hhea", hhea_table(5)},
+                  {"hmtx", hmtx_table(std::vector<std::uint16_t>(5, 500))},
+                  {"maxp", maxp_table(5)}});
   return std::make_shared<font::sfnt::SfntFont>(std::move(sfnt));
 }
 
@@ -217,10 +127,10 @@ TEST(PdfFont, simple_font_glyph_for_code_via_symbol_cmap) {
   // A (3,0) subtable keys byte code c at U+F000 + c (ISO 32000-1 9.6.6.4).
   Font font;
   font.embedded_font = std::make_shared<font::sfnt::SfntFont>(
-      build_sfnt({{"cmap", cmap_table(cmap_format4(0xf003, 2), 0)},
+      sfnt_bytes({{"cmap", cmap_table(3, 0, cmap_format4(0xf003, 2))},
                   {"head", head_table()},
                   {"hhea", hhea_table(5)},
-                  {"hmtx", hmtx_table(5)},
+                  {"hmtx", hmtx_table(std::vector<std::uint16_t>(5, 500))},
                   {"maxp", maxp_table(5)}}));
 
   EXPECT_EQ(font.glyph_for_code(3), 1);

@@ -9,6 +9,8 @@
 #include <odr/internal/magic.hpp>
 #include <odr/internal/util/byte_string.hpp>
 
+#include <internal/font/sfnt_test_util.hpp>
+
 #include <gtest/gtest.h>
 
 #include <cstdint>
@@ -25,95 +27,18 @@ using namespace odr::internal::font;
 
 namespace {
 
+using namespace odr::test::font;
+
 namespace bs = odr::internal::util::byte_string;
 
-std::string head_table() {
-  std::string t(54, '\0');
-  t[18] = 0x03; // unitsPerEm = 1000
-  t[19] = static_cast<char>(0xe8);
-  return t;
-}
-
-std::string maxp_table(std::uint16_t glyphs) {
-  std::string t;
-  bs::put_u32_be(t, 0x00010000);
-  bs::put_u16_be(t, glyphs);
-  t.resize(32, '\0');
-  return t;
-}
-
-std::string hhea_table(std::uint16_t metrics) {
-  std::string t(36, '\0');
-  t[34] = static_cast<char>(metrics >> 8);
-  t[35] = static_cast<char>(metrics & 0xff);
-  return t;
-}
-
-std::string hmtx_table(const std::vector<std::uint16_t> &advances) {
-  std::string t;
-  for (const std::uint16_t a : advances) {
-    bs::put_u16_be(t, a);
-    bs::put_u16_be(t, 0);
-  }
-  return t;
-}
-
-std::string cmap_table() {
-  std::string sub;
-  bs::put_u16_be(sub, 4);
-  bs::put_u16_be(sub, 32);
-  bs::put_u16_be(sub, 0);
-  bs::put_u16_be(sub, 4);
-  bs::put_u16_be(sub, 0);
-  bs::put_u16_be(sub, 0);
-  bs::put_u16_be(sub, 0);
-  bs::put_u16_be(sub, 'C');    // endCode[0]
-  bs::put_u16_be(sub, 0xffff); // endCode[1]
-  bs::put_u16_be(sub, 0);
-  bs::put_u16_be(sub, 'A');    // startCode[0]
-  bs::put_u16_be(sub, 0xffff); // startCode[1]
-  bs::put_u16_be(
-      sub, static_cast<std::uint16_t>(1 - 'A')); // idDelta[0]: A->1,B->2,C->3
-  bs::put_u16_be(sub, 1);                        // idDelta[1]
-  bs::put_u16_be(sub, 0);
-  bs::put_u16_be(sub, 0);
-
-  std::string t;
-  bs::put_u16_be(t, 0);
-  bs::put_u16_be(t, 1);
-  bs::put_u16_be(t, 3);
-  bs::put_u16_be(t, 1);
-  bs::put_u32_be(t, 12);
-  t += sub;
-  return t;
-}
-
-std::string name_table(const std::string &ascii) {
-  std::string strings;
-  for (const char c : ascii) {
-    bs::put_u16_be(strings, static_cast<std::uint8_t>(c));
-  }
-  std::string t;
-  bs::put_u16_be(t, 0);
-  bs::put_u16_be(t, 1);
-  bs::put_u16_be(t, 18);
-  bs::put_u16_be(t, 3);
-  bs::put_u16_be(t, 1);
-  bs::put_u16_be(t, 0x409);
-  bs::put_u16_be(t, 6);
-  bs::put_u16_be(t, static_cast<std::uint16_t>(strings.size()));
-  bs::put_u16_be(t, 0);
-  t += strings;
-  return t;
-}
-
 std::string sample_ttf() {
-  return build_sfnt(0x00010000, {{"cmap", cmap_table()},
-                                 {"head", head_table()},
-                                 {"hhea", hhea_table(4)},
-                                 {"hmtx", hmtx_table({500, 600, 700, 800})},
-                                 {"maxp", maxp_table(4)},
-                                 {"name", name_table("TestFont")}});
+  return build_sfnt(0x00010000,
+                    {{"cmap", cmap_table(3, 1, cmap_format4('A', 3))},
+                     {"head", head_table()},
+                     {"hhea", hhea_table(4)},
+                     {"hmtx", hmtx_table({500, 600, 700, 800})},
+                     {"maxp", maxp_table(4)},
+                     {"name", name_table("TestFont")}});
 }
 
 } // namespace
