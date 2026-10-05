@@ -78,7 +78,7 @@ std::string_view IworkFile::mimetype() const noexcept {
   return m_file_meta.mimetype;
 }
 
-FileMeta IworkFile::file_meta() const noexcept { return m_file_meta; }
+FileMeta IworkFile::file_meta() const { return m_file_meta; }
 
 DocumentType IworkFile::document_type() const {
   return m_file_meta.document_type;

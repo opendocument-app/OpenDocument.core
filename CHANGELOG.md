@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- **Breaking:** `DecodedFile::file_meta`, `identify`, and position `to_string`
+  methods no longer promise `noexcept`; allocation failures can propagate
+  instead of terminating the process.
+
 - Temporary copies create files exclusively, bound name-collision retries,
   and keep cleanup from throwing during destruction or move assignment.
 

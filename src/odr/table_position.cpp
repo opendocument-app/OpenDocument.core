@@ -107,7 +107,7 @@ bool TablePosition::operator==(const TablePosition &rhs) const {
   return column == rhs.column && row == rhs.row;
 }
 
-std::string TablePosition::to_string() const noexcept {
+std::string TablePosition::to_string() const {
   return to_column_string(column) + to_row_string(row);
 }
 

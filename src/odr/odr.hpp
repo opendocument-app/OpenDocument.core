@@ -20,7 +20,7 @@ namespace odr {
 /// Whether the library is built in debug mode.
 [[nodiscard]] bool is_debug() noexcept;
 /// All of the above in one string.
-[[nodiscard]] std::string identify() noexcept;
+[[nodiscard]] std::string identify();
 
 /// Every file type this library knows about, in declaration order, including
 /// @ref FileType::unknown.

@@ -29,7 +29,7 @@ struct SheetPosition final {
   std::strong_ordering operator<=>(const SheetPosition &rhs) const;
 
   /// `2!B3`: the sheet's ordinal, then the cell.
-  [[nodiscard]] std::string to_string() const noexcept;
+  [[nodiscard]] std::string to_string() const;
   [[nodiscard]] std::size_t hash() const noexcept;
 };
 

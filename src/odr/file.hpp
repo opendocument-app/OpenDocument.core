@@ -389,7 +389,7 @@ public:
 
   [[nodiscard]] FileType file_type() const noexcept;
   [[nodiscard]] FileCategory file_category() const noexcept;
-  [[nodiscard]] FileMeta file_meta() const noexcept;
+  [[nodiscard]] FileMeta file_meta() const;
 
   [[nodiscard]] bool password_encrypted() const;
   [[nodiscard]] EncryptionState encryption_state() const;

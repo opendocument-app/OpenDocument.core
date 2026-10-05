@@ -21,7 +21,7 @@ SheetPosition::operator<=>(const SheetPosition &rhs) const {
   return cell.column <=> rhs.cell.column;
 }
 
-std::string SheetPosition::to_string() const noexcept {
+std::string SheetPosition::to_string() const {
   return std::to_string(sheet) + "!" + cell.to_string();
 }
 
