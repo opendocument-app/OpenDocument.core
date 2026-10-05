@@ -70,7 +70,7 @@ struct PredefinedCMap {
 
 inline constexpr std::size_t collection_count = 7;
 inline constexpr std::size_t predefined_cmap_count = 136;
-inline constexpr std::size_t cid_range_pool_size = 23207;
+inline constexpr std::size_t cid_range_pool_size = 23447;
 
 extern const std::array<CidRange, cid_range_pool_size> cid_range_pool;
 extern const std::array<Collection, collection_count> collections;

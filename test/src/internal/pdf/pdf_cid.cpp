@@ -45,6 +45,10 @@ TEST(PdfCid, legacy_cmap_shift_jis) {
   const std::string codes("\x92\x86\x82\xa0", 4);
   EXPECT_EQ(translate_predefined_cmap("90ms-RKSJ-H", codes),
             "\xe4\xb8\xad\xe3\x81\x82");
+  // An inherited range must resume after a vertical override.
+  EXPECT_EQ(
+      translate_predefined_cmap("90ms-RKSJ-V", "\x81\x40\x81\x41\x81\x45"),
+      "\xe2\x80\x83\xef\xb8\x91\xe3\x83\xbb");
 }
 
 // A mixed-width codespace: a single-byte code among two-byte ones stays
