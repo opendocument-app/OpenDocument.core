@@ -16,14 +16,14 @@ and [OpenDocument.ios](https://github.com/opendocument-app/OpenDocument.ios).
 | pdf | yes | no | Own parser. Encrypted files are decrypted. Supports annotation. |
 | pages, key, numbers | yes | no | Apple iWork. Text and tables. No styles, images, masters, presenter notes, number formats or merged cells. |
 | rtf | yes | no | Body text only. |
-| md | yes | no | CommonMark plus GitHub extensions. No raw html, images or horizontal rules. Detected by name only, so open it as `FileType::markdown`. |
+| md | yes | no | CommonMark plus GitHub extensions. No raw html, images or horizontal rules. A `.md` or `.markdown` name selects it for text input; unnamed bytes need `FileType::markdown`. |
 | txt | yes | yes | |
 | csv | yes | yes | Cell values only. Saves as UTF-8. |
 | json, xml | yes | no | |
 | zip, cfb | yes | no | Archive listing. |
 | png, gif, jpeg, bmp, webp, tiff, heif, avif, jxl, ico, svg, svm | yes | no | Images. |
 | ttf, otf | yes | no | Font specimen page. |
-| mp3, m4a, ogg, wav, flac, mp4, mov, 3gp, mkv, avi | passthrough | no | The bytes go to the browser as they are, in an html media page. Not detected by content. |
+| mp3, m4a, ogg, wav, flac, mp4, mov, 3gp, mkv, avi | passthrough | no | Detected by content; the browser plays the original bytes in an html media page. |
 
 Detected but not decoded: wpd, xlsb and html. A caller can name them, but
 opening one throws. Saving with a password is not supported for any format.
