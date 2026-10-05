@@ -1,5 +1,3 @@
-#include "sfnt_test_util.hpp"
-
 #include <odr/internal/font/font_file.hpp>
 
 #include <odr/file.hpp>
@@ -10,6 +8,8 @@
 #include <odr/internal/font/sfnt_transform.hpp>
 #include <odr/internal/magic.hpp>
 #include <odr/internal/util/byte_string.hpp>
+
+#include <internal/font/sfnt_test_util.hpp>
 
 #include <gtest/gtest.h>
 

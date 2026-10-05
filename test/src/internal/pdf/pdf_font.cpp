@@ -1,5 +1,3 @@
-#include "../font/sfnt_test_util.hpp"
-
 #include <odr/internal/abstract/font.hpp>
 #include <odr/internal/font/cff_builder.hpp>
 #include <odr/internal/font/cff_font.hpp>
@@ -8,6 +6,8 @@
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/util/byte_string.hpp>
+
+#include <internal/font/sfnt_test_util.hpp>
 
 #include <gtest/gtest.h>
 
