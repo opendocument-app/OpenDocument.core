@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Python `Frame.line()` returns a bound `DrawingLine` with its endpoints instead
+  of raising a conversion error.
+
 - Spreadsheet rendering bounds columns as well as rows by the cell budget and
   avoids rescanning blank spans for every empty cell.
 

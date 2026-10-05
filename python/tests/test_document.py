@@ -457,3 +457,26 @@ def test_recalculate_computes_the_stale_formulas(tmp_path):
     assert result.changed()[0].column == 1
     assert repr(result.changed()[0]) == "SheetPosition(0!B1)"
     assert document.recalculate().changed() == []
+
+
+def test_frame_line_exposes_its_endpoints():
+    source = b"""<office:document
+        xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+        xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"
+        xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0"
+        office:mimetype="application/vnd.oasis.opendocument.graphics">
+      <office:body><office:drawing><draw:page>
+        <draw:line svg:x1="1cm" svg:y1="2cm" svg:x2="3cm" svg:y2="4cm"/>
+        <draw:rect svg:width="1cm" svg:height="1cm"/>
+      </draw:page></office:drawing></office:body>
+    </office:document>"""
+    document = pyodr.open(pyodr.File.from_memory(source)).as_document_file().document()
+    frames = list(document.root_element().first_child())
+    line = frames[0].as_frame().line()
+    assert [str(line.x1), str(line.y1), str(line.x2), str(line.y2)] == [
+        "1cm",
+        "2cm",
+        "3cm",
+        "4cm",
+    ]
+    assert frames[1].as_frame().line() is None
