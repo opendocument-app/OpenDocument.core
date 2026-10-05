@@ -1024,7 +1024,8 @@ ColorSpaceContext make_color_space_context(DocumentParser &parser,
   bind_parser_io(context, parser);
   if (resources != nullptr) {
     context.named =
-        [resources](const std::string &name) -> std::shared_ptr<ColorSpaceDef> {
+        [resources](const std::string &name,
+                    std::uint32_t) -> std::shared_ptr<ColorSpaceDef> {
       const auto it = resources->color_space.find(name);
       return it != resources->color_space.end() ? it->second : nullptr;
     };
@@ -1173,13 +1174,15 @@ Resources *parse_resources(State &state, const Object &object) {
     // A base/alternate space may be named (referencing another `/ColorSpace`
     // entry); resolve it lazily from the same table, caching the result.
     context.named =
-        [&](const std::string &name) -> std::shared_ptr<ColorSpaceDef> {
+        [&](const std::string &name,
+            const std::uint32_t depth) -> std::shared_ptr<ColorSpaceDef> {
       if (const auto it = resources->color_space.find(name);
           it != resources->color_space.end()) {
         return it->second;
       }
       if (color_space_table.has_value(name)) {
-        auto def = parse_color_space(color_space_table.get(name), context);
+        auto def =
+            parse_color_space(color_space_table.get(name), context, depth);
         resources->color_space[name] = def;
         return def;
       }

@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF color-space parsing bounds recursive definitions and rejects invalid
+  component counts and palettes. Large finite palette indices clip correctly.
+
 - Document path saves preserve the destination on write failure and retain
   lazy resources when saving repeatedly over the input. Existing permissions
   are preserved; temporary copies are private to their owner.

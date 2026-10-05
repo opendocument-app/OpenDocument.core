@@ -67,11 +67,13 @@ struct ColorSpaceDef {
 /// How `parse_color_space` reaches indirect data: `resolve` dereferences,
 /// `load_stream` decodes a stream's bytes (ICC profiles, an Indexed palette
 /// given as a stream), and `named` looks up a colour space referenced by name
-/// (a base space, the `/ColorSpace` resource table).
+/// (a base space, the `/ColorSpace` resource table), forwarding its depth.
 struct ColorSpaceContext {
   std::function<Object(const Object &)> resolve;
   std::function<std::string(const Object &)> load_stream;
-  std::function<std::shared_ptr<ColorSpaceDef>(const std::string &)> named;
+  std::function<std::shared_ptr<ColorSpaceDef>(const std::string &,
+                                               std::uint32_t)>
+      named;
 };
 
 /// DeviceCMYK -> sRGB without an ICC engine: pdf.js's polynomial fit of Adobe's
@@ -80,8 +82,9 @@ std::array<double, 3> cmyk_to_rgb(double c, double m, double y, double k);
 
 /// Build a colour space from its PDF object — a name (`/DeviceRGB`, …) or an
 /// array (`[/ICCBased 5 0 R]`, `[/Separation …]`, …). Returns `nullptr` for an
-/// unsupported or malformed definition.
+/// unsupported, malformed or excessively nested definition.
 std::shared_ptr<ColorSpaceDef>
-parse_color_space(const Object &object, const ColorSpaceContext &context);
+parse_color_space(const Object &object, const ColorSpaceContext &context,
+                  std::uint32_t depth = 0);
 
 } // namespace odr::internal::pdf

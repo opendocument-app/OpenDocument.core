@@ -1,6 +1,7 @@
 #include <odr/exceptions.hpp>
 
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/pdf/pdf_color.hpp>
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
@@ -747,4 +748,25 @@ TEST(DocumentParser, shading_reads_function_stream) {
     EXPECT_DOUBLE_EQ(shading->stops.front().rgb[0], sampled ? 0.0 : 1.0);
     EXPECT_DOUBLE_EQ(shading->stops.back().rgb[0], sampled ? 1.0 : 0.0);
   }
+}
+
+TEST(DocumentParser, cyclic_color_space_names_are_rejected) {
+  PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>")
+      .object("<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
+      .object(
+          "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 10 10] "
+          "/Resources << /ColorSpace << /A /B /B /A /Good /DeviceRGB >> >> >>")
+      .trailer("/Root 1 0 R");
+  DocumentParser parser(
+      std::make_unique<std::istringstream>(builder.build_classic()));
+  const auto document = parser.parse_document();
+  const Page *page = first_page(*document);
+  ASSERT_NE(page, nullptr);
+  ASSERT_NE(page->resources, nullptr);
+  const auto &spaces = page->resources->color_space;
+  EXPECT_EQ(spaces.at("A"), nullptr);
+  EXPECT_EQ(spaces.at("B"), nullptr);
+  ASSERT_NE(spaces.at("Good"), nullptr);
+  EXPECT_EQ(spaces.at("Good")->components, 3);
 }

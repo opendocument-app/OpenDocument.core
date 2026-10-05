@@ -3,6 +3,8 @@
 #include <odr/internal/pdf/pdf_object.hpp>
 
 #include <array>
+#include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -28,7 +30,7 @@ Object reals(std::initializer_list<double> values) {
   return Object(Array(std::move(holder)));
 }
 
-ColorSpaceDef device(const ColorSpaceKind kind, const int components) {
+ColorSpaceDef device(const ColorSpaceKind kind, const std::int32_t components) {
   ColorSpaceDef def;
   def.kind = kind;
   def.components = components;
@@ -110,6 +112,12 @@ TEST(PdfColor, indexed_palette) {
   EXPECT_EQ(def->kind, ColorSpaceKind::indexed);
   EXPECT_EQ(to_rgb(*def, {0}), (std::array<double, 3>{1, 0, 0}));
   EXPECT_EQ(to_rgb(*def, {1}), (std::array<double, 3>{0, 1, 0}));
+  for (const double value : {-1e100, 0.49}) {
+    EXPECT_EQ(to_rgb(*def, {value}), (std::array<double, 3>{1, 0, 0}));
+  }
+  for (const double value : {0.5, 1e100}) {
+    EXPECT_EQ(to_rgb(*def, {value}), (std::array<double, 3>{0, 1, 0}));
+  }
 }
 
 // Separation samples its tint transform, then converts through the alternate.
@@ -177,4 +185,58 @@ TEST(PdfColor, name_resolves_device_space) {
   ASSERT_NE(def, nullptr);
   EXPECT_EQ(def->kind, ColorSpaceKind::device_cmyk);
   EXPECT_EQ(def->components, 4);
+}
+
+TEST(PdfColor, invalid_component_counts_and_palettes_are_rejected) {
+  for (const Integer count : {Integer{-1}, Integer{0}, Integer{2}, Integer{5},
+                              std::numeric_limits<Integer>::max()}) {
+    Dictionary profile;
+    profile["N"] = Object(count);
+    EXPECT_EQ(parse_color_space(
+                  Object(Array({Object(Name{"ICCBased"}), Object(profile)})),
+                  context()),
+              nullptr)
+        << count;
+  }
+  for (const Integer hival :
+       {Integer{-1}, Integer{256}, std::numeric_limits<Integer>::max()}) {
+    EXPECT_EQ(
+        parse_color_space(
+            Object(Array({Object(Name{"Indexed"}), Object(Name{"DeviceGray"}),
+                          Object(hival),
+                          Object(StandardString(std::string(256, '\0')))})),
+            context()),
+        nullptr)
+        << hival;
+  }
+  EXPECT_EQ(
+      parse_color_space(
+          Object(Array({Object(Name{"Indexed"}), Object(Name{"DeviceRGB"}),
+                        Object(Integer{1}), Object(StandardString("short"))})),
+          context()),
+      nullptr);
+}
+
+TEST(PdfColor, device_n_requires_nonempty_colorant_names) {
+  for (const Object &names : {Object(Name{"Spot"}), Object(Array{}),
+                              Object(Array({Object(Integer{1})}))}) {
+    EXPECT_EQ(
+        parse_color_space(Object(Array({Object(Name{"DeviceN"}), names,
+                                        Object(Name{"DeviceRGB"}), Object{}})),
+                          context()),
+        nullptr);
+  }
+}
+
+TEST(PdfColor, recursive_alternates_are_rejected) {
+  Dictionary profile;
+  profile["N"] = Object(Integer{3});
+  profile["Alternate"] = Object(ObjectReference{1, 0});
+  const Object cyclic(Array({Object(Name{"ICCBased"}), Object(profile)}));
+  ColorSpaceContext ctx = context();
+  ctx.resolve = [&](const Object &object) {
+    return object.is_reference() ? cyclic : object;
+  };
+  EXPECT_EQ(parse_color_space(cyclic, ctx), nullptr);
+  ASSERT_NE(parse_color_space(Object(Name{"DeviceRGB"}), ctx), nullptr);
 }
