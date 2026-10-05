@@ -8,7 +8,6 @@
 #include <charconv>
 #include <cmath>
 #include <cstdint>
-#include <limits>
 #include <stdexcept>
 #include <tuple>
 #include <utility>
@@ -534,10 +533,6 @@ std::string format_scientific(const std::vector<Token> &tokens,
     fraction_count += tokens[i].kind == Kind::digit ? 1 : 0;
   }
 
-  if (integer_count >
-      static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max())) {
-    return format_general(value, symbols);
-  }
   const auto mantissa_at = [value](const std::int64_t power) {
     return power < -308 ? value * 1e308 / std::pow(10.0, power + 308)
                         : value / std::pow(10.0, power);
@@ -688,9 +683,9 @@ std::string format_fraction(const std::vector<Token> &tokens,
   double numerator = 0;
   std::int64_t denominator = 1;
   if (fixed_denominator) {
-    const auto [end, error] =
+    const auto [parsed, error] =
         std::from_chars(fixed.data(), fixed.data() + fixed.size(), denominator);
-    if (error != std::errc() || end != fixed.data() + fixed.size()) {
+    if (error != std::errc() || parsed != fixed.data() + fixed.size()) {
       return format_general(value, symbols);
     }
     numerator = std::round(part * static_cast<double>(denominator));
@@ -724,16 +719,24 @@ std::string format_fraction(const std::vector<Token> &tokens,
       whole == 0 ? std::string() : fmt::format("{:.0f}", whole);
   const auto integer = place_integer(
       digits.empty() && numerator == 0 ? "0" : digits, integer_placeholders);
+  // A blank integer also blanks what separates it from the numerator.
+  const bool blank_integer =
+      join(integer).find_first_not_of(' ') == std::string::npos;
   std::string head;
   std::size_t integer_seen = 0;
   for (std::size_t i = 0; i < numerator_begin; ++i) {
+    const bool separator = integer_seen == integer.size() && !integer.empty();
+    std::string text;
     if (tokens[i].kind == Kind::digit) {
       head += integer[integer_seen++];
-    } else if (tokens[i].kind == Kind::literal) {
-      head += tokens[i].text;
-    } else if (tokens[i].kind == Kind::percent) {
-      head += '%';
+      continue;
     }
+    if (tokens[i].kind == Kind::literal) {
+      text = tokens[i].text;
+    } else if (tokens[i].kind == Kind::percent) {
+      text = "%";
+    }
+    head += separator && blank_integer ? std::string(text.size(), ' ') : text;
   }
   std::string result = head + fraction_text;
   for (std::size_t i = end; i < tokens.size(); ++i) {

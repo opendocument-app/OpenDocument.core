@@ -121,6 +121,8 @@ TEST(NumberFormat, fractions) {
   EXPECT_EQ(shown("?/8", 1e20), "800000000000000000000/8");
   EXPECT_EQ(shown("?/999999999999999999999", 1.5), "1.5");
   EXPECT_EQ(shown("?/8", 1e308), shown("General", 1e308));
+  EXPECT_EQ(shown("#-?/?", 0.5), " 1/2");
+  EXPECT_EQ(shown("\"$\"#-?/?", 0.5), "$ 1/2");
 }
 
 TEST(NumberFormat, a_text_section_takes_text) {
