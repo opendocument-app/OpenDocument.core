@@ -3,6 +3,7 @@
 #include <jni.h>
 
 #include <cstddef>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -79,7 +80,11 @@ public:
   }
 
   jlong add(T value) {
-    return m_handles.emplace_back(make_handle(std::move(value)));
+    auto owned = std::make_unique<T>(std::move(value));
+    const jlong handle = reinterpret_cast<jlong>(owned.get());
+    m_handles.push_back(handle);
+    owned.release();
+    return handle;
   }
 
   [[nodiscard]] const std::vector<jlong> &handles() const { return m_handles; }

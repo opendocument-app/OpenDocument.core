@@ -22,11 +22,11 @@ using odr_jni::to_jstring;
 using odr_jni::to_string;
 
 jintArray to_jint_array(JNIEnv *env, const std::vector<jint> &values) {
-  jintArray result = env->NewIntArray(static_cast<jsize>(values.size()));
+  jintArray result = env->NewIntArray(checked_integer<jsize>(values.size()));
   if (result == nullptr) {
     return nullptr;
   }
-  env->SetIntArrayRegion(result, 0, static_cast<jsize>(values.size()),
+  env->SetIntArrayRegion(result, 0, checked_integer<jsize>(values.size()),
                          values.data());
   return result;
 }
@@ -38,14 +38,14 @@ jobjectArray to_jstring_array(JNIEnv *env,
     return nullptr;
   }
   jobjectArray result =
-      env->NewObjectArray(static_cast<jsize>(values.size()), cls, nullptr);
+      env->NewObjectArray(checked_integer<jsize>(values.size()), cls, nullptr);
   env->DeleteLocalRef(cls);
   if (result == nullptr) {
     return nullptr;
   }
   for (std::size_t i = 0; i < values.size(); ++i) {
     jstring value = to_jstring(env, values[i]);
-    env->SetObjectArrayElement(result, static_cast<jsize>(i), value);
+    env->SetObjectArrayElement(result, checked_integer<jsize>(i), value);
     env->DeleteLocalRef(value);
   }
   return result;
@@ -264,14 +264,17 @@ Java_app_opendocument_core_Odr_openWithOptionsNative(
     if (as_file_type >= 0) {
       options.as_file_type = static_cast<odr::FileType>(as_file_type);
     }
-    if (jint *codes = env->GetIntArrayElements(file_type_priority, nullptr);
-        codes != nullptr) {
-      const jsize length = env->GetArrayLength(file_type_priority);
-      for (jsize i = 0; i < length; ++i) {
-        options.file_type_priority.push_back(
-            static_cast<odr::FileType>(codes[i]));
-      }
-      env->ReleaseIntArrayElements(file_type_priority, codes, JNI_ABORT);
+    const jsize length = env->GetArrayLength(file_type_priority);
+    std::vector<jint> codes(static_cast<std::size_t>(length));
+    if (length != 0) {
+      env->GetIntArrayRegion(file_type_priority, 0, length, codes.data());
+    }
+    if (env->ExceptionCheck()) {
+      throw std::runtime_error("could not read file type priority");
+    }
+    options.file_type_priority.reserve(codes.size());
+    for (const jint code : codes) {
+      options.file_type_priority.push_back(static_cast<odr::FileType>(code));
     }
     // -1 is how java spells an unset field across the boundary
     if (csv_encoding >= 0) {

@@ -728,10 +728,10 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
   {
     jclass string_cls = env->FindClass("java/lang/String");
     jobjectArray fonts = env->NewObjectArray(
-        static_cast<jsize>(config.pdf_dual_layer_fallback_fonts.size()),
+        checked_integer<jsize>(config.pdf_dual_layer_fallback_fonts.size()),
         string_cls, nullptr);
-    for (jsize i = 0;
-         i < static_cast<jsize>(config.pdf_dual_layer_fallback_fonts.size());
+    for (jsize i = 0; i < checked_integer<jsize>(
+                              config.pdf_dual_layer_fallback_fonts.size());
          ++i) {
       jstring font = to_jstring(env, config.pdf_dual_layer_fallback_fonts[i]);
       env->SetObjectArrayElement(fonts, i, font);

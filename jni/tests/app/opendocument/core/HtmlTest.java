@@ -271,5 +271,10 @@ class HtmlTest {
 
     Html.Content content = views.get(0).writeHtml();
     assertTrue(content.html.contains(TestFiles.ODT_WORD));
+
+    Html offline = service.bringOffline(tempDir.resolve("selected").toString(), views);
+    assertEquals(1, offline.pages().size());
+    assertTrue(Files.readString(Path.of(offline.pages().get(0).path)).contains(TestFiles.ODT_WORD));
+    assertTrue(service.bringOffline(tempDir.resolve("empty").toString(), List.of()).pages().isEmpty());
   }
 }

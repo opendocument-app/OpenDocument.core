@@ -27,11 +27,11 @@ odr::Element &element(jlong handle) {
 
 /// Elements cross JNI as plain `odr::Element` copies; typed Java views
 /// re-derive the typed C++ view per call via `as_*`.
-jlong wrap_element(odr::Element value) {
+jlong wrap_element(const odr::Element value) {
   if (!value) {
     return 0;
   }
-  return make_handle(std::move(value));
+  return make_handle(value);
 }
 
 jlongArray wrap_elements(JNIEnv *env, const odr::ElementRange &range) {
@@ -40,11 +40,11 @@ jlongArray wrap_elements(JNIEnv *env, const odr::ElementRange &range) {
     guard.add(value);
   }
   const std::vector<jlong> &handles = guard.handles();
-  jlongArray result = env->NewLongArray(static_cast<jsize>(handles.size()));
+  jlongArray result = env->NewLongArray(checked_integer<jsize>(handles.size()));
   if (result == nullptr) {
     return nullptr;
   }
-  env->SetLongArrayRegion(result, 0, static_cast<jsize>(handles.size()),
+  env->SetLongArrayRegion(result, 0, checked_integer<jsize>(handles.size()),
                           handles.data());
   guard.release();
   return result;
@@ -87,11 +87,11 @@ Java_app_opendocument_core_Document_recalculateNative(JNIEnv *env, jobject,
         stated.push_back(checked_integer<jint>(position.cell.row));
       }
     }
-    jintArray array = env->NewIntArray(static_cast<jsize>(stated.size()));
+    jintArray array = env->NewIntArray(checked_integer<jsize>(stated.size()));
     if (array == nullptr) {
       return nullptr;
     }
-    env->SetIntArrayRegion(array, 0, static_cast<jsize>(stated.size()),
+    env->SetIntArrayRegion(array, 0, checked_integer<jsize>(stated.size()),
                            stated.data());
     return array;
   });

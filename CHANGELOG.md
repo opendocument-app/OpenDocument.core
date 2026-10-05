@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Java bindings release native handles on failed allocations, avoid pinned-array
+  leaks, and check array sizes before passing them to the JVM.
+
 - Java bindings reject out-of-range coordinates, style channels, CSV delimiters
   and rendering limits instead of silently wrapping their integer values.
 
