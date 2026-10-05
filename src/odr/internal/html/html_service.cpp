@@ -3,9 +3,9 @@
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
-#include <algorithm>
-
 #include <odr/exceptions.hpp>
+
+#include <algorithm>
 
 namespace odr::internal::html {
 
