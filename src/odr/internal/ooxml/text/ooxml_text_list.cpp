@@ -9,7 +9,6 @@
 #include <array>
 #include <charconv>
 #include <limits>
-#include <stdexcept>
 
 #include <utf8/checked.h>
 
@@ -45,6 +44,8 @@ ListNumberFormat parse_number_format(const std::string &format) {
   return ListNumberFormat::decimal;
 }
 
+/// A decimal in [0, @p maximum]. A missing or invalid value gives @p fallback,
+/// as LibreOffice ignores it, so one bad attribute does not refuse the file.
 std::uint32_t read_number(
     const pugi::xml_attribute attribute, const std::uint32_t fallback,
     const std::uint32_t maximum = std::numeric_limits<std::uint32_t>::max()) {
@@ -60,7 +61,7 @@ std::uint32_t read_number(
       std::from_chars(value.data(), value.data() + value.size(), result);
   if (error != std::errc{} || end != value.data() + value.size() ||
       result > maximum) {
-    throw std::runtime_error("Invalid numbering value");
+    return fallback;
   }
   return result;
 }
@@ -69,7 +70,7 @@ std::uint32_t read_number(
 std::string resolve_bullet(const std::string &text, const std::uint32_t level) {
   static constexpr std::array<const char *, 3> defaults{"•", "◦", "▪"};
 
-  if (text.empty()) {
+  if (text.empty() || !utf8::is_valid(text.begin(), text.end())) {
     return defaults[level % defaults.size()];
   }
 

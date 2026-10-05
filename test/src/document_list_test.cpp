@@ -113,7 +113,7 @@ TEST(DocumentList, docx_keeps_counting_across_an_interleaved_list) {
   EXPECT_FALSE(markers[5].number.has_value());
 }
 
-TEST(DocumentList, docx_checks_levels_before_building_the_tree) {
+TEST(DocumentList, docx_ignores_invalid_levels) {
   namespace docx = odr::internal::ooxml::text;
   pugi::xml_document document;
   auto body = document.append_child("w:body");
@@ -122,12 +122,14 @@ TEST(DocumentList, docx_checks_levels_before_building_the_tree) {
                          .append_child("w:numPr")
                          .append_child("w:ilvl")
                          .append_attribute("w:val");
+  // an invalid level is ignored, as LibreOffice does: the item stays at 0
   for (const auto value : {"-1", "9", "2147483647", "4294967295", "1x", ""}) {
     SCOPED_TRACE(value);
     auto attribute = level;
     attribute.set_value(value);
+    EXPECT_EQ(docx::list_level(paragraph), 0);
     docx::ElementRegistry registry;
-    EXPECT_THROW(docx::parse_tree(registry, body), std::runtime_error);
+    EXPECT_NO_THROW(docx::parse_tree(registry, body));
   }
   auto attribute = level;
   attribute.set_value(" +8 ");
@@ -136,7 +138,7 @@ TEST(DocumentList, docx_checks_levels_before_building_the_tree) {
   EXPECT_NO_THROW(docx::resolve_list_numbering(registry, {}, root));
 }
 
-TEST(DocumentList, docx_reads_zero_starts_and_checks_bullets) {
+TEST(DocumentList, docx_reads_zero_starts_and_ignores_invalid_values) {
   namespace docx = odr::internal::ooxml::text;
   pugi::xml_document document;
   ASSERT_TRUE(document.load_string(
@@ -151,9 +153,9 @@ TEST(DocumentList, docx_reads_zero_starts_and_checks_bullets) {
   start.set_value("0");
   EXPECT_EQ(0, numbering.level("1", 0).start);
   start.set_value("4294967296");
-  EXPECT_THROW((void)numbering.level("1", 0), std::runtime_error);
+  EXPECT_EQ(0, numbering.level("1", 0).start);
   start.set_value("1");
   level.child("w:numFmt").attribute("w:val").set_value("bullet");
   level.child("w:lvlText").attribute("w:val").set_value("\xf0");
-  EXPECT_THROW((void)numbering.level("1", 0), std::exception);
+  EXPECT_EQ("\xe2\x80\xa2", numbering.level("1", 0).label);
 }
