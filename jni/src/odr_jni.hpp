@@ -3,6 +3,7 @@
 #include <jni.h>
 
 #include <cstddef>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -35,6 +36,13 @@ template <typename F> auto guarded(JNIEnv *env, F &&f) -> decltype(f()) {
   if constexpr (!std::is_void_v<Result>) {
     return Result{};
   }
+}
+
+template <typename To, typename From> To checked_integer(const From value) {
+  if (!std::in_range<To>(value)) {
+    throw std::out_of_range("integer is outside the binding's range");
+  }
+  return static_cast<To>(value);
 }
 
 template <typename T> T *from_handle(jlong handle) {

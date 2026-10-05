@@ -71,7 +71,8 @@ jobject box_long(JNIEnv *env, const std::optional<std::uint32_t> &value) {
     return nullptr;
   }
   return call_static_object(env, "java/lang/Long", "valueOf",
-                            "(J)Ljava/lang/Long;", static_cast<jlong>(*value));
+                            "(J)Ljava/lang/Long;",
+                            checked_integer<jlong>(*value));
 }
 
 jobject box_integer(JNIEnv *env, const std::optional<std::uint32_t> &value) {
@@ -80,7 +81,7 @@ jobject box_integer(JNIEnv *env, const std::optional<std::uint32_t> &value) {
   }
   return call_static_object(env, "java/lang/Integer", "valueOf",
                             "(I)Ljava/lang/Integer;",
-                            static_cast<jint>(*value));
+                            checked_integer<jint>(*value));
 }
 
 jobject box_long(JNIEnv *env, const std::optional<std::uint64_t> &value) {
@@ -88,7 +89,8 @@ jobject box_long(JNIEnv *env, const std::optional<std::uint64_t> &value) {
     return nullptr;
   }
   return call_static_object(env, "java/lang/Long", "valueOf",
-                            "(J)Ljava/lang/Long;", static_cast<jlong>(*value));
+                            "(J)Ljava/lang/Long;",
+                            checked_integer<jlong>(*value));
 }
 
 /// Looks up an enum constant by its C++ code (= Java ordinal).
@@ -145,7 +147,7 @@ jobject make_integer_opt(JNIEnv *env,
   }
   return call_static_object(env, "java/lang/Integer", "valueOf",
                             "(I)Ljava/lang/Integer;",
-                            static_cast<jint>(*value));
+                            checked_integer<jint>(*value));
 }
 
 jobject make_measure(JNIEnv *env, const odr::Measure &value) {
@@ -263,7 +265,7 @@ std::optional<odr::Color> color_from_java(JNIEnv *env, const jobject value) {
   }
   jclass cls = env->GetObjectClass(value);
   const auto channel = [&](const char *name) {
-    return static_cast<std::uint8_t>(
+    return checked_integer<std::uint8_t>(
         env->GetIntField(value, env->GetFieldID(cls, name, "I")));
   };
   const odr::Color result(channel("red"), channel("green"), channel("blue"),
@@ -562,8 +564,8 @@ jobject make_page_layout(JNIEnv *env, const odr::PageLayout &layout) {
 jobject make_table_dimensions(JNIEnv *env,
                               const odr::TableDimensions &dimensions) {
   return new_object(env, "app/opendocument/core/TableDimensions", "(II)V",
-                    static_cast<jint>(dimensions.rows),
-                    static_cast<jint>(dimensions.columns));
+                    checked_integer<jint>(dimensions.rows),
+                    checked_integer<jint>(dimensions.columns));
 }
 
 jobject make_html_sheet_cut(JNIEnv *env,
@@ -580,8 +582,8 @@ jobject make_html_sheet_cut(JNIEnv *env,
 
 jobject make_table_position(JNIEnv *env, const odr::TablePosition &position) {
   return new_object(env, "app/opendocument/core/TablePosition", "(II)V",
-                    static_cast<jint>(position.column),
-                    static_cast<jint>(position.row));
+                    checked_integer<jint>(position.column),
+                    checked_integer<jint>(position.row));
 }
 
 jobject make_file_meta(JNIEnv *env, const odr::FileMeta &meta) {
@@ -692,7 +694,7 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
              box_long(env, config.spreadsheet_cell_limit));
   set_boolean("spreadsheetLimitByContent", config.spreadsheet_limit_by_content);
   set_long("spreadsheetStyleBuffer",
-           static_cast<jlong>(config.spreadsheet_style_buffer));
+           checked_integer<jlong>(config.spreadsheet_style_buffer));
   set_object("spreadsheetGridlines",
              "Lapp/opendocument/core/HtmlTableGridlines;",
              enum_from_code(env, "app/opendocument/core/HtmlTableGridlines",
@@ -717,7 +719,7 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
   set_boolean("formatHtml", config.format_html);
   set_int("htmlIndent", config.html_indent);
   set_string("htmlIndentString", config.html_indent_string);
-  set_int("pageRangeBegin", static_cast<jint>(config.page_range_begin));
+  set_int("pageRangeBegin", checked_integer<jint>(config.page_range_begin));
   set_object("pageRangeEnd", "Ljava/lang/Integer;",
              box_integer(env, config.page_range_end));
   set_object("pdfTextMode", "Lapp/opendocument/core/PdfTextMode;",
@@ -841,8 +843,8 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
       const jint columns = env->GetIntField(
           limit, env->GetFieldID(dimensions_cls, "columns", "I"));
       result.spreadsheet_limit =
-          odr::TableDimensions(static_cast<std::uint32_t>(rows),
-                               static_cast<std::uint32_t>(columns));
+          odr::TableDimensions(checked_integer<std::uint32_t>(rows),
+                               checked_integer<std::uint32_t>(columns));
       env->DeleteLocalRef(dimensions_cls);
     }
   }
@@ -853,13 +855,13 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
     } else {
       jclass long_cls = env->GetObjectClass(cell_limit);
       jmethodID long_value = env->GetMethodID(long_cls, "longValue", "()J");
-      result.spreadsheet_cell_limit = static_cast<std::uint64_t>(
+      result.spreadsheet_cell_limit = checked_integer<std::uint64_t>(
           env->CallLongMethod(cell_limit, long_value));
       env->DeleteLocalRef(long_cls);
     }
   }
   result.spreadsheet_style_buffer =
-      static_cast<std::uint64_t>(get_long("spreadsheetStyleBuffer"));
+      checked_integer<std::uint64_t>(get_long("spreadsheetStyleBuffer"));
   result.spreadsheet_limit_by_content =
       get_boolean("spreadsheetLimitByContent");
   {
@@ -895,7 +897,7 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
       jclass integer_cls = env->GetObjectClass(width);
       jmethodID int_value = env->GetMethodID(integer_cls, "intValue", "()I");
       result.viewport_width =
-          static_cast<std::uint32_t>(env->CallIntMethod(width, int_value));
+          checked_integer<std::uint32_t>(env->CallIntMethod(width, int_value));
       env->DeleteLocalRef(integer_cls);
     }
     env->DeleteLocalRef(width);
@@ -920,10 +922,10 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
     env->DeleteLocalRef(margin);
   }
   result.format_html = get_boolean("formatHtml");
-  result.html_indent = static_cast<std::uint8_t>(get_int("htmlIndent"));
+  result.html_indent = checked_integer<std::uint8_t>(get_int("htmlIndent"));
   result.html_indent_string = get_string("htmlIndentString");
   result.page_range_begin =
-      static_cast<std::uint32_t>(get_int("pageRangeBegin"));
+      checked_integer<std::uint32_t>(get_int("pageRangeBegin"));
   {
     jobject end = get_object("pageRangeEnd", "Ljava/lang/Integer;");
     if (end == nullptr) {
@@ -932,7 +934,7 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
       jclass integer_cls = env->GetObjectClass(end);
       jmethodID int_value = env->GetMethodID(integer_cls, "intValue", "()I");
       result.page_range_end =
-          static_cast<std::uint32_t>(env->CallIntMethod(end, int_value));
+          checked_integer<std::uint32_t>(env->CallIntMethod(end, int_value));
       env->DeleteLocalRef(integer_cls);
     }
   }

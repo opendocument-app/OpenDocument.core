@@ -1,6 +1,7 @@
 package app.opendocument.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -99,5 +100,10 @@ class MetaTest {
     assertEquals(0, TablePosition.toColumnNum("A"));
     assertEquals("A", TablePosition.toColumnString(0));
     assertEquals("A1", new TablePosition(0, 0).toString());
+    assertEquals(Integer.MAX_VALUE, TablePosition.toRowNum("2147483648"));
+    assertEquals("2147483648", TablePosition.toRowString(Integer.MAX_VALUE));
+    assertThrows(OdrException.class, () -> TablePosition.toRowNum("2147483649"));
+    assertThrows(OdrException.class, () -> TablePosition.toColumnString(-1));
+    assertThrows(OdrException.class, () -> TablePosition.toRowString(-1));
   }
 }
