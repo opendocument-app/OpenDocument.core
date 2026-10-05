@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF calculator functions ignore comments, parse complete numeric tokens
+  independent of locale, and reject unbalanced or excessively nested braces.
+
 - PDF image soft masks apply the full Decode interval to opacity.
 
 - Spreadsheet text no longer spills over a cell that a merged cell from a row
