@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Document HTML escapes locale metadata and keeps individual views for sheets,
+  slides and pages named `document`.
+
 - Archive listings reserve shipped script and stylesheet paths before exposing
   entries, and reject unsafe entry links. Archives cannot replace viewer scripts.
 
