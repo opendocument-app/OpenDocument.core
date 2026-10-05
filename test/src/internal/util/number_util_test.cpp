@@ -1,6 +1,7 @@
 #include <odr/internal/util/number_util.hpp>
 
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <optional>
 
@@ -72,4 +73,31 @@ TEST(ToStringSignificant, bounds_extreme_precision) {
   EXPECT_EQ(
       to_string_significant(1234, std::numeric_limits<std::int32_t>::min()),
       "1234");
+}
+
+TEST(ToInteger, takes_only_whole_finite_values) {
+  EXPECT_EQ(to_integer<std::int32_t>(-12.0), std::optional<std::int32_t>(-12));
+  EXPECT_EQ(to_integer<std::int32_t>(1.5), std::nullopt);
+  EXPECT_EQ(to_integer<std::int32_t>(std::nan("")), std::nullopt);
+  EXPECT_EQ(to_integer<std::int32_t>(std::numeric_limits<double>::infinity()),
+            std::nullopt);
+}
+
+TEST(ToInteger, takes_exactly_the_range_of_the_type) {
+  EXPECT_EQ(to_integer<std::int32_t>(-2147483648.0),
+            std::numeric_limits<std::int32_t>::min());
+  EXPECT_EQ(to_integer<std::int32_t>(2147483647.0),
+            std::numeric_limits<std::int32_t>::max());
+  EXPECT_EQ(to_integer<std::int32_t>(-2147483649.0), std::nullopt);
+  EXPECT_EQ(to_integer<std::int32_t>(2147483648.0), std::nullopt);
+
+  EXPECT_EQ(to_integer<std::uint32_t>(4294967295.0),
+            std::numeric_limits<std::uint32_t>::max());
+  EXPECT_EQ(to_integer<std::uint32_t>(4294967296.0), std::nullopt);
+  EXPECT_EQ(to_integer<std::uint32_t>(-1.0), std::nullopt);
+
+  // 2^63 is where `max()` rounds to as a double, so a `max()` bound takes it.
+  EXPECT_EQ(to_integer<std::int64_t>(std::ldexp(1.0, 63)), std::nullopt);
+  EXPECT_EQ(to_integer<std::int64_t>(-std::ldexp(1.0, 63)),
+            std::numeric_limits<std::int64_t>::min());
 }

@@ -1,10 +1,12 @@
 #include <odr/internal/font/type1_charstring.hpp>
 
+#include <odr/internal/util/number_util.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -79,13 +81,12 @@ void emit_num(std::string &out, const double v) {
     emit_int(out, static_cast<std::int32_t>(v));
     return;
   }
-  const double scaled = std::round(v * 65536.0);
-  if (!std::isfinite(scaled) ||
-      scaled < std::numeric_limits<std::int32_t>::min() ||
-      scaled > std::numeric_limits<std::int32_t>::max()) {
+  const std::optional<std::int32_t> scaled =
+      util::number::to_integer<std::int32_t>(std::round(v * 65536.0));
+  if (!scaled) {
     throw std::runtime_error("type1: operand exceeds Type2 fixed-point range");
   }
-  const auto fixed = static_cast<std::int32_t>(scaled);
+  const std::int32_t fixed = *scaled;
   out += static_cast<char>(255);
   out += static_cast<char>((fixed >> 24) & 0xff);
   out += static_cast<char>((fixed >> 16) & 0xff);
@@ -94,13 +95,12 @@ void emit_num(std::string &out, const double v) {
 }
 
 std::int32_t integer_operand(const double value) {
-  if (!std::isfinite(value) ||
-      value < std::numeric_limits<std::int32_t>::min() ||
-      value > std::numeric_limits<std::int32_t>::max() ||
-      std::trunc(value) != value) {
+  const std::optional<std::int32_t> result =
+      util::number::to_integer<std::int32_t>(value);
+  if (!result) {
     throw std::runtime_error("type1: invalid integer operand");
   }
-  return static_cast<std::int32_t>(value);
+  return *result;
 }
 
 /// The translation state machine. Walks the Type1 charstring (recursing through
