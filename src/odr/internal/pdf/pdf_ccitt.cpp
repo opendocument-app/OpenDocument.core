@@ -280,11 +280,11 @@ std::int32_t read_run(BitReader &reader, const RunTable<Bits> &table,
     if (entry.length == 0) {
       fail("ccitt: invalid run code");
     }
-    reader.skip(entry.length);
-    total += entry.run;
-    if (total > limit) {
+    if (entry.run > limit - total) {
       fail("ccitt: run past the end of the row");
     }
+    reader.skip(entry.length);
+    total += entry.run;
     if (entry.run < 64) {
       return total;
     }
@@ -364,7 +364,7 @@ void decode_1d_row(BitReader &reader, std::vector<std::int32_t> &coding,
   std::int32_t a0 = 0;
   bool black = false;
   while (a0 < columns) {
-    a0 += read_run(reader, black, columns);
+    a0 += read_run(reader, black, columns - a0);
     push_change(coding, a0, columns);
     black = !black;
   }
@@ -397,9 +397,9 @@ void decode_2d_row(BitReader &reader,
       a0 = b2;
       break;
     case Mode::horizontal: {
-      const std::int32_t a1 =
-          std::max(a0, 0) + read_run(reader, black, columns);
-      const std::int32_t a2 = a1 + read_run(reader, !black, columns);
+      const std::int32_t start = std::max(a0, 0);
+      const std::int32_t a1 = start + read_run(reader, black, columns - start);
+      const std::int32_t a2 = a1 + read_run(reader, !black, columns - a1);
       push_change(coding, a1, columns);
       push_change(coding, a2, columns);
       a0 = coding.back();
@@ -455,7 +455,7 @@ pdf::decode_ccitt(const std::string_view data,
                   const CcittParameters &parameters) {
   const std::int32_t columns = parameters.columns;
   const std::int32_t rows = parameters.rows;
-  if (columns <= 0 || rows < 0 ||
+  if (columns <= 0 || columns > max_pixels || rows < 0 ||
       static_cast<std::int64_t>(columns) * rows > max_pixels) {
     return std::nullopt;
   }

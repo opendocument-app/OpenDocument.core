@@ -141,5 +141,8 @@ TEST(PdfCcitt, rejects_invalid_data) {
   EXPECT_FALSE(decode_ccitt("\x02\xff", parameters(-1, 16)).has_value());
   // a white run longer than the row
   EXPECT_FALSE(decode_ccitt("\xd9\x2c", parameters(0, 16)).has_value());
+  // Two individually valid runs exceed the remaining row width.
+  EXPECT_FALSE(decode_ccitt("\x98\xa0", parameters(0, 10, 1)).has_value());
+  EXPECT_FALSE(decode_ccitt("\x33\x14", parameters(-1, 10, 1)).has_value());
   EXPECT_FALSE(decode_ccitt("\x80", parameters(-1, 0)).has_value());
 }
