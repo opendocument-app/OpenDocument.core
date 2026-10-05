@@ -1743,7 +1743,7 @@ std::string DocumentParser::read_object_stream(const IndirectObject &object) {
     throw UnauthenticatedReadError();
   }
   if (m_decryptor.has_value()) {
-    raw = m_decryptor->decrypt_stream(object.reference, std::move(raw));
+    raw = m_decryptor->decrypt_stream(object.reference, raw);
   }
   return raw;
 }

@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <ranges>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -946,9 +947,12 @@ std::string
 StyleRegistry::create_paragraph_style(pugi::xml_node automatic_styles,
                                       const char *base_name,
                                       const ParagraphStyle &style) {
+  if (!style.text_align.has_value()) {
+    throw std::invalid_argument("paragraph alignment is missing");
+  }
   const std::string base = base_name != nullptr ? base_name : "";
   const std::string key =
-      fmt::format("{}|{}", base, static_cast<int>(*style.text_align));
+      fmt::format("{}|{}", base, static_cast<std::int32_t>(*style.text_align));
   if (const auto it = m_created_paragraph_styles.find(key);
       it != std::end(m_created_paragraph_styles)) {
     return it->second;

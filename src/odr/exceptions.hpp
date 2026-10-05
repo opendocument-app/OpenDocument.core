@@ -26,6 +26,8 @@ struct Exception : std::runtime_error {
 template <ErrorCode C> struct CodedException : Exception {
   using Exception::Exception;
 
+  // Every instantiation returns its enum constant without dependent code.
+  // NOLINTNEXTLINE(portability-template-virtual-member-function)
   [[nodiscard]] ErrorCode code() const noexcept override { return C; }
 };
 
