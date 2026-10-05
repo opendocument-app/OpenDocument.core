@@ -92,7 +92,7 @@ constexpr std::array<std::string_view, 3> condition_attributes{
 
 /// The attributes stating the cell a condition is relative to, whose sheet
 /// is the one a reference of the condition names by stating none.
-constexpr std::array<std::string_view, 3> base_cell_attributes{
+constexpr std::array<const char *, 3> base_cell_attributes{
     "table:base-cell-address", "calcext:base-cell-address",
     "style:base-cell-address"};
 
@@ -165,8 +165,8 @@ void move_subtree(const pugi::xml_node node, std::string sheet,
   // Where a delete removes that cell, it reads from the first one that stays.
   std::string own = sheet;
   std::int64_t shift = 0;
-  for (const std::string_view base : base_cell_attributes) {
-    pugi::xml_attribute address = node.attribute(base.data());
+  for (const char *const base : base_cell_attributes) {
+    pugi::xml_attribute address = node.attribute(base);
     std::optional<formula::Node> cell =
         address ? formula::parse("[" + std::string(address.value()) + "]",
                                  formula::Syntax::opendocument)

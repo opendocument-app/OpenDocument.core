@@ -65,7 +65,7 @@ std::optional<std::string> entry_data_url(const File &file,
 /// a path that escapes the output directory or collides with the listing gets
 /// none, and stays inline instead.
 std::optional<RelPath> entry_location(const Path &path) {
-  const RelPath relative = path.make_relative();
+  RelPath relative = path.make_relative();
   if (relative.escaping() || relative.empty() ||
       relative.string() == listing_path) {
     return std::nullopt;

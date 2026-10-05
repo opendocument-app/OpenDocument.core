@@ -125,7 +125,7 @@ template <typename T> struct DirectionalStyle final {
   std::optional<T> bottom;
 
   DirectionalStyle() = default;
-  explicit DirectionalStyle(std::optional<T> all)
+  explicit DirectionalStyle(const std::optional<T> &all)
       : right{all}, top{all}, left{all}, bottom{all} {}
 
   void override(const DirectionalStyle &other) {

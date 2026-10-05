@@ -245,9 +245,10 @@ void move_shared_group(const std::vector<Member> &members,
         shifted(*expression, master->position, member.position);
     formula::move_references(expected, edit, sheet);
     std::string text = formula::to_string(expected, syntax);
-    kept = kept &&
-           formula::to_string(shifted(moved_master, *master_at, *member_at),
-                              syntax) == text;
+    if (kept && master_at.has_value()) {
+      kept = formula::to_string(shifted(moved_master, *master_at, *member_at),
+                                syntax) == text;
+    }
     written.emplace_back(member.formula, std::move(text));
   }
 
@@ -324,7 +325,7 @@ void move_calc_chain(pugi::xml_node calc_chain,
 /// An element stating a range list, which goes when a delete takes the list.
 struct RangeAttribute final {
   std::string_view element;
-  std::string_view attribute;
+  const char *attribute;
 };
 
 constexpr std::array<RangeAttribute, 8> removable_ranges{{
@@ -427,7 +428,7 @@ void collect_ranges(const pugi::xml_node node, const formula::SheetEdit &edit,
     }
     bool removed = false;
     for (const RangeAttribute &range : removable_ranges) {
-      pugi::xml_attribute attribute = child.attribute(range.attribute.data());
+      pugi::xml_attribute attribute = child.attribute(range.attribute);
       if (name != range.element || !attribute) {
         continue;
       }

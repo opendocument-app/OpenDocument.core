@@ -190,11 +190,7 @@ void Archive::Iterator::enter_(Entry entry) {
 }
 
 void Archive::Iterator::dig_left_() {
-  if (!m_entry.has_value()) {
-    return;
-  }
-
-  while (true) {
+  while (m_entry.has_value()) {
     const std::optional<Entry> left = m_entry->left();
     if (!left.has_value()) {
       break;

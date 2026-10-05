@@ -60,7 +60,7 @@ std::string assemble(const std::string &rows, const std::size_t stride,
   const std::string compressed = crypto::util::zlib_deflate(raw);
   std::string_view remaining = compressed;
   // PNG 5.3 limits chunk lengths to 2^31-1; small chunks avoid narrowing.
-  constexpr std::size_t chunk_size = 64 * 1024;
+  constexpr std::size_t chunk_size = std::size_t{64} * 1024;
   while (!remaining.empty()) {
     const std::size_t count = std::min(remaining.size(), chunk_size);
     write_chunk(out, "IDAT", remaining.substr(0, count));

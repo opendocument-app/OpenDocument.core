@@ -842,7 +842,7 @@ void show_type3(std::vector<PageElement> &out, const Resources &resources,
                 GraphicsState &state, const Logger &logger,
                 std::set<std::string> &warned, ActiveForms &active,
                 MarkedContentStack &marked, std::optional<Pen> &pen,
-                const std::string &codes, Font *font) {
+                const std::string &codes, Font *font, const Type3Data &type3) {
   // `show` advances the text matrix by the whole segment; snapshot `Tm` so the
   // per-glyph loop below can replay the advance to place each char proc.
   const util::math::Transform2D saved_matrix = state.current().text.matrix;
@@ -857,7 +857,7 @@ void show_type3(std::vector<PageElement> &out, const Resources &resources,
     return;
   }
 
-  if (font->type3->char_procs.empty() || state.type3_depth > 8) {
+  if (type3.char_procs.empty() || state.type3_depth > 8) {
     return; // nothing to draw, or pathological Type3 recursion
   }
   ++state.type3_depth;
@@ -874,10 +874,9 @@ void show_type3(std::vector<PageElement> &out, const Resources &resources,
         font->encoding
             ? font->encoding->glyph_name(static_cast<std::uint8_t>(code))
             : std::string_view{};
-    const auto it = name.empty()
-                        ? font->type3->char_procs.end()
-                        : font->type3->char_procs.find(std::string(name));
-    if (it != font->type3->char_procs.end()) {
+    const auto it = name.empty() ? type3.char_procs.end()
+                                 : type3.char_procs.find(std::string(name));
+    if (it != type3.char_procs.end()) {
       const auto &current = state.current();
       const GraphicsState::Text &text = current.text;
       // glyph space -> user space = /FontMatrix x [size params] x Tm x CTM.
@@ -886,11 +885,10 @@ void show_type3(std::vector<PageElement> &out, const Resources &resources,
               text.size * text.horizontal_scaling / 100.0, text.size, 0,
               text.rise);
       const util::math::Transform2D glyph_to_user =
-          font->type3->font_matrix * size_params * text.matrix *
+          type3.font_matrix * size_params * text.matrix *
           current.general.transform_matrix;
-      const Resources &scope = font->type3->resources != nullptr
-                                   ? *font->type3->resources
-                                   : resources;
+      const Resources &scope =
+          type3.resources != nullptr ? *type3.resources : resources;
 
       // Scoped like `q`/`Q`, but pinned: the char proc's own `q`/`Q` cannot
       // escape it and disturb the text state driving the glyph loop.
@@ -919,7 +917,7 @@ void run_content(const std::string &content, const Resources &resources,
   const auto show_run = [&](const std::string &codes, Font *font) {
     if (font != nullptr && font->type3) {
       show_type3(out, resources, state, logger, warned, active, marked, pen,
-                 codes, font);
+                 codes, font, *font->type3);
     } else {
       show(out, state, marked, pen, codes, font);
     }
