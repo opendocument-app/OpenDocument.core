@@ -15,6 +15,7 @@
 #include <memory>
 #include <optional>
 #include <sstream>
+#include <tuple>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -697,24 +698,43 @@ TEST(DocumentParser, missing_media_box_defaults_to_us_letter) {
   ASSERT_NE(page->resources, nullptr); // missing /Resources → empty dict
 }
 
-TEST(DocumentParser, rejects_invalid_cid_width_indices) {
-  for (const std::string widths :
-       {"4294967295 4294967295 500", "-1 [500]", "65536 [500]",
-        "65535 [500 600]", "0 65536 500", "2 1 500"}) {
+// An index outside its range drops only the entry it states, as in pdf.js.
+TEST(DocumentParser, an_invalid_cid_width_index_drops_its_entry) {
+  const std::vector<std::tuple<std::string, std::uint32_t, double>> cases{
+      {"4294967295 4294967295 500", 0, 1.0},
+      {"-1 [500]", 0, 1.0},
+      {"65536 [500]", 0, 1.0},
+      {"65535 [500 600]", 65535, 0.5},
+      {"0 65536 500", 65535, 0.5},
+      {"2 1 500", 2, 1.0},
+  };
+  for (const auto &[widths, cid, advance] : cases) {
     SCOPED_TRACE(widths);
     DocumentParser parser(std::make_unique<std::istringstream>(
         composite_font_mini_pdf(false, "Identity-H", widths)));
-    EXPECT_THROW(parser.parse_document(), std::runtime_error);
+    const std::unique_ptr<Document> document = parser.parse_document();
+    const Font *font = first_page_font(*document, "F0");
+    ASSERT_NE(font, nullptr);
+    EXPECT_DOUBLE_EQ(font->advance_width(cid), advance);
   }
 }
 
-TEST(DocumentParser, rejects_invalid_simple_font_indices) {
+TEST(DocumentParser, an_invalid_simple_font_index_drops_its_entry) {
   for (const std::string index : {"-1", "256", "4294967361"}) {
     SCOPED_TRACE(index);
-    for (const std::string &pdf :
-         {simple_font_mini_pdf(index), simple_font_mini_pdf("65", index)}) {
-      DocumentParser parser(std::make_unique<std::istringstream>(pdf));
-      EXPECT_THROW(parser.parse_document(), std::runtime_error);
+    {
+      DocumentParser parser(
+          std::make_unique<std::istringstream>(simple_font_mini_pdf(index)));
+      const std::unique_ptr<Document> document = parser.parse_document();
+      const Font *font = first_page_font(*document, "F1");
+      ASSERT_NE(font, nullptr);
+      EXPECT_TRUE(font->widths.empty());
     }
+    DocumentParser parser(std::make_unique<std::istringstream>(
+        simple_font_mini_pdf("65", index)));
+    const std::unique_ptr<Document> document = parser.parse_document();
+    const Font *font = first_page_font(*document, "F1");
+    ASSERT_NE(font, nullptr);
+    EXPECT_DOUBLE_EQ(font->advance_width(65), 0.5);
   }
 }

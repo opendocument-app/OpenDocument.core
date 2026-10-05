@@ -190,12 +190,15 @@ struct PageAttributes {
   }
 };
 
-std::uint32_t font_code(const Object &object, const std::uint32_t maximum) {
-  const Integer value = object.as_integer();
-  if (value < 0 || value > maximum) {
-    throw std::runtime_error("PDF font character index out of range");
+/// @p object as a code in `[0, maximum]`; nothing for any other value, which
+/// drops only the entry it states, as in pdf.js.
+std::optional<std::uint32_t> font_code(const Object &object,
+                                       const std::uint32_t maximum) {
+  const std::optional<Integer> value = object.as_integer_opt();
+  if (!value || *value < 0 || *value > maximum) {
+    return std::nullopt;
   }
-  return static_cast<std::uint32_t>(value);
+  return static_cast<std::uint32_t>(*value);
 }
 
 /// Parse a simple-font `/Encoding` (ISO 32000-1 9.6.6): a base-encoding name,
@@ -248,7 +251,8 @@ std::optional<Encoding> parse_encoding(DocumentParser &parser,
       std::uint32_t code = 0;
       for (const Object &item : differences.as_array()) {
         if (item.is_integer()) {
-          code = font_code(item, 255);
+          // past the byte range, the names that follow have no code
+          code = font_code(item, 255).value_or(256);
         } else if (item.is_name() && code <= 0xFF) {
           encoding.set_difference(static_cast<std::uint8_t>(code),
                                   item.as_name());
@@ -274,28 +278,30 @@ void parse_cid_widths(const Array &w, Font &font) {
       ++i;
       continue;
     }
-    const auto first = font_code(w[i], max_cid);
+    const std::optional<std::uint32_t> first = font_code(w[i], max_cid);
     if (i + 1 < w.size() && w[i + 1].is_array()) {
       const Array &list = w[i + 1].as_array();
-      if (list.size() > max_cid - first + 1) {
-        throw std::runtime_error("PDF font width array exceeds CID range");
-      }
-      for (std::size_t j = 0; j < list.size(); ++j) {
+      // widths past the CID range are dropped
+      const std::size_t count =
+          first ? std::min<std::size_t>(list.size(), max_cid - *first + 1) : 0;
+      for (std::size_t j = 0; j < count; ++j) {
         if (list[j].is_real()) {
-          font.cid_widths[first + static_cast<std::uint32_t>(j)] =
+          font.cid_widths[*first + static_cast<std::uint32_t>(j)] =
               list[j].as_real();
         }
       }
       i += 2;
     } else if (i + 2 < w.size() && w[i + 1].is_integer() &&
                w[i + 2].is_real()) {
-      const auto last = font_code(w[i + 1], max_cid);
+      const Integer last = w[i + 1].as_integer();
       const double width = w[i + 2].as_real();
-      if (last < first) {
-        throw std::runtime_error("reversed PDF font width range");
-      }
-      for (std::uint32_t c = first; c <= last; ++c) {
-        font.cid_widths[c] = width;
+      // a reversed range is empty, and one past the CID range is cut there
+      if (first && last >= *first) {
+        const auto end =
+            static_cast<std::uint32_t>(std::min<Integer>(last, max_cid));
+        for (std::uint32_t c = *first; c <= end; ++c) {
+          font.cid_widths[c] = width;
+        }
       }
       i += 3;
     } else {
@@ -374,13 +380,17 @@ void load_embedded_font(DocumentParser &parser, const Dictionary &descriptor,
 /// `/MissingWidth` glyph metrics (ISO 32000-1 9.2.4).
 void parse_simple_font_widths(DocumentParser &parser,
                               const Dictionary &dictionary, Font &font) {
+  // a `/FirstChar` no byte code reaches leaves `/Widths` unused
+  bool widths_apply = true;
   if (dictionary.has_key("FirstChar")) {
     const Object first = parser.resolve_object_copy(dictionary["FirstChar"]);
     if (first.is_integer()) {
-      font.first_char = font_code(first, 255);
+      const std::optional<std::uint32_t> code = font_code(first, 255);
+      font.first_char = code.value_or(0);
+      widths_apply = code.has_value();
     }
   }
-  if (dictionary.has_key("Widths")) {
+  if (widths_apply && dictionary.has_key("Widths")) {
     const Object widths = parser.resolve_object_copy(dictionary["Widths"]);
     if (widths.is_array()) {
       for (const Object &width : widths.as_array()) {
