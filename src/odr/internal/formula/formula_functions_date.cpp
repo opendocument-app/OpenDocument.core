@@ -300,7 +300,8 @@ Value date_difference(const Call &call) {
     return Value{static_cast<double>(months)};
   }
   if (spelled == "Y" || spelled == "y") {
-    return Value{static_cast<double>(months / 12)};
+    const std::int64_t years = months / 12;
+    return Value{static_cast<double>(years)};
   }
   throw NoAnswer{};
 }

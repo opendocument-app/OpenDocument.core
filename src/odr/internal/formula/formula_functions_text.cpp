@@ -268,7 +268,7 @@ Value exact(const Call &call) {
 /// `VALUE`: the number a text reads as.
 Value value(const Call &call) {
   expect_arguments(call, 1, 1);
-  const Value argument = call.scalar(0);
+  Value argument = call.scalar(0);
   if (argument.holds<double>() || argument.holds<ErrorType>()) {
     return argument;
   }

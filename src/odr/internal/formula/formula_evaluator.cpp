@@ -31,18 +31,6 @@ std::uint32_t last_of(const std::uint32_t count) {
   return count == 0 ? 0 : count - 1;
 }
 
-/// Where a character sorts ignoring case: a digit before a letter. Nothing
-/// for one whose place depends on the collation of the application.
-std::optional<char> primary_of(const char c) {
-  if (str::is_ascii_digit(c)) {
-    return c;
-  }
-  if (str::is_ascii_letter(c)) {
-    return str::to_lower(c);
-  }
-  return std::nullopt;
-}
-
 } // namespace
 
 /// Evaluates the nodes of one formula. A reference stays one until an
@@ -125,7 +113,8 @@ public:
         [&]<typename T>(const T &content) -> Number {
           if constexpr (std::is_same_v<T, Empty>) {
             return 0.0;
-          } else if constexpr (std::is_same_v<T, double>) {
+          } else if constexpr (std::is_same_v<T, double> ||
+                               std::is_same_v<T, ErrorType>) {
             return content;
           } else if constexpr (std::is_same_v<T, bool>) {
             return content ? 1.0 : 0.0;
@@ -135,8 +124,7 @@ public:
               throw NoAnswer{};
             }
             return *number;
-          } else if constexpr (std::is_same_v<T, ErrorType>) {
-            return content;
+
           } else {
             return number(scalar(value));
           }
@@ -160,10 +148,10 @@ public:
               return std::string(content ? "1" : "0");
             }
             return std::string(content ? "TRUE" : "FALSE");
-          } else if constexpr (std::is_same_v<T, std::string>) {
+          } else if constexpr (std::is_same_v<T, std::string> ||
+                               std::is_same_v<T, ErrorType>) {
             return content;
-          } else if constexpr (std::is_same_v<T, ErrorType>) {
-            return content;
+
           } else {
             return text(scalar(value));
           }
@@ -679,7 +667,7 @@ private:
         const double y = b.get<double>();
         order = same_number(m_settings->dialect, x, y)
                     ? std::strong_ordering::equal
-                : x <=> y == std::partial_ordering::less
+                : (x <=> y) == std::partial_ordering::less
                     ? std::strong_ordering::less
                     : std::strong_ordering::greater;
       } else if (a.holds<std::string>()) {
@@ -837,14 +825,15 @@ std::strong_ordering formula::order_of_texts(const std::string_view a,
     return std::strong_ordering::equal;
   }
   const auto known = [](const std::string_view text) {
-    return std::ranges::all_of(
-        text, [](const char c) { return primary_of(c).has_value(); });
+    return std::ranges::all_of(text, [](const char c) {
+      return str::is_ascii_digit(c) || str::is_ascii_letter(c);
+    });
   };
   if (!known(a) || !known(b)) {
     throw NoAnswer{};
   }
   for (std::size_t i = 0; i < std::min(a.size(), b.size()); ++i) {
-    if (const char left = *primary_of(a[i]), right = *primary_of(b[i]);
+    if (const char left = str::to_lower(a[i]), right = str::to_lower(b[i]);
         left != right) {
       return left <=> right;
     }

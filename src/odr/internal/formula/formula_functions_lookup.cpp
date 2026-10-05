@@ -211,7 +211,7 @@ private:
   /// Whether the criterion is a number, not a text spelling one: `5`, which
   /// matches no text, against `"5"`, which matches the text `5` too.
   bool m_exact_number{false};
-  std::optional<std::string> m_text;
+  std::string m_text;
 
   static bool is_truth_text(const std::string_view text) {
     return same_text(text, "TRUE") || same_text(text, "FALSE");
@@ -263,10 +263,10 @@ private:
       return std::nullopt;
     }
     if (m_relation == Relation::equal || m_relation == Relation::not_equal) {
-      return same_text(*text, *m_text) ? std::strong_ordering::equal
-                                       : std::strong_ordering::less;
+      return same_text(*text, m_text) ? std::strong_ordering::equal
+                                      : std::strong_ordering::less;
     }
-    return order_of_texts(*text, *m_text, false);
+    return order_of_texts(*text, m_text, false);
   }
 };
 
@@ -367,7 +367,7 @@ Value matched(const Call &call, const std::span<const Condition> conditions,
   if (average && numbers.empty()) {
     return Value{ErrorType::division};
   }
-  const Value sum = sum_of(call, numbers);
+  Value sum = sum_of(call, numbers);
   if (!average || !sum.holds<double>()) {
     return sum;
   }

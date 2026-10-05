@@ -39,21 +39,23 @@ std::optional<bool> move_range(CellReference &from, CellReference &to,
                                const std::optional<std::string> &sheet) {
   std::optional<Coordinate> CellReference::*const axis =
       edit.axis == Axis::row ? &CellReference::row : &CellReference::column;
+  auto &from_axis = from.*axis;
+  auto &to_axis = to.*axis;
   // the second corner's unstated sheet is the first's
   const std::optional<std::string> &from_sheet =
       from.sheet.has_value() ? from.sheet : sheet;
   const std::optional<std::string> &to_sheet =
       to.sheet.has_value() ? to.sheet : from_sheet;
   if (from.document.has_value() || to.document.has_value() ||
-      !(from.*axis).has_value() || !(to.*axis).has_value() ||
+      !from_axis.has_value() || !to_axis.has_value() ||
       !from_sheet.has_value() || !to_sheet.has_value() ||
       !util::string::equals_ignore_case(*from_sheet, edit.sheet) ||
       !util::string::equals_ignore_case(*to_sheet, edit.sheet)) {
     return false;
   }
-  const bool ascending = (from.*axis)->index <= (to.*axis)->index;
-  Coordinate &first = ascending ? *(from.*axis) : *(to.*axis);
-  Coordinate &last = ascending ? *(to.*axis) : *(from.*axis);
+  const bool ascending = from_axis->index <= to_axis->index;
+  Coordinate &first = ascending ? *from_axis : *to_axis;
+  Coordinate &last = ascending ? *to_axis : *from_axis;
   const auto span = edit.span(first.index, last.index);
   if (!span.has_value()) {
     return std::nullopt;
