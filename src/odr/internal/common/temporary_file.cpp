@@ -5,7 +5,7 @@
 #include <odr/internal/common/random.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
-#include <cassert>
+#include <cstdint>
 #include <fstream>
 #include <utility>
 
@@ -13,9 +13,13 @@ namespace odr::internal {
 
 namespace {
 
-void remove_quietly(const AbsPath &path) {
-  std::error_code error_code;
-  std::filesystem::remove(path.string(), error_code);
+void remove_quietly(const AbsPath &path) noexcept {
+  try {
+    std::error_code error_code;
+    std::filesystem::remove(path.string(), error_code);
+  } catch (...) {
+    return; // Path conversion may allocate; cleanup must not throw.
+  }
 }
 
 } // namespace
@@ -29,15 +33,14 @@ TemporaryDiskFile::TemporaryDiskFile(AbsPath path)
     : DiskFile{std::move(path)} {}
 
 TemporaryDiskFile::TemporaryDiskFile(TemporaryDiskFile &&other) noexcept
-    : DiskFile{std::move(other)},
+    : DiskFile{std::move(static_cast<DiskFile &>(other))},
       m_owns_path{std::exchange(other.m_owns_path, false)} {}
 
 TemporaryDiskFile::~TemporaryDiskFile() {
   if (!m_owns_path) {
     return;
   }
-  assert(disk_path().has_value());
-  remove_quietly(*disk_path());
+  remove_quietly(path());
 }
 
 TemporaryDiskFile &
@@ -46,10 +49,9 @@ TemporaryDiskFile::operator=(TemporaryDiskFile &&other) noexcept {
     return *this;
   }
   if (m_owns_path) {
-    assert(disk_path().has_value());
-    remove_quietly(*disk_path());
+    remove_quietly(path());
   }
-  DiskFile::operator=(std::move(other));
+  DiskFile::operator=(std::move(static_cast<DiskFile &>(other)));
   m_owns_path = std::exchange(other.m_owns_path, false);
   return *this;
 }
@@ -77,25 +79,22 @@ TemporaryDiskFileFactory::copy(const abstract::File &file) const {
 }
 
 TemporaryDiskFile TemporaryDiskFileFactory::copy(std::istream &in) const {
-  std::fstream file;
+  std::ofstream file;
   AbsPath file_path;
-
-  while (true) {
-    std::string file_name = m_random_file_name_generator();
-    file_path = m_directory.join(RelPath(file_name));
-
-    file.open(file_path.string(), std::ios_base::in | std::ios_base::out);
-
-    if (!file.is_open()) {
-      file.clear();
-      file.open(file_path.string(), std::ios_base::out | std::ios_base::binary);
-      if (!file.is_open()) {
-        throw FileWriteError(file_path.string());
-      }
+  for (std::uint32_t attempt = 0; attempt < 128; ++attempt) {
+    file_path = m_directory.join(RelPath(m_random_file_name_generator()));
+    file.open(file_path.string(), std::ios::binary | std::ios::noreplace);
+    if (file.is_open()) {
       break;
     }
-
-    file.close();
+    std::error_code error;
+    if (!std::filesystem::exists(file_path.string(), error) || error) {
+      throw FileWriteError(file_path.string());
+    }
+    file.clear();
+  }
+  if (!file.is_open()) {
+    throw FileWriteError(file_path.string());
   }
 
   try {

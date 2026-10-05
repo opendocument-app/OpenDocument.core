@@ -29,6 +29,9 @@ public:
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const final;
 
+protected:
+  [[nodiscard]] const AbsPath &path() const noexcept { return m_path; }
+
 private:
   AbsPath m_path;
 };
