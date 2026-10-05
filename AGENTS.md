@@ -125,6 +125,8 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file to HTML
   into `test/data/`. It is off by default because the data is several
   gigabytes and `odr_test` builds without it. The `update_test_data` target
   moves existing checkouts onto the pins. Two repositories are private.
+  Data stays in the source tree for shared builds and reference-output updates.
+  It is not a submodule: SwiftPM would fetch it in every consumer checkout.
 - pugixml is built with `PUGIXML_COMPACT`. The odf, ooxml, svg and xml engines
   keep the parsed DOM as their backing store, so the node size is the document
   size. The define changes the ABI, and a mismatch between translation units
