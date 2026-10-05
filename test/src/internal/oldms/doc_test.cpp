@@ -235,12 +235,13 @@ TEST(OldMs, doc_read_font_names) {
   in.clear();
   EXPECT_THROW(internal::oldms::text::read_font_names(in, {0, 4}),
                std::runtime_error);
+  // a name without its NUL is kept whole rather than refusing the document
   std::string unterminated = make_sttbf_ffn({"Arial"});
   unterminated[unterminated.size() - 2] = 'x';
   std::istringstream bad(unterminated);
-  EXPECT_THROW(internal::oldms::text::read_font_names(
-                   bad, {0, static_cast<std::uint32_t>(unterminated.size())}),
-               std::runtime_error);
+  EXPECT_EQ(internal::oldms::text::read_font_names(
+                bad, {0, static_cast<std::uint32_t>(unterminated.size())}),
+            std::vector<std::string>{"Arialx"});
 }
 
 // End-to-end over a synthetic .doc: the PlcBteChpx/ChpxFkp run boundaries

@@ -185,33 +185,28 @@ std::vector<std::string> text::read_font_names(std::istream &table_stream,
   }
   const auto cb_extra = cursor.read<std::uint16_t>();
 
-  if (cb_extra != 0) {
-    throw std::runtime_error("doc: unexpected SttbfFfn extra data");
-  }
-
+  // Inside the declared length, a quirk of one font name does not refuse the
+  // document: an odd byte after the name and any cbExtra bytes are skipped,
+  // and a name without its NUL takes all of its units.
   result.reserve(c_data);
   for (std::size_t i = 0; i < c_data; ++i) {
     const auto cch_data = cursor.read<std::uint8_t>();
-    if (cch_data < sizeof(FfnFixed) + 2 ||
-        (cch_data - sizeof(FfnFixed)) % 2 != 0) {
-      throw std::runtime_error("doc: malformed FFN length");
+    if (cch_data < sizeof(FfnFixed)) {
+      throw std::runtime_error("doc: FFN too short");
     }
     cursor.skip(sizeof(FfnFixed));
-    const std::size_t name_units = (cch_data - sizeof(FfnFixed)) / 2;
+    // xszFfn: NUL-terminated UTF-16; an alternative name may follow it.
+    const std::size_t name_bytes = cch_data - sizeof(FfnFixed);
     std::u16string name;
     bool terminated = false;
-    for (std::size_t unit = 0; unit < name_units; ++unit) {
+    for (std::size_t unit = 0; unit < name_bytes / 2; ++unit) {
       const auto character = cursor.read<char16_t>();
-      if (character == 0) {
-        terminated = true;
-      }
+      terminated = terminated || character == 0;
       if (!terminated) {
         name.push_back(character);
       }
     }
-    if (!terminated) {
-      throw std::runtime_error("doc: unterminated font name");
-    }
+    cursor.skip(name_bytes % 2 + cb_extra);
     result.push_back(util::string::u16string_to_string(name));
   }
 
