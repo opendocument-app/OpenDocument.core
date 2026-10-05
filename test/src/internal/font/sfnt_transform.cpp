@@ -420,6 +420,9 @@ TEST(SfntTransform, names_preserve_unicode_and_bound_postscript_names) {
   EXPECT_LT(long_name.size(), 61000);
   EXPECT_THROW((void)serialize_name(std::string(32768, 'A')),
                std::runtime_error);
+  EXPECT_EQ(
+      parse(build_sfnt(0x00010000, {{"name", serialize_name("A\xff")}})).name(),
+      "A-");
 }
 
 TEST(SfntTransform, rejects_unrepresentable_table_directories) {

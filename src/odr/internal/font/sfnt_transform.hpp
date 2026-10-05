@@ -16,7 +16,8 @@ class SfntFont;
 [[nodiscard]] char32_t pua_code_point(std::uint16_t glyph) noexcept;
 
 /// Map every glyph to its PUA code point, plus valid-glyph entries from @p
-/// extra. Extra keys must be BMP code points outside U+E000..U+F8FF.
+/// extra. Extra keys must be BMP code points outside U+E000..U+F8FF. An entry
+/// past `numGlyphs` is dropped, because OTS then rejects the whole font.
 [[nodiscard]] std::map<char32_t, std::uint16_t>
 pua_cmap(std::uint16_t glyph_count,
          const std::map<char32_t, std::uint16_t> &extra = {});
