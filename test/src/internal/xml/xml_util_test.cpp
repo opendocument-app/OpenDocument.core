@@ -77,11 +77,16 @@ TEST(xml_util, tokenize_text_single_space) {
   EXPECT_EQ("a b", tokens[0].string);
 }
 
-TEST(xml_util, parses_utf16_buffers_without_c_string_truncation) {
-  const std::string bytes("\xff\xfe<\0a\0/\0>\0", 10);
-  EXPECT_STREQ(parse(bytes).document_element().name(), "a");
-  std::istringstream in(bytes);
+TEST(xml_util, parses_utf16_streams_without_c_string_truncation) {
+  std::istringstream in(std::string("\xff\xfe<\0a\0/\0>\0", 10));
   EXPECT_STREQ(parse(in).document_element().name(), "a");
+}
+
+// A flat ODF's text is already UTF-8, whatever its declaration still names.
+TEST(xml_util, parses_a_string_as_utf8) {
+  const pugi::xml_document document =
+      parse("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><a>\xc3\xa4</a>");
+  EXPECT_STREQ(document.document_element().child_value(), "\xc3\xa4");
 }
 
 TEST(xml_util, rejects_failed_input_streams) {

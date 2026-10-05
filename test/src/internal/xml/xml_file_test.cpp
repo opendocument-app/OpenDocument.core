@@ -109,6 +109,8 @@ TEST(XmlDeclaration, the_encoding_pseudo_attribute_is_read_off_the_bytes) {
   EXPECT_EQ(declared_encoding(R"(<?xml version='encoding="latin1"'?><a/>)"),
             "");
   EXPECT_EQ(declared_encoding(R"(<?xml fakeencoding="latin1"?><a/>)"), "");
+  EXPECT_EQ(declared_encoding(R"(<?xml version="1.0" encoding = "latin1"?>)"),
+            "latin1");
   EXPECT_EQ(declared_encoding(""), "");
   // no `?>` in the probe: an unterminated declaration names nothing
   EXPECT_EQ(declared_encoding(R"(<?xml encoding="UTF-8")"), "");

@@ -77,14 +77,22 @@ std::string xml::escape_attribute(const std::string_view value) {
 
 pugi::xml_document xml::parse(const std::string &in) {
   pugi::xml_document result;
-  if (const auto success = result.load_buffer(in.data(), in.size()); !success) {
+  if (const auto success = result.load_buffer(
+          in.data(), in.size(), pugi::parse_default, pugi::encoding_utf8);
+      !success) {
     throw NoXmlFile();
   }
   return result;
 }
 
 pugi::xml_document xml::parse(std::istream &in) {
-  return parse(util::stream::read(in));
+  const std::string bytes = util::stream::read(in);
+  pugi::xml_document result;
+  if (const auto success = result.load_buffer(bytes.data(), bytes.size());
+      !success) {
+    throw NoXmlFile();
+  }
+  return result;
 }
 
 void xml::set_attribute(pugi::xml_node node, const char *name,
