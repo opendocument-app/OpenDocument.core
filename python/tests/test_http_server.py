@@ -90,10 +90,13 @@ def test_stop_waits_for_listen():
 
     thread = threading.Thread(target=server.listen, daemon=True)
     thread.start()
-    while not server.is_running():
-        time.sleep(0.001)
-
-    server.stop()
+    deadline = time.monotonic() + 5
+    try:
+        while not server.is_running():
+            assert thread.is_alive() and time.monotonic() < deadline
+            time.sleep(0.001)
+    finally:
+        server.stop()
     # the accept loop is gone for good by now, which is what makes dropping the
     # server right after safe
     assert not server.is_running()

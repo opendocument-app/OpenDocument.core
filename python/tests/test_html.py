@@ -11,6 +11,12 @@ def translate_offline(path, tmp_path):
     return service.bring_offline(str(output))
 
 
+def render(path, config):
+    service = pyodr.html.translate(pyodr.open(str(path)), config)
+    content, _ = service.list_views()[0].write_html()
+    return content
+
+
 def test_html_config_defaults():
     config = pyodr.HtmlConfig()
     assert config.embed_images
@@ -87,70 +93,52 @@ def test_viewport_mode_reaches_the_html(odt_path):
     # The C++ suite covers the mode matrix; this only proves the config crosses
     # the binding. A text document without margins is reflowing content, so
     # `automatic` resolves to `actual_size`.
-    def render(config):
-        file = pyodr.open(str(odt_path))
-        service = pyodr.html.translate(file, config)
-        content, _ = service.list_views()[0].write_html()
-        return content
-
     assert (
         '<meta name="viewport" '
         'content="width=device-width,initial-scale=1.0,user-scalable=yes"/>'
-        in render(pyodr.HtmlConfig())
+        in render(odt_path, pyodr.HtmlConfig())
     )
 
     fit_width = pyodr.HtmlConfig()
     fit_width.viewport_mode = pyodr.HtmlViewportMode.fit_width
     assert (
         '<meta name="viewport" content="width=device-width,user-scalable=yes"/>'
-        in render(fit_width)
+        in render(odt_path, fit_width)
     )
 
     # only paged content has a width to fit, hence the margins
     by_view = pyodr.HtmlConfig()
     by_view.viewport_mode = pyodr.HtmlViewportMode.fit_width_by_view
     by_view.text_document_margin = True
-    assert "--odr-fit:view" in render(by_view)
+    assert "--odr-fit:view" in render(odt_path, by_view)
 
     raw = pyodr.HtmlConfig()
     raw.viewport_content = "width=420"
-    assert '<meta name="viewport" content="width=420"/>' in render(raw)
+    assert '<meta name="viewport" content="width=420"/>' in render(odt_path, raw)
 
 
 def test_editing_scope_reaches_the_html(odt_path):
     # proves the scope crosses the binding; the C++ suite covers the rest
-    def render(config):
-        file = pyodr.open(str(odt_path))
-        service = pyodr.html.translate(file, config)
-        content, _ = service.list_views()[0].write_html()
-        return content
-
     # the attribute, not the name: the script names it too
-    assert 'data-odr-editing-scope="' not in render(pyodr.HtmlConfig())
+    assert 'data-odr-editing-scope="' not in render(odt_path, pyodr.HtmlConfig())
 
     config = pyodr.HtmlConfig()
     config.editable = True
     config.editing_scope = pyodr.HtmlEditingScope.paragraph
-    assert 'data-odr-editing-scope="paragraph"' in render(config)
+    assert 'data-odr-editing-scope="paragraph"' in render(odt_path, config)
 
 
 def test_min_content_margin_reaches_the_html(odt_path):
     # The C++ suite covers where the floor lands; this only proves it crosses
     # the binding, unset sides and all.
-    def render(config):
-        file = pyodr.open(str(odt_path))
-        service = pyodr.html.translate(file, config)
-        content, _ = service.list_views()[0].write_html()
-        return content
-
     default = pyodr.HtmlConfig()
     assert default.min_content_margin.top is None
-    assert ":root{--odr-min-margin" not in render(default)
+    assert ":root{--odr-min-margin" not in render(odt_path, default)
 
     config = pyodr.HtmlConfig()
     config.min_content_margin.top = pyodr.Measure("12px")
     config.min_content_margin.left = pyodr.Measure("1cm")
-    html = render(config)
+    html = render(odt_path, config)
     assert ":root{--odr-min-margin-top:12px;--odr-min-margin-left:1cm;}" in html
     assert "--odr-min-margin-right:" not in html
 
