@@ -738,3 +738,31 @@ TEST(DocumentParser, an_invalid_simple_font_index_drops_its_entry) {
     EXPECT_DOUBLE_EQ(font->advance_width(65), 0.5);
   }
 }
+
+TEST(DocumentParser, shading_reads_function_stream) {
+  for (const bool sampled : {true, false}) {
+    SCOPED_TRACE(sampled);
+    PdfFileBuilder builder;
+    builder.object("<< /Type /Catalog /Pages 2 0 R >>")
+        .object("<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
+        .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] "
+                "/Resources << /Shading << /S0 4 0 R >> >> >>")
+        .object("<< /ShadingType 2 /ColorSpace /DeviceGray "
+                "/Coords [0 0 100 0] /Function 5 0 R >>")
+        .stream_object(sampled ? "/FunctionType 0 /Domain [0 1] /Range [0 1] "
+                                 "/Size [2] /BitsPerSample 8"
+                               : "/FunctionType 4 /Domain [0 1] /Range [0 1]",
+                       sampled ? std::string("\x00\xff", 2) : "{ 1 exch sub }")
+        .trailer("/Root 1 0 R");
+    DocumentParser parser(
+        std::make_unique<std::istringstream>(builder.build_classic()));
+    const auto document = parser.parse_document();
+    const Page *page = first_page(*document);
+    ASSERT_NE(page, nullptr);
+    const auto &shading = page->resources->shading.at("S0");
+    ASSERT_NE(shading, nullptr);
+    ASSERT_GE(shading->stops.size(), 2);
+    EXPECT_DOUBLE_EQ(shading->stops.front().rgb[0], sampled ? 0.0 : 1.0);
+    EXPECT_DOUBLE_EQ(shading->stops.back().rgb[0], sampled ? 1.0 : 0.0);
+  }
+}
