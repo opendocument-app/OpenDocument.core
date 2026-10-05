@@ -75,7 +75,9 @@ output.
   numeric value, a free or absent reference resolves to null with a warning.
   A throw in the cross-reference layer is caught once, and the file is
   forward-scanned to rebuild a synthetic xref (`recover_xref`; the last
-  definition of an id wins). If the trailer has no `/Root`, `recover_root`
+  definition of an id wins). Direct definitions take precedence over compressed
+  copies; otherwise the latest object stream supplies an id. If the trailer
+  has no `/Root`, `recover_root`
   takes the first `/Type /Catalog` it finds in id order.
 - **Diagnostics go through `Logger`.** `DocumentParser` and `extract_text`
   take a `const Logger &` (default `Logger::null()`). `Logger` is a value

@@ -500,7 +500,10 @@ std::pair<Xref, Dictionary> FileParser::recover_xref() {
 
     if (const std::optional<ObjectReference> ref =
             match_object_start(content)) {
-      // last definition of an id wins (operator[] overwrites)
+      const auto previous = xref.table.lower_bound(ObjectReference(ref->id, 0));
+      if (previous != xref.table.end() && previous->first.id == ref->id) {
+        xref.table.erase(previous);
+      }
       xref.table[*ref] = Xref::Entry(Xref::UsedEntry{
           checked_file_index(static_cast<std::uint64_t>(position) + lead)});
       // A compact object may inline its dictionary and the `stream` token on
