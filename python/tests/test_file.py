@@ -251,3 +251,14 @@ def test_a_markdown_file_holds_a_text_file_too(tmp_path):
     assert file.is_markdown_file()
     assert file.as_markdown_file().text_file().text() == "# hello\n"
     assert file.as_markdown_file().document().document_type() == pyodr.DocumentType.text
+
+
+def test_image_read_rejects_archive_corruption(corrupt_image_archive):
+    archive = (
+        pyodr.open(pyodr.File.from_memory(corrupt_image_archive))
+        .as_archive_file()
+        .archive()
+    )
+    image = pyodr.open(archive.as_filesystem().open("/image.png")).as_image_file()
+    with pytest.raises(RuntimeError, match="stream read failed"):
+        image.read()
