@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- DOCX refuses structural edits on synthetic list wrappers and their paragraphs,
+  preventing dangling nodes. Appending text rejects unsupported containers.
+
 - List numbering preserves zero starts and rejects counter overflow. DOCX
   validates numbering levels, numeric values, and bullet UTF-8 before use.
 
