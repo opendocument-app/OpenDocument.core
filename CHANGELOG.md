@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Legacy Word bounds font and piece tables by their declared lengths, checks
+  piece coverage and offsets, and reads PLC entries without unaligned access.
+
 - Legacy Word validates FIB signatures and extension lengths. It stores the
   shared header fields by value, removing unsafe deletion through base pointers.
 

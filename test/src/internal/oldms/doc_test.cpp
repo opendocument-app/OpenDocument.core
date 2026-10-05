@@ -4,10 +4,12 @@
 #include <odr/document_element.hpp>
 #include <odr/style.hpp>
 
+#include <limits>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/oldms/text/doc_document.hpp>
+#include <odr/internal/oldms/text/doc_helper.hpp>
 #include <odr/internal/oldms/text/doc_io.hpp>
 #include <odr/internal/oldms/text/doc_style.hpp>
 
@@ -230,6 +232,16 @@ TEST(OldMs, doc_read_font_names) {
   ASSERT_EQ(names.size(), 2);
   EXPECT_EQ(names[0], "Arial");
   EXPECT_EQ(names[1], "Times New Roman");
+  in.clear();
+  EXPECT_THROW(internal::oldms::text::read_font_names(in, {0, 4}),
+               std::runtime_error);
+  // a name without its NUL is kept whole rather than refusing the document
+  std::string unterminated = make_sttbf_ffn({"Arial"});
+  unterminated[unterminated.size() - 2] = 'x';
+  std::istringstream bad(unterminated);
+  EXPECT_EQ(internal::oldms::text::read_font_names(
+                bad, {0, static_cast<std::uint32_t>(unterminated.size())}),
+            std::vector<std::string>{"Arialx"});
 }
 
 // End-to-end over a synthetic .doc: the PlcBteChpx/ChpxFkp run boundaries
@@ -328,6 +340,25 @@ TEST(OldMs, doc_character_formatting) {
 
   EXPECT_EQ(paragraphs[0].as_paragraph().text_style().font_size,
             Measure("10pt"));
+
+  // The same physical bytes cannot satisfy a shorter declared Clx or a longer
+  // body.
+  for (const bool short_clx : {true, false}) {
+    std::string invalid = word_document;
+    const std::string fib =
+        make_fib(short_clx ? 11 : 12,
+                 {0, short_clx ? 5u : static_cast<std::uint32_t>(clx.size())},
+                 {128, static_cast<std::uint32_t>(plc_bte.size())},
+                 {64, static_cast<std::uint32_t>(sttbf_ffn.size())});
+    invalid.replace(0, fib.size(), fib);
+    auto invalid_files = std::make_shared<internal::VirtualFilesystem>(*files);
+    ASSERT_TRUE(invalid_files->remove(internal::AbsPath("/WordDocument")));
+    ASSERT_TRUE(
+        invalid_files->copy(std::make_shared<internal::MemoryFile>(invalid),
+                            internal::AbsPath("/WordDocument")));
+    EXPECT_THROW(internal::oldms::text::Document{invalid_files},
+                 std::runtime_error);
+  }
 }
 
 TEST(OldMs, doc_fib_versions_respect_counted_arrays) {
@@ -372,4 +403,43 @@ TEST(OldMs, doc_fib_versions_respect_counted_arrays) {
   invalid[0] = 0;
   EXPECT_THROW(parse(invalid), std::runtime_error);
   EXPECT_THROW(parse(make_fib(0x80000000u, {}, {}, {})), std::runtime_error);
+}
+
+TEST(OldMs, doc_plc_reads_unaligned_bytes_and_checks_indices) {
+  namespace word = internal::oldms::text;
+  std::string bytes("x");
+  append_u32(bytes, 0);
+  append_u32(bytes, 3);
+  append_u16(bytes, 0);
+  append_u32(bytes, (1u << 30) | 200u);
+  append_u16(bytes, 0);
+  const word::PlcPcdMap map(bytes.data() + 1, bytes.size() - 1);
+  EXPECT_EQ(map.n(), 1);
+  EXPECT_EQ(map.aCP(1), 3);
+  EXPECT_EQ(map.aData(0).fc.fc, 200);
+  EXPECT_THROW(static_cast<void>(map.aCP(2)), std::out_of_range);
+  EXPECT_THROW(static_cast<void>(map.aData(1)), std::out_of_range);
+  EXPECT_THROW(static_cast<void>(word::PlcPcdMap(bytes.data(), 3).n()),
+               std::runtime_error);
+}
+
+TEST(OldMs, doc_character_pieces_validate_ranges) {
+  namespace word = internal::oldms::text;
+  word::CharacterIndex index;
+  index.append(0, 3, 100, true);
+  index.append(3, 2, 200, false);
+  EXPECT_EQ((*index.find(2)).data_offset, 100);
+  EXPECT_EQ((*index.find(3)).data_offset, 200);
+  EXPECT_EQ(index.find(5), index.end());
+  const word::CharacterIndex other;
+  EXPECT_NE(index.begin(), other.begin());
+  EXPECT_THROW(index.append(6, 1, 300, true), std::runtime_error);
+  EXPECT_THROW(index.append(4, 2, 300, true), std::runtime_error);
+  EXPECT_THROW(
+      index.append(5, std::numeric_limits<std::size_t>::max(), 0, true),
+      std::runtime_error);
+  EXPECT_THROW(
+      index.append(5, 2, std::numeric_limits<std::uint32_t>::max() - 1, false),
+      std::runtime_error);
+  EXPECT_EQ(index.size(), 2);
 }

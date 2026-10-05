@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <iosfwd>
+#include <limits>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -28,11 +29,18 @@ public:
 
   void append(const std::size_t start_cp, const std::size_t length_cp,
               const std::size_t data_offset, const bool is_compressed) {
-    const std::size_t end_cp = start_cp + length_cp;
-    if (end_cp < last_cp()) {
+    if (start_cp != last_cp() || length_cp == 0 ||
+        length_cp > std::numeric_limits<std::size_t>::max() - start_cp) {
       throw std::runtime_error(
-          "append must be used in order of increasing start_cp");
+          "doc: character pieces must be contiguous and nonempty");
     }
+    constexpr auto max_offset = std::numeric_limits<std::uint32_t>::max();
+    if (data_offset > max_offset ||
+        length_cp > (max_offset - data_offset) / (is_compressed ? 1 : 2)) {
+      throw std::runtime_error(
+          "doc: character piece exceeds stream offset range");
+    }
+    const std::size_t end_cp = start_cp + length_cp;
     m_entries.emplace_back(end_cp, data_offset, is_compressed);
   }
 
@@ -74,7 +82,7 @@ public:
     }
 
     bool operator==(const Iterator &other) const {
-      return m_index == other.m_index;
+      return m_parent == other.m_parent && m_index == other.m_index;
     }
 
   private:
@@ -93,7 +101,7 @@ public:
   [[nodiscard]] Iterator end() const { return {*this, m_entries.size()}; }
   [[nodiscard]] Iterator find(const std::size_t cp) const {
     const auto it =
-        std::ranges::lower_bound(m_entries, cp, {}, &InternalEntry::end_cp);
+        std::ranges::upper_bound(m_entries, cp, {}, &InternalEntry::end_cp);
     if (it == m_entries.end()) {
       return end();
     }

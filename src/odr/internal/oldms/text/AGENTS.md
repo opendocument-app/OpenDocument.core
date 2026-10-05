@@ -43,17 +43,20 @@ a future base `nFib` may still use the common prefix. No versioned object is
 allocated or deleted through a non-virtual base.
 
 **Piece table.** The `PlcPcd` is `n+1` ascending CP boundaries followed by `n`
-`Pcd`s. `PlcPcdMap` is a zero-copy view over the raw bytes. Each `Pcd`'s
-`FcCompressed`: `fCompressed == 0` is UTF-16 at `fc`, `== 1` is one byte per
-CP at `fc/2`, with `0x82` to `0x9F` remapped by `uncompress_char` (§2.9.73)
-and every other byte `b` mapped to `U+00b`.
+`Pcd`s. `PlcPcdMap` views the raw bytes and copies each checked entry to avoid
+unaligned access. The Clx and font table are bounded by their declared lengths.
+Each `Pcd`'s `FcCompressed`: `fCompressed == 0` is UTF-16 at `fc`, `== 1` is
+one byte per CP at `fc/2`, with `0x82` to `0x9F` remapped by `uncompress_char`
+(§2.9.73) and every other byte `b` mapped to `U+00b`.
 
 **Fail early.** Throw on: `nFib` below `nFib97` or an unknown `nFibNew`; a
 `ccpText` with the sign bit set (§2.5.5); a `csw` or `cslw` count too small
 for an array the module reads; an unexpected Clx lead byte (not `0x01` or
-`0x02`); non-ascending CP boundaries; a bad compressed byte; early EOF. Pass
+`0x02`); non-contiguous CP boundaries; piece offsets beyond the 32-bit range;
+missing body coverage; an FFN shorter than its fixed part; early EOF. Pass
 through what is not modelled: text after the main body, `Prc` formatting
-runs, and every control or field character `TextCleaner` drops.
+runs, every control or field character `TextCleaner` drops, and a font name
+with an odd byte, extra bytes or no NUL.
 
 **Direct character formatting, resolved to styled spans.** Each span and each
 paragraph stores a style index in the element registry, resolved through the

@@ -1,7 +1,7 @@
 #include <odr/internal/oldms/text/doc_style.hpp>
 
-#include <odr/internal/oldms/text/doc_io.hpp>
 #include <odr/internal/util/byte_stream_util.hpp>
+#include <odr/internal/util/byte_string.hpp>
 #include <odr/internal/util/byte_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
@@ -173,35 +173,41 @@ std::vector<std::string> text::read_font_names(std::istream &table_stream,
   }
   table_stream.seekg(sttbf_ffn.fc);
 
+  const std::string body =
+      util::byte_stream::read_u8s(table_stream, sttbf_ffn.lcb);
+  util::byte_string::Reader cursor(body);
+
   // SttbfFfn is a non-extended STTB ([MS-DOC] 2.2.4, 2.9.286): u16 cData,
   // u16 cbExtra (0), then per entry a u8 byte count and an FFN.
-  const auto c_data = util::byte_stream::read<std::uint16_t>(table_stream);
+  const auto c_data = cursor.read<std::uint16_t>();
   if (c_data == 0xFFFF) {
     throw std::runtime_error("doc: unexpected extended SttbfFfn");
   }
-  const auto cb_extra = util::byte_stream::read<std::uint16_t>(table_stream);
+  const auto cb_extra = cursor.read<std::uint16_t>();
 
+  // Inside the declared length, a quirk of one font name does not refuse the
+  // document: an odd byte after the name and any cbExtra bytes are skipped,
+  // and a name without its NUL takes all of its units.
   result.reserve(c_data);
-  for (std::uint16_t i = 0; i < c_data; ++i) {
-    const auto cch_data = util::byte_stream::read<std::uint8_t>(table_stream);
+  for (std::size_t i = 0; i < c_data; ++i) {
+    const auto cch_data = cursor.read<std::uint8_t>();
     if (cch_data < sizeof(FfnFixed)) {
       throw std::runtime_error("doc: FFN too short");
     }
-    const auto ffn = util::byte_stream::read<FfnFixed>(table_stream);
-    (void)ffn;
-
-    // xszFfn: null-terminated UTF-16; an alternative name may follow it.
-    const std::size_t name_units = (cch_data - sizeof(FfnFixed)) / 2;
-    std::u16string name = read_string_uncompressed(table_stream, name_units);
-    if ((cch_data - sizeof(FfnFixed)) % 2 != 0) {
-      table_stream.ignore(1);
+    cursor.skip(sizeof(FfnFixed));
+    // xszFfn: NUL-terminated UTF-16; an alternative name may follow it.
+    const std::size_t name_bytes = cch_data - sizeof(FfnFixed);
+    std::u16string name;
+    bool terminated = false;
+    for (std::size_t unit = 0; unit < name_bytes / 2; ++unit) {
+      const auto character = cursor.read<char16_t>();
+      terminated = terminated || character == 0;
+      if (!terminated) {
+        name.push_back(character);
+      }
     }
-    if (const std::size_t nul = name.find(u'\0'); nul != std::u16string::npos) {
-      name.resize(nul);
-    }
+    cursor.skip(name_bytes % 2 + cb_extra);
     result.push_back(util::string::u16string_to_string(name));
-
-    table_stream.ignore(cb_extra);
   }
 
   return result;
