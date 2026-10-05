@@ -79,14 +79,15 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
        workbook_xml.document_element().child("sheets").children("sheet")) {
     const char *id = sheet_node.attribute("r:id").value();
     const AbsPath sheet_path =
-        workbook_path.parent().join(RelPath(workbook_relations.at(id)));
+        resolve_part_path(workbook_path, workbook_relations.at(id));
     const auto [sheet_xml, sheet_relationships] = parse_xml_(sheet_path);
     m_written_parts.push_back(sheet_path);
 
     if (const pugi::xml_node drawing =
             sheet_xml.document_element().child("drawing")) {
-      const AbsPath drawing_path = sheet_path.parent().join(
-          RelPath(sheet_relationships.at(drawing.attribute("r:id").value())));
+      const AbsPath drawing_path = resolve_part_path(
+          sheet_path,
+          sheet_relationships.at(drawing.attribute("r:id").value()));
       parse_xml_(drawing_path);
     }
   }
@@ -720,7 +721,7 @@ public:
       return target == relations.relations->end()
                  ? pugi::xml_node()
                  : m_document->part(
-                       relations.origin.parent().join(RelPath(target->second)));
+                       resolve_part_path(relations.origin, target->second));
     };
     pugi::xml_node drawing;
     pugi::xml_node notes;
@@ -782,7 +783,7 @@ public:
           continue;
         }
         const AbsPath drawing_path =
-            sheet_relations->origin.parent().join(RelPath(target->second));
+            resolve_part_path(sheet_relations->origin, target->second);
         const pugi::xml_node drawing_root = m_document->part(drawing_path);
         const Relations &drawing_relations =
             m_document->relations_of(drawing_path);
@@ -792,7 +793,7 @@ public:
                   chart.node().attribute("r:id").value());
               chart_target != drawing_relations.end()) {
             charts.push_back(m_document->part(
-                drawing_path.parent().join(RelPath(chart_target->second))));
+                resolve_part_path(drawing_path, chart_target->second)));
           }
         }
       }
@@ -1374,7 +1375,7 @@ public:
           relations != nullptr) {
         if (const auto rel = relations->find(ref.value());
             rel != std::end(*relations)) {
-          return origin.parent().join(RelPath(rel->second)).string();
+          return resolve_part_path(origin, rel->second).string();
         }
       }
     }

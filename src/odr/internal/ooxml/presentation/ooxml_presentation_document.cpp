@@ -45,7 +45,8 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
                                            .child("p:sldIdLst")
                                            .children("p:sldId")) {
     const std::string id = slide_id.attribute("r:id").value();
-    AbsPath slide_path = AbsPath("/ppt").join(RelPath(relations.at(id)));
+    AbsPath slide_path =
+        resolve_part_path(AbsPath("/ppt/presentation.xml"), relations.at(id));
     m_slides_xml[id] = xml::parse(*m_files, slide_path);
     m_slide_ids_by_path[slide_path] = id;
     slides.push_back(std::move(slide_path));
@@ -143,16 +144,16 @@ void Document::load_slide_styles_(const std::vector<AbsPath> &slides) {
 
     const std::optional<AbsPath> layout_path =
         parse_relationship_target(*m_files, slide_path, "slideLayout");
-    if (!layout_path.has_value()) {
-      continue;
+    LayoutStyle layout_style;
+    if (layout_path.has_value()) {
+      const auto [layout_it, inserted] =
+          by_layout.try_emplace(layout_path->string());
+      if (inserted) {
+        layout_it->second =
+            load_layout_style(*m_files, *layout_path, m_color_schemes);
+      }
+      layout_style = layout_it->second;
     }
-    const auto [layout_it, inserted] =
-        by_layout.try_emplace(layout_path->string());
-    if (inserted) {
-      layout_it->second =
-          load_layout_style(*m_files, *layout_path, m_color_schemes);
-    }
-    const LayoutStyle &layout_style = layout_it->second;
 
     if (layout_style.color_scheme != nullptr) {
       m_slide_color_schemes[current_id] = layout_style.color_scheme;

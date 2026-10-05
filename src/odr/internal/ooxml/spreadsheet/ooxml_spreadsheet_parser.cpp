@@ -64,8 +64,8 @@ void parse_root_children(ElementRegistry &registry, const ParseContext &context,
                          const pugi::xml_node node) {
   for (pugi::xml_node child_node : node.child("sheets").children("sheet")) {
     const char *id = child_node.attribute("r:id").value();
-    const AbsPath sheet_path = context.document_path().parent().join(
-        RelPath(context.document_relations().at(id)));
+    const AbsPath sheet_path = resolve_part_path(
+        context.document_path(), context.document_relations().at(id));
     const auto &[sheet_xml, sheet_relations] =
         context.documents_and_relations().at(sheet_path);
     const ParseContext sheet_context(sheet_path, sheet_relations,
@@ -213,8 +213,8 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
 
   if (const pugi::xml_node drawing_node = node.child("drawing")) {
     const char *id = drawing_node.attribute("r:id").value();
-    const AbsPath drawing_path = context.document_path().parent().join(
-        RelPath(context.document_relations().at(id)));
+    const AbsPath drawing_path = resolve_part_path(
+        context.document_path(), context.document_relations().at(id));
     const auto &[drawing_xml, drawing_relations] =
         context.documents_and_relations().at(drawing_path);
 

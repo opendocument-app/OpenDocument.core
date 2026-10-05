@@ -528,26 +528,20 @@ AbsPath relationships_path(const AbsPath &path) {
       .join(RelPath(path.basename() + ".rels"));
 }
 
-/// [ECMA-376] 15.2.4: a target is relative to the part that states it, unless
-/// it names a part from the package root. One that is empty, or that climbs out
-/// of the package, names nothing.
-std::optional<AbsPath> resolve_relationship_target(const AbsPath &path,
-                                                   const char *target) {
-  if (target == nullptr || *target == '\0') {
-    return {};
-  }
-  if (*target == '/') {
-    return AbsPath(target);
-  }
-  try {
-    const AbsPath base = is_package_root(path) ? path : path.parent();
-    return base.join(RelPath(target));
-  } catch (const std::invalid_argument &) {
-    return {};
-  }
-}
-
 } // namespace
+
+AbsPath ooxml::resolve_part_path(const AbsPath &source,
+                                 const std::string_view target) {
+  if (target.empty()) {
+    throw std::invalid_argument("empty relationship target");
+  }
+  const Path path(target);
+  if (path.absolute()) {
+    return path.as_absolute();
+  }
+  return (is_package_root(source) ? source : source.parent())
+      .join(path.as_relative());
+}
 
 std::unordered_map<std::string, std::string>
 ooxml::parse_relationships(const abstract::ReadableFilesystem &filesystem,
@@ -580,9 +574,15 @@ std::vector<AbsPath> ooxml::parse_relationship_targets(
         relation_type[relation_type.size() - type.size() - 1] != '/') {
       continue;
     }
-    if (const std::optional<AbsPath> target = resolve_relationship_target(
-            path, e.node().attribute("Target").as_string())) {
-      result.push_back(*target);
+    if (std::string_view(e.node().attribute("TargetMode").value()) ==
+        "External") {
+      continue;
+    }
+    try {
+      result.push_back(
+          resolve_part_path(path, e.node().attribute("Target").value()));
+    } catch (const std::invalid_argument &) {
+      // An invalid optional relationship contributes no part.
     }
   }
   return result;

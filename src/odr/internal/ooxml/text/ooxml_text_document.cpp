@@ -73,7 +73,9 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
     : internal::Document(FileType::office_open_xml_document, DocumentType::text,
                          std::move(files), encryption_state) {
   m_document_xml = xml::parse(*m_files, AbsPath("/word/document.xml"));
-  m_styles_xml = xml::parse(*m_files, AbsPath("/word/styles.xml"));
+  if (m_files->is_file(AbsPath("/word/styles.xml"))) {
+    m_styles_xml = xml::parse(*m_files, AbsPath("/word/styles.xml"));
+  }
 
   // Optional: a document without a single list carries no numbering part.
   if (m_files->exists(AbsPath("/word/numbering.xml"))) {
@@ -734,7 +736,8 @@ public:
       const Relations &relations = m_document->document_relations();
       if (const auto rel = relations.find(ref.value());
           rel != std::end(relations)) {
-        return AbsPath("/word").join(RelPath(rel->second)).string();
+        return resolve_part_path(AbsPath("/word/document.xml"), rel->second)
+            .string();
       }
     }
     // an unresolvable relationship leaves no href rather than a broken one
