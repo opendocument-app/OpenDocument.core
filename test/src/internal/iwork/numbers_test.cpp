@@ -248,6 +248,10 @@ TEST(IworkDecimal128, a_non_canonical_combination_field_reads_as_zero) {
 
   // +infinity: the top bits of the last byte select the combination field
   EXPECT_EQ(decimal("00000000000000000000000000000078"), "0");
+  // The ordinary coefficient form also has a non-canonical range.
+  EXPECT_EQ(decimal("00000000648e8d37c087adbe09ed4130"), "0");
+  EXPECT_EQ(decimal("ffffffff638e8d37c087adbe09ed4130"),
+            "9999999999999999999999999999999999");
   // a coefficient too large to be canonical
   EXPECT_EQ(decimal("ffffffffffffffffffffffffffffff60"), "0");
 }
@@ -261,6 +265,11 @@ TEST(IworkDate, reads_seconds_since_2001) {
   EXPECT_EQ(iwork::date_to_string(0), "2001-01-01T00:00:00Z");
   EXPECT_EQ(iwork::date_to_string(725797800), "2024-01-01T10:30:00Z");
   EXPECT_EQ(iwork::date_to_string(-1), "2000-12-31T23:59:59Z");
+  EXPECT_EQ(iwork::date_to_string(-63145526400), "0000-01-01T00:00:00Z");
+  EXPECT_EQ(iwork::date_to_string(-63177062400), "-000001-01-01T00:00:00Z");
+  EXPECT_EQ(iwork::date_to_string(252423993600), "+010000-01-01T00:00:00Z");
+  EXPECT_EQ(iwork::date_to_string(-1097172086400), "-032767-01-01T00:00:00Z");
+  EXPECT_EQ(iwork::date_to_string(970912655999), "+032767-12-31T23:59:59Z");
 }
 
 // A cell carries its seconds as a raw double, so the value is the file's word:
@@ -271,6 +280,9 @@ TEST(IworkDate, a_value_no_calendar_can_name_is_no_date) {
             "");
   EXPECT_EQ(iwork::date_to_string(std::numeric_limits<double>::infinity()), "");
   EXPECT_EQ(iwork::date_to_string(1e300), "");
+  EXPECT_EQ(iwork::date_to_string(1e12), "");
+  EXPECT_EQ(iwork::date_to_string(-1097172086401), "");
+  EXPECT_EQ(iwork::date_to_string(970912656000), "");
   EXPECT_EQ(iwork::date_to_string(-1e300), "");
 }
 
