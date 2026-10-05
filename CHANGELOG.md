@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- CFF output validates glyph names and offset limits, reuses standard glyph-name
+  identifiers, and preserves fractional width operands until the final advance.
+
 - Type1 conversion honors subroutine returns, fractional widths and vertical
   side bearings, and drops hint commands that Type2 cannot take in order.
 

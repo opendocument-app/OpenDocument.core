@@ -15,18 +15,8 @@ struct BuilderGlyph {
   std::string charstring;
 };
 
-/// Serialize a name-keyed CFF font from Type2 charstrings.
-///
-/// Assembles the minimal CFF a `CffFont` reader (and, after wrapping, a
-/// browser) needs: Header, Name INDEX, Top DICT (FontBBox +
-/// charset/CharStrings/Private offsets), String INDEX (every glyph name, SID
-/// 391+), an empty Global Subr INDEX, the CharStrings INDEX, a format-0 charset
-/// and a Private DICT (`defaultWidthX`/`nominalWidthX`). The caller orders
-/// @p glyphs so glyph 0 is the implicit `.notdef`.
-///
-/// No `FontMatrix` is emitted, so the font is 1000 units/em (the Type1
-/// default); a non-default matrix is a follow-up. Top DICT offsets use the
-/// fixed-width 5-byte integer form so the layout resolves in a single pass.
+/// Serialize Type2 glyphs into a name-keyed CFF at 1000 units/em.
+/// Glyph 0 must be .notdef; names must be unique and fit the CFF SID space.
 [[nodiscard]] std::string build_cff(std::string_view name,
                                     std::span<const BuilderGlyph> glyphs,
                                     double default_width, double nominal_width,
