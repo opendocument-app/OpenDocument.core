@@ -9,6 +9,8 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+#include <clocale>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -318,6 +320,12 @@ std::string build_cid_keyed_cff() {
   return out;
 }
 
+std::string cff_with_top_dict(const std::string &dict,
+                              const std::vector<std::string> &strings = {}) {
+  return std::string("\x01\0\x04\x01", 4) + build_index({"TestFont"}) +
+         build_index({dict}) + build_index(strings) + build_index({});
+}
+
 } // namespace
 
 TEST(CffFontTest, ParsesFactsFromMinimalFont) {
@@ -515,4 +523,100 @@ TEST(CffFontTest, WrapDropsExtraEntriesPastGlyphCount) {
   EXPECT_EQ(wrapped.glyph_for_code_point('A'), 1);
   EXPECT_EQ(wrapped.glyph_for_code_point('B'), 0); // dropped: not mapped
   EXPECT_EQ(wrapped.glyph_for_code_point(pua_code_point(1)), 1);
+}
+
+TEST(CffFontTest, IndexCountAndRangesAreBounded) {
+  EXPECT_EQ(
+      CffFont(cff_with_top_dict({}, std::vector<std::string>(65535))).name(),
+      "TestFont");
+  const std::string valid = cff_with_top_dict({});
+  for (const std::uint8_t offset : {0, 255}) {
+    std::string bytes = valid;
+    bytes[8] = static_cast<char>(offset);
+    EXPECT_THROW(CffFont{bytes}, std::runtime_error);
+  }
+  std::string past_the_data = valid;
+  past_the_data[7] = static_cast<char>(255);
+  EXPECT_THROW(CffFont{past_the_data}, std::runtime_error);
+  const std::string oversized(
+      "\x01\0\x04\x04\0\x01\x04\0\0\0\x01\xff\xff\xff\xff", 15);
+  EXPECT_THROW(CffFont{oversized}, std::runtime_error);
+}
+
+TEST(CffFontTest, DictOperandsStayWithinTheirDeclaredRange) {
+  const std::array<std::string, 5> invalid{
+      std::string("\x1d", 1), std::string("\x0c", 1),
+      std::string("\x1e\x1a\x5f\x11", 4), // fractional CharStrings offset
+      std::string("\x8a\x11", 2),         // negative CharStrings offset
+      std::string(49, static_cast<char>(139)) + static_cast<char>(5)};
+  for (const std::string &dict : invalid) {
+    EXPECT_THROW(CffFont(cff_with_top_dict(dict)), std::runtime_error);
+  }
+
+  const std::vector<BuilderGlyph> glyphs{{".notdef", "\x1c"}, {"A", "\x0e"}};
+  const CffFont font(
+      odr::internal::font::cff::build_cff("Short", glyphs, 0, 0, {}));
+  EXPECT_THROW((void)font.advance_width(0), std::runtime_error);
+}
+
+TEST(CffFontTest, RealOperandsIgnoreNumericLocale) {
+  struct LocaleGuard final {
+    std::string previous{std::setlocale(LC_NUMERIC, nullptr)};
+    ~LocaleGuard() { std::setlocale(LC_NUMERIC, previous.c_str()); }
+  } guard;
+  if (std::setlocale(LC_NUMERIC, "de_DE.UTF-8") == nullptr &&
+      std::setlocale(LC_NUMERIC, "de_DE.utf8") == nullptr) {
+    GTEST_SKIP() << "German locale unavailable";
+  }
+  const std::string scale("\x1e\x0a\x00\x05\xff", 5); // 0.0005
+  const std::string zero(1, static_cast<char>(139));
+  const CffFont font(cff_with_top_dict(scale + zero + zero + scale + zero +
+                                       zero + std::string("\x0c\x07", 2)));
+  EXPECT_EQ(font.units_per_em(), 2000);
+}
+
+TEST(CffFontTest, QuirkyDictOperandsDoNotRefuseTheFont) {
+  const std::string zero(1, static_cast<char>(139));
+  const auto units_per_em = [&](const std::string &scale) {
+    return CffFont(cff_with_top_dict(scale + zero + zero + scale + zero + zero +
+                                     std::string("\x0c\x07", 2)))
+        .units_per_em();
+  };
+  // A reserved nibble is skipped: 0.0005 gives 2000 units per em.
+  EXPECT_EQ(units_per_em(std::string("\x1e\x0a\x00\x0d\x5f", 5)), 2000);
+  // An overflowing real reads as zero, so the default stays.
+  EXPECT_EQ(units_per_em(std::string("\x1e\x1b\x99\x9f", 4)), 1000);
+  EXPECT_EQ(CffFont(cff_with_top_dict(zero)).name(), "TestFont");
+}
+
+TEST(CffFontTest, FontDictionarySelectionToleratesQuirkyRanges) {
+  const auto font_bytes = [](const std::string &selection) {
+    const std::string glyphs = build_index({"\x0e", "\x0e", "\x0e"});
+    const std::string dictionaries = build_index({""});
+    const auto dict = [&](const std::int32_t base) {
+      std::string out;
+      dict_int(out, base);
+      out += static_cast<char>(17);
+      dict_int(out, base + static_cast<std::int32_t>(glyphs.size()));
+      out += std::string("\x0c\x24", 2);
+      dict_int(out, base + static_cast<std::int32_t>(glyphs.size() +
+                                                     dictionaries.size()));
+      out += std::string("\x0c\x25", 2);
+      return out;
+    };
+    const auto base =
+        static_cast<std::int32_t>(cff_with_top_dict(dict(0)).size());
+    return cff_with_top_dict(dict(base)) + glyphs + dictionaries + selection;
+  };
+  const std::string ranges("\x03\0\x01\0\0\0\0\x03", 8);
+  EXPECT_EQ(CffFont(font_bytes(ranges)).glyph_count(), 3);
+  EXPECT_EQ(CffFont(font_bytes(std::string(4, '\0'))).advance_width(2), 0);
+  // A range past the glyphs, a missing sentinel or an unknown FD is tolerated.
+  for (const std::size_t index : {2, 4, 5, 7}) {
+    std::string quirky = ranges;
+    quirky[index] = index == 2 ? 0 : 1;
+    EXPECT_EQ(CffFont(font_bytes(quirky)).advance_width(2), 0);
+  }
+  EXPECT_EQ(CffFont(font_bytes(std::string("\0\0\x01\0", 4))).advance_width(1),
+            0);
 }
