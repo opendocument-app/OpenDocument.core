@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Spreadsheet formulas keep quoted sheet spans when rewritten, read bare
+  whole-row ranges, and report cross-sheet ranges as unresolved. Extreme
+  reference shifts give `#REF!` without signed overflow.
+
 - Number formats preserve fraction literals and percent signs, avoid integer
   overflow for large fractions, and fall back to General when a scientific
   mantissa or fixed fraction cannot be represented.

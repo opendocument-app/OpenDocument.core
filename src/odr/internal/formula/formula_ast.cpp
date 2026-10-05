@@ -17,11 +17,11 @@ constexpr std::int64_t index_limit = std::numeric_limits<std::uint32_t>::max();
   if (!coordinate.has_value() || coordinate->absolute) {
     return true;
   }
-  const std::int64_t moved = static_cast<std::int64_t>(coordinate->index) + by;
-  if (moved < 0 || moved > index_limit) {
+  const auto index = static_cast<std::int64_t>(coordinate->index);
+  if (by < -index || by > index_limit - index) {
     return false;
   }
-  coordinate->index = static_cast<std::uint32_t>(moved);
+  coordinate->index = static_cast<std::uint32_t>(index + by);
   return true;
 }
 

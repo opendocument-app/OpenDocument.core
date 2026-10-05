@@ -300,7 +300,9 @@ private:
       result += "[" + *document + "]";
     }
     if (sheet.has_value()) {
-      result += (needs_quotes(*sheet) ? quote(*sheet, '\'') : *sheet) + "!";
+      const bool span = sheet->find(':') != std::string::npos;
+      result +=
+          (!span && needs_quotes(*sheet) ? quote(*sheet, '\'') : *sheet) + "!";
     } else if (document.has_value()) {
       // `[1]!Total` names the other workbook itself, with no sheet between
       result += "!";

@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <string>
 
@@ -93,6 +94,11 @@ TEST(FormulaWriter, an_ooxml_expression_is_written_as_it_was_read) {
   EXPECT_EQ(ooxml("#DIV/0!"), "#DIV/0!");
   EXPECT_EQ(ooxml("TRUE"), "TRUE");
   EXPECT_EQ(ooxml("A:A"), "A:A");
+  EXPECT_EQ(ooxml("SUM(1:3)"), "SUM(1:3)");
+  EXPECT_EQ(ooxml("SUM(Sheet1:Sheet3!A1)"), "SUM(Sheet1:Sheet3!A1)");
+  EXPECT_EQ(ooxml("SUM('A B':'C D'!A1)"), "SUM('A B':'C D'!A1)");
+  EXPECT_EQ(ooxml("SUM('A B:C D'!A1)"), "SUM('A B:C D'!A1)");
+  EXPECT_EQ(ooxml("SUM('A''B':'C D'!A1)"), "SUM('A''B':'C D'!A1)");
   EXPECT_EQ(ooxml("SUM((A1:A2,B1:B2))"), "SUM((A1:A2,B1:B2))");
   EXPECT_EQ(ooxml("[1]!Total"), "[1]!Total");
 }
@@ -129,6 +135,8 @@ TEST(FormulaWriter, a_relative_reference_moves_and_an_absolute_one_does_not) {
 TEST(FormulaWriter, a_reference_moved_off_the_grid_is_lost) {
   EXPECT_EQ(moved("A1+B2", 0, -1), "#REF!+B1");
   EXPECT_EQ(moved("SUM(A1:B2)", -1, 0), "SUM(#REF!)");
+  EXPECT_EQ(moved("B2", std::numeric_limits<std::int64_t>::max(), 0), "#REF!");
+  EXPECT_EQ(moved("B2", 0, std::numeric_limits<std::int64_t>::min()), "#REF!");
 }
 
 TEST(FormulaWriter, what_a_shift_does_not_name_is_left_alone) {
@@ -151,6 +159,7 @@ TEST(FormulaWriter, an_inserted_row_grows_a_range_it_falls_inside) {
 
 TEST(FormulaWriter, a_row_edit_moves_whole_rows_and_leaves_whole_columns) {
   EXPECT_EQ(inserted("SUM($3:$5)", 3, 1), "SUM($3:$6)");
+  EXPECT_EQ(inserted("SUM(3:5)", 3, 1), "SUM(3:6)");
   EXPECT_EQ(inserted("SUM(A:B)", 0, 1), "unmoved SUM(A:B)");
 }
 

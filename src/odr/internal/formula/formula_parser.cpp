@@ -295,6 +295,12 @@ private:
       return error_literal();
     }
     if (str::is_ascii_digit(c) || (c == '.' && str::is_ascii_digit(peek(1)))) {
+      if (m_syntax == Syntax::ooxml) {
+        const std::size_t digits = peek_while(str::is_ascii_digit).size();
+        if (digits != 0 && peek(digits) == ':') {
+          return ooxml_primary();
+        }
+      }
       return number_literal();
     }
     if (m_syntax == Syntax::opendocument) {
@@ -612,34 +618,28 @@ private:
   [[nodiscard]] std::optional<std::string> ooxml_sheet() {
     const std::string_view start = rest();
     const std::optional<std::string> first = quoted('\'');
-    std::string spelled;
-    if (first.has_value()) {
-      spelled = "'" + *first + "'";
-    } else if (const std::string_view name = take_name(); !name.empty()) {
-      spelled = std::string(name);
-    } else {
+    if (!first.has_value() && take_name().empty()) {
       seek(start);
       return {};
     }
     if (peek() == '!') {
+      const std::string spelling(start.substr(0, start.size() - rest().size()));
       advance(1);
-      return first.has_value() ? *first : spelled;
+      return first.has_value() && first->find(':') == std::string::npos
+                 ? *first
+                 : spelling;
     }
     if (peek() == ':') {
       advance(1);
-      std::string span = spelled + ":";
-      if (const std::optional<std::string> second = quoted('\'');
-          second.has_value()) {
-        span += "'" + *second + "'";
-      } else if (const std::string_view name = take_name(); !name.empty()) {
-        span += std::string(name);
-      } else {
+      if (!quoted('\'').has_value() && take_name().empty()) {
         seek(start);
         return {};
       }
       if (peek() == '!') {
+        const std::string spelling(
+            start.substr(0, start.size() - rest().size()));
         advance(1);
-        return span;
+        return spelling;
       }
     }
     seek(start);
