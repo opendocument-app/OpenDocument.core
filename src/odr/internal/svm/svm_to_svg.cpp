@@ -1285,7 +1285,7 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
     ODR_DEBUG(*context.logger,
               "unhandled action " << action_name(action_header) << ", skipping "
                                   << action_header.vl.length << " bytes");
-    in.ignore(static_cast<std::streamsize>(action_header.vl.length));
+    skip_bytes(in, action_header.vl.length);
     break;
   }
 }
@@ -1330,7 +1330,7 @@ void svm::translate_to_svg(const SvmFile &file, std::ostream &out,
     if (left > 0) {
       ODR_DEBUG(logger, "action " << action_name(action_header) << " skipping "
                                   << left << " trailing bytes");
-      in.ignore(static_cast<std::streamsize>(left));
+      skip_bytes(in, static_cast<std::uint64_t>(left));
     } else if (left < 0) {
       throw MalformedSvmFile();
     }

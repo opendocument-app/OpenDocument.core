@@ -1221,6 +1221,13 @@ TEST(SvmFile, primitive_reads_preserve_values_and_normalize_booleans) {
   EXPECT_TRUE(flag);
 }
 
+TEST(SvmFile, skip_bytes_refuses_a_short_stream) {
+  std::istringstream input("abc");
+  svm::skip_bytes(input, 2);
+  EXPECT_EQ(input.get(), 'c');
+  EXPECT_THROW(svm::skip_bytes(input, 1), odr::MalformedSvmFile);
+}
+
 TEST(SvmFile, bitmap_headers_and_dimensions_are_bounded) {
   const auto bitmap = [](const std::uint32_t header_size,
                          const std::int32_t width, const std::int32_t height) {

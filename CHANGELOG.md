@@ -16,8 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- StarView bitmap parsing validates header sizes, dimensions and cumulative
-  reads before accessing or allocating pixels; boolean fields are decoded safely.
+- StarView bitmaps check header sizes, dimensions and their byte budget
+  before they read or allocate pixels, and skipped bytes must exist.
 
 - PNG output splits compressed image data into bounded chunks, avoiding
   truncated or invalid chunk lengths for large images.

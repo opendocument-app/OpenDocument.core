@@ -263,6 +263,14 @@ std::u16string read_u16string(std::istream &in, const std::uint32_t length) {
 
 } // namespace
 
+void svm::skip_bytes(std::istream &in, const std::uint64_t count) {
+  try {
+    util::byte_stream::skip(in, count);
+  } catch (const std::runtime_error &) {
+    throw MalformedSvmFile();
+  }
+}
+
 std::string svm::read_ascii_string(std::istream &in,
                                    const std::uint32_t length) {
   return read_bytes(in, length);
@@ -517,8 +525,7 @@ svm::Header svm::read_header(std::istream &in) {
   if (const std::int64_t left =
           result.vl.length - (static_cast<std::int64_t>(in.tellg()) - start);
       left > 0) {
-    // TODO log header skipping bytes
-    in.ignore(static_cast<std::streamsize>(left));
+    skip_bytes(in, static_cast<std::uint64_t>(left));
   }
 
   return result;

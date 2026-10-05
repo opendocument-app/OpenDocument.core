@@ -454,6 +454,10 @@ struct TextLineAction final {
 /// The action type's name as `metaact.hxx` spells it, or `"UNKNOWN"`.
 [[nodiscard]] std::string_view action_type_name(std::uint16_t type);
 
+/// Skips exactly @p count bytes; throws `MalformedSvmFile` where the stream
+/// ends first.
+void skip_bytes(std::istream &in, std::uint64_t count);
+
 /// Reads one field, leaving the destination unchanged on a short read.
 template <typename T> void read_primitive(std::istream &in, T &out) {
   if constexpr (std::is_same_v<T, bool>) {
