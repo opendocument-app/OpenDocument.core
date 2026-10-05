@@ -40,7 +40,9 @@ ECMA376Standard::ECMA376Standard(const std::string_view encryption_info) {
 
   reader.read(m_encryption_verifier);
 
-  m_encrypted_verifier_hash = reader.rest();
+  // [MS-OFFCRYPTO] 2.3.3: an AES verifier hash is 32 bytes; bytes after it
+  // carry nothing, so they do not refuse the file.
+  m_encrypted_verifier_hash = reader.rest().substr(0, 32);
   validate_();
 }
 

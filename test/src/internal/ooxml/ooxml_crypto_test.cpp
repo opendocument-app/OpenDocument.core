@@ -81,6 +81,9 @@ TEST(OoxmlCrypto, validates_standard_encryption_fields_and_package_size) {
   append(verifier);
   info += hash;
   EXPECT_NO_THROW((void)crypto::Util(info));
+  EXPECT_NO_THROW((void)crypto::Util(info + "trailing"));
+  EXPECT_THROW((void)crypto::Util(info.substr(0, info.size() - 1)),
+               std::runtime_error);
   std::fill_n(info.begin() + 8, 4, '\xff');
   EXPECT_THROW((void)crypto::Util(info), std::runtime_error);
   const crypto::ECMA376Standard algorithm(header, verifier, hash);
