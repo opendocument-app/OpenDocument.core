@@ -105,6 +105,9 @@ enum class WidthFit {
 width_fit(const HtmlConfig &config, bool fit_width_by_default,
           std::optional<HtmlViewportMode> mode_override = {});
 
+/// A finite CSS length, or zero for an unsupported unit or magnitude.
+[[nodiscard]] std::string css_length(const Measure &measure);
+
 /// @p measure in css pixels, or nothing without an absolute unit.
 [[nodiscard]] std::optional<double>
 css_pixels(const std::optional<Measure> &measure);

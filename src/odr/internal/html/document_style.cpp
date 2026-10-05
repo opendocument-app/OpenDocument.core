@@ -118,11 +118,11 @@ std::string html::translate_outer_page_style(const PageLayout &page_layout) {
   std::string result;
   if (const std::optional<Measure> width = page_layout.width;
       width.has_value()) {
-    result.append("width:").append(width->to_string()).append(";");
+    result.append("width:").append(css_length(*width)).append(";");
   }
   if (const std::optional<Measure> height = page_layout.height;
       height.has_value()) {
-    result.append("height:").append(height->to_string()).append(";");
+    result.append("height:").append(css_length(*height)).append(";");
   }
   if (const std::optional<Color> background_color =
           page_layout.background_color;
@@ -142,7 +142,7 @@ html::translate_outer_flowing_page_style(const PageLayout &page_layout) {
   std::string result = translate_outer_page_style(flowing_page_layout);
   if (const std::optional<Measure> height = page_layout.height;
       height.has_value()) {
-    result.append("min-height:").append(height->to_string()).append(";");
+    result.append("min-height:").append(css_length(*height)).append(";");
   }
   return result;
 }
@@ -153,23 +153,23 @@ std::string html::translate_inner_page_style(const PageLayout &page_layout) {
           page_layout.margin.right;
       margin_right.has_value()) {
     result.append("margin-right:")
-        .append(margin_right->to_string())
+        .append(css_length(*margin_right))
         .append(";");
   }
   if (const std::optional<Quantity<double>> margin_top = page_layout.margin.top;
       margin_top.has_value()) {
-    result.append("margin-top:").append(margin_top->to_string()).append(";");
+    result.append("margin-top:").append(css_length(*margin_top)).append(";");
   }
   if (const std::optional<Quantity<double>> margin_left =
           page_layout.margin.left;
       margin_left.has_value()) {
-    result.append("margin-left:").append(margin_left->to_string()).append(";");
+    result.append("margin-left:").append(css_length(*margin_left)).append(";");
   }
   if (const std::optional<Quantity<double>> margin_bottom =
           page_layout.margin.bottom;
       margin_bottom.has_value()) {
     result.append("margin-bottom:")
-        .append(margin_bottom->to_string())
+        .append(css_length(*margin_bottom))
         .append(";");
   }
   return result;
@@ -185,7 +185,7 @@ std::string html::translate_text_style(const TextStyle &text_style) {
   }
   if (const std::optional<Measure> font_size = text_style.font_size;
       font_size.has_value()) {
-    result.append("font-size:").append(font_size->to_string()).append(";");
+    result.append("font-size:").append(css_length(*font_size)).append(";");
   }
   if (const std::optional<FontWeight> font_weight = text_style.font_weight;
       font_weight.has_value()) {
@@ -253,7 +253,7 @@ std::string html::translate_block_font_style(const TextStyle &text_style) {
   }
   if (const std::optional<Measure> font_size = text_style.font_size;
       font_size.has_value()) {
-    result.append("font-size:").append(font_size->to_string()).append(";");
+    result.append("font-size:").append(css_length(*font_size)).append(";");
   }
   return result;
 }
@@ -278,24 +278,24 @@ html::translate_paragraph_style(const ParagraphStyle &paragraph_style,
           paragraph_style.margin.right;
       margin_right.has_value()) {
     result.append("margin-right:")
-        .append(margin_right->to_string())
+        .append(css_length(*margin_right))
         .append(";");
   }
   if (const std::optional<Quantity<double>> margin_top =
           paragraph_style.margin.top;
       margin_top.has_value()) {
-    result.append("margin-top:").append(margin_top->to_string()).append(";");
+    result.append("margin-top:").append(css_length(*margin_top)).append(";");
   }
   if (const std::optional<Quantity<double>> margin_left =
           paragraph_style.margin.left;
       margin_left.has_value()) {
-    result.append("margin-left:").append(margin_left->to_string()).append(";");
+    result.append("margin-left:").append(css_length(*margin_left)).append(";");
   }
   if (const std::optional<Quantity<double>> margin_bottom =
           paragraph_style.margin.bottom;
       margin_bottom.has_value()) {
     result.append("margin-bottom:")
-        .append(margin_bottom->to_string())
+        .append(css_length(*margin_bottom))
         .append(";");
   }
   if (const std::optional<Measure> line_height = paragraph_style.line_height;
@@ -308,13 +308,13 @@ html::translate_paragraph_style(const ParagraphStyle &paragraph_style,
       result.append("line-height:").append(ratio.to_string()).append(";");
     } else {
       result.append("line-height:")
-          .append(line_height->to_string())
+          .append(css_length(*line_height))
           .append(";");
     }
   }
   if (const std::optional<Measure> text_indent = paragraph_style.text_indent;
       text_indent.has_value()) {
-    result.append("text-indent:").append(text_indent->to_string()).append(";");
+    result.append("text-indent:").append(css_length(*text_indent)).append(";");
   }
   // Paged media only; the sheet it starts is `TextHtmlFragment`'s business.
   if (const std::optional<BreakType> break_before =
@@ -337,7 +337,7 @@ std::string html::translate_table_style(const TableStyle &table_style) {
   std::string result;
   if (const std::optional<Measure> width = table_style.width;
       width.has_value()) {
-    result.append("width:").append(width->to_string()).append(";");
+    result.append("width:").append(css_length(*width)).append(";");
   }
   return result;
 }
@@ -347,8 +347,8 @@ html::translate_table_column_style(const TableColumnStyle &table_column_style) {
   std::string result;
   if (const std::optional<Measure> width = table_column_style.width;
       width.has_value()) {
-    result.append("width:").append(width->to_string()).append(";");
-    result.append("min-width:").append(width->to_string()).append(";");
+    result.append("width:").append(css_length(*width)).append(";");
+    result.append("min-width:").append(css_length(*width)).append(";");
   }
   return result;
 }
@@ -360,7 +360,7 @@ html::translate_table_row_style(const TableRowStyle &table_row_style) {
   // cells
   if (const std::optional<Measure> height = table_row_style.height;
       height.has_value()) {
-    result.append("height:").append(height->to_string()).append(";");
+    result.append("height:").append(css_length(*height)).append(";");
   }
   return result;
 }
@@ -402,26 +402,26 @@ html::translate_table_cell_style(const TableCellStyle &table_cell_style,
           table_cell_style.padding.right;
       padding_right.has_value()) {
     result.append("padding-right:")
-        .append(padding_right->to_string())
+        .append(css_length(*padding_right))
         .append(";");
   }
   if (const std::optional<Quantity<double>> padding_top =
           table_cell_style.padding.top;
       padding_top.has_value()) {
-    result.append("padding-top:").append(padding_top->to_string()).append(";");
+    result.append("padding-top:").append(css_length(*padding_top)).append(";");
   }
   if (const std::optional<Quantity<double>> padding_left =
           table_cell_style.padding.left;
       padding_left.has_value()) {
     result.append("padding-left:")
-        .append(padding_left->to_string())
+        .append(css_length(*padding_left))
         .append(";");
   }
   if (const std::optional<Quantity<double>> padding_bottom =
           table_cell_style.padding.bottom;
       padding_bottom.has_value()) {
     result.append("padding-bottom:")
-        .append(padding_bottom->to_string())
+        .append(css_length(*padding_bottom))
         .append(";");
   }
   if (const std::optional<std::string> border_right =
@@ -465,7 +465,7 @@ std::string html::translate_drawing_style(const GraphicStyle &graphic_style) {
   if (const std::optional<Measure> stroke_width = graphic_style.stroke_width;
       stroke_width.has_value()) {
     result.append("stroke-width:")
-        .append(stroke_width->to_string())
+        .append(css_length(*stroke_width))
         .append(";");
   }
   if (const std::optional<Color> stroke_color = graphic_style.stroke_color;
@@ -501,9 +501,9 @@ std::string html::translate_drawing_transform(
   std::string result;
   if (transform->e.magnitude() != 0 || transform->f.magnitude() != 0) {
     result.append("translate(")
-        .append(transform->e.to_string())
+        .append(css_length(transform->e))
         .append(",")
-        .append(transform->f.to_string())
+        .append(css_length(transform->f))
         .append(")");
   }
   if (transform->a != 1 || transform->b != 0 || transform->c != 0 ||
@@ -558,18 +558,18 @@ std::string html::translate_frame_properties(const Frame &frame) {
     result += "shape-outside:content-box;";
     const std::optional<Measure> x = frame.x();
     if (x.has_value()) {
-      result += "margin-left:" + x->to_string() + ";";
+      result += "margin-left:" + css_length(*x) + ";";
     }
     if (const std::optional<Measure> y = frame.y(); y.has_value()) {
-      result += "margin-top:" + y->to_string() + ";";
+      result += "margin-top:" + css_length(*y) + ";";
     }
     // holds the frame at its offset; with no offset it would pin it left
     if (const std::optional<Measure> width = frame.width();
         width.has_value() && x.has_value()) {
       result += "margin-right:calc(100% - ";
-      result += x->to_string();
+      result += css_length(*x);
       result += " - ";
-      result += width->to_string();
+      result += css_length(*width);
       result += ");";
     }
   } else if (in_text && text_wrap == TextWrap::after) {
@@ -578,16 +578,16 @@ std::string html::translate_frame_properties(const Frame &frame) {
     result += "float:left;clear:both;";
     result += "shape-outside:content-box;";
     if (const std::optional<Measure> x = frame.x(); x.has_value()) {
-      result += "margin-left:" + x->to_string() + ";";
+      result += "margin-left:" + css_length(*x) + ";";
     }
     if (const std::optional<Measure> y = frame.y(); y.has_value()) {
-      result += "margin-top:" + y->to_string() + ";";
+      result += "margin-top:" + css_length(*y) + ";";
     }
   } else if (in_text && text_wrap == TextWrap::none) {
     result += "position:relative;";
     result += "display:block;";
     if (const std::optional<Measure> x = frame.x(); x.has_value()) {
-      result += "margin-left:" + x->to_string() + ";";
+      result += "margin-left:" + css_length(*x) + ";";
     }
     if (horizontal_position == HorizontalAlign::center) {
       result += "margin-left:auto;margin-right:auto;";
@@ -595,13 +595,13 @@ std::string html::translate_frame_properties(const Frame &frame) {
       result += "margin-left:auto;";
     }
     if (const std::optional<Measure> y = frame.y(); y.has_value()) {
-      result += "margin-top:" + y->to_string() + ";";
+      result += "margin-top:" + css_length(*y) + ";";
     }
   } else {
     result += "display:block;";
     result += "position:absolute;";
     if (const std::optional<Measure> x = frame.x(); x.has_value()) {
-      result += "left:" + x->to_string() + ";";
+      result += "left:" + css_length(*x) + ";";
     }
     if (horizontal_position == HorizontalAlign::center) {
       result += "left:0;right:0;margin-left:auto;margin-right:auto;";
@@ -609,15 +609,15 @@ std::string html::translate_frame_properties(const Frame &frame) {
       result += "right:0;";
     }
     if (const std::optional<Measure> y = frame.y(); y.has_value()) {
-      result += "top:" + y->to_string() + ";";
+      result += "top:" + css_length(*y) + ";";
     }
   }
   if (const std::optional<Measure> width = frame.width(); width.has_value()) {
-    result += "width:" + width->to_string() + ";";
+    result += "width:" + css_length(*width) + ";";
   }
   if (const std::optional<Measure> height = frame.height();
       height.has_value()) {
-    result += "height:" + height->to_string() + ";";
+    result += "height:" + css_length(*height) + ";";
   }
   if (const std::optional<std::int32_t> z_index = frame.z_index();
       z_index.has_value()) {
@@ -631,23 +631,23 @@ std::string html::translate_shape_properties(const Frame &frame) {
   std::string result;
   result += "position:absolute;";
   if (const std::optional<Measure> x = frame.x(); x.has_value()) {
-    result += "left:" + x->to_string() + ";";
+    result += "left:" + css_length(*x) + ";";
   } else {
     result += "left:0;";
   }
   if (const std::optional<Measure> y = frame.y(); y.has_value()) {
-    result += "top:" + y->to_string() + ";";
+    result += "top:" + css_length(*y) + ";";
   } else {
     result += "top:0;";
   }
   if (const std::optional<Measure> width = frame.width(); width.has_value()) {
-    result += "width:" + width->to_string() + ";";
+    result += "width:" + css_length(*width) + ";";
   } else {
     result += "width:0;";
   }
   if (const std::optional<Measure> height = frame.height();
       height.has_value()) {
-    result += "height:" + height->to_string() + ";";
+    result += "height:" + css_length(*height) + ";";
   } else {
     result += "height:0;";
   }

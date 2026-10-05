@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- HTML and SVG rendering validates document length units before writing styles
+  or coordinates, preventing malformed units from injecting output markup.
+
 - Explicit transparent backgrounds and `none` borders override inherited ODF
   styles, including after clearing a cell fill and reopening the document.
 
