@@ -62,7 +62,10 @@ record type (`read_header`); a record that overruns its container; a missing
 mandatory child (`DrawingContainer`, `OfficeArtDgContainer`,
 `OfficeArtSpgrContainer`, via `require_child`); an `OfficeArtClientAnchor`
 whose `recLen` is neither 8 nor 16; a looping or empty `UserEditAtom` chain;
-an unresolved `docPersistIdRef`; a slide `persistIdRef` not in the directory.
+an unresolved `docPersistIdRef`; a slide `persistIdRef` not in the directory;
+truncated skipped bytes, properties or persist-directory entries; an embedded
+BLIP outside its store entry; formatting counts that do not cover the text.
+Text-container recursion stops at 1024 levels.
 Pass through: an absent slide list, a shape with no anchor (unpositioned
 frame), nested groups and non-`Sp` records in a group, any unrecognised
 child.

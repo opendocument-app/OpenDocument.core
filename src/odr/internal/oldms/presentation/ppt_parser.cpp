@@ -8,7 +8,6 @@
 #include <odr/internal/oldms/presentation/ppt_structs.hpp>
 #include <odr/internal/oldms/presentation/ppt_style.hpp>
 #include <odr/internal/util/byte_stream_util.hpp>
-#include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
@@ -69,7 +68,7 @@ public:
 
   void skip_body() {
     if (m_body > 0) {
-      m_in->ignore(m_body);
+      util::byte_stream::skip(*m_in, m_body);
       m_remaining -= static_cast<std::int64_t>(m_body);
       m_body = 0;
     }
@@ -205,7 +204,7 @@ StyledText style_pending(const PendingText &pending,
     if (at >= count) {
       break; // the runs also cover the implicit final paragraph mark
     }
-    const std::size_t end = std::min<std::size_t>(count, at + run.count);
+    const std::size_t end = at + std::min<std::size_t>(count - at, run.count);
     if (std::string text = pending.decode(at, end); !text.empty()) {
       result.push_back({std::move(text), resolve_style(run, context)});
     }
@@ -322,7 +321,7 @@ void read_pending_text(std::istream &in, const RecordHeader &header,
 std::vector<TextCFRun> read_style_atom(std::istream &in,
                                        const RecordHeader &header,
                                        const PendingText &pending) {
-  const std::string body = util::stream::read(in, header.recLen);
+  const std::string body = util::byte_stream::read_u8s(in, header.recLen);
   return parse_style_text_prop_atom(body, pending.char_count() + 1);
 }
 
@@ -334,7 +333,10 @@ std::vector<TextCFRun> read_style_atom(std::istream &in,
 void gather_text(std::istream &in, const RecordHeader &container,
                  StyledText &slide_text,
                  const std::vector<StyledText> &outline_texts,
-                 StyleContext &context) {
+                 StyleContext &context, const std::size_t depth = 0) {
+  if (depth >= 1024) {
+    throw std::runtime_error("ppt: text container nesting limit exceeded");
+  }
   PendingText pending;
   const auto flush = [&](const std::vector<TextCFRun> &runs) {
     if (pending.has_value()) {
@@ -367,7 +369,7 @@ void gather_text(std::istream &in, const RecordHeader &container,
       }
     } else if (child->is_container()) {
       flush({});
-      gather_text(in, *child, slide_text, outline_texts, context);
+      gather_text(in, *child, slide_text, outline_texts, context, depth + 1);
       children.consume(child->recLen);
     }
     // Other atoms: left unconsumed; the cursor skips their bodies.
@@ -400,9 +402,10 @@ Shape read_shape(std::istream &in, const RecordHeader &header,
       // rh.recInstance is the property count; complex data (skipped by the
       // cursor) follows the array ([MS-ODRAW] 2.2.9).
       const std::uint16_t count = child->recInstance;
-      for (std::uint16_t i = 0;
-           i < count && (i + 1) * sizeof(OfficeArtFopte) <= child->recLen;
-           ++i) {
+      if (count > child->recLen / sizeof(OfficeArtFopte)) {
+        throw std::runtime_error("ppt: truncated property array");
+      }
+      for (std::size_t i = 0; i < count; ++i) {
         const auto property = util::byte_stream::read<OfficeArtFopte>(in);
         children.consume(sizeof(OfficeArtFopte));
         if (property.fComplex != 0) {
@@ -479,12 +482,18 @@ void read_persist_directory(std::istream &in, const RecordHeader &header,
   constexpr std::uint32_t field_size = sizeof(std::uint32_t);
 
   std::uint32_t remaining = header.recLen;
-  while (remaining >= field_size) {
+  while (remaining > 0) {
+    if (remaining < field_size) {
+      throw std::runtime_error("ppt: truncated persist directory entry");
+    }
     const std::uint32_t entry = read_u32(in); // persistId:20 | cPersist:12
     remaining -= field_size;
     const std::uint32_t persist_id = entry & 0x000FFFFF;
     const std::uint32_t count = entry >> 20;
-    for (std::uint32_t i = 0; i < count && remaining >= field_size; ++i) {
+    if (count == 0 || count > remaining / field_size || persist_id > 0xFFFFE) {
+      throw std::runtime_error("ppt: invalid persist directory entry");
+    }
+    for (std::uint32_t i = 0; i < count; ++i) {
       const std::uint32_t persist_offset = read_u32(in);
       remaining -= field_size;
       directory.emplace(persist_id + i, persist_offset);
@@ -569,23 +578,19 @@ std::uint32_t blip_prefix_size(const RecordHeader &header) {
   return uid_size + (two_uids ? uid_size : 0) + 1;
 }
 
-/// Reads an OfficeArt BLIP record ([MS-ODRAW] 2.2.23) at the stream position
-/// and returns its image file bytes; empty for BLIP types not modelled
-/// (WMF/EMF/PICT/DIB/TIFF).
-std::string read_blip_record(std::istream &in) {
-  const RecordHeader header = read_record_header(in);
-
+/// Reads a BLIP body ([MS-ODRAW] 2.2.23); unsupported image types return empty.
+std::string read_blip_body(std::istream &in, const RecordHeader &header) {
   if (header.recType != RT_OfficeArtBlipJPEG &&
       header.recType != RT_OfficeArtBlipPNG) {
-    in.ignore(header.recLen);
+    util::byte_stream::skip(in, header.recLen);
     return {};
   }
   const std::uint32_t prefix = blip_prefix_size(header);
   if (header.recLen < prefix) {
     throw std::runtime_error("ppt: truncated BLIP record");
   }
-  in.ignore(prefix);
-  return util::stream::read(in, header.recLen - prefix);
+  util::byte_stream::skip(in, prefix);
+  return util::byte_stream::read_u8s(in, header.recLen - prefix);
 }
 
 /// One slot of the BLIP store: the offset of the BLIP in the "Pictures"
@@ -622,32 +627,31 @@ std::vector<BlipSlot> read_blip_store(std::istream &in,
   while (const std::optional<RecordHeader> child = entries.next()) {
     BlipSlot &slot = slots.emplace_back();
     if (child->recType == RT_OfficeArtFBSE) {
-      const auto fbse = util::byte_stream::read<OfficeArtFbseFixed>(in);
       entries.consume(sizeof(OfficeArtFbseFixed));
-      in.ignore(fbse.cbName);
+      const auto fbse = util::byte_stream::read<OfficeArtFbseFixed>(in);
       entries.consume(fbse.cbName);
+      util::byte_stream::skip(in, fbse.cbName);
       // An embedded BLIP follows the name ([MS-ODRAW] 2.2.32); otherwise the
       // BLIP lives in the delay ("Pictures") stream at foDelay.
       if (child->recLen >
           sizeof(OfficeArtFbseFixed) + std::uint32_t{fbse.cbName}) {
         const std::uint32_t remaining =
             child->recLen - sizeof(OfficeArtFbseFixed) - fbse.cbName;
-        slot.data = read_blip_record(in);
-        entries.consume(remaining);
+        if (remaining < sizeof(RecordHeader)) {
+          throw std::runtime_error("ppt: truncated embedded BLIP header");
+        }
+        const RecordHeader blip = read_record_header(in);
+        if (blip.recLen > remaining - sizeof(RecordHeader)) {
+          throw std::runtime_error("ppt: embedded BLIP exceeds store entry");
+        }
+        slot.data = read_blip_body(in, blip);
+        entries.consume(sizeof(RecordHeader) + blip.recLen);
       } else {
         slot.fo_delay = fbse.foDelay;
       }
     } else if (child->recType == RT_OfficeArtBlipJPEG ||
                child->recType == RT_OfficeArtBlipPNG) {
-      // A BLIP directly in the store occupies a slot of its own; its header is
-      // already consumed, so the body is read here rather than via
-      // read_blip_record.
-      const std::uint32_t prefix = blip_prefix_size(*child);
-      if (child->recLen < prefix) {
-        throw std::runtime_error("ppt: truncated BLIP record");
-      }
-      in.ignore(prefix);
-      slot.data = util::stream::read(in, child->recLen - prefix);
+      slot.data = read_blip_body(in, *child);
       entries.consume(child->recLen);
     }
     // Other record types leave an empty slot; the cursor skips them.
@@ -706,7 +710,8 @@ collect_slides(std::istream &current_user, std::istream &document,
                ElementRegistry &registry, StyleContext &context) {
   // Newest user edit offset, from the Current User stream.
   const CurrentUserAtomHead head = read_current_user_atom_head(current_user);
-  if (head.rh.recType != RT_CurrentUserAtom) {
+  if (head.rh.recType != RT_CurrentUserAtom ||
+      head.rh.recLen < sizeof(CurrentUserAtomHead) - sizeof(RecordHeader)) {
     throw std::runtime_error(
         "ppt: invalid CurrentUserAtom in \"Current User\" stream");
   }
@@ -720,7 +725,10 @@ collect_slides(std::istream &current_user, std::istream &document,
   for (bool first = true; edit_offset != 0; first = false) {
     document.clear();
     document.seekg(edit_offset);
-    read_header(document, RT_UserEditAtom);
+    const RecordHeader edit_header = read_header(document, RT_UserEditAtom);
+    if (edit_header.recLen < sizeof(UserEditAtomBody)) {
+      throw std::runtime_error("ppt: truncated UserEditAtom");
+    }
     const UserEditAtomBody edit = read_user_edit_atom_body(document);
     if (first) {
       doc_persist_id = edit.docPersistIdRef;
@@ -836,7 +844,8 @@ collect_slides(std::istream &current_user, std::istream &document,
           pictures_stream != nullptr) {
         pictures_stream->clear();
         pictures_stream->seekg(slot.fo_delay);
-        slot.data = read_blip_record(*pictures_stream);
+        slot.data = read_blip_body(*pictures_stream,
+                                   read_record_header(*pictures_stream));
         slot.fo_delay = 0xFFFFFFFF; // resolved (possibly to unsupported/empty)
       }
       shape.image = slot.data;
