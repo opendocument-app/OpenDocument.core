@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Explicit transparent backgrounds and `none` borders override inherited ODF
+  styles, including after clearing a cell fill and reopening the document.
+
 - ODF charts reject unrepresentable geometry, bound axis/label conversions,
   and draw complete single-slice pies and rings without overflowing totals.
 

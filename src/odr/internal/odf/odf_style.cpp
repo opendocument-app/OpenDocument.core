@@ -256,11 +256,27 @@ std::optional<Color> read_color(const pugi::xml_attribute attribute) {
   return {};
 }
 
-std::optional<std::string> read_border(const pugi::xml_attribute attribute) {
-  if (attribute && std::strcmp("none", attribute.value()) != 0) {
-    return attribute.value();
+/// A stated `transparent` clears the @p inherited background.
+std::optional<Color> read_background(const pugi::xml_attribute attribute,
+                                     const std::optional<Color> &inherited) {
+  if (std::strcmp("transparent", attribute.value()) == 0) {
+    return {};
   }
-  return {};
+  const std::optional<Color> color = read_color(attribute);
+  return color ? color : inherited;
+}
+
+/// A stated `none` clears the @p inherited border.
+std::optional<std::string>
+read_border(const pugi::xml_attribute attribute,
+            const std::optional<std::string> &inherited) {
+  if (!attribute) {
+    return inherited;
+  }
+  if (std::strcmp("none", attribute.value()) == 0) {
+    return {};
+  }
+  return attribute.value();
 }
 
 PageLayout read_page_layout(const pugi::xml_node node) {
@@ -396,10 +412,9 @@ void Style::resolve_text_style_(const StyleRegistry *registry,
           read_color(text_properties.attribute("fo:color"))) {
     result.font_color = font_color;
   }
-  if (const std::optional<Color> background_color =
-          read_color(text_properties.attribute("fo:background-color"))) {
-    result.background_color = background_color;
-  }
+  result.background_color =
+      read_background(text_properties.attribute("fo:background-color"),
+                      result.background_color);
   if (const pugi::xml_attribute text_position =
           text_properties.attribute("style:text-position")) {
     if (const std::optional<FontPosition> font_position =
@@ -528,10 +543,9 @@ void Style::resolve_table_cell_style_(const pugi::xml_node node,
           table_cell_properties.attribute("style:wrap-option")) {
     result.wrap_text = std::strcmp("wrap", wrap_option.value()) == 0;
   }
-  if (const std::optional<Color> background_color =
-          read_color(table_cell_properties.attribute("fo:background-color"))) {
-    result.background_color = background_color;
-  }
+  result.background_color =
+      read_background(table_cell_properties.attribute("fo:background-color"),
+                      result.background_color);
   if (const std::optional<Measure> padding =
           read_measure(table_cell_properties.attribute("fo:padding"))) {
     result.padding = DirectionalStyle(padding);
@@ -552,26 +566,19 @@ void Style::resolve_table_cell_style_(const pugi::xml_node node,
           read_measure(table_cell_properties.attribute("fo:padding-bottom"))) {
     result.padding.bottom = padding_bottom;
   }
-  if (const std::optional<std::string> border =
-          read_border(table_cell_properties.attribute("fo:border"))) {
-    result.border = DirectionalStyle(border);
+  if (const pugi::xml_attribute border =
+          table_cell_properties.attribute("fo:border")) {
+    result.border = DirectionalStyle(read_border(border, {}));
   }
-  if (const std::optional<std::string> border_right =
-          read_border(table_cell_properties.attribute("fo:border-right"))) {
-    result.border.right = border_right;
-  }
-  if (const std::optional<std::string> border_top =
-          read_border(table_cell_properties.attribute("fo:border-top"))) {
-    result.border.top = border_top;
-  }
-  if (const std::optional<std::string> border_left =
-          read_border(table_cell_properties.attribute("fo:border-left"))) {
-    result.border.left = border_left;
-  }
-  if (const std::optional<std::string> border_bottom =
-          read_border(table_cell_properties.attribute("fo:border-bottom"))) {
-    result.border.bottom = border_bottom;
-  }
+  result.border.right = read_border(
+      table_cell_properties.attribute("fo:border-right"), result.border.right);
+  result.border.top = read_border(
+      table_cell_properties.attribute("fo:border-top"), result.border.top);
+  result.border.left = read_border(
+      table_cell_properties.attribute("fo:border-left"), result.border.left);
+  result.border.bottom =
+      read_border(table_cell_properties.attribute("fo:border-bottom"),
+                  result.border.bottom);
 }
 
 void Style::resolve_graphic_style_(const pugi::xml_node node,
