@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- ODF number formats reject excessive or inconsistent digit counts before
+  expanding placeholders, avoiding oversized allocations and arithmetic overflow.
+
 - ODF geometry reads decimal numbers independently of the host locale and
   bounds numeric scans to the current token instead of copying expression tails.
 
