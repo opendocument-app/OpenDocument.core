@@ -243,7 +243,7 @@ std::optional<Color> read_color(const pugi::xml_attribute attribute) {
   }
   const char *value = attribute.value();
   if (std::strcmp("transparent", value) == 0) {
-    return {}; // TODO use alpha
+    return Color(0, 0, 0, 0);
   }
   if (value[0] == '#') {
     const std::uint32_t color = std::strtoull(&value[1], nullptr, 16);
@@ -253,13 +253,6 @@ std::optional<Color> read_color(const pugi::xml_attribute attribute) {
   }
   // TODO log
   // throw std::invalid_argument("# missing");
-  return {};
-}
-
-std::optional<std::string> read_border(const pugi::xml_attribute attribute) {
-  if (attribute && std::strcmp("none", attribute.value()) != 0) {
-    return attribute.value();
-  }
   return {};
 }
 
@@ -553,23 +546,23 @@ void Style::resolve_table_cell_style_(const pugi::xml_node node,
     result.padding.bottom = padding_bottom;
   }
   if (const std::optional<std::string> border =
-          read_border(table_cell_properties.attribute("fo:border"))) {
+          read_string(table_cell_properties.attribute("fo:border"))) {
     result.border = DirectionalStyle(border);
   }
   if (const std::optional<std::string> border_right =
-          read_border(table_cell_properties.attribute("fo:border-right"))) {
+          read_string(table_cell_properties.attribute("fo:border-right"))) {
     result.border.right = border_right;
   }
   if (const std::optional<std::string> border_top =
-          read_border(table_cell_properties.attribute("fo:border-top"))) {
+          read_string(table_cell_properties.attribute("fo:border-top"))) {
     result.border.top = border_top;
   }
   if (const std::optional<std::string> border_left =
-          read_border(table_cell_properties.attribute("fo:border-left"))) {
+          read_string(table_cell_properties.attribute("fo:border-left"))) {
     result.border.left = border_left;
   }
   if (const std::optional<std::string> border_bottom =
-          read_border(table_cell_properties.attribute("fo:border-bottom"))) {
+          read_string(table_cell_properties.attribute("fo:border-bottom"))) {
     result.border.bottom = border_bottom;
   }
 }

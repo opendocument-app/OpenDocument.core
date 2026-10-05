@@ -201,15 +201,47 @@ TEST(OdfSheetStyle, one_delta_on_one_base_is_one_style) {
 }
 
 TEST(OdfSheetStyle, a_fill_taken_away_is_written_transparent) {
-  const Document document =
-      document_of(flat_sheet(string_cell("a", "ce1"), red_cell_style));
+  for (const bool named : {false, true}) {
+    const Document document = document_of(
+        flat_sheet(string_cell("a", "ce1"), named ? "" : red_cell_style,
+                   named ? red_cell_style : ""));
+    const Sheet sheet = first_sheet(document);
+    sheet.set_cell_style(0, 0, fill(Color(0, 0, 0, 0)), {});
+
+    const auto check = [](const Sheet &sheet) {
+      const auto color = sheet.cell_style(0, 0).background_color;
+      ASSERT_TRUE(color);
+      EXPECT_EQ(color->alpha, 0);
+    };
+    check(sheet);
+    check(first_sheet(document_of(saved(document))));
+  }
+}
+
+TEST(OdfSheetStyle, explicit_transparency_and_no_border_override_inheritance) {
+  const Document document = document_of(flat_sheet(
+      string_cell("a", "child"),
+      R"(<style:style style:name="child" style:family="table-cell" )"
+      R"(style:parent-style-name="parent">)"
+      R"(<style:table-cell-properties fo:border="none" fo:border-left="1pt solid #000000" )"
+      R"(fo:background-color="transparent"/>)"
+      R"(<style:text-properties fo:background-color="transparent"/>)"
+      R"(</style:style>)",
+      R"(<style:style style:name="parent" style:family="table-cell">)"
+      R"(<style:table-cell-properties fo:background-color="#ff0000" fo:border="2pt solid #ff0000"/>)"
+      R"(<style:text-properties fo:background-color="#ff0000"/>)"
+      R"(</style:style>)"));
   const Sheet sheet = first_sheet(document);
-
-  sheet.set_cell_style(0, 0, fill(Color(0, 0, 0, 0)), {});
-
-  EXPECT_EQ(fill_at(sheet, 0, 0), std::nullopt);
-  EXPECT_NE(saved(document).find(R"(fo:background-color="transparent")"),
-            std::string::npos);
+  const TableCellStyle style = sheet.cell_style(0, 0);
+  ASSERT_TRUE(style.background_color);
+  EXPECT_EQ(style.background_color->alpha, 0);
+  EXPECT_EQ(style.border.top, "none");
+  EXPECT_EQ(style.border.right, "none");
+  EXPECT_EQ(style.border.bottom, "none");
+  EXPECT_EQ(style.border.left, "1pt solid #000000");
+  const TextStyle text = text_style_of(sheet, 0);
+  ASSERT_TRUE(text.background_color);
+  EXPECT_EQ(text.background_color->alpha, 0);
 }
 
 TEST(OdfSheetStyle, an_alignment_is_fixed_on_the_cell) {
