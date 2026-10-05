@@ -3,6 +3,7 @@
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/pdf/pdf_object.hpp>
 
+#include <array>
 #include <stdexcept>
 #include <string>
 
@@ -76,6 +77,35 @@ TEST(PdfFilter, png_predictor_sub) {
   const std::string data("\x01\x01\x01\x01\x01", 5);
   EXPECT_EQ(apply_predictor(data, 11, 1, 8, 4),
             std::string("\x01\x02\x03\x04", 4));
+}
+
+TEST(PdfFilter, png_predictor_packed_pixel_stride) {
+  EXPECT_EQ(apply_predictor(std::string("\x01\x01\x02\x03", 4), 11, 3, 4, 2),
+            std::string("\x01\x02\x04", 3));
+}
+
+TEST(PdfFilter, predictor_rejects_invalid_dimensions) {
+  for (const Integer predictor : {Integer{2}, Integer{12}}) {
+    for (const auto dimensions : {std::array<Integer, 3>{0, 8, 1},
+                                  {-1, 8, -1},
+                                  {1, 8, 0},
+                                  {1, 0, 1},
+                                  {1, 3, 1},
+                                  {1, 32, 1},
+                                  {4, 8, (Integer{1} << 62) + 1}}) {
+      SCOPED_TRACE(predictor);
+      SCOPED_TRACE(::testing::PrintToString(dimensions));
+      EXPECT_THROW(apply_predictor("", predictor, dimensions[0], dimensions[1],
+                                   dimensions[2]),
+                   std::runtime_error);
+    }
+  }
+  EXPECT_THROW(
+      apply_predictor(std::string(8, '\0'), 2, (Integer{1} << 62) + 1, 16, 4),
+      std::runtime_error);
+  EXPECT_THROW(
+      apply_predictor(std::string(3, '\0'), 12, 1, 16, (Integer{1} << 60) + 1),
+      std::runtime_error);
 }
 
 TEST(PdfFilter, png_predictor_paeth) {
