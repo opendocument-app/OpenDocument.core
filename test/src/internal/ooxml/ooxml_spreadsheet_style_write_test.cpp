@@ -508,3 +508,12 @@ TEST(OoxmlSpreadsheetStyleWrite,
   }
   EXPECT_EQ(fill_at(first_sheet(reopened(saved)), 0, 0), 0x00ff00u);
 }
+
+TEST(OoxmlSpreadsheetStyleWrite, an_unknown_style_index_keeps_the_default) {
+  const Document document = decode(workbook(
+      R"(<row r="1"><c r="A1" s="9" t="inlineStr"><is><t>a</t></is></c></row>)",
+      "", "", "", "", red_styles));
+  const Sheet sheet = first_sheet(document);
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "a");
+  EXPECT_EQ(fill_at(sheet, 0, 0), std::nullopt);
+}

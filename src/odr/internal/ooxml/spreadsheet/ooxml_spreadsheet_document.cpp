@@ -222,6 +222,7 @@ void Document::save(std::ostream &out) const {
 
   for (const AbsPath &path : m_written_parts) {
     std::ostringstream content;
+    // pugixml is never asked to parse the declaration, so it writes none back
     content << R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>)";
     m_xml_documents_and_relations.at(path).first.print(content, "",
                                                        pugi::format_raw);
