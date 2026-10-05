@@ -50,6 +50,11 @@ Session &session(const Handle handle) {
   return it->second;
 }
 
+bool has_document(const Session &session) {
+  return session.file.is_document_file() || session.file.is_csv_file() ||
+         session.file.is_markdown_file();
+}
+
 Document &document_of(Session &session) {
   if (!session.document.has_value()) {
     if (session.file.is_csv_file()) {
