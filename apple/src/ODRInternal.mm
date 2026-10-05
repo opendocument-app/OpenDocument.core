@@ -5,9 +5,9 @@
 #include <odr/error_code.hpp>
 
 #include <odr/exceptions.hpp>
+#include <odr/file.hpp>
 
 #include <exception>
-#include <istream>
 #include <sstream>
 
 NSErrorDomain const ODRErrorDomain = @"app.opendocument.OdrCore.ErrorDomain";
@@ -53,9 +53,9 @@ NSData *apple::to_nsdata(const std::string &bytes) {
   return [NSData dataWithBytes:bytes.data() length:bytes.size()];
 }
 
-NSData *apple::to_nsdata(std::istream &stream) {
+NSData *apple::to_nsdata(const File &file) {
   std::ostringstream buffer;
-  buffer << stream.rdbuf();
+  file.pipe(buffer);
   return to_nsdata(std::move(buffer).str());
 }
 

@@ -6,7 +6,6 @@
 #include <odr/file.hpp>
 #include <odr/odr.hpp>
 
-#include <istream>
 #include <optional>
 #include <sstream>
 #include <vector>
@@ -289,10 +288,7 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 }
 
 - (nullable NSData *)dataWithError:(NSError **)error {
-  return guarded(error, [&]() -> NSData * {
-    const std::unique_ptr<std::istream> stream = _handle->stream();
-    return to_nsdata(*stream);
-  });
+  return guarded(error, [&]() -> NSData * { return to_nsdata(*_handle); });
 }
 
 - (BOOL)copyTo:(NSString *)path error:(NSError **)error {
@@ -698,9 +694,7 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 
 - (nullable NSData *)dataWithError:(NSError **)error {
   return guarded(error, [&]() -> NSData * {
-    const std::unique_ptr<std::istream> stream =
-        self.handle.as_image_file().stream();
-    return to_nsdata(*stream);
+    return to_nsdata(self.handle.as_image_file().file());
   });
 }
 
@@ -809,9 +803,7 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
 
 - (nullable NSData *)dataWithError:(NSError **)error {
   return guarded(error, [&]() -> NSData * {
-    const std::unique_ptr<std::istream> stream =
-        self.handle.as_font_file().stream();
-    return to_nsdata(*stream);
+    return to_nsdata(self.handle.as_font_file().file());
   });
 }
 

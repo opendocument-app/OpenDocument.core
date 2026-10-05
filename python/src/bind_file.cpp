@@ -359,7 +359,7 @@ void odr_python::bind_file(py::module_ &m) {
   py::class_<odr::ImageFile, odr::DecodedFile>(m, "ImageFile")
       .def("read", [](const odr::ImageFile &file) {
         std::ostringstream out;
-        out << file.stream()->rdbuf();
+        file.file().pipe(out);
         return py::bytes(out.str());
       });
 
@@ -421,7 +421,7 @@ void odr_python::bind_file(py::module_ &m) {
   py::class_<odr::FontFile, odr::DecodedFile>(m, "FontFile")
       .def("read", [](const odr::FontFile &file) {
         std::ostringstream out;
-        out << file.stream()->rdbuf();
+        file.file().pipe(out);
         return py::bytes(out.str());
       });
 

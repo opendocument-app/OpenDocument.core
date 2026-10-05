@@ -418,7 +418,7 @@ Java_app_opendocument_core_ImageFile_readNative(JNIEnv *env, jobject,
                                                 jlong handle) {
   return guarded(env, [&] {
     std::ostringstream out;
-    out << decoded(handle).as_image_file().stream()->rdbuf();
+    decoded(handle).as_image_file().file().pipe(out);
     return to_jbytes(env, out.str());
   });
 }
@@ -523,7 +523,7 @@ Java_app_opendocument_core_FontFile_readNative(JNIEnv *env, jobject,
                                                jlong handle) {
   return guarded(env, [&] {
     std::ostringstream out;
-    out << decoded(handle).as_font_file().stream()->rdbuf();
+    decoded(handle).as_font_file().file().pipe(out);
     return to_jbytes(env, out.str());
   });
 }

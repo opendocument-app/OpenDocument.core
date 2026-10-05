@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Python, Java and Apple file/image/font reads report stream failures instead
+  of returning partial data after a ZIP checksum or other read error.
+
 - Android packaging rejects ABI directories missing either native library or
   containing empty libraries. JNI jar configuration now requires its actual JDK 17 minimum.
 

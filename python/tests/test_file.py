@@ -1,3 +1,4 @@
+import io
 import zipfile
 
 import pytest
@@ -251,3 +252,18 @@ def test_a_markdown_file_holds_a_text_file_too(tmp_path):
     assert file.is_markdown_file()
     assert file.as_markdown_file().text_file().text() == "# hello\n"
     assert file.as_markdown_file().document().document_type() == pyodr.DocumentType.text
+
+
+def test_image_read_rejects_archive_corruption():
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w") as zip_file:
+        zip_file.writestr("image.png", b"\x89PNG\r\n\x1a\n" + b"x" * 1_000_000)
+    corrupt = bytearray(output.getvalue())
+    # past the bytes the format detection reads, so only the full read fails
+    corrupt[corrupt.index(b"x") + 900_000] ^= 1
+    archive = (
+        pyodr.open(pyodr.File.from_memory(bytes(corrupt))).as_archive_file().archive()
+    )
+    image = pyodr.open(archive.as_filesystem().open("/image.png")).as_image_file()
+    with pytest.raises(RuntimeError, match="stream read failed"):
+        image.read()

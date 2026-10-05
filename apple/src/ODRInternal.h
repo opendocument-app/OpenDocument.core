@@ -19,6 +19,10 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+namespace odr {
+class File;
+}
+
 namespace odr::apple {
 
 /// Real UTF-8 <-> UTF-16, the way `odr_jni::to_string` does it. Never route
@@ -28,9 +32,9 @@ std::string to_string(NSString *string);
 NSString *to_nsstring(const std::string &string);
 NSString *to_nsstring(std::string_view string);
 
-/// Bytes as an `NSData`, drained from a stream where odrcore hands one out.
+/// Copies bytes into `NSData`; file reads propagate I/O errors.
 NSData *to_nsdata(const std::string &bytes);
-NSData *to_nsdata(std::istream &stream);
+NSData *to_nsdata(const File &file);
 
 /// Fills `*error` from the exception currently being handled. Call only from
 /// inside a `catch`.
