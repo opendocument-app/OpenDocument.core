@@ -15,6 +15,7 @@
 #include <cstring>
 #include <limits>
 #include <memory>
+#include <sstream>
 #include <string_view>
 #include <vector>
 
@@ -80,7 +81,9 @@ TEST(CfbArchive, an_entry_stream_outlives_its_file_wrapper) {
   EXPECT_EQ(internal::util::stream::read(*stream), expected);
 }
 
-TEST(CfbArchive, nested_children_finish_before_outer_siblings) {
+namespace {
+
+std::string directory_archive() {
   impl::CompoundFileHeader header{};
   std::memcpy(header.signature.data(), impl::CompoundFileReader::MAGIC, 8);
   header.minor_version = 0x3e;
@@ -128,12 +131,59 @@ TEST(CfbArchive, nested_children_finish_before_outer_siblings) {
   std::memcpy(bytes.data(), &header, sizeof(header));
   std::memcpy(bytes.data() + 512, fat.data(), sizeof(fat));
   std::memcpy(bytes.data() + 1024, entries.data(), sizeof(entries));
+  return bytes;
+}
+
+} // namespace
+
+TEST(CfbArchive, nested_children_finish_before_outer_siblings) {
   const cfb::util::Archive archive(
-      std::make_shared<MemoryFile>(std::move(bytes)));
+      std::make_shared<MemoryFile>(directory_archive()));
   std::vector<std::string> paths;
   for (const auto &entry : archive) {
     paths.push_back(entry.path().string());
   }
   EXPECT_EQ(paths,
             (std::vector<std::string>{"", "AA", "AA/D", "BB", "CC", "DD"}));
+}
+
+TEST(CfbArchive, rejects_unsupported_header_layouts) {
+  for (const std::size_t field : {28U, 32U, 56U}) {
+    auto bytes = directory_archive();
+    bytes[field] ^= 1;
+    EXPECT_THROW((void)cfb::util::Archive(std::make_shared<MemoryFile>(bytes)),
+                 CfbFileCorrupted);
+  }
+}
+
+TEST(CfbArchive, names_have_even_lengths_and_a_terminator) {
+  impl::CompoundFileEntry entry{};
+  entry.name[0] = u'a';
+  entry.name_len = 3;
+  EXPECT_THROW((void)entry.get_name(), CfbFileCorrupted);
+  entry.name_len = 2;
+  EXPECT_THROW((void)entry.get_name(), CfbFileCorrupted);
+  entry.name_len = 4;
+  EXPECT_EQ(entry.get_name(), "a");
+}
+
+TEST(CfbArchive, version_three_ignores_the_high_size_word) {
+  auto bytes = directory_archive();
+  constexpr std::uint64_t size = (std::uint64_t{0x12345678} << 32) | 7;
+  std::memcpy(bytes.data() + 1024 + 3 * 128 + 120, &size, sizeof(size));
+  const auto archive =
+      std::make_shared<cfb::util::Archive>(std::make_shared<MemoryFile>(bytes));
+  EXPECT_EQ(archive->find(RelPath("AA/D"))->file()->size(), 7);
+}
+
+TEST(CfbArchive, mini_sectors_must_be_inside_the_root_stream) {
+  const auto bytes = directory_archive();
+  std::istringstream in(bytes);
+  const impl::CompoundFileReader reader(in, bytes.size());
+  impl::CompoundFileEntry entry{};
+  entry.size = 1;
+  entry.start_sector_location = 0;
+  char byte{};
+  EXPECT_THROW(reader.read_file(in, entry, 0, &byte, 1), CfbFileCorrupted);
+  EXPECT_NO_THROW(reader.read_file(in, entry, 1, &byte, 0));
 }

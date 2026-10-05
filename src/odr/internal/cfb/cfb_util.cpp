@@ -114,7 +114,12 @@ public:
   [[nodiscard]] FileLocation location() const noexcept override {
     return m_archive->file()->location();
   }
-  [[nodiscard]] std::size_t size() const override { return m_entry.size; }
+  [[nodiscard]] std::size_t size() const override {
+    if (!std::in_range<std::size_t>(m_entry.size)) {
+      throw FileReadError();
+    }
+    return static_cast<std::size_t>(m_entry.size);
+  }
 
   [[nodiscard]] std::string name() const override { return m_entry.get_name(); }
 

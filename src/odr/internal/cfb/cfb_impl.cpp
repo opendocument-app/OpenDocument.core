@@ -41,7 +41,8 @@ namespace odr::internal::cfb::impl {
 std::string CompoundFileEntry::get_name() const {
   // [MS-CFB] 2.6.1: `name_len` counts bytes including the terminating NUL and
   // never exceeds the 64-byte name field.
-  if (name_len > sizeof(name)) {
+  if (name_len > sizeof(name) || name_len % 2 != 0 ||
+      (name_len >= 2 && name[name_len / 2 - 1] != u'\0')) {
     throw CfbFileCorrupted();
   }
   if (name_len < 2) {
@@ -65,6 +66,10 @@ CompoundFileReader::CompoundFileReader(std::istream &in,
       !(m_header.major_version == 4 && m_header.sector_shift == 12)) {
     throw CfbFileCorrupted();
   }
+  if (m_header.byte_order != 0xfffe || m_header.mini_sector_shift != 6 ||
+      m_header.mini_stream_cutoff_size != 4096) {
+    throw CfbFileCorrupted();
+  }
   m_sector_size = std::uint64_t{1} << m_header.sector_shift;
 
   // The file must contain at least 3 sectors
@@ -73,6 +78,9 @@ CompoundFileReader::CompoundFileReader(std::istream &in,
   }
 
   parse_entry(in, RootId, m_root);
+  if (m_root.type != 5) {
+    throw CfbFileCorrupted();
+  }
 
   m_mini_stream_start_sector = m_root.start_sector_location;
 }
@@ -92,6 +100,10 @@ void CompoundFileReader::parse_entry(std::istream &in,
   const std::uint64_t address = sector_offset_to_address(sector_offset);
   in.seekg(static_cast<std::streampos>(address));
   impl::parse_entry(in, entry);
+  if (m_header.major_version == 3) {
+    // [MS-CFB] 2.6.1: older writers leave the high DWORD uninitialized.
+    entry.size = static_cast<std::uint32_t>(entry.size);
+  }
 }
 
 CompoundFileEntry
@@ -117,6 +129,9 @@ void CompoundFileReader::read_file(std::istream &in,
         " > " + std::to_string(entry.size - offset));
   }
 
+  if (len == 0) {
+    return;
+  }
   if (entry.size < m_header.mini_stream_cutoff_size) {
     read_mini_stream(in, {entry.start_sector_location, offset}, buffer, len);
   } else {
@@ -165,7 +180,11 @@ void CompoundFileReader::read_mini_stream(std::istream &in,
         mini_sector_offset_to_address(in, current_sector_offset);
     const std::size_t copy_length =
         std::min(length, m_mini_sector_size - current_sector_offset.offset);
-    if (address + copy_length > m_file_size) {
+    const std::uint64_t mini_offset =
+        current_sector_offset.offset +
+        current_sector_offset.sector * m_mini_sector_size;
+    if (copy_length > m_root.size - mini_offset ||
+        address + copy_length > m_file_size) {
       throw CfbFileCorrupted();
     }
 
@@ -226,7 +245,7 @@ std::uint64_t CompoundFileReader::mini_sector_offset_to_address(
       sector_offset.offset + sector_offset.sector * m_mini_sector_size;
 
   if (sector_offset.sector >= MaxSector ||
-      sector_offset.offset >= m_mini_sector_size || address >= m_file_size) {
+      sector_offset.offset >= m_mini_sector_size || address >= m_root.size) {
     throw CfbFileCorrupted();
   }
 
