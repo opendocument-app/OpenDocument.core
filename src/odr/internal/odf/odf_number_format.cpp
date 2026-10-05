@@ -3,7 +3,6 @@
 #include <odr/internal/util/number_util.hpp>
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -30,16 +29,14 @@ std::string repeated(const char c, const std::uint32_t count) {
   return std::string(count, c);
 }
 
-bool bounded_counts(const pugi::xml_node node) {
-  static constexpr std::array names{
-      "number:decimal-places",       "number:min-decimal-places",
-      "number:min-integer-digits",   "number:min-exponent-digits",
-      "number:min-numerator-digits", "number:min-denominator-digits"};
-  return std::ranges::all_of(names, [&](const char *name) {
-    const pugi::xml_attribute attribute = node.attribute(name);
-    const std::int64_t count = attribute.as_llong(-1);
-    return !attribute || (count >= 0 && count <= 4096);
-  });
+/// Like LibreOffice, a digit count is clamped, and a negative one keeps
+/// @p fallback.
+std::uint32_t digit_count(const pugi::xml_node node, const char *name,
+                          const std::uint32_t fallback) {
+  const std::int64_t count = node.attribute(name).as_llong(-1);
+  return count < 0
+             ? fallback
+             : static_cast<std::uint32_t>(std::min<std::int64_t>(count, 4096));
 }
 
 /// `number:number`: no `number:decimal-places` and no grouping is `General`,
@@ -56,15 +53,11 @@ std::optional<std::string> number_code(const pugi::xml_node node) {
   if (!decimals_attribute && !grouping) {
     return *factor == 1 ? std::optional<std::string>("General") : std::nullopt;
   }
-  const std::uint32_t decimals = decimals_attribute.as_uint();
-  const std::uint32_t min_decimals =
-      node.attribute("number:min-decimal-places").as_uint(decimals);
+  const std::uint32_t decimals = digit_count(node, "number:decimal-places", 0);
+  const std::uint32_t min_decimals = std::min(
+      digit_count(node, "number:min-decimal-places", decimals), decimals);
   const std::uint32_t min_integer =
-      node.attribute("number:min-integer-digits").as_uint(1);
-
-  if (min_decimals > decimals) {
-    return std::nullopt;
-  }
+      digit_count(node, "number:min-integer-digits", 1);
 
   // a comma between integer placeholders groups the whole integer
   const std::string zeros =
@@ -93,9 +86,6 @@ std::optional<std::string> section_code(const pugi::xml_node style) {
 
   std::string result;
   for (const pugi::xml_node child : style.children()) {
-    if (!bounded_counts(child)) {
-      return std::nullopt;
-    }
     const std::string_view name = child.name();
     if (name == "number:number") {
       const auto code = number_code(child);
@@ -105,33 +95,30 @@ std::optional<std::string> section_code(const pugi::xml_node style) {
       result += *code;
     } else if (name == "number:scientific-number") {
       const std::uint32_t decimals =
-          child.attribute("number:decimal-places").as_uint();
-      result += repeated(
-          '0', child.attribute("number:min-integer-digits").as_uint(1));
+          digit_count(child, "number:decimal-places", 0);
+      result +=
+          repeated('0', digit_count(child, "number:min-integer-digits", 1));
       if (decimals > 0) {
         result += "." + repeated('0', decimals);
       }
       result +=
           "E+" +
-          repeated('0',
-                   child.attribute("number:min-exponent-digits").as_uint(2));
+          repeated('0', digit_count(child, "number:min-exponent-digits", 2));
     } else if (name == "number:fraction") {
-      if (const pugi::xml_attribute integer =
-              child.attribute("number:min-integer-digits")) {
-        result +=
-            (integer.as_uint() == 0 ? "#" : repeated('0', integer.as_uint())) +
-            " ";
+      if (child.attribute("number:min-integer-digits")) {
+        const std::uint32_t integer =
+            digit_count(child, "number:min-integer-digits", 0);
+        result += (integer == 0 ? "#" : repeated('0', integer)) + " ";
       }
       result +=
-          repeated('?',
-                   child.attribute("number:min-numerator-digits").as_uint(1)) +
+          repeated('?', digit_count(child, "number:min-numerator-digits", 1)) +
           "/";
       if (const pugi::xml_attribute denominator =
               child.attribute("number:denominator-value")) {
         result += denominator.value();
       } else {
         result += repeated(
-            '?', child.attribute("number:min-denominator-digits").as_uint(1));
+            '?', digit_count(child, "number:min-denominator-digits", 1));
       }
     } else if (name == "number:text") {
       // the parse drops a text of spaces alone, and LibreOffice writes no
@@ -172,7 +159,7 @@ std::optional<std::string> section_code(const pugi::xml_node style) {
     } else if (name == "number:seconds") {
       result += is_long(child) ? "ss" : "s";
       if (const std::uint32_t decimals =
-              child.attribute("number:decimal-places").as_uint();
+              digit_count(child, "number:decimal-places", 0);
           decimals > 0) {
         result += "." + repeated('0', decimals);
       }

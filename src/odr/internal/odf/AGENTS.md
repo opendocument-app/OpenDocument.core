@@ -203,8 +203,8 @@ segments per path. Formula nesting is limited to 256 levels in total, and an
 equation continues the nesting of the formula that references it.
 Unreadable geometry is dropped rather than emitting invalid SVG.
 
-Number-format digit counts are limited to 4,096 per field before expanding
-placeholders; an invalid count drops the data style.
+Number-format digit counts are clamped to 4,096 per field before expanding
+placeholders; a negative count keeps the default.
 
 ## Open work
 

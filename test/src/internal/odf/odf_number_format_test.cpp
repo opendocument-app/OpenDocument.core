@@ -105,7 +105,7 @@ TEST(OdfNumberFormat, dates_times_and_what_has_no_code) {
             std::nullopt);
 }
 
-TEST(OdfNumberFormat, placeholder_counts_are_bounded_and_consistent) {
+TEST(OdfNumberFormat, placeholder_counts_are_clamped) {
   constexpr std::array<std::pair<const char *, const char *>, 7> fields{{
       {"number:number", "number:decimal-places"},
       {"number:number", "number:min-decimal-places"},
@@ -122,15 +122,19 @@ TEST(OdfNumberFormat, placeholder_counts_are_bounded_and_consistent) {
                               " " + attribute + "=\"" + count +
                               "\"/></number:number-style>";
       SCOPED_TRACE(xml);
-      EXPECT_FALSE(code_of(xml));
+      const auto code = code_of(xml);
+      ASSERT_TRUE(code);
+      EXPECT_LE(code->size(), 4096 + 16);
     }
   }
-  EXPECT_FALSE(code_of(
-      R"(<number:number-style><number:number number:decimal-places="1" )"
-      R"(number:min-decimal-places="2"/></number:number-style>)"));
-  const auto code = code_of(
-      R"(<number:number-style><number:number number:decimal-places="0" )"
-      R"(number:min-integer-digits="4096"/></number:number-style>)");
-  ASSERT_TRUE(code);
-  EXPECT_EQ(*code, std::string(4096, '0'));
+  EXPECT_EQ(
+      code_of(R"(<number:number-style><number:number )"
+              R"(number:decimal-places="1" number:min-decimal-places="2"/>)"
+              R"(</number:number-style>)"),
+      "0.0");
+  EXPECT_EQ(
+      code_of(R"(<number:number-style><number:number )"
+              R"(number:decimal-places="0" number:min-integer-digits="5000"/>)"
+              R"(</number:number-style>)"),
+      std::string(4096, '0'));
 }
