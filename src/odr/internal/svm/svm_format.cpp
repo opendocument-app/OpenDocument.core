@@ -428,13 +428,15 @@ std::string_view svm::action_type_name(const std::uint16_t type) {
   }
 }
 
+std::istringstream svm::read_record(std::istream &in,
+                                    const std::uint32_t length) {
+  return std::istringstream(read_bytes(in, length));
+}
+
 svm::VersionLength svm::read_version_length(std::istream &in) {
   VersionLength result;
   read_primitive(in, result.version);
   read_primitive(in, result.length);
-  if (result.version <= 0) {
-    // TODO log or throw illegal version
-  }
   return result;
 }
 
@@ -468,8 +470,9 @@ svm::Polygon svm::read_polygon(std::istream &in) {
   return result;
 }
 
-svm::Polygon svm::read_flagged_polygon(std::istream &in) {
-  read_version_length(in);
+svm::Polygon svm::read_flagged_polygon(std::istream &source) {
+  const VersionLength vl = read_version_length(source);
+  auto in = read_record(source, vl.length);
 
   Polygon result = read_polygon(in);
 
@@ -499,18 +502,18 @@ std::vector<svm::Polygon> svm::read_poly_polygon(std::istream &in) {
   return result;
 }
 
-svm::Header svm::read_header(std::istream &in) {
+svm::Header svm::read_header(std::istream &source) {
   Header result;
 
   std::array<char, 6> magic{};
-  in.read(magic.data(), static_cast<std::streamsize>(magic.size()));
-  if (!in || std::memcmp("VCLMTF", magic.data(), magic.size()) != 0) {
+  source.read(magic.data(), static_cast<std::streamsize>(magic.size()));
+  if (!source || std::memcmp("VCLMTF", magic.data(), magic.size()) != 0) {
     throw NoSvmFile();
   }
 
-  result.vl = read_version_length(in);
+  result.vl = read_version_length(source);
+  auto in = read_record(source, result.vl.length);
 
-  const std::int64_t start = in.tellg();
   read_primitive(in, result.compression_mode);
   result.map_mode = read_map_mode(in);
   result.size = read_int_pair(in);
@@ -518,14 +521,6 @@ svm::Header svm::read_header(std::istream &in) {
 
   if (result.vl.version >= 2) {
     read_primitive(in, result.render_graphic_replacements);
-  }
-
-  // Only skip forward: reading past the declared length would otherwise wrap
-  // the difference and swallow the rest of the stream.
-  if (const std::int64_t left =
-          result.vl.length - (static_cast<std::int64_t>(in.tellg()) - start);
-      left > 0) {
-    skip_bytes(in, static_cast<std::uint64_t>(left));
   }
 
   return result;
@@ -540,10 +535,11 @@ svm::ActionHeader svm::read_action_header(std::istream &in) {
   return result;
 }
 
-svm::MapMode svm::read_map_mode(std::istream &in) {
+svm::MapMode svm::read_map_mode(std::istream &source) {
   MapMode result;
 
-  read_version_length(in);
+  const VersionLength vl = read_version_length(source);
+  auto in = read_record(source, vl.length);
 
   read_primitive(in, result.unit);
   result.origin = read_int_pair(in);
@@ -559,10 +555,11 @@ svm::MapMode svm::read_map_mode(std::istream &in) {
   return result;
 }
 
-svm::LineInfo svm::read_line_info(std::istream &in) {
+svm::LineInfo svm::read_line_info(std::istream &source) {
   LineInfo result;
 
-  auto [version, length] = read_version_length(in);
+  const auto [version, length] = read_version_length(source);
+  auto in = read_record(source, length);
 
   read_primitive(in, result.line_style);
   read_primitive(in, result.width);
@@ -579,17 +576,14 @@ svm::LineInfo svm::read_line_info(std::istream &in) {
     read_primitive(in, result.line_join);
   }
 
-  if (version >= 4) {
-    // TODO log version 4 not implemented
-  }
-
   return result;
 }
 
-svm::Font svm::read_font(std::istream &in) {
+svm::Font svm::read_font(std::istream &source) {
   Font result;
 
-  result.vl = read_version_length(in);
+  result.vl = read_version_length(source);
+  auto in = read_record(source, result.vl.length);
   const std::string family_name = read_uint16_prefixed_ascii_string(in);
   const std::string style_name = read_uint16_prefixed_ascii_string(in);
   result.size = read_int_pair(in);
@@ -996,10 +990,11 @@ std::uint32_t svm::read_object_color(std::istream &in) {
          static_cast<std::uint32_t>(blue >> 8);
 }
 
-svm::Gradient svm::read_gradient(std::istream &in) {
+svm::Gradient svm::read_gradient(std::istream &source) {
   Gradient result;
 
-  read_version_length(in);
+  const VersionLength vl = read_version_length(source);
+  auto in = read_record(source, vl.length);
   read_primitive(in, result.style);
   result.start_color = read_object_color(in);
   result.end_color = read_object_color(in);
@@ -1014,10 +1009,11 @@ svm::Gradient svm::read_gradient(std::istream &in) {
   return result;
 }
 
-svm::Hatch svm::read_hatch(std::istream &in) {
+svm::Hatch svm::read_hatch(std::istream &source) {
   Hatch result;
 
-  read_version_length(in);
+  const VersionLength vl = read_version_length(source);
+  auto in = read_record(source, vl.length);
   read_primitive(in, result.style);
   result.color = read_object_color(in);
   read_primitive(in, result.distance);
@@ -1026,8 +1022,9 @@ svm::Hatch svm::read_hatch(std::istream &in) {
   return result;
 }
 
-std::optional<svm::Region> svm::read_region(std::istream &in) {
-  const VersionLength vl = read_version_length(in);
+std::optional<svm::Region> svm::read_region(std::istream &source) {
+  const VersionLength vl = read_version_length(source);
+  auto in = read_record(source, vl.length);
   std::uint16_t content_version{};
   std::uint16_t type{};
   read_primitive(in, content_version);

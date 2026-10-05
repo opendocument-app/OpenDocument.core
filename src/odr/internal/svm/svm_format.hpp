@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <istream>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -457,6 +458,10 @@ struct TextLineAction final {
 /// Skips exactly @p count bytes; throws `MalformedSvmFile` where the stream
 /// ends first.
 void skip_bytes(std::istream &in, std::uint64_t count);
+
+/// Reads a complete record into a stream bounded by its declared length.
+[[nodiscard]] std::istringstream read_record(std::istream &in,
+                                             std::uint32_t length);
 
 /// Reads one field, leaving the destination unchanged on a short read.
 template <typename T> void read_primitive(std::istream &in, T &out) {

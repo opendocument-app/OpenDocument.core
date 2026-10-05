@@ -1319,20 +1319,18 @@ void svm::translate_to_svg(const SvmFile &file, std::ostream &out,
                                         " " + std::to_string(header.size.y));
 
   while (in.peek() != -1) {
-    // TODO check length fields should never exceed file size (limited istream?)
     const ActionHeader action_header = read_action_header(in);
-    const std::int64_t start = in.tellg();
+    auto record = read_record(in, action_header.vl.length);
+    translate_action(action_header, record, context);
 
-    translate_action(action_header, in, context);
-
-    const std::int64_t left = action_header.vl.length -
-                              (static_cast<std::int64_t>(in.tellg()) - start);
+    const auto consumed = record.tellg();
+    if (consumed < 0) {
+      throw MalformedSvmFile();
+    }
+    const auto left = action_header.vl.length - consumed;
     if (left > 0) {
       ODR_DEBUG(logger, "action " << action_name(action_header) << " skipping "
                                   << left << " trailing bytes");
-      skip_bytes(in, static_cast<std::uint64_t>(left));
-    } else if (left < 0) {
-      throw MalformedSvmFile();
     }
   }
 
