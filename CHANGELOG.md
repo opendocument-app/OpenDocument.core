@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF functions reject malformed intervals, overflowing or truncated sample
+  tables, and excessive stitching recursion before evaluation.
+
 - PDF Type3 text spacing avoids a freed graphics-state reference. Inline
   images retain soft masks, and malformed forms preserve enclosing text tags.
 
