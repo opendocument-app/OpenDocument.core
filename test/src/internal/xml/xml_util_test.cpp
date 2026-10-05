@@ -3,6 +3,8 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <pugixml.hpp>
+#include <sstream>
 #include <string>
 
 using namespace odr::internal::xml;
@@ -73,4 +75,23 @@ TEST(xml_util, tokenize_text_single_space) {
   ASSERT_EQ(1, tokens.size());
   EXPECT_EQ(StringToken::Type::string, tokens[0].type);
   EXPECT_EQ("a b", tokens[0].string);
+}
+
+TEST(xml_util, parses_utf16_streams_without_c_string_truncation) {
+  std::istringstream in(std::string("\xff\xfe<\0a\0/\0>\0", 10));
+  EXPECT_STREQ(parse(in).document_element().name(), "a");
+}
+
+// A flat ODF's text is already UTF-8, whatever its declaration still names.
+TEST(xml_util, parses_a_string_as_utf8) {
+  const pugi::xml_document document =
+      parse("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><a>\xc3\xa4</a>");
+  EXPECT_STREQ(document.document_element().child_value(), "\xc3\xa4");
+}
+
+TEST(xml_util, rejects_failed_input_streams) {
+  std::istringstream in("<a/>");
+  in.setstate(std::ios::badbit);
+  EXPECT_THROW((void)parse(in), std::ios_base::failure);
+  EXPECT_THROW((void)read_declared_encoding(in), std::ios_base::failure);
 }

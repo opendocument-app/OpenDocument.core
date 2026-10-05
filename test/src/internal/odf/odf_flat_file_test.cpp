@@ -82,6 +82,22 @@ std::string packaged_text(const std::string &name, const std::string &body) {
 
 } // namespace
 
+TEST(FlatOdf, a_latin1_document_reads_its_text_once) {
+  const Document document =
+      open(File::from_memory(
+               R"(<?xml version="1.0" encoding="ISO-8859-1"?>)"
+               R"(<office:document office:mimetype=")"
+               R"(application/vnd.oasis.opendocument.text"><office:body>)"
+               "<office:text><text:p>\xe4</text:p></office:text>"
+               "</office:body></office:document>"))
+          .as_document_file()
+          .document();
+  const Element paragraph =
+      first_of_type(document.root_element(), ElementType::paragraph);
+  ASSERT_TRUE(paragraph);
+  EXPECT_EQ(paragraph.first_child().as_text().content(), "\xc3\xa4");
+}
+
 TEST(FlatOdf, missing_related_elements_return_empty_handles) {
   const Document document = open(File::from_memory(flat_text("<table:table/>")))
                                 .as_document_file()

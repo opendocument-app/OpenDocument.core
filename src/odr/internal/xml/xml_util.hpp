@@ -28,9 +28,11 @@ namespace odr::internal::xml {
 /// As @ref escape_text, plus the `"` that would end an attribute value.
 [[nodiscard]] std::string escape_attribute(std::string_view value);
 
+/// Parses UTF-8 text, whatever encoding its declaration still names.
 pugi::xml_document parse(const std::string &);
-/// Buffers @p in twice on the way in; prefer the @ref abstract::File overload,
-/// which reads once against the size the file knows.
+/// Detects the encoding of the bytes. Buffers @p in twice on the way in; prefer
+/// the @ref abstract::File overload, which reads once against the size the file
+/// knows.
 pugi::xml_document parse(std::istream &);
 pugi::xml_document parse(const abstract::File &);
 pugi::xml_document parse(const abstract::ReadableFilesystem &, const AbsPath &);
@@ -41,9 +43,6 @@ void set_attribute(pugi::xml_node node, const char *name, const char *value);
 /// sequence @p order; a child the sequence does not name ranks last.
 pugi::xml_node insert_in_sequence(pugi::xml_node parent, const char *name,
                                   std::span<const std::string_view> order);
-
-/// Throws unless @p in holds a well formed xml document.
-void check_xml_file(std::istream &in);
 
 /// The `encoding` pseudo-attribute of an `<?xml …?>` declaration at the head of
 /// @p in, empty if there is none. Ascii only - utf-16 and utf-32 are named by

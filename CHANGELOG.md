@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- XML helpers preserve embedded zero bytes when detecting UTF-16/32, report
+  stream failures, and read encoding names only from declaration attributes.
+
 - Table spans use storage proportional to merged cells, survive skipped rows,
   and reject overflowing dimensions. Recalculation bounds formula spans before
   multiplying or accumulating their size.
