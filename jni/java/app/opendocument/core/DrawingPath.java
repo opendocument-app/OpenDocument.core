@@ -22,10 +22,10 @@ public final class DrawingPath {
   public boolean equals(Object other) {
     return other instanceof DrawingPath path
         && data.equals(path.data)
-        && x == path.x
-        && y == path.y
-        && width == path.width
-        && height == path.height;
+        && Double.compare(x, path.x) == 0
+        && Double.compare(y, path.y) == 0
+        && Double.compare(width, path.width) == 0
+        && Double.compare(height, path.height) == 0;
   }
 
   @Override

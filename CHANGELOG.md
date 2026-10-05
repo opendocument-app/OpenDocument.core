@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Java `Measure`, `DrawingPath` and `DrawingTransform` equality now agrees with
+  hashing for signed zero and is reflexive for NaN, following `Double` semantics.
+
 - Java bindings release native handles on failed allocations, avoid pinned-array
   leaks, and check array sizes before passing them to the JVM.
 
