@@ -32,16 +32,6 @@ constexpr char line_break_mark = '\x0B';
 /// The control characters `build_paragraphs` splits on.
 constexpr std::array<char, 2> control_marks = {paragraph_mark, line_break_mark};
 
-void skip_bytes(std::istream &in, const std::uint32_t count) {
-  if (!std::in_range<std::streamsize>(count)) {
-    throw std::runtime_error("ppt: record exceeds stream size limit");
-  }
-  in.ignore(static_cast<std::streamsize>(count));
-  if (!in || in.gcount() != count) {
-    throw std::runtime_error("ppt: truncated record");
-  }
-}
-
 /// Sequentially walks a container's child records; the stream must be at the
 /// container body. next() leaves the stream at the child's body — read up to
 /// recLen bytes and report them via consume(), the rest is skipped.
@@ -78,7 +68,7 @@ public:
 
   void skip_body() {
     if (m_body > 0) {
-      skip_bytes(*m_in, m_body);
+      util::byte_stream::skip(*m_in, m_body);
       m_remaining -= static_cast<std::int64_t>(m_body);
       m_body = 0;
     }
@@ -592,14 +582,14 @@ std::uint32_t blip_prefix_size(const RecordHeader &header) {
 std::string read_blip_body(std::istream &in, const RecordHeader &header) {
   if (header.recType != RT_OfficeArtBlipJPEG &&
       header.recType != RT_OfficeArtBlipPNG) {
-    skip_bytes(in, header.recLen);
+    util::byte_stream::skip(in, header.recLen);
     return {};
   }
   const std::uint32_t prefix = blip_prefix_size(header);
   if (header.recLen < prefix) {
     throw std::runtime_error("ppt: truncated BLIP record");
   }
-  skip_bytes(in, prefix);
+  util::byte_stream::skip(in, prefix);
   return util::byte_stream::read_u8s(in, header.recLen - prefix);
 }
 
@@ -640,7 +630,7 @@ std::vector<BlipSlot> read_blip_store(std::istream &in,
       entries.consume(sizeof(OfficeArtFbseFixed));
       const auto fbse = util::byte_stream::read<OfficeArtFbseFixed>(in);
       entries.consume(fbse.cbName);
-      skip_bytes(in, fbse.cbName);
+      util::byte_stream::skip(in, fbse.cbName);
       // An embedded BLIP follows the name ([MS-ODRAW] 2.2.32); otherwise the
       // BLIP lives in the delay ("Pictures") stream at foDelay.
       if (child->recLen >

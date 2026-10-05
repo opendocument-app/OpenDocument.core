@@ -31,6 +31,8 @@ template <typename T> std::optional<T> try_read(std::istream &in) {
 }
 
 void read(std::istream &in, char *out, std::size_t count);
+/// Skips exactly @p count bytes; throws like `read` where the stream ends.
+void skip(std::istream &in, std::uint64_t count);
 
 template <typename T> void read(std::istream &in, T &out) {
   read(in, reinterpret_cast<char *>(&out), sizeof(T));

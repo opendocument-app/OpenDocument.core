@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 
 namespace odr::internal::util {
@@ -34,6 +35,18 @@ bool byte_stream::try_read(std::istream &in, char *out, std::size_t count) {
 void byte_stream::read(std::istream &in, char *out, std::size_t count) {
   if (!try_read(in, out, count)) {
     throw_exhausted();
+  }
+}
+
+void byte_stream::skip(std::istream &in, std::uint64_t count) {
+  while (count > 0) {
+    const auto step = static_cast<std::streamsize>(std::min<std::uint64_t>(
+        count, std::numeric_limits<std::streamsize>::max()));
+    in.ignore(step);
+    if (in.gcount() != step) {
+      throw_exhausted();
+    }
+    count -= static_cast<std::uint64_t>(step);
   }
 }
 

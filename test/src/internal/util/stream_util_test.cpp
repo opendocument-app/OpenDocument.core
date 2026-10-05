@@ -108,6 +108,14 @@ TEST(Stream, copying_reports_input_and_output_failures) {
   EXPECT_THROW(stream::read(broken), std::ios_base::failure);
 }
 
+TEST(ByteStream, skip_moves_exactly_and_refuses_a_short_stream) {
+  std::istringstream in("abcdef");
+  byte_stream::skip(in, 0);
+  byte_stream::skip(in, 2);
+  EXPECT_EQ(byte_stream::read_u8(in), 'c');
+  EXPECT_THROW(byte_stream::skip(in, 4), std::runtime_error);
+}
+
 TEST(ByteStream, length_prefixed_reads_handle_chunks_and_stream_exceptions) {
   const std::string data(4097, 'x');
   std::istringstream in(data);
