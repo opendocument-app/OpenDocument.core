@@ -1408,10 +1408,17 @@
     if (place.run === null) {
       return null;
     }
+    var step = function (run, offset, by) {
+      return odr.editing.characterOffset(run.textContent, offset, by);
+    };
     if (direction < 0) {
       if (place.offset > 0) {
         return {
-          start: { run: place.run, offset: odr.editing.characterOffset(place.run.textContent, place.offset, -1), paragraph: place.paragraph },
+          start: {
+            run: place.run,
+            offset: step(place.run, place.offset, -1),
+            paragraph: place.paragraph,
+          },
           end: place,
         };
       }
@@ -1425,7 +1432,7 @@
       return {
         start: {
           run: before.run,
-          offset: odr.editing.characterOffset(before.run.textContent, before.run.textContent.length, back),
+          offset: step(before.run, before.run.textContent.length, back),
           paragraph: before.paragraph,
         },
         end: place,
@@ -1434,7 +1441,11 @@
     if (place.offset < place.run.textContent.length) {
       return {
         start: place,
-        end: { run: place.run, offset: odr.editing.characterOffset(place.run.textContent, place.offset, 1), paragraph: place.paragraph },
+        end: {
+          run: place.run,
+          offset: step(place.run, place.offset, 1),
+          paragraph: place.paragraph,
+        },
       };
     }
     var after = runAfter(place.run);
@@ -1444,7 +1455,7 @@
     var forward = after.paragraph === place.paragraph ? 1 : 0;
     return {
       start: place,
-      end: { run: after.run, offset: odr.editing.characterOffset(after.run.textContent, 0, forward), paragraph: after.paragraph },
+      end: { run: after.run, offset: step(after.run, 0, forward), paragraph: after.paragraph },
     };
   }
 
