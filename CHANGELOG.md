@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Number formats preserve fraction literals and percent signs, avoid integer
+  overflow for large fractions, and fall back to General when a scientific
+  mantissa or fixed fraction cannot be represented.
+
 - CFF output validates glyph names and offset limits, reuses standard glyph-name
   identifiers, and preserves fractional width operands until the final advance.
 

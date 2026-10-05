@@ -1,10 +1,10 @@
 #include <odr/internal/number_format/number_format.hpp>
 
 #include <odr/internal/util/number_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <charconv>
 #include <cmath>
 #include <cstdint>
@@ -175,10 +175,10 @@ void parse_bracket(const std::string_view content, Section &section) {
     }
     return;
   }
-  const char first = static_cast<char>(std::tolower(content.front()));
+  const char first = util::string::to_lower(content.front());
   if ((first == 'h' || first == 'm' || first == 's') &&
       std::ranges::all_of(content, [first](const char c) {
-        return std::tolower(c) == first;
+        return util::string::to_lower(c) == first;
       })) {
     section.tokens.push_back({.kind = Kind::date_time,
                               .unit = first,
@@ -292,7 +292,7 @@ std::vector<Section> parse_code(const std::string_view code) {
       if (code.size() - i >= 7 &&
           std::ranges::equal(code.substr(i, 7), std::string_view("general"),
                              [](const char a, const char b) {
-                               return std::tolower(a) == b;
+                               return util::string::to_lower(a) == b;
                              })) {
         tokens.push_back({.kind = Kind::general});
         i += 6;
@@ -310,9 +310,11 @@ std::vector<Section> parse_code(const std::string_view code) {
     case 'H':
     case 's':
     case 'S': {
-      const char letter = static_cast<char>(std::tolower(c));
+      const char letter = util::string::to_lower(c);
       std::size_t width = 1;
-      for (; i + 1 < code.size() && std::tolower(code[i + 1]) == letter; ++i) {
+      for (;
+           i + 1 < code.size() && util::string::to_lower(code[i + 1]) == letter;
+           ++i) {
         ++width;
       }
       // `m` is the month until `resolve_minutes` says otherwise
@@ -326,7 +328,7 @@ std::vector<Section> parse_code(const std::string_view code) {
         return code.size() - i >= word.size() &&
                std::ranges::equal(code.substr(i, word.size()), word,
                                   [](const char a, const char b) {
-                                    return std::tolower(a) == b;
+                                    return util::string::to_lower(a) == b;
                                   });
       };
       const std::size_t length = spelled("am/pm") ? 5 : spelled("a/p") ? 3 : 0;
@@ -531,23 +533,27 @@ std::string format_scientific(const std::vector<Token> &tokens,
     fraction_count += tokens[i].kind == Kind::digit ? 1 : 0;
   }
 
-  const auto mantissa_at = [value](const std::int32_t power) {
+  const auto mantissa_at = [value](const std::int64_t power) {
     return power < -308 ? value * 1e308 / std::pow(10.0, power + 308)
                         : value / std::pow(10.0, power);
   };
-  std::int32_t power = 0;
+  std::int64_t power = 0;
   if (value != 0) {
     power = static_cast<std::int32_t>(std::floor(std::log10(value)));
-    const std::int32_t step = static_cast<std::int32_t>(integer_count);
+    const auto step = static_cast<std::int64_t>(integer_count);
     if (hashed && step > 1) {
-      power = static_cast<std::int32_t>(
+      power = static_cast<std::int64_t>(
                   std::floor(static_cast<double>(power) / step)) *
               step;
     } else {
       power -= step - 1;
     }
     // rounding may carry into one more digit, and so into the next power
-    const Decimal decimal = round_decimal(mantissa_at(power), fraction_count);
+    const double mantissa = mantissa_at(power);
+    if (!std::isfinite(mantissa)) {
+      return format_general(value, symbols);
+    }
+    const Decimal decimal = round_decimal(mantissa, fraction_count);
     if (decimal.integer.size() > integer_count) {
       power += hashed && step > 1 ? step : 1;
     }
@@ -583,19 +589,18 @@ std::string format_scientific(const std::vector<Token> &tokens,
 
 /// The best fraction of @p value whose denominator has at most @p digits
 /// digits.
-std::pair<std::int64_t, std::int64_t> approximate(const double value,
-                                                  const std::size_t digits) {
+std::pair<double, std::int64_t> approximate(const double value,
+                                            const std::size_t digits) {
   const auto most = static_cast<std::int64_t>(
       std::pow(10.0, static_cast<double>(std::min<std::size_t>(digits, 4))) -
       1);
-  std::pair<std::int64_t, std::int64_t> best{std::llround(value), 1};
-  double error = std::abs(value - static_cast<double>(best.first));
+  std::pair<double, std::int64_t> best{std::round(value), 1};
+  double error = std::abs(value - best.first);
   for (std::int64_t denominator = 2; denominator <= most; ++denominator) {
-    const std::int64_t numerator =
-        std::llround(value * static_cast<double>(denominator));
+    const double numerator =
+        std::round(value * static_cast<double>(denominator));
     const double distance =
-        std::abs(value - static_cast<double>(numerator) /
-                             static_cast<double>(denominator));
+        std::abs(value - numerator / static_cast<double>(denominator));
     if (distance < error - 1e-12) {
       best = {numerator, denominator};
       error = distance;
@@ -623,7 +628,8 @@ std::string pad(const std::string &digits, const std::string &placeholders,
 }
 
 std::string format_fraction(const std::vector<Token> &tokens,
-                            const std::size_t slash, const double value) {
+                            const std::size_t slash, const double value,
+                            const Symbols &symbols) {
   // the numerator is the run of placeholders right before the bar
   std::size_t numerator_begin = slash;
   while (numerator_begin > 0 &&
@@ -645,17 +651,22 @@ std::string format_fraction(const std::vector<Token> &tokens,
   std::size_t end = slash + 1;
   std::string denominator_placeholders;
   std::string fixed;
+  std::size_t suffix_offset = 0;
   for (; end < tokens.size(); ++end) {
     const Token &token = tokens[end];
     if (token.kind == Kind::digit) {
       denominator_placeholders += token.placeholder;
       fixed += token.placeholder == '0' ? "0" : "";
     } else if (token.kind == Kind::literal && !token.text.empty() &&
-               std::ranges::all_of(token.text, [](const char c) {
-                 return c >= '0' && c <= '9';
-               })) {
-      fixed += token.text;
-      denominator_placeholders += std::string(token.text.size(), '0');
+               util::string::is_ascii_digit(token.text.front())) {
+      const std::size_t count = std::min(
+          token.text.find_first_not_of("0123456789"), token.text.size());
+      fixed += token.text.substr(0, count);
+      denominator_placeholders.append(count, '0');
+      if (count < token.text.size()) {
+        suffix_offset = count;
+        break;
+      }
     } else {
       break;
     }
@@ -669,11 +680,18 @@ std::string format_fraction(const std::vector<Token> &tokens,
     whole = std::floor(value);
     part = value - whole;
   }
-  std::int64_t numerator = 0;
+  double numerator = 0;
   std::int64_t denominator = 1;
   if (fixed_denominator) {
-    denominator = std::stoll(fixed);
-    numerator = std::llround(part * static_cast<double>(denominator));
+    const auto [parsed, error] =
+        std::from_chars(fixed.data(), fixed.data() + fixed.size(), denominator);
+    if (error != std::errc() || parsed != fixed.data() + fixed.size()) {
+      return format_general(value, symbols);
+    }
+    numerator = std::round(part * static_cast<double>(denominator));
+    if (!std::isfinite(numerator)) {
+      return format_general(value, symbols);
+    }
   } else {
     std::tie(numerator, denominator) =
         approximate(part, denominator_placeholders.size());
@@ -686,7 +704,8 @@ std::string format_fraction(const std::vector<Token> &tokens,
   std::string fraction_text;
   if (numerator != 0 || integer_placeholders.empty()) {
     fraction_text =
-        pad(std::to_string(numerator), numerator_placeholders, false) + "/" +
+        pad(fmt::format("{:.0f}", numerator), numerator_placeholders, false) +
+        "/" +
         (fixed_denominator ? std::to_string(denominator)
                            : pad(std::to_string(denominator),
                                  denominator_placeholders, true));
@@ -696,34 +715,35 @@ std::string format_fraction(const std::vector<Token> &tokens,
                          ' ');
   }
 
-  // the integer, then whatever separates it from the numerator
+  const std::string digits =
+      whole == 0 ? std::string() : fmt::format("{:.0f}", whole);
+  const auto integer = place_integer(
+      digits.empty() && numerator == 0 ? "0" : digits, integer_placeholders);
+  // A blank integer also blanks what separates it from the numerator.
+  const bool blank_integer =
+      join(integer).find_first_not_of(' ') == std::string::npos;
   std::string head;
-  if (!integer_placeholders.empty()) {
-    const std::string digits =
-        whole == 0 ? std::string() : fmt::format("{:.0f}", whole);
-    head = join(place_integer(digits.empty() && numerator == 0 ? "0" : digits,
-                              integer_placeholders));
-    std::string between;
-    std::size_t last_integer = 0;
-    for (std::size_t i = 0; i < numerator_begin; ++i) {
-      if (tokens[i].kind == Kind::digit) {
-        last_integer = i;
-      }
+  std::size_t integer_seen = 0;
+  for (std::size_t i = 0; i < numerator_begin; ++i) {
+    const bool separator = integer_seen == integer.size() && !integer.empty();
+    std::string text;
+    if (tokens[i].kind == Kind::digit) {
+      head += integer[integer_seen++];
+      continue;
     }
-    for (std::size_t i = last_integer + 1; i < numerator_begin; ++i) {
-      if (tokens[i].kind == Kind::literal) {
-        between += tokens[i].text;
-      }
+    if (tokens[i].kind == Kind::literal) {
+      text = tokens[i].text;
+    } else if (tokens[i].kind == Kind::percent) {
+      text = "%";
     }
-    if (head.find_first_not_of(' ') == std::string::npos) {
-      between.assign(between.size(), ' ');
-    }
-    head += between;
+    head += separator && blank_integer ? std::string(text.size(), ' ') : text;
   }
   std::string result = head + fraction_text;
   for (std::size_t i = end; i < tokens.size(); ++i) {
     if (tokens[i].kind == Kind::literal) {
-      result += tokens[i].text;
+      result += tokens[i].text.substr(i == end ? suffix_offset : 0);
+    } else if (tokens[i].kind == Kind::percent) {
+      result += '%';
     }
   }
   return result;
@@ -907,7 +927,7 @@ std::string format_section(const Section &section, const double value,
   for (std::size_t i = 0; i < tokens.size(); ++i) {
     if (tokens[i].kind == Kind::slash && i > 0 &&
         tokens[i - 1].kind == Kind::digit) {
-      return format_fraction(tokens, i, scaled);
+      return format_fraction(tokens, i, scaled, symbols);
     }
   }
   if (!has(section, Kind::digit)) {

@@ -100,12 +100,29 @@ TEST(NumberFormat, scientific_notation) {
             "4.94E-324");
 }
 
+TEST(NumberFormat, scientific_mantissa_overflow_uses_general) {
+  const std::string code = std::string(400, '0') + "E+0";
+  EXPECT_EQ(shown(code, 1), "1");
+  EXPECT_EQ(shown(code, std::numeric_limits<double>::denorm_min()),
+            shown("General", std::numeric_limits<double>::denorm_min()));
+}
+
 TEST(NumberFormat, fractions) {
   EXPECT_EQ(shown("# ?/?", 1.5), "1 1/2");
   EXPECT_EQ(shown("# ?\?/??", 3.14159), "3 14/99");
   EXPECT_EQ(shown("?/8", 0.375), "3/8");
   EXPECT_EQ(shown("# ?/?", 2), "2    ");
   EXPECT_EQ(shown("?/8", -0.375), "-3/8");
+  EXPECT_EQ(shown("\"$\"# ?/?", 1.5), "$1 1/2");
+  EXPECT_EQ(shown("\"$\"?/8", 0.375), "$3/8");
+  EXPECT_EQ(shown("?/8\" kg\"", 0.375), "3/8 kg");
+  EXPECT_EQ(shown("?/8%", 0.00375), "3/8%");
+  EXPECT_EQ(shown("?/??", 1e20), "100000000000000000000/1 ");
+  EXPECT_EQ(shown("?/8", 1e20), "800000000000000000000/8");
+  EXPECT_EQ(shown("?/999999999999999999999", 1.5), "1.5");
+  EXPECT_EQ(shown("?/8", 1e308), shown("General", 1e308));
+  EXPECT_EQ(shown("#-?/?", 0.5), " 1/2");
+  EXPECT_EQ(shown("\"$\"#-?/?", 0.5), "$ 1/2");
 }
 
 TEST(NumberFormat, a_text_section_takes_text) {
