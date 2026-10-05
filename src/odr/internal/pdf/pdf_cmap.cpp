@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <optional>
+#include <ranges>
 
 namespace odr::internal::pdf {
 
@@ -60,7 +61,7 @@ CMap::cid_for_code(const std::string_view code) const {
   }
   const std::uint32_t value =
       util::byte_string::read_uint_be(code, code.size());
-  for (const CidRange &range : m_cid_ranges) {
+  for (const CidRange &range : m_cid_ranges | std::views::reverse) {
     if (range.width == code.size() && value >= range.low &&
         value <= range.high) {
       return range.base_cid + (value - range.low);
