@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Standard OOXML encryption rejects unsupported algorithms, inconsistent verifier
+  fields, and plaintext sizes larger than the encrypted package.
+
 - OOXML explicit off values clear inherited bold, italic, underline, strike,
   and shadow formatting instead of retaining or re-enabling it.
 

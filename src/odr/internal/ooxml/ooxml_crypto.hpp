@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -14,9 +15,8 @@ struct VersionInfo {
   std::uint16_t minor;
 };
 
+/// [MS-OFFCRYPTO] 2.3.2.
 struct EncryptionHeader {
-  // https://msdn.microsoft.com/en-us/library/dd926359(v=office.12).aspx
-  // https://github.com/nolze/msoffcrypto-tool/blob/master/msoffcrypto/format/common.py#L9
   std::uint32_t flags;
   std::uint32_t size_extra;
   std::uint32_t alg_id;
@@ -28,13 +28,12 @@ struct EncryptionHeader {
   // CSPName variable utf16 string
 };
 
+/// [MS-OFFCRYPTO] 2.3.3.
 struct EncryptionVerifier {
-  // https://msdn.microsoft.com/en-us/library/dd910568(v=office.12).aspx
-  // https://github.com/nolze/msoffcrypto-tool/blob/master/msoffcrypto/format/common.py#L35
   std::uint32_t salt_size;
-  char salt[16];
-  char encrypted_verifier[16];
-  std::uint32_t verifierHashSize;
+  std::array<char, 16> salt;
+  std::array<char, 16> encrypted_verifier;
+  std::uint32_t verifier_hash_size;
   // EncryptedVerifierHash variable
 };
 
@@ -45,6 +44,9 @@ struct StandardHeader {
   // EncryptionVerifier
 };
 #pragma pack(pop)
+
+static_assert(sizeof(EncryptionHeader) == 32);
+static_assert(sizeof(EncryptionVerifier) == 40);
 
 class Algorithm {
 public:
@@ -69,11 +71,13 @@ public:
                                     std::string_view key) const override;
 
 private:
-  static constexpr auto ITER_COUNT = 50000;
+  static constexpr std::uint32_t iteration_count = 50000;
 
   EncryptionHeader m_encryption_header{};
   EncryptionVerifier m_encryption_verifier{};
   std::string m_encrypted_verifier_hash;
+
+  void validate_() const;
 };
 
 class Util final : public Algorithm {
