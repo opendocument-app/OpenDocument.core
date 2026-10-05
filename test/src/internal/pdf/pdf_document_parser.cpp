@@ -790,3 +790,45 @@ TEST(DocumentParser, deleted_objects_do_not_resolve_to_an_older_generation) {
   EXPECT_TRUE(parser.read_object(ObjectReference{3, 0}).object.is_null());
   EXPECT_TRUE(parser.read_object(ObjectReference{3, 1}).object.is_null());
 }
+
+TEST(DocumentParser, rejects_mismatched_indirect_object_references) {
+  for (const std::string header : {"9 0 obj", "1 1 obj"}) {
+    std::string source = two_object_mini_pdf(true);
+    source.replace(source.find("1 0 obj"), header.size(), header);
+    DocumentParser parser(std::make_unique<std::istringstream>(source));
+    ASSERT_FALSE(parser.is_recovered());
+    EXPECT_THROW((void)parser.read_object(ObjectReference{1, 0}),
+                 std::runtime_error);
+  }
+}
+
+TEST(DocumentParser, object_reads_reset_stream_errors) {
+  DocumentParser parser(
+      std::make_unique<std::istringstream>(two_object_mini_pdf(true)));
+  parser.in().setstate(std::ios::eofbit | std::ios::failbit);
+  EXPECT_EQ(parser.read_object(ObjectReference{1, 0})
+                .object.as_dictionary()
+                .get("Type")
+                .as_name(),
+            "Catalog");
+  for (std::uint32_t attempt = 0; attempt < 2; ++attempt) {
+    parser.in().setstate(std::ios::eofbit | std::ios::failbit);
+    EXPECT_EQ(parser.read_decoded_stream(ObjectReference{4, 0}), "BT ET");
+  }
+}
+
+TEST(DocumentParser, rejects_mismatched_object_stream_members) {
+  PdfFileBuilder builder;
+  builder.stream_object("/Type /ObjStm /N 1 /First 4", "9 0 (wrong)")
+      .object("null")
+      .trailer("/Root 2 0 R");
+  std::string source = builder.build_xref_stream();
+  const std::size_t start = source.find("stream\n", source.find("/Type /XRef"));
+  ASSERT_NE(start, std::string::npos);
+  // Entry 2: compressed in object stream 1, member 0 (builder uses W [1 4 2]).
+  source.replace(start + 7 + 2 * 7, 7, std::string("\x02\0\0\0\x01\0\0", 7));
+  DocumentParser parser(std::make_unique<std::istringstream>(source));
+  ASSERT_FALSE(parser.is_recovered());
+  EXPECT_THROW((void)parser.read_object(ObjectReference{2, 0}),
+               std::runtime_error);
+}

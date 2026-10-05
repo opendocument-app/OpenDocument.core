@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF object reads reject mismatched cross-reference targets and recover
+  from a stream error before seeking to another object.
+
 - PDF incremental updates keep deleted and replaced objects from resolving
   through older generations. Hybrid tables discard superseded free entries.
 
