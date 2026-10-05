@@ -890,7 +890,8 @@ TEST(SvmToSvg, line) {
   EXPECT_NE(std::string::npos, svg.find("d=\"M 1,2 L 3,4\""));
 }
 
-// A pixel uses its own color without changing the point-drawing state.
+// A dot is a zero-length path with a round cap, which a browser draws and a
+// zero-length `<line>` does not. A pixel keeps the state's color unchanged.
 TEST(SvmToSvg, a_point_and_a_pixel_are_dots) {
   const std::string svg = translate(SvmBuilder()
                                         .action(svm::META_LINECOLOR_ACTION)

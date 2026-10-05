@@ -164,7 +164,8 @@ String select_run(const String &text, const std::uint16_t offset,
   return text.substr(offset, length);
 }
 
-/// Selects a run using UTF-16 code unit offsets over decoded UTF-8 text.
+/// Selects a run by UTF-16 offsets: vcl indexes the decoded string, so the
+/// offsets count UTF-16 code units in every encoding.
 std::string select_run_utf16(const std::string &text,
                              const std::uint16_t offset,
                              const std::uint16_t length) {
