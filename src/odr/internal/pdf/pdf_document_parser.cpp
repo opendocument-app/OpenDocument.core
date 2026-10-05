@@ -190,6 +190,14 @@ struct PageAttributes {
   }
 };
 
+std::uint32_t font_code(const Object &object, const std::uint32_t maximum) {
+  const Integer value = object.as_integer();
+  if (value < 0 || value > maximum) {
+    throw std::runtime_error("PDF font character index out of range");
+  }
+  return static_cast<std::uint32_t>(value);
+}
+
 /// Parse a simple-font `/Encoding` (ISO 32000-1 9.6.6): a base-encoding name,
 /// or a dictionary overlaying `/Differences` onto `/BaseEncoding`. `nullopt`
 /// for an encoding we cannot represent.
@@ -240,7 +248,7 @@ std::optional<Encoding> parse_encoding(DocumentParser &parser,
       std::uint32_t code = 0;
       for (const Object &item : differences.as_array()) {
         if (item.is_integer()) {
-          code = static_cast<std::uint32_t>(item.as_integer());
+          code = font_code(item, 255);
         } else if (item.is_name() && code <= 0xFF) {
           encoding.set_difference(static_cast<std::uint8_t>(code),
                                   item.as_name());
@@ -257,8 +265,8 @@ std::optional<Encoding> parse_encoding(DocumentParser &parser,
 /// `c [w1 w2 ...]` (CIDs c, c+1, ... get the listed widths) or `c_first c_last
 /// w` (the whole CID range gets `w`) — ISO 32000-1 9.7.4.3.
 void parse_cid_widths(const Array &w, Font &font) {
-  // guard against a pathological `c_first c_last` range exhausting memory
-  static constexpr std::uint32_t max_range = 70000;
+  // ISO 32000-1 Annex C, Table C.1: CIDs are at most 65535.
+  constexpr std::uint32_t max_cid = 65535;
 
   std::size_t i = 0;
   while (i < w.size()) {
@@ -266,9 +274,12 @@ void parse_cid_widths(const Array &w, Font &font) {
       ++i;
       continue;
     }
-    const auto first = static_cast<std::uint32_t>(w[i].as_integer());
+    const auto first = font_code(w[i], max_cid);
     if (i + 1 < w.size() && w[i + 1].is_array()) {
       const Array &list = w[i + 1].as_array();
+      if (list.size() > max_cid - first + 1) {
+        throw std::runtime_error("PDF font width array exceeds CID range");
+      }
       for (std::size_t j = 0; j < list.size(); ++j) {
         if (list[j].is_real()) {
           font.cid_widths[first + static_cast<std::uint32_t>(j)] =
@@ -278,12 +289,13 @@ void parse_cid_widths(const Array &w, Font &font) {
       i += 2;
     } else if (i + 2 < w.size() && w[i + 1].is_integer() &&
                w[i + 2].is_real()) {
-      const auto last = static_cast<std::uint32_t>(w[i + 1].as_integer());
+      const auto last = font_code(w[i + 1], max_cid);
       const double width = w[i + 2].as_real();
-      if (last >= first && last - first < max_range) {
-        for (std::uint32_t c = first; c <= last; ++c) {
-          font.cid_widths[c] = width;
-        }
+      if (last < first) {
+        throw std::runtime_error("reversed PDF font width range");
+      }
+      for (std::uint32_t c = first; c <= last; ++c) {
+        font.cid_widths[c] = width;
       }
       i += 3;
     } else {
@@ -365,7 +377,7 @@ void parse_simple_font_widths(DocumentParser &parser,
   if (dictionary.has_key("FirstChar")) {
     const Object first = parser.resolve_object_copy(dictionary["FirstChar"]);
     if (first.is_integer()) {
-      font.first_char = static_cast<int>(first.as_integer());
+      font.first_char = font_code(first, 255);
     }
   }
   if (dictionary.has_key("Widths")) {
@@ -422,7 +434,7 @@ void resolve_font_substitute(DocumentParser &parser,
       }
       if (const auto v = parser.resolve_object_copy(d.get("FontWeight"))
                              .as_integer_opt()) {
-        font_weight = static_cast<int>(*v);
+        font_weight = static_cast<std::int32_t>(*v);
       }
       const Object angle = parser.resolve_object_copy(d.get("ItalicAngle"));
       if (angle.is_real()) {

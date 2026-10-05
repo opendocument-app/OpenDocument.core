@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF font indices are checked before conversion. Invalid CID width ranges
+  can no longer wrap or hang document parsing.
+
 - PDF PNG prediction handles packed multi-component pixels correctly. TIFF
   and PNG predictors reject invalid dimensions and overflowing row sizes.
 

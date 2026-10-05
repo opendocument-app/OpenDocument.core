@@ -344,7 +344,7 @@ struct Font final : Element {
 
   /// Simple-font metrics (ISO 32000-1 9.2.4): `/Widths` in glyph space (1/1000
   /// em) indexed by `code - first_char`, else `/MissingWidth`.
-  int first_char{0};
+  std::uint32_t first_char{0};
   std::vector<double> widths;
   double missing_width{0};
 
@@ -359,7 +359,9 @@ struct Font final : Element {
   std::optional<double> descriptor_ascent;
 
   /// Bytes per character code, absent a codespace saying otherwise.
-  [[nodiscard]] int code_byte_width() const { return composite ? 2 : 1; }
+  [[nodiscard]] std::size_t code_byte_width() const {
+    return composite ? 2 : 1;
+  }
 
   /// View `codes` as character codes, each yielded as the CID it selects. The
   /// result borrows `codes`.
@@ -368,7 +370,7 @@ struct Font final : Element {
   /// one, else the `/ToUnicode` codespace (which keeps the split identical to
   /// `to_unicode`'s), else the fixed `code_byte_width`.
   [[nodiscard]] CodeRange codes(std::string_view codes) const {
-    const auto width = static_cast<std::size_t>(code_byte_width());
+    const std::size_t width = code_byte_width();
     if (!composite) {
       return {codes, width, nullptr, nullptr};
     }

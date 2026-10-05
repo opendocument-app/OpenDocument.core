@@ -234,9 +234,9 @@ namespace {
 /// `encoding` (a predefined CMap name) over a descendant `CIDFontType2` with an
 /// `Adobe`/`Identity` `/CIDSystemInfo`, optionally carrying a 2-byte
 /// `/ToUnicode` CMap (mapping the code 0x0041 to `A`).
-std::string
-composite_font_mini_pdf(const bool with_to_unicode,
-                        const std::string &encoding = "Identity-H") {
+std::string composite_font_mini_pdf(const bool with_to_unicode,
+                                    const std::string &encoding = "Identity-H",
+                                    const std::string &widths = "0 [500 600]") {
   PdfFileBuilder builder;
   builder.object("<< /Type /Catalog /Pages 2 0 R >>")
       .object("<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
@@ -250,7 +250,8 @@ composite_font_mini_pdf(const bool with_to_unicode,
       .object("<< /Type /Font /Subtype /CIDFontType2 /BaseFont /AAAAAA+X "
               "/CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) "
               "/Supplement 0 >> /CIDToGIDMap /Identity "
-              "/DW 1000 /W [0 [500 600]] >>");
+              "/DW 1000 /W [" +
+              widths + "] >>");
   if (with_to_unicode) {
     builder.stream_object("", "1 begincodespacerange\n<0000> <FFFF>\n"
                               "endcodespacerange\n1 beginbfchar\n"
@@ -262,7 +263,8 @@ composite_font_mini_pdf(const bool with_to_unicode,
 /// A mini-PDF whose single page references one simple TrueType font `F1` with
 /// `/FirstChar` 65, `/Widths` for `A`/`B`, and a `/FontDescriptor` carrying
 /// `/MissingWidth`.
-std::string simple_font_mini_pdf() {
+std::string simple_font_mini_pdf(const std::string &first = "65",
+                                 const std::string &difference = "67") {
   PdfFileBuilder builder;
   builder.object("<< /Type /Catalog /Pages 2 0 R >>")
       .object("<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
@@ -273,8 +275,12 @@ std::string simple_font_mini_pdf() {
       // advance can only come from `/MissingWidth` — not the substitute's
       // built-in code->width table, which the explicit encoding overrides.
       .object("<< /Type /Font /Subtype /TrueType /BaseFont /Helvetica "
-              "/FirstChar 65 /LastChar 66 /Widths [500 600] "
-              "/Encoding << /Differences [67 /customglyph] >> "
+              "/FirstChar " +
+              first +
+              " /LastChar 66 /Widths [500 600] "
+              "/Encoding << /Differences [" +
+              difference +
+              " /customglyph] >> "
               "/FontDescriptor 6 0 R >>")
       .object("<< /Type /FontDescriptor /FontName /Helvetica "
               "/MissingWidth 250 >>");
@@ -389,7 +395,8 @@ TEST(DocumentParser, composite_font_predefined_unicode_cmap) {
 
 // A composite font's `/W` array and `/DW` default drive CID advance widths.
 TEST(DocumentParser, composite_font_cid_widths) {
-  const std::string pdf = composite_font_mini_pdf(true);
+  const std::string pdf = composite_font_mini_pdf(
+      true, "Identity-H", "0 [500 600] 65534 65535 700");
   DocumentParser parser(std::make_unique<std::istringstream>(pdf));
   const std::unique_ptr<Document> document = parser.parse_document();
 
@@ -399,6 +406,8 @@ TEST(DocumentParser, composite_font_cid_widths) {
   EXPECT_DOUBLE_EQ(font->advance_width(0), 0.5); // W [0 [500 600]]
   EXPECT_DOUBLE_EQ(font->advance_width(1), 0.6);
   EXPECT_DOUBLE_EQ(font->advance_width(2), 1.0); // /DW default
+  EXPECT_DOUBLE_EQ(font->advance_width(65534), 0.7);
+  EXPECT_DOUBLE_EQ(font->advance_width(65535), 0.7);
 }
 
 // Form XObjects are parsed onto the resources with their `/Matrix` and decoded
@@ -686,4 +695,26 @@ TEST(DocumentParser, missing_media_box_defaults_to_us_letter) {
   EXPECT_EQ(page->crop_box.as_array()[2].as_real(), 612.0);
   EXPECT_EQ(page->rotate, 0);
   ASSERT_NE(page->resources, nullptr); // missing /Resources → empty dict
+}
+
+TEST(DocumentParser, rejects_invalid_cid_width_indices) {
+  for (const std::string widths :
+       {"4294967295 4294967295 500", "-1 [500]", "65536 [500]",
+        "65535 [500 600]", "0 65536 500", "2 1 500"}) {
+    SCOPED_TRACE(widths);
+    DocumentParser parser(std::make_unique<std::istringstream>(
+        composite_font_mini_pdf(false, "Identity-H", widths)));
+    EXPECT_THROW(parser.parse_document(), std::runtime_error);
+  }
+}
+
+TEST(DocumentParser, rejects_invalid_simple_font_indices) {
+  for (const std::string index : {"-1", "256", "4294967361"}) {
+    SCOPED_TRACE(index);
+    for (const std::string &pdf :
+         {simple_font_mini_pdf(index), simple_font_mini_pdf("65", index)}) {
+      DocumentParser parser(std::make_unique<std::istringstream>(pdf));
+      EXPECT_THROW(parser.parse_document(), std::runtime_error);
+    }
+  }
 }
