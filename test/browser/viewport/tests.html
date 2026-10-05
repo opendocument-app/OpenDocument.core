@@ -44,13 +44,16 @@
 
       function load(query, width) {
         frame.width = width || 900;
-        return new Promise(function (resolve) {
+        return new Promise(function (resolve, reject) {
+          var deadline = Date.now() + 10000;
           frame.onload = function () {
             (function poll() {
               if (frame.contentWindow.__ready && frame.contentWindow.odr) {
                 setTimeout(function () {
                   resolve(frame.contentWindow);
                 }, 60);
+              } else if (Date.now() >= deadline) {
+                reject(new Error("viewport page did not initialize"));
               } else {
                 setTimeout(poll, 20);
               }
@@ -215,7 +218,7 @@
 
         check(
           label + ": the paragraph at the top survives a width change",
-          before === after,
+          before !== "(none)" && before === after,
           before + " -> " + after,
         );
       }
