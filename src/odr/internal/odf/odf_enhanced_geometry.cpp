@@ -23,8 +23,9 @@ class FormulaParser : private ValueCursor {
 public:
   FormulaParser(const std::string_view formula,
                 const EnhancedGeometryContext &context,
-                const EquationResolver &equations)
-      : ValueCursor{formula}, m_context{&context}, m_equations{&equations} {}
+                const EquationResolver &equations, const std::size_t depth)
+      : ValueCursor{formula}, m_depth{depth}, m_context{&context},
+        m_equations{&equations} {}
 
   [[nodiscard]] std::optional<double> parse() {
     const std::optional<double> value = expression();
@@ -126,7 +127,7 @@ private:
       if (name.empty()) {
         return {};
       }
-      return (*m_equations)(name);
+      return (*m_equations)(name, m_depth);
     }
 
     if (peek() == '.' || str::is_ascii_digit(peek())) {
@@ -419,9 +420,6 @@ private:
     const double ry = values[3];
     const double from = values[4];
     const double to = values[5];
-    if (rx < 0 || ry < 0) {
-      return false;
-    }
 
     const double start_x = cx + rx * std::cos(from * std::numbers::pi / 180);
     const double start_y = cy + ry * std::sin(from * std::numbers::pi / 180);
@@ -530,11 +528,10 @@ private:
 
 namespace odr::internal {
 
-std::optional<double>
-odf::evaluate_formula(const std::string_view formula,
-                      const EnhancedGeometryContext &context,
-                      const EquationResolver &equations) {
-  return odf::FormulaParser(formula, context, equations).parse();
+std::optional<double> odf::evaluate_formula(
+    const std::string_view formula, const EnhancedGeometryContext &context,
+    const EquationResolver &equations, const std::size_t depth) {
+  return odf::FormulaParser(formula, context, equations, depth).parse();
 }
 
 std::optional<std::string>

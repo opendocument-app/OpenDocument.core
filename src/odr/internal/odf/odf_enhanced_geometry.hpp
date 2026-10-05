@@ -34,16 +34,17 @@ struct EnhancedGeometryContext final {
   bool mirror_vertical{false};
 };
 
-/// Resolves a `?name` reference to the `draw:equation` it names.
-using EquationResolver =
-    std::function<std::optional<double>(std::string_view name)>;
+/// Resolves a `?name` reference to the `draw:equation` it names. The
+/// equation's formula continues from the nesting @p depth of the reference.
+using EquationResolver = std::function<std::optional<double>(
+    std::string_view name, std::size_t depth)>;
 
 /// `draw:formula` (20.36). Nothing where it does not parse, or names something
 /// that does not resolve.
 [[nodiscard]] std::optional<double>
 evaluate_formula(std::string_view formula,
                  const EnhancedGeometryContext &context,
-                 const EquationResolver &equations);
+                 const EquationResolver &equations, std::size_t depth = 0);
 
 /// `draw:enhanced-path` (19.145) as an svg `d`. Nothing where it does not
 /// parse, or names a value that does not resolve; `F` and `S` are dropped.

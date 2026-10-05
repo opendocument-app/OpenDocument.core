@@ -199,7 +199,8 @@ unknown mimetype are tolerated.
 | `odf_chart.{hpp,cpp}` | Charts drawn from an embedded chart object |
 
 Geometry expansion is limited to 65,536 generated polygon vertices or arc
-segments per path; formula and equation nesting is limited to 256 levels.
+segments per path. Formula nesting is limited to 256 levels in total, and an
+equation continues the nesting of the formula that references it.
 Unreadable geometry is dropped rather than emitting invalid SVG.
 
 ## Open work

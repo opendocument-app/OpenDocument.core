@@ -490,20 +490,20 @@ public:
             const EnhancedGeometryContext &context)
       : m_geometry{geometry}, m_context{&context} {}
 
-  std::optional<double> operator()(const std::string_view name) {
+  std::optional<double> operator()(const std::string_view name,
+                                   const std::size_t depth) {
     const std::string key(name);
     if (const auto it = m_resolved.find(key); it != m_resolved.end()) {
       return it->second;
     }
-    if (m_resolving.size() >= max_geometry_depth ||
-        !m_resolving.insert(key).second) {
+    if (!m_resolving.insert(key).second) {
       return {};
     }
     std::optional<double> value;
     for (const pugi::xml_node equation : m_geometry.children("draw:equation")) {
       if (key == equation.attribute("draw:name").value()) {
         value = evaluate_formula(equation.attribute("draw:formula").value(),
-                                 *m_context, std::ref(*this));
+                                 *m_context, std::ref(*this), depth);
         break;
       }
     }
