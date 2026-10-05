@@ -54,12 +54,14 @@ add_executable(odr_test
 
         "src/internal/cfb/cfb_archive_test.cpp"
 
+        "src/internal/common/element_registry_test.cpp"
         "src/internal/common/filesystem_test.cpp"
         "src/internal/common/list_numbering_test.cpp"
         "src/internal/common/path_test.cpp"
         "src/internal/common/table_cursor_test.cpp"
         "src/internal/common/sheet_cell_source_test.cpp"
         "src/internal/common/table_range_test.cpp"
+        "src/internal/common/text_cursor_test.cpp"
 
         "src/internal/crypto/crypto_util_test.cpp"
 

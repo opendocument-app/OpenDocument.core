@@ -3,6 +3,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <cstddef>
+#include <stdexcept>
 #include <string_view>
 
 namespace odr::internal {
@@ -32,7 +33,12 @@ public:
     return c;
   }
 
-  void advance(const std::size_t count) { m_rest.remove_prefix(count); }
+  void advance(const std::size_t count) {
+    if (count > m_rest.size()) {
+      throw std::out_of_range("TextCursor::advance: past end of input");
+    }
+    m_rest.remove_prefix(count);
+  }
 
   /// Back to a view @ref rest answered earlier, undoing what was read since.
   void seek(const std::string_view at) { m_rest = at; }
@@ -46,7 +52,7 @@ public:
   /// Whitespace ahead of it is filler; the text itself is the token.
   [[nodiscard]] bool consume(const char c) {
     skip_whitespace();
-    if (peek() != c) {
+    if (empty() || peek() != c) {
       return false;
     }
     advance(1);

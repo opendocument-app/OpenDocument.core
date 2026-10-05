@@ -58,6 +58,9 @@ template <typename T, typename Id = ElementIdentifier>
 class SortedSideTable final {
 public:
   T &emplace(const ElementIdentifier id, T value) {
+    if (id > std::numeric_limits<Id>::max()) {
+      throw std::out_of_range("SortedSideTable::emplace: identifier too wide");
+    }
     if (!m_entries.empty() && m_entries.back().first >= id) {
       throw std::invalid_argument(
           "SortedSideTable::emplace: identifier out of order");
