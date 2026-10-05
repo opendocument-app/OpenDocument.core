@@ -8,6 +8,7 @@
 #include <odr/internal/oldms/spreadsheet/xls_structs.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_style.hpp>
 
+#include <algorithm>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -16,6 +17,9 @@
 
 namespace odr::internal::oldms::spreadsheet {
 namespace {
+
+constexpr std::uint32_t max_columns = 256;
+constexpr std::uint32_t max_rows = 65536;
 
 struct BoundSheet {
   std::uint32_t offset{0};
@@ -34,6 +38,10 @@ struct GlobalStyles {
 void add_cell(ElementRegistry &registry, const ElementIdentifier sheet_id,
               const std::uint32_t column, const std::uint32_t row,
               const std::uint16_t ixfe, std::string text) {
+  // LibreOffice also drops a cell outside the BIFF8 grid.
+  if (column >= max_columns || row >= max_rows) {
+    return;
+  }
   auto [cell_id, cell_element, cell] =
       registry.create_sheet_cell_element(TablePosition(column, row));
   cell.ixfe = ixfe;
@@ -53,7 +61,7 @@ void add_cell(ElementRegistry &registry, const ElementIdentifier sheet_id,
 void parse_globals(BiffReader &reader, std::vector<BoundSheet> &sheets,
                    std::vector<std::string> &shared_strings,
                    GlobalStyles &styles) {
-  reader.expect_bof();
+  reader.expect_bof(0x0005);
 
   while (reader.next_record() && reader.record_type() != biff_eof) {
     switch (reader.record_type()) {
@@ -88,7 +96,6 @@ void parse_globals(BiffReader &reader, std::vector<BoundSheet> &sheets,
       if (head.cstUnique < 0) {
         throw std::runtime_error("xls: negative SST string count");
       }
-      shared_strings.reserve(static_cast<std::size_t>(head.cstUnique));
       for (std::int32_t i = 0; i < head.cstUnique; ++i) {
         shared_strings.push_back(reader.read_xl_unicode_rich_extended_string());
       }
@@ -104,7 +111,7 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
                  const ElementIdentifier sheet_id, const BoundSheet &info,
                  const std::vector<std::string> &shared_strings) {
   reader.seek(info.offset);
-  reader.expect_bof();
+  reader.expect_bof(0x0010);
 
   ElementRegistry::Sheet &sheet = registry.sheet_element_at(sheet_id);
   sheet.name = info.name;
@@ -121,7 +128,9 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
     switch (reader.record_type()) {
     case biff_dimensions: {
       const auto dimensions = reader.read<DimensionsBody>();
-      sheet.dimensions = TableDimensions(dimensions.rwMac, dimensions.colMac);
+      sheet.dimensions = TableDimensions(
+          std::min<std::uint32_t>(dimensions.rwMac, max_rows),
+          std::min<std::uint32_t>(dimensions.colMac, max_columns));
     } break;
     case biff_labelsst: {
       const auto label = reader.read<LabelSstBody>();
@@ -171,6 +180,8 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
                    : (boolerr.bBoolErr != 0 ? "TRUE" : "FALSE"));
     } break;
     case biff_formula: {
+      // Without its String record, a formula string result stays empty.
+      pending_string_cell.reset();
       const auto formula = reader.read<FormulaFixed>();
       const TablePosition position(formula.cell.col, formula.cell.rw);
       if (formula.val.is_xnum()) {
@@ -222,7 +233,11 @@ ElementIdentifier
 spreadsheet::parse_tree(ElementRegistry &registry,
                         StyleRegistry &style_registry,
                         const abstract::ReadableFilesystem &files) {
-  const auto workbook_stream = files.open(AbsPath("/Workbook"))->stream();
+  const auto workbook_file = files.open(AbsPath("/Workbook"));
+  if (workbook_file == nullptr) {
+    throw std::runtime_error("xls: missing Workbook stream");
+  }
+  const auto workbook_stream = workbook_file->stream();
   BiffReader reader(*workbook_stream);
 
   std::vector<BoundSheet> bound_sheets;

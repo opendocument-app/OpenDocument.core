@@ -5,11 +5,11 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
-#include <array>
 #include <cmath>
-#include <cstdio>
 #include <istream>
 #include <stdexcept>
+
+#include <fmt/format.h>
 
 namespace odr::internal::oldms::spreadsheet {
 
@@ -17,12 +17,14 @@ BiffReader::BiffReader(std::istream &in) : m_in{&in} {}
 
 bool BiffReader::next_record() {
   if (m_remaining > 0) {
-    m_in->ignore(static_cast<std::streamsize>(m_remaining));
-    m_remaining = 0;
+    skip_bytes(m_remaining);
   }
 
   const std::optional header = util::byte_stream::try_read<RecordHeader>(*m_in);
   if (!header) {
+    if (m_in->bad() || !m_in->eof() || m_in->gcount() != 0) {
+      throw std::runtime_error("xls: truncated or unreadable record header");
+    }
     return false;
   }
 
@@ -88,7 +90,7 @@ void BiffReader::skip_bytes(const std::size_t count) {
       next_continue();
     }
     const std::size_t take = std::min(left, m_remaining);
-    m_in->ignore(static_cast<std::streamsize>(take));
+    util::byte_stream::skip(*m_in, take);
     left -= take;
     m_remaining -= take;
   }
@@ -156,11 +158,14 @@ std::string BiffReader::read_xl_unicode_rich_extended_string() {
   return result;
 }
 
-void BiffReader::expect_bof() {
+void BiffReader::expect_bof(const std::uint16_t substream_type) {
   if (!next_record() || record_type() != biff_bof) {
     throw std::runtime_error("xls: expected BOF record");
   }
   const auto bof = read<BofFixed>();
+  if (bof.dt != substream_type) {
+    throw std::runtime_error("xls: unexpected BIFF substream type");
+  }
   if (bof.vers != bof_vers_biff8) {
     throw std::runtime_error("xls: unsupported BIFF version " +
                              std::to_string(bof.vers));
@@ -176,9 +181,7 @@ std::string spreadsheet::format_number(const double value) {
     return "NaN";
   }
 
-  std::array<char, 32> buffer{};
-  std::snprintf(buffer.data(), buffer.size(), "%.15g", value);
-  return buffer.data();
+  return fmt::format("{:.15g}", value);
 }
 
 std::string spreadsheet::error_code_string(const std::uint8_t error) {

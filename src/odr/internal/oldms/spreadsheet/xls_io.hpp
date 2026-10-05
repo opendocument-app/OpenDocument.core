@@ -61,7 +61,7 @@ public:
   /// formatting runs and phonetic data. Used for the SST string array.
   std::string read_xl_unicode_rich_extended_string();
 
-  void expect_bof();
+  void expect_bof(std::uint16_t substream_type);
 
 private:
   std::istream *m_in{nullptr};

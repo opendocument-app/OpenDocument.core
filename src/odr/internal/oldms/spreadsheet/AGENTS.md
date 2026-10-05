@@ -47,10 +47,16 @@ each hop, because the continuation re-declares compressed versus UTF-16 for
 the remainder (§2.5.293). Formatting runs (`cRun`·4 B) and phonetic data
 (`cbExtRst` B) are read and skipped.
 
-**Fail early.** Throw on: a missing or non-BIFF8 `BOF` (`vers != 0x0600`); a
-non-`CONTINUE` record where a continuation is required; an out-of-range SST
-index; a malformed `MulRk` body; an unknown `FormulaValue` type; a truncated
-stream. Skip records that are not modelled.
+**Fail early.** Throw on: a missing or non-BIFF8 `BOF` (`vers != 0x0600`), or
+one with the wrong substream type; a non-`CONTINUE` record where a continuation
+is required; an out-of-range SST index; a malformed `MulRk` body; an unknown
+`FormulaValue` type; a truncated record header or body. SST storage grows only
+as strings are read. Skip records that are not modelled.
+
+**Pass through**, as LibreOffice does: a cell outside the BIFF8 grid is
+dropped; `Dimensions` is clamped to the grid; `MulRk` takes its cell count from
+the body size and ignores `colLast`; a string formula without its `String`
+record stays empty; a clean end of stream ends a substream without `EOF`.
 
 **Cell formatting is resolved at parse time, per XF, in the `StyleRegistry`.**
 The parser fills both registries, because BIFF keeps styles and content in
@@ -82,9 +88,9 @@ returns the fill.
 - RK numbers (§2.5.217): the low 2 bits are flags, bit 0 `fX100` (divide by
   100), bit 1 `fInt` (a 30-bit signed int, else the high 30 bits of an IEEE
   double).
-- Numbers use `%.15g`, close to Excel's "General". Booleans are `TRUE` and
-  `FALSE`. Errors (§2.5.10) are `#DIV/0!`, `#VALUE!`, `#REF!`, `#NAME?`,
-  `#NUM!`, `#N/A` and `#NULL!`.
+- Numbers use locale-independent `fmt` with 15 significant digits, close to
+  Excel's "General". Booleans are `TRUE` and `FALSE`. Errors (§2.5.10) are
+  `#DIV/0!`, `#VALUE!`, `#REF!`, `#NAME?`, `#NUM!`, `#N/A` and `#NULL!`.
 - A date cell shows its raw serial number (open work §1).
 
 ## Tests

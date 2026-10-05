@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Legacy Excel rejects truncated BIFF records and a wrong substream type. It
+  drops cells outside the BIFF8 grid, and numbers ignore the host locale.
+
 - Legacy Word bounds font and piece tables by their declared lengths, checks
   piece coverage and offsets, and reads PLC entries without unaligned access.
 
