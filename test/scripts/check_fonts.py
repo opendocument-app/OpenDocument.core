@@ -59,7 +59,7 @@ def html_files(roots):
 
 
 def fonts_in(path):
-    """(family, bytes) for every font the file embeds, in document order."""
+    """Embedded fonts with their declared family, if any."""
     with open(path, encoding="utf-8", errors="replace") as file:
         content = file.read()
     seen_at = set()
@@ -67,7 +67,7 @@ def fonts_in(path):
         body = face.group(1)
         family = match.group(1) if (match := FONT_FAMILY.search(body)) else "?"
         for data in FONT_DATA_URL.finditer(body):
-            seen_at.add(face.start() + data.start())
+            seen_at.add(face.start(1) + data.start())
             yield family, decode(data.group(1), path, family)
     for data in FONT_DATA_URL.finditer(content):
         if data.start() not in seen_at:
@@ -110,12 +110,17 @@ def main():
     # distinct payload once and report every place it came from.
     verdicts = {}
     occurrences = {}
+    files = 0
     for path in html_files(arguments.roots):
+        files += 1
         for family, font in fonts_in(path):
             digest = hashlib.sha256(font).hexdigest()
             if digest not in verdicts:
                 verdicts[digest] = sanitize(ots, font)
             occurrences.setdefault(digest, []).append((path, family))
+
+    if files == 0:
+        sys.exit("No HTML files found to check")
 
     failed = {d: v for d, v in verdicts.items() if v is not None}
     for digest, complaint in sorted(failed.items()):
