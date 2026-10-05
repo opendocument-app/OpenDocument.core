@@ -12,6 +12,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -20,6 +21,13 @@
 namespace odr::internal::iwork {
 
 namespace {
+
+std::uint32_t table_dimension(const std::uint64_t value) {
+  if (value > std::numeric_limits<std::uint32_t>::max()) {
+    throw std::runtime_error("iwork: table dimension is out of range");
+  }
+  return static_cast<std::uint32_t>(value);
+}
 
 /// The bias an IEEE 754 decimal128 exponent carries.
 constexpr std::int32_t decimal128_bias = 6176;
@@ -250,9 +258,12 @@ void read_tile(Package &package, Budget &budget, const std::uint64_t identifier,
     }
     const Message info(row.bytes);
 
-    const std::uint32_t index =
-        first_row + static_cast<std::uint32_t>(
-                        info.number_field(tile_row::index).value_or(0));
+    const std::uint32_t relative_row =
+        table_dimension(info.number_field(tile_row::index).value_or(0));
+    if (relative_row >= std::numeric_limits<std::uint32_t>::max() - first_row) {
+      throw std::runtime_error("iwork: tile row is out of range");
+    }
+    const std::uint32_t index = first_row + relative_row;
     const std::string_view storage =
         info.bytes_field(tile_row::storage).value_or(std::string_view());
     const std::string_view offsets =
@@ -260,7 +271,10 @@ void read_tile(Package &package, Budget &budget, const std::uint64_t identifier,
 
     // one `std::int16_t` per column, `-1` where the row holds no cell; a cell
     // runs to the next column that has one
-    const std::size_t columns = offsets.size() / 2;
+    if (offsets.size() % 2 != 0) {
+      throw std::runtime_error("iwork: cell offset is cut off");
+    }
+    const std::uint32_t columns = table_dimension(offsets.size() / 2);
     std::vector<std::pair<std::uint32_t, std::size_t>> starts;
     for (std::size_t column = 0; column < columns; ++column) {
       const auto offset = static_cast<std::int16_t>(
@@ -455,10 +469,10 @@ iwork::TableModel iwork::read_table(Package &package, Budget &budget,
 
   result.name = std::string(
       model.bytes_field(table_model::name).value_or(std::string_view()));
-  result.rows = static_cast<std::uint32_t>(
-      model.number_field(table_model::rows).value_or(0));
-  result.columns = static_cast<std::uint32_t>(
-      model.number_field(table_model::columns).value_or(0));
+  result.rows =
+      table_dimension(model.number_field(table_model::rows).value_or(0));
+  result.columns =
+      table_dimension(model.number_field(table_model::columns).value_or(0));
 
   const std::optional<std::string_view> store =
       model.bytes_field(table_model::data_store);
@@ -478,7 +492,7 @@ iwork::TableModel iwork::read_table(Package &package, Budget &budget,
     return result;
   }
   const Message tile_storage(*tiles);
-  const auto rows_per_tile = static_cast<std::uint32_t>(
+  const std::uint32_t rows_per_tile = table_dimension(
       tile_storage.number_field(tile_storage::rows_per_tile).value_or(0));
 
   for (const Field &entry : tile_storage.repeated_field(tile_storage::tiles)) {
@@ -486,15 +500,17 @@ iwork::TableModel iwork::read_table(Package &package, Budget &budget,
       throw std::runtime_error("iwork: malformed tile list");
     }
     const Message tile_entry(entry.bytes);
-    const auto index = static_cast<std::uint32_t>(
+    const std::uint32_t index = table_dimension(
         tile_entry.number_field(tile_storage_entry::index).value_or(0));
     const std::optional<std::uint64_t> tile_identifier =
         reference_identifier(tile_entry, tile_storage_entry::tile);
     if (!tile_identifier.has_value()) {
       continue;
     }
-    read_tile(package, budget, *tile_identifier, index * rows_per_tile, strings,
-              rich_texts, result.cells);
+    const std::uint32_t first_row =
+        table_dimension(std::uint64_t{index} * rows_per_tile);
+    read_tile(package, budget, *tile_identifier, first_row, strings, rich_texts,
+              result.cells);
   }
 
   return result;

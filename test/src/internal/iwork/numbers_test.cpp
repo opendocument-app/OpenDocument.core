@@ -6,6 +6,8 @@
 #include <odr/odr.hpp>
 #include <odr/table_dimension.hpp>
 
+#include <odr/internal/iwork/iwork_archive.hpp>
+#include <odr/internal/iwork/iwork_budget.hpp>
 #include <odr/internal/iwork/iwork_document.hpp>
 #include <odr/internal/iwork/iwork_file.hpp>
 #include <odr/internal/iwork/iwork_table.hpp>
@@ -329,6 +331,12 @@ TEST(IworkNumbers, a_record_we_have_not_mapped_is_an_empty_cell) {
 // that contradicts itself is a broken file rather than a shape we have not
 // seen — the one place the tile reader throws instead of skipping.
 TEST(IworkNumbers, a_row_that_contradicts_its_own_offsets_throws) {
+  EXPECT_THROW(std::ignore = numbers_document(
+                   {.rows = 1,
+                    .columns = 1,
+                    .tile_rows = {builder::message_field(
+                        iwork::tile_row::offsets, std::string(1, '\0'))}}),
+               std::runtime_error);
   const std::string record =
       builder::cell_record(iwork::cell::type::number, 0, "");
 
@@ -410,4 +418,51 @@ TEST(IworkNumbers, a_repeated_tile_is_capped_by_the_cells_it_carries) {
       },
       testing::ThrowsMessage<std::runtime_error>(
           testing::HasSubstr("too much text")));
+}
+
+TEST(IworkNumbers, table_coordinates_are_checked_before_narrowing) {
+  const auto read = [](const std::uint64_t rows, const std::uint64_t columns,
+                       const std::uint64_t tile_index,
+                       const std::uint64_t rows_per_tile,
+                       const std::uint64_t row_index) {
+    const std::string tile = builder::tile(
+        {builder::number_field(iwork::tile_row::index, row_index)});
+    const std::string tiles =
+        builder::number_field(iwork::tile_storage::rows_per_tile,
+                              rows_per_tile) +
+        builder::message_field(
+            iwork::tile_storage::tiles,
+            builder::number_field(iwork::tile_storage_entry::index,
+                                  tile_index) +
+                builder::reference_field(iwork::tile_storage_entry::tile, 3));
+    const std::string model =
+        builder::number_field(iwork::table_model::rows, rows) +
+        builder::number_field(iwork::table_model::columns, columns) +
+        builder::message_field(
+            iwork::table_model::data_store,
+            builder::message_field(iwork::data_store::tiles, tiles));
+    const std::string info =
+        builder::reference_field(iwork::table_info::model, 2);
+    const auto files = builder::package(
+        {{"Document",
+          builder::object(1, {{iwork::archive_type::table_info, info.size()}},
+                          info) +
+              builder::object(
+                  2, {{iwork::archive_type::table_model, model.size()}},
+                  model) +
+              builder::object(3, {{iwork::archive_type::tile, tile.size()}},
+                              tile)}});
+    iwork::Package package(*files);
+    iwork::Budget budget;
+    return iwork::read_table(package, budget, 1);
+  };
+  constexpr std::uint64_t wide = std::uint64_t{1} << 32;
+  EXPECT_EQ(read(2, 3, 0, 1, 0).columns, 3);
+  EXPECT_THROW(std::ignore = read(wide, 1, 0, 1, 0), std::runtime_error);
+  EXPECT_THROW(std::ignore = read(1, wide, 0, 1, 0), std::runtime_error);
+  EXPECT_THROW(std::ignore = read(1, 1, wide, 1, 0), std::runtime_error);
+  EXPECT_THROW(std::ignore = read(1, 1, 0, wide, 0), std::runtime_error);
+  EXPECT_THROW(std::ignore = read(1, 1, 65536, 65536, 0), std::runtime_error);
+  EXPECT_THROW(std::ignore = read(1, 1, 0, 1, wide), std::runtime_error);
+  EXPECT_THROW(std::ignore = read(1, 1, 1, 1, wide - 2), std::runtime_error);
 }

@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- iWork tables reject overflowing dimensions and tile coordinates, and
+  truncated cell-offset entries, instead of wrapping cells into other rows.
+
 - iWork parsing rejects overflowing varints, invalid field tags and combined
   payload lengths before narrowing or allocation; text budgets cannot wrap.
   Unknown wide archive types no longer alias known types.
