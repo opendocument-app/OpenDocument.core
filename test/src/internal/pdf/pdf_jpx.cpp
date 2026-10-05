@@ -1,5 +1,9 @@
 #include <odr/internal/pdf/pdf_jpx.hpp>
 
+#include <internal/png/png_test_util.hpp>
+#include <odr/internal/pdf/pdf_image.hpp>
+#include <odr/internal/pdf/pdf_object.hpp>
+
 #include <odr/internal/crypto/crypto_util.hpp>
 
 #include <array>
@@ -71,5 +75,16 @@ TEST(PdfJpx, scales_samples_to_eight_bits) {
     EXPECT_EQ(static_cast<std::uint8_t>(image->samples[0]), 0);
     EXPECT_EQ(static_cast<std::uint8_t>(image->samples[1]), middle);
     EXPECT_EQ(static_cast<std::uint8_t>(image->samples[2]), 255);
+
+    // JPX ignores the PDF bit depth and Decode array (Table 89).
+    const std::array<double, 2> inverted{1, 0};
+    const auto encoded = encode_image(
+        odr::internal::crypto::util::hex_decode(hex), Object(Name{"JPXDecode"}),
+        Object{}, 3, 1, 0, nullptr, inverted);
+    ASSERT_TRUE(encoded.has_value());
+    const auto png = odr::test::png::decode_png(encoded->data);
+    for (std::size_t x = 0; x < 3; ++x) {
+      EXPECT_EQ(png.pixel(x, 0), std::string(3, image->samples[x]));
+    }
   }
 }

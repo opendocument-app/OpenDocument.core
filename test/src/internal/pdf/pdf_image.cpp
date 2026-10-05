@@ -133,7 +133,17 @@ TEST(PdfImage, encode_honours_decode_array) {
 
 TEST(PdfImage, encode_rejects_bad_parameters) {
   EXPECT_TRUE(encode_image_png("", 0, 1, 8, device_rgb(), {}).empty());
-  EXPECT_TRUE(encode_image_png("", 1, 1, 0, device_rgb(), {}).empty());
+  for (const std::int32_t bits : {-1, 0, 3, 7, 12, 15, 17}) {
+    SCOPED_TRACE(bits);
+    EXPECT_TRUE(encode_image_png("", 1, 1, bits, device_rgb(), {}).empty());
+    EXPECT_TRUE(decode_mask_alpha("", 1, 1, bits, {}, false, 1, 1).empty());
+  }
+  EXPECT_TRUE(decode_mask_alpha("", 1, 1, 8, {}, true, 1, 1).empty());
+  for (const std::int32_t bits : {2, 16}) {
+    const auto png = decode_png(
+        encode_image_png(bytes({255, 255}), 1, 1, bits, device_gray(), {}));
+    EXPECT_EQ(png.pixel(0, 0), bytes({255, 255, 255}));
+  }
   ColorSpaceDef zero;
   zero.components = 0;
   EXPECT_TRUE(encode_image_png("", 1, 1, 8, zero, {}).empty());
