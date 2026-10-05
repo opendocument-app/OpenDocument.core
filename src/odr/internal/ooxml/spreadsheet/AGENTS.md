@@ -6,8 +6,9 @@ The design of the xlsx module. The feature checklist is in
 [`docs/design/spreadsheet-editing.md`](../../../../../docs/design/spreadsheet-editing.md).
 
 Scope: read `xl/workbook.xml`, its sheets, the shared strings and the drawings
-into the abstract model, one table per sheet. Cell styles resolve from
-`xl/styles.xml`. Write a cell value and a cell style, and save.
+into the abstract model, one table per sheet. Cell styles resolve from the
+styles part that the workbook relationships name, normally `xl/styles.xml`.
+Write a cell value and a cell style, and save.
 
 ## Design decisions
 
