@@ -10,6 +10,7 @@
 #include <cstring>
 #include <numbers>
 #include <ranges>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -48,6 +49,9 @@ constexpr double label_points = 9;
 constexpr double character_width = 0.55;
 
 std::string number(const double value) {
+  if (!std::isfinite(value)) {
+    throw std::overflow_error("nonfinite chart coordinate");
+  }
   return util::number::to_string_significant(value == 0 ? 0 : value, 6);
 }
 
@@ -119,14 +123,14 @@ public:
     }
     m_size.width = read_length(m_chart.attribute("svg:width"));
     m_size.height = read_length(m_chart.attribute("svg:height"));
-    if (m_size.width <= 0 || m_size.height <= 0) {
+    if (!valid_box(m_size)) {
       return {};
     }
 
     const pugi::xml_node plot_area = m_chart.child("chart:plot-area");
     read_class();
     read_plot_box(plot_area);
-    if (!read_data(plot_area) || m_series.empty()) {
+    if (!valid_box(m_plot) || !read_data(plot_area) || m_series.empty()) {
       return {};
     }
 
@@ -167,6 +171,12 @@ private:
   [[nodiscard]] pugi::xml_node style_of(const pugi::xml_node node) const {
     const auto it = m_styles.find(node.attribute("chart:style-name").value());
     return it == m_styles.end() ? pugi::xml_node() : it->second;
+  }
+
+  static bool valid_box(const Box &box) {
+    return std::isfinite(box.x) && std::isfinite(box.y) &&
+           std::isfinite(box.width) && std::isfinite(box.height) &&
+           box.width > 0 && box.height > 0;
   }
 
   void read_class() {
@@ -277,8 +287,7 @@ private:
     }
 
     trim();
-    read_range();
-    return true;
+    return m_pie || read_range();
   }
 
   static constexpr std::size_t max_cells = 1048576;
@@ -322,8 +331,7 @@ private:
     if (!value) {
       return {};
     }
-    const double result = value.as_double();
-    return std::isfinite(result) ? std::optional<double>(result) : std::nullopt;
+    return util::number::parse(value.value());
   }
 
   /// The table is written to the chart's full range, so it ends in rows that
@@ -365,7 +373,7 @@ private:
     return std::string(colour_at(index));
   }
 
-  void read_range() {
+  bool read_range() {
     bool empty = true;
     for (const Series &series : m_series) {
       for (const std::optional<double> value : series.values) {
@@ -378,8 +386,7 @@ private:
       }
     }
     if (empty) {
-      m_series.clear();
-      return;
+      return false;
     }
     // A bar or an area is measured from zero, or it lies about its size.
     if (m_bars || m_area) {
@@ -387,11 +394,18 @@ private:
       m_maximum = std::max(m_maximum, 0.0);
     }
     if (m_maximum == m_minimum) {
-      m_maximum = m_minimum + 1;
+      const double padding = std::max(1.0, std::abs(m_minimum) * 0.1);
+      m_minimum -= padding;
+      m_maximum += padding;
     }
     m_step = nice_step((m_maximum - m_minimum) / 5);
+    if (!std::isfinite(m_step) || m_step <= 0) {
+      return false;
+    }
     m_minimum = std::floor(m_minimum / m_step) * m_step;
     m_maximum = std::ceil(m_maximum / m_step) * m_step;
+    const double span = m_maximum - m_minimum;
+    return std::isfinite(span) && span > 0;
   }
 
   [[nodiscard]] double value_to_y(const double value) const {
@@ -458,9 +472,12 @@ private:
   }
 
   void write_value_axis() {
-    const auto ticks =
-        static_cast<int>(std::lround((m_maximum - m_minimum) / m_step));
-    for (int tick = 0; tick <= ticks; ++tick) {
+    const double intervals = std::round((m_maximum - m_minimum) / m_step);
+    if (!std::isfinite(intervals) || intervals < 0 || intervals > 10) {
+      throw std::overflow_error("invalid chart axis intervals");
+    }
+    const auto ticks = static_cast<std::int32_t>(intervals);
+    for (std::int32_t tick = 0; tick <= ticks; ++tick) {
       const double value = m_minimum + m_step * tick;
       const double y = value_to_y(value);
       m_out += "<line x1=\"" + number(m_plot.x) + "\" y1=\"" + number(y) +
@@ -483,10 +500,10 @@ private:
     }
     const double width = static_cast<double>(longest) * label_points *
                          units_per_point * character_width;
-    const auto stride = std::max<std::size_t>(
-        1,
-        static_cast<std::size_t>(std::ceil(
-            width * static_cast<double>(m_categories.size()) / m_plot.width)));
+    const double labels = static_cast<double>(m_categories.size());
+    const double spacing = std::ceil(width / m_plot.width * labels);
+    const auto stride =
+        static_cast<std::size_t>(std::clamp(spacing, 1.0, labels));
     for (std::size_t i = 0; i < m_categories.size(); i += stride) {
       write_text(category_centre(i),
                  m_plot.y + m_plot.height + 10 * units_per_point,
@@ -582,12 +599,16 @@ private:
   /// A pie plots one series, its slices the categories.
   void write_pie() {
     const Series &series = m_series.front();
+    double maximum = 0;
+    for (const std::optional<double> value : series.values) {
+      maximum = std::max(maximum, value.value_or(0));
+    }
+    if (maximum <= 0) {
+      return;
+    }
     double total = 0;
     for (const std::optional<double> value : series.values) {
-      total += std::max(0.0, value.value_or(0));
-    }
-    if (total <= 0) {
-      return;
+      total += std::max(0.0, value.value_or(0)) / maximum;
     }
 
     const double cx = m_plot.x + m_plot.width / 2;
@@ -601,7 +622,7 @@ private:
       if (value <= 0) {
         continue;
       }
-      const double to = from + 360 * value / total;
+      const double to = from + 360 * (value / maximum) / total;
       m_out += "<path d=\"" + slice(cx, cy, radius, inner, from, to) +
                "\" fill=\"" + std::string(colour_at(i)) + "\"/>";
       from = to;
@@ -617,13 +638,17 @@ private:
       return number(cx + r * std::cos(radians)) + " " +
              number(cy + r * std::sin(radians));
     };
-    const char *large = to - from > 180 ? "1" : "0";
-    std::string result = "M " + point(from, radius) + " A " + number(radius) +
-                         " " + number(radius) + " 0 " + large + " 1 " +
-                         point(to, radius);
+    const double middle = (from + to) / 2;
+    const auto arc = [&](const double r, const char *direction,
+                         const double end) {
+      return " A " + number(r) + " " + number(r) + " 0 0 " + direction + " " +
+             point(end, r);
+    };
+    std::string result = "M " + point(from, radius) + arc(radius, "1", middle) +
+                         arc(radius, "1", to);
     if (inner > 0) {
-      result += " L " + point(to, inner) + " A " + number(inner) + " " +
-                number(inner) + " 0 " + large + " 0 " + point(from, inner);
+      result += " L " + point(to, inner) + arc(inner, "0", middle) +
+                arc(inner, "0", from);
     } else {
       result += " L " + number(cx) + " " + number(cy);
     }
@@ -639,7 +664,11 @@ namespace odr::internal {
 
 std::optional<std::string>
 odf::render_chart(const pugi::xml_node content_root) {
-  return odf::ChartWriter(content_root).render();
+  try {
+    return odf::ChartWriter(content_root).render();
+  } catch (const std::overflow_error &) {
+    return std::nullopt;
+  }
 }
 
 } // namespace odr::internal

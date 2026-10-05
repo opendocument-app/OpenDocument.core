@@ -129,6 +129,7 @@ TEST(OdfChart, a_pie_slices_one_series_by_its_categories) {
   ASSERT_TRUE(svg.has_value());
   // One slice per point the first series has, and the gap is not one.
   EXPECT_EQ(1, count(*svg, "<path"));
+  EXPECT_EQ(2, count(*svg, " A "));
 }
 
 TEST(OdfChart, a_category_label_is_skipped_where_it_would_not_fit) {
@@ -209,4 +210,45 @@ TEST(OdfChart, repeated_tables_are_bounded_before_expansion) {
       .append_attribute("table:number-columns-repeated")
       .set_value(1025);
   EXPECT_FALSE(render_chart(document.document_element()));
+}
+
+TEST(OdfChart, invalid_geometry_falls_back_before_integer_conversion) {
+  for (const char *width : {"0cm", "-1cm", "1e306cm"}) {
+    pugi::xml_document document;
+    ASSERT_TRUE(document.load_string(bar_chart().c_str()));
+    document.select_node("//chart:plot-area")
+        .node()
+        .attribute("svg:width")
+        .set_value(width);
+    EXPECT_FALSE(render_chart(document.document_element()));
+  }
+  for (const char *value : {"1e308", "5e-324"}) {
+    pugi::xml_document document;
+    ASSERT_TRUE(document.load_string(bar_chart().c_str()));
+    for (const auto cell :
+         document.select_nodes("//table:table-cell[@office:value]")) {
+      cell.node().attribute("office:value").set_value(value);
+    }
+    const auto svg = render_chart(document.document_element());
+    if (svg) {
+      EXPECT_EQ(svg->find("nan"), std::string::npos);
+      EXPECT_EQ(svg->find("inf"), std::string::npos);
+    }
+  }
+}
+
+TEST(OdfChart, pie_and_ring_totals_do_not_overflow) {
+  for (const char *kind : {"chart:circle", "chart:ring"}) {
+    pugi::xml_document document;
+    ASSERT_TRUE(document.load_string(bar_chart(kind).c_str()));
+    for (const auto cell :
+         document.select_nodes("//table:table-cell[@office:value]")) {
+      cell.node().attribute("office:value").set_value("1e308");
+    }
+    const auto svg = render_chart(document.document_element());
+    ASSERT_TRUE(svg);
+    EXPECT_EQ(count(*svg, "<path"), 2u);
+    EXPECT_EQ(svg->find("nan"), std::string::npos);
+    EXPECT_EQ(svg->find("inf"), std::string::npos);
+  }
 }
