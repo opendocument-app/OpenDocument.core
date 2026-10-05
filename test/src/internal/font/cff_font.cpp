@@ -1,5 +1,3 @@
-#include <locale_util.hpp>
-
 #include <odr/internal/font/cff_font.hpp>
 
 #include <odr/font.hpp>
@@ -8,6 +6,8 @@
 #include <odr/internal/font/sfnt_font.hpp>
 #include <odr/internal/font/sfnt_transform.hpp>
 #include <odr/internal/util/byte_string.hpp>
+
+#include <locale_util.hpp>
 
 #include <gtest/gtest.h>
 

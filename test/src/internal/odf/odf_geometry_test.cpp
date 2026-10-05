@@ -1,14 +1,15 @@
-#include <locale_util.hpp>
-
 #include <odr/internal/odf/odf_geometry.hpp>
 #include <odr/internal/odf/odf_value_cursor.hpp>
 
 #include <odr/document_element.hpp>
 
+#include <locale_util.hpp>
+
 #include <pugixml.hpp>
 
 #include <gtest/gtest.h>
 
+#include <clocale>
 #include <cmath>
 #include <cstdint>
 #include <string>

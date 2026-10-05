@@ -1,5 +1,4 @@
 #include <locale_util.hpp>
-
 #include <test_util.hpp>
 
 #include <gtest/gtest.h>

@@ -1,6 +1,6 @@
-#include <locale_util.hpp>
-
 #include <odr/quantity.hpp>
+
+#include <locale_util.hpp>
 
 #include <gtest/gtest.h>
 
