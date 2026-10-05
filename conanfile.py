@@ -1,6 +1,9 @@
+from pathlib import Path
+
 from conan import ConanFile
 from conan.tools.build import check_min_cppstd
 from conan.tools.cmake import CMakeToolchain, CMakeDeps, CMake
+from conan.tools.files import copy
 
 
 class OpenDocumentCoreConan(ConanFile):
@@ -37,7 +40,7 @@ class OpenDocumentCoreConan(ConanFile):
         "pugixml/*:header_only": True,
     }
 
-    exports_sources = ["apple/*", "cli/*", "cmake/*", "jni/*", "python/*", "resources/dist/*", "wasm/*", "src/*", "CMakeLists.txt"]
+    exports_sources = ["LICENSE", "apple/*", "cli/*", "cmake/*", "jni/*", "python/*", "resources/dist/*", "wasm/*", "src/*", "CMakeLists.txt"]
 
     def config_options(self):
         if self.settings.os == "Windows":
@@ -91,6 +94,7 @@ class OpenDocumentCoreConan(ConanFile):
         cmake.build()
 
     def package(self):
+        copy(self, "LICENSE", self.source_folder, str(Path(self.package_folder) / "licenses"))
         cmake = CMake(self)
         cmake.install()
 

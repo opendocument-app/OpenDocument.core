@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Conan packages include the license text. Android profiles identify NDK 28.1
+  as Clang 19 so dependency package IDs match the compiler.
+
 - PDF incremental writes reject invalid or conflicting object references and
   oversized output, report write failures and restore the parser position.
 

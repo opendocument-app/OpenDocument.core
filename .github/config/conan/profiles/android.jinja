@@ -23,7 +23,7 @@ os.api_level={{api_level}}
 arch={{arch}}
 build_type=Release
 compiler=clang
-compiler.version=17
+compiler.version=19
 compiler.cppstd=23
 compiler.libcxx=c++_shared
 
@@ -32,9 +32,7 @@ tools.android:ndk_path={{android_home}}/ndk/{{ndk_version}}
 tools.cmake.cmaketoolchain:extra_variables={'CMAKE_CXX_COMPILER_LAUNCHER': 'ccache', 'CMAKE_C_COMPILER_LAUNCHER': 'ccache'}
 
 [buildenv]
-# Cross compile toolchain evn vars are required to build
-# libffi, libgettext, libiconv, libxml2 and other autotools packages for Android
-# https://github.com/conan-io/conan/issues/16493
+# Autotools packages need explicit cross-compilers (conan-io/conan#16493).
 AR={{toolchain}}/bin/llvm-ar
 AS={{toolchain}}/bin/llvm-as
 RANLIB={{toolchain}}/bin/llvm-ranlib
