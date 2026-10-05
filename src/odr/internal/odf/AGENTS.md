@@ -213,14 +213,14 @@ Larger tables fall back to the embedded replacement image.
 
 1. **Save never re-encrypts.** A document decrypted from a password-protected
    package reports `is_savable(false) == false`, and every `save` overload
-   throws `UnsupportedOperation`. Only `content.xml` is re-serialised, so a
-   style edit would not persist.
+   throws `UnsupportedOperation`. Unencrypted saves re-serialize `content.xml`,
+   `styles.xml` and loaded chart parts.
 2. **No streaming.** Crypto and save read whole files into memory and rebuild
    the whole ZIP (`// TODO stream`).
 3. **Covered and repeated cells are heuristic.** `// TODO covered cells` and
    `// TODO mark as repeated` in `odf_parser.cpp`.
-4. **Style gaps.** `transparent` and alpha colours give `nullopt`
-   (`// TODO use alpha`). The style-versus-element cascade is provisional
+4. **Style gaps.** `transparent` is an explicit alpha-zero colour. Other
+   alpha colours are not parsed. The style-versus-element cascade is provisional
    (`// TODO use override?`). `text:outline-style` is indexed but not applied
    to headings.
 5. **StarOffice, template and flat mimetypes** are aliased onto the four base

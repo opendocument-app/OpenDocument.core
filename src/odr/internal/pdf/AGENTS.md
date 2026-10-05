@@ -108,8 +108,8 @@ above. So each run is raised by one font ascent:
 
 ## Non-obvious facts
 
-- `is_decodable()` returns `false` for PDF. Page-tree and content parsing is
-  lazy, on the HTML request. `file_meta()` still carries the page count and
+- `is_decodable()` is false while a PDF remains encrypted. Page-tree and content
+  parsing is lazy, on the HTML request. `file_meta()` still carries the page count and
   the `/Info` strings, read once at construction, after the empty-password
   unlock. It is all or nothing: a malformed structure leaves `document_type`
   at `unknown`. XMP is not parsed.

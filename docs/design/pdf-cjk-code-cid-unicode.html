@@ -260,7 +260,7 @@
       <div class="step"><span class="op">CID → Unicode</span><span class="via">collection bitmap</span></div>
     </div>
 
-    <p class="pivot-note"><span>◆</span><span>The same CID <b>2980</b> also drives rendering — it selects the glyph outline in the embedded font program. That's why display was never broken even before this landed: only <em>selectability</em> was missing.</span></p>
+    <p class="pivot-note"><span>◆</span><span>The same CID <b>2980</b> also drives rendering — it selects the glyph outline in the embedded font program. Correct code splitting keeps both glyph selection and Unicode extraction aligned.</span></p>
   </section>
 
   <section>
@@ -284,7 +284,7 @@
           </div>
           <div class="card rec">
             <h3>codespace_pool</h3>
-            <p class="role"><b>Step 1 — split.</b> Declares code widths. Matched on the first byte: <code>0x92</code> lands in a 2-byte lead range, so the code is <code>0x9286</code>. (A byte like <code>0xA1</code> would be a 1-byte code — mixed widths stay aligned.)</p>
+            <p class="role"><b>Step 1 — split.</b> Declares code widths. Each byte is checked against the codespace bounds: <code>0x9286</code> matches a 2-byte code, while <code>0xA1</code> matches a 1-byte code.</p>
             <pre class="struct"><span class="k">struct</span> CodespaceRange {
   uint32_t low, high;  <span class="c">// leading-byte range</span>
   uint8_t  width;      <span class="c">// 1..4 bytes</span>
@@ -375,7 +375,7 @@ u = values[i]   <span class="c">// 0xFFFF → astral</span></pre>
   <footer>
     <div class="row"><b>Coverage</b> <span class="mono">~130 legacy CMaps · 5 collections · Adobe cmap-resources (BSD-3-Clause)</span></div>
     <div class="row"><b>Size</b> <span class="mono">code→CID ≈ 0.35 MB · CID→Unicode ≈ 0.23 MB · total ≈ 0.58 MB, no new dependency</span></div>
-    <div class="row"><b>Effect</b> <span class="mono">selectability + search only — glyphs already rendered via the PUA re-encode</span></div>
+    <div class="row"><b>Effect</b> <span class="mono">Unicode selection and search; shared code splitting also keeps glyph selection aligned</span></div>
   </footer>
 </div>
 
