@@ -150,4 +150,7 @@ TEST(FormulaFunctionsLookup, a_whole_column_past_the_extent_has_no_answer) {
   EXPECT_EQ(xlsx(R"(=COUNTIF(A:A,"abc"))"), number(1));
   EXPECT_EQ(xlsx("=VLOOKUP(2,A:A,1)"), std::nullopt);
   EXPECT_EQ(xlsx("=INDEX(A:A,100)"), std::nullopt);
+  // an exact match ends at the first hit, within the work limit of a lookup
+  EXPECT_NE(xlsx(R"(=MATCH("abc",A:A,0))"), std::nullopt);
+  EXPECT_EQ(xlsx(R"(=MATCH("abc",A:A,0))"), xlsx(R"(=MATCH("abc",A1:A14,0))"));
 }

@@ -16,10 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- Formula array limits are checked before dimension arithmetic can overflow
-  on 32-bit targets, including broadcast results and explicit array literals.
-  Conditional aggregates and lookups also enforce their existing work limit
-  without dimension overflow.
+- Formula arrays, conditional aggregates and lookups check their size limits
+  before dimension arithmetic can overflow on 32-bit targets.
 
 - Spreadsheet formulas keep quoted sheet spans when rewritten, read bare
   whole-row ranges, and report cross-sheet ranges as unresolved. Extreme
