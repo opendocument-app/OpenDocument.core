@@ -27,7 +27,9 @@ a cell is reached through `Sheet.cells` (`(col, row) → {node, element_id}`),
 not by child iteration. Columns are a `map<column_max, Column>` keyed by the
 max of a `min..max` span and resolved with `lookup_greater_or_equals`. Shapes
 hang off the sheet in their own chain (`first_shape_id`). Dimensions come from
-`<dimension ref>`, else from the cells the file states.
+`<dimension ref>`, else from the cells the file states. Omitted row and cell
+coordinates follow the previous entry; parsing writes them into the DOM so
+structural edits and saves use the same positions.
 
 **Values.** A cell with `t="s"` reads `<v>` as an index into the shared
 strings and parses that `<si>`; otherwise its own `<v>` or `<is>` children.

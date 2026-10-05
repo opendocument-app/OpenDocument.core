@@ -293,3 +293,51 @@ TEST(OoxmlSpreadsheetValue, a_date_keeps_the_date_format_its_cell_has) {
             std::string::npos)
       << xml.str();
 }
+
+TEST(OoxmlSpreadsheetValue, omitted_coordinates_follow_the_previous_entry) {
+  const Document document = decode(workbook(
+      R"(<row><c><v>1</v></c><c r="C1"><v>3</v></c><c><v>4</v></c></row>)"
+      R"(<row r="4"><c><v>5</v></c></row><row><c><v>6</v></c></row>)"));
+  const Sheet sheet = first_sheet(document);
+  EXPECT_DOUBLE_EQ(sheet.cell(0, 0).value().number(), 1);
+  EXPECT_DOUBLE_EQ(sheet.cell(2, 0).value().number(), 3);
+  EXPECT_DOUBLE_EQ(sheet.cell(3, 0).value().number(), 4);
+  EXPECT_DOUBLE_EQ(sheet.cell(0, 3).value().number(), 5);
+  EXPECT_DOUBLE_EQ(sheet.cell(0, 4).value().number(), 6);
+  sheet.insert_rows(1, 1);
+  sheet.set_cell(3, 0, CellValue(7));
+  const Document saved = saved_and_reopened(document);
+  EXPECT_DOUBLE_EQ(first_sheet(saved).cell(3, 0).value().number(), 7);
+  EXPECT_DOUBLE_EQ(first_sheet(saved).cell(0, 4).value().number(), 5);
+  EXPECT_DOUBLE_EQ(first_sheet(saved).cell(0, 5).value().number(), 6);
+}
+
+TEST(OoxmlSpreadsheetValue, an_invalid_index_keeps_the_rest_of_the_sheet) {
+  for (const std::string index :
+       {"", "-1", "1x", "4294967296", "18446744073709551616"}) {
+    SCOPED_TRACE(index);
+    const Document document = decode(workbook(
+        R"(<row r="1"><c><v>1</v></c></row><row r=")" + index +
+            R"("><c><v>2</v></c><c t="s"><v>)" + index + "</v></c></row>",
+        "", "<si><t>zero</t></si><si><t>one</t></si>", "",
+        R"(<cols><col min="1" max=")" + index + R"("/><col min=")" + index +
+            R"(" max="1"/></cols>)"));
+    const Sheet sheet = first_sheet(document);
+    EXPECT_DOUBLE_EQ(sheet.cell(0, 1).value().number(), 2);
+    EXPECT_FALSE(sheet.cell(1, 1).first_child());
+  }
+  EXPECT_NO_THROW(decode(workbook("", "", "", "",
+                                  R"(<cols><col min="0" max="1"/>)"
+                                  R"(<col min="2" max="1"/></cols>)")));
+  EXPECT_DOUBLE_EQ(
+      first_sheet(
+          decode(workbook(R"(<row r="1"/><row r="0"><c><v>2</v></c></row>)")))
+          .cell(0, 1)
+          .value()
+          .number(),
+      2);
+  const Document document =
+      decode(workbook(R"(<row r=" +1 "><c r="A1" t="s"><v> +0 </v></c></row>)",
+                      "", "<si><t>zero</t></si>"));
+  EXPECT_EQ(first_sheet(document).cell(0, 0).value().text(), "zero");
+}
