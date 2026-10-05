@@ -1,9 +1,8 @@
 #include <odr/internal/oldms/text/doc_io.hpp>
 
+#include <odr/internal/util/byte_stream_util.hpp>
 #include <odr/internal/util/byte_string.hpp>
 #include <odr/internal/util/string_util.hpp>
-
-#include <odr/internal/util/byte_stream_util.hpp>
 
 #include <algorithm>
 #include <cstring>
@@ -52,8 +51,7 @@ void text::read(std::istream &in, ParsedFib &out) {
                              std::to_string(out.csw));
   }
   util::byte_stream::read(in, out.fibRgW);
-  in.ignore(static_cast<std::streamsize>(static_cast<std::size_t>(out.csw) * 2 -
-                                         sizeof(out.fibRgW)));
+  util::byte_stream::skip(in, std::uint64_t{out.csw} * 2 - sizeof(out.fibRgW));
 
   util::byte_stream::read(in, out.cslw);
   if (static_cast<std::size_t>(out.cslw) * 4 < sizeof(out.fibRgLw)) {
@@ -61,8 +59,8 @@ void text::read(std::istream &in, ParsedFib &out) {
                              std::to_string(out.cslw));
   }
   util::byte_stream::read(in, out.fibRgLw);
-  in.ignore(static_cast<std::streamsize>(
-      static_cast<std::size_t>(out.cslw) * 4 - sizeof(out.fibRgLw)));
+  util::byte_stream::skip(in,
+                          std::uint64_t{out.cslw} * 4 - sizeof(out.fibRgLw));
 
   // ccpText MUST be >= 0 ([MS-DOC] 2.5.5).
   if (out.ccpText() < 0) {
@@ -114,7 +112,7 @@ void text::skip_Prc(std::istream &in) {
   }
 
   const auto cbGrpprl = util::byte_stream::read<std::uint16_t>(in);
-  in.ignore(cbGrpprl);
+  util::byte_stream::skip(in, cbGrpprl);
 }
 
 std::string text::read_string(std::istream &in, const std::size_t length_cp,
