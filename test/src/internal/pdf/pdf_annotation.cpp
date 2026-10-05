@@ -4,6 +4,7 @@
 #include <odr/internal/pdf/pdf_document.hpp>
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
+#include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/pdf/pdf_writer.hpp>
 
 #include <test_util.hpp>
@@ -263,13 +264,13 @@ TEST(PdfAnnotation, optional_fields_are_omitted_when_empty) {
     EXPECT_FALSE(dictionary.has_key("Contents"));
   }
 
-  markup.common.author = "a reviewer";
-  markup.common.contents = "why (this) matters";
-  {
+  for (const std::string text : {"a reviewer", "André (中文) 😀", "\x18"}) {
+    SCOPED_TRACE(text);
+    markup.common.author = text;
+    markup.common.contents = text;
     const Dictionary dictionary = markup_annotation(markup);
-    EXPECT_EQ(dictionary.get("T").as_string(), "a reviewer");
-    // the parenthesis survives the escaping the writer applies
-    EXPECT_EQ(dictionary.get("Contents").as_string(), "why (this) matters");
+    EXPECT_EQ(decode_text_string(dictionary.get("T").as_string()), text);
+    EXPECT_EQ(decode_text_string(dictionary.get("Contents").as_string()), text);
   }
 }
 

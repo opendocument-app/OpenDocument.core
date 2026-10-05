@@ -1,6 +1,7 @@
 #include <odr/internal/pdf/pdf_encoding.hpp>
 
 #include <odr/internal/pdf/pdf_encoding_data.hpp>
+#include <odr/internal/util/byte_string.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
@@ -112,6 +113,19 @@ std::string pdf::decode_text_string(const std::string &string) {
   for (const char c : string) {
     util::string::append_c32(
         pdf::pdf_doc_encoding_to_unicode(static_cast<std::uint8_t>(c)), result);
+  }
+  return result;
+}
+
+std::string pdf::encode_text_string(const std::string_view string) {
+  if (std::ranges::all_of(string, [](const std::uint8_t c) {
+        return c < 0x80 && pdf_doc_encoding_to_unicode(c) == c;
+      })) {
+    return std::string(string);
+  }
+  std::string result = "\xfe\xff";
+  for (const char16_t unit : util::string::string_to_u16string(string)) {
+    util::byte_string::put_u16_be(result, unit);
   }
   return result;
 }
