@@ -605,7 +605,11 @@ std::shared_ptr<Function> parse_function_impl(const Object &object,
       c1 = {1.0};
     }
     const double n = dict.get("N").as_real();
-    if (domain.size() != 2 || c0.size() != c1.size() ||
+    // `/C0` and `/C1` must be equally long; a malformed file may disagree.
+    const std::size_t outputs = std::min(c0.size(), c1.size());
+    c0.resize(outputs);
+    c1.resize(outputs);
+    if (domain.size() != 2 ||
         (!range.empty() && range.size() / 2 != c0.size()) ||
         !std::isfinite(n)) {
       return nullptr;
@@ -631,9 +635,10 @@ std::shared_ptr<Function> parse_function_impl(const Object &object,
         encode.size() != 2 * functions.size()) {
       return nullptr;
     }
+    // an empty subdomain evaluates to its encode start, so equal bounds pass
     double previous = domain.front();
     for (const double bound : bounds) {
-      if (!std::isfinite(bound) || bound <= previous || bound > domain.back()) {
+      if (!std::isfinite(bound) || bound < previous || bound > domain.back()) {
         return nullptr;
       }
       previous = bound;

@@ -127,6 +127,9 @@ TEST(PdfFunction, stitching) {
   const auto endpoint = parse_function(Object(dict), context());
   ASSERT_NE(endpoint, nullptr);
   EXPECT_DOUBLE_EQ(endpoint->eval({1})[0], 1);
+  // an empty first subdomain is degenerate, not malformed
+  dict["Bounds"] = reals({0});
+  EXPECT_NE(parse_function(Object(dict), context()), nullptr);
 }
 
 // Type 0: a 1-D, 8-bit sample table, linearly interpolated and decoded.
@@ -202,7 +205,6 @@ TEST(PdfFunction, malformed_layout_is_null) {
         "/FunctionType 2 /Domain [0 1 2] /N 1",
         "/FunctionType 2 /Domain [1 0] /N 1",
         "/FunctionType 2 /Domain [0 1] /Range [0] /N 1",
-        "/FunctionType 2 /Domain [0 1] /C0 [0 1] /C1 [1] /N 1",
         "/FunctionType 4294967298 /Domain [0 1] /N 1",
         "/FunctionType 3 /Domain [0 1] /Functions ["
         "<< /FunctionType 2 /Domain [0 1] /N 1 >>] /Bounds [0.5] /Encode [0 1]",
@@ -242,4 +244,14 @@ TEST(PdfFunction, recursive_stitching_is_null) {
     return Object(dict);
   };
   EXPECT_EQ(parse_function(Object(ObjectReference{1, 0}), ctx), nullptr);
+}
+
+// `/C0` and `/C1` of unequal length keep the outputs both state.
+TEST(PdfFunction, exponential_uses_the_shorter_of_c0_and_c1) {
+  std::istringstream stream(
+      "<< /FunctionType 2 /Domain [0 1] /C0 [0 1] /C1 [1] /N 1 >>");
+  ObjectParser parser(stream);
+  const auto fn = parse_function(parser.read_object(), context());
+  ASSERT_NE(fn, nullptr);
+  EXPECT_EQ(fn->eval({0.5}).size(), 1u);
 }
