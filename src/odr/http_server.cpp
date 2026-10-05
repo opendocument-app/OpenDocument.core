@@ -273,8 +273,6 @@ public:
         return;
       }
 
-      ODR_VERBOSE(m_logger, "Stopping HTTP server...");
-
       // rejects requests in flight, and any listen() that has not started yet
       m_stopping.store(true, std::memory_order_release);
       m_bound = false;
@@ -298,10 +296,8 @@ public:
       // the accept loop stands on the server and on what the handlers capture,
       // so neither may go before listen() has returned
       m_listen_done.wait(lock, [this] { return m_listening == 0; });
+      m_content.clear();
     }
-
-    // nothing is serving any more
-    clear();
 
     // ~server here, which joins the thread pool
   }

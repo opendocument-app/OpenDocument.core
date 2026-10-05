@@ -49,6 +49,24 @@ private:
 
 } // namespace
 
+TEST(HttpServer, cleanup_does_not_call_user_loggers) {
+  class ThrowingLogger final : public ILogger {
+  public:
+    bool will_log(LogLevel) const override {
+      throw std::runtime_error("logging failed");
+    }
+    void log(Time, LogLevel, const std::string &,
+             const std::source_location &) override {}
+    void flush() override {}
+  };
+  const Logger logger(std::make_shared<ThrowingLogger>());
+  {
+    const HttpServer server({}, logger);
+    EXPECT_NO_THROW(server.stop());
+  }
+  EXPECT_NO_THROW({ const HttpServer server({}, logger); });
+}
+
 TEST(HttpServer, bind_reports_the_port_it_got) {
   const HttpServer server;
 
