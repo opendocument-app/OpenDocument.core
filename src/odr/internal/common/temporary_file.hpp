@@ -36,6 +36,8 @@ public:
 
   [[nodiscard]] TemporaryDiskFile copy(const abstract::File &file) const;
   [[nodiscard]] TemporaryDiskFile copy(std::istream &in) const;
+  [[nodiscard]] TemporaryDiskFile
+  create(const std::function<void(std::ostream &)> &write) const;
 
 private:
   AbsPath m_directory;

@@ -79,6 +79,11 @@ TemporaryDiskFileFactory::copy(const abstract::File &file) const {
 }
 
 TemporaryDiskFile TemporaryDiskFileFactory::copy(std::istream &in) const {
+  return create([&](std::ostream &out) { util::stream::pipe(in, out); });
+}
+
+TemporaryDiskFile TemporaryDiskFileFactory::create(
+    const std::function<void(std::ostream &)> &write) const {
   std::ofstream file;
   AbsPath file_path;
   for (std::uint32_t attempt = 0; attempt < 128; ++attempt) {
@@ -98,12 +103,16 @@ TemporaryDiskFile TemporaryDiskFileFactory::copy(std::istream &in) const {
   }
 
   try {
-    util::stream::pipe(in, file);
+    std::filesystem::permissions(file_path.path(),
+                                 std::filesystem::perms::owner_read |
+                                     std::filesystem::perms::owner_write);
+    write(file);
     file.close();
     if (!file) {
       throw FileWriteError(file_path.string());
     }
   } catch (...) {
+    file.exceptions(std::ios::goodbit);
     file.close();
     remove_quietly(file_path);
     throw;

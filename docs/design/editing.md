@@ -110,8 +110,13 @@ different feature and belongs to `<text:tracked-changes>`, `w:ins` and `w:del`.
 
 The browser refuses edits for UX only. Replay validates again and throws on an
 op it cannot apply. Earlier operations remain applied when a later one fails;
-replay does not clone or roll back the document. Saving is a separate call and
-is not atomic. The envelope states a `version`, and replay refuses any other.
+replay does not clone or roll back the document. The envelope states a
+`version`, and replay refuses any other.
+
+Saving is a separate call. Path saves write a temporary file beside the
+destination and replace it after a successful close. Saving over a backing
+archive first preserves its bytes for lazy resource reads and later saves.
+Stream saves leave partial output on failure.
 
 Open: a conformance corpus of `(base document, op log) → expected saved
 result` cases, replayed in C++ as a GoogleTest, is not built. What stands in

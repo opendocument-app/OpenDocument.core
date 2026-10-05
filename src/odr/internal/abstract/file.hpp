@@ -22,6 +22,9 @@ class File {
 public:
   virtual ~File() = default;
 
+  /// Keep lazy reads valid before replacing @p path; refuse if unsupported.
+  virtual void preserve_source(const AbsPath &path) const;
+
   [[nodiscard]] virtual FileLocation location() const noexcept = 0;
   [[nodiscard]] virtual std::size_t size() const = 0;
 

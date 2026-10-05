@@ -2,7 +2,12 @@
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+#include <odr/filesystem.hpp>
 #include <odr/html.hpp>
+#include <odr/internal/common/file.hpp>
+#include <odr/internal/common/temporary_file.hpp>
+#include <odr/internal/util/stream_util.hpp>
+#include <odr/internal/zip/zip_archive.hpp>
 #include <odr/odr.hpp>
 #include <odr/style.hpp>
 #include <odr/table_position.hpp>
@@ -797,4 +802,55 @@ TEST(Document, saving_an_unsavable_format_leaves_no_file) {
   std::ostringstream out;
   EXPECT_THROW(document.save(out), UnsupportedOperation);
   EXPECT_THROW((void)document.save_to_memory(), UnsupportedOperation);
+}
+
+TEST(Document, repeated_saves_over_source_preserve_lazy_resources) {
+  using namespace odr::internal;
+  std::string payload(100000, '\0');
+  std::uint32_t state = 1;
+  for (char &byte : payload) {
+    state ^= state << 13;
+    state ^= state >> 17;
+    state ^= state << 5;
+    byte = static_cast<char>(state);
+  }
+  zip::ZipArchive archive;
+  archive.insert_file(
+      archive.end(), RelPath("mimetype"),
+      std::make_shared<MemoryFile>("application/vnd.oasis.opendocument.text"),
+      0);
+  archive.insert_file(archive.end(), RelPath("content.xml"),
+                      std::make_shared<MemoryFile>(
+                          "<office:document-content><office:body><office:text>"
+                          "<text:p>hello</text:p></office:text></office:body>"
+                          "</office:document-content>"));
+  archive.insert_file(archive.end(), RelPath("Pictures/data.bin"),
+                      std::make_shared<MemoryFile>(payload));
+  std::stringstream bytes;
+  archive.save(bytes);
+  const auto source = TemporaryDiskFileFactory::system_default().copy(bytes);
+  const std::string path = source.disk_path()->string();
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const odr::File resource =
+      document.as_filesystem().open("/Pictures/data.bin");
+  const auto active = resource.stream();
+  ASSERT_EQ(active->get(), static_cast<unsigned char>(payload[0]));
+  std::filesystem::create_hard_link(path, path + ".alias");
+  const TemporaryDiskFile alias(path + ".alias");
+  for (const std::string &destination : {alias.path().string(), path}) {
+    for (const std::string text :
+         {std::string(2000, 'a'), std::string("bye")}) {
+      ASSERT_EQ(set_every_text(document.root_element(), text), 1u);
+      ASSERT_NO_THROW(document.save(destination));
+      EXPECT_EQ(util::stream::read(*resource.stream()), payload);
+      const odr::Document reopened =
+          odr::open(destination).as_document_file().document();
+      EXPECT_EQ(expect_every_text(reopened.root_element(), text), 1u);
+      EXPECT_EQ(
+          util::stream::read(
+              *reopened.as_filesystem().open("/Pictures/data.bin").stream()),
+          payload);
+    }
+  }
+  EXPECT_EQ(util::stream::read(*active), payload.substr(1));
 }

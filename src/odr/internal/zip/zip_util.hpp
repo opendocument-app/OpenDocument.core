@@ -16,6 +16,7 @@
 
 namespace odr::internal {
 class RelPath;
+class AbsPath;
 } // namespace odr::internal
 
 namespace odr::internal::zip::util {
@@ -31,6 +32,7 @@ enum class Method {
 class ReadSource final {
 public:
   explicit ReadSource(std::shared_ptr<abstract::File> file);
+  void preserve_source(const AbsPath &path);
 
   [[nodiscard]] std::size_t read(std::uint64_t offset, void *buffer,
                                  std::size_t size) const;
@@ -48,6 +50,7 @@ class Archive final : public std::enable_shared_from_this<Archive> {
 public:
   explicit Archive(std::shared_ptr<abstract::File> file);
   ~Archive();
+  void preserve_source(const AbsPath &path) const;
 
   [[nodiscard]] mz_zip_archive *zip() const;
 

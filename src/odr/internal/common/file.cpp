@@ -10,6 +10,14 @@
 
 namespace odr::internal {
 
+void abstract::File::preserve_source(const AbsPath &path) const {
+  const auto source = disk_path();
+  if (source.has_value() && std::filesystem::exists(path.path()) &&
+      std::filesystem::equivalent(source->path(), path.path())) {
+    throw UnsupportedOperation("cannot overwrite a live file resource");
+  }
+}
+
 DiskFile::DiskFile(const char *path) : DiskFile{AbsPath(path)} {}
 
 DiskFile::DiskFile(const std::string &path) : DiskFile{AbsPath(path)} {}
