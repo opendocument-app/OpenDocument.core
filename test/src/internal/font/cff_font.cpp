@@ -666,7 +666,8 @@ TEST(CffFontTest, BuilderRejectsInvalidGlyphSets) {
       {".notdef", "\x0e"}, {"A", "\x0e"}, {"A", "\x0e"}};
   EXPECT_THROW((void)build_cff("Duplicate", duplicate, 0, 0, {}),
                std::runtime_error);
-  const std::vector<BuilderGlyph> too_many(65001);
+  std::vector<BuilderGlyph> too_many(65001);
+  too_many.front().name = ".notdef";
   EXPECT_THROW((void)build_cff("TooMany", too_many, 0, 0, {}),
                std::runtime_error);
 }

@@ -2,11 +2,13 @@
 
 #include <odr/internal/font/cff_standard_strings.hpp>
 #include <odr/internal/util/byte_string.hpp>
+#include <odr/internal/util/number_util.hpp>
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <ranges>
 #include <stdexcept>
 #include <string>
@@ -48,10 +50,9 @@ void dict_number(std::string &out, const double value) {
   if (!std::isfinite(value)) {
     throw std::runtime_error("cff: non-finite DICT operand");
   }
-  if (value == std::trunc(value) &&
-      value >= std::numeric_limits<std::int32_t>::min() &&
-      value <= std::numeric_limits<std::int32_t>::max()) {
-    dict_int(out, static_cast<std::int32_t>(value));
+  if (const std::optional<std::int32_t> integer =
+          util::number::to_integer<std::int32_t>(value)) {
+    dict_int(out, *integer);
     return;
   }
   const std::string text = fmt::format("{:.17g}", value);

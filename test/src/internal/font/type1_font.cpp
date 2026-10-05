@@ -35,7 +35,8 @@ std::string charstring_entry(const std::string &name,
 /// Type1 fixture with two glyphs and one subroutine.
 std::string
 build_type1(const std::int32_t len_iv = 4, const std::string &prefix = "wxyz",
-            const std::string &glyph_b = std::string("\xf0\x0d\x0e", 3)) {
+            const std::string &glyph_b = std::string("\xf0\x0d\x0e", 3),
+            const std::string &name_b = "B") {
   const std::string clear = "%!PS-AdobeFont-1.0: TestType1 001.000\n"
                             "/FontName /TestType1 def\n"
                             "/FontMatrix [0.001 0 0 0.001 0 0] readonly def\n"
@@ -68,7 +69,7 @@ build_type1(const std::int32_t len_iv = 4, const std::string &prefix = "wxyz",
   // parser does not interpret them, it only extracts them.
   private_section +=
       charstring_entry("A", std::string("\x8b\x8b\x0d\x0e", 4), len_iv);
-  private_section += charstring_entry("B", glyph_b, len_iv);
+  private_section += charstring_entry(name_b, glyph_b, len_iv);
   private_section += "end\nend\n";
 
   std::string program = clear;
@@ -147,6 +148,14 @@ TEST(Type1FontTest, BrokenGlyphBecomesEmptyInCff) {
   const odr::internal::font::cff::CffFont cff(to_cff(font));
   EXPECT_EQ(cff.glyph_count(), 3);
   EXPECT_EQ(cff.glyph_name(2), "B");
+}
+
+TEST(Type1FontTest, RepeatedGlyphNameKeepsTheFirstInCff) {
+  const std::string program =
+      build_type1(4, "wxyz", std::string("\xf0\x0d\x0e", 3), "A");
+  const odr::internal::font::cff::CffFont cff(to_cff(Type1Font{program}));
+  EXPECT_EQ(cff.glyph_count(), 2);
+  EXPECT_EQ(cff.glyph_name(1), "A");
 }
 
 TEST(Type1FontTest, ReadsInvalidNumbersAsZeroAndRejectsBadPfbSegments) {

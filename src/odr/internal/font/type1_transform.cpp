@@ -7,6 +7,8 @@
 #include <cstddef>
 #include <stdexcept>
 #include <string>
+#include <string_view>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -19,7 +21,13 @@ std::string type1::to_cff(const Type1Font &font) {
   std::vector<cff::BuilderGlyph> glyphs;
   glyphs.reserve(font.glyphs().size() + 1);
 
+  // CFF glyph names must be unique; a repeated Type1 name keeps its first
+  // charstring.
+  std::unordered_set<std::string_view> names;
   const auto translate = [&](const Glyph &glyph) {
+    if (!names.insert(glyph.name).second) {
+      return;
+    }
     // A charstring that does not translate becomes an empty glyph, so one
     // broken glyph does not refuse the font.
     std::string charstring(1, static_cast<char>(14));
@@ -41,6 +49,7 @@ std::string type1::to_cff(const Type1Font &font) {
   if (notdef < font.glyphs().size()) {
     translate(font.glyphs()[notdef]);
   } else {
+    names.insert(".notdef");
     glyphs.push_back({".notdef", std::string(1, static_cast<char>(14))});
   }
   for (std::size_t i = 0; i < font.glyphs().size(); ++i) {
