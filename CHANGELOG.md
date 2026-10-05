@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Legacy Word validates FIB signatures and extension lengths. It stores the
+  shared header fields by value, removing unsafe deletion through base pointers.
+
 - Legacy PowerPoint validates nested picture bounds, record lengths, and formatting
   counts, limits text-container nesting, and avoids overflow in frame dimensions.
 

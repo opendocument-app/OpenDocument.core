@@ -11,7 +11,6 @@
 namespace odr::internal::oldms::text {
 
 void read(std::istream &in, FibBase &out);
-void read(std::istream &in, ParsedFibRgCswNew &out);
 void read(std::istream &in, ParsedFib &out);
 
 using HandlePrc = std::function<void(std::istream &in)>;

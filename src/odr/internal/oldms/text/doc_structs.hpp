@@ -2,7 +2,6 @@
 
 #include <array>
 #include <cstdint>
-#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -64,7 +63,7 @@ struct FibBase {
   std::uint32_t reserved5;
   std::uint32_t reserved6;
 };
-static_assert(sizeof(FibBase) == 32, "FibBase should be 8 bytes");
+static_assert(sizeof(FibBase) == 32, "FibBase should be 32 bytes");
 
 struct FibRgFcLcb97 {
   FcLcb stshfOrig;
@@ -165,130 +164,6 @@ struct FibRgFcLcb97 {
 static_assert(sizeof(FibRgFcLcb97) == 744,
               "FibRgFcLcb97 should be 744 bytes in size");
 
-struct FibRgFcLcb2000 : FibRgFcLcb97 {
-  FcLcb plcfTch;
-  FcLcb rmdThreading;
-  FcLcb mid;
-  FcLcb sttbRgtplc;
-  FcLcb msoEnvelope;
-  FcLcb plcfLad;
-  FcLcb rgDofr;
-  FcLcb plcosl;
-  FcLcb plcfCookieOld;
-  FcLcb pgdMotherOld;
-  FcLcb bkdMotherOld;
-  FcLcb pgdFtnOld;
-  FcLcb bkdFtnOld;
-  FcLcb pgdEdnOld;
-  FcLcb bkdEdnOld;
-};
-static_assert(sizeof(FibRgFcLcb2000) == 864,
-              "FibRgFcLcb2003 should be 864 bytes in size");
-
-struct FibRgFcLcb2002 : FibRgFcLcb2000 {
-  FcLcb unused1;
-  FcLcb plcfPgp;
-  FcLcb plcfuim;
-  FcLcb plfguidUim;
-  FcLcb atrdExtra;
-  FcLcb plrsid;
-  FcLcb sttbfBkmkFactoid;
-  FcLcb plcfBkfFactoid;
-  FcLcb plcfcookie;
-  FcLcb plcfBklFactoid;
-  FcLcb factoidData;
-  FcLcb docUndo;
-  FcLcb sttbfBkmkFcc;
-  FcLcb plcfBkfFcc;
-  FcLcb plcfBklFcc;
-  FcLcb sttbfbkmkBPRepairs;
-  FcLcb plcfbkfBPRepairs;
-  FcLcb plcfbklBPRepairs;
-  FcLcb pmsNew;
-  FcLcb odso;
-  FcLcb plcfpmiOldXP;
-  FcLcb plcfpmiNewXP;
-  FcLcb plcfpmiMixedXP;
-  FcLcb unused2;
-  FcLcb plcffactoid;
-  FcLcb plcflvcOldXP;
-  FcLcb plcflvcNewXP;
-  FcLcb plcflvcMixedXP;
-};
-static_assert(sizeof(FibRgFcLcb2002) == 1088,
-              "FibRgFcLcb2003 should be 1088 bytes in size");
-
-struct FibRgFcLcb2003 : FibRgFcLcb2002 {
-  FcLcb hplxsdr;
-  FcLcb sttbfBkmkSdt;
-  FcLcb plcfBkfSdt;
-  FcLcb plcfBklSdt;
-  FcLcb customXForm;
-  FcLcb sttbfBkmkProt;
-  FcLcb plcfBkfProt;
-  FcLcb plcfBklProt;
-  FcLcb sttbProtUser;
-  FcLcb unused;
-  FcLcb plcfpmiOld;
-  FcLcb plcfpmiOldInline;
-  FcLcb plcfpmiNew;
-  FcLcb plcfpmiNewInline;
-  FcLcb plcflvcOld;
-  FcLcb plcflvcOldInline;
-  FcLcb plcflvcNew;
-  FcLcb plcflvcNewInline;
-  FcLcb pgdMother;
-  FcLcb bkdMother;
-  FcLcb afdMother;
-  FcLcb pgdFtn;
-  FcLcb bkdFtn;
-  FcLcb afdFtn;
-  FcLcb pgdEdn;
-  FcLcb bkdEdn;
-  FcLcb afdEdn;
-  FcLcb afd;
-};
-static_assert(sizeof(FibRgFcLcb2003) == 1312,
-              "FibRgFcLcb2003 should be 1312 bytes in size");
-
-struct FibRgFcLcb2007 : FibRgFcLcb2003 {
-  FcLcb plcfmthd;
-  FcLcb sttbfBkmkMoveFrom;
-  FcLcb plcfBkfMoveFrom;
-  FcLcb plcfBklMoveFrom;
-  FcLcb sttbfBkmkMoveTo;
-  FcLcb plcfBkfMoveTo;
-  FcLcb plcfBklMoveTo;
-  FcLcb unused1;
-  FcLcb unused2;
-  FcLcb unused3;
-  FcLcb sttbfBkmkArto;
-  FcLcb plcfBkfArto;
-  FcLcb plcfBklArto;
-  FcLcb artoData;
-  FcLcb unused4;
-  FcLcb unused5;
-  FcLcb unused6;
-  FcLcb ossTheme;
-  FcLcb colorSchemeMapping;
-};
-static_assert(sizeof(FibRgFcLcb2007) == 1464,
-              "FibRgFcLcb2007 should be 1464 bytes in size");
-
-struct FibRgCswNewData2000 {
-  std::uint16_t cQuickSavesNew;
-};
-static_assert(sizeof(FibRgCswNewData2000) == 2,
-              "FibRgCswNewData2000 should be 2 bytes");
-
-struct FibRgCswNewData2007 : FibRgCswNewData2000 {
-  std::uint16_t lidThemeOther;
-  std::uint16_t lidThemeFE;
-  std::uint16_t lidThemeCS;
-};
-static_assert(sizeof(FibRgCswNewData2007) == 8,
-              "FibRgCswNewData2007 should be 8 bytes");
-
 /// The character SPRMs mapped to TextStyle ([MS-DOC] 2.6.1); everything else
 /// in a Chpx is skipped via Sprm::operand_size.
 enum CharacterSprms : std::uint16_t {
@@ -370,11 +245,6 @@ static_assert(sizeof(FfnFixed) == 39, "FfnFixed should be 39 bytes");
 
 #pragma pack(pop)
 
-struct ParsedFibRgCswNew {
-  std::uint16_t nFibNew;
-  std::unique_ptr<FibRgCswNewData2000> rgCswNewData;
-};
-
 struct ParsedFib {
   FibBase base;
   std::uint16_t csw;
@@ -382,9 +252,9 @@ struct ParsedFib {
   std::uint16_t cslw;
   std::array<std::uint16_t, 44> fibRgLw;
   std::uint16_t cbRgFcLcb;
-  std::unique_ptr<FibRgFcLcb97> fibRgFcLcb;
+  FibRgFcLcb97 fibRgFcLcb{};
   std::uint16_t cswNew;
-  std::optional<ParsedFibRgCswNew> fibRgCswNew;
+  std::optional<std::uint16_t> nFibNew;
 
   /// FibRgLw97.ccpText ([MS-DOC] 2.5.5), the 4th 32-bit field of fibRgLw.
   [[nodiscard]] std::int32_t ccpText() const {

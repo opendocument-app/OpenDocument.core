@@ -1,8 +1,8 @@
 #include <odr/internal/oldms/text/doc_io.hpp>
 
-#include "odr/internal/util/string_util.hpp"
-
 #include <odr/internal/util/byte_stream_util.hpp>
+#include <odr/internal/util/byte_string.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <cstring>
@@ -12,34 +12,20 @@ namespace odr::internal::oldms::text {
 
 namespace {
 
-template <typename T> struct TypeTag {
-  using type = T;
-};
-
-template <typename F>
-auto type_dispatch_FibRgFcLcb(const std::uint16_t nFib, const F &f) {
-  switch (nFib) {
-  case nFib97: {
-    return f(TypeTag<FibRgFcLcb97>{});
-  }
-  case nFib2000: {
-    return f(TypeTag<FibRgFcLcb2000>{});
-  }
-  case nFib2002: {
-    return f(TypeTag<FibRgFcLcb2002>{});
-  }
-  case nFib2003: {
-    return f(TypeTag<FibRgFcLcb2003>{});
-  }
-  case nFib2007: {
-    return f(TypeTag<FibRgFcLcb2007>{});
-  }
+void validate_version(const std::uint16_t version, const bool allow_future) {
+  switch (version) {
+  case nFib97:
+  case nFib2000:
+  case nFib2002:
+  case nFib2003:
+  case nFib2007:
+    return;
   default:
-    // Newer FIBs only append entries, so the newest modelled layout fits.
-    if (nFib > nFib2007) {
-      return f(TypeTag<FibRgFcLcb2007>{});
+    if (allow_future && version > nFib2007) {
+      return;
     }
-    throw std::runtime_error("Unknown nFib value: " + std::to_string(nFib));
+    throw std::runtime_error("doc: unsupported FIB version " +
+                             std::to_string(version));
   }
 }
 
@@ -55,6 +41,9 @@ void text::read(std::istream &in, FibBase &out) {
 
 void text::read(std::istream &in, ParsedFib &out) {
   read(in, out.base);
+  if (out.base.wIdent != fib_wIdent) {
+    throw std::runtime_error("doc: invalid FIB signature");
+  }
 
   util::byte_stream::read(in, out.csw);
   if (static_cast<std::size_t>(out.csw) * 2 < sizeof(out.fibRgW)) {
@@ -62,8 +51,7 @@ void text::read(std::istream &in, ParsedFib &out) {
                              std::to_string(out.csw));
   }
   util::byte_stream::read(in, out.fibRgW);
-  in.ignore(static_cast<std::streamsize>(static_cast<std::size_t>(out.csw) * 2 -
-                                         sizeof(out.fibRgW)));
+  util::byte_stream::skip(in, std::uint64_t{out.csw} * 2 - sizeof(out.fibRgW));
 
   util::byte_stream::read(in, out.cslw);
   if (static_cast<std::size_t>(out.cslw) * 4 < sizeof(out.fibRgLw)) {
@@ -71,8 +59,8 @@ void text::read(std::istream &in, ParsedFib &out) {
                              std::to_string(out.cslw));
   }
   util::byte_stream::read(in, out.fibRgLw);
-  in.ignore(static_cast<std::streamsize>(
-      static_cast<std::size_t>(out.cslw) * 4 - sizeof(out.fibRgLw)));
+  util::byte_stream::skip(in,
+                          std::uint64_t{out.cslw} * 4 - sizeof(out.fibRgLw));
 
   // ccpText MUST be >= 0 ([MS-DOC] 2.5.5).
   if (out.ccpText() < 0) {
@@ -81,53 +69,26 @@ void text::read(std::istream &in, ParsedFib &out) {
   }
 
   util::byte_stream::read(in, out.cbRgFcLcb);
-  const auto fibRgFcLcb =
-      std::make_unique<char[]>(static_cast<std::size_t>(out.cbRgFcLcb) * 8);
-  in.read(fibRgFcLcb.get(), static_cast<std::streamsize>(out.cbRgFcLcb) * 8);
+  const std::string offsets = util::byte_stream::read_u8s(
+      in, std::uint32_t{out.cbRgFcLcb} * sizeof(FcLcb));
+  out.fibRgFcLcb = {};
+  std::memcpy(&out.fibRgFcLcb, offsets.data(),
+              std::min(sizeof(out.fibRgFcLcb), offsets.size()));
 
   util::byte_stream::read(in, out.cswNew);
+  out.nFibNew.reset();
   if (out.cswNew > 0) {
-    out.fibRgCswNew.emplace();
-    read(in, *out.fibRgCswNew);
+    const std::string extension = util::byte_stream::read_u8s(
+        in, std::uint32_t{out.cswNew} * sizeof(std::uint16_t));
+    util::byte_string::Reader cursor(extension);
+    out.nFibNew = cursor.read<std::uint16_t>();
+    validate_version(*out.nFibNew, false);
+    // [MS-DOC] 2.5.11–13: only the version affects the fields we use.
+    cursor.skip(*out.nFibNew == nFib97 ? 0
+                                       : (*out.nFibNew == nFib2007 ? 8 : 2));
   }
-  const std::uint16_t nFib =
-      out.fibRgCswNew.has_value() ? out.fibRgCswNew->nFibNew : out.base.nFib;
-
-  out.fibRgFcLcb = type_dispatch_FibRgFcLcb(
-      nFib, [&]<typename T>(const T) -> std::unique_ptr<FibRgFcLcb97> {
-        using FibRgFcLcbType = T::type;
-        auto result = std::make_unique<FibRgFcLcbType>();
-        // Clamped: surplus entries are dropped, a short block stays zeroed.
-        const std::size_t copy =
-            std::min<std::size_t>(sizeof(FibRgFcLcbType),
-                                  static_cast<std::size_t>(out.cbRgFcLcb) * 8);
-        std::memcpy(result.get(), fibRgFcLcb.get(), copy);
-        return result;
-      });
-}
-
-void text::read(std::istream &in, ParsedFibRgCswNew &out) {
-  util::byte_stream::read(in, out.nFibNew);
-
-  switch (out.nFibNew) {
-  case nFib97:
-    break;
-  case nFib2000:
-  case nFib2002:
-  case nFib2003: {
-    auto rgCswNewData = std::make_unique<FibRgCswNewData2000>();
-    util::byte_stream::read(in, *rgCswNewData);
-    out.rgCswNewData = std::move(rgCswNewData);
-  } break;
-  case nFib2007: {
-    auto rgCswNewData = std::make_unique<FibRgCswNewData2007>();
-    util::byte_stream::read(in, *rgCswNewData);
-    out.rgCswNewData = std::move(rgCswNewData);
-  } break;
-  default:
-    throw std::runtime_error("Unsupported nFibNew value: " +
-                             std::to_string(out.nFibNew));
-  }
+  validate_version(out.nFibNew.value_or(out.base.nFib),
+                   !out.nFibNew.has_value());
 }
 
 void text::read_Clx(std::istream &in, const HandlePrc &handle_Prc,
@@ -151,7 +112,7 @@ void text::skip_Prc(std::istream &in) {
   }
 
   const auto cbGrpprl = util::byte_stream::read<std::uint16_t>(in);
-  in.ignore(cbGrpprl);
+  util::byte_stream::skip(in, cbGrpprl);
 }
 
 std::string text::read_string(std::istream &in, const std::size_t length_cp,
