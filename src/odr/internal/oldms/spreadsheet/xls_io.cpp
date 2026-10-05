@@ -6,9 +6,10 @@
 
 #include <algorithm>
 #include <cmath>
-#include <fmt/core.h>
 #include <istream>
 #include <stdexcept>
+
+#include <fmt/format.h>
 
 namespace odr::internal::oldms::spreadsheet {
 
@@ -89,10 +90,7 @@ void BiffReader::skip_bytes(const std::size_t count) {
       next_continue();
     }
     const std::size_t take = std::min(left, m_remaining);
-    m_in->ignore(static_cast<std::streamsize>(take));
-    if (!*m_in || m_in->gcount() != static_cast<std::streamsize>(take)) {
-      throw std::runtime_error("xls: truncated record body");
-    }
+    util::byte_stream::skip(*m_in, take);
     left -= take;
     m_remaining -= take;
   }

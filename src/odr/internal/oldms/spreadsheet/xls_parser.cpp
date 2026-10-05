@@ -8,6 +8,7 @@
 #include <odr/internal/oldms/spreadsheet/xls_structs.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_style.hpp>
 
+#include <algorithm>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -16,6 +17,9 @@
 
 namespace odr::internal::oldms::spreadsheet {
 namespace {
+
+constexpr std::uint32_t max_columns = 256;
+constexpr std::uint32_t max_rows = 65536;
 
 struct BoundSheet {
   std::uint32_t offset{0};
@@ -34,8 +38,9 @@ struct GlobalStyles {
 void add_cell(ElementRegistry &registry, const ElementIdentifier sheet_id,
               const std::uint32_t column, const std::uint32_t row,
               const std::uint16_t ixfe, std::string text) {
-  if (column >= 256 || row >= 65536) {
-    throw std::runtime_error("xls: cell outside BIFF8 worksheet bounds");
+  // LibreOffice also drops a cell outside the BIFF8 grid.
+  if (column >= max_columns || row >= max_rows) {
+    return;
   }
   auto [cell_id, cell_element, cell] =
       registry.create_sheet_cell_element(TablePosition(column, row));
@@ -88,8 +93,8 @@ void parse_globals(BiffReader &reader, std::vector<BoundSheet> &sheets,
     } break;
     case biff_sst: {
       const auto head = reader.read<SstHead>();
-      if (head.cstUnique < 0 || head.cstTotal < head.cstUnique) {
-        throw std::runtime_error("xls: invalid SST string count");
+      if (head.cstUnique < 0) {
+        throw std::runtime_error("xls: negative SST string count");
       }
       for (std::int32_t i = 0; i < head.cstUnique; ++i) {
         shared_strings.push_back(reader.read_xl_unicode_rich_extended_string());
@@ -98,9 +103,6 @@ void parse_globals(BiffReader &reader, std::vector<BoundSheet> &sheets,
     default:
       break;
     }
-  }
-  if (reader.record_type() != biff_eof || reader.remaining() != 0) {
-    throw std::runtime_error("xls: missing or malformed EOF record");
   }
 }
 
@@ -126,11 +128,9 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
     switch (reader.record_type()) {
     case biff_dimensions: {
       const auto dimensions = reader.read<DimensionsBody>();
-      if (dimensions.rwMic > dimensions.rwMac || dimensions.rwMac > 65536 ||
-          dimensions.colMic > dimensions.colMac || dimensions.colMac > 256) {
-        throw std::runtime_error("xls: invalid worksheet dimensions");
-      }
-      sheet.dimensions = TableDimensions(dimensions.rwMac, dimensions.colMac);
+      sheet.dimensions = TableDimensions(
+          std::min<std::uint32_t>(dimensions.rwMac, max_rows),
+          std::min<std::uint32_t>(dimensions.colMac, max_columns));
     } break;
     case biff_labelsst: {
       const auto label = reader.read<LabelSstBody>();
@@ -154,17 +154,11 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
         throw std::runtime_error("xls: malformed MulRk record");
       }
       const std::size_t count = (reader.remaining() - 2) / 6;
-      if (count == 0 || column_first >= 256 || count > 256u - column_first) {
-        throw std::runtime_error("xls: invalid MulRk column range");
-      }
       for (std::size_t i = 0; i < count; ++i) {
         const std::uint16_t ixfe = reader.read_u16();
         const auto rk = reader.read<RkNumber>();
         add_cell(registry, sheet_id, column_first + i, row, ixfe,
                  format_number(rk.decode()));
-      }
-      if (reader.read_u16() != column_first + count - 1) {
-        throw std::runtime_error("xls: inconsistent MulRk final column");
       }
     } break;
     case biff_number: {
@@ -186,9 +180,8 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
                    : (boolerr.bBoolErr != 0 ? "TRUE" : "FALSE"));
     } break;
     case biff_formula: {
-      if (pending_string_cell) {
-        throw std::runtime_error("xls: missing formula string result");
-      }
+      // Without its String record, a formula string result stays empty.
+      pending_string_cell.reset();
       const auto formula = reader.read<FormulaFixed>();
       const TablePosition position(formula.cell.col, formula.cell.rw);
       if (formula.val.is_xnum()) {
@@ -228,10 +221,6 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
     default:
       break;
     }
-  }
-  if (reader.record_type() != biff_eof || reader.remaining() != 0 ||
-      pending_string_cell) {
-    throw std::runtime_error("xls: incomplete worksheet substream");
   }
 }
 

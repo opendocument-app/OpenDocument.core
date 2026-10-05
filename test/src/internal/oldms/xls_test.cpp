@@ -416,7 +416,9 @@ TEST(OldMs, xls_truncated_records_are_not_end_of_stream) {
 TEST(OldMs, xls_substreams_and_counts_are_validated) {
   const std::string valid = make_workbook({}, {});
   EXPECT_NO_THROW(static_cast<void>(open_workbook(valid)));
-  EXPECT_THROW(open_workbook(valid.substr(0, valid.size() - 4)),
+  EXPECT_NO_THROW(
+      static_cast<void>(open_workbook(valid.substr(0, valid.size() - 4))));
+  EXPECT_THROW(open_workbook(valid.substr(0, valid.size() - 5)),
                std::runtime_error);
   std::string wrong_bof = valid;
   wrong_bof[6] = '\x10'; // Worksheet BOF where workbook globals are required.
@@ -428,17 +430,23 @@ TEST(OldMs, xls_substreams_and_counts_are_validated) {
   std::string globals;
   append_record(globals, 0x00FC, sst);
   EXPECT_THROW(open_workbook(make_workbook(globals, {})), std::runtime_error);
-  EXPECT_THROW(open_workbook(make_workbook({}, {make_label(0, 256, 0, "x")})),
-               std::runtime_error);
+}
+
+TEST(OldMs, xls_tolerates_cells_outside_the_grid_and_missing_results) {
+  const Document outside =
+      open_workbook(make_workbook({}, {make_label(0, 256, 0, "x")}));
+  EXPECT_EQ(collect_text(
+                outside.root_element().first_child().as_sheet().cell(256, 0)),
+            "");
 
   std::string formula(12, '\0'); // CellRef and string FormulaValue prefix.
   append_u16(formula, 0xFFFF);
   formula.resize(20, '\0');
-  EXPECT_THROW(open_workbook(make_workbook({}, {formula}, 0x0006)),
-               std::runtime_error);
+  EXPECT_NO_THROW(static_cast<void>(
+      open_workbook(make_workbook({}, {formula, formula}, 0x0006))));
 }
 
-TEST(OldMs, xls_mulrk_checks_its_final_column) {
+TEST(OldMs, xls_mulrk_takes_its_cells_from_the_body_size) {
   std::string cells;
   append_u16(cells, 0); // row
   append_u16(cells, 2); // first column
@@ -450,8 +458,8 @@ TEST(OldMs, xls_mulrk_checks_its_final_column) {
       collect_text(document.root_element().first_child().as_sheet().cell(2, 0)),
       "12");
   cells[cells.size() - 2] = 3;
-  EXPECT_THROW(open_workbook(make_workbook({}, {cells}, 0x00BD)),
-               std::runtime_error);
+  EXPECT_NO_THROW(
+      static_cast<void>(open_workbook(make_workbook({}, {cells}, 0x00BD))));
 }
 
 TEST(OldMs, xls_number_format_ignores_numeric_locale) {
