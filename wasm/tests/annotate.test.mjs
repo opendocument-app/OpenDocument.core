@@ -24,19 +24,11 @@ describe('annotate', () => {
   });
   after(() => odr.closeAll());
 
-  it('declares the capability', () => {
-    const doc = odr.open(minimalPdf());
-    try {
-      assert.equal(doc.capabilities().annotate, true);
-    } finally {
-      doc.close();
-    }
-  });
-
   it('appends the annotation to the source', () => {
     const source = minimalPdf();
     const doc = odr.open(source);
     try {
+      assert.equal(doc.capabilities().annotate, true);
       const result = doc.annotate(highlight);
 
       assert.ok(result.length > source.length);

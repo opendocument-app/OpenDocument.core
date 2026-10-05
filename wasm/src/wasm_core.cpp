@@ -29,18 +29,17 @@ emscripten::val string_array(const std::span<const std::string_view> values) {
   return result;
 }
 
-/// Every file type, with what a viewer needs before it holds a file: an
-/// `<input accept>` list, and what the PWA manifest declares it opens.
+/// Lists file types, aliases and capabilities for file pickers.
 emscripten::val file_types() {
   emscripten::val result = emscripten::val::array();
   for (const FileType type : odr::all_file_types()) {
     emscripten::val entry = emscripten::val::object();
-    entry.set("fileType", static_cast<int>(type));
+    entry.set("fileType", static_cast<std::int32_t>(type));
     entry.set("name", odr::file_type_to_string(type));
     entry.set("category",
-              static_cast<int>(odr::file_category_by_file_type(type)));
+              static_cast<std::int32_t>(odr::file_category_by_file_type(type)));
     entry.set("documentType",
-              static_cast<int>(odr::document_type_by_file_type(type)));
+              static_cast<std::int32_t>(odr::document_type_by_file_type(type)));
     entry.set("extensions",
               string_array(odr::file_extensions_by_file_type(type)));
     entry.set("mimeTypes", string_array(odr::mimetypes_by_file_type(type)));
@@ -52,10 +51,7 @@ emscripten::val file_types() {
   return result;
 }
 
-/// Enum name to ordinal, so the JS side never restates an ordinal by hand.
-/// `ErrorCode`, `FileType`, `FileCategory`, `DocumentType` and `TextEncoding`
-/// are derived from the library's tables and cannot drift; the rest have no
-/// runtime table and are listed here, pinned by `tests/enums.test.mjs`.
+/// Builds enum tables from the core; tests pin the manually listed enums.
 emscripten::val enum_tables() {
   const auto table = [](const auto &...entries) {
     emscripten::val result = emscripten::val::object();
@@ -63,12 +59,14 @@ emscripten::val enum_tables() {
     return result;
   };
   const auto entry = [](const char *name, auto value) {
-    return std::pair<const char *, int>{name, static_cast<int>(value)};
+    return std::pair<const char *, std::int32_t>{
+        name, static_cast<std::int32_t>(value)};
   };
 
   emscripten::val file_type = emscripten::val::object();
   for (const FileType type : odr::all_file_types()) {
-    file_type.set(odr::file_type_to_string(type), static_cast<int>(type));
+    file_type.set(odr::file_type_to_string(type),
+                  static_cast<std::int32_t>(type));
   }
 
   emscripten::val file_category = emscripten::val::object();
@@ -77,7 +75,7 @@ emscripten::val enum_tables() {
         FileCategory::archive, FileCategory::document, FileCategory::audio,
         FileCategory::video, FileCategory::font}) {
     file_category.set(odr::file_category_to_string(category),
-                      static_cast<int>(category));
+                      static_cast<std::int32_t>(category));
   }
 
   emscripten::val document_type = emscripten::val::object();
@@ -85,21 +83,22 @@ emscripten::val enum_tables() {
        {DocumentType::unknown, DocumentType::text, DocumentType::presentation,
         DocumentType::spreadsheet, DocumentType::drawing}) {
     document_type.set(odr::document_type_to_string(type),
-                      static_cast<int>(type));
+                      static_cast<std::int32_t>(type));
   }
 
   // `all_text_encodings` leaves `unknown` out, and it is the one with no name
   emscripten::val text_encoding = emscripten::val::object();
-  text_encoding.set("unknown", static_cast<int>(TextEncoding::unknown));
+  text_encoding.set("unknown",
+                    static_cast<std::int32_t>(TextEncoding::unknown));
   for (const TextEncoding encoding : odr::all_text_encodings()) {
     text_encoding.set(std::string(odr::text_encoding_to_string(encoding)),
-                      static_cast<int>(encoding));
+                      static_cast<std::int32_t>(encoding));
   }
 
   emscripten::val error_code = emscripten::val::object();
   for (const ErrorCode code : odr::all_error_codes()) {
     error_code.set(std::string(odr::error_code_name(code)),
-                   static_cast<int>(code));
+                   static_cast<std::int32_t>(code));
   }
 
   emscripten::val result = emscripten::val::object();

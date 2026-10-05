@@ -32,16 +32,20 @@ emscripten::val error_for(const std::exception &e) {
 
 } // namespace
 
-CallScope::CallScope() {
+} // namespace odr::wasm
+
+namespace odr {
+
+wasm::CallScope::CallScope() {
   if (active_call) {
     throw std::logic_error("reentrant calls into odr are not supported");
   }
   active_call = true;
 }
 
-CallScope::~CallScope() { active_call = false; }
+wasm::CallScope::~CallScope() { active_call = false; }
 
-Session &session(const Handle handle) {
+wasm::Session &wasm::session(const Handle handle) {
   const auto it = sessions().find(handle);
   if (it == sessions().end()) {
     throw std::out_of_range("no such document handle: " +
@@ -50,12 +54,12 @@ Session &session(const Handle handle) {
   return it->second;
 }
 
-bool has_document(const Session &session) {
+bool wasm::has_document(const Session &session) {
   return session.file.is_document_file() || session.file.is_csv_file() ||
          session.file.is_markdown_file();
 }
 
-Document &document_of(Session &session) {
+Document &wasm::document_of(Session &session) {
   if (!session.document.has_value()) {
     if (session.file.is_csv_file()) {
       session.document = session.file.as_csv_file().document();
@@ -68,28 +72,28 @@ Document &document_of(Session &session) {
   return *session.document;
 }
 
-Handle add_session(Session session) {
+wasm::Handle wasm::add_session(Session session) {
   const Handle handle = next_handle()++;
   sessions().emplace(handle, std::move(session));
   return handle;
 }
 
-bool remove_session(const Handle handle) noexcept {
+bool wasm::remove_session(const Handle handle) noexcept {
   return sessions().erase(handle) != 0;
 }
 
-void clear_sessions() noexcept { sessions().clear(); }
+void wasm::clear_sessions() noexcept { sessions().clear(); }
 
-emscripten::val ok(emscripten::val value) {
+emscripten::val wasm::ok(emscripten::val value) {
   emscripten::val result = emscripten::val::object();
   result.set("ok", true);
   result.set("value", std::move(value));
   return result;
 }
 
-emscripten::val ok() { return ok(emscripten::val::undefined()); }
+emscripten::val wasm::ok() { return ok(emscripten::val::undefined()); }
 
-emscripten::val error(const ErrorCode code, const std::string &message) {
+emscripten::val wasm::error(const ErrorCode code, const std::string &message) {
   emscripten::val detail = emscripten::val::object();
   // The catch-all keeps the name `js/index.js` gives the thrown error.
   detail.set("type", code == ErrorCode::unknown
@@ -104,14 +108,14 @@ emscripten::val error(const ErrorCode code, const std::string &message) {
   return result;
 }
 
-emscripten::val current_exception_error() {
+emscripten::val wasm::current_exception_error() {
   try {
     throw;
   } catch (const UnsupportedFileType &e) {
     // the only error carrying a payload the caller acts on: a viewer names the
     // format it cannot show
     emscripten::val result = error_for(e);
-    result["error"].set("fileType", static_cast<int>(e.file_type));
+    result["error"].set("fileType", static_cast<std::int32_t>(e.file_type));
     return result;
   } catch (const std::exception &e) {
     return error_for(e);
@@ -120,7 +124,8 @@ emscripten::val current_exception_error() {
   }
 }
 
-emscripten::val to_capabilities(const FileTypeCapabilities &capabilities) {
+emscripten::val
+wasm::to_capabilities(const FileTypeCapabilities &capabilities) {
   emscripten::val result = emscripten::val::object();
   result.set("detectByContent", capabilities.detect_by_content);
   result.set("open", capabilities.open);
@@ -135,7 +140,7 @@ emscripten::val to_capabilities(const FileTypeCapabilities &capabilities) {
   return result;
 }
 
-emscripten::val to_uint8_array(const std::string &bytes) {
+emscripten::val wasm::to_uint8_array(const std::string &bytes) {
   const emscripten::val view(emscripten::typed_memory_view(
       bytes.size(), reinterpret_cast<const std::uint8_t *>(bytes.data())));
 
@@ -145,4 +150,4 @@ emscripten::val to_uint8_array(const std::string &bytes) {
   return result;
 }
 
-} // namespace odr::wasm
+} // namespace odr

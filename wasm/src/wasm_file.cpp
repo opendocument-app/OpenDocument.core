@@ -16,9 +16,7 @@ namespace odr::wasm {
 
 namespace {
 
-/// An embind `std::string` *parameter* takes a `Uint8Array` and copies the
-/// bytes verbatim, so this is binary-safe — unlike a `std::string` *return*,
-/// which goes through `UTF8ToString`.
+/// Embind copies binary parameters verbatim; string returns decode as UTF-8.
 File from_bytes(const std::string &bytes, std::string name) {
   return File::from_memory(bytes, std::move(name));
 }
@@ -69,8 +67,7 @@ emscripten::val open_as(const std::string &bytes, std::string name,
   });
 }
 
-/// A new document opened from its saved bytes, so that its session holds a
-/// file as the session of `open` does.
+/// Creates a document with a backing file, as `open` does.
 emscripten::val create(const std::int32_t type, const emscripten::val &config) {
   return guarded([&] {
     const auto file_type = static_cast<FileType>(type);
@@ -80,8 +77,7 @@ emscripten::val create(const std::int32_t type, const emscripten::val &config) {
   });
 }
 
-/// The meta blob as `cli/src/meta.cpp` produces it, reusing the same serialiser
-/// rather than growing a second one that drifts.
+/// Uses the same metadata serializer as the CLI.
 emscripten::val meta(const Handle handle) {
   return guarded([&] {
     const Session &s = session(handle);
@@ -101,8 +97,8 @@ emscripten::val is_password_encrypted(const Handle handle) {
   });
 }
 
-/// Decrypts in place: a new handle would leave the caller holding two, one of
-/// them useless.
+/// Decrypts in place, because a new handle would leave the caller holding two,
+/// one of them useless.
 emscripten::val decrypt(const Handle handle, const std::string &password) {
   return guarded([&] {
     Session &s = session(handle);
@@ -159,8 +155,7 @@ emscripten::val permissions(const Handle handle) {
   });
 }
 
-/// The annotated pdf's bytes; there is no filesystem to write to. `payload` is
-/// what the rendered page's `odr.annotation.getAnnotations()` collected.
+/// Returns annotated PDF bytes from the browser annotation payload.
 emscripten::val annotate(const Handle handle, const std::string &payload) {
   return guarded([&] {
     Session &s = session(handle);

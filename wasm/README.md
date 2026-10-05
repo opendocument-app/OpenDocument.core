@@ -68,7 +68,7 @@ const page = iframe.contentWindow.odr;
 // The mode starts off. `enable()` refuses where the document cannot be edited.
 page.editing.enable();
 // ... the reader edits the page in the iframe ...
-// `getOperations()` returns an object. `edit` wants that object, not a string.
+// `getOperations()` returns the JSON string `edit` accepts.
 doc.edit(page.editing.getOperations());
 
 const saved = doc.save();   // the document, not the html
@@ -80,7 +80,8 @@ page.editing.committed();
 `odr.editing` is on every document view, editable or not. `isEditable()`
 tells a host whether to show an edit button, `onEditRefused` says why an edit
 was refused, and `onCellsStale` names the formula cells whose input changed.
-Nothing recomputes a formula yet. The config keys `keyboardNavigation` and
+`doc.recalculate()` updates supported formulas; save also recalculates them.
+The config keys `keyboardNavigation` and
 `keyboardShortcuts` decide whether the page takes the arrow keys and the undo
 chord. `editingScope` narrows a document view to edits inside one paragraph,
 and the page refuses the rest with code 1010, `outOfScope`.

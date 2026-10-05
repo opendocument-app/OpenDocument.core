@@ -12,9 +12,8 @@ namespace odr::wasm {
 
 namespace {
 
-/// Forwards log records to a JS callback. The sink must be worker-local and
-/// synchronous: one that needed the main thread would deadlock a render behind
-/// a `postMessage` round trip.
+/// Forwards logs to a synchronous, worker-local callback: one that needed the
+/// main thread would deadlock a render behind a `postMessage` round trip.
 class JsLogger final : public ILogger {
 public:
   JsLogger(emscripten::val sink, const LogLevel level)
@@ -29,7 +28,7 @@ public:
     if (!will_log(level)) {
       return;
     }
-    m_sink(static_cast<int>(level), message);
+    m_sink(static_cast<std::int32_t>(level), message);
   }
 
   void flush() override {}
@@ -39,9 +38,9 @@ private:
   LogLevel m_level;
 };
 
-/// Routes logging into @p sink for every document opened after this call; null
-/// restores silence.
-emscripten::val set_logger(const emscripten::val &sink, const int level) {
+/// Sets the sink for subsequently opened documents; null restores silence.
+emscripten::val set_logger(const emscripten::val &sink,
+                           const std::int32_t level) {
   return guarded([&] {
     if (sink.isUndefined() || sink.isNull()) {
       default_logger() = Logger::null();
@@ -55,12 +54,16 @@ emscripten::val set_logger(const emscripten::val &sink, const int level) {
 
 } // namespace
 
-Logger &default_logger() {
+} // namespace odr::wasm
+
+namespace odr {
+
+Logger &wasm::default_logger() {
   static Logger instance = Logger::null();
   return instance;
 }
 
-} // namespace odr::wasm
+} // namespace odr
 
 EMSCRIPTEN_BINDINGS(odr_logger) {
   emscripten::function("setLogger", &odr::wasm::set_logger);

@@ -69,19 +69,11 @@ describe('lifetimes', () => {
     assert.equal(doc.close(), false);
   });
 
-  it('never hands out handle 0, so a zeroed handle is always invalid', () => {
-    const doc = odr.open(minimalOdt());
-    try {
-      assert.ok(doc.handle > 0);
-    } finally {
-      doc.close();
-    }
-  });
-
   it('survives the worker boundary, because a handle is a number', () => {
     const doc = odr.open(minimalOdt('across the wire'));
     try {
       // `structuredClone` is what `postMessage` does to a value.
+      assert.ok(doc.handle > 0);
       assert.equal(structuredClone(doc.handle), doc.handle);
 
       // The wrapper does not make the trip, and — the trap — it does not fail

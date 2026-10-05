@@ -3,6 +3,7 @@
 /** Ordinals, mirroring the C++ enums. Read them from `Odr.enums`, never inline
  * a number: the headers guarantee only that values are appended. */
 export interface EnumTables {
+  ErrorCode: Record<string, number>;
   FileType: Record<string, number>;
   FileCategory: Record<string, number>;
   TextEncoding: Record<string, number>;
@@ -167,6 +168,8 @@ export interface HtmlConfig {
   /** Most cells written for one sheet; `null` drops the budget. */
   spreadsheetCellLimit?: number | null;
   spreadsheetGridlines?: number;
+  /** Bytes buffered while collecting sheet styles. */
+  spreadsheetStyleBuffer?: number;
   viewportMode?: number;
   /** The width the output is shown at, in css pixels; fits paged content to it. */
   viewportWidth?: number;
