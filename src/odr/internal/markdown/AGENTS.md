@@ -107,7 +107,8 @@ md4c reports a NUL as `MD_TEXT_NULLCHAR` from a verbatim block too, and then
 re-sends the byte at the head of the next `MD_TEXT_CODE` or `MD_TEXT_HTML`
 chunk. So the U+FFFD is buffered into `m_code` like the rest of a code block,
 dropped like the rest of a raw html block, and the re-sent byte is skipped
-where the code text is buffered.
+where the code text is buffered. Inline code delivers NUL bytes directly in
+`MD_TEXT_CODE`; each becomes U+FFFD.
 
 ### Nesting is bounded
 

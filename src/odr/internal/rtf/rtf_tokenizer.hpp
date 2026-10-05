@@ -29,7 +29,6 @@ private:
 
   int_type geti();
   char_type bumpc();
-  std::string bumpnc(std::size_t n);
 
   /// With the leading `\` already consumed.
   [[nodiscard]] Token read_control();

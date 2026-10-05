@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Markdown replaces NUL bytes in inline code and rejects oversized input.
+  RTF rejects unreadable streams; legacy PowerPoint rejects truncated text records.
+  Both binary readers safely propagate I/O exceptions.
+
 - OOXML parts consistently resolve absolute package targets. Optional relationships
   skip external or invalid paths. DOCX opens without styles, and PPTX retains a
   slide’s own background when it has no layout relationship.

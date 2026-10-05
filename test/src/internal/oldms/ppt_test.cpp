@@ -8,7 +8,10 @@
 #include <odr/odr.hpp>
 #include <odr/style.hpp>
 
+#include <limits>
+#include <odr/internal/oldms/presentation/ppt_io.hpp>
 #include <odr/internal/oldms/presentation/ppt_style.hpp>
+#include <sstream>
 
 #include <internal/oldms/oldms_test_util.hpp>
 
@@ -191,4 +194,18 @@ TEST(OldMs, ppt_style_various) {
   EXPECT_EQ(link.font_underline, true);
   ASSERT_TRUE(link.font_color.has_value());
   EXPECT_EQ(link.font_color->rgb(), 0x0000FFu);
+}
+
+TEST(OldMs, ppt_text_bytes_require_complete_record) {
+  using internal::oldms::presentation::read_raw_text_bytes;
+  std::istringstream valid("abcNEXT");
+  EXPECT_EQ(read_raw_text_bytes(valid, 3), "abc");
+  EXPECT_EQ(valid.peek(), 'N');
+  std::istringstream truncated("ab");
+  EXPECT_THROW(
+      read_raw_text_bytes(truncated, std::numeric_limits<std::uint32_t>::max()),
+      std::runtime_error);
+  std::istringstream throwing("ab");
+  throwing.exceptions(std::ios::failbit | std::ios::badbit);
+  EXPECT_THROW(read_raw_text_bytes(throwing, 3), std::ios_base::failure);
 }

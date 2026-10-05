@@ -1,5 +1,6 @@
 #include <odr/internal/rtf/rtf_tokenizer.hpp>
 
+#include <odr/internal/util/byte_stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
@@ -35,10 +36,10 @@ char two_hex_to_char(const char first, const char second) {
 } // namespace
 
 Tokenizer::Tokenizer(std::istream &in) : m_in{&in}, m_sb{in.rdbuf()} {
-  // One-time stream preparation (flush tied streams, state check) for the raw
-  // streambuf reads below; a sentry's effects live entirely in its
-  // constructor, so it is not kept as state.
-  const std::istream::sentry se(in, true);
+  const std::istream::sentry sentry(in, true);
+  if (!sentry) {
+    throw std::ios_base::failure("rtf: unreadable input stream");
+  }
 }
 
 Tokenizer::int_type Tokenizer::geti() {
@@ -56,33 +57,6 @@ Tokenizer::char_type Tokenizer::bumpc() {
     throw std::runtime_error("unexpected stream exhaust");
   }
   return static_cast<char_type>(c);
-}
-
-std::string Tokenizer::bumpnc(const std::size_t n) {
-  // In chunks, because `\binN` takes @p n from the file: allocating it up front
-  // lets a 22-byte rtf demand the two gigabytes its parameter claims, where
-  // growing with what the stream actually delivers throws after one chunk.
-  static constexpr std::size_t chunk_size = 4096;
-
-  std::string result;
-  while (result.size() < n) {
-    const std::size_t offset = result.size();
-    const auto m =
-        static_cast<std::streamsize>(std::min(chunk_size, n - offset));
-    // The callback must not throw, so a short read reports itself by
-    // shrinking the string back.
-    result.resize_and_overwrite(offset + static_cast<std::size_t>(m),
-                                [&](char *out, const std::size_t size) {
-                                  return m_sb->sgetn(out + offset, m) == m
-                                             ? size
-                                             : offset;
-                                });
-    if (result.size() == offset) {
-      m_in->setstate(std::ios::eofbit);
-      throw std::runtime_error("unexpected stream exhaust");
-    }
-  }
-  return result;
 }
 
 Token Tokenizer::read_token() {
@@ -178,7 +152,9 @@ Token Tokenizer::read_control() {
   // desync the group nesting.
   if (name == "bin") {
     const std::int32_t n = parameter.value_or(0);
-    return Binary{n > 0 ? bumpnc(static_cast<std::size_t>(n)) : std::string()};
+    return Binary{n > 0 ? util::byte_stream::read_u8s(
+                              *m_in, static_cast<std::uint32_t>(n))
+                        : std::string()};
   }
 
   return ControlWord{std::move(name), parameter};

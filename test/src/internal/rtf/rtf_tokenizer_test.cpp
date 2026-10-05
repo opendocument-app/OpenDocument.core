@@ -153,3 +153,25 @@ TEST(RtfTokenizer, a_binary_length_is_not_allocated_before_it_is_read) {
 TEST(RtfTokenizer, a_trailing_backslash_throws) {
   EXPECT_THROW(tokens("ab\\"), std::runtime_error);
 }
+
+TEST(RtfTokenizer, unreadable_stream_throws) {
+  std::istream missing(nullptr);
+  EXPECT_THROW(rtf::Tokenizer{missing}, std::ios_base::failure);
+  std::istringstream failed("text");
+  failed.setstate(std::ios::failbit);
+  EXPECT_THROW(rtf::Tokenizer{failed}, std::ios_base::failure);
+}
+
+TEST(RtfTokenizer, binary_read_exception_propagates) {
+  class FailingBuffer final : public std::stringbuf {
+  public:
+    FailingBuffer() : std::stringbuf("\\bin1 x") {}
+    std::streamsize xsgetn(char *, std::streamsize) override {
+      throw std::runtime_error("read failed");
+    }
+  } buffer;
+  std::istream in(&buffer);
+  in.exceptions(std::ios::badbit);
+  rtf::Tokenizer tokenizer(in);
+  EXPECT_THROW(static_cast<void>(tokenizer.read_token()), std::runtime_error);
+}
