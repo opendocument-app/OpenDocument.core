@@ -25,9 +25,18 @@ bool is_long(const pugi::xml_node node) {
   return std::strcmp(node.attribute("number:style").value(), "long") == 0;
 }
 
-std::string repeated(const char c, const std::int32_t count) {
-  return std::string(static_cast<std::size_t>(std::max<std::int32_t>(count, 0)),
-                     c);
+std::string repeated(const char c, const std::uint32_t count) {
+  return std::string(count, c);
+}
+
+/// Like LibreOffice, a digit count is clamped, and a negative one keeps
+/// @p fallback.
+std::uint32_t digit_count(const pugi::xml_node node, const char *name,
+                          const std::uint32_t fallback) {
+  const std::int64_t count = node.attribute(name).as_llong(-1);
+  return count < 0
+             ? fallback
+             : static_cast<std::uint32_t>(std::min<std::int64_t>(count, 4096));
 }
 
 /// `number:number`: no `number:decimal-places` and no grouping is `General`,
@@ -44,11 +53,11 @@ std::optional<std::string> number_code(const pugi::xml_node node) {
   if (!decimals_attribute && !grouping) {
     return *factor == 1 ? std::optional<std::string>("General") : std::nullopt;
   }
-  const std::int32_t decimals = decimals_attribute.as_int();
-  const std::int32_t min_decimals =
-      node.attribute("number:min-decimal-places").as_int(decimals);
-  const std::int32_t min_integer =
-      node.attribute("number:min-integer-digits").as_int(1);
+  const std::uint32_t decimals = digit_count(node, "number:decimal-places", 0);
+  const std::uint32_t min_decimals = std::min(
+      digit_count(node, "number:min-decimal-places", decimals), decimals);
+  const std::uint32_t min_integer =
+      digit_count(node, "number:min-integer-digits", 1);
 
   // a comma between integer placeholders groups the whole integer
   const std::string zeros =
@@ -85,34 +94,31 @@ std::optional<std::string> section_code(const pugi::xml_node style) {
       }
       result += *code;
     } else if (name == "number:scientific-number") {
-      const std::int32_t decimals =
-          child.attribute("number:decimal-places").as_int();
+      const std::uint32_t decimals =
+          digit_count(child, "number:decimal-places", 0);
       result +=
-          repeated('0', child.attribute("number:min-integer-digits").as_int(1));
+          repeated('0', digit_count(child, "number:min-integer-digits", 1));
       if (decimals > 0) {
         result += "." + repeated('0', decimals);
       }
       result +=
           "E+" +
-          repeated('0',
-                   child.attribute("number:min-exponent-digits").as_int(2));
+          repeated('0', digit_count(child, "number:min-exponent-digits", 2));
     } else if (name == "number:fraction") {
-      if (const pugi::xml_attribute integer =
-              child.attribute("number:min-integer-digits")) {
-        result +=
-            (integer.as_int() == 0 ? "#" : repeated('0', integer.as_int())) +
-            " ";
+      if (child.attribute("number:min-integer-digits")) {
+        const std::uint32_t integer =
+            digit_count(child, "number:min-integer-digits", 0);
+        result += (integer == 0 ? "#" : repeated('0', integer)) + " ";
       }
       result +=
-          repeated('?',
-                   child.attribute("number:min-numerator-digits").as_int(1)) +
+          repeated('?', digit_count(child, "number:min-numerator-digits", 1)) +
           "/";
       if (const pugi::xml_attribute denominator =
               child.attribute("number:denominator-value")) {
         result += denominator.value();
       } else {
         result += repeated(
-            '?', child.attribute("number:min-denominator-digits").as_int(1));
+            '?', digit_count(child, "number:min-denominator-digits", 1));
       }
     } else if (name == "number:text") {
       // the parse drops a text of spaces alone, and LibreOffice writes no
@@ -152,8 +158,8 @@ std::optional<std::string> section_code(const pugi::xml_node style) {
       result += is_long(child) ? "mm" : "m";
     } else if (name == "number:seconds") {
       result += is_long(child) ? "ss" : "s";
-      if (const std::int32_t decimals =
-              child.attribute("number:decimal-places").as_int();
+      if (const std::uint32_t decimals =
+              digit_count(child, "number:decimal-places", 0);
           decimals > 0) {
         result += "." + repeated('0', decimals);
       }
@@ -187,15 +193,22 @@ std::optional<std::string> condition_of(const pugi::xml_node map) {
 
 } // namespace
 
-std::optional<std::string> format_code(const pugi::xml_node data_style,
-                                       const DataStyleLookup &lookup) {
-  const std::optional<std::string> main = section_code(data_style);
+} // namespace odr::internal::odf
+
+namespace odr::internal {
+
+std::optional<std::string> odf::format_code(const pugi::xml_node data_style,
+                                            const DataStyleLookup &lookup) {
+  std::optional<std::string> main = section_code(data_style);
   if (!main) {
     return std::nullopt;
   }
 
   std::vector<std::pair<std::string, std::string>> maps;
   for (const pugi::xml_node map : data_style.children("style:map")) {
+    if (maps.size() == 2) {
+      return std::nullopt;
+    }
     const std::optional<std::string> condition = condition_of(map);
     const pugi::xml_node mapped =
         lookup(map.attribute("style:apply-style-name").value());
@@ -218,17 +231,19 @@ std::optional<std::string> format_code(const pugi::xml_node data_style,
   if (maps.size() == 2 && maps[0].first == ">0" && maps[1].first == "<0") {
     return maps[0].second + ";" + maps[1].second + ";" + *main;
   }
-  if (maps.size() > 2) {
-    return std::nullopt;
-  }
   std::string result;
   for (const auto &[condition, code] : maps) {
-    result += "[" + condition + "]" + code + ";";
+    result += "[";
+    result += condition;
+    result += "]";
+    result += code;
+    result += ";";
   }
   return result + *main;
 }
 
-std::optional<std::string> data_style_locale(const pugi::xml_node data_style) {
+std::optional<std::string>
+odf::data_style_locale(const pugi::xml_node data_style) {
   if (const pugi::xml_attribute tag =
           data_style.attribute("number:rfc-language-tag")) {
     return tag.value();
@@ -247,4 +262,4 @@ std::optional<std::string> data_style_locale(const pugi::xml_node data_style) {
   return result;
 }
 
-} // namespace odr::internal::odf
+} // namespace odr::internal

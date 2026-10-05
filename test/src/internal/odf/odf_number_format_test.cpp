@@ -2,9 +2,11 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include <pugixml.hpp>
 
@@ -101,4 +103,38 @@ TEST(OdfNumberFormat, dates_times_and_what_has_no_code) {
   EXPECT_EQ(code_of(R"(<number:date-style style:name="E"><number:era/>)"
                     R"(</number:date-style>)"),
             std::nullopt);
+}
+
+TEST(OdfNumberFormat, placeholder_counts_are_clamped) {
+  constexpr std::array<std::pair<const char *, const char *>, 7> fields{{
+      {"number:number", "number:decimal-places"},
+      {"number:number", "number:min-decimal-places"},
+      {"number:number", "number:min-integer-digits"},
+      {"number:scientific-number", "number:min-exponent-digits"},
+      {"number:fraction", "number:min-numerator-digits"},
+      {"number:fraction", "number:min-denominator-digits"},
+      {"number:seconds", "number:decimal-places"},
+  }};
+  for (const auto &[node, attribute] : fields) {
+    for (const std::string count :
+         {"-2147483648", "4097", "2147483647", "4294967296"}) {
+      const std::string xml = std::string("<number:number-style><") + node +
+                              " " + attribute + "=\"" + count +
+                              "\"/></number:number-style>";
+      SCOPED_TRACE(xml);
+      const auto code = code_of(xml);
+      ASSERT_TRUE(code);
+      EXPECT_LE(code->size(), 4096 + 16);
+    }
+  }
+  EXPECT_EQ(
+      code_of(R"(<number:number-style><number:number )"
+              R"(number:decimal-places="1" number:min-decimal-places="2"/>)"
+              R"(</number:number-style>)"),
+      "0.0");
+  EXPECT_EQ(
+      code_of(R"(<number:number-style><number:number )"
+              R"(number:decimal-places="0" number:min-integer-digits="5000"/>)"
+              R"(</number:number-style>)"),
+      std::string(4096, '0'));
 }

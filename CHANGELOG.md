@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- ODF number formats clamp digit counts to 4,096 and the minimum decimals to
+  the decimals, as LibreOffice does, before they expand placeholders.
+
 - ODF geometry reads decimal numbers independently of the host locale and
   bounds numeric scans to the current token instead of copying expression tails.
 
