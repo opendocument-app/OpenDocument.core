@@ -1,9 +1,7 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
-#include <odr/file.hpp>
 #include <odr/filesystem.hpp>
-#include <odr/odr.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/zip/zip_util.hpp>

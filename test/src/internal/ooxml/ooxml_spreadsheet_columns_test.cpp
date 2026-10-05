@@ -1,9 +1,7 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
-#include <odr/file.hpp>
 #include <odr/filesystem.hpp>
-#include <odr/odr.hpp>
 #include <odr/table_dimension.hpp>
 
 #include <internal/ooxml/ooxml_spreadsheet_test_util.hpp>
@@ -11,7 +9,6 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
-#include <sstream>
 #include <string>
 
 using namespace odr;

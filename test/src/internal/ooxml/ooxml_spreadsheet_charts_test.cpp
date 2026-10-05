@@ -1,8 +1,6 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
-#include <odr/file.hpp>
 #include <odr/filesystem.hpp>
-#include <odr/odr.hpp>
 
 #include <internal/ooxml/ooxml_spreadsheet_test_util.hpp>
 

@@ -24,7 +24,8 @@ inline void insert(internal::zip::ZipArchive &zip, const std::string &path,
                   std::make_shared<internal::MemoryFile>(content));
 }
 
-/// One sheet with optional shared strings, styles and surrounding XML.
+/// One sheet with @p sheet_data. @p sheet_prefix goes before `<sheetData>`,
+/// @p sheet_extra after it, and @p workbook_extra after `<sheets>`.
 inline std::shared_ptr<internal::abstract::File>
 workbook(const std::string &sheet_data, const std::string &sheet_extra = "",
          const std::string &shared_strings = "",
@@ -75,7 +76,7 @@ workbook(const std::string &sheet_data, const std::string &sheet_extra = "",
   return std::make_shared<internal::MemoryFile>(out.str());
 }
 
-/// One sheet with drawing, comments and VML note parts.
+/// One sheet `s` with `drawing1.xml`, `comments1.xml` and `vmlDrawing1.vml`.
 inline std::shared_ptr<internal::abstract::File>
 workbook_with_parts(const std::string &sheet_data, const std::string &drawing,
                     const std::string &comments, const std::string &notes) {
