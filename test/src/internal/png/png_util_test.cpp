@@ -1,6 +1,6 @@
 #include <odr/internal/png/png_util.hpp>
 
-#include <odr/internal/crypto/crypto_util.hpp>
+#include <internal/png/png_test_util.hpp>
 
 #include <cstdint>
 #include <random>
@@ -9,70 +9,9 @@
 #include <gtest/gtest.h>
 
 using namespace odr::internal;
-
-namespace {
-
-std::string bytes(const std::initializer_list<std::uint8_t> values) {
-  std::string result;
-  for (const std::uint8_t value : values) {
-    result.push_back(static_cast<char>(value));
-  }
-  return result;
-}
-
-std::uint32_t be32(const std::string &data, const std::size_t at) {
-  return static_cast<std::uint8_t>(data[at]) << 24 |
-         static_cast<std::uint8_t>(data[at + 1]) << 16 |
-         static_cast<std::uint8_t>(data[at + 2]) << 8 |
-         static_cast<std::uint8_t>(data[at + 3]);
-}
-
-struct DecodedPng final {
-  std::int32_t width{};
-  std::int32_t height{};
-  std::string rgb;
-  std::size_t idat_chunks{0};
-};
-
-/// Reads back what @ref png::write wrote: the chunks, then the one
-/// zlib stream their `IDAT` holds, minus the filter byte per row.
-DecodedPng decode_png(const std::string &png) {
-  DecodedPng result;
-  EXPECT_EQ(png.substr(1, 3), "PNG");
-
-  std::string idat;
-  std::size_t at = 8;
-  while (at + 12 <= png.size()) {
-    const auto length = static_cast<std::size_t>(be32(png, at));
-    const std::string type = png.substr(at + 4, 4);
-    EXPECT_LE(length, 0x7fffffffU);
-    const std::string data = png.substr(at + 8, length);
-    EXPECT_EQ(be32(png, at + 8 + length), crypto::util::crc32(type + data));
-    if (type == "IHDR") {
-      result.width = static_cast<std::int32_t>(be32(data, 0));
-      result.height = static_cast<std::int32_t>(be32(data, 4));
-      EXPECT_EQ(static_cast<std::uint8_t>(data[8]), 8); // bit depth
-      EXPECT_EQ(static_cast<std::uint8_t>(data[9]), 2); // colour type rgb
-    } else if (type == "IDAT") {
-      ++result.idat_chunks;
-      idat += data;
-    } else if (type == "IEND") {
-      break;
-    }
-    at += 12 + length;
-  }
-
-  const std::string raw = crypto::util::zlib_inflate(idat);
-  const auto stride = static_cast<std::size_t>(result.width) * 3;
-  for (std::int32_t y = 0; y < result.height; ++y) {
-    const std::size_t row = static_cast<std::size_t>(y) * (stride + 1);
-    EXPECT_EQ(static_cast<std::uint8_t>(raw[row]), 0); // filter type none
-    result.rgb.append(raw, row + 1, stride);
-  }
-  return result;
-}
-
-} // namespace
+using odr::test::png::bytes;
+using odr::test::png::decode_png;
+using odr::test::png::DecodedPng;
 
 TEST(PngUtil, rgb_round_trip) {
   // 2x2: red, green / blue, white
@@ -83,7 +22,7 @@ TEST(PngUtil, rgb_round_trip) {
 
   EXPECT_EQ(2, png.width);
   EXPECT_EQ(2, png.height);
-  EXPECT_EQ(rgb, png.rgb);
+  EXPECT_EQ(rgb, png.pixels);
 }
 
 TEST(PngUtil, a_buffer_too_short_for_the_size_is_refused) {
@@ -118,5 +57,14 @@ TEST(PngUtil, image_data_spans_chunks_without_restarting_compression) {
   }
   const DecodedPng png = decode_png(png::write(rgb, 256, 256, 3));
   EXPECT_GT(png.idat_chunks, 1);
-  EXPECT_EQ(png.rgb, rgb);
+  EXPECT_EQ(png.pixels, rgb);
+}
+
+TEST(PngUtil, rgba_round_trip) {
+  // 2x1: opaque red, half-transparent green.
+  const std::string rgba = bytes({255, 0, 0, 255, 0, 255, 0, 128});
+  const DecodedPng png = decode_png(odr::internal::png::write(rgba, 2, 1, 4));
+  EXPECT_EQ(png.width, 2);
+  EXPECT_EQ(png.height, 1);
+  EXPECT_EQ(png.pixels, rgba);
 }

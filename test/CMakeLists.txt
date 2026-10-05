@@ -155,6 +155,7 @@ add_executable(odr_test
         "src/internal/pdf/pdf_writer.cpp"
 
         "src/internal/png/png_util_test.cpp"
+        "src/internal/png/png_test_util.cpp"
 
         "src/internal/font/cff_font.cpp"
         "src/internal/font/type1_charstring.cpp"
