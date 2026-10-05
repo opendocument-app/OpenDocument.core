@@ -262,3 +262,61 @@ TEST(PdfColor, a_mismatched_icc_alternate_is_ignored) {
   EXPECT_EQ(def->alternate, nullptr);
   EXPECT_EQ(to_rgb(*def, {1, 0, 0}), (std::array<double, 3>{1, 0, 0}));
 }
+
+TEST(PdfColor, lab_parameters_and_palette_ranges) {
+  Dictionary params;
+  params["WhitePoint"] = reals({0.9505, 1, 1.089});
+  params["Range"] = reals({-128, 127, -128, 127});
+  const Object lab(Array({Object(Name{"Lab"}), Object(params)}));
+  const Object indexed(
+      Array({Object(Name{"Indexed"}), lab, Object(Integer{0}),
+             Object(StandardString(std::string("\xff\x80\x80", 3)))}));
+  const auto def = parse_color_space(indexed, context());
+  ASSERT_NE(def, nullptr);
+  const auto white = to_rgb(*def, {0});
+  for (const double channel : white) {
+    EXPECT_NEAR(channel, 1.0, 0.001);
+  }
+  EXPECT_EQ(to_rgb(*def->base, {200, 300, -300}),
+            to_rgb(*def->base, {100, 127, -128}));
+  for (const Object &point :
+       {Object{}, reals({0, 1, 1}), reals({1, 2, 1}), reals({1, 1, -1})}) {
+    params["WhitePoint"] = point;
+    EXPECT_EQ(
+        parse_color_space(Object(Array({Object(Name{"Lab"}), Object(params)})),
+                          context()),
+        nullptr);
+  }
+  params["WhitePoint"] = reals({1, 1, 1});
+  params["Range"] = reals({10, -10, -20, 20});
+  EXPECT_EQ(
+      parse_color_space(Object(Array({Object(Name{"Lab"}), Object(params)})),
+                        context()),
+      nullptr);
+}
+
+TEST(PdfColor, icc_component_ranges_clip_and_scale_palette_values) {
+  Dictionary profile;
+  profile["N"] = Object(Integer{3});
+  profile["Range"] = reals({0.2, 0.8, 0.1, 0.9, 0.3, 0.7});
+  const Object icc(Array({Object(Name{"ICCBased"}), Object(profile)}));
+  const auto def = parse_color_space(icc, context());
+  ASSERT_NE(def, nullptr);
+  EXPECT_EQ(to_rgb(*def, {-1, 2, -1}), (std::array<double, 3>{0.2, 0.9, 0.3}));
+  const auto indexed = parse_color_space(
+      Object(Array({Object(Name{"Indexed"}), icc, Object(Integer{0}),
+                    Object(StandardString(std::string("\0\xff\0", 3)))})),
+      context());
+  ASSERT_NE(indexed, nullptr);
+  EXPECT_EQ(to_rgb(*indexed, {0}), (std::array<double, 3>{0.2, 0.9, 0.3}));
+  for (const Object &range :
+       {reals({0, 1}), reals({1, 0, 0, 1, 0, 1}),
+        reals({0, std::numeric_limits<double>::infinity(), 0, 1, 0, 1}),
+        Object(Name{"Bad"})}) {
+    profile["Range"] = range;
+    EXPECT_EQ(parse_color_space(
+                  Object(Array({Object(Name{"ICCBased"}), Object(profile)})),
+                  context()),
+              nullptr);
+  }
+}

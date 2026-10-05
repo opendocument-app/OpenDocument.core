@@ -12,7 +12,9 @@ namespace odr::internal::pdf {
 
 namespace {
 
-double clamp01(const double v) { return std::clamp(v, 0.0, 1.0); }
+double clamp01(const double v) {
+  return std::isnan(v) ? 0.0 : std::clamp(v, 0.0, 1.0);
+}
 
 double linear_to_srgb(const double c) {
   return util::color::linear_to_srgb(clamp01(c));
@@ -48,14 +50,33 @@ std::shared_ptr<ColorSpaceDef> device_space(const ColorSpaceKind kind,
   return def;
 }
 
-std::vector<double> read_numbers(const Object &object) {
-  std::vector<double> result;
-  if (object.is_array()) {
-    for (const Object &item : object.as_array()) {
-      result.push_back(item.as_real());
+bool read_numbers(const Object &object, const std::span<double> values,
+                  const ColorSpaceContext &context) {
+  const Object resolved = context.resolve(object);
+  if (!resolved.is_array() || resolved.as_array().size() != values.size()) {
+    return false;
+  }
+  for (std::size_t i = 0; i < values.size(); ++i) {
+    const Object item = context.resolve(resolved.as_array()[i]);
+    if (!item.is_real() || !std::isfinite(item.as_real())) {
+      return false;
+    }
+    values[i] = item.as_real();
+  }
+  return true;
+}
+
+bool read_ranges(const Object &object, const std::span<double> values,
+                 const ColorSpaceContext &context) {
+  if (!read_numbers(object, values, context)) {
+    return false;
+  }
+  for (std::size_t i = 0; i < values.size(); i += 2) {
+    if (values[i] > values[i + 1]) {
+      return false;
     }
   }
-  return result;
+  return true;
 }
 
 /// Resolve a colour-space name to a device/pattern space, or a resource space
@@ -83,29 +104,49 @@ std::shared_ptr<ColorSpaceDef> space_from_name(const std::string &name,
 
 } // namespace
 
+std::array<double, 2>
+ColorSpaceDef::component_range(const std::size_t index) const {
+  if (kind == ColorSpaceKind::lab && index < 3) {
+    return index == 0 ? std::array<double, 2>{0, 100}
+                      : std::array<double, 2>{lab_range[2 * index - 2],
+                                              lab_range[2 * index - 1]};
+  }
+  if (kind == ColorSpaceKind::icc_based && index < 4) {
+    return {icc_range[2 * index], icc_range[2 * index + 1]};
+  }
+  return {0, 1};
+}
+
 std::array<double, 3>
 ColorSpaceDef::to_rgb(const std::span<const double> c) const {
   const auto at = [&](const std::size_t i) {
-    return i < c.size() ? c[i] : 0.0;
+    const auto [minimum, maximum] = component_range(i);
+    const double value = i < c.size() ? c[i] : 0.0;
+    return kind == ColorSpaceKind::indexed
+               ? value
+               : std::clamp(std::isnan(value) ? 0.0 : value, minimum, maximum);
   };
   switch (kind) {
   case ColorSpaceKind::device_gray:
   case ColorSpaceKind::cal_gray: {
-    const double g = clamp01(at(0));
+    const double g = at(0);
     return {g, g, g};
   }
   case ColorSpaceKind::device_rgb:
   case ColorSpaceKind::cal_rgb:
-    return {clamp01(at(0)), clamp01(at(1)), clamp01(at(2))};
+    return {at(0), at(1), at(2)};
   case ColorSpaceKind::device_cmyk:
     return cmyk_to_rgb(at(0), at(1), at(2), at(3));
   case ColorSpaceKind::lab:
     return lab_to_rgb(at(0), at(1), at(2), white_point);
   case ColorSpaceKind::icc_based:
-    // No ICC engine: defer to the alternate, else pick a device space by the
-    // component count (ISO 32000-1 8.6.5.5).
+    if (components != 1 && components != 3 && components != 4) {
+      return {0, 0, 0};
+    }
     if (alternate != nullptr) {
-      return alternate->to_rgb(c);
+      const std::array clipped{at(0), at(1), at(2), at(3)};
+      return alternate->to_rgb(
+          std::span(clipped).first(static_cast<std::size_t>(components)));
     }
     if (components == 1) {
       const double g = clamp01(at(0));
@@ -129,9 +170,13 @@ ColorSpaceDef::to_rgb(const std::span<const double> c) const {
     std::vector<double> base_components(static_cast<std::size_t>(n), 0.0);
     for (std::int32_t j = 0; j < n; ++j) {
       const std::size_t k = offset + static_cast<std::size_t>(j);
+      const auto [minimum, maximum] =
+          base->component_range(static_cast<std::size_t>(j));
+      const double fraction = k < lookup.size()
+                                  ? static_cast<std::uint8_t>(lookup[k]) / 255.0
+                                  : 0.0;
       base_components[static_cast<std::size_t>(j)] =
-          k < lookup.size() ? static_cast<std::uint8_t>(lookup[k]) / 255.0
-                            : 0.0;
+          std::lerp(minimum, maximum, fraction);
     }
     return base->to_rgb(base_components);
   }
@@ -174,6 +219,15 @@ std::vector<double> ColorSpaceDef::initial_components() const {
   case ColorSpaceKind::device_n:
     // Initial tint is full colorant (ISO 32000-1 8.6.3).
     return std::vector<double>(static_cast<std::size_t>(components), 1.0);
+  case ColorSpaceKind::lab:
+  case ColorSpaceKind::icc_based: {
+    std::vector<double> result(static_cast<std::size_t>(components));
+    for (std::size_t i = 0; i < result.size(); ++i) {
+      const auto [minimum, maximum] = component_range(i);
+      result[i] = std::clamp(0.0, minimum, maximum);
+    }
+    return result;
+  }
   case ColorSpaceKind::device_cmyk:
     // Initial DeviceCMYK colour is black, i.e. {0, 0, 0, 1} (ISO
     // 32000-1 8.6.3).
@@ -260,6 +314,13 @@ pdf::parse_color_space(const Object &object, const ColorSpaceContext &context,
       return nullptr;
     }
     def->components = static_cast<std::int32_t>(count.as_integer());
+    if (dict.has_value("Range") &&
+        !read_ranges(dict.get("Range"),
+                     std::span(def->icc_range)
+                         .first(2 * static_cast<std::size_t>(def->components)),
+                     context)) {
+      return nullptr;
+    }
     if (dict.has_value("Alternate")) {
       def->alternate =
           parse_color_space(dict.get("Alternate"), context, depth + 1);
@@ -282,19 +343,20 @@ pdf::parse_color_space(const Object &object, const ColorSpaceContext &context,
     auto def = std::make_shared<ColorSpaceDef>();
     def->kind = ColorSpaceKind::lab;
     def->components = 3;
-    if (array.size() >= 2) {
-      const Object params = context.resolve(array[1]);
-      if (params.is_dictionary()) {
-        const Dictionary &dict = params.as_dictionary();
-        const std::vector<double> wp = read_numbers(dict.get("WhitePoint"));
-        if (wp.size() == 3) {
-          def->white_point = {wp[0], wp[1], wp[2]};
-        }
-        const std::vector<double> range = read_numbers(dict.get("Range"));
-        if (range.size() == 4) {
-          def->lab_range = {range[0], range[1], range[2], range[3]};
-        }
-      }
+    if (array.size() < 2) {
+      return nullptr;
+    }
+    const Object params = context.resolve(array[1]);
+    if (!params.is_dictionary()) {
+      return nullptr;
+    }
+    const Dictionary &dict = params.as_dictionary();
+    if (!read_numbers(dict.get("WhitePoint"), def->white_point, context) ||
+        def->white_point[0] <= 0 || def->white_point[1] != 1 ||
+        def->white_point[2] <= 0 ||
+        (dict.has_value("Range") &&
+         !read_ranges(dict.get("Range"), def->lab_range, context))) {
+      return nullptr;
     }
     return def;
   }
