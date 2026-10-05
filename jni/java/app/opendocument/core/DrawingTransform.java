@@ -23,10 +23,10 @@ public final class DrawingTransform {
   @Override
   public boolean equals(Object other) {
     return other instanceof DrawingTransform transform
-        && a == transform.a
-        && b == transform.b
-        && c == transform.c
-        && d == transform.d
+        && Double.compare(a, transform.a) == 0
+        && Double.compare(b, transform.b) == 0
+        && Double.compare(c, transform.c) == 0
+        && Double.compare(d, transform.d) == 0
         && e.equals(transform.e)
         && f.equals(transform.f);
   }

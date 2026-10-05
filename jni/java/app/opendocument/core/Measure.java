@@ -15,7 +15,7 @@ public final class Measure {
   @Override
   public boolean equals(Object other) {
     return other instanceof Measure measure
-        && magnitude == measure.magnitude
+        && Double.compare(magnitude, measure.magnitude) == 0
         && unit.equals(measure.unit);
   }
 

@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.DoubleFunction;
 import org.junit.jupiter.api.Test;
 
 class MetaTest {
@@ -93,6 +94,27 @@ class MetaTest {
     FileTypeCapabilities pdf = Odr.capabilitiesByFileType(FileType.PORTABLE_DOCUMENT_FORMAT);
     assertTrue(pdf.translateHtml);
     assertFalse(pdf.colorScheme);
+  }
+
+  @Test
+  void floatingValuesHaveConsistentEqualityAndHashes() {
+    List<DoubleFunction<Object>> values = List.of(
+        value -> new Measure(value, "pt"),
+        value -> new DrawingPath("M0 0", value, value, value, value),
+        value -> new DrawingTransform(value, value, value, value,
+            new Measure(0, "pt"), new Measure(0, "pt")));
+    for (DoubleFunction<Object> value : values) {
+      Object nan = value.apply(Double.NaN);
+      Object sameNan = value.apply(Double.NaN);
+      assertTrue(nan.equals(nan));
+      assertEquals(nan, sameNan);
+      assertEquals(nan.hashCode(), sameNan.hashCode());
+      Object positiveZero = value.apply(0.0);
+      Object negativeZero = value.apply(-0.0);
+      assertFalse(positiveZero.equals(negativeZero));
+      assertEquals(positiveZero, value.apply(0.0));
+      assertEquals(positiveZero.hashCode(), value.apply(0.0).hashCode());
+    }
   }
 
   @Test
