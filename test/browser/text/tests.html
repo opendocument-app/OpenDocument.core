@@ -535,6 +535,18 @@
         tail.querySelector("x-s[style]") !== null
       );
 
+      // A split after the last run of a wrapper copies no empty wrapper, as
+      // the core does not.
+      reset();
+      select(run(21).firstChild, run(21).firstChild.length);
+      input("insertParagraph");
+      check(
+        "a split after the last run of a wrapper copies no empty wrapper",
+        texts() === "first run a link and a tail|bold||third|" &&
+          flow.querySelectorAll("x-p[data-odr-id]")[2].querySelector("x-s") === null,
+        texts()
+      );
+
       // ------------------------------------------------------ formatting
 
       reset();

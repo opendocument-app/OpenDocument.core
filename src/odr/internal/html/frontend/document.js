@@ -308,6 +308,15 @@
   /// Splits @p element after @p stays - one of its children, or null to move
   /// all of them - into a copy of itself. The line box is the paragraph's own
   /// and stays out of the move.
+  function followedByContent(node) {
+    for (var next = node.nextSibling; next !== null; next = next.nextSibling) {
+      if (next.nodeName !== "BR" && next.nodeName !== "WBR") {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function splitLevel(element, stays, id, undoLog) {
     var copy = shellCopy(element, id);
     element.parentNode.insertBefore(copy, element.nextSibling);
@@ -362,7 +371,10 @@
         var stays = after;
         var level = after === null ? paragraph : after.parentNode;
         while (level !== paragraph) {
-          splitLevel(level, stays, null, undoLog);
+          // as the core does: a wrapper with nothing after the cut stays whole
+          if (followedByContent(stays)) {
+            splitLevel(level, stays, null, undoLog);
+          }
           stays = level;
           level = level.parentNode;
         }
