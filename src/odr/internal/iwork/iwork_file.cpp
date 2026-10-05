@@ -18,15 +18,11 @@ namespace odr::internal::iwork {
 
 namespace {
 
-/// The component Keynote writes one of per slide. A `.numbers` and a `.pages`
-/// package hold none — `empty.key` against `empty.numbers` and both `.pages`
-/// fixtures (iWork 14.4 / 13.2).
+/// Keynote-only component, verified against the Pages/Numbers/Keynote fixtures
+/// from iWork 13.2 and 14.4.
 constexpr std::string_view slide_component = "Slide";
 
-/// Which app wrote a package whose root archive is @ref
-/// archive_type::app_document. Pages has a type id of its own, but Keynote and
-/// Numbers both number their root archive 1 — the id space is per app — so the
-/// two are told apart by the components the package holds.
+/// Distinguishes Keynote and Numbers, whose root archives share type ID 1.
 FileType app_by_components(const abstract::ReadableFilesystem &filesystem) {
   Package package(filesystem);
   if (package.has_component(slide_component)) {
@@ -35,10 +31,7 @@ FileType app_by_components(const abstract::ReadableFilesystem &filesystem) {
   return FileType::iwork_numbers;
 }
 
-/// Reads the root archive of the package's `Document` component. The component
-/// list in `Index/Metadata.iwa` is not consulted for the root archive itself:
-/// this runs on every zip a caller opens, and the `Document` component is the
-/// one whose file name never carries an identifier suffix.
+/// Detects the app from `Index/Document.iwa`, whose locator is fixed.
 FileType parse_file_type(const abstract::ReadableFilesystem &filesystem) {
   const std::string data = read_iwa(filesystem, AbsPath("/Index/Document.iwa"));
   const std::vector<Object> objects = read_objects(data);

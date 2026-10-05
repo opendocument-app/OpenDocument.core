@@ -64,9 +64,7 @@ public:
     ElementIdentifier last_column_id{null_element_id};
   };
 
-  /// One odr sheet, which is one Numbers table. Cells are reached by
-  /// coordinate rather than by walking, so they are not in the child chain —
-  /// that is what a sheet's shapes would use.
+  /// One Numbers table. Cells are indexed by coordinate; children are shapes.
   struct Sheet final {
     std::string name;
     std::uint32_t rows{};

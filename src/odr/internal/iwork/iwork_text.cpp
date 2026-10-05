@@ -26,22 +26,16 @@ namespace {
 
 /// `U+2028 LINE SEPARATOR` — a line break inside a paragraph.
 constexpr std::string_view line_separator = "\xe2\x80\xa8";
-/// `U+FFFC OBJECT REPLACEMENT CHARACTER` — where a drawable is anchored in the
-/// text. The anchor itself is dropped; what it stands for is appended after
-/// the paragraph that holds it.
+/// `U+FFFC` anchors a drawable; the marker is removed from rendered text.
 constexpr std::string_view object_replacement = "\xef\xbf\xbc";
 
 void parse_table(const Context &context, ElementIdentifier parent_id,
                  std::uint64_t identifier);
 
-/// The paragraph mark ends the paragraph it belongs to. Pages writes `\n` and
-/// Keynote `\r` — the run table is what says where a paragraph starts either
-/// way, so this only decides whether the mark is part of the text.
+/// Pages uses `\n` and Keynote uses `\r` to terminate paragraphs.
 bool is_paragraph_mark(const char c) { return c == '\n' || c == '\r'; }
 
-/// The character index each paragraph of @p storage starts at. Paragraph
-/// boundaries are the run table's rather than every mark in the text — the two
-/// agree today, but the table is what says so.
+/// Paragraph starts as UTF-16 indices from the storage run table.
 std::vector<std::uint64_t> paragraph_starts(const Message &storage) {
   std::vector<std::uint64_t> result;
 
@@ -189,10 +183,7 @@ void parse_table(const Context &context, const ElementIdentifier parent_id,
     registry.append_table_column(table_id, column_id);
   }
 
-  // a table's rows are dense — the renderer walks them rather than asking by
-  // coordinate, so a row the tiles do not carry is a row of empty cells. The
-  // extent is the file's word, so every position is spent against the budget
-  // rather than trusted to be one an app wrote.
+  // Expand sparse tiles into dense rows, charging each position to the budget.
   for (std::uint32_t row = 0; row < model.rows; ++row) {
     budget.spend_element();
     auto [row_id, row_element] =

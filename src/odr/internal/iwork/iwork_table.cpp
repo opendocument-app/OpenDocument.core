@@ -97,9 +97,7 @@ read_data_list(Package &package,
   return result;
 }
 
-/// Where each of the value flags puts its payload, and how wide it is. A cell
-/// holds one value, so the walk stops once the flag the type asks for is
-/// found; the offsets before it still have to be stepped over.
+/// A value flag and the byte width of its payload.
 struct Value final {
   std::uint32_t flag{};
   std::size_t size{};
@@ -135,9 +133,7 @@ std::optional<std::size_t> value_offset(const std::string_view record,
   return {};
 }
 
-/// Reads one packed cell record. A type or a version we have not mapped comes
-/// back empty — there is no spec, so it is a shape Apple ships and we have not
-/// seen, not a corrupt file.
+/// Reads a packed cell; unmapped types and versions produce empty cells.
 TableModel::Cell
 read_cell(const std::string_view record, const std::uint32_t row,
           const std::uint32_t column,

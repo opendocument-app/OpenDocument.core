@@ -5,9 +5,7 @@
 
 namespace odr::internal::iwork {
 
-/// What one parse may expand to. A reference list may name the same object any
-/// number of times, so what a walk builds is spent against a limit rather than
-/// left to grow with what a few bytes of references ask for.
+/// Bounds the elements and text expanded by one document parse.
 class Budget final {
 public:
   void spend_element() {

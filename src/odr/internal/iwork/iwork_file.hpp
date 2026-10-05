@@ -14,9 +14,7 @@ class ReadableFilesystem;
 
 namespace odr::internal::iwork {
 
-/// An iWork package (`.pages`, `.numbers`, `.key`). Which app wrote it is read
-/// off the root archive of `Index/Document.iwa`, not off the file name, which
-/// a caller may have lost.
+/// An iWork package, detected from its archives and component list.
 class IworkFile final : public abstract::DocumentFile {
 public:
   explicit IworkFile(std::shared_ptr<abstract::ReadableFilesystem> filesystem);

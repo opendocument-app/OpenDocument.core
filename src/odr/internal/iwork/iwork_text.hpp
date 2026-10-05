@@ -33,10 +33,8 @@ struct Context final {
   }
 };
 
-/// Appends the paragraphs of a `TSWP.StorageArchive` to @p parent_id, and the
-/// drawables its text anchors after the paragraph that holds the anchor.
-/// Shared by every place text lives: a Pages body, a Keynote text box, a table
-/// cell.
+/// Appends storage paragraphs and their anchored drawables to @p parent_id.
+/// Shared by Pages bodies, Keynote text boxes and rich-text cells.
 void parse_storage(const Context &context, ElementIdentifier parent_id,
                    const Message &storage);
 

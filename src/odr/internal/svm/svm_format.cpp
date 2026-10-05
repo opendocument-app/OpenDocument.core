@@ -164,9 +164,8 @@ String select_run(const String &text, const std::uint16_t offset,
   return text.substr(offset, length);
 }
 
-/// @ref select_run in the units the offsets are measured in: vcl decodes the
-/// string before it indexes it, so they count utf-16 code units whatever the
-/// file's encoding is - a utf-8 `substr` would split a character.
+/// Selects a run by UTF-16 offsets: vcl indexes the decoded string, so the
+/// offsets count UTF-16 code units in every encoding.
 std::string select_run_utf16(const std::string &text,
                              const std::uint16_t offset,
                              const std::uint16_t length) {
@@ -241,11 +240,7 @@ odr::TextEncoding get_decoder(const svm::TextEncoding encoding) {
   }
 }
 
-/// @p bytes as utf-8. An encoding we have no decoder for is taken for
-/// `MS_1252`, which is what a file of this age most likely means and what
-/// vcl falls back to on Windows: a label in the wrong characters still draws,
-/// where passing the bytes through emits invalid utf-8 and an xml parser
-/// refuses that exactly as hard as an unescaped `&`.
+/// Decodes bytes to UTF-8, using `MS_1252` for unknown encodings.
 std::string decode(const std::string &bytes, const svm::TextEncoding encoding) {
   const odr::TextEncoding decoder = get_decoder(encoding);
   return encoding::to_utf8(bytes, decoder == odr::TextEncoding::unknown
@@ -589,9 +584,7 @@ svm::Font svm::read_font(std::istream &source) {
   result.size = read_int_pair(in);
   read_primitive(in, result.charset);
 
-  // the names are bytes, and the only charset the action carries is the one
-  // it reads next; vcl decodes them with the stream's instead, which a
-  // metafile never sets
+  // The font names precede the charset needed to decode them.
   result.family_name =
       decode(family_name, static_cast<TextEncoding>(result.charset));
   result.style_name =

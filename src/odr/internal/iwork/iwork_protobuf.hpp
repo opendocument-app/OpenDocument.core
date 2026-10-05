@@ -7,9 +7,7 @@
 
 namespace odr::internal::iwork {
 
-/// The protobuf wire types. Groups (3 and 4) are deprecated and never appear
-/// in an iWork archive, so reading one is a parse error rather than a field to
-/// skip.
+/// Protobuf wire types; unsupported group fields are rejected.
 enum class WireType : std::uint8_t {
   varint = 0,
   fixed64 = 1,
@@ -19,9 +17,8 @@ enum class WireType : std::uint8_t {
   fixed32 = 5,
 };
 
-/// One field of a protobuf message. @ref number_value carries a varint or a
-/// fixed-width field, @ref bytes a length-delimited one — a nested message, a
-/// string or a packed repeated field.
+/// A protobuf field: numeric data in @ref number_value, length-delimited data
+/// in @ref bytes.
 struct Field final {
   std::uint32_t number{};
   WireType type{WireType::varint};
@@ -29,11 +26,8 @@ struct Field final {
   std::string_view bytes;
 };
 
-/// A protobuf message read by field number: there are no schemas to generate
-/// accessors from, so the archives are read against hand-written ones.
-///
-/// Nested messages stay as views into the buffer the message was read from,
-/// which has to outlive it.
+/// A field-number view of a protobuf message. The input buffer must outlive
+/// this object and its nested views.
 class Message final {
 public:
   explicit Message(std::string_view bytes);

@@ -9,21 +9,15 @@ class ReadableFilesystem;
 namespace odr::internal::iwork {
 class ElementRegistry;
 
-/// Parses the body of a `.pages` package into root → paragraph → text
-/// elements.
-/// \return the root element id.
+/// Parses a Pages body and returns its root element ID.
 ElementIdentifier parse_pages_tree(ElementRegistry &registry,
                                    const abstract::ReadableFilesystem &files);
 
-/// Parses the slides of a `.key` package into root → slide → frame →
-/// paragraph → text elements.
-/// \return the root element id.
+/// Parses Keynote slides and text frames; returns the root element ID.
 ElementIdentifier parse_keynote_tree(ElementRegistry &registry,
                                      const abstract::ReadableFilesystem &files);
 
-/// Parses a `.numbers` package into root → sheet → cell elements, one sheet
-/// per Numbers table.
-/// \return the root element id.
+/// Parses Numbers tables as separate sheets; returns the root element ID.
 ElementIdentifier parse_numbers_tree(ElementRegistry &registry,
                                      const abstract::ReadableFilesystem &files);
 

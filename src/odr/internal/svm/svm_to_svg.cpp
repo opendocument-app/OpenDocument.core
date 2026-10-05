@@ -97,9 +97,8 @@ double scale(const IntPair fraction) {
   return static_cast<double>(fraction.x) / fraction.y;
 }
 
-/// `ImplMapRes::CalcMapResolution`: one unit of @p unit, in 100th mm. A pixel
-/// and the two font units are device-dependent and a metafile has no device,
-/// so all three resolve at @ref assumed_dpi.
+/// `ImplMapRes::CalcMapResolution`: unit length in hundredths of a millimetre.
+/// Device-dependent units use @ref assumed_dpi.
 double get_unit_length(const std::uint16_t unit, const Logger &logger) {
   switch (unit) {
   case MAP_100TH_MM:
@@ -131,9 +130,8 @@ double get_unit_length(const std::uint16_t unit, const Logger &logger) {
   }
 }
 
-/// `OutputDevice::SetMapMode`: a map mode replaces the one before it - except
-/// a relative one, whose scales multiply the current and whose origin offsets
-/// it (`ImplMapRes::CalcMapResolution`).
+/// `OutputDevice::SetMapMode`: replaces the mapping, or composes a relative
+/// one.
 Mapping compose_mapping(const Mapping &current, const MapMode &map_mode,
                         const double header_unit_length, const Logger &logger) {
   const double relative_x = scale(map_mode.scale_x);
@@ -169,9 +167,8 @@ double transform_y(const double y, const Context &context) {
   return (mapping.origin_y + y) * mapping.scale_y;
 }
 
-/// A length carries no origin, only the scale. The x scale even for a stroke
-/// width or a dash, which lie along no axis: `svgwriter.cxx` maps those
-/// through `ImplMap(sal_Int32)`, which takes the `Width()` of a square.
+/// Scales lengths without an origin. Strokes and dashes use the x scale,
+/// as `svgwriter.cxx::ImplMap(sal_Int32)` does.
 double transform_width(const double width, const Context &context) {
   return width * context.state.mapping.scale_x;
 }
@@ -290,9 +287,7 @@ std::uint16_t get_font_weight(const std::uint16_t weight) {
   }
 }
 
-/// Which edge of the text the draw point names. Named rather than computed:
-/// `svgwriter.cxx` shifts the point by the ascent, having the font metrics
-/// that we do not.
+/// Maps the draw point to a text edge without requiring font metrics.
 std::string_view get_dominant_baseline(const std::uint16_t text_align) {
   switch (text_align) {
   case ALIGN_TOP:
@@ -542,9 +537,7 @@ void write_gradient_stop(svg::SvgWriter &out, const double offset,
   out.write_element_end();
 }
 
-/// `Gradient::GetBoundRect`: a linear ramp runs across the bounds grown so
-/// that turning it still covers them, from the top of that to the bottom,
-/// turned about the centre - which is `(sin, cos)` of the angle.
+/// `Gradient::GetBoundRect`: expands and rotates the ramp to cover its bounds.
 void write_linear_gradient(const std::string &id, const Gradient &gradient,
                            const Bounds &bounds, const Context &context) {
   svg::SvgWriter &out = *context.out;
@@ -592,10 +585,8 @@ void write_linear_gradient(const std::string &id, const Gradient &gradient,
   out.write_element_end();
 }
 
-/// The complex styles, which vcl draws as rings shrinking towards the centre:
-/// the start colour is the outside and the end colour the middle. `SQUARE`
-/// and `RECT` shrink a rectangle rather than an ellipse, which svg has no
-/// gradient for - they come out as the ellipse they are closest to.
+/// Radial styles place the end color at the center. Square and rectangular
+/// ramps are approximated by ellipses; see the module README.
 void write_radial_gradient(const std::string &id, const Gradient &gradient,
                            const Bounds &bounds, const Context &context) {
   svg::SvgWriter &out = *context.out;
@@ -759,10 +750,7 @@ get_x_list_string(const IntPair &point, const std::string &text,
                                  : std::nullopt;
 }
 
-/// @p dx_array places the characters one by one where the file measured them;
-/// @p width, from a stretch text, is the advance the whole run has to fill.
-/// A metafile's mask is white where the bitmap does not show; an svg mask
-/// keeps what is white.
+/// Inverts a bitmap mask: metafile white is transparent, SVG white is opaque.
 void write_inverter(const Context &context) {
   svg::SvgWriter &out = *context.out;
 
@@ -784,9 +772,7 @@ struct BitmapBox final {
   double height{};
 };
 
-/// The box the whole bitmap covers - for a part action, bigger than what is
-/// drawn: the source rectangle scales onto the destination and the rest is
-/// clipped.
+/// The full bitmap box, scaled so its source crop fills the destination.
 BitmapBox get_bitmap_box(const BitmapAction &action, const Context &context) {
   const IntPair &size_pixel = action.bitmap.image.size_pixel;
 

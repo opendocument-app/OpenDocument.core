@@ -9,9 +9,8 @@ class Logger;
 namespace odr::internal::svm {
 class SvmFile;
 
-/// Translates @p file into an svg document; unimplemented actions are logged
-/// and dropped.
-/// @throws MalformedSvmFile where an action reads past its own length.
+/// Translates to SVG and logs the actions it skips.
+/// @throws MalformedSvmFile where a record is malformed or cut off.
 void translate_to_svg(const SvmFile &file, std::ostream &out,
                       const Logger &logger);
 
