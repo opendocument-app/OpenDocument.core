@@ -12,6 +12,7 @@
 
 namespace {
 
+using odr_jni::checked_integer;
 using odr_jni::destroy_handle;
 using odr_jni::from_handle;
 using odr_jni::guarded;
@@ -22,11 +23,11 @@ using odr_jni::to_jstring;
 using odr_jni::to_string;
 
 jlongArray to_jlong_array(JNIEnv *env, const std::vector<jlong> &values) {
-  jlongArray result = env->NewLongArray(static_cast<jsize>(values.size()));
+  jlongArray result = env->NewLongArray(checked_integer<jsize>(values.size()));
   if (result == nullptr) {
     return nullptr;
   }
-  env->SetLongArrayRegion(result, 0, static_cast<jsize>(values.size()),
+  env->SetLongArrayRegion(result, 0, checked_integer<jsize>(values.size()),
                           values.data());
   return result;
 }
@@ -58,12 +59,12 @@ jobject make_html(JNIEnv *env, odr::Html html) {
     return nullptr;
   }
   const std::vector<odr::HtmlPage> &pages = html.pages();
-  jobjectArray page_array =
-      env->NewObjectArray(static_cast<jsize>(pages.size()), page_cls, nullptr);
+  const auto page_count = checked_integer<jsize>(pages.size());
+  jobjectArray page_array = env->NewObjectArray(page_count, page_cls, nullptr);
   if (page_array == nullptr) {
     return nullptr;
   }
-  for (jsize i = 0; i < static_cast<jsize>(pages.size()); ++i) {
+  for (jsize i = 0; i < page_count; ++i) {
     jstring name = to_jstring(env, pages[i].name);
     jstring path = to_jstring(env, pages[i].path);
     jobject page = env->NewObject(page_cls, page_ctor, name, path);
@@ -113,12 +114,13 @@ jobject make_content(JNIEnv *env, const std::string &html,
     return nullptr;
   }
 
-  jobjectArray located_array = env->NewObjectArray(
-      static_cast<jsize>(resources.size()), located_cls, nullptr);
+  const auto resource_count = checked_integer<jsize>(resources.size());
+  jobjectArray located_array =
+      env->NewObjectArray(resource_count, located_cls, nullptr);
   if (located_array == nullptr) {
     return nullptr;
   }
-  for (jsize i = 0; i < static_cast<jsize>(resources.size()); ++i) {
+  for (jsize i = 0; i < resource_count; ++i) {
     const auto &[resource, location] = resources[i];
     HandleGuard<odr::HtmlResource> guard(1);
     jobject resource_obj =
@@ -293,11 +295,17 @@ Java_app_opendocument_core_HtmlService_bringOfflineViewsNative(
   return guarded(env, [&] {
     std::vector<odr::HtmlView> views;
     const jsize length = env->GetArrayLength(view_handles);
-    jlong *handles = env->GetLongArrayElements(view_handles, nullptr);
-    for (jsize i = 0; i < length; ++i) {
-      views.push_back(*from_handle<odr::HtmlView>(handles[i]));
+    std::vector<jlong> handles(static_cast<std::size_t>(length));
+    if (length != 0) {
+      env->GetLongArrayRegion(view_handles, 0, length, handles.data());
     }
-    env->ReleaseLongArrayElements(view_handles, handles, JNI_ABORT);
+    if (env->ExceptionCheck()) {
+      throw std::runtime_error("could not read HTML view handles");
+    }
+    views.reserve(handles.size());
+    for (const jlong view_handle : handles) {
+      views.push_back(*from_handle<odr::HtmlView>(view_handle));
+    }
     return make_html(
         env, service(handle).bring_offline(to_string(env, output_path), views));
   });

@@ -74,6 +74,9 @@ public:
   JavaLogger(JNIEnv *env, jobject sink) {
     env->GetJavaVM(&m_vm);
     m_sink = env->NewGlobalRef(sink);
+    if (m_sink == nullptr) {
+      return;
+    }
 
     jclass bridge = env->FindClass("app/opendocument/core/LoggerBridge");
     if (bridge == nullptr) {
@@ -81,12 +84,21 @@ public:
     }
     m_bridge = static_cast<jclass>(env->NewGlobalRef(bridge));
     env->DeleteLocalRef(bridge);
+    if (m_bridge == nullptr) {
+      return;
+    }
     m_will_log = env->GetStaticMethodID(m_bridge, "willLog",
                                         "(Lapp/opendocument/core/ILogger;I)Z");
+    if (m_will_log == nullptr) {
+      return;
+    }
     m_log = env->GetStaticMethodID(m_bridge, "log",
                                    "(Lapp/opendocument/core/ILogger;JILjava/"
                                    "lang/String;Ljava/lang/String;Ljava/lang/"
                                    "String;I)V");
+    if (m_log == nullptr) {
+      return;
+    }
     m_flush = env->GetStaticMethodID(m_bridge, "flush",
                                      "(Lapp/opendocument/core/ILogger;)V");
   }

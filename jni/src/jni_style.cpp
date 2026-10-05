@@ -727,12 +727,10 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
                             static_cast<jint>(config.pdf_text_mode)));
   {
     jclass string_cls = env->FindClass("java/lang/String");
-    jobjectArray fonts = env->NewObjectArray(
-        static_cast<jsize>(config.pdf_dual_layer_fallback_fonts.size()),
-        string_cls, nullptr);
-    for (jsize i = 0;
-         i < static_cast<jsize>(config.pdf_dual_layer_fallback_fonts.size());
-         ++i) {
+    const auto font_count =
+        checked_integer<jsize>(config.pdf_dual_layer_fallback_fonts.size());
+    jobjectArray fonts = env->NewObjectArray(font_count, string_cls, nullptr);
+    for (jsize i = 0; i < font_count; ++i) {
       jstring font = to_jstring(env, config.pdf_dual_layer_fallback_fonts[i]);
       env->SetObjectArrayElement(fonts, i, font);
       env->DeleteLocalRef(font);
