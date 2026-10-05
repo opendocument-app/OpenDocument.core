@@ -135,6 +135,7 @@ TEST(DeferredBuffer, holds_until_released) {
   EXPECT_EQ(out.str(), "");
 
   buffer.release();
+  buffer.release();
   EXPECT_EQ(out.str(), "headbody");
 
   deferred << "tail";
@@ -152,19 +153,6 @@ TEST(DeferredBuffer, releases_itself_past_the_cap) {
 
   deferred << "de";
   EXPECT_EQ(out.str(), "headabcde");
-}
-
-// Releasing twice writes the prologue once.
-TEST(DeferredBuffer, releases_once) {
-  std::ostringstream out;
-  stream::DeferredBuffer buffer(out, 1024, [&out] { out << "head"; });
-  std::ostream deferred(&buffer);
-
-  deferred << "body";
-  buffer.release();
-  buffer.release();
-
-  EXPECT_EQ(out.str(), "headbody");
 }
 
 TEST(DeferredBuffer, propagates_sink_failures_before_and_after_release) {

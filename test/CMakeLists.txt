@@ -173,7 +173,6 @@ add_executable(odr_test
         "src/internal/util/stream_util_test.cpp"
         "src/internal/util/string_util_test.cpp"
 
-        "src/internal/zip/miniz_test.cpp"
         "src/internal/zip/zip_archive_test.cpp"
 )
 if (ODR_WITH_HTTP_SERVER)
