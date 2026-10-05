@@ -1,7 +1,6 @@
 #include <odr/internal/font/type1_crypt.hpp>
 
 #include <cstdint>
-#include <stdexcept>
 #include <string>
 
 namespace odr::internal::font::type1 {
@@ -77,8 +76,9 @@ std::string type1::decrypt(const std::string_view cipher,
     out += static_cast<char>(c ^ (r >> 8));
     r = static_cast<std::uint16_t>((std::uint32_t{c} + r) * c1 + c2);
   }
-  if (skip > out.size()) {
-    throw std::runtime_error("type1: truncated encryption prefix");
+  // A cipher shorter than its prefix decrypts to nothing.
+  if (skip >= out.size()) {
+    return {};
   }
   return out.substr(skip);
 }

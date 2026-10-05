@@ -1,6 +1,6 @@
-#include "type1_test_util.hpp"
-
 #include <odr/internal/font/type1_crypt.hpp>
+
+#include <internal/font/type1_test_util.hpp>
 
 #include <gtest/gtest.h>
 
@@ -31,7 +31,7 @@ TEST(Type1CryptTest, CharstringHonoursLenIv) {
   const std::string plain = "hello";
   const std::string cipher = encrypt(plain, 4330, "");
   EXPECT_EQ(decrypt_charstring(cipher, 0), plain);
-  EXPECT_THROW((void)decrypt_charstring("x", 4), std::runtime_error);
+  EXPECT_EQ(decrypt_charstring("x", 4), "");
 }
 
 TEST(Type1CryptTest, EexecAcceptsHexForm) {

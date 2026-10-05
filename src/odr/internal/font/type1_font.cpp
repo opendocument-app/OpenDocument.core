@@ -50,11 +50,9 @@ namespace {
 }
 
 [[nodiscard]] double parse_double(const std::string_view token) {
+  // An unreadable number reads as zero, so it does not refuse the font.
   const std::optional<double> value = util::number::parse(token);
-  if (!value || !std::isfinite(*value)) {
-    throw std::runtime_error("type1: invalid numeric operand");
-  }
-  return *value;
+  return value && std::isfinite(*value) ? *value : 0.0;
 }
 
 /// A `/FontBBox` number as an FWord. Clamping keeps an out-of-range number out
@@ -232,8 +230,12 @@ void Type1Font::parse_private(const std::string_view decrypted) {
   if (const std::size_t k = decrypted.find("/lenIV");
       k != std::string_view::npos) {
     std::size_t p = k + 6;
-    if (!parse_int(read_token(decrypted, p), len_iv) || len_iv < -1) {
-      throw std::runtime_error("type1: invalid /lenIV");
+    std::int32_t value = 0;
+    if (parse_int(read_token(decrypted, p), value)) {
+      if (value < -1) {
+        throw std::runtime_error("type1: invalid /lenIV");
+      }
+      len_iv = value;
     }
   }
   const auto decode = [len_iv](const std::string_view bytes) {

@@ -1,5 +1,3 @@
-#include "type1_test_util.hpp"
-
 #include <odr/internal/font/type1_font.hpp>
 #include <odr/internal/font/type1_transform.hpp>
 
@@ -7,6 +5,8 @@
 #include <odr/internal/font/cff_transform.hpp>
 #include <odr/internal/font/sfnt_font.hpp>
 #include <odr/internal/util/byte_string.hpp>
+
+#include <internal/font/type1_test_util.hpp>
 
 #include <gtest/gtest.h>
 
@@ -140,11 +140,11 @@ TEST(Type1FontTest, ConvertsToLoadableCff) {
   EXPECT_TRUE(sfnt::SfntFont::is_sfnt(cff::wrap_to_otf(font)));
 }
 
-TEST(Type1FontTest, RejectsInvalidNumbersAndPfbSegments) {
+TEST(Type1FontTest, ReadsInvalidNumbersAsZeroAndRejectsBadPfbSegments) {
   for (const std::string_view number : {"nan", "inf", "1oops"}) {
     std::string program = build_type1();
     program.replace(program.find("0.001"), 5, number);
-    EXPECT_THROW(Type1Font{program}, std::runtime_error);
+    EXPECT_EQ(Type1Font{program}.glyphs().size(), 2);
   }
   const std::string program = build_type1();
   std::string pfb("\x80\x01", 2);
