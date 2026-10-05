@@ -305,9 +305,7 @@
     };
   }
 
-  /// Splits @p element after @p stays - one of its children, or null to move
-  /// all of them - into a copy of itself. The line box is the paragraph's own
-  /// and stays out of the move.
+  /// Whether something other than the line box follows @p node.
   function followedByContent(node) {
     for (var next = node.nextSibling; next !== null; next = next.nextSibling) {
       if (next.nodeName !== "BR" && next.nodeName !== "WBR") {
@@ -317,6 +315,9 @@
     return false;
   }
 
+  /// Splits @p element after @p stays - one of its children, or null to move
+  /// all of them - into a copy of itself. The line box is the paragraph's own
+  /// and stays out of the move.
   function splitLevel(element, stays, id, undoLog) {
     var copy = shellCopy(element, id);
     element.parentNode.insertBefore(copy, element.nextSibling);
