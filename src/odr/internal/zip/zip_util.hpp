@@ -43,8 +43,7 @@ private:
   mutable std::vector<std::unique_ptr<std::istream>> m_streams;
 };
 
-/// Entries can be read concurrently. `mz_zip_archive::m_last_error` cannot, and
-/// is never read.
+/// Readers share immutable directory data and copy miniz's mutable error state.
 class Archive final : public std::enable_shared_from_this<Archive> {
 public:
   explicit Archive(std::shared_ptr<abstract::File> file);
@@ -72,7 +71,7 @@ public:
     Entry &operator=(Entry &&) noexcept = default;
 
     [[nodiscard]] bool operator==(const Entry &other) const {
-      return m_index == other.m_index;
+      return m_archive == other.m_archive && m_index == other.m_index;
     }
 
     [[nodiscard]] bool is_file() const;

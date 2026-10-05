@@ -367,3 +367,43 @@ TEST(ZipArchive, failed_output_reports_save_errors) {
   out.setstate(std::ios::badbit);
   EXPECT_ANY_THROW(zip.save(out));
 }
+
+TEST(ZipArchive, long_entry_names_remain_distinct) {
+  ZipArchive written;
+  const std::string prefix(600, 'a');
+  for (const auto suffix : {"one", "two"}) {
+    written.insert_file(written.end(), RelPath(prefix + suffix),
+                        std::make_shared<MemoryFile>(suffix));
+  }
+  std::ostringstream out;
+  written.save(out);
+  const auto file = std::make_shared<MemoryFile>(out.str());
+  const auto zip = std::make_shared<util::Archive>(file);
+  const auto other = std::make_shared<util::Archive>(file);
+  EXPECT_NE(zip->begin(), other->begin());
+  const auto filesystem = ZipArchive(zip).as_filesystem();
+  for (const auto suffix : {"one", "two"}) {
+    const auto entry = filesystem->open(AbsPath("/" + prefix + suffix));
+    ASSERT_NE(entry, nullptr);
+    EXPECT_EQ(MemoryFile(*entry).content(), suffix);
+  }
+}
+
+TEST(ZipArchive, concurrent_corrupt_reads_fail_independently) {
+  auto bytes = entry_archive(std::string(8192, 'x'), 0);
+  const auto central = bytes.find("PK\x01\x02");
+  ASSERT_NE(central, std::string::npos);
+  bytes[central + 16] ^= 1;
+  const auto zip =
+      std::make_shared<util::Archive>(std::make_shared<MemoryFile>(bytes));
+  const auto file = zip->begin()->file();
+  std::vector<std::thread> readers;
+  for (std::size_t i = 0; i < 8; ++i) {
+    readers.emplace_back(
+        [&file] { EXPECT_THROW((void)MemoryFile(*file), FileReadError); });
+  }
+  for (auto &reader : readers) {
+    reader.join();
+  }
+  EXPECT_EQ(zip->zip()->m_last_error, MZ_ZIP_NO_ERROR);
+}

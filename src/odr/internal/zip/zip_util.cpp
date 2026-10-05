@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <limits>
+#include <utility>
 
 namespace odr::internal::zip::util {
 
@@ -16,8 +18,8 @@ class ReaderBuffer final : public std::streambuf {
 public:
   ReaderBuffer(std::shared_ptr<const Archive> archive,
                const std::uint32_t index)
-      : m_archive{std::move(archive)},
-        m_iter{mz_zip_reader_extract_iter_new(m_archive->zip(), index, 0),
+      : m_archive{std::move(archive)}, m_zip{*m_archive->zip()},
+        m_iter{mz_zip_reader_extract_iter_new(&m_zip, index, 0),
                mz_zip_reader_extract_iter_free} {
     if (m_iter == nullptr) {
       throw FileReadError();
@@ -63,6 +65,7 @@ private:
   }
 
   std::shared_ptr<const Archive> m_archive;
+  mz_zip_archive m_zip;
   std::unique_ptr<mz_zip_reader_extract_iter_state,
                   decltype(&mz_zip_reader_extract_iter_free)>
       m_iter;
@@ -97,9 +100,13 @@ public:
     return m_archive->file()->location();
   }
   [[nodiscard]] std::size_t size() const override {
+    auto zip = *m_archive->zip();
     mz_zip_archive_file_stat stat{};
-    mz_zip_reader_file_stat(m_archive->zip(), m_index, &stat);
-    return stat.m_uncomp_size;
+    if (!mz_zip_reader_file_stat(&zip, m_index, &stat) ||
+        !std::in_range<std::size_t>(stat.m_uncomp_size)) {
+      throw FileReadError();
+    }
+    return static_cast<std::size_t>(stat.m_uncomp_size);
   }
 
   [[nodiscard]] std::string name() const override { return m_name; }
@@ -112,10 +119,11 @@ public:
   }
 
   [[nodiscard]] std::unique_ptr<std::istream> stream() const override {
-    if (mz_zip_reader_is_file_encrypted(m_archive->zip(), m_index)) {
+    auto zip = *m_archive->zip();
+    if (mz_zip_reader_is_file_encrypted(&zip, m_index)) {
       throw UnsupportedOperation("cannot read encrypted zip entry");
     }
-    if (!mz_zip_reader_is_file_supported(m_archive->zip(), m_index)) {
+    if (!mz_zip_reader_is_file_supported(&zip, m_index)) {
       throw UnsupportedOperation("zip entry not supported");
     }
     return std::make_unique<FileInZipIstream>(
@@ -130,25 +138,38 @@ private:
 
 } // namespace
 
-bool Archive::Entry::is_file() const {
-  return !mz_zip_reader_is_file_a_directory(m_archive->zip(), m_index);
-}
+bool Archive::Entry::is_file() const { return !is_directory(); }
 
 bool Archive::Entry::is_directory() const {
-  return mz_zip_reader_is_file_a_directory(m_archive->zip(), m_index);
+  auto zip = *m_archive->zip();
+  return mz_zip_reader_is_file_a_directory(&zip, m_index);
 }
 
 RelPath Archive::Entry::path() const {
-  std::array<char, MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE> filename{};
-  mz_zip_reader_get_filename(m_archive->zip(), m_index, filename.data(),
-                             static_cast<mz_uint>(filename.size()));
-  // a leading slash is malformed (APPNOTE.TXT 4.4.17.1) and read away
-  return Path(filename.data()).make_relative();
+  auto zip = *m_archive->zip();
+  const mz_uint size = mz_zip_reader_get_filename(&zip, m_index, nullptr, 0);
+  if (size == 0) {
+    throw FileReadError();
+  }
+  std::string filename(size, '\0');
+  if (mz_zip_reader_get_filename(&zip, m_index, filename.data(), size) !=
+      size) {
+    throw FileReadError();
+  }
+  filename.pop_back();
+  if (filename.find('\0') != std::string::npos) {
+    throw FileReadError();
+  }
+  // APPNOTE.TXT 4.4.17.1 forbids a leading slash; tolerate it on read.
+  return Path(filename).make_relative();
 }
 
 Method Archive::Entry::method() const {
+  auto zip = *m_archive->zip();
   mz_zip_archive_file_stat stat{};
-  mz_zip_reader_file_stat(m_archive->zip(), m_index, &stat);
+  if (!mz_zip_reader_file_stat(&zip, m_index, &stat)) {
+    throw FileReadError();
+  }
   switch (stat.m_method) {
   case 0:
     return Method::STORED;
@@ -187,6 +208,10 @@ std::size_t ReadSource::read(const std::uint64_t offset, void *buffer,
     return amount;
   }
 
+  if (!std::in_range<std::streamoff>(offset) ||
+      !std::in_range<std::streamsize>(size)) {
+    return 0;
+  }
   std::unique_ptr<std::istream> stream;
   {
     std::lock_guard lock(m_mutex);
@@ -220,7 +245,12 @@ Archive::Archive(std::shared_ptr<abstract::File> file)
     throw NullPointerError("Archive: file is nullptr");
   }
   m_source = std::make_unique<ReadSource>(m_file);
-  open_from_file(m_zip, *m_file, *m_source);
+  try {
+    open_from_file(m_zip, *m_file, *m_source);
+  } catch (...) {
+    mz_zip_end(&m_zip);
+    throw;
+  }
 }
 
 Archive::~Archive() { mz_zip_end(&m_zip); }
@@ -268,8 +298,11 @@ bool util::append_file(mz_zip_archive &archive, const std::string &path,
   auto read_callback = [](void *opaque, std::uint64_t /*offset*/, void *buffer,
                           const std::size_t s) -> std::size_t {
     const auto in = static_cast<std::istream *>(opaque);
+    if (!std::in_range<std::streamsize>(s)) {
+      return 0;
+    }
     in->read(static_cast<char *>(buffer), static_cast<std::streamsize>(s));
-    return in->gcount();
+    return in->bad() ? 0 : static_cast<std::size_t>(in->gcount());
   };
 
   // Without the flag the size only lands in a trailing data descriptor, which

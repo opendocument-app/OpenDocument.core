@@ -9,8 +9,10 @@
 #include <odr/internal/zip/zip_util.hpp>
 
 #include <algorithm>
+#include <limits>
 #include <ostream>
 #include <string>
+#include <utility>
 
 #include <miniz/miniz.h>
 
@@ -98,6 +100,9 @@ void ZipArchive::save(std::ostream &out) const {
 
   // miniz addresses the output by absolute offset and rewrites local headers.
   WriteSink sink{&out, static_cast<std::streamoff>(out.tellp())};
+  if (sink.base < 0) {
+    throw ZipSaveError();
+  }
 
   Writer writer;
   auto &archive = writer.archive;
@@ -106,6 +111,11 @@ void ZipArchive::save(std::ostream &out) const {
                         const void *buffer, const std::size_t size) {
     const auto s = static_cast<WriteSink *>(opaque);
     std::ostream &o = *s->out;
+    if (offset > static_cast<std::uint64_t>(
+                     std::numeric_limits<std::streamoff>::max() - s->base) ||
+        !std::in_range<std::streamsize>(size)) {
+      return std::size_t{0};
+    }
     const std::streamoff position =
         s->base + static_cast<std::streamoff>(offset);
     if (static_cast<std::streamoff>(o.tellp()) != position) {
