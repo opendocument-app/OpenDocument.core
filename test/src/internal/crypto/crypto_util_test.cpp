@@ -2,11 +2,47 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <string>
 
 using namespace odr::internal::crypto::util;
+
+TEST(CryptoUtil, block_ciphers_reject_partial_blocks) {
+  const std::string key(16, '\0');
+  const std::string iv(16, '\0');
+  for (const std::size_t size : std::array<std::size_t, 3>{1, 15, 17}) {
+    const std::string input(size, '\0');
+    EXPECT_THROW(decrypt_aes_ecb(key, input), std::invalid_argument);
+    EXPECT_THROW(decrypt_aes_cbc(key, iv, input), std::invalid_argument);
+    EXPECT_THROW(encrypt_aes_cbc(key, iv, input), std::invalid_argument);
+    EXPECT_THROW(
+        decrypt_triple_des(std::string(24, '\0'), std::string(8, '\0'), input),
+        std::invalid_argument);
+  }
+  // CFB is a stream mode: an ODF Blowfish stream has any length.
+  EXPECT_EQ(
+      decrypt_blowfish(key, std::string(8, '\0'), std::string(13, '\0')).size(),
+      13);
+  const std::string cipher = hex_decode("66e94bd4ef8a2c3b884cfa59ca342b2e");
+  EXPECT_EQ(encrypt_aes_cbc(key, iv, std::string(16, '\0')), cipher);
+  EXPECT_EQ(decrypt_aes_cbc(key, iv, cipher), std::string(16, '\0'));
+  EXPECT_EQ(decrypt_aes_ecb(key, cipher), std::string(16, '\0'));
+}
+
+TEST(CryptoUtil, pbkdf2_rejects_narrowed_iteration_counts) {
+  EXPECT_THROW(pbkdf2(16, "password", "salt", 0), std::invalid_argument);
+  if constexpr (sizeof(std::size_t) > sizeof(unsigned int)) {
+    EXPECT_THROW(
+        pbkdf2(16, "password", "salt",
+               std::size_t{std::numeric_limits<unsigned int>::max()} + 1),
+        std::invalid_argument);
+  }
+  EXPECT_EQ(hex_encode(pbkdf2(20, "password", "salt", 1)),
+            "0c60c80f961f0e71f3a9b524af6012062fe037a6");
+}
 
 // RFC 1321, appendix A.5.
 TEST(CryptoUtil, md5) {

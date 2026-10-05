@@ -61,6 +61,17 @@ std::string strip_pkcs7(std::string data) {
   return data;
 }
 
+/// AES-CBC data with its IV in front (7.6.3). A trailing partial block of a
+/// damaged file is dropped, so the whole blocks still decrypt.
+std::string decrypt_aes(const std::string &key, const std::string &data) {
+  if (data.size() < aes_block) {
+    return data;
+  }
+  const std::size_t whole = (data.size() - aes_block) / aes_block * aes_block;
+  return strip_pkcs7(crypto::util::decrypt_aes_cbc(
+      key, data.substr(0, aes_block), data.substr(aes_block, whole)));
+}
+
 } // namespace
 
 // Standard-security algorithms with no callers outside this file (the rest are
@@ -363,21 +374,13 @@ std::string Decryptor::decrypt(const ObjectReference &reference,
   }
 
   if (method == EncryptionMethod::aes_v3) {
-    // V 5: the file key is used directly; first 16 bytes are the IV.
-    if (data.size() < aes_block) {
-      return data;
-    }
-    return strip_pkcs7(crypto::util::decrypt_aes_cbc(
-        m_key, data.substr(0, aes_block), data.substr(aes_block)));
+    // V 5: the file key is used directly.
+    return decrypt_aes(m_key, data);
   }
 
   const std::string key = object_key(reference, method);
   if (method == EncryptionMethod::aes_v2) {
-    if (data.size() < aes_block) {
-      return data;
-    }
-    return strip_pkcs7(crypto::util::decrypt_aes_cbc(
-        key, data.substr(0, aes_block), data.substr(aes_block)));
+    return decrypt_aes(key, data);
   }
 
   return crypto::util::rc4(key, data); // Method::rc4

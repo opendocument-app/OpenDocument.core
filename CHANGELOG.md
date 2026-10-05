@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Block-cipher helpers reject incomplete blocks before calling Crypto++, and
+  password derivation rejects parameters that would be narrowed or truncated.
+
 - CFB streams retain their entry metadata after the file wrapper is released.
   Nested directory walks finish children before resuming outer siblings.
 

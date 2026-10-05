@@ -159,6 +159,20 @@ TEST(PdfEncryption, qpdf_aes_128_r4) {
   EXPECT_NE(content.find(kMarker), std::string::npos);
 }
 
+// A damaged file can end an AES string inside a block; the whole blocks before
+// it still decrypt.
+TEST(PdfEncryption, aes_drops_a_trailing_partial_block) {
+  const std::string key(32, '\0');
+  const std::string iv(16, '\0');
+  const std::string plaintext = "0123456789abcde";
+  const std::string data =
+      iv + encrypt_aes_cbc(key, iv, plaintext + '\x01') + "xyz";
+  const Decryptor decryptor(key, EncryptionMethod::aes_v3,
+                            EncryptionMethod::aes_v3);
+  EXPECT_EQ(decryptor.decrypt_string(ObjectReference(1, 0), data), plaintext);
+  EXPECT_EQ(decryptor.decrypt_string(ObjectReference(1, 0), iv + "xyz"), "");
+}
+
 // EncryptMetadata false adds the 0xFFFFFFFF salt to the key derivation
 // (Algorithm 2, step f).
 TEST(PdfEncryption, qpdf_aes_128_r4_cleartext_metadata) {
