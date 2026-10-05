@@ -40,7 +40,8 @@ output.
   `to_unicode` imposes that width instead of reading the `/ToUnicode`
   codespace, because producers write `<0000> <FFFF>` there regardless. The
   entries are keyed either way, so a one-byte code is also looked up
-  zero-padded. Composite codes split by the codespace, as `Font::codes` does.
+  zero-padded. Identity-H/V fixes two-byte codes regardless of `/ToUnicode`;
+  other composite codes split by the codespace, as `Font::codes` does.
 - **`std::any` object model.** `Object` holds its value in `std::any` with
   typed `is_*` and `as_*` accessors, like `oldms/`'s `Entry`. The cost: no
   exhaustive matching, and accidental copies are easy. `resolve_object_copy`

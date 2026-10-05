@@ -169,11 +169,10 @@ std::uint16_t Font::glyph_for_code(const std::uint32_t code) const {
 }
 
 std::string Font::to_unicode(const std::string &codes) const {
-  // A simple font's codes are one byte each (ISO 32000-1 9.10.3); its
-  // `ToUnicode` codespace is not to be trusted, producers writing the
-  // two-byte `<0000> <FFFF>` boilerplate there regardless.
+  // Encoding fixes the width for simple and Identity fonts (9.10.3, 9.7.5.2).
   if (!cmap.empty()) {
-    return cmap.translate_string(codes, !composite);
+    const std::size_t width = !composite ? 1 : has_identity_encoding() ? 2 : 0;
+    return cmap.translate_string(codes, width);
   }
   if (composite) {
     // A composite (Type0) font with no `ToUnicode` CMap. A predefined
@@ -194,9 +193,8 @@ std::string Font::to_unicode(const std::string &codes) const {
     // descendant CIDFont's `/CIDSystemInfo`. Only take this when the codes
     // really are CIDs (identity or an embedded stream); a named CMap we lack
     // tables for must not be misread as identity CIDs.
-    const bool identity_cids = cid_encoding_name.empty() ||
-                               cid_encoding_name == "Identity-H" ||
-                               cid_encoding_name == "Identity-V";
+    const bool identity_cids =
+        cid_encoding_name.empty() || has_identity_encoding();
     if (identity_cids && !cid_registry.empty() && !cid_ordering.empty()) {
       std::string result;
       for (const std::uint32_t cid : this->codes(codes)) {
@@ -221,7 +219,7 @@ std::string Font::to_unicode(const std::string &codes) const {
       !unicode.empty()) {
     return unicode;
   }
-  return cmap.translate_string(codes, true);
+  return cmap.translate_string(codes, 1);
 }
 
 } // namespace odr::internal::pdf

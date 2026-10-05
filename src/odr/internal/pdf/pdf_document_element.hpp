@@ -216,10 +216,8 @@ struct Pattern final : Element {
 /// big-endian codes on iteration; must not outlive the bytes. A trailing
 /// partial code is dropped, as the text-showing operators do.
 ///
-/// A `codespace` CMap picks each code's width from its first byte (ISO 32000-1
-/// 9.7.6.2), so a mixed 1-/2-byte encoding (a 1-byte space among 2-byte CIDs,
-/// which PDFClown et al. emit) stays aligned; without one the width is a fixed
-/// `Font::code_byte_width()`.
+/// A codespace matches every byte (ISO 32000-1 9.7.6.2); without one,
+/// `Font::code_byte_width()` supplies the fixed width.
 class CodeRange {
 public:
   class Iterator {
@@ -362,15 +360,20 @@ struct Font final : Element {
     return composite ? 2 : 1;
   }
 
+  [[nodiscard]] bool has_identity_encoding() const {
+    return cid_encoding_name == "Identity-H" ||
+           cid_encoding_name == "Identity-V";
+  }
+
   /// View `codes` as character codes, each yielded as the CID it selects. The
   /// result borrows `codes`.
   ///
   /// The split is by the embedded CID `/Encoding` CMap's codespace if there is
-  /// one, else the `/ToUnicode` codespace (which keeps the split identical to
-  /// `to_unicode`'s), else the fixed `code_byte_width`.
+  /// one, else the `/ToUnicode` codespace. Identity-H/V always use two bytes
+  /// (ISO 32000-1 9.7.5.2).
   [[nodiscard]] CodeRange codes(std::string_view codes) const {
     const std::size_t width = code_byte_width();
-    if (!composite) {
+    if (!composite || has_identity_encoding()) {
       return {codes, width, nullptr, nullptr};
     }
     const CMap *cid_map = cid_encoding.has_cid_map() ? &cid_encoding : nullptr;

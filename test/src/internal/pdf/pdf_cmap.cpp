@@ -241,7 +241,7 @@ TEST(PdfCMap, imposed_code_width_overrides_codespace) {
                     "endbfchar\n");
 
   EXPECT_EQ(cmap.translate_string("\x41\x42"), "\xe4\x85\x82"); // U+4142
-  EXPECT_EQ(cmap.translate_string("\x41\x42", true), "AB");
+  EXPECT_EQ(cmap.translate_string("\x41\x42", 1), "AB");
 }
 
 TEST(PdfCMap, imposed_code_width_falls_back_to_a_padded_entry) {
@@ -253,7 +253,7 @@ TEST(PdfCMap, imposed_code_width_falls_back_to_a_padded_entry) {
                     "<0042> <0042>\n"
                     "endbfchar\n");
 
-  EXPECT_EQ(cmap.translate_string("\x41\x42", true), "AB");
+  EXPECT_EQ(cmap.translate_string("\x41\x42", 1), "AB");
 }
 
 TEST(PdfCMap, imposed_code_width_keeps_a_mixed_codespace_distinct) {

@@ -66,12 +66,10 @@ public:
   /// so the glyph paths split codes exactly as `translate_string` does.
   [[nodiscard]] std::size_t code_width(std::string_view bytes) const;
 
-  /// `single_byte_codes` overrides the codespace ranges. An imposed
-  /// single-byte code is also looked up zero-padded to two bytes, producers
-  /// keying the entries either way.
-  [[nodiscard]] std::string
-  translate_string(const std::string &codes,
-                   bool single_byte_codes = false) const;
+  /// A nonzero `fixed_width` overrides the codespace. One-byte codes are also
+  /// looked up zero-padded to two bytes; a trailing partial code is ignored.
+  [[nodiscard]] std::string translate_string(const std::string &codes,
+                                             std::size_t fixed_width = 0) const;
 
   /// True when at least one `cidchar`/`cidrange` mapping was parsed (an
   /// embedded CID `/Encoding` CMap). When false the composite code -> CID is
