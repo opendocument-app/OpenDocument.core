@@ -23,8 +23,10 @@ preceding cells' `gridSpan`s.
 
 **Lists are detected structurally**, before the tag table. A paragraph with
 `w:pPr/w:numPr` is a list item. The nesting comes from `w:ilvl`: one list per
-open level, each nested list hanging off the item that opened it. A `w:numPr`
-inherited through `w:pStyle` is not seen.
+open level, each nested list hanging off the item that opened it. Parsing and
+numbering share a reader that accepts Word's levels 0–8 ([MS-OE376]
+2.1.283) and ignores any other value. The absent `w:start` defaults to zero
+([ECMA-376] 17.9.26). A `w:numPr` inherited through `w:pStyle` is not seen.
 
 **Numbering resolves at load.** `NumberingRegistry` (`ooxml_text_list.*`)
 indexes `word/numbering.xml`. A post-parse pass walks the tree in document

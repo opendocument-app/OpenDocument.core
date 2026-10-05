@@ -2,6 +2,7 @@
 
 #include <odr/document_element.hpp>
 #include <odr/internal/ooxml/text/ooxml_text_element_registry.hpp>
+#include <odr/internal/ooxml/text/ooxml_text_list.hpp>
 
 #include <algorithm>
 #include <functional>
@@ -91,14 +92,6 @@ bool is_list_item(const pugi::xml_node node) {
   return node.child("w:pPr").child("w:numPr");
 }
 
-std::int32_t list_level(const pugi::xml_node node) {
-  return node.child("w:pPr")
-      .child("w:numPr")
-      .child("w:ilvl")
-      .attribute("w:val")
-      .as_int(0);
-}
-
 std::tuple<ElementIdentifier, pugi::xml_node>
 parse_list_element(ElementRegistry &registry, pugi::xml_node node) {
   if (!node) {
@@ -115,7 +108,7 @@ parse_list_element(ElementRegistry &registry, pugi::xml_node node) {
   std::vector<ElementIdentifier> open_items{null_element_id};
 
   for (; is_list_item(node); node = node.next_sibling()) {
-    const auto level = static_cast<std::size_t>(std::max(0, list_level(node)));
+    const auto level = list_level(node);
 
     while (open_lists.size() > level + 1) {
       open_lists.pop_back();

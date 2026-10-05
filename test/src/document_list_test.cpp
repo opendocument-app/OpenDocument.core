@@ -4,6 +4,10 @@
 #include <odr/logger.hpp>
 #include <odr/odr.hpp>
 
+#include <odr/internal/ooxml/text/ooxml_text_element_registry.hpp>
+#include <odr/internal/ooxml/text/ooxml_text_list.hpp>
+#include <odr/internal/ooxml/text/ooxml_text_parser.hpp>
+
 #include <test_util.hpp>
 
 #include <gtest/gtest.h>
@@ -107,4 +111,51 @@ TEST(DocumentList, docx_keeps_counting_across_an_interleaved_list) {
 
   EXPECT_EQ(6, markers.back().number);
   EXPECT_FALSE(markers[5].number.has_value());
+}
+
+TEST(DocumentList, docx_ignores_invalid_levels) {
+  namespace docx = odr::internal::ooxml::text;
+  pugi::xml_document document;
+  auto body = document.append_child("w:body");
+  auto paragraph = body.append_child("w:p");
+  const auto level = paragraph.append_child("w:pPr")
+                         .append_child("w:numPr")
+                         .append_child("w:ilvl")
+                         .append_attribute("w:val");
+  // an invalid level is ignored, as LibreOffice does: the item stays at 0
+  for (const auto value : {"-1", "9", "2147483647", "4294967295", "1x", ""}) {
+    SCOPED_TRACE(value);
+    auto attribute = level;
+    attribute.set_value(value);
+    EXPECT_EQ(docx::list_level(paragraph), 0);
+    docx::ElementRegistry registry;
+    EXPECT_NO_THROW(docx::parse_tree(registry, body));
+  }
+  auto attribute = level;
+  attribute.set_value(" +8 ");
+  docx::ElementRegistry registry;
+  const auto root = docx::parse_tree(registry, body);
+  EXPECT_NO_THROW(docx::resolve_list_numbering(registry, {}, root));
+}
+
+TEST(DocumentList, docx_reads_zero_starts_and_ignores_invalid_values) {
+  namespace docx = odr::internal::ooxml::text;
+  pugi::xml_document document;
+  ASSERT_TRUE(document.load_string(
+      R"(<w:numbering><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0">)"
+      R"(<w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/>)"
+      R"(</w:lvl></w:abstractNum><w:num w:numId="1">)"
+      R"(<w:abstractNumId w:val="1"/></w:num></w:numbering>)"));
+  auto level = document.first_child().first_child().first_child();
+  const docx::NumberingRegistry numbering(document.first_child(), {});
+  EXPECT_EQ(0, numbering.level("1", 0).start);
+  auto start = level.append_child("w:start").append_attribute("w:val");
+  start.set_value("0");
+  EXPECT_EQ(0, numbering.level("1", 0).start);
+  start.set_value("4294967296");
+  EXPECT_EQ(0, numbering.level("1", 0).start);
+  start.set_value("1");
+  level.child("w:numFmt").attribute("w:val").set_value("bullet");
+  level.child("w:lvlText").attribute("w:val").set_value("\xf0");
+  EXPECT_EQ("\xe2\x80\xa2", numbering.level("1", 0).label);
 }

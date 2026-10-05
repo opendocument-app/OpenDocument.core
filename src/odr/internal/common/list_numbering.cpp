@@ -2,6 +2,9 @@
 
 #include <algorithm>
 #include <array>
+#include <limits>
+#include <ranges>
+#include <stdexcept>
 
 namespace odr::internal {
 
@@ -46,8 +49,12 @@ std::string format_roman(std::uint32_t number, const bool upper) {
 
 } // namespace
 
-std::string format_list_number(const ListNumberFormat format,
-                               const std::uint32_t number) {
+} // namespace odr::internal
+
+namespace odr {
+
+std::string internal::format_list_number(const ListNumberFormat format,
+                                         const std::uint32_t number) {
   switch (format) {
   case ListNumberFormat::decimal:
     return format_decimal(number);
@@ -68,18 +75,27 @@ std::string format_list_number(const ListNumberFormat format,
   }
 }
 
+} // namespace odr
+
+namespace odr::internal {
+
 std::string ListCounter::advance(const std::uint32_t level,
                                  const ListLevel &list_level) {
   grow_(level);
 
-  // 0 marks a level that has not run yet, so it takes its own start value.
-  std::uint32_t &number = m_numbers[level];
-  number =
-      number == 0 ? std::max<std::uint32_t>(list_level.start, 1) : number + 1;
+  auto &number = m_numbers[level];
+  if (number == std::numeric_limits<std::uint32_t>::max()) {
+    throw std::overflow_error("List counter overflow");
+  }
+  number = number ? *number + 1 : list_level.start;
   m_formats[level] = list_level.format;
+  std::ranges::fill(m_numbers |
+                        std::views::drop(static_cast<std::size_t>(level) + 1),
+                    std::nullopt);
 
-  std::fill(std::next(std::begin(m_numbers), level + 1), std::end(m_numbers),
-            0);
+  if (list_level.format == ListNumberFormat::bullet) {
+    return list_level.label;
+  }
 
   std::string result;
   const std::string &label = list_level.label;
@@ -93,9 +109,8 @@ std::string ListCounter::advance(const std::uint32_t level,
     }
     const auto placeholder = static_cast<std::uint32_t>(label[i + 1] - '1');
     if (placeholder < m_numbers.size()) {
-      result.append(format_list_number(
-          m_formats[placeholder],
-          std::max<std::uint32_t>(m_numbers[placeholder], 1)));
+      result.append(format_list_number(m_formats[placeholder],
+                                       m_numbers[placeholder].value_or(1)));
     }
     i += 2;
   }
@@ -103,18 +118,21 @@ std::string ListCounter::advance(const std::uint32_t level,
 }
 
 std::uint32_t ListCounter::number(const std::uint32_t level) const {
-  return level < m_numbers.size() ? m_numbers[level] : 0;
+  return level < m_numbers.size() ? m_numbers[level].value_or(0) : 0;
 }
 
 void ListCounter::restart(const std::uint32_t level,
                           const std::uint32_t number) {
   grow_(level);
-  m_numbers[level] = number;
+  m_numbers[level] = number == 0 ? std::nullopt : std::optional(number);
 }
 
 void ListCounter::grow_(const std::uint32_t level) {
+  if (level == std::numeric_limits<std::uint32_t>::max()) {
+    throw std::overflow_error("List level overflow");
+  }
   if (level >= m_numbers.size()) {
-    m_numbers.resize(level + 1, 0);
+    m_numbers.resize(static_cast<std::size_t>(level) + 1);
     m_formats.resize(level + 1, ListNumberFormat::decimal);
   }
 }

@@ -12,7 +12,10 @@
 namespace odr::internal::ooxml::text {
 class ElementRegistry;
 
-/// @brief `word/numbering.xml`: the list level definitions, indexed.
+/// The paragraph's Word-compatible numbering level (0–8).
+std::uint32_t list_level(pugi::xml_node paragraph);
+
+/// Indexed list definitions from `word/numbering.xml`.
 class NumberingRegistry final {
 public:
   NumberingRegistry() = default;

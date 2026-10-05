@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- List numbering preserves zero starts and rejects counter overflow. DOCX
+  validates numbering levels, numeric values, and bullet UTF-8 before use.
+
 - Deleting spreadsheet rows or columns retires handles to deleted cells before
   freeing their nodes. Generic removal refuses off-tree cells and table columns.
 
