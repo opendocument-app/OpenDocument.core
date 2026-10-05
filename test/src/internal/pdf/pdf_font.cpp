@@ -280,3 +280,20 @@ TEST(PdfFont, advance_width_explicit_encoding_miss_uses_missing_width) {
 
   EXPECT_NEAR(font.advance_width('C'), 0.25, 1e-9);
 }
+
+TEST(PdfFont, mixed_codespaces_match_every_byte) {
+  Font font;
+  font.composite = true;
+  font.cmap.add_codespace_range("\x81\x30\x81\x30", "\xfe\x39\xfe\x39");
+  font.cmap.add_codespace_range("\x81\x40", "\xfe\xfe");
+  font.cmap.map_single("\x81\x40", u"A");
+  font.cmap.map_single("\x81\x30\x81\x30", u"B");
+  const std::string bytes = "\x81\x40\x81\x30\x81\x30\x81\x40";
+
+  EXPECT_EQ(font.to_unicode(bytes), "ABA");
+  std::vector<std::uint32_t> codes;
+  for (const std::uint32_t code : font.codes(bytes)) {
+    codes.push_back(code);
+  }
+  EXPECT_EQ(codes, (std::vector<std::uint32_t>{0x8140, 0x81308130, 0x8140}));
+}
