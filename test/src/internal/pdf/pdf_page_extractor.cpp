@@ -37,7 +37,7 @@ std::vector<TextElement> run(const std::string &content) {
 }
 
 // A simple font `widths` (glyph space, 1/1000 em) starting at `first_char`.
-Font simple_font(int first_char, std::vector<double> widths) {
+Font simple_font(std::uint32_t first_char, std::vector<double> widths) {
   Font font;
   font.first_char = first_char;
   font.widths = std::move(widths);
@@ -671,7 +671,7 @@ const PathElement &path_at(const std::vector<PageElement> &page,
 // A Type3 font: code `first_char` maps (via `/Differences`) to glyph `name`,
 // drawn by `char_proc` in glyph space, with `font_matrix` (glyph -> text space)
 // and a single glyph-space `width`.
-Font type3_font(int first_char, const std::string &name, double width,
+Font type3_font(std::uint32_t first_char, const std::string &name, double width,
                 std::string char_proc, const Transform2D &font_matrix) {
   Font font;
   font.first_char = first_char;
@@ -730,16 +730,16 @@ TEST(PdfPageExtractor, type3_advance_uses_font_matrix) {
   Resources res;
   res.font["F1"] = &font;
 
-  // Two glyphs; the second is placed by the first's advance (500 * 0.001 = 0.5
-  // em, * size 10 = 5 user units).
-  const auto page =
-      extract_page("BT /F1 10 Tf 0 0 Td (AA) Tj ET", res, Logger::null());
-
-  // text, glyph, glyph (the two char procs).
-  ASSERT_EQ(page.size(), 3);
-  const PathElement &second = std::get<PathElement>(page.at(2));
-  ASSERT_EQ(second.subpaths.size(), 1);
-  EXPECT_NEAR(second.subpaths[0].start[0], 5, 1e-9); // advanced by 0.5 em
+  for (const bool adjusted : {false, true}) {
+    SCOPED_TRACE(adjusted);
+    const std::string show = adjusted ? "[(A) 100 (A)] TJ" : "(AA) Tj";
+    const auto page = extract_page("BT /F1 10 Tf 0 0 Td " + show + " ET", res,
+                                   Logger::null());
+    ASSERT_EQ(page.size(), adjusted ? 4 : 3);
+    const PathElement &second = std::get<PathElement>(page.back());
+    ASSERT_EQ(second.subpaths.size(), 1);
+    EXPECT_NEAR(second.subpaths[0].start[0], adjusted ? 4 : 5, 1e-9);
+  }
 }
 
 // Invisible (`3 Tr`) and clip-only (`7 Tr`) Type3 text paints nothing: the run
@@ -1633,9 +1633,9 @@ const std::string png_signature = {
     static_cast<char>(0x89), 'P', 'N', 'G', '\r', '\n',
     static_cast<char>(0x1A), '\n'};
 
-std::string raw_bytes(std::initializer_list<int> values) {
+std::string raw_bytes(std::initializer_list<std::uint8_t> values) {
   std::string result;
-  for (const int v : values) {
+  for (const std::uint8_t v : values) {
     result.push_back(static_cast<char>(v));
   }
   return result;
@@ -1646,12 +1646,16 @@ std::string raw_bytes(std::initializer_list<int> values) {
 // `BI … ID <bytes> EI` tokenizes as one operator and emits an `ImageElement`
 // placed by the CTM, the raster re-encoded as PNG.
 TEST(PdfPageExtractor, inline_image_emitted_at_ctm) {
-  const std::string content = "q 2 0 0 3 10 20 cm "
+  XObject group = form_x_object("0 0 10 10 re f");
+  Resources res;
+  register_soft_mask(res, group);
+  const std::string content = "q /GS1 gs 2 0 0 3 10 20 cm "
                               "BI /W 2 /H 1 /CS /RGB /BPC 8 ID " +
                               raw_bytes({10, 20, 30, 40, 50, 60}) + "\nEI Q";
-  const auto page = extract_page(content, Resources{}, Logger::null());
+  const auto page = extract_page(content, res, Logger::null());
   ASSERT_EQ(page.size(), 1);
   const ImageElement &img = std::get<ImageElement>(page[0]);
+  EXPECT_NE(img.soft_mask, nullptr);
   EXPECT_EQ(img.mime, "image/png");
   EXPECT_EQ(img.data.substr(0, 8), png_signature);
   EXPECT_DOUBLE_EQ(img.transform.a, 2);
@@ -1743,4 +1747,17 @@ TEST(PdfPageExtractor, inline_image_mask_recoloured) {
   ASSERT_NE(image, nullptr);
   EXPECT_EQ(image->mime, "image/png");
   EXPECT_FALSE(image->data.empty());
+}
+
+TEST(PdfPageExtractor, form_preserves_enclosing_marked_content) {
+  XObject form = form_x_object("EMC EMC BT /F1 10 Tf (inner) Tj ET /Span BMC");
+  Resources res;
+  res.x_object["Fm"] = &form;
+  const auto texts = run("/Span <</ActualText (replacement)>> BDC /Fm Do "
+                         "BT /F1 10 Tf (outer) Tj EMC (tail) Tj ET",
+                         res);
+  ASSERT_EQ(texts.size(), 3);
+  EXPECT_EQ(texts[0].text, "replacement");
+  EXPECT_TRUE(texts[1].text.empty());
+  EXPECT_EQ(texts[2].text, "tail");
 }

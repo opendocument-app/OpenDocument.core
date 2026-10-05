@@ -600,6 +600,7 @@ void emit_inline_image(const GraphicsOperator &op, const Resources &resources,
   image.mime = std::move(encoded->mime);
   image.alpha = state.current().general.fill_alpha;
   image.blend_mode = state.current().general.blend_mode;
+  image.soft_mask = state.current().general.soft_mask;
   out.push_back(std::move(image));
 }
 
@@ -749,14 +750,9 @@ void invoke_x_object(const std::string &name, const Resources &resources,
     }
     const Resources &scope =
         x_object->resources != nullptr ? *x_object->resources : resources;
-    // A form's marked content must be self-balanced; truncate back to the
-    // entry depth afterwards so an unbalanced form cannot corrupt the
-    // enclosing scope.
-    const std::size_t depth = marked.size();
     std::vector<PageElement> &sink = group_unit ? group_out : out;
     run_content(x_object->content, scope, state, sink, logger, warned, active,
                 marked, pen);
-    marked.resize(depth);
   }
 
   if (group_unit) {
@@ -900,11 +896,9 @@ void show_type3(std::vector<PageElement> &out, const Resources &resources,
       // escape it and disturb the text state driving the glyph loop.
       const GraphicsState::ContentScope content_scope(state);
       state.current().general.transform_matrix = glyph_to_user;
-      const std::size_t marked_depth = marked.size();
       std::optional<Pen> inner_pen;
       run_content(it->second, scope, state, out, logger, warned, active, marked,
                   inner_pen);
-      marked.resize(marked_depth);
     }
     state.advance_text(advance, 0);
   }
@@ -918,6 +912,7 @@ void run_content(const std::string &content, const Resources &resources,
                  std::optional<Pen> &pen) {
   std::istringstream ss(content);
   GraphicsOperatorParser parser(ss, logger);
+  const std::size_t marked_depth = marked.size();
 
   // Route a shown string through the Type3 char-proc renderer or the normal
   // text path, by the font kind.
@@ -944,11 +939,11 @@ void run_content(const std::string &content, const Resources &resources,
     case GraphicsOperatorType::show_text_manual_spacing: { // TJ
       Font *font =
           lookup_font(resources, state.current().text.font, logger, warned);
-      const GraphicsState::Text &text = state.current().text;
       for (const Object &item : op.arguments.at(0).as_array()) {
         if (item.is_string()) {
           show_run(item.as_string(), font);
         } else if (item.is_real()) {
+          const GraphicsState::Text &text = state.current().text;
           // a number translates the next glyph left by adj/1000 text-space
           // units, scaled by the font size and horizontal scaling (9.4.3).
           const double adjust = -item.as_real() / 1000.0 * text.size *
@@ -1044,7 +1039,7 @@ void run_content(const std::string &content, const Resources &resources,
       begin_marked_content(op, resources, marked);
       break;
     case GraphicsOperatorType::end_marked_content_seq: // EMC
-      if (!marked.empty()) {
+      if (marked.size() > marked_depth) {
         marked.pop_back();
       }
       break;
@@ -1052,6 +1047,7 @@ void run_content(const std::string &content, const Resources &resources,
       break;
     }
   }
+  marked.resize(marked_depth);
 }
 
 } // namespace
