@@ -120,6 +120,11 @@ above. So each run is raised by one font ascent:
   page count and the `/Info` strings, read once at construction, after the
   empty-password unlock. It is all or nothing: a malformed structure leaves
   `document_type` at `unknown`. XMP is not parsed.
+- JBIG2 caps individual bitmaps and cumulative symbol pixels at 200 million,
+  symbol tables at 100,000 entries, and text instances at 200 million. Integer
+  magnitudes must fit signed 32-bit; the negative-zero code remains the OOB
+  sentinel. Wider placement arithmetic and clipping keep off-page symbols safe.
+  Empty height classes and excessive zero export runs are rejected.
 - The filter framework hands `DCTDecode` and `JPXDecode` payloads back
   encoded. A JPEG passes through to the browser. A JPEG 2000 goes to `pdf_jpx`
   (openjpeg) and is re-encoded as PNG like every other raster.
