@@ -721,10 +721,8 @@ ColorSpaceContext make_color_space_context(DocumentParser &parser,
 /// indirect reference, defaulting to `fallback`.
 std::int32_t image_int(DocumentParser &parser, const Dictionary &dictionary,
                        const std::string &key, const std::int32_t fallback) {
-  return static_cast<std::int32_t>(
-      parser.resolve_object_copy(dictionary.get(key))
-          .as_integer_opt()
-          .value_or(fallback));
+  return image_integer(parser.resolve_object_copy(dictionary.get(key)),
+                       fallback);
 }
 
 /// The `/Decode` array of an image dictionary as doubles ([] when absent).
@@ -827,6 +825,9 @@ DecodeOptions jbig2_decode_options(DocumentParser &parser,
 /// undecodable codec leaves `stencil_mask` false, so `Do` skips it.
 void parse_stencil_mask(DocumentParser &parser, const Dictionary &dictionary,
                         const IndirectObject &object, XObject &x_object) {
+  if (image_int(parser, dictionary, "BitsPerComponent", 1) != 1) {
+    throw std::runtime_error("PDF stencil masks require one-bit samples");
+  }
   Object filter;
   if (dictionary.has_key("Filter")) {
     filter = parser.deep_resolve_object_copy(dictionary["Filter"]);

@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF image dimensions and sample parameters are checked before narrowing.
+  Inline images reject overflowing sizes and allocate only as data is read.
+
 - JPEG 2000 images ignore the PDF Decode array as required. Raster decoding
   rejects invalid sample depths, including non-1-bit stencil masks.
 

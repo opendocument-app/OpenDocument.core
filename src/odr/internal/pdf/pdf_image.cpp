@@ -16,17 +16,13 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <stdexcept>
 #include <string_view>
 #include <utility>
 
 namespace odr::internal::pdf {
 
 namespace {
-
-bool valid_bit_depth(const std::int32_t bits) {
-  return bits > 0 && bits <= 16 &&
-         std::has_single_bit(static_cast<std::uint32_t>(bits));
-}
 
 /// Reads fixed-width big-endian sample values out of a byte buffer, MSB first.
 /// Constructed at a row offset; rows are byte-aligned (8.9.5.2). Reads past the
@@ -139,6 +135,22 @@ encode_jpx(const std::string &data, const ColorSpaceDef *color_space,
 
 namespace odr::internal {
 
+std::int32_t pdf::image_integer(const Object &value,
+                                const std::int32_t fallback) {
+  if (value.is_null()) {
+    return fallback;
+  }
+  if (!value.is_integer() || !std::in_range<std::int32_t>(value.as_integer())) {
+    throw std::runtime_error("invalid PDF image integer");
+  }
+  return static_cast<std::int32_t>(value.as_integer());
+}
+
+bool pdf::valid_image_bit_depth(const std::int32_t bits) {
+  return bits > 0 && bits <= 16 &&
+         std::has_single_bit(static_cast<std::uint32_t>(bits));
+}
+
 std::string pdf::encode_image_png(const std::string &samples,
                                   const std::int32_t width,
                                   const std::int32_t height,
@@ -149,7 +161,7 @@ std::string pdf::encode_image_png(const std::string &samples,
                                   const std::span<const double> color_key) {
   const std::int32_t components = color_space.components;
   if (width <= 0 || height <= 0 || components <= 0 ||
-      !valid_bit_depth(bits_per_component)) {
+      !valid_image_bit_depth(bits_per_component)) {
     return {};
   }
 
@@ -267,7 +279,7 @@ std::vector<std::uint8_t> pdf::decode_mask_alpha(
     const std::span<const double> decode, const bool stencil,
     const std::int32_t base_width, const std::int32_t base_height) {
   if (width <= 0 || height <= 0 || base_width <= 0 || base_height <= 0 ||
-      !valid_bit_depth(bits_per_component) ||
+      !valid_image_bit_depth(bits_per_component) ||
       (stencil && bits_per_component != 1)) {
     return {};
   }
