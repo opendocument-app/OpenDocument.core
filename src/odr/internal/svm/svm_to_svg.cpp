@@ -157,12 +157,12 @@ Mapping compose_mapping(const Mapping &current, const MapMode &map_mode,
           relative_y * unit};
 }
 
-double transform_x(const std::int32_t x, const Context &context) {
+double transform_x(const double x, const Context &context) {
   const Mapping &mapping = context.state.mapping;
   return (mapping.origin_x + x) * mapping.scale_x;
 }
 
-double transform_y(const std::int32_t y, const Context &context) {
+double transform_y(const double y, const Context &context) {
   const Mapping &mapping = context.state.mapping;
   return (mapping.origin_y + y) * mapping.scale_y;
 }
@@ -170,11 +170,11 @@ double transform_y(const std::int32_t y, const Context &context) {
 /// A length carries no origin, only the scale. The x scale even for a stroke
 /// width or a dash, which lie along no axis: `svgwriter.cxx` maps those
 /// through `ImplMap(sal_Int32)`, which takes the `Width()` of a square.
-double transform_width(const std::int32_t width, const Context &context) {
+double transform_width(const double width, const Context &context) {
   return width * context.state.mapping.scale_x;
 }
 
-double transform_height(const std::int32_t height, const Context &context) {
+double transform_height(const double height, const Context &context) {
   return height * context.state.mapping.scale_y;
 }
 
@@ -354,14 +354,10 @@ void write_rectangle(const Rectangle &rect, const Context &context,
   out.write_attribute("height", transform_y(rect.bottom, context) -
                                     transform_y(rect.top, context));
   if (horizontal_round != 0) {
-    out.write_attribute(
-        "rx",
-        transform_width(static_cast<std::int32_t>(horizontal_round), context));
+    out.write_attribute("rx", transform_width(horizontal_round, context));
   }
   if (vertical_round != 0) {
-    out.write_attribute(
-        "ry",
-        transform_height(static_cast<std::int32_t>(vertical_round), context));
+    out.write_attribute("ry", transform_height(vertical_round, context));
   }
   write_shape_style(out, context, true);
   out.write_element_end();
@@ -758,8 +754,8 @@ std::string get_x_list_string(const IntPair &point,
   for (const std::uint32_t dx :
        dx_array | std::views::take(dx_array.size() - 1)) {
     result += " ";
-    result += svg::format_number(
-        transform_x(point.x + static_cast<std::int32_t>(dx), context));
+    result += svg::format_number(transform_x(
+        static_cast<double>(point.x) + static_cast<std::int32_t>(dx), context));
   }
   return result;
 }
@@ -795,21 +791,22 @@ struct BitmapBox final {
 BitmapBox get_bitmap_box(const BitmapAction &action, const Context &context) {
   const IntPair &size_pixel = action.bitmap.image.size_pixel;
 
-  IntPair size = action.size;
-  if (size.x == 0 || size.y == 0) {
+  double width = action.size.x;
+  double height = action.size.y;
+  if (width == 0 || height == 0) {
     // the pixel count multiplies before the division truncates: `2540 / 96`
     // is 26.458, and rounding that off per pixel loses 1.7% of the size
     const auto scale_pixel = [](const std::int32_t pixels) {
-      return static_cast<std::int32_t>(pixels * hundredth_mm_per_inch /
-                                       assumed_dpi);
+      return std::trunc(pixels * hundredth_mm_per_inch / assumed_dpi);
     };
-    size = {scale_pixel(size_pixel.x), scale_pixel(size_pixel.y)};
+    width = scale_pixel(size_pixel.x);
+    height = scale_pixel(size_pixel.y);
   }
 
   BitmapBox box{transform_x(action.point.x, context),
                 transform_y(action.point.y, context),
-                transform_width(size.x, context),
-                transform_height(size.y, context)};
+                transform_width(width, context),
+                transform_height(height, context)};
 
   if (action.source_size.x == 0 || action.source_size.y == 0) {
     return box;
@@ -944,10 +941,12 @@ void write_arc(const ArcAction &action, const ArcKind kind,
   svg::SvgWriter &out = *context.out;
   const Rectangle &rect = action.rectangle;
 
-  const double center_x = (rect.left + rect.right) / 2.0;
-  const double center_y = (rect.top + rect.bottom) / 2.0;
-  const double radius_x = std::abs(rect.right - rect.left) / 2.0;
-  const double radius_y = std::abs(rect.bottom - rect.top) / 2.0;
+  const double center_x = (static_cast<double>(rect.left) + rect.right) / 2;
+  const double center_y = (static_cast<double>(rect.top) + rect.bottom) / 2;
+  const double radius_x =
+      std::abs(static_cast<double>(rect.right) - rect.left) / 2;
+  const double radius_y =
+      std::abs(static_cast<double>(rect.bottom) - rect.top) / 2;
   if (radius_x == 0 || radius_y == 0) {
     return;
   }
@@ -963,11 +962,8 @@ void write_arc(const ArcAction &action, const ArcKind kind,
   }
 
   const auto point = [&](const double x, const double y) {
-    return svg::format_number(transform_x(
-               static_cast<std::int32_t>(std::lround(x)), context)) +
-           "," +
-           svg::format_number(
-               transform_y(static_cast<std::int32_t>(std::lround(y)), context));
+    return svg::format_number(transform_x(std::round(x), context)) + "," +
+           svg::format_number(transform_y(std::round(y), context));
   };
   const auto at = [&](const double parameter) {
     return point(center_x + radius_x * std::cos(parameter),
@@ -975,11 +971,8 @@ void write_arc(const ArcAction &action, const ArcKind kind,
   };
   const std::string radii =
       " A " +
-      svg::format_number(transform_width(
-          static_cast<std::int32_t>(std::lround(radius_x)), context)) +
-      "," +
-      svg::format_number(transform_height(
-          static_cast<std::int32_t>(std::lround(radius_y)), context)) +
+      svg::format_number(transform_width(std::round(radius_x), context)) + "," +
+      svg::format_number(transform_height(std::round(radius_y), context)) +
       " 0 0 0 ";
 
   std::string path = "M ";
@@ -1036,9 +1029,7 @@ void write_text(const IntPair &point, const std::string &text,
 
   if (width > 0) {
     // the run is drawn to fill this advance, however wide the font we get is
-    out.write_attribute(
-        "textLength",
-        transform_width(static_cast<std::int32_t>(width), context));
+    out.write_attribute("textLength", transform_width(width, context));
     out.write_attribute("lengthAdjust", "spacingAndGlyphs");
   }
 

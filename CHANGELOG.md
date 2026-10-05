@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Large StarView coordinates, text advances and bitmap dimensions no longer
+  overflow or narrow while being converted to SVG.
+
 - StarView parsing reads each record within its declared length, so unknown
   extensions no longer shift later fields and truncated records are refused.
 

@@ -1328,3 +1328,49 @@ TEST(SvmFile, nested_record_extensions_preserve_following_fields) {
   svm::read_primitive(input, following);
   EXPECT_EQ(42, following);
 }
+
+TEST(SvmToSvg, coordinate_arithmetic_does_not_narrow_or_overflow) {
+  constexpr std::int32_t large = 2000000000;
+  const std::string svg =
+      translate(SvmBuilder()
+                    .map_mode_action(svm::MAP_100TH_MM, 0, 0, 1, 1000000)
+                    .action(svm::META_TEXTARRAY_ACTION)
+                    .point(large, 0)
+                    .ascii_string("ab")
+                    .u16(0)
+                    .u16(2)
+                    .u32(2)
+                    .u32(large)
+                    .u32(large)
+                    .end()
+                    .action(svm::META_STRETCHTEXT_ACTION)
+                    .point(0, 0)
+                    .ascii_string("ab")
+                    .u32(4000000000)
+                    .u16(0)
+                    .u16(2)
+                    .end()
+                    .action(svm::META_ROUNDRECT_ACTION)
+                    .rectangle(0, 0, large, large)
+                    .u32(4000000000)
+                    .u32(4000000000)
+                    .end()
+                    .action(svm::META_PIE_ACTION)
+                    .rectangle(1000000000, 1000000000, large, large)
+                    .point(large, 1500000000)
+                    .point(1500000000, 1000000000)
+                    .end()
+                    .action(svm::META_ARC_ACTION)
+                    .rectangle(std::numeric_limits<std::int32_t>::min(), -1,
+                               std::numeric_limits<std::int32_t>::max(), 1)
+                    .point(large, 0)
+                    .point(-large, 0)
+                    .end()
+                    .file());
+  EXPECT_NE(std::string::npos, svg.find("x=\"2000 4000\""));
+  EXPECT_NE(std::string::npos, svg.find("textLength=\"4000\""));
+  EXPECT_NE(std::string::npos, svg.find("rx=\"4000\" ry=\"4000\""));
+  EXPECT_NE(std::string::npos,
+            svg.find("d=\"M 1500,1500 L 2000,1500 A 500,500"));
+  EXPECT_NE(std::string::npos, svg.find(" A 2147.48,0.000001"));
+}
