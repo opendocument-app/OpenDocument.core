@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- WebAssembly CSV editing, saving and rendering share one document. CSV and
+  Markdown capability and locale queries now use their document interfaces.
+
 - WebAssembly rejects reentrant calls from callbacks instead of allowing a
   callback to close or mutate a document during an active native operation.
 

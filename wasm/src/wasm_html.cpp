@@ -56,10 +56,12 @@ Session &warm(const Handle handle) {
   Session &s = session(handle);
   if (!s.service.has_value()) {
     // from the session's tree, not the file, which would decode a second one
-    s.service = s.file.is_document_file()
-                    ? html::translate(document_of(s), s.config, s.logger)
-                    : html::translate(s.file, s.config, s.logger);
-    s.views = s.service->list_views();
+    HtmlService service =
+        has_document(s) ? html::translate(document_of(s), s.config, s.logger)
+                        : html::translate(s.file, s.config, s.logger);
+    HtmlViews views = service.list_views();
+    s.service = std::move(service);
+    s.views = std::move(views);
   }
   return s;
 }

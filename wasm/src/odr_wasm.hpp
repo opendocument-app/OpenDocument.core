@@ -56,6 +56,8 @@ Logger &default_logger();
 
 /// @throws std::out_of_range if @p handle is unknown.
 Session &session(Handle handle);
+/// Whether the session's file opens as a document, CSV and Markdown included.
+bool has_document(const Session &session);
 /// @throws NoDocumentFile if the session's file is not a document.
 Document &document_of(Session &session);
 Handle add_session(Session session);

@@ -58,6 +58,9 @@ describe('smoke', () => {
     try {
       assert.equal(doc.fileType, odr.enums.FileType.md);
       assert.equal(doc.fileName, 'notes.md');
+      assert.equal(doc.isEditable(), false);
+      assert.equal(doc.isSavable(), false);
+      assert.equal(doc.locale(), null);
     } finally {
       doc.close();
     }
