@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF Type3 text spacing avoids a freed graphics-state reference. Inline
+  images retain soft masks, and malformed forms preserve enclosing text tags.
+
 - PDF gradients read sampled and calculator function streams correctly.
 
 - PDF font indices are checked before conversion. Invalid CID width ranges
