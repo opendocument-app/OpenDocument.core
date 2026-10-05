@@ -369,3 +369,30 @@ TEST(ooxml_presentation_style, paragraph_spacing_is_taken_absolute_only) {
   EXPECT_EQ(Measure(6, DynamicUnit("pt")), *style.margin.top);
   EXPECT_FALSE(style.margin.bottom.has_value());
 }
+
+TEST(ooxml_presentation_style, explicit_off_values_clear_text_formatting) {
+  pugi::xml_document document;
+  TextStyle style;
+  resolve_text_style(
+      node_of(
+          R"(<a:r><a:rPr b="1" i="true" u="sng" strike="sngStrike"/></a:r>)",
+          document),
+      nullptr, style);
+  EXPECT_EQ(FontWeight::bold, style.font_weight);
+  EXPECT_EQ(FontStyle::italic, style.font_style);
+  EXPECT_EQ(true, style.font_underline);
+  EXPECT_EQ(true, style.font_line_through);
+  resolve_text_style(node_of(R"(<a:r><a:rPr/></a:r>)", document), nullptr,
+                     style);
+  EXPECT_EQ(FontStyle::italic, style.font_style);
+  EXPECT_EQ(true, style.font_underline);
+  resolve_text_style(
+      node_of(
+          R"(<a:r><a:rPr b="false" i="0" u="none" strike="noStrike"/></a:r>)",
+          document),
+      nullptr, style);
+  EXPECT_EQ(FontWeight::normal, style.font_weight);
+  EXPECT_EQ(FontStyle::normal, style.font_style);
+  EXPECT_EQ(false, style.font_underline);
+  EXPECT_EQ(false, style.font_line_through);
+}

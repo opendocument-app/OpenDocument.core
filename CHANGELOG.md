@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- OOXML explicit off values clear inherited bold, italic, underline, strike,
+  and shadow formatting instead of retaining or re-enabling it.
+
 - DOCX refuses structural edits on synthetic list wrappers and their paragraphs,
   preventing dangling nodes. Appending text rejects unsupported containers.
 

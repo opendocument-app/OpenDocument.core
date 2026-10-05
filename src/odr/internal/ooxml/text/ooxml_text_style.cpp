@@ -30,11 +30,11 @@ void resolve_text_style_(const pugi::xml_node node, TextStyle &result) {
           read_font_style_attribute(run_properties.child("w:i"))) {
     result.font_style = font_style;
   }
-  if (const bool font_underline =
+  if (const std::optional<bool> font_underline =
           read_line_attribute(run_properties.child("w:u"))) {
     result.font_underline = font_underline;
   }
-  if (const bool font_line_through =
+  if (const std::optional<bool> font_line_through =
           read_line_attribute(run_properties.child("w:strike"))) {
     result.font_line_through = font_line_through;
   }
