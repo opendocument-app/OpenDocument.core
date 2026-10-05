@@ -132,6 +132,7 @@ TEST(IworkNumbers, fixture_tables_preserve_shape_values_and_types) {
           .as_document_file();
   const Document document = document_file.document();
 
+  // each table is a sheet of its own, so no table is dropped
   EXPECT_EQ(sheet_names(document.root_element()),
             (std::vector<std::string>{"Sales – Quarterly", "Sales – Wide",
                                       "Types – Values"}));
@@ -146,6 +147,7 @@ TEST(IworkNumbers, fixture_tables_preserve_shape_values_and_types) {
                 {"Total", "2250.5", "0.1875"},
             }));
 
+  // three rows of six columns, so rows and columns cannot be confused
   const Sheet wide = sheet_at(document.root_element(), 1);
   EXPECT_EQ(wide.dimensions().rows, 3);
   EXPECT_EQ(wide.dimensions().columns, 6);
