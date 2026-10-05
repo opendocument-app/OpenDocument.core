@@ -3,8 +3,9 @@
 Reader and editor for spreadsheets (`.xlsx`). It relies on
 [OOXML](../README.md). The workbook is parsed from `xl/workbook.xml`. Each
 sheet, the shared strings and the drawings are loaded via relationships
-(`ooxml_spreadsheet_parser.cpp`). Cell styles resolve from `xl/styles.xml`
-through the `cellXfs`, `fonts`, `fills` and `borders` indices
+(`ooxml_spreadsheet_parser.cpp`). Cell styles resolve from the styles part
+that the workbook relationships name, normally `xl/styles.xml`, through the
+`cellXfs`, `fonts`, `fills` and `borders` indices
 (`ooxml_spreadsheet_style.cpp`).
 
 ## Features
