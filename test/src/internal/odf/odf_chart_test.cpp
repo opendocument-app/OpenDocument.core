@@ -252,3 +252,16 @@ TEST(OdfChart, pie_and_ring_totals_do_not_overflow) {
     EXPECT_EQ(svg->find("inf"), std::string::npos);
   }
 }
+
+TEST(OdfChart, a_constant_large_line_still_has_an_axis) {
+  pugi::xml_document document;
+  ASSERT_TRUE(document.load_string(bar_chart("chart:line").c_str()));
+  for (const auto cell :
+       document.select_nodes("//table:table-cell[@office:value]")) {
+    cell.node().attribute("office:value").set_value("1e300");
+  }
+  const auto svg = render_chart(document.document_element());
+  ASSERT_TRUE(svg);
+  EXPECT_EQ(svg->find("nan"), std::string::npos);
+  EXPECT_EQ(svg->find("inf"), std::string::npos);
+}

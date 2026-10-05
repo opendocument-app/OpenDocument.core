@@ -394,9 +394,8 @@ private:
       m_maximum = std::max(m_maximum, 0.0);
     }
     if (m_maximum == m_minimum) {
-      const double padding = std::max(1.0, std::abs(m_minimum) * 0.1);
-      m_minimum -= padding;
-      m_maximum += padding;
+      // a large value absorbs a padding of 1
+      m_maximum = m_minimum + std::max(1.0, std::abs(m_minimum) * 1e-6);
     }
     m_step = nice_step((m_maximum - m_minimum) / 5);
     if (!std::isfinite(m_step) || m_step <= 0) {
@@ -503,7 +502,7 @@ private:
     const double labels = static_cast<double>(m_categories.size());
     const double spacing = std::ceil(width / m_plot.width * labels);
     const auto stride =
-        static_cast<std::size_t>(std::clamp(spacing, 1.0, labels));
+        static_cast<std::size_t>(std::max(1.0, std::min(spacing, labels)));
     for (std::size_t i = 0; i < m_categories.size(); i += stride) {
       write_text(category_centre(i),
                  m_plot.y + m_plot.height + 10 * units_per_point,
