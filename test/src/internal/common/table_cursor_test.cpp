@@ -66,9 +66,11 @@ TEST(TableCursor, rejects_invalid_extents_before_advancing) {
   cursor.add_column(1);
   EXPECT_THROW(cursor.add_column(max), std::out_of_range);
   EXPECT_THROW(cursor.add_cell(max, 1, max), std::out_of_range);
-  EXPECT_THROW(cursor.add_cell(0), std::out_of_range);
-  EXPECT_THROW(cursor.add_cell(1, 0), std::out_of_range);
   EXPECT_EQ(cursor.column(), 1);
+  // a zero count from a damaged file is no extent
+  cursor.add_cell(0);
+  EXPECT_EQ(cursor.column(), 1);
+  cursor.add_row(0);
   EXPECT_EQ(cursor.row(), 0);
   cursor.add_row(max);
   EXPECT_THROW(cursor.add_row(), std::out_of_range);

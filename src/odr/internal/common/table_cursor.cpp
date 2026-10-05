@@ -8,9 +8,9 @@ namespace odr::internal {
 
 namespace {
 
+/// A count of zero, which a damaged file can state, advances nothing.
 std::uint32_t advance(const std::uint32_t position, const std::uint64_t count) {
-  if (count == 0 ||
-      count > std::numeric_limits<std::uint32_t>::max() - position) {
+  if (count > std::numeric_limits<std::uint32_t>::max() - position) {
     throw std::out_of_range("table extent out of range");
   }
   return position + static_cast<std::uint32_t>(count);

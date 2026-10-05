@@ -247,8 +247,7 @@ internal::recalculate(const abstract::Document &document) {
                       const TableDimensions &span, const bool array,
                       const std::string &text) {
           constexpr auto max = std::numeric_limits<std::uint32_t>::max();
-          if (span.rows == 0 || span.columns == 0 || span.rows > max - row ||
-              span.columns > max - column) {
+          if (span.rows > max - row || span.columns > max - column) {
             throw UnsupportedOperation();
           }
           const SheetPosition position(index, column, row);
