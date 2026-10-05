@@ -26,23 +26,22 @@ int main(const int argc, char **argv) {
       password = argv[2];
     }
 
-    DocumentFile document_file = open(input).as_document_file();
+    DecodedFile file = open(input);
 
-    if (document_file.password_encrypted()) {
+    if (file.password_encrypted()) {
       if (!password) {
         ODR_FATAL(logger, "document encrypted but no password given");
         return 2;
       }
       try {
-        document_file = document_file.decrypt(*password);
+        file = file.decrypt(*password);
       } catch (const WrongPasswordError &) {
         ODR_FATAL(logger, "wrong password");
         return 1;
       }
     }
 
-    const auto json =
-        internal::util::meta::meta_to_json(document_file.file_meta());
+    const auto json = internal::util::meta::meta_to_json(file.file_meta());
     std::cout << json.dump(4) << '\n';
 
     return 0;

@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- CLI `meta` accepts every decoded file type, `server` detects the input instead
+  of forcing ZIP, and `back_translate` supports editable text and CSV files.
+  The CLI container preserves executable permissions and forwards arguments.
+
 - WebAssembly CSV editing, saving and rendering share one document. CSV and
   Markdown capability and locale queries now use their document interfaces.
 

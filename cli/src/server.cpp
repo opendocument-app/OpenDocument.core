@@ -21,17 +21,14 @@ int main(const int argc, char **argv) {
   try {
     const Logger logger = Logger::create_stdio("odr-server", LogLevel::verbose);
 
-    std::string input{argv[1]};
+    const std::string input{argv[1]};
 
     std::optional<std::string> password;
     if (argc >= 3) {
       password = argv[2];
     }
 
-    // the server offers the container's own entries beside the render, so a
-    // package is opened as the zip it is
-    DecodedFile decoded_file =
-        open(input, DecodeOptions::as(FileType::zip), logger);
+    DecodedFile decoded_file = open(input, {}, logger);
 
     if (decoded_file.password_encrypted()) {
       if (!password) {
@@ -64,7 +61,7 @@ int main(const int argc, char **argv) {
       const HtmlService service =
           html::translate(decoded_file, html_config, logger);
       server.connect_service(service, prefix);
-      const HtmlViews views = service.list_views();
+      const HtmlViews &views = service.list_views();
       ODR_INFO(logger, "hosted decoded file with id: " << prefix);
       for (const auto &view : views) {
         ODR_INFO(logger, base_url << "/file/" << prefix << "/" << view.path());

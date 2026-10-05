@@ -24,19 +24,25 @@ int main(const int argc, char **argv) {
     const std::string diff_path{argv[2]};
     const std::string output{argv[3]};
 
-    const DocumentFile document_file = open(input).as_document_file();
+    const DecodedFile file = open(input);
 
-    if (document_file.password_encrypted()) {
+    if (file.password_encrypted()) {
       ODR_FATAL(logger, "encrypted documents are not supported");
       return 1;
     }
 
-    const Document document = document_file.document();
-
     const std::string diff = internal::util::file::read(diff_path);
-    document.edit(diff);
-
-    document.save(output);
+    if (file.is_text_file()) {
+      const TextFile text = file.as_text_file();
+      text.edit(diff, logger);
+      text.save(output);
+    } else {
+      const Document document = file.is_csv_file()
+                                    ? file.as_csv_file().document()
+                                    : file.as_document_file().document();
+      document.edit(diff, logger);
+      document.save(output);
+    }
 
     return 0;
   } catch (const std::exception &e) {
