@@ -1,8 +1,6 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
-#include <odr/file.hpp>
 #include <odr/filesystem.hpp>
-#include <odr/odr.hpp>
 
 #include <internal/ooxml/ooxml_spreadsheet_test_util.hpp>
 
@@ -234,14 +232,6 @@ TEST(OoxmlSpreadsheetValue, a_date_takes_the_names_of_its_format_language) {
 
 namespace {
 
-Document saved_and_reopened(const Document &document) {
-  std::ostringstream saved;
-  document.save(saved);
-  return odr::open(odr::File::from_memory(saved.str()))
-      .as_document_file()
-      .document();
-}
-
 CellValue date(const double days) {
   return CellValue(ValueType::date).with_number(days);
 }
@@ -259,7 +249,7 @@ TEST(OoxmlSpreadsheetValue, a_written_date_gets_a_date_format) {
                  CellValue(ValueType::time).with_number(0.75 + 5.0 / 86400));
   sheet.set_cell(10, 0, CellValue(ValueType::time).with_number(1.75));
 
-  const Document reopened = saved_and_reopened(document);
+  const Document reopened = saved_document(document);
   const Sheet saved = first_sheet(reopened);
   EXPECT_EQ(saved.cell(6, 0).value().type(), ValueType::date);
   EXPECT_DOUBLE_EQ(saved.cell(6, 0).value().number(), 45658);
@@ -279,7 +269,7 @@ TEST(OoxmlSpreadsheetValue, a_date_keeps_the_date_format_its_cell_has) {
   // `B1` shows `cellXfs` 2, the built-in date 14
   sheet.set_cell(1, 0, date(45659));
 
-  const Document reopened = saved_and_reopened(document);
+  const Document reopened = saved_document(document);
   const Sheet saved = first_sheet(reopened);
   EXPECT_EQ(shown_at(saved, 1), "01-02-25");
   EXPECT_DOUBLE_EQ(saved.cell(1, 0).value().number(), 45659);
@@ -306,7 +296,7 @@ TEST(OoxmlSpreadsheetValue, omitted_coordinates_follow_the_previous_entry) {
   EXPECT_DOUBLE_EQ(sheet.cell(0, 4).value().number(), 6);
   sheet.insert_rows(1, 1);
   sheet.set_cell(3, 0, CellValue(7));
-  const Document saved = saved_and_reopened(document);
+  const Document saved = saved_document(document);
   EXPECT_DOUBLE_EQ(first_sheet(saved).cell(3, 0).value().number(), 7);
   EXPECT_DOUBLE_EQ(first_sheet(saved).cell(0, 4).value().number(), 5);
   EXPECT_DOUBLE_EQ(first_sheet(saved).cell(0, 5).value().number(), 6);

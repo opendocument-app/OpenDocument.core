@@ -1,9 +1,7 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
-#include <odr/file.hpp>
 #include <odr/filesystem.hpp>
-#include <odr/odr.hpp>
 #include <odr/table_dimension.hpp>
 
 #include <internal/ooxml/ooxml_spreadsheet_test_util.hpp>
@@ -11,7 +9,6 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
-#include <sstream>
 #include <string>
 
 using namespace odr;
@@ -19,18 +16,8 @@ using namespace odr::test::ooxml;
 
 namespace {
 
-std::string part_of(const Document &document, const std::string &path) {
-  std::ostringstream saved;
-  document.save(saved);
-  const Document reopened =
-      open(File::from_memory(saved.str())).as_document_file().document();
-  std::ostringstream xml;
-  xml << reopened.as_filesystem().open(path).stream()->rdbuf();
-  return xml.str();
-}
-
 std::string sheet_xml(const Document &document) {
-  return part_of(document, "/xl/worksheets/sheet1.xml");
+  return saved_part(document, "/xl/worksheets/sheet1.xml");
 }
 
 /// Row 1 of `s` reads `a`, `b`, `c`.
@@ -202,7 +189,7 @@ TEST(OoxmlSpreadsheetColumns, a_defined_name_moves) {
 
   first_sheet(document).insert_columns(0, 1);
 
-  EXPECT_TRUE(contains(part_of(document, "/xl/workbook.xml"),
+  EXPECT_TRUE(contains(saved_part(document, "/xl/workbook.xml"),
                        R"(<definedName name="r">s!$C$1:$D$1)"));
 }
 
@@ -250,7 +237,7 @@ TEST(OoxmlSpreadsheetColumns, a_drawing_moves_with_its_cells) {
 
   first_sheet(document).insert_columns(1, 2);
 
-  const std::string xml = part_of(document, "/xl/drawings/drawing1.xml");
+  const std::string xml = saved_part(document, "/xl/drawings/drawing1.xml");
   EXPECT_TRUE(contains(xml, anchor("twoCell", 0, 4)));
   EXPECT_TRUE(contains(xml, anchor("oneCell", 3, 4)));
   EXPECT_TRUE(contains(xml, anchor("absolute", 1, 2)));
@@ -264,10 +251,11 @@ TEST(OoxmlSpreadsheetColumns, a_comment_moves_with_its_note) {
 
   first_sheet(document).delete_columns(1, 1);
 
-  EXPECT_TRUE(contains(part_of(document, "/xl/comments1.xml"),
+  EXPECT_TRUE(contains(saved_part(document, "/xl/comments1.xml"),
                        R"(<commentList><comment ref="B1" authorId="0"/>)"
                        R"(</commentList>)"));
-  const std::string notes = part_of(document, "/xl/drawings/vmlDrawing1.vml");
+  const std::string notes =
+      saved_part(document, "/xl/drawings/vmlDrawing1.vml");
   EXPECT_TRUE(contains(notes, "<x:Column>1</x:Column>"));
   EXPECT_FALSE(contains(notes, "<x:Column>2</x:Column>"));
   EXPECT_TRUE(

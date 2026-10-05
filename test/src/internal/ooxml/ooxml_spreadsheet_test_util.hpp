@@ -3,6 +3,7 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
 #include <odr/file.hpp>
+#include <odr/filesystem.hpp>
 #include <odr/logger.hpp>
 
 #include <odr/internal/abstract/file.hpp>
@@ -23,12 +24,8 @@ inline void insert(internal::zip::ZipArchive &zip, const std::string &path,
                   std::make_shared<internal::MemoryFile>(content));
 }
 
-/// The smallest workbook that opens: one sheet, whose `<sheetData>` is
-/// @p sheet_data and which carries @p sheet_extra - `<mergeCells>`, say -
-/// after it and @p sheet_prefix - `<dimension>` - before it.
-/// @p shared_strings writes a `sharedStrings.xml` where it is given, and
-/// @p workbook_extra follows `<sheets>` in `workbook.xml`, and @p styles is
-/// what `styles.xml` holds.
+/// One sheet with @p sheet_data. @p sheet_prefix goes before `<sheetData>`,
+/// @p sheet_extra after it, and @p workbook_extra after `<sheets>`.
 inline std::shared_ptr<internal::abstract::File>
 workbook(const std::string &sheet_data, const std::string &sheet_extra = "",
          const std::string &shared_strings = "",
@@ -79,9 +76,7 @@ workbook(const std::string &sheet_data, const std::string &sheet_extra = "",
   return std::make_shared<internal::MemoryFile>(out.str());
 }
 
-/// One sheet `s` with @p sheet_data, related to `drawing1.xml`,
-/// `comments1.xml` and `vmlDrawing1.vml` holding @p drawing, @p comments and
-/// @p notes.
+/// One sheet `s` with `drawing1.xml`, `comments1.xml` and `vmlDrawing1.vml`.
 inline std::shared_ptr<internal::abstract::File>
 workbook_with_parts(const std::string &sheet_data, const std::string &drawing,
                     const std::string &comments, const std::string &notes) {
@@ -148,6 +143,19 @@ inline Document decode(const std::shared_ptr<internal::abstract::File> &file) {
       DecodedFile(internal::open_strategy::open_file(file, {}, Logger::null()))
           .as_document_file()
           .document());
+}
+
+inline Document saved_document(const Document &document) {
+  std::ostringstream saved;
+  document.save(saved);
+  return decode(std::make_shared<internal::MemoryFile>(saved.str()));
+}
+
+inline std::string saved_part(const Document &document,
+                              const std::string &path) {
+  std::ostringstream xml;
+  xml << saved_document(document).as_filesystem().open(path).stream()->rdbuf();
+  return xml.str();
 }
 
 inline Sheet first_sheet(const Document &document) {

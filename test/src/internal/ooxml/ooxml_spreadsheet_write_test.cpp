@@ -21,16 +21,7 @@ namespace {
 /// What the sheet holds after a save, which is where the order of the rows and
 /// the cells shows.
 std::string worksheet_of(const Document &document) {
-  std::ostringstream saved;
-  document.save(saved);
-  const Document reopened =
-      open(File::from_memory(saved.str())).as_document_file().document();
-  std::ostringstream xml;
-  xml << reopened.as_filesystem()
-             .open("/xl/worksheets/sheet1.xml")
-             .stream()
-             ->rdbuf();
-  return xml.str();
+  return saved_part(document, "/xl/worksheets/sheet1.xml");
 }
 
 constexpr const char *two_shared = R"(<row r="1"><c r="A1" t="s"><v>0</v></c>)"

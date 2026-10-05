@@ -1,9 +1,7 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
-#include <odr/file.hpp>
 #include <odr/filesystem.hpp>
-#include <odr/odr.hpp>
 #include <odr/table_dimension.hpp>
 
 #include <internal/ooxml/ooxml_spreadsheet_test_util.hpp>
@@ -98,19 +96,8 @@ std::string note(const std::uint32_t row) {
          "</x:Row><x:Column>0</x:Column></x:ClientData></v:shape>";
 }
 
-/// A part of the package @p document saves.
-std::string part_of(const Document &document, const std::string &path) {
-  std::ostringstream saved;
-  document.save(saved);
-  const Document reopened =
-      open(File::from_memory(saved.str())).as_document_file().document();
-  std::ostringstream xml;
-  xml << reopened.as_filesystem().open(path).stream()->rdbuf();
-  return xml.str();
-}
-
 std::string sheet_xml(const Document &document) {
-  return part_of(document, "/xl/worksheets/sheet1.xml");
+  return saved_part(document, "/xl/worksheets/sheet1.xml");
 }
 
 /// Column A of `s` reads `a`, `b`, `c`.
@@ -190,7 +177,7 @@ TEST(OoxmlSpreadsheetRows, a_formula_on_another_sheet_moves_where_it_names_it) {
 
   first_sheet(document).insert_rows(0, 1);
 
-  EXPECT_TRUE(contains(part_of(document, "/xl/worksheets/sheet2.xml"),
+  EXPECT_TRUE(contains(saved_part(document, "/xl/worksheets/sheet2.xml"),
                        "<f>s!A3+A2</f>"));
 }
 
@@ -271,7 +258,7 @@ TEST(OoxmlSpreadsheetRows, a_defined_name_moves) {
 
   first_sheet(document).insert_rows(1, 1);
 
-  const std::string xml = part_of(document, "/xl/workbook.xml");
+  const std::string xml = saved_part(document, "/xl/workbook.xml");
   EXPECT_TRUE(contains(xml, R"(<definedName name="r">s!$A$1:$A$4)"));
   EXPECT_TRUE(contains(xml, R"(localSheetId="0">$A$3<)"));
 }
@@ -285,7 +272,7 @@ TEST(OoxmlSpreadsheetRows, the_calc_chain_moves_with_the_cells) {
 
   first_sheet(document).delete_rows(3, 1);
 
-  EXPECT_TRUE(contains(part_of(document, "/xl/calcChain.xml"),
+  EXPECT_TRUE(contains(saved_part(document, "/xl/calcChain.xml"),
                        R"(<c i="3" r="B4"/><c r="A4" i="7"/>)"));
 }
 
@@ -350,7 +337,7 @@ TEST(OoxmlSpreadsheetRows, a_drawing_moves_with_its_cells) {
 
   first_sheet(document).insert_rows(1, 2);
 
-  const std::string xml = part_of(document, "/xl/drawings/drawing1.xml");
+  const std::string xml = saved_part(document, "/xl/drawings/drawing1.xml");
   // the first stretches over the insert, the second moves whole
   EXPECT_TRUE(contains(xml, anchor("twoCell", 0, 4)));
   EXPECT_TRUE(contains(xml, anchor("oneCell", 3, 4)));
@@ -363,7 +350,7 @@ TEST(OoxmlSpreadsheetRows, a_one_cell_box_keeps_its_size_over_an_insert) {
 
   first_sheet(document).insert_rows(1, 2);
 
-  EXPECT_TRUE(contains(part_of(document, "/xl/drawings/drawing1.xml"),
+  EXPECT_TRUE(contains(saved_part(document, "/xl/drawings/drawing1.xml"),
                        anchor("oneCell", 0, 2)));
 }
 
@@ -375,11 +362,12 @@ TEST(OoxmlSpreadsheetRows, a_comment_moves_with_its_note) {
 
   first_sheet(document).delete_rows(1, 1);
 
-  EXPECT_EQ(part_of(document, "/xl/comments1.xml")
+  EXPECT_EQ(saved_part(document, "/xl/comments1.xml")
                     .find(R"(<commentList><comment ref="A2" authorId="0"/>)"
                           R"(</commentList>)") != std::string::npos,
             true);
-  const std::string notes = part_of(document, "/xl/drawings/vmlDrawing1.vml");
+  const std::string notes =
+      saved_part(document, "/xl/drawings/vmlDrawing1.vml");
   EXPECT_TRUE(contains(notes, "<x:Row>1</x:Row>"));
   EXPECT_FALSE(contains(notes, "<x:Row>2</x:Row>"));
   EXPECT_TRUE(
@@ -410,7 +398,7 @@ TEST(OoxmlSpreadsheetRows, rules_on_another_sheet_move_only_their_references) {
       R"(<dataValidations count="1"><dataValidation sqref="A1">)"
       R"(<formula1>s!A3</formula1></dataValidation></dataValidations>)"));
   first_sheet(document).delete_rows(0, 1);
-  const std::string xml = part_of(document, "/xl/worksheets/sheet2.xml");
+  const std::string xml = saved_part(document, "/xl/worksheets/sheet2.xml");
   EXPECT_TRUE(contains(xml, R"(sqref="A1:A3")"));
   EXPECT_TRUE(contains(xml, "<formula>#REF!+A1</formula>"));
   EXPECT_TRUE(contains(xml, "<formula1>s!A2</formula1>"));
@@ -513,7 +501,7 @@ TEST(OoxmlSpreadsheetRows, an_extension_on_another_sheet_moves_what_it_reads) {
 
   first_sheet(document).insert_rows(0, 1);
 
-  const std::string xml = part_of(document, "/xl/worksheets/sheet2.xml");
+  const std::string xml = saved_part(document, "/xl/worksheets/sheet2.xml");
   EXPECT_TRUE(contains(xml, "<xm:f>s!$A$2&lt;A1</xm:f>"));
   EXPECT_TRUE(contains(xml, "<xm:f>s!C2:C4</xm:f>"));
   EXPECT_TRUE(contains(xml, "<xm:sqref>B1</xm:sqref>"));
