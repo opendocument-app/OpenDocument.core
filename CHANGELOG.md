@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- JPEG 2000 samples scale across the full colour range, so low-bit-depth
+  white pixels no longer appear gray.
+
 - PDF functions reject malformed intervals, overflowing or truncated sample
   tables, and excessive stitching recursion before evaluation.
 

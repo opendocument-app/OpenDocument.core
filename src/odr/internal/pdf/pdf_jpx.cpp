@@ -82,8 +82,7 @@ std::uint8_t sample_at(const opj_image_comp_t &comp, const std::int32_t x,
   }
   const std::int32_t max = (1 << comp.prec) - 1;
   value = std::clamp(value, 0, max);
-  return static_cast<std::uint8_t>(comp.prec >= 8 ? value >> (comp.prec - 8)
-                                                  : value << (8 - comp.prec));
+  return static_cast<std::uint8_t>((value * 255 + max / 2) / max);
 }
 
 /// YCbCr -> RGB in place (ITU-R BT.601, the `sYCC` space JP2 may declare).
