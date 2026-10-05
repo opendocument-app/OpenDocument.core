@@ -1,5 +1,7 @@
 #include <odr/internal/iwork/iwork_protobuf.hpp>
 
+#include <internal/iwork/iwork_test_util.hpp>
+
 #include <cstdint>
 #include <limits>
 #include <string>
@@ -11,17 +13,7 @@ using namespace odr::internal::iwork;
 
 namespace {
 
-std::string varint(std::uint64_t value) {
-  std::string result;
-  for (;;) {
-    const auto byte = static_cast<char>(value & 0x7f);
-    value >>= 7;
-    result.push_back(value == 0 ? byte : static_cast<char>(byte | 0x80));
-    if (value == 0) {
-      return result;
-    }
-  }
-}
+using odr::test::iwork::varint;
 
 std::string key(const std::uint32_t number, const WireType type) {
   return varint((number << 3) | static_cast<std::uint64_t>(type));

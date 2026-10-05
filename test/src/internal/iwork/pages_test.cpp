@@ -83,8 +83,7 @@ TEST(Iwork, pages_is_detected_by_content) {
   EXPECT_EQ(file.as_document_file().document_type(), DocumentType::text);
 }
 
-// A document with nothing in it must come back with an empty body rather than
-// throw: `empty.pages` carries a body storage that holds no text at all.
+// `empty.pages` has a body storage without text.
 TEST(Iwork, pages_empty) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
@@ -129,9 +128,7 @@ TEST(Iwork, pages_body_text) {
   EXPECT_EQ(text.back(), "image");
 }
 
-// A `U+FFFC` in the body anchors a drawable, which the attachment run table
-// names. The one that is a table becomes a `Table` after the paragraph its
-// anchor sits in; its cells hold rich text, one storage each.
+// The fixture anchors a table whose cells contain rich text.
 TEST(Iwork, pages_table) {
   const DocumentFile document_file =
       open(TestData::test_file_path("odr-public/pages/style-various-1.pages"),
@@ -147,10 +144,7 @@ TEST(Iwork, pages_table) {
   }
   ASSERT_EQ(tables.size(), 1);
 
-  // the rule the reader decided: a table is a sibling after the paragraph its
-  // anchor sits in, not a child of it and not appended to the body. The anchor
-  // paragraph carries nothing but the `U+FFFC` itself, so it reads empty, and
-  // the body continues after the table rather than ending there.
+  // The table follows its empty anchor paragraph; body text continues after it.
   const Element anchor = tables.front().previous_sibling();
   ASSERT_TRUE(anchor);
   EXPECT_EQ(anchor.type(), ElementType::paragraph);
@@ -176,10 +170,8 @@ TEST(Iwork, pages_table) {
                    }));
 }
 
-// Components share names — `style-various-1.pages` holds two dozen called
-// `Tables/DataList` — so the package has to load them by locator. Keying on
-// the name hands back the wrong file and leaves the rest never loaded, which
-// shows up as an object nothing can resolve.
+// `style-various-1.pages` has distinct components sharing the name
+// `Tables/DataList`.
 TEST(Iwork, package_resolves_across_components) {
   const auto file = std::make_shared<internal::DiskFile>(internal::AbsPath(
       TestData::test_file_path("odr-public/pages/style-various-1.pages")));
@@ -265,9 +257,7 @@ TEST(Iwork, package_without_a_document_component_is_not_an_iwork_file) {
   EXPECT_THROW(iwork::IworkFile{files}, NoIworkFile);
 }
 
-// A model's extent is two varints, so a grid of millions is a few bytes on the
-// wire. A Pages table is walked densely — its rows are children — so the
-// budget is what stands between that and the memory it asks for.
+// A few extent bytes must not trigger an unbounded dense table allocation.
 TEST(Iwork, a_declared_table_extent_is_capped_by_the_elements_it_builds) {
   EXPECT_THAT(
       [] {
@@ -280,9 +270,7 @@ TEST(Iwork, a_declared_table_extent_is_capped_by_the_elements_it_builds) {
           testing::HasSubstr("too many elements")));
 }
 
-// A cell's rich text is an ordinary storage, which may anchor a table again.
-// The budget counts what a walk builds, not how deep it goes, so the depth
-// bound is the only thing that ends a storage that reaches itself.
+// A rich-text cell can refer back to the storage that anchors its table.
 TEST(Iwork, a_storage_that_reaches_itself_is_bounded_by_its_depth) {
   EXPECT_THAT(
       [] {

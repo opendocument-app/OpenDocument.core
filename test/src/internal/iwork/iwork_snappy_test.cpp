@@ -1,5 +1,7 @@
 #include <odr/internal/iwork/iwork_snappy.hpp>
 
+#include <internal/iwork/iwork_test_util.hpp>
+
 #include <cstddef>
 #include <string>
 #include <tuple>
@@ -13,16 +15,7 @@ namespace {
 /// A Snappy block: the uncompressed length as a varint, then @p body.
 std::string block(const std::size_t uncompressed_length,
                   const std::string &body) {
-  std::string result;
-  for (std::size_t rest = uncompressed_length;;) {
-    const auto byte = static_cast<char>(rest & 0x7f);
-    rest >>= 7;
-    result.push_back(rest == 0 ? byte : static_cast<char>(byte | 0x80));
-    if (rest == 0) {
-      break;
-    }
-  }
-  return result + body;
+  return odr::test::iwork::varint(uncompressed_length) + body;
 }
 
 /// A literal tag for @p text, in the form that carries the length inline.

@@ -83,9 +83,7 @@ TEST(IworkKeynote, is_detected_by_content) {
             DocumentType::presentation);
 }
 
-// A deck with one blank slide must come back with one empty slide rather than
-// throw: `empty.key`'s title and body placeholders hold no text and are not in
-// the slide's drawable list at all.
+// `empty.key` has one slide with no drawables.
 TEST(IworkKeynote, empty) {
   const Logger logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
@@ -250,11 +248,12 @@ TEST(IworkKeynote, a_placeholder_reads_like_a_text_box) {
 // Keynote ends a paragraph with `\r` where Pages ends it with `\n`; the run
 // table says where the next one starts either way.
 TEST(IworkKeynote, a_carriage_return_ends_a_paragraph) {
-  const Document document = keynote_document({{builder::SlideBox{
-      .text = "one\rtwo", .paragraphs = std::vector<std::uint64_t>{0, 4}}}});
+  const Document document = keynote_document(
+      {{builder::SlideBox{.text = "\rone\rtwo",
+                          .paragraphs = std::vector<std::uint64_t>{0, 1, 5}}}});
 
   const Element slide = *document.root_element().children().begin();
-  EXPECT_EQ(frame_text(*slide.children().begin()), "one\ntwo");
+  EXPECT_EQ(frame_text(*slide.children().begin()), "\none\ntwo");
 }
 
 TEST(IworkKeynote, a_deck_without_slides_has_an_empty_root) {
@@ -275,10 +274,7 @@ TEST(IworkKeynote, a_root_archive_without_slide_components_is_numbers) {
   EXPECT_EQ(iwork::IworkFile{files}.file_type(), FileType::iwork_numbers);
 }
 
-// A drawable list may name the same object any number of times, and every
-// repeat expands into fresh elements holding a fresh copy of its text — a few
-// kilobytes of references would otherwise expand without bound. The parse
-// throws what every caller already handles instead.
+// Repeated references must spend the text budget on every expansion.
 TEST(IworkKeynote, a_repeated_drawable_is_capped_by_the_text_it_copies) {
   builder::SlideBox box{.text = std::string(1u << 20, 'a'),
                         .paragraphs = std::vector<std::uint64_t>{0}};
