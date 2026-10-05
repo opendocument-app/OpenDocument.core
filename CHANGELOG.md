@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Spreadsheet rendering bounds columns as well as rows by the cell budget and
+  avoids rescanning blank spans for every empty cell.
+
 - Browser text editors delete complete supplementary Unicode characters when
   the browser supplies no deletion range, preserving valid text and undo.
 

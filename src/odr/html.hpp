@@ -173,7 +173,7 @@ struct HtmlConfig {
   /// Largest sheet region written, per axis; cells past it are dropped.
   std::optional<TableDimensions> spreadsheet_limit{
       TableDimensions(100000, 500)};
-  /// Most cells written for one sheet; bounds the rows by the sheet's width.
+  /// Cell budget, at least one; caps columns first, then rows by that width.
   std::optional<std::uint64_t> spreadsheet_cell_limit{500000};
   /// Trim a sheet to the cells it uses before the limits above apply.
   bool spreadsheet_limit_by_content{true};
