@@ -1,6 +1,7 @@
 #include <odr/internal/pdf/pdf_object_parser.hpp>
 
 #include <odr/internal/util/stream_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -86,16 +87,11 @@ std::uint8_t ObjectParser::octet_char_to_int(const char_type c) {
 }
 
 std::uint8_t ObjectParser::hex_char_to_int(const char_type c) {
-  if (c >= '0' && c <= '9') {
-    return c - '0';
+  const std::optional<std::uint8_t> value = util::string::hex_digit(c);
+  if (!value) {
+    throw std::runtime_error("invalid character in hex_char_to_int");
   }
-  if (c >= 'A' && c <= 'F') {
-    return c - 'A' + 10;
-  }
-  if (c >= 'a' && c <= 'f') {
-    return c - 'a' + 10;
-  }
-  throw std::runtime_error("invalid character in hex_char_to_int");
+  return *value;
 }
 
 ObjectParser::char_type ObjectParser::two_hex_to_char(const char_type first,

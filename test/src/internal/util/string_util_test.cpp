@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string_view>
 #include <tuple>
@@ -166,6 +167,16 @@ TEST(string_util, ascii_classes_ignore_the_host_locale) {
     EXPECT_FALSE(is_ascii_whitespace(c));
   }
   std::setlocale(LC_CTYPE, previous.c_str());
+}
+
+TEST(string_util, hex_digit) {
+  EXPECT_EQ(hex_digit('0'), 0);
+  EXPECT_EQ(hex_digit('9'), 9);
+  EXPECT_EQ(hex_digit('a'), 10);
+  EXPECT_EQ(hex_digit('F'), 15);
+  for (const char c : {'g', 'G', '/', ':', '@', '`', ' ', '\0', '\xff'}) {
+    EXPECT_EQ(hex_digit(c), std::nullopt);
+  }
 }
 
 TEST(string_util, equals_ignore_case) {

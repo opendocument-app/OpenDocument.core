@@ -1,6 +1,7 @@
 #include <odr/internal/font/type1_font.hpp>
 
 #include <odr/internal/font/type1_crypt.hpp>
+#include <odr/internal/pdf/pdf_object_parser.hpp>
 #include <odr/internal/util/byte_util.hpp>
 #include <odr/internal/util/number_util.hpp>
 
@@ -18,14 +19,15 @@ namespace odr::internal::font::type1 {
 
 namespace {
 
-[[nodiscard]] bool is_ps_space(const char c) {
-  return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' ||
-         c == '\0';
+/// The white space after `eexec`. NUL and form feed can start the binary
+/// ciphertext, so they are not skipped here.
+[[nodiscard]] bool is_eexec_space(const char c) {
+  return c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 
 /// Skip PostScript whitespace starting at @p p.
 [[nodiscard]] std::size_t skip_space(const std::string_view s, std::size_t p) {
-  while (p < s.size() && is_ps_space(s[p])) {
+  while (p < s.size() && pdf::ObjectParser::is_whitespace(s[p])) {
     ++p;
   }
   return p;
@@ -36,7 +38,7 @@ namespace {
                                           std::size_t &p) {
   p = skip_space(s, p);
   const std::size_t begin = p;
-  while (p < s.size() && !is_ps_space(s[p])) {
+  while (p < s.size() && !pdf::ObjectParser::is_whitespace(s[p])) {
     ++p;
   }
   return s.substr(begin, p - begin);
@@ -165,8 +167,7 @@ Type1Font::Type1Font(std::string_view data) {
 
   // The encrypted blob begins after `eexec` and its trailing whitespace.
   std::size_t blob = eexec + 5;
-  while (blob < data.size() &&
-         std::string_view(" \t\r\n").contains(data[blob])) {
+  while (blob < data.size() && is_eexec_space(data[blob])) {
     ++blob;
   }
   const std::string decrypted = decrypt_eexec(data.substr(blob));

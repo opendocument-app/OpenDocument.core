@@ -13,10 +13,10 @@
 #include <odr/internal/common/sheet_dependencies.hpp>
 #include <odr/internal/common/sheet_recalculation.hpp>
 #include <odr/internal/util/file_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <cstdint>
 #include <cstdlib>
 #include <fstream>
@@ -152,7 +152,7 @@ CellValue parse_cell_value(const nlohmann::json &json) {
 /// `#rrggbb`, as the page spells one.
 Color parse_color(const std::string &text) {
   const auto is_hex = [](const char c) {
-    return std::isxdigit(static_cast<unsigned char>(c)) != 0;
+    return internal::util::string::hex_digit(c).has_value();
   };
   if (text.size() != 7 || text[0] != '#' ||
       !std::ranges::all_of(text.substr(1), is_hex)) {

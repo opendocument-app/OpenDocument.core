@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -23,6 +24,8 @@ bool is_ascii_whitespace(char c);
 bool is_ascii_digit(char c);
 bool is_ascii_letter(char c);
 bool is_ascii_letter_or_digit(char c);
+/// The value of the hex digit @p c, or nothing if @p c is not 0-9, A-F or a-f.
+std::optional<std::uint8_t> hex_digit(char c);
 
 /// `std::tolower` / `std::toupper` for the default C locale, made safe for any
 /// `char` value.

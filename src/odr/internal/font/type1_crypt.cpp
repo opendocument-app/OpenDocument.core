@@ -1,6 +1,9 @@
 #include <odr/internal/font/type1_crypt.hpp>
 
+#include <odr/internal/util/string_util.hpp>
+
 #include <cstdint>
+#include <optional>
 #include <string>
 
 namespace odr::internal::font::type1 {
@@ -10,31 +13,23 @@ namespace {
 constexpr std::uint16_t c1 = 52845;
 constexpr std::uint16_t c2 = 22719;
 
-[[nodiscard]] bool is_hex_digit(const std::uint8_t c) {
-  return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') ||
-         (c >= 'a' && c <= 'f');
-}
-
 /// Hex-decode @p in, skipping whitespace; stops at the first non-hex, non-space
 /// byte (the binary `eexec` form never reaches here).
 [[nodiscard]] std::string hex_decode(const std::string_view in) {
   std::string out;
   std::int32_t high = -1;
   for (const char ch : in) {
-    const auto c = static_cast<std::uint8_t>(ch);
-    if (std::string_view(" \t\r\n").contains(ch)) {
+    if (util::string::is_ascii_whitespace(ch)) {
       continue;
     }
-    if (!is_hex_digit(c)) {
+    const std::optional<std::uint8_t> value = util::string::hex_digit(ch);
+    if (!value) {
       break;
     }
-    const std::int32_t value = (c <= '9')   ? c - '0'
-                               : (c <= 'F') ? c - 'A' + 10
-                                            : c - 'a' + 10;
     if (high < 0) {
-      high = value;
+      high = *value;
     } else {
-      out += static_cast<char>((high << 4) | value);
+      out += static_cast<char>((high << 4) | *value);
       high = -1;
     }
   }
@@ -46,11 +41,10 @@ constexpr std::uint16_t c2 = 22719;
 [[nodiscard]] bool looks_like_hex(const std::string_view eexec) {
   std::int32_t seen = 0;
   for (const char ch : eexec) {
-    const auto c = static_cast<std::uint8_t>(ch);
-    if (std::string_view(" \t\r\n").contains(ch)) {
+    if (util::string::is_ascii_whitespace(ch)) {
       continue;
     }
-    if (!is_hex_digit(c)) {
+    if (!util::string::hex_digit(ch)) {
       return false;
     }
     if (++seen == 4) {
