@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Android packaging rejects ABI directories missing either native library or
+  containing empty libraries. JNI jar configuration now requires its actual JDK 17 minimum.
+
 - Java `Measure`, `DrawingPath` and `DrawingTransform` equality now agrees with
   hashing for signed zero and is reflexive for NaN, following `Double` semantics.
 
