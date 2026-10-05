@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Formula arrays, conditional aggregates and lookups check their size limits
+  before dimension arithmetic can overflow on 32-bit targets.
+
 - Spreadsheet formulas keep quoted sheet spans when rewritten, read bare
   whole-row ranges, and report cross-sheet ranges as unresolved. Extreme
   reference shifts give `#REF!` without signed overflow.

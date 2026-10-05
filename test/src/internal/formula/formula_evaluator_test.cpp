@@ -8,6 +8,7 @@
 
 #include <optional>
 #include <string>
+#include <utility>
 
 using namespace odr;
 using namespace odr::internal;
@@ -230,4 +231,16 @@ TEST(FormulaEvaluator, an_excel_comparison_near_the_15th_digit_has_no_answer) {
   EXPECT_EQ(xlsx("=1+4E-15=1"), std::nullopt);
   EXPECT_EQ(ods("=1+4E-15=1"), boolean(false));
   EXPECT_EQ(xlsx("=0.1+0.2=0.3"), boolean(true));
+}
+
+TEST(FormulaEvaluator, array_limits_apply_before_dimension_products_narrow) {
+  EXPECT_EQ(xlsx("=SUMPRODUCT(A1:CRXP65536)"), std::nullopt);
+  EXPECT_EQ(xlsx("=COUNTIF(A1:CRXP65536,1)"), std::nullopt);
+  EXPECT_EQ(xlsx("=MATCH(999,A1:A4294967295,0)"), std::nullopt);
+  Node row{ArrayLiteral{65536, 1}, {}};
+  row.children.assign(65536, Node{NumberLiteral{1}, {}});
+  Node column{ArrayLiteral{1, 65536}, row.children};
+  const Node sum{BinaryOperation{BinaryOperator::add},
+                 {std::move(row), std::move(column)}};
+  EXPECT_EQ(evaluate(sum, formula_cell, cells(), Settings{}), std::nullopt);
 }
