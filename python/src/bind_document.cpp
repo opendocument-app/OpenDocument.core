@@ -311,6 +311,13 @@ void odr_python::bind_document(py::module_ &m) {
       .def_readwrite("width", &odr::DrawingPath::width)
       .def_readwrite("height", &odr::DrawingPath::height);
 
+  py::class_<odr::DrawingLine>(m, "DrawingLine")
+      .def(py::init<>())
+      .def_readwrite("x1", &odr::DrawingLine::x1)
+      .def_readwrite("y1", &odr::DrawingLine::y1)
+      .def_readwrite("x2", &odr::DrawingLine::x2)
+      .def_readwrite("y2", &odr::DrawingLine::y2);
+
   py::class_<odr::DrawingTransform>(m, "DrawingTransform")
       .def(py::init<>())
       .def_readwrite("a", &odr::DrawingTransform::a)
