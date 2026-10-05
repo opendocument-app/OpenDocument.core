@@ -770,3 +770,23 @@ TEST(DocumentParser, cyclic_color_space_names_are_rejected) {
   ASSERT_NE(spaces.at("Good"), nullptr);
   EXPECT_EQ(spaces.at("Good")->components, 3);
 }
+
+TEST(DocumentParser, deleted_objects_do_not_resolve_to_an_older_generation) {
+  PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>")
+      .object("<< /Type /Pages /Kids [] /Count 0 >>")
+      .object("(obsolete)")
+      .trailer("/Root 1 0 R");
+  const std::string source = builder.build_classic();
+  const DocumentParser original(std::make_unique<std::istringstream>(source));
+  ASSERT_TRUE(original.start_xref_position().has_value());
+  const std::string updated =
+      source +
+      "xref\n3 1\n0000000000 00001 f \ntrailer\n<< /Size 4 /Root 1 0 R /Prev " +
+      std::to_string(*original.start_xref_position()) + " >>\nstartxref\n" +
+      std::to_string(source.size()) + "\n%%EOF\n";
+  DocumentParser parser(std::make_unique<std::istringstream>(updated));
+  EXPECT_FALSE(parser.is_recovered());
+  EXPECT_TRUE(parser.read_object(ObjectReference{3, 0}).object.is_null());
+  EXPECT_TRUE(parser.read_object(ObjectReference{3, 1}).object.is_null());
+}

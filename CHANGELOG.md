@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF incremental updates keep deleted and replaced objects from resolving
+  through older generations. Hybrid tables discard superseded free entries.
+
 - PDF file traversal preserves the first object without a binary comment,
   handles objects sharing a line, and uses the last trailing `startxref`.
 
