@@ -37,6 +37,7 @@ parse_password_encrypted(const FileType type,
 }
 
 FileMeta parse_meta(const abstract::ReadableFilesystem &files) {
+  // Each format MUST have its stream ([MS-DOC], [MS-PPT], [MS-XLS]).
   static constexpr std::array types{
       std::pair{"/WordDocument", FileType::legacy_word_document},
       std::pair{"/PowerPoint Document",
@@ -114,7 +115,8 @@ bool LegacyMicrosoftFile::is_decodable() const noexcept {
 }
 
 std::shared_ptr<abstract::Document> LegacyMicrosoftFile::document() const {
-  // Report encryption before attempting to parse the ciphertext.
+  // The parser would read the ciphertext as structure, and the caller would see
+  // a parse error and not a password prompt.
   if (m_encryption_state == EncryptionState::encrypted) {
     throw FileEncryptedError();
   }
