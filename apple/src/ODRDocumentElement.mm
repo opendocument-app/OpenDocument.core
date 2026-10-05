@@ -102,7 +102,9 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
   Class klass = [ODRElement class];
   switch (handle.type()) {
   case odr::ElementType::root:
-    klass = [ODRTextRoot class];
+    if (handle.as_text_root()) {
+      klass = [ODRTextRoot class];
+    }
     break;
   case odr::ElementType::slide:
     klass = [ODRSlide class];

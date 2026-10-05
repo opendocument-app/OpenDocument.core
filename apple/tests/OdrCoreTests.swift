@@ -118,7 +118,27 @@ final class DecodeTests: XCTestCase {
 
     let csv = try decoded.asCsvFile()
     XCTAssertEqual(try csv.textFile().text(), "a,b\n1,2\n")
-    XCTAssertNotNil(try csv.document().rootElement())
+    let root = try XCTUnwrap(try csv.document().rootElement())
+    XCTAssertFalse(root is TextRoot)
+    XCTAssertNotNil(root.firstDescendant(ofType: Sheet.self))
+  }
+
+  func testCsvDelimitersMustBeSingleBytes() throws {
+    let path = try write("a;b\nc;d\n", as: "table.csv")
+    let options = DecodeOptions()
+    options.csv.separator = ";"
+    let csv = try DecodedFile.decode(path: path, options: options).asCsvFile()
+    let root = try XCTUnwrap(try csv.document().rootElement())
+    let sheet = try XCTUnwrap(root.firstDescendant(ofType: Sheet.self))
+    XCTAssertEqual(sheet.dimensions.columns, 2)
+    for invalid in ["", ";,", "é", "😀"] {
+      options.csv.separator = invalid
+      XCTAssertThrowsError(try DecodedFile.decode(path: path, options: options), invalid)
+      options.csv.separator = ";"
+      options.csv.quote = invalid
+      XCTAssertThrowsError(try DecodedFile.decode(path: path, options: options), invalid)
+      options.csv.quote = nil
+    }
   }
 
   /// `odr::Filesystem::exists("")` throws `std::invalid_argument`. Unguarded,

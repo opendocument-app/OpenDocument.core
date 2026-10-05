@@ -8,6 +8,7 @@
 
 #include <optional>
 #include <sstream>
+#include <stdexcept>
 #include <vector>
 
 using odr::apple::guarded;
@@ -141,6 +142,17 @@ std::vector<odr::FileType> to_file_types(NSArray<NSNumber *> *numbers) {
     result.push_back(static_cast<odr::FileType>(number.integerValue));
   }
   return result;
+}
+
+std::optional<char> csv_delimiter(NSString *const value) {
+  if (value == nil) {
+    return std::nullopt;
+  }
+  const std::string bytes = to_string(value);
+  if (bytes.size() != 1) {
+    throw std::invalid_argument("CSV delimiter must be one UTF-8 byte");
+  }
+  return bytes.front();
 }
 
 /// `nil` for an unset `std::optional`, the way a Java binding would use -1.
@@ -370,13 +382,8 @@ NSString *_Nullable to_nsstring(const std::optional<std::string> &value) {
       native.csv.encoding =
           static_cast<odr::TextEncoding>(options.csv.encoding.integerValue);
     }
-    // one character, and an empty string means unset rather than a NUL
-    if (options.csv.separator.length > 0) {
-      native.csv.separator = [options.csv.separator characterAtIndex:0];
-    }
-    if (options.csv.quote.length > 0) {
-      native.csv.quote = [options.csv.quote characterAtIndex:0];
-    }
+    native.csv.separator = csv_delimiter(options.csv.separator);
+    native.csv.quote = csv_delimiter(options.csv.quote);
     return [ODRDecodedFile
         decodedFileWithHandle:odr::open(to_string(path), native)];
   });
