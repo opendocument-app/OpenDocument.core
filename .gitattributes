@@ -1,8 +1,7 @@
-# Set the default behavior, in case people don't have core.autocrlf set.
-* text eol=lf
+# Normalize text while preserving binary files.
+* text=auto eol=lf
 
-# Explicitly declare text files you want to always be normalized and converted
-# to native line endings on checkout.
+# Normalize source files.
 *.c text
 *.h text
 *.py text
@@ -15,7 +14,7 @@
 *.jpg binary
 *.pdf binary
 *.jar binary
-# the test fixtures the bindings carry: a zip container, which `* text eol=lf`
-# above would happily rewrite into an archive nothing can open
+# Document fixtures must retain their exact bytes.
 *.odt binary
 *.ods binary
+*.docx binary
