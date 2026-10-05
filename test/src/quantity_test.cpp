@@ -1,5 +1,7 @@
 #include <odr/quantity.hpp>
 
+#include <locale_util.hpp>
+
 #include <gtest/gtest.h>
 
 #include <clocale>
@@ -45,23 +47,10 @@ class GroupedNumbers final : public std::numpunct<char> {
   std::string do_grouping() const override { return "\3"; }
 };
 
-class LocaleGuard final {
-public:
-  LocaleGuard() : m_cpp(), m_c(std::setlocale(LC_NUMERIC, nullptr)) {}
-  ~LocaleGuard() {
-    std::locale::global(m_cpp);
-    std::setlocale(LC_NUMERIC, m_c.c_str());
-  }
-
-private:
-  std::locale m_cpp;
-  std::string m_c;
-};
-
 } // namespace
 
 TEST(Quantity, ignores_numeric_locale) {
-  const LocaleGuard guard;
+  const odr::test::LocaleGuard guard;
   std::locale::global(std::locale(std::locale::classic(), new GroupedNumbers));
   if (std::setlocale(LC_NUMERIC, "de_DE.UTF-8") == nullptr) {
     std::setlocale(LC_NUMERIC, "de_DE.utf8");

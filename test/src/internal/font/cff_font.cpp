@@ -7,6 +7,8 @@
 #include <odr/internal/font/sfnt_transform.hpp>
 #include <odr/internal/util/byte_string.hpp>
 
+#include <locale_util.hpp>
+
 #include <gtest/gtest.h>
 
 #include <array>
@@ -561,10 +563,7 @@ TEST(CffFontTest, DictOperandsStayWithinTheirDeclaredRange) {
 }
 
 TEST(CffFontTest, RealOperandsIgnoreNumericLocale) {
-  struct LocaleGuard final {
-    std::string previous{std::setlocale(LC_NUMERIC, nullptr)};
-    ~LocaleGuard() { std::setlocale(LC_NUMERIC, previous.c_str()); }
-  } guard;
+  const odr::test::LocaleGuard guard;
   if (std::setlocale(LC_NUMERIC, "de_DE.UTF-8") == nullptr &&
       std::setlocale(LC_NUMERIC, "de_DE.utf8") == nullptr) {
     GTEST_SKIP() << "German locale unavailable";

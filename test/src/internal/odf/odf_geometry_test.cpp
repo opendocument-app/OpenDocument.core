@@ -1,11 +1,15 @@
 #include <odr/internal/odf/odf_geometry.hpp>
+#include <odr/internal/odf/odf_value_cursor.hpp>
 
 #include <odr/document_element.hpp>
+
+#include <locale_util.hpp>
 
 #include <pugixml.hpp>
 
 #include <gtest/gtest.h>
 
+#include <clocale>
 #include <cmath>
 #include <cstdint>
 #include <string>
@@ -336,4 +340,31 @@ TEST(OdfShape, generated_geometry_has_bounded_expansion_and_equation_depth) {
   xml +=
       R"(<draw:equation draw:name="f500" draw:formula="0"/></draw:enhanced-geometry></draw:custom-shape>)";
   EXPECT_FALSE(read_path(parse_shape(document, xml)));
+}
+
+TEST(OdfTransform, decimal_tokens_ignore_the_numeric_locale) {
+  const odr::test::LocaleGuard guard;
+  if (std::setlocale(LC_NUMERIC, "de_DE.UTF-8") == nullptr &&
+      std::setlocale(LC_NUMERIC, "de_DE.utf8") == nullptr) {
+    GTEST_SKIP() << "German locale unavailable";
+  }
+  const auto transform = parse_transform("scale(1.5,2.25)");
+  ASSERT_TRUE(transform);
+  expect_linear(*transform, 1.5, 0, 0, 2.25);
+  const auto path = parse_path_data("M.5 .25 L1.25 2.5");
+  ASSERT_TRUE(path);
+  EXPECT_EQ(path->data, "M 0.5 0.25 L 1.25 2.5");
+}
+
+TEST(OdfValueCursor, a_number_stops_at_the_next_token) {
+  ValueCursor cursor("+1.5e-2-3.25+.5E");
+  EXPECT_EQ(cursor.read_number(), 0.015);
+  EXPECT_EQ(cursor.read_number(), -3.25);
+  EXPECT_EQ(cursor.read_number(), 0.5);
+  EXPECT_EQ(cursor.rest(), "E");
+  for (const std::string_view invalid : {".", "+", "-", "1e999"}) {
+    ValueCursor bad(invalid);
+    EXPECT_FALSE(bad.read_number());
+    EXPECT_EQ(bad.rest(), invalid);
+  }
 }
