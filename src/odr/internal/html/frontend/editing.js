@@ -120,6 +120,17 @@
   }
 
   odr.editing = {
+    /// Adjacent code-point boundary for a fallback delete, in UTF-16 offsets.
+    characterOffset: function (text, offset, direction) {
+      var next = Math.max(0, Math.min(text.length, offset + direction));
+      var before = text.charCodeAt(next - 1);
+      var after = text.charCodeAt(next);
+      if (before >= 0xd800 && before <= 0xdbff &&
+          after >= 0xdc00 && after <= 0xdfff) {
+        next += direction;
+      }
+      return next;
+    },
     /// False where nothing on this page can be edited, with the reason on
     /// `onEditModeChange` - so a host can grey its button before a click.
     enable: function () {

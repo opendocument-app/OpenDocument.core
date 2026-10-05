@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Browser text editors delete complete supplementary Unicode characters when
+  the browser supplies no deletion range, preserving valid text and undo.
+
 - Document images cannot replace viewer scripts or stylesheets at shared output
   paths; colliding images are embedded instead.
 

@@ -1411,7 +1411,7 @@
     if (direction < 0) {
       if (place.offset > 0) {
         return {
-          start: { run: place.run, offset: place.offset - 1, paragraph: place.paragraph },
+          start: { run: place.run, offset: odr.editing.characterOffset(place.run.textContent, place.offset, -1), paragraph: place.paragraph },
           end: place,
         };
       }
@@ -1421,11 +1421,11 @@
       }
       // at the start of a paragraph the boundary itself is what goes, so the
       // range takes no character with it
-      var back = before.paragraph === place.paragraph ? 1 : 0;
+      var back = before.paragraph === place.paragraph ? -1 : 0;
       return {
         start: {
           run: before.run,
-          offset: before.run.textContent.length - back,
+          offset: odr.editing.characterOffset(before.run.textContent, before.run.textContent.length, back),
           paragraph: before.paragraph,
         },
         end: place,
@@ -1434,7 +1434,7 @@
     if (place.offset < place.run.textContent.length) {
       return {
         start: place,
-        end: { run: place.run, offset: place.offset + 1, paragraph: place.paragraph },
+        end: { run: place.run, offset: odr.editing.characterOffset(place.run.textContent, place.offset, 1), paragraph: place.paragraph },
       };
     }
     var after = runAfter(place.run);
@@ -1444,7 +1444,7 @@
     var forward = after.paragraph === place.paragraph ? 1 : 0;
     return {
       start: place,
-      end: { run: after.run, offset: forward, paragraph: after.paragraph },
+      end: { run: after.run, offset: odr.editing.characterOffset(after.run.textContent, 0, forward), paragraph: after.paragraph },
     };
   }
 

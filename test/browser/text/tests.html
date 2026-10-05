@@ -378,6 +378,29 @@
           ops()[0].paragraph === 10
       );
 
+      note("Fallback deletes keep surrogate pairs whole");
+      ["deleteContentBackward", "deleteContentForward"].forEach(function (type) {
+        [false, true].forEach(function (acrossRuns) {
+          reset();
+          var backward = type === "deleteContentBackward";
+          run(11).textContent = acrossRuns && !backward ? "A" : "A😀";
+          run(12).textContent = acrossRuns && !backward ? "😀B" : "B";
+          if (acrossRuns) {
+            select(run(backward ? 12 : 11).firstChild, backward ? 0 : 1);
+          } else {
+            select(run(11).firstChild, backward ? 3 : 1);
+          }
+          var before = paragraph(10).textContent;
+          input(type);
+          check(type + " removes the whole emoji, across runs=" + acrossRuns,
+            paragraph(10).textContent === before.replace("😀", ""));
+          check("the replay text has no surrogate left",
+            ops().every(function (op) { return !/[\ud800-\udfff]/.test(op.text || ""); }));
+          odr.editing.undo();
+          check("undo restores the emoji", paragraph(10).textContent === before);
+        });
+      });
+
       // ------------------------------------------------------ undo / redo
 
       reset();
