@@ -60,6 +60,8 @@ structured-cloned. Three rules follow.
   is called during a render, and one that needs the main thread deadlocks
   behind a `postMessage` round trip. The same holds for a future resource
   locator.
+- `guarded` rejects reentrant calls: callbacks must not invalidate an active
+  operation's session, document or view. `CallScope` resets during unwinding.
 - The package is plain JavaScript with a hand-written `js/index.d.ts`. Keep it
   in step with `js/index.js` by hand.
 - Test inputs are built in memory. `tests/helper.mjs` has a zip writer.

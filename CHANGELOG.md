@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- WebAssembly rejects reentrant calls from callbacks instead of allowing a
+  callback to close or mutate a document during an active native operation.
+
 - WebAssembly rejects fractional, nonfinite and out-of-range element IDs,
   sheet coordinates, rendering limits and view indices before conversion.
 

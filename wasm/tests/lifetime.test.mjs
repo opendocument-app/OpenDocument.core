@@ -15,6 +15,34 @@ describe('lifetimes', () => {
   });
   after(() => odr.closeAll());
 
+  it('refuses reentrant callbacks and recovers after JavaScript exceptions', () => {
+    const doc = odr.open(minimalOdt(), { editable: true });
+    try {
+      const id = Number(doc.render().html.match(/<x-s [^>]*data-odr-id="(\d+)"/)[1]);
+      let called = false;
+      doc.setTextStyle(id, {
+        toJSON() {
+          called = true;
+          for (const close of [() => doc.close(), () => odr.closeAll()]) {
+            assert.throws(close, (error) =>
+              error instanceof OdrError && /reentrant/.test(error.message));
+          }
+          return { bold: true };
+        },
+      });
+      assert.equal(called, true);
+      assert.match(doc.render().html, /font-weight:bold/);
+
+      const failure = new Error('style serialization failed');
+      assert.throws(() => doc.setTextStyle(id, {
+        toJSON() { throw failure; },
+      }), (error) => error === failure);
+      assert.equal(doc.meta().fileType, 'odt');
+    } finally {
+      doc.close();
+    }
+  });
+
   it('refuses a handle that has been closed', () => {
     const doc = odr.open(minimalOdt());
     doc.render(0);

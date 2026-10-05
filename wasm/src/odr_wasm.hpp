@@ -71,8 +71,18 @@ emscripten::val error(ErrorCode code, const std::string &message);
 /// The envelope for the exception being handled. Call from a `catch` block.
 emscripten::val current_exception_error();
 
+/// Prevents callbacks from invalidating a session used by an active call.
+class CallScope final {
+public:
+  CallScope();
+  ~CallScope();
+  CallScope(const CallScope &) = delete;
+  CallScope &operator=(const CallScope &) = delete;
+};
+
 template <typename F> emscripten::val guarded(F &&f) {
   try {
+    const CallScope scope;
     return std::forward<F>(f)();
   } catch (...) {
     return current_exception_error();

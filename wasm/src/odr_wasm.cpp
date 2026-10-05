@@ -13,6 +13,8 @@ namespace odr::wasm {
 
 namespace {
 
+bool active_call{false};
+
 std::unordered_map<Handle, Session> &sessions() {
   static std::unordered_map<Handle, Session> instance;
   return instance;
@@ -29,6 +31,15 @@ emscripten::val error_for(const std::exception &e) {
 }
 
 } // namespace
+
+CallScope::CallScope() {
+  if (active_call) {
+    throw std::logic_error("reentrant calls into odr are not supported");
+  }
+  active_call = true;
+}
+
+CallScope::~CallScope() { active_call = false; }
 
 Session &session(const Handle handle) {
   const auto it = sessions().find(handle);
