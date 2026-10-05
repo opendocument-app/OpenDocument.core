@@ -59,12 +59,12 @@ jobject make_html(JNIEnv *env, odr::Html html) {
     return nullptr;
   }
   const std::vector<odr::HtmlPage> &pages = html.pages();
-  jobjectArray page_array = env->NewObjectArray(
-      checked_integer<jsize>(pages.size()), page_cls, nullptr);
+  const auto page_count = checked_integer<jsize>(pages.size());
+  jobjectArray page_array = env->NewObjectArray(page_count, page_cls, nullptr);
   if (page_array == nullptr) {
     return nullptr;
   }
-  for (jsize i = 0; i < checked_integer<jsize>(pages.size()); ++i) {
+  for (jsize i = 0; i < page_count; ++i) {
     jstring name = to_jstring(env, pages[i].name);
     jstring path = to_jstring(env, pages[i].path);
     jobject page = env->NewObject(page_cls, page_ctor, name, path);
@@ -114,12 +114,13 @@ jobject make_content(JNIEnv *env, const std::string &html,
     return nullptr;
   }
 
-  jobjectArray located_array = env->NewObjectArray(
-      checked_integer<jsize>(resources.size()), located_cls, nullptr);
+  const auto resource_count = checked_integer<jsize>(resources.size());
+  jobjectArray located_array =
+      env->NewObjectArray(resource_count, located_cls, nullptr);
   if (located_array == nullptr) {
     return nullptr;
   }
-  for (jsize i = 0; i < checked_integer<jsize>(resources.size()); ++i) {
+  for (jsize i = 0; i < resource_count; ++i) {
     const auto &[resource, location] = resources[i];
     HandleGuard<odr::HtmlResource> guard(1);
     jobject resource_obj =
