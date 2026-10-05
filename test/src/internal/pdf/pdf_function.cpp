@@ -1,8 +1,13 @@
 #include <odr/internal/pdf/pdf_function.hpp>
 
 #include <odr/internal/pdf/pdf_object.hpp>
+#include <odr/internal/pdf/pdf_object_parser.hpp>
 
+#include <array>
+#include <cstdint>
+#include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -28,9 +33,9 @@ Object reals(std::initializer_list<double> values) {
   return Object(Array(std::move(holder)));
 }
 
-Object integers(std::initializer_list<int> values) {
+Object integers(std::initializer_list<std::int64_t> values) {
   std::vector<Object> holder;
-  for (const int value : values) {
+  for (const std::int64_t value : values) {
     holder.emplace_back(Integer{value});
   }
   return Object(Array(std::move(holder)));
@@ -118,6 +123,10 @@ TEST(PdfFunction, stitching) {
   // endpoints of each segment
   EXPECT_DOUBLE_EQ(fn->eval({0.0})[0], 0.0);
   EXPECT_DOUBLE_EQ(fn->eval({1.0})[0], 0.0);
+  dict["Bounds"] = reals({1});
+  const auto endpoint = parse_function(Object(dict), context());
+  ASSERT_NE(endpoint, nullptr);
+  EXPECT_DOUBLE_EQ(endpoint->eval({1})[0], 1);
 }
 
 // Type 0: a 1-D, 8-bit sample table, linearly interpolated and decoded.
@@ -127,14 +136,17 @@ TEST(PdfFunction, sampled_linear) {
   dict["Domain"] = reals({0, 1});
   dict["Range"] = reals({0, 1});
   dict["Size"] = integers({2});
-  dict["BitsPerSample"] = Object(Integer{8});
-
-  const std::string samples("\x00\xff", 2); // sample[0]=0, sample[1]=255
-  const auto fn = parse_function(Object(dict), context(samples));
-  ASSERT_NE(fn, nullptr);
-  EXPECT_DOUBLE_EQ(fn->eval({0.0})[0], 0.0);
-  EXPECT_DOUBLE_EQ(fn->eval({1.0})[0], 1.0);
-  EXPECT_NEAR(fn->eval({0.5})[0], 0.5, 1e-6); // (0 + 255)/2 / 255
+  for (const auto &[bits, samples] :
+       std::array{std::pair{8, std::string("\x00\xff", 2)},
+                  std::pair{12, std::string("\x00\x0f\xff", 3)}}) {
+    SCOPED_TRACE(bits);
+    dict["BitsPerSample"] = Object(Integer{bits});
+    const auto fn = parse_function(Object(dict), context(samples));
+    ASSERT_NE(fn, nullptr);
+    EXPECT_DOUBLE_EQ(fn->eval({0.0})[0], 0.0);
+    EXPECT_DOUBLE_EQ(fn->eval({1.0})[0], 1.0);
+    EXPECT_NEAR(fn->eval({0.5})[0], 0.5, 1e-6);
+  }
 }
 
 // Type 4: a PostScript calculator program, one input and one output.
@@ -182,4 +194,52 @@ TEST(PdfFunction, unsupported_type_is_null) {
   Dictionary dict;
   dict["FunctionType"] = Object(Integer{9});
   EXPECT_EQ(parse_function(Object(dict), context()), nullptr);
+}
+
+TEST(PdfFunction, malformed_layout_is_null) {
+  for (const std::string entries :
+       {"/FunctionType 3 /Domain [0] /Functions []",
+        "/FunctionType 2 /Domain [0 1 2] /N 1",
+        "/FunctionType 2 /Domain [1 0] /N 1",
+        "/FunctionType 2 /Domain [0 1] /Range [0] /N 1",
+        "/FunctionType 2 /Domain [0 1] /C0 [0 1] /C1 [1] /N 1",
+        "/FunctionType 4294967298 /Domain [0 1] /N 1",
+        "/FunctionType 3 /Domain [0 1] /Functions ["
+        "<< /FunctionType 2 /Domain [0 1] /N 1 >>] /Bounds [0.5] /Encode [0 1]",
+        "/FunctionType 0 /Domain [0 1] /Range [0 1] /Size [-1] /BitsPerSample "
+        "8",
+        "/FunctionType 0 /Domain [0 1] /Range [0 1] /Size [2] /BitsPerSample 3",
+        "/FunctionType 0 /Domain [0 1] /Range [0 1] /Size [2] "
+        "/BitsPerSample 4294967304",
+        "/FunctionType 0 /Domain [0 1] /Range [0 1] "
+        "/Size [9223372036854775807] /BitsPerSample 32",
+        "/FunctionType 0 /Domain [0 1 0 1] /Range [0 1] "
+        "/Size [4294967296 4294967296] /BitsPerSample 8",
+        "/FunctionType 0 /Domain [0 1] /Range [0 1] /Size [3] /BitsPerSample "
+        "8"}) {
+    SCOPED_TRACE(entries);
+    std::istringstream stream("<< " + entries + " >>");
+    ObjectParser parser(stream);
+    EXPECT_EQ(
+        parse_function(parser.read_object(), context(std::string(2, '\0'))),
+        nullptr);
+  }
+}
+
+TEST(PdfFunction, recursive_stitching_is_null) {
+  Dictionary dict;
+  dict["FunctionType"] = Object(Integer{3});
+  dict["Domain"] = reals({0, 1});
+  dict["Functions"] = Object(Array({Object(ObjectReference{1, 0})}));
+  dict["Bounds"] = reals({});
+  dict["Encode"] = reals({0, 1});
+  auto ctx = context();
+  std::size_t resolutions = 0;
+  ctx.resolve = [&](const Object &) {
+    if (++resolutions > 100) {
+      throw std::runtime_error("unbounded function recursion");
+    }
+    return Object(dict);
+  };
+  EXPECT_EQ(parse_function(Object(ObjectReference{1, 0}), ctx), nullptr);
 }

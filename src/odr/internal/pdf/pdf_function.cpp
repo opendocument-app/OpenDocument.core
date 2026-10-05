@@ -14,19 +14,6 @@ namespace odr::internal::pdf {
 
 namespace {
 
-/// Read an array of numbers from a dictionary entry, or `{}` when absent.
-std::vector<double> read_numbers(const Dictionary &dict, const char *key) {
-  std::vector<double> result;
-  if (const Object &value = dict.get(key); value.is_array()) {
-    const Array &array = value.as_array();
-    result.reserve(array.size());
-    for (const Object &item : array) {
-      result.push_back(item.as_real());
-    }
-  }
-  return result;
-}
-
 double clamp(const double v, const double lo, const double hi) {
   return std::clamp(v, std::min(lo, hi), std::max(lo, hi));
 }
@@ -56,8 +43,7 @@ protected:
   std::vector<double> compute(const std::span<const double> in) const override {
     const double x = in.empty() ? 0.0 : in[0];
     const double xn = std::pow(x, m_n);
-    // `/C0` and `/C1` must be equally long; a malformed file may disagree.
-    const std::size_t count = std::min(m_c0.size(), m_c1.size());
+    const std::size_t count = m_c0.size();
     std::vector<double> out(count);
     for (std::size_t j = 0; j < count; ++j) {
       out[j] = m_c0[j] + xn * (m_c1[j] - m_c0[j]);
@@ -84,9 +70,6 @@ public:
 
 protected:
   std::vector<double> compute(const std::span<const double> in) const override {
-    if (m_functions.empty()) {
-      return {};
-    }
     const double d0 = m_domain[0];
     const double d1 = m_domain[1];
     const double x = in.empty() ? d0 : in[0];
@@ -98,17 +81,8 @@ protected:
     }
     const double lo = k == 0 ? d0 : m_bounds[k - 1];
     const double hi = k < m_bounds.size() ? m_bounds[k] : d1;
-    // `/Bounds` must have one entry fewer than `/Functions`, and `/Encode` two
-    // per function; a malformed file may declare fewer of either.
-    k = std::min(k, m_functions.size() - 1);
-    const bool encoded_k = 2 * k + 1 < m_encode.size();
-    const double e0 = encoded_k ? m_encode[2 * k] : 0.0;
-    const double e1 = encoded_k ? m_encode[2 * k + 1] : 1.0;
-    const double encoded = interpolate(x, lo, hi, e0, e1);
-
-    if (m_functions[k] == nullptr) {
-      return {};
-    }
+    const double encoded =
+        interpolate(x, lo, hi, m_encode[2 * k], m_encode[2 * k + 1]);
     return m_functions[k]->eval({encoded});
   }
 
@@ -580,12 +554,27 @@ std::vector<double> Function::eval(std::vector<double> in) const {
   return out;
 }
 
-} // namespace odr::internal::pdf
+namespace {
 
-namespace odr::internal {
+bool valid_intervals(const std::vector<double> &values) {
+  if (values.size() % 2 != 0) {
+    return false;
+  }
+  for (std::size_t i = 0; i < values.size(); i += 2) {
+    if (!std::isfinite(values[i]) || !std::isfinite(values[i + 1]) ||
+        values[i] > values[i + 1]) {
+      return false;
+    }
+  }
+  return true;
+}
 
-std::shared_ptr<pdf::Function>
-pdf::parse_function(const Object &object, const FunctionContext &context) {
+std::shared_ptr<Function> parse_function_impl(const Object &object,
+                                              const FunctionContext &context,
+                                              const std::size_t depth) {
+  if (depth >= 64) {
+    return nullptr;
+  }
   const Object resolved = context.resolve(object);
   if (!resolved.is_dictionary()) {
     return nullptr;
@@ -594,16 +583,21 @@ pdf::parse_function(const Object &object, const FunctionContext &context) {
   if (!dict.get("FunctionType").is_integer()) {
     return nullptr;
   }
-  const std::int32_t type =
-      static_cast<std::int32_t>(dict.get("FunctionType").as_integer());
+  const std::int64_t type = dict.get("FunctionType").as_integer();
 
-  std::vector<double> domain = read_numbers(dict, "Domain");
-  std::vector<double> range = read_numbers(dict, "Range");
+  std::vector<double> domain = dict.get("Domain").as_reals();
+  std::vector<double> range = dict.get("Range").as_reals();
+  if (!valid_intervals(domain) || !valid_intervals(range)) {
+    return nullptr;
+  }
+  if (domain.empty() && (type == 2 || type == 3)) {
+    domain = {0.0, 1.0};
+  }
 
   switch (type) {
   case 2: {
-    std::vector<double> c0 = read_numbers(dict, "C0");
-    std::vector<double> c1 = read_numbers(dict, "C1");
+    std::vector<double> c0 = dict.get("C0").as_reals();
+    std::vector<double> c1 = dict.get("C1").as_reals();
     if (c0.empty()) {
       c0 = {0.0};
     }
@@ -611,8 +605,10 @@ pdf::parse_function(const Object &object, const FunctionContext &context) {
       c1 = {1.0};
     }
     const double n = dict.get("N").as_real();
-    if (domain.empty()) {
-      domain = {0.0, 1.0};
+    if (domain.size() != 2 || c0.size() != c1.size() ||
+        (!range.empty() && range.size() / 2 != c0.size()) ||
+        !std::isfinite(n)) {
+      return nullptr;
     }
     return std::make_shared<ExponentialFunction>(
         std::move(domain), std::move(range), std::move(c0), std::move(c1), n);
@@ -621,13 +617,30 @@ pdf::parse_function(const Object &object, const FunctionContext &context) {
     std::vector<std::shared_ptr<Function>> functions;
     if (const Object &fns = dict.get("Functions"); fns.is_array()) {
       for (const Object &fn : fns.as_array()) {
-        functions.push_back(parse_function(fn, context));
+        auto child = parse_function_impl(fn, context, depth + 1);
+        if (child == nullptr || child->input_arity() != 1) {
+          return nullptr;
+        }
+        functions.push_back(std::move(child));
       }
     }
-    std::vector<double> bounds = read_numbers(dict, "Bounds");
-    std::vector<double> encode = read_numbers(dict, "Encode");
-    if (domain.empty()) {
-      domain = {0.0, 1.0};
+    std::vector<double> bounds = dict.get("Bounds").as_reals();
+    std::vector<double> encode = dict.get("Encode").as_reals();
+    if (domain.size() != 2 || functions.empty() ||
+        bounds.size() != functions.size() - 1 ||
+        encode.size() != 2 * functions.size()) {
+      return nullptr;
+    }
+    double previous = domain.front();
+    for (const double bound : bounds) {
+      if (!std::isfinite(bound) || bound <= previous || bound > domain.back()) {
+        return nullptr;
+      }
+      previous = bound;
+    }
+    if (!std::ranges::all_of(encode,
+                             [](const double v) { return std::isfinite(v); })) {
+      return nullptr;
     }
     return std::make_shared<StitchingFunction>(
         std::move(domain), std::move(range), std::move(functions),
@@ -637,19 +650,28 @@ pdf::parse_function(const Object &object, const FunctionContext &context) {
     std::vector<std::size_t> size;
     if (const Object &s = dict.get("Size"); s.is_array()) {
       for (const Object &item : s.as_array()) {
-        size.push_back(static_cast<std::size_t>(item.as_integer()));
+        const std::int64_t dimension = item.as_integer();
+        if (dimension <= 0 || static_cast<std::uint64_t>(dimension) >
+                                  std::numeric_limits<std::size_t>::max()) {
+          return nullptr;
+        }
+        size.push_back(static_cast<std::size_t>(dimension));
       }
     }
-    const std::int32_t bits =
-        static_cast<std::int32_t>(dict.get("BitsPerSample").as_integer());
-    std::vector<double> encode = read_numbers(dict, "Encode");
+    const std::int64_t bits = dict.get("BitsPerSample").as_integer();
+    // ISO 32000-1 Table 39.
+    if (bits != 1 && bits != 2 && bits != 4 && bits != 8 && bits != 12 &&
+        bits != 16 && bits != 24 && bits != 32) {
+      return nullptr;
+    }
+    std::vector<double> encode = dict.get("Encode").as_reals();
     if (encode.empty()) {
       for (const std::size_t dim : size) {
         encode.push_back(0.0);
         encode.push_back(static_cast<double>(dim) - 1.0);
       }
     }
-    std::vector<double> decode = read_numbers(dict, "Decode");
+    std::vector<double> decode = dict.get("Decode").as_reals();
     if (decode.empty()) {
       decode = range;
     }
@@ -660,20 +682,35 @@ pdf::parse_function(const Object &object, const FunctionContext &context) {
         domain[i] = 1.0;
       }
     }
-    // `SampledFunction::compute` indexes `2 * m` domain/encode entries and
-    // `2 * n` decode entries, and interpolates over the `2^m` corners around
-    // the sample point — so a malformed `/Size` must not outrun any of them.
-    // Real sampled functions take one or two inputs (7.10.2).
     constexpr std::size_t max_inputs = 8;
-    if (size.empty() || size.size() > max_inputs || bits < 1 || bits > 32 ||
-        range.empty() || domain.size() < 2 * size.size() ||
-        encode.size() < 2 * size.size() || decode.size() < range.size() ||
-        std::ranges::find(size, std::size_t{0}) != size.end()) {
+    if (size.empty() || size.size() > max_inputs || range.empty() ||
+        domain.size() != 2 * size.size() || encode.size() != domain.size() ||
+        decode.size() != range.size() ||
+        !std::ranges::all_of(encode,
+                             [](const double v) { return std::isfinite(v); }) ||
+        !std::ranges::all_of(decode,
+                             [](const double v) { return std::isfinite(v); })) {
+      return nullptr;
+    }
+    std::size_t sample_bits = range.size() / 2;
+    for (const std::size_t dimension : size) {
+      if (sample_bits > std::numeric_limits<std::size_t>::max() / dimension) {
+        return nullptr;
+      }
+      sample_bits *= dimension;
+    }
+    if (sample_bits > std::numeric_limits<std::size_t>::max() /
+                          static_cast<std::size_t>(bits)) {
+      return nullptr;
+    }
+    sample_bits *= static_cast<std::size_t>(bits);
+    if (sample_bits / 8 + (sample_bits % 8 != 0) > samples.size()) {
       return nullptr;
     }
     return std::make_shared<SampledFunction>(
-        std::move(domain), std::move(range), std::move(size), bits,
-        std::move(encode), std::move(decode), std::move(samples));
+        std::move(domain), std::move(range), std::move(size),
+        static_cast<std::int32_t>(bits), std::move(encode), std::move(decode),
+        std::move(samples));
   }
   case 4: {
     const std::string program = context.load_stream(object);
@@ -696,6 +733,16 @@ pdf::parse_function(const Object &object, const FunctionContext &context) {
   default:
     return nullptr;
   }
+}
+
+} // namespace
+} // namespace odr::internal::pdf
+
+namespace odr::internal {
+
+std::shared_ptr<pdf::Function>
+pdf::parse_function(const Object &object, const FunctionContext &context) {
+  return parse_function_impl(object, context, 0);
 }
 
 } // namespace odr::internal
