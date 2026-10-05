@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Formula functions refuse non-finite numeric arguments before integer
+  conversion; `TRUE`, `FALSE` and `NA` no longer ignore extra arguments.
+
 - Formula arrays, conditional aggregates and lookups check their size limits
   before dimension arithmetic can overflow on 32-bit targets.
 

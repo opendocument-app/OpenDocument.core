@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <optional>
 #include <string>
 #include <utility>
@@ -174,6 +175,9 @@ TEST(FormulaEvaluator, an_array_is_read_by_its_first_element) {
 TEST(FormulaEvaluator, what_it_does_not_know_has_no_answer) {
   EXPECT_EQ(ods("=NOSUCHFUNCTION(1)"), std::nullopt);
   EXPECT_EQ(xlsx("=total*2"), std::nullopt);
+  EXPECT_EQ(xlsx("=TRUE(1)"), std::nullopt);
+  EXPECT_EQ(xlsx("=FALSE(1)"), std::nullopt);
+  EXPECT_EQ(xlsx("=NA(1)"), std::nullopt);
 
   Cells source = cells();
   source.stale.insert(SheetPosition(0, 0, 3));
@@ -243,4 +247,14 @@ TEST(FormulaEvaluator, array_limits_apply_before_dimension_products_narrow) {
   const Node sum{BinaryOperation{BinaryOperator::add},
                  {std::move(row), std::move(column)}};
   EXPECT_EQ(evaluate(sum, formula_cell, cells(), Settings{}), std::nullopt);
+}
+
+TEST(FormulaEvaluator, nonfinite_function_arguments_have_no_answer) {
+  Cells source = cells();
+  for (const double value : {std::numeric_limits<double>::quiet_NaN(),
+                             std::numeric_limits<double>::infinity()}) {
+    source.values[SheetPosition(0, 0, 0)] = Value{value};
+    EXPECT_EQ(xlsx("=CHOOSE(A1,1,2)", source), std::nullopt);
+    EXPECT_EQ(xlsx(R"(=LEFT("abc",A1))", source), std::nullopt);
+  }
 }

@@ -15,11 +15,15 @@ namespace str = util::string;
 
 namespace {
 
+template <auto value> Value constant(const Call &call) {
+  expect_arguments(call, 0, 0);
+  return Value{value};
+}
+
 constexpr std::array constant_functions{
-    FunctionEntry{"TRUE", [](const Call &) { return Value{true}; }},
-    FunctionEntry{"FALSE", [](const Call &) { return Value{false}; }},
-    FunctionEntry{"NA",
-                  [](const Call &) { return Value{ErrorType::not_available}; }},
+    FunctionEntry{"TRUE", constant<true>},
+    FunctionEntry{"FALSE", constant<false>},
+    FunctionEntry{"NA", constant<ErrorType::not_available>},
 };
 
 /// The function a name stands for once the prefix of its format is gone.
@@ -80,7 +84,11 @@ double formula::number_argument(const Call &call, const std::size_t index) {
   if (const auto *error = std::get_if<ErrorType>(&number)) {
     throw ErrorResult{*error};
   }
-  return std::get<double>(number);
+  const double value = std::get<double>(number);
+  if (!std::isfinite(value)) {
+    throw NoAnswer{};
+  }
+  return value;
 }
 
 bool formula::same_number(const Dialect dialect, const double a,
