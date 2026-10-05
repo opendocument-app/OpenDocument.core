@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- iWork validates UTF-8 throughout text storage and string cells, including
+  the final paragraph; attachment traversal no longer rescans every anchor
+  for every paragraph.
+
 - iWork tables reject overflowing dimensions and tile coordinates, and
   truncated cell-offset entries, instead of wrapping cells into other rows.
 

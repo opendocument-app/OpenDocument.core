@@ -466,3 +466,15 @@ TEST(IworkNumbers, table_coordinates_are_checked_before_narrowing) {
   EXPECT_THROW(std::ignore = read(1, 1, 0, 1, wide), std::runtime_error);
   EXPECT_THROW(std::ignore = read(1, 1, 1, 1, wide - 2), std::runtime_error);
 }
+
+TEST(IworkNumbers, string_cells_reject_invalid_utf8) {
+  const std::string record = builder::cell_record(
+      iwork::cell::type::string, iwork::cell::flag::string_key,
+      std::string("\x01\x00\x00\x00", 4));
+  EXPECT_THROW(std::ignore = numbers_document(
+                   {.rows = 1,
+                    .columns = 1,
+                    .tile_rows = {builder::tile_row(0, {record})},
+                    .strings = {builder::string_entry(1, "bad\x80")}}),
+               std::runtime_error);
+}

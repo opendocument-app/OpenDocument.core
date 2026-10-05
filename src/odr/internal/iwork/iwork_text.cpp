@@ -18,6 +18,8 @@
 #include <utility>
 #include <vector>
 
+#include <utf8cpp/utf8/checked.h>
+
 namespace odr::internal::iwork {
 
 namespace {
@@ -236,12 +238,17 @@ void iwork::parse_storage(const Context &context,
     text += part.bytes;
   }
 
+  if (!utf8::is_valid(text.begin(), text.end())) {
+    throw std::runtime_error("iwork: text storage is not UTF-8");
+  }
+
   const std::vector<std::size_t> starts =
       util::string::utf16_offsets(text, paragraph_starts(storage));
   const std::vector<std::pair<std::size_t, std::uint64_t>> attachments =
       read_attachments(storage, text);
 
   const std::string_view body_text(text);
+  auto attachment = attachments.begin();
   for (std::size_t i = 0; i < starts.size(); ++i) {
     const std::size_t begin = starts[i];
     const std::size_t end = i + 1 < starts.size() ? starts[i + 1] : text.size();
@@ -261,10 +268,9 @@ void iwork::parse_storage(const Context &context,
 
     // a drawable goes after the paragraph its anchor sits in: the anchor is
     // an inline character but a table is not something a paragraph can hold
-    for (const auto &[offset, identifier] : attachments) {
-      if (offset >= begin && offset < end) {
-        parse_attachment(context, parent_id, identifier);
-      }
+    while (attachment != attachments.end() && attachment->first < end) {
+      parse_attachment(context, parent_id, attachment->second);
+      ++attachment;
     }
   }
 }

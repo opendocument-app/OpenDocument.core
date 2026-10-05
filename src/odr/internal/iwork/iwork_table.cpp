@@ -18,6 +18,8 @@
 #include <string_view>
 #include <unordered_map>
 
+#include <utf8cpp/utf8/checked.h>
+
 namespace odr::internal::iwork {
 
 namespace {
@@ -194,6 +196,9 @@ read_cell(const std::string_view record, const std::uint32_t row,
     }
     result.text = std::string(it->second.bytes_field(data_list_entry::string)
                                   .value_or(std::string_view()));
+    if (!utf8::is_valid(result.text.begin(), result.text.end())) {
+      throw std::runtime_error("iwork: cell text is not UTF-8");
+    }
     result.value_type = ValueType::string;
   } break;
   case cell::type::date: {
