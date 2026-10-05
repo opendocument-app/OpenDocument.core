@@ -1,19 +1,44 @@
 #include <odr/internal/pdf/pdf_object_parser.hpp>
 
+#include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <cctype>
+#include <charconv>
 #include <cmath>
 #include <cstdint>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
 namespace odr::internal::pdf {
+
+namespace {
+
+template <typename T> T parse_integer(std::string_view token) {
+  if constexpr (std::is_signed_v<T>) {
+    if (token.starts_with('+')) {
+      token.remove_prefix(1);
+      if (token.starts_with('-')) {
+        throw std::runtime_error("invalid PDF integer");
+      }
+    }
+  }
+  T value{};
+  const auto [end, error] =
+      std::from_chars(token.data(), token.data() + token.size(), value);
+  if (error != std::errc{} || end != token.data() + token.size()) {
+    throw std::runtime_error("invalid or out-of-range PDF integer");
+  }
+  return value;
+}
+
+} // namespace
 
 ObjectParser::ObjectParser(std::istream &in) : m_in{&in}, m_sb{in.rdbuf()} {
   // One-time stream preparation (flush tied streams, state check) for the
@@ -230,84 +255,40 @@ bool ObjectParser::peek_unsigned_integer() {
   return c != eof && std::isdigit(c);
 }
 
-std::pair<UnsignedInteger, std::uint32_t>
-ObjectParser::read_unsigned_integer_and_count() {
-  UnsignedInteger result = 0;
-  std::uint32_t count = 0;
-
-  while (true) {
-    const int_type c = geti();
-    if (c == eof) {
-      break;
-    }
-    if (!std::isdigit(c)) {
-      break;
-    }
-    result = result * 10 + (c - '0');
-    ++count;
-    bumpc();
-  }
-
-  if (count == 0) {
-    throw std::runtime_error("expected unsigned integer, but got none");
-  }
-
-  return {result, count};
-}
-
 UnsignedInteger ObjectParser::read_unsigned_integer() {
-  return read_unsigned_integer_and_count().first;
+  return parse_integer<UnsignedInteger>(read_keyword());
 }
 
 Integer ObjectParser::read_integer() {
-  Integer sign = 1;
-
-  const char_type c = getc();
-  if (c == '+') {
-    sign = +1;
-    bumpc();
-  }
-  if (c == '-') {
-    sign = -1;
-    bumpc();
-  }
-
-  return sign * static_cast<Integer>(read_unsigned_integer());
+  return parse_integer<Integer>(read_keyword());
 }
 
 Real ObjectParser::read_number() {
-  return std::visit([](auto v) -> Real { return v; }, read_integer_or_real());
+  return std::visit([](auto value) -> Real { return value; },
+                    read_integer_or_real());
 }
 
 std::variant<Integer, Real> ObjectParser::read_integer_or_real() {
-  Integer sign = 1;
-  if (geti() == '-') {
-    sign = -1;
-    bumpc();
-  } else if (geti() == '+') {
-    bumpc();
+  const std::string token = read_keyword();
+  if (token.find('.') == std::string::npos) {
+    return parse_integer<Integer>(token);
   }
 
-  UnsignedInteger i = 0;
-
-  if (geti() != '.') {
-    i = read_unsigned_integer();
+  // ISO 32000-1 7.3.3: one decimal point, at least one digit, no exponent.
+  std::string_view magnitude(token);
+  if (magnitude.starts_with('+') || magnitude.starts_with('-')) {
+    magnitude.remove_prefix(1);
   }
-  if (geti() != '.') {
-    return static_cast<Integer>(sign * i);
+  if (magnitude == "." ||
+      magnitude.find_first_not_of("0123456789.") != std::string_view::npos ||
+      std::ranges::count(magnitude, '.') != 1) {
+    throw std::runtime_error("invalid PDF real");
   }
-  bumpc();
-
-  Real r = static_cast<Real>(i);
-
-  if (peek_unsigned_integer()) {
-    const auto [fraction, decimals] = read_unsigned_integer_and_count();
-    // `decimals` is unsigned; negate as floating point to avoid wrap-around.
-    r += static_cast<Real>(fraction) *
-         std::pow(10.0, -static_cast<Real>(decimals));
+  const auto value = util::number::parse(token);
+  if (!value || !std::isfinite(*value)) {
+    throw std::runtime_error("out-of-range PDF real");
   }
-
-  return static_cast<Real>(sign) * r;
+  return *value;
 }
 
 bool ObjectParser::peek_name() {

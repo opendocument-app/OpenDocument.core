@@ -39,19 +39,10 @@ TEST(Quantity, default_unit_equals_parsed_unitless) {
   EXPECT_EQ(Measure(2.5, {}), Measure("2.5"));
 }
 
-namespace {
-
-class GroupedNumbers final : public std::numpunct<char> {
-  char do_decimal_point() const override { return ','; }
-  char do_thousands_sep() const override { return '.'; }
-  std::string do_grouping() const override { return "\3"; }
-};
-
-} // namespace
-
 TEST(Quantity, ignores_numeric_locale) {
   const odr::test::LocaleGuard guard;
-  std::locale::global(std::locale(std::locale::classic(), new GroupedNumbers));
+  std::locale::global(
+      std::locale(std::locale::classic(), new odr::test::GroupedNumbers));
   if (std::setlocale(LC_NUMERIC, "de_DE.UTF-8") == nullptr) {
     std::setlocale(LC_NUMERIC, "de_DE.utf8");
   }
