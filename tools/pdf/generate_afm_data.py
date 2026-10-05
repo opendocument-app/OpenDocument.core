@@ -207,30 +207,30 @@ def emit_cpp(afms: list[tuple[str, Afm]]) -> str:
 
     for font, afm in afms:
         ident = _ident(font)
-        out.append(f"constexpr GlyphWidth glyphs_{ident}[] = {{")
+        out.append(f"constexpr std::array<GlyphWidth, {len(afm.widths)}> glyphs_{ident} = {{{{")
         for name, width in sorted(afm.widths.items()):
             assert '"' not in name and "\\" not in name, name
             out.append(f'    {{"{name}", {width}}},')
-        out += ["};", ""]
+        out += ["}};", ""]
 
-        out.append(f"constexpr std::int16_t code_widths_{ident}[256] = {{")
+        out.append(f"constexpr std::array<std::int16_t, 256> code_widths_{ident} = {{{{")
         row: list[str] = []
         for code in range(256):
             row.append(str(afm.code_widths[code]))
             if len(row) == 16:
                 out.append("    " + ", ".join(row) + ",")
                 row = []
-        out += ["};", ""]
+        out += ["}};", ""]
 
     out += ["} // namespace", ""]
 
-    out.append("const std::array<FontMetrics, font_count> fonts = {{")
+    out.append("constexpr std::array<FontMetrics, font_count> fonts = {{")
     for font, afm in afms:
         ident = _ident(font)
         out.append(
             f'    {{"{font}", {afm.ascender}, {afm.descender}, '
-            f"{afm.cap_height}, glyphs_{ident}, "
-            f"std::size(glyphs_{ident}), code_widths_{ident}}},"
+            f"{afm.cap_height}, glyphs_{ident}.data(), "
+            f"glyphs_{ident}.size(), code_widths_{ident}.data()}},"
         )
     out += ["}};", "", "} // namespace odr::internal::pdf::afm_data", ""]
     return "\n".join(out)

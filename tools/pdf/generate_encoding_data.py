@@ -163,7 +163,7 @@ def emit_cpp(bases: dict[str, list[str]], agl: dict[str, list[int]]) -> tuple[st
     for table_name in _ENCODING_NAMES:
         mapping = bases[table_name]
         out.append(
-            f"const std::array<std::string_view, 256> encoding_data::{table_name} = {{{{"
+            f"constexpr std::array<std::string_view, 256> encoding_data::{table_name} = {{{{"
         )
         for code in range(256):
             glyph = mapping[code]
@@ -173,7 +173,7 @@ def emit_cpp(bases: dict[str, list[str]], agl: dict[str, list[int]]) -> tuple[st
     entries = sorted(agl.items())
     for name, _ in entries:
         assert ";" not in name and '"' not in name, name
-    out.append("const std::array<std::pair<std::string_view, std::u16string_view>,")
+    out.append("constexpr std::array<std::pair<std::string_view, std::u16string_view>,")
     out.append("           encoding_data::adobe_glyph_list_size>")
     out.append("    encoding_data::adobe_glyph_list = {{")
     for name, code_points in entries:

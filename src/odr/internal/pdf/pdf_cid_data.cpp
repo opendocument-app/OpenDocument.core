@@ -11,7 +11,7 @@ namespace odr::internal::pdf::cid_data {
 
 namespace {
 
-const std::array<CodespaceRange, 78>
+constexpr std::array<CodespaceRange, 78>
     codespace_pool = {{
     {0x0,0x80,1},{0xa1a1,0xfefe,2},{0x8ea0,0x8edf,2},{0x2121,0x7e7e,2},{0xa0,0xdf,1},
     {0x0,0x80,1},{0x8140,0x9ffc,2},{0xe040,0xfcfc,2},{0xa0,0xdf,1},{0xfd,0xff,1},{0x0,0x80,1},
@@ -30,7 +30,7 @@ const std::array<CodespaceRange, 78>
     {0xfe,0xff,1},{0xa141,0xfdfe,2},
 }};
 
-const std::array<std::uint16_t, 88720>
+constexpr std::array<std::uint16_t, 88720>
     range_ref_pool = {{
     0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,
     34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,
@@ -5298,7 +5298,7 @@ const std::array<std::uint16_t, 88720>
     23436,23437,23438,23439,23440,23441,23442,23443,23444,23445,23446,
 }};
 
-const std::array<std::uint64_t, 2158>
+constexpr std::array<std::uint64_t, 2158>
     bitmap_pool = {{
     0xfffffffffffffffe,0xcfa7fbffffffffff,0xfbffffffe7ffffff,0xbfff7fffff,0x0,
     0xffffffffffffff88,0x3f,0x0,0x0,0xfe00000000000000,0xfffffffc3fffffff,0xffffffffffffffff,
@@ -5805,7 +5805,7 @@ const std::array<std::uint64_t, 2158>
     0xffffffffffffffff,0xffffffffffffffff,0xfffffffffffff,
 }};
 
-const std::array<std::uint32_t, 2158>
+constexpr std::array<std::uint32_t, 2158>
     rank_pool = {{
     0,63,121,182,220,220,278,284,284,284,291,351,415,479,543,607,671,735,799,863,927,991,1055,
     1119,1183,1247,1311,1375,1439,1503,1567,1631,1695,1759,1823,1887,1951,2015,2079,2143,2207,
@@ -5939,7 +5939,7 @@ const std::array<std::uint32_t, 2158>
     5503,5567,5631,5695,5759,5823,5887,5951,6015,
 }};
 
-const std::array<std::uint16_t, 124526>
+constexpr std::array<std::uint16_t, 124526>
     values_pool = {{
     0x20,0x21,0x22,0x23,0x24,0x25,0x26,0x27,0x28,0x29,0x2a,0x2b,0x2c,0x2d,0x2e,0x2f,0x30,0x31,
     0x32,0x33,0x34,0x35,0x36,0x37,0x38,0x39,0x3a,0x3b,0x3c,0x3d,0x3e,0x3f,0x40,0x41,0x42,0x43,
@@ -15488,7 +15488,7 @@ const std::array<std::uint16_t, 124526>
     0x9fa2,0x9fa3,0x9fa5,
 }};
 
-const std::array<AstralEntry, 1518>
+constexpr std::array<AstralEntry, 1518>
     astral_pool = {{
     {7268,0x28cdd},{7276,0x2f8ed},{7277,0x25874},{7280,0x28ef6},{7286,0x2f8dc},{7295,0x2f884},
     {7302,0x2f877},{7318,0x2f80f},{7319,0x2f8d3},{7320,0x2f818},{7321,0x21a1a},{7326,0x243d0},
@@ -15796,7 +15796,7 @@ const std::array<AstralEntry, 1518>
 
 namespace odr::internal::pdf {
 
-const std::array<cid_data::CidRange, cid_data::cid_range_pool_size>
+constexpr std::array<cid_data::CidRange, cid_data::cid_range_pool_size>
     cid_data::cid_range_pool = {{
     {0x20,231,94,1},{0x8ea0,326,63,2},{0xa1a1,633,93,2},{0xa2a1,727,13,2},{0xa3b0,780,9,2},
     {0xa3c1,790,25,2},{0xa3e1,816,25,2},{0xa4a1,842,82,2},{0xa5a1,925,85,2},{0xa6a1,1011,23,2},
@@ -21031,7 +21031,7 @@ const std::array<cid_data::CidRange, cid_data::cid_range_pool_size>
     {0x55,8197,8,1},{0x5e,8151,0,1},{0x61,8206,16,1},{0x72,8057,0,1},{0x73,8223,4,1},
 }};
 
-const std::array<cid_data::Collection, cid_data::collection_count>
+constexpr std::array<cid_data::Collection, cid_data::collection_count>
     cid_data::collections = {{
     {"Adobe", "Japan1", cid_data::bitmap_pool.data() + 0, cid_data::rank_pool.data() + 0, 361, 23058, cid_data::values_pool.data() + 0, cid_data::astral_pool.data() + 0, 520},
     {"Adobe", "GB1", cid_data::bitmap_pool.data() + 361, cid_data::rank_pool.data() + 361, 478, 30571, cid_data::values_pool.data() + 15583, cid_data::astral_pool.data() + 520, 196},
@@ -21042,7 +21042,7 @@ const std::array<cid_data::Collection, cid_data::collection_count>
     {"Adobe", "Japan2", cid_data::bitmap_pool.data() + 2063, cid_data::rank_pool.data() + 2063, 95, 6067, cid_data::values_pool.data() + 118459, cid_data::astral_pool.data() + 1518, 0},
 }};
 
-const std::array<cid_data::PredefinedCMap, cid_data::predefined_cmap_count>
+constexpr std::array<cid_data::PredefinedCMap, cid_data::predefined_cmap_count>
     cid_data::predefined_cmaps = {{
     {"78-EUC-H", cid_data::codespace_pool.data() + 0, 3, cid_data::range_ref_pool.data() + 0, 625, 0},
     {"78-EUC-V", cid_data::codespace_pool.data() + 0, 3, cid_data::range_ref_pool.data() + 625, 676, 0},

@@ -129,7 +129,7 @@ def emit_cpp(strings: list[str]) -> str:
         "",
         "namespace odr::internal::font::cff {",
         "",
-        "const std::array<std::string_view, cff_standard_strings_size>",
+        "constexpr std::array<std::string_view, cff_standard_strings_size>",
         "    cff_standard_strings = {{",
     ]
     for name in strings:

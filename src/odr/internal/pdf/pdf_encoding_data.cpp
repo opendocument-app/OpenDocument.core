@@ -9,7 +9,7 @@
 
 namespace odr::internal::pdf {
 
-const std::array<std::string_view, 256> encoding_data::standard_encoding = {{
+constexpr std::array<std::string_view, 256> encoding_data::standard_encoding = {{
     "", // 0x00
     "", // 0x01
     "", // 0x02
@@ -268,7 +268,7 @@ const std::array<std::string_view, 256> encoding_data::standard_encoding = {{
     "", // 0xFF
 }};
 
-const std::array<std::string_view, 256> encoding_data::win_ansi_encoding = {{
+constexpr std::array<std::string_view, 256> encoding_data::win_ansi_encoding = {{
     "", // 0x00
     "", // 0x01
     "", // 0x02
@@ -527,7 +527,7 @@ const std::array<std::string_view, 256> encoding_data::win_ansi_encoding = {{
     "ydieresis", // 0xFF
 }};
 
-const std::array<std::string_view, 256> encoding_data::mac_roman_encoding = {{
+constexpr std::array<std::string_view, 256> encoding_data::mac_roman_encoding = {{
     "", // 0x00
     "", // 0x01
     "", // 0x02
@@ -786,7 +786,7 @@ const std::array<std::string_view, 256> encoding_data::mac_roman_encoding = {{
     "caron", // 0xFF
 }};
 
-const std::array<std::pair<std::string_view, std::u16string_view>,
+constexpr std::array<std::pair<std::string_view, std::u16string_view>,
            encoding_data::adobe_glyph_list_size>
     encoding_data::adobe_glyph_list = {{
     {"A", u"\u0041"},
