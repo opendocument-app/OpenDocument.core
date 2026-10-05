@@ -1,6 +1,8 @@
 #include <odr/quantity.hpp>
 
+#include <odr/internal/common/text_cursor.hpp>
 #include <odr/internal/util/number_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <functional>
 #include <memory>
@@ -10,9 +12,41 @@
 
 namespace odr {
 
-/// 7 significant digits: one more than the stream default, which rounds
-/// drawing coordinates in the thousands of mm, and no more than a `float`
-/// carries, so `68.55` does not come back as `68.550003`.
+double QuantityBase::parse_magnitude(std::string_view &text) {
+  internal::TextCursor cursor(text);
+  cursor.skip_whitespace();
+  const std::string_view start = cursor.rest();
+  if (cursor.peek() == '+' || cursor.peek() == '-') {
+    cursor.advance(1);
+  }
+  const auto digit = internal::util::string::is_ascii_digit;
+  (void)cursor.take_while(digit);
+  if (cursor.peek() == '.') {
+    cursor.advance(1);
+    (void)cursor.take_while(digit);
+  }
+  if (cursor.peek() == 'e' || cursor.peek() == 'E') {
+    const std::string_view exponent = cursor.rest();
+    cursor.advance(1);
+    if (cursor.peek() == '+' || cursor.peek() == '-') {
+      cursor.advance(1);
+    }
+    if (cursor.take_while(digit).empty()) {
+      cursor.seek(exponent); // An `em` or `ex` unit is not an exponent.
+    }
+  }
+  const auto magnitude = internal::util::number::parse(
+      start.substr(0, start.size() - cursor.rest().size()));
+  if (!magnitude) {
+    throw std::invalid_argument("invalid quantity magnitude");
+  }
+  cursor.skip_whitespace();
+  text = cursor.rest();
+  return *magnitude;
+}
+
+/// 7 digits: enough for drawing coordinates in the thousands of mm, and no more
+/// than a `float` carries, so `68.55` does not come back as `68.550003`.
 std::string QuantityBase::format_magnitude(const double magnitude) {
   return internal::util::number::to_string_significant(magnitude, 7);
 }
@@ -48,10 +82,7 @@ private:
   std::unordered_map<std::string, std::unique_ptr<Unit>, Hash, std::equal_to<>>
       m_registry;
 
-  /// `std::unordered_map` keeps element addresses stable across a rehash, so a
-  /// `Unit *` already handed out survives later insertions and only the map
-  /// access itself needs guarding. Every `Measure` goes through here and the
-  /// http server renders on a thread pool, hence the shared read path.
+  /// Unit addresses remain stable; concurrent lookups share the read lock.
   const Unit *unit_(const std::string_view name) {
     {
       const std::shared_lock lock(m_mutex);
@@ -70,8 +101,7 @@ private:
   }
 };
 
-/// Registered rather than left null, so that `m_unit` is always dereferenceable
-/// and this compares equal to the unit `Measure("5")` parses.
+/// Registered, not null, so that it equals the unit `Measure("5")` parses.
 DynamicUnit::DynamicUnit() : m_unit{Registry::unit("")} {}
 
 DynamicUnit::DynamicUnit(const std::string_view name)

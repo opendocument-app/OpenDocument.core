@@ -1,8 +1,9 @@
 #pragma once
 
-#include <cctype>
-#include <cstdlib>
-#include <sstream>
+#include <cmath>
+#include <limits>
+#include <ostream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -35,6 +36,8 @@ private:
 /// once in a source file instead of inline in every instantiation.
 class QuantityBase {
 protected:
+  static double parse_magnitude(std::string_view &text);
+
   /// Renders @p magnitude with 7 significant digits, always positional.
   static std::string format_magnitude(double magnitude);
 };
@@ -47,14 +50,18 @@ public:
       : m_magnitude{std::move(magnitude)}, m_unit{std::move(unit)} {}
 
   explicit Quantity(const std::string_view string) {
-    // `std::strtod` needs a terminator, which a view does not promise
-    const std::string buffer(string);
-    char *end{nullptr};
-    m_magnitude = std::strtod(buffer.c_str(), &end);
-    while (*end != '\0' && std::isspace(static_cast<unsigned char>(*end))) {
-      ++end;
+    std::string_view rest = string;
+    const double magnitude = parse_magnitude(rest);
+    if constexpr (std::is_integral_v<Magnitude>) {
+      const double limit =
+          std::ldexp(1.0, std::numeric_limits<Magnitude>::digits);
+      const double minimum = std::is_signed_v<Magnitude> ? -limit : 0;
+      if (magnitude < minimum || magnitude >= limit) {
+        throw std::out_of_range("quantity magnitude out of range");
+      }
     }
-    m_unit = DynamicUnit(end);
+    m_magnitude = static_cast<Magnitude>(magnitude);
+    m_unit = Unit(rest);
   }
 
   bool operator==(const Quantity &rhs) const {
@@ -76,9 +83,7 @@ public:
       return format_magnitude(static_cast<double>(m_magnitude)) +
              m_unit.to_string();
     } else {
-      std::ostringstream ss;
-      ss << m_magnitude << m_unit.to_string();
-      return ss.str();
+      return std::to_string(m_magnitude) + m_unit.to_string();
     }
   }
 
