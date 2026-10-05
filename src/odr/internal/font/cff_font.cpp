@@ -9,7 +9,6 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
-#include <limits>
 #include <map>
 #include <optional>
 #include <span>
@@ -109,12 +108,12 @@ std::string_view checked_slice(const std::string_view bytes,
 }
 
 std::uint32_t dict_offset(const double value) {
-  if (!std::isfinite(value) || value < 0 ||
-      value > std::numeric_limits<std::uint32_t>::max() ||
-      std::trunc(value) != value) {
+  const std::optional<std::uint32_t> result =
+      util::number::to_integer<std::uint32_t>(value);
+  if (!result) {
     throw std::runtime_error("cff: invalid DICT offset or length");
   }
-  return static_cast<std::uint32_t>(value);
+  return *result;
 }
 
 /// A parsed DICT: operator -> operands. Reals are decoded to double; integers

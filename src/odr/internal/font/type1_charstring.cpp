@@ -1,9 +1,12 @@
 #include <odr/internal/font/type1_charstring.hpp>
 
+#include <odr/internal/util/number_util.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -78,12 +81,26 @@ void emit_num(std::string &out, const double v) {
     emit_int(out, static_cast<std::int32_t>(v));
     return;
   }
-  const auto fixed = static_cast<std::int32_t>(std::lround(v * 65536.0));
+  const std::optional<std::int32_t> scaled =
+      util::number::to_integer<std::int32_t>(std::round(v * 65536.0));
+  if (!scaled) {
+    throw std::runtime_error("type1: operand exceeds Type2 fixed-point range");
+  }
+  const std::int32_t fixed = *scaled;
   out += static_cast<char>(255);
   out += static_cast<char>((fixed >> 24) & 0xff);
   out += static_cast<char>((fixed >> 16) & 0xff);
   out += static_cast<char>((fixed >> 8) & 0xff);
   out += static_cast<char>(fixed & 0xff);
+}
+
+std::int32_t integer_operand(const double value) {
+  const std::optional<std::int32_t> result =
+      util::number::to_integer<std::int32_t>(value);
+  if (!result) {
+    throw std::runtime_error("type1: invalid integer operand");
+  }
+  return *result;
 }
 
 /// The translation state machine. Walks the Type1 charstring (recursing through
@@ -93,21 +110,29 @@ public:
   explicit Translator(const std::span<const std::string> subrs)
       : m_subrs(subrs) {}
 
-  Type2Charstring run(const std::string_view charstring) {
+  std::string run(const std::string_view charstring) {
     execute(charstring, 0);
     if (!m_ended) {
-      m_out += static_cast<char>(t1_endchar);
+      m_stack.clear();
+      emit_op(t1_endchar);
     }
-    return {std::move(m_out), m_width, m_has_width};
+    return std::move(m_out);
   }
 
 private:
+  void push(const double value) {
+    if (!std::isfinite(value) || m_stack.size() == 24) {
+      throw std::runtime_error("type1: invalid or overflowing operand stack");
+    }
+    m_stack.push_back(value);
+  }
+
   // Emit the pending width (once) ahead of the first stem/move/endchar's
   // operands, as the Type2 width does. nominalWidthX is 0 in the built CFF, so
   // the width is the absolute advance.
   void emit_width() {
     if (m_width_pending) {
-      emit_int(m_out, m_width);
+      emit_num(m_out, m_width);
       m_width_pending = false;
     }
   }
@@ -127,7 +152,10 @@ private:
   }
 
   void execute(const std::string_view cs, const std::int32_t depth) {
-    if (depth > 16 || m_ended) {
+    if (depth > 10) {
+      throw std::runtime_error("type1: subroutine nesting exceeds ten levels");
+    }
+    if (m_ended) {
       return;
     }
     std::size_t p = 0;
@@ -155,7 +183,7 @@ private:
               byte_at(cs, p + 4));
           p += 5;
         }
-        m_stack.push_back(value);
+        push(value);
         continue;
       }
       std::int32_t op = b;
@@ -163,6 +191,9 @@ private:
       if (b == 12) {
         op = 1200 + byte_at(cs, p);
         ++p;
+      }
+      if (op == t1_return) {
+        return;
       }
       handle(op, depth);
     }
@@ -173,20 +204,20 @@ private:
     case t1_hsbw:
       if (m_stack.size() >= 2) {
         m_sbx = m_stack[0];
-        m_width = static_cast<std::int32_t>(m_stack[1]);
-        m_has_width = true;
+        m_width = m_stack[1];
+        m_sby = 0;
         m_width_pending = true;
-        m_sbx_pending = true;
+        m_bearing_pending = true;
       }
       m_stack.clear();
       break;
     case t1_sbw:
       if (m_stack.size() >= 4) {
         m_sbx = m_stack[0];
-        m_width = static_cast<std::int32_t>(m_stack[2]);
-        m_has_width = true;
+        m_width = m_stack[2];
+        m_sby = m_stack[1];
         m_width_pending = true;
-        m_sbx_pending = true;
+        m_bearing_pending = true;
       }
       m_stack.clear();
       break;
@@ -195,9 +226,10 @@ private:
       if (m_flex_active) {
         collect_flex_point();
       } else {
-        if (m_sbx_pending && !m_stack.empty()) {
+        if (m_bearing_pending && m_stack.size() >= 2) {
           m_stack[0] += m_sbx;
-          m_sbx_pending = false;
+          m_stack[1] += m_sby;
+          m_bearing_pending = false;
         }
         emit_op(t1_rmoveto);
       }
@@ -206,32 +238,38 @@ private:
       if (m_flex_active) {
         collect_flex_point();
       } else {
-        // hmoveto has no y; the side bearing adds an x, so keep it hmoveto.
-        if (m_sbx_pending && !m_stack.empty()) {
-          m_stack[0] += m_sbx;
+        const double dx = m_stack.empty() ? 0 : m_stack[0];
+        if (m_bearing_pending && m_sby != 0) {
+          m_stack = {dx + m_sbx, m_sby};
+          emit_op(t1_rmoveto);
+        } else {
+          if (m_bearing_pending && !m_stack.empty()) {
+            m_stack[0] += m_sbx;
+          }
+          emit_op(t1_hmoveto);
         }
-        m_sbx_pending = false;
-        emit_op(t1_hmoveto);
+        m_bearing_pending = false;
       }
       break;
     case t1_vmoveto:
       if (m_flex_active) {
         collect_flex_point();
-      } else if (m_sbx_pending && m_sbx != 0.0) {
+      } else if (m_bearing_pending && m_sbx != 0.0) {
         // A side bearing adds an x offset, which vmoveto cannot carry: promote
         // to rmoveto(sbx, dy).
         const double dy = m_stack.empty() ? 0.0 : m_stack[0];
-        m_stack = {m_sbx, dy};
-        m_sbx_pending = false;
+        m_stack = {m_sbx, dy + m_sby};
+        m_bearing_pending = false;
         emit_op(t1_rmoveto);
       } else {
-        m_sbx_pending = false;
+        if (m_bearing_pending && !m_stack.empty()) {
+          m_stack[0] += m_sby;
+        }
+        m_bearing_pending = false;
         emit_op(t1_vmoveto);
       }
       break;
 
-    case t1_hstem:
-    case t1_vstem:
     case t1_rlineto:
     case t1_hlineto:
     case t1_vlineto:
@@ -242,6 +280,8 @@ private:
       break;
 
     case t1_closepath:
+    case t1_hstem:
+    case t1_vstem:
     case t1_dotsection:
     case t1_vstem3:
     case t1_hstem3:
@@ -255,7 +295,10 @@ private:
         m_stack.pop_back();
         const double a = m_stack.back();
         m_stack.pop_back();
-        m_stack.push_back(b != 0.0 ? a / b : 0.0);
+        if (b == 0.0) {
+          throw std::runtime_error("type1: division by zero");
+        }
+        push(a / b);
       }
       break;
 
@@ -263,15 +306,14 @@ private:
       if (m_stack.empty()) {
         break;
       }
-      const auto index = static_cast<std::int32_t>(m_stack.back());
+      const auto index = integer_operand(m_stack.back());
       m_stack.pop_back();
-      if (index >= 0 && index < static_cast<std::int32_t>(m_subrs.size())) {
-        execute(m_subrs[index], depth + 1);
+      if (index < 0 || static_cast<std::size_t>(index) >= m_subrs.size()) {
+        throw std::runtime_error("type1: invalid subroutine index");
       }
+      execute(m_subrs[index], depth + 1);
       break;
     }
-    case t1_return:
-      break; // end of the current subr
 
     case t1_callothersubr:
       handle_othersubr();
@@ -279,10 +321,10 @@ private:
     case t1_pop:
       // Push the value the matching callothersubr left on the PS stack.
       if (!m_ps_stack.empty()) {
-        m_stack.push_back(m_ps_stack.back());
+        push(m_ps_stack.back());
         m_ps_stack.pop_back();
       } else {
-        m_stack.push_back(0.0);
+        push(0.0);
       }
       break;
 
@@ -310,13 +352,16 @@ private:
       m_stack.clear();
       return;
     }
-    const auto othersubr = static_cast<std::int32_t>(m_stack.back());
+    const auto othersubr = integer_operand(m_stack.back());
     m_stack.pop_back();
-    const auto argc = static_cast<std::int32_t>(m_stack.back());
+    const auto argc = integer_operand(m_stack.back());
     m_stack.pop_back();
 
+    if (argc < 0 || static_cast<std::size_t>(argc) > m_stack.size()) {
+      throw std::runtime_error("type1: invalid OtherSubr argument count");
+    }
     std::vector<double> args;
-    for (std::int32_t i = 0; i < argc && !m_stack.empty(); ++i) {
+    for (std::int32_t i = 0; i < argc; ++i) {
       args.push_back(m_stack.back());
       m_stack.pop_back();
     }
@@ -417,11 +462,11 @@ private:
   std::vector<double> m_stack;
   std::vector<double> m_ps_stack;
 
-  std::int32_t m_width{};
-  bool m_has_width{};
+  double m_width{};
   bool m_width_pending{};
   double m_sbx{};
-  bool m_sbx_pending{};
+  double m_sby{};
+  bool m_bearing_pending{};
   bool m_ended{};
 
   bool m_flex_active{};
@@ -434,9 +479,8 @@ private:
 
 namespace odr::internal::font {
 
-type1::Type2Charstring
-type1::to_type2(const std::string_view type1,
-                const std::span<const std::string> subrs) {
+std::string type1::to_type2(const std::string_view type1,
+                            const std::span<const std::string> subrs) {
   return Translator(subrs).run(type1);
 }
 

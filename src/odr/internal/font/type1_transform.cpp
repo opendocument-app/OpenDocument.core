@@ -5,6 +5,7 @@
 #include <odr/internal/font/type1_font.hpp>
 
 #include <cstddef>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -19,8 +20,14 @@ std::string type1::to_cff(const Type1Font &font) {
   glyphs.reserve(font.glyphs().size() + 1);
 
   const auto translate = [&](const Glyph &glyph) {
-    Type2Charstring t2 = to_type2(glyph.charstring, font.subrs());
-    glyphs.push_back({glyph.name, std::move(t2.charstring)});
+    // A charstring that does not translate becomes an empty glyph, so one
+    // broken glyph does not refuse the font.
+    std::string charstring(1, static_cast<char>(14));
+    try {
+      charstring = to_type2(glyph.charstring, font.subrs());
+    } catch (const std::runtime_error &) {
+    }
+    glyphs.push_back({glyph.name, std::move(charstring)});
   };
 
   // .notdef first.
