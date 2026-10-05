@@ -100,7 +100,7 @@ std::size_t ObjectReference::hash() const noexcept {
 }
 
 void ObjectReference::to_stream(std::ostream &out) const {
-  out << id << " " << gen << " R";
+  out << fmt::format("{} {} R", id, gen);
 }
 
 std::string ObjectReference::to_string() const {
@@ -178,7 +178,7 @@ void Object::to_stream(std::ostream &out) const {
       out << "false";
     }
   } else if (is_integer()) {
-    out << as_integer();
+    out << fmt::format("{}", as_integer());
   } else if (is_real()) {
     // 7.3.3 has no exponent form, and a stream would carry the host locale
     out << util::number::to_string_significant(as_real(), 10);

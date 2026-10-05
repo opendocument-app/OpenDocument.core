@@ -1,5 +1,8 @@
 #include <odr/internal/pdf/pdf_object_parser.hpp>
 
+#include <locale_util.hpp>
+
+#include <limits>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -88,6 +91,18 @@ TEST(PdfObjectParser, read_number) {
   EXPECT_DOUBLE_EQ(read_number("-.5"), -0.5);
   EXPECT_DOUBLE_EQ(read_number("+.5"), 0.5);
   EXPECT_DOUBLE_EQ(read_number("-7"), -7.0);
+  EXPECT_DOUBLE_EQ(read_number("0.123456789012345678901234567890"),
+                   0.12345678901234568);
+  EXPECT_DOUBLE_EQ(read_number("18446744073709551616.0"),
+                   18446744073709551616.0);
+  EXPECT_DOUBLE_EQ(read_number("1e3"), 1000.0);
+  EXPECT_DOUBLE_EQ(read_number("-2.5E-1"), -0.25);
+  for (const std::string input :
+       {".", "+.", "-.", "1.2.3", "1e", "1e+", "e3", "123abc", "+-5"}) {
+    SCOPED_TRACE(input);
+    EXPECT_THROW(read_number(input), std::runtime_error);
+  }
+  EXPECT_THROW(read_number(std::string(400, '9') + ".0"), std::runtime_error);
 }
 
 // 7.3.3: an unsigned integer is one or more digits. A missing number is an
@@ -97,6 +112,10 @@ TEST(PdfObjectParser, read_unsigned_integer) {
   EXPECT_EQ(read_unsigned_integer("0"), 0u);
   EXPECT_EQ(read_unsigned_integer("007"), 7u);
   EXPECT_EQ(read_unsigned_integer("42 0 obj"), 42u);
+  EXPECT_EQ(read_unsigned_integer("18446744073709551615"),
+            std::numeric_limits<UnsignedInteger>::max());
+  EXPECT_THROW(read_unsigned_integer("18446744073709551616"),
+               std::runtime_error);
   EXPECT_ANY_THROW(read_unsigned_integer("abc"));
   EXPECT_ANY_THROW(read_unsigned_integer("-5"));
   EXPECT_ANY_THROW(read_unsigned_integer(""));
@@ -118,6 +137,16 @@ TEST(PdfObjectParser, read_integer) {
   EXPECT_EQ(read_integer("-5"), -5);
   EXPECT_EQ(read_integer("+7"), 7);
   EXPECT_EQ(read_integer("0"), 0);
+  EXPECT_EQ(read_integer("9223372036854775807"),
+            std::numeric_limits<Integer>::max());
+  EXPECT_EQ(read_integer("-9223372036854775808"),
+            std::numeric_limits<Integer>::min());
+  for (const std::string input :
+       {"9223372036854775808", "-9223372036854775809"}) {
+    SCOPED_TRACE(input);
+    EXPECT_THROW(read_integer(input), std::runtime_error);
+    EXPECT_DOUBLE_EQ(read_object(input).first.as_real(), std::stod(input));
+  }
 }
 
 // skip_past advances just past the first occurrence of the marker and reports
@@ -313,6 +342,9 @@ TEST(PdfObjectParser, hex_string_pads_odd_digit) {
 
 // What `to_stream` writes, `read_object` reads back unchanged.
 TEST(PdfObjectParser, serialization_round_trips) {
+  const odr::test::LocaleGuard guard;
+  std::locale::global(
+      std::locale(std::locale::classic(), new odr::test::GroupedNumbers));
   const auto round_trip = [](const Object &object) {
     return read_object(object.to_string()).first;
   };
@@ -323,6 +355,12 @@ TEST(PdfObjectParser, serialization_round_trips) {
             "Odd #Name/With Spaces");
   EXPECT_DOUBLE_EQ(round_trip(Object(Real{0.00001})).as_real(), 0.00001);
   EXPECT_DOUBLE_EQ(round_trip(Object(Real{-612.345})).as_real(), -612.345);
+
+  EXPECT_EQ(round_trip(Object(Integer{1234567})).as_integer(), 1234567);
+  const auto [references, rest] = read_object(
+      Object(Array({Object(ObjectReference{1234, 5678})})).to_string());
+  EXPECT_EQ(references.as_array()[0].as_reference(),
+            (ObjectReference{1234, 5678}));
 
   Array array;
   array.holder().emplace_back(Integer{1});

@@ -6,6 +6,13 @@
 
 namespace odr::test {
 
+/// A decimal comma and grouped thousands, independent of installed locales.
+class GroupedNumbers final : public std::numpunct<char> {
+  char do_decimal_point() const override { return ','; }
+  char do_thousands_sep() const override { return '.'; }
+  std::string do_grouping() const override { return "\3"; }
+};
+
 /// Restores C and C++ locales, including after a failed assertion or skip.
 class LocaleGuard final {
 public:
