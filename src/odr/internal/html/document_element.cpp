@@ -1163,6 +1163,16 @@ void html::translate_image(const Element &element, const WritingState &state) {
                                     path, image.file(), false, false, true);
     resource_location =
         state.config().resource_locator(resource, state.config());
+    if (resource_location) {
+      const odr::HtmlResource *existing =
+          resource_at(state.resources(), *resource_location);
+      if (uri_kind(*resource_location) == UriKind::refused ||
+          (resource_location_taken(state.resources(), *resource_location) &&
+           (existing == nullptr || existing->is_shipped() ||
+            existing->path() != resource.path()))) {
+        resource_location.reset();
+      }
+    }
   } else if (loads_external_source(image.href(), state.config())) {
     resource =
         HtmlResource::create(HtmlResourceType::image, "image/jpg", "image",

@@ -367,6 +367,31 @@ void html::write_host_bridge_script(const WritingState &state) {
   write_script(host_bridge_js_asset, state);
 }
 
+HtmlResources html::locate_document_resources(const HtmlConfig &config,
+                                              const bool spreadsheet) {
+  static constexpr std::array assets{document_css_asset, search_css_asset,
+                                     search_js_asset, editing_js_asset,
+                                     viewport_js_asset};
+  static constexpr std::array dark{document_dark_css_asset,
+                                   search_dark_css_asset};
+  HtmlResources resources = locate_all(assets, dark, config);
+  if (config.editable) {
+    locate(document_js_asset, config, resources);
+  }
+  if (spreadsheet) {
+    locate(spreadsheet_css_asset, config, resources);
+    if (writes_dark_style(config)) {
+      locate(spreadsheet_dark_css_asset, config, resources);
+    }
+    locate(spreadsheet_js_asset, config, resources);
+    if (config.editable) {
+      locate(sheet_editing_js_asset, config, resources);
+    }
+  }
+  locate_host_bridge(config, resources);
+  return resources;
+}
+
 HtmlResources html::locate_filesystem_resources(const HtmlConfig &config) {
   static constexpr std::array assets{filesystem_css_asset, search_css_asset,
                                      search_js_asset, viewport_js_asset};

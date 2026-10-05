@@ -121,6 +121,48 @@ TEST(html, linked_images_are_served) {
   check("odr-public/xlsx/sample.xlsx");
 }
 
+TEST(html, document_images_yield_to_shipped_resources) {
+  for (const auto &[path, target] : std::array{
+           std::pair{"odr-public/odt/image-text-wrap.odt", "search.js"},
+           std::pair{"odr-public/odt/image-text-wrap.odt", "Search.JS"},
+           std::pair{"odr-public/docx/file-sample_100kB.docx",
+                     "host-bridge.js"},
+           std::pair{"odr-public/xlsx/sample.xlsx", "spreadsheet.css"}}) {
+    SCOPED_TRACE(path);
+    SCOPED_TRACE(target);
+    HtmlConfig config;
+    config.embed_images = false;
+    config.embed_shipped_resources = false;
+    config.host_message_handler = "host";
+    config.resource_locator = [target](const HtmlResource &resource,
+                                       const HtmlConfig &options) {
+      return resource.type() == HtmlResourceType::image
+                 ? HtmlResourceLocation(target)
+                 : html::standard_resource_locator()(resource, options);
+    };
+    const HtmlService service =
+        html::translate(open(TestData::test_file_path(path)), config);
+    std::ostringstream page;
+    const HtmlResources resources = service.list_views().at(0).write_html(page);
+    std::size_t images = 0;
+    for (const auto &[resource, location] : resources) {
+      if (resource.type() == HtmlResourceType::image) {
+        ++images;
+        EXPECT_FALSE(location.has_value());
+      } else if (resource.is_shipped() && location) {
+        std::ostringstream expected;
+        resource.write_resource(expected);
+        std::ostringstream served;
+        service.write(*location, served);
+        EXPECT_EQ(served.str(), expected.str()) << *location;
+        EXPECT_EQ(service.mimetype(*location), resource.mime_type());
+      }
+    }
+    EXPECT_GT(images, 0u);
+    EXPECT_NE(page.str().find(R"(src="data:image/)"), std::string::npos);
+  }
+}
+
 TEST(html, archive_entry_yields_to_each_shipped_resource) {
   const DecodedFile file =
       open(TestData::test_file_path("odr-public/odt/about.odt"),

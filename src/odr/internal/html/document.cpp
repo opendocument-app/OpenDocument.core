@@ -292,7 +292,8 @@ HtmlResources
 render(const Document &document, const HtmlConfig &config, const Logger &logger,
        HtmlWriter &out, const std::string &name,
        const std::optional<double> content_pixels, Write &&write) {
-  HtmlResources resources;
+  HtmlResources resources = locate_document_resources(
+      config, document.document_type() == DocumentType::spreadsheet);
 
   const auto body = [&](const WritingState &state) {
     write_body_begin(document, state);

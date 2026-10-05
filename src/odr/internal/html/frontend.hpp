@@ -68,6 +68,8 @@ void write_host_bridge_script(const WritingState &state);
 /// What the corresponding `write_*` calls would link, without writing anything:
 /// a service has to answer for these paths as well as for its views. Every
 /// entry is located `nullopt` when the config embeds them.
+HtmlResources locate_document_resources(const HtmlConfig &config,
+                                        bool spreadsheet);
 HtmlResources locate_filesystem_resources(const HtmlConfig &config);
 HtmlResources locate_text_resources(const HtmlConfig &config);
 HtmlResources locate_xml_resources(const HtmlConfig &config);

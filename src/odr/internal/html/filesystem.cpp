@@ -168,10 +168,7 @@ public:
     if (location.has_value() &&
         (uri_kind(*location) == UriKind::refused ||
          util::string::equals_ignore_case(*location, listing_path) ||
-         std::ranges::any_of(state.resources(), [&](const auto &entry) {
-           return entry.second &&
-                  util::string::equals_ignore_case(*entry.second, *location);
-         }))) {
+         resource_location_taken(state.resources(), *location))) {
       return std::nullopt;
     }
 
