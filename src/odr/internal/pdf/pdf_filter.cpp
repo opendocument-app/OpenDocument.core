@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -117,18 +118,45 @@ std::string apply_filter(const std::string &name, const Object &parms,
   throw std::runtime_error("unknown stream filter: " + name);
 }
 
-std::string apply_tiff_predictor(std::string data, const Integer colors,
-                                 const Integer bits_per_component,
+struct PredictorLayout {
+  std::size_t row_bytes;
+  std::size_t pixel_bytes;
+};
+
+PredictorLayout predictor_layout(const Integer colors, const Integer bits,
                                  const Integer columns) {
+  if (colors <= 0 || columns <= 0 ||
+      (bits != 1 && bits != 2 && bits != 4 && bits != 8 && bits != 16)) {
+    throw std::runtime_error("invalid PDF predictor dimensions");
+  }
+  constexpr auto max_bits = std::numeric_limits<std::uint64_t>::max() - 7;
+  if (static_cast<std::uint64_t>(colors) > max_bits / bits) {
+    throw std::runtime_error("PDF predictor pixel size overflow");
+  }
+  const auto pixel_bits = static_cast<std::uint64_t>(colors) * bits;
+  if (static_cast<std::uint64_t>(columns) > max_bits / pixel_bits) {
+    throw std::runtime_error("PDF predictor row size overflow");
+  }
+  const auto row_bytes =
+      (static_cast<std::uint64_t>(columns) * pixel_bits + 7) / 8;
+  if (row_bytes >= std::string{}.max_size()) {
+    throw std::runtime_error("PDF predictor row is too large");
+  }
+  return {static_cast<std::size_t>(row_bytes),
+          static_cast<std::size_t>((pixel_bits + 7) / 8)};
+}
+
+std::string apply_tiff_predictor(std::string data,
+                                 const Integer bits_per_component,
+                                 const PredictorLayout layout) {
   if (bits_per_component != 8 && bits_per_component != 16) {
     throw std::runtime_error("unsupported TIFF predictor bits per component: " +
                              std::to_string(bits_per_component));
   }
 
   const std::size_t component_bytes = bits_per_component / 8;
-  const std::size_t pixel_bytes = colors * component_bytes;
-  const std::size_t row_bytes = columns * pixel_bytes;
-  if (row_bytes == 0 || data.size() % row_bytes != 0) {
+  const auto [row_bytes, pixel_bytes] = layout;
+  if (data.size() % row_bytes != 0) {
     throw std::runtime_error("TIFF predictor: data not a whole number of rows");
   }
 
@@ -155,14 +183,14 @@ std::string apply_tiff_predictor(std::string data, const Integer colors,
   return data;
 }
 
-std::string apply_png_predictor(const std::string &data, const Integer colors,
-                                const Integer bits_per_component,
-                                const Integer columns) {
-  const std::size_t row_bytes = (columns * colors * bits_per_component + 7) / 8;
-  const std::size_t pixel_bytes =
-      std::max<Integer>(1, colors * bits_per_component / 8);
-  if (row_bytes == 0 || data.size() % (row_bytes + 1) != 0) {
+std::string apply_png_predictor(const std::string &data,
+                                const PredictorLayout layout) {
+  const auto [row_bytes, pixel_bytes] = layout;
+  if (data.size() % (row_bytes + 1) != 0) {
     throw std::runtime_error("PNG predictor: data not a whole number of rows");
+  }
+  if (data.empty()) {
+    return {};
   }
 
   std::string result;
@@ -490,11 +518,13 @@ std::string pdf::apply_predictor(std::string data, const Integer predictor,
     return data;
   }
   if (predictor == 2) {
-    return apply_tiff_predictor(std::move(data), colors, bits_per_component,
-                                columns);
+    return apply_tiff_predictor(
+        std::move(data), bits_per_component,
+        predictor_layout(colors, bits_per_component, columns));
   }
   if (predictor >= 10 && predictor <= 15) {
-    return apply_png_predictor(data, colors, bits_per_component, columns);
+    return apply_png_predictor(
+        data, predictor_layout(colors, bits_per_component, columns));
   }
   throw std::runtime_error("unknown predictor: " + std::to_string(predictor));
 }

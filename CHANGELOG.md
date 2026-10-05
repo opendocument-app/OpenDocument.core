@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF PNG prediction handles packed multi-component pixels correctly. TIFF
+  and PNG predictors reject invalid dimensions and overflowing row sizes.
+
 - PDF numeric parsing rejects overflowing integers and malformed numbers;
   long decimal fractions retain their value instead of wrapping. Written PDF
   integers and references no longer inherit the host locale.
