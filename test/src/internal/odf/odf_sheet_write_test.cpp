@@ -655,8 +655,8 @@ TEST(OdfSheetWrite, a_boolean_is_written_as_its_value_and_text) {
   EXPECT_EQ(value.text(), "TRUE");
 }
 
-/// No form to write these in yet, and the refusal leaves the cell as it was.
-TEST(OdfSheetWrite, a_date_a_time_and_an_error_refuse_to_be_written) {
+TEST(OdfSheetWrite,
+     missing_date_or_time_values_and_errors_leave_the_cell_alone) {
   const Document document = document_of(flat_sheet(string_cell("old")));
   const Sheet sheet = first_sheet(document);
 
@@ -816,16 +816,6 @@ TEST(OdfSheetWrite, a_date_takes_the_names_of_its_style_language) {
 
   EXPECT_NE(saved_of(document).find("<text:p>15 марта</text:p>"),
             std::string::npos);
-}
-
-TEST(OdfSheetWrite, a_date_without_its_number_refuses) {
-  const Document document = dated_sheet();
-
-  EXPECT_THROW(first_sheet(document).set_cell(
-                   2, 0, CellValue(ValueType::time).with_number(1e300)),
-               UnsupportedOperation);
-  EXPECT_THROW(first_sheet(document).set_cell(1, 0, CellValue(ValueType::date)),
-               UnsupportedOperation);
 }
 
 TEST(OdfSheetWrite, a_date_or_a_time_out_of_range_refuses) {

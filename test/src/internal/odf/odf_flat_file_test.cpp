@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
@@ -113,19 +114,20 @@ TEST(FlatOdf, missing_related_elements_return_empty_handles) {
 }
 
 TEST(FlatOpenDocumentFile, the_root_mimetype_names_the_document_type) {
-  const struct {
+  struct Case {
     const char *mimetype;
     FileType file_type;
     DocumentType document_type;
-  } cases[]{
-      {"application/vnd.oasis.opendocument.text", FileType::opendocument_text,
-       DocumentType::text},
-      {"application/vnd.oasis.opendocument.presentation",
-       FileType::opendocument_presentation, DocumentType::presentation},
-      {"application/vnd.oasis.opendocument.spreadsheet",
-       FileType::opendocument_spreadsheet, DocumentType::spreadsheet},
-      {"application/vnd.oasis.opendocument.graphics",
-       FileType::opendocument_graphics, DocumentType::drawing},
+  };
+  const std::array cases{
+      Case{"application/vnd.oasis.opendocument.text",
+           FileType::opendocument_text, DocumentType::text},
+      Case{"application/vnd.oasis.opendocument.presentation",
+           FileType::opendocument_presentation, DocumentType::presentation},
+      Case{"application/vnd.oasis.opendocument.spreadsheet",
+           FileType::opendocument_spreadsheet, DocumentType::spreadsheet},
+      Case{"application/vnd.oasis.opendocument.graphics",
+           FileType::opendocument_graphics, DocumentType::drawing},
   };
 
   for (const auto &[mimetype, file_type, document_type] : cases) {
