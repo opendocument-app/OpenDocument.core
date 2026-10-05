@@ -208,13 +208,11 @@ TEST(OdfSheetStyle, a_fill_taken_away_is_written_transparent) {
     const Sheet sheet = first_sheet(document);
     sheet.set_cell_style(0, 0, fill(Color(0, 0, 0, 0)), {});
 
-    const auto check = [](const Sheet &sheet) {
-      const auto color = sheet.cell_style(0, 0).background_color;
-      ASSERT_TRUE(color);
-      EXPECT_EQ(color->alpha, 0);
-    };
-    check(sheet);
-    check(first_sheet(document_of(saved(document))));
+    EXPECT_EQ(fill_at(sheet, 0, 0), std::nullopt);
+    EXPECT_NE(saved(document).find(R"(fo:background-color="transparent")"),
+              std::string::npos);
+    EXPECT_EQ(fill_at(first_sheet(document_of(saved(document))), 0, 0),
+              std::nullopt);
   }
 }
 
@@ -233,15 +231,12 @@ TEST(OdfSheetStyle, explicit_transparency_and_no_border_override_inheritance) {
       R"(</style:style>)"));
   const Sheet sheet = first_sheet(document);
   const TableCellStyle style = sheet.cell_style(0, 0);
-  ASSERT_TRUE(style.background_color);
-  EXPECT_EQ(style.background_color->alpha, 0);
-  EXPECT_EQ(style.border.top, "none");
-  EXPECT_EQ(style.border.right, "none");
-  EXPECT_EQ(style.border.bottom, "none");
+  EXPECT_EQ(style.background_color, std::nullopt);
+  EXPECT_EQ(style.border.top, std::nullopt);
+  EXPECT_EQ(style.border.right, std::nullopt);
+  EXPECT_EQ(style.border.bottom, std::nullopt);
   EXPECT_EQ(style.border.left, "1pt solid #000000");
-  const TextStyle text = text_style_of(sheet, 0);
-  ASSERT_TRUE(text.background_color);
-  EXPECT_EQ(text.background_color->alpha, 0);
+  EXPECT_EQ(text_style_of(sheet, 0).background_color, std::nullopt);
 }
 
 TEST(OdfSheetStyle, an_alignment_is_fixed_on_the_cell) {
