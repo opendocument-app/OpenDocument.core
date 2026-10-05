@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF calculator functions distinguish booleans, integers and reals; correct
+  bit shifts and rounding; and reject invalid arithmetic and operand types.
+
 - PDF functions reject non-finite values and invalid exponential domains,
   and interpolate large finite intervals without intermediate overflow.
 

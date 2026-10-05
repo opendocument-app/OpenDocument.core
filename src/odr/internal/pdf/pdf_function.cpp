@@ -219,25 +219,17 @@ private:
 
 // --- type 4: PostScript calculator (ISO 32000-1 7.10.5) --------------------
 
-/// The integer operand of `idiv`/`mod`/the bitwise operators. Every type-4
-/// value is held as a `double`, and converting one outside the destination
-/// range is undefined behaviour, so saturate to the 32-bit signed range a
-/// PostScript integer occupies and map NaN to zero.
-std::int32_t to_int32(const double v) {
-  constexpr auto lowest =
-      static_cast<double>(std::numeric_limits<std::int32_t>::min());
-  constexpr auto highest =
-      static_cast<double>(std::numeric_limits<std::int32_t>::max());
-  if (std::isnan(v)) {
-    return 0;
-  }
-  return static_cast<std::int32_t>(std::clamp(v, lowest, highest));
-}
+struct CalculatorNumber {
+  double value{};
+  bool integer{};
+};
 
-/// Whether `x / y` (and `x % y`) is undefined in C++: a zero divisor, or the
-/// non-representable `INT32_MIN / -1`.
-bool is_undefined_division(const std::int32_t x, const std::int32_t y) {
-  return y == 0 || (y == -1 && x == std::numeric_limits<std::int32_t>::min());
+CalculatorNumber calculator_number(const double value, const bool integer) {
+  if (!std::isfinite(value)) {
+    throw std::runtime_error("non-finite calculator number");
+  }
+  return {value, integer && value >= std::numeric_limits<std::int32_t>::min() &&
+                     value <= std::numeric_limits<std::int32_t>::max()};
 }
 
 /// One token of a type-4 program: a literal number, an operator name, or a
@@ -245,7 +237,7 @@ bool is_undefined_division(const std::int32_t x, const std::int32_t y) {
 struct PostScriptItem {
   enum class Kind { number, op, block };
   Kind kind{Kind::op};
-  double number{0};
+  CalculatorNumber number;
   std::string op;
   std::vector<PostScriptItem> block;
 };
@@ -262,7 +254,7 @@ protected:
     std::vector<Item> stack;
     stack.reserve(in.size());
     for (const double x : in) {
-      stack.emplace_back(x);
+      stack.emplace_back(CalculatorNumber{x, false});
     }
     try {
       std::size_t remaining = 100000;
@@ -274,10 +266,7 @@ protected:
       }
       std::vector<double> out(n);
       for (std::size_t j = n; j-- > 0;) {
-        out[j] = pop_number(stack);
-        if (!std::isfinite(out[j])) {
-          throw std::runtime_error("non-finite calculator result");
-        }
+        out[j] = pop_number(stack).value;
       }
       return out;
     } catch (const std::exception &) {
@@ -286,34 +275,36 @@ protected:
   }
 
 private:
-  using Item = std::variant<double, const std::vector<PostScriptItem> *>;
+  using Item =
+      std::variant<CalculatorNumber, bool, const std::vector<PostScriptItem> *>;
 
-  static double pop_number(std::vector<Item> &s) {
+  static Item pop(std::vector<Item> &s) {
     if (s.empty()) {
       throw std::runtime_error("stack underflow");
     }
-    const double v = std::get<double>(s.back());
+    const Item value = s.back();
     s.pop_back();
-    return v;
+    return value;
+  }
+
+  static CalculatorNumber pop_number(std::vector<Item> &s) {
+    return std::get<CalculatorNumber>(pop(s));
+  }
+
+  static bool pop_boolean(std::vector<Item> &s) {
+    return std::get<bool>(pop(s));
   }
 
   static const std::vector<PostScriptItem> *pop_block(std::vector<Item> &s) {
-    if (s.empty()) {
-      throw std::runtime_error("stack underflow");
-    }
-    const auto *b = std::get<const std::vector<PostScriptItem> *>(s.back());
-    s.pop_back();
-    return b;
+    return std::get<const std::vector<PostScriptItem> *>(pop(s));
   }
 
   static std::int32_t pop_integer(std::vector<Item> &s) {
-    const double value = pop_number(s);
-    if (!std::isfinite(value) || std::trunc(value) != value ||
-        value < std::numeric_limits<std::int32_t>::min() ||
-        value > std::numeric_limits<std::int32_t>::max()) {
+    const CalculatorNumber value = pop_number(s);
+    if (!value.integer) {
       throw std::runtime_error("invalid calculator integer");
     }
-    return static_cast<std::int32_t>(value);
+    return static_cast<std::int32_t>(value.value);
   }
 
   static std::size_t pop_count(std::vector<Item> &s) {
@@ -357,86 +348,108 @@ private:
 
   static void run_op(const std::string &op, std::vector<Item> &s,
                      std::size_t &remaining, const std::size_t depth) {
-    const auto unary = [&](double (*f)(double)) {
-      s.emplace_back(f(pop_number(s)));
+    const auto unary = [&](double (*f)(double), const bool preserve = false) {
+      const CalculatorNumber a = pop_number(s);
+      s.emplace_back(calculator_number(f(a.value), preserve && a.integer));
     };
-    const auto binary = [&](double (*f)(double, double)) {
-      const double b = pop_number(s);
-      const double a = pop_number(s);
-      s.emplace_back(f(a, b));
+    const auto binary = [&](double (*f)(double, double),
+                            const bool preserve = false) {
+      const CalculatorNumber b = pop_number(s);
+      const CalculatorNumber a = pop_number(s);
+      s.emplace_back(calculator_number(f(a.value, b.value),
+                                       preserve && a.integer && b.integer));
     };
 
     if (op == "add") {
-      binary([](double a, double b) { return a + b; });
+      binary([](double a, double b) { return a + b; }, true);
     } else if (op == "sub") {
-      binary([](double a, double b) { return a - b; });
+      binary([](double a, double b) { return a - b; }, true);
     } else if (op == "mul") {
-      binary([](double a, double b) { return a * b; });
+      binary([](double a, double b) { return a * b; }, true);
     } else if (op == "div") {
-      binary([](double a, double b) { return b == 0 ? 0.0 : a / b; });
-    } else if (op == "idiv") {
-      binary([](const double a, const double b) {
-        const std::int32_t x = to_int32(a);
-        const std::int32_t y = to_int32(b);
-        // A zero divisor already yielded 0 before; INT32_MIN / -1 joins it.
-        if (is_undefined_division(x, y)) {
-          return 0.0;
+      binary([](double a, double b) {
+        if (b == 0) {
+          throw std::runtime_error("calculator division by zero");
         }
-        // NOLINTNEXTLINE(bugprone-integer-division): idiv is integer division
-        return static_cast<double>(x / y);
+        return a / b;
       });
-    } else if (op == "mod") {
-      binary([](const double a, const double b) {
-        const std::int32_t x = to_int32(a);
-        const std::int32_t y = to_int32(b);
-        return is_undefined_division(x, y) ? 0.0 : static_cast<double>(x % y);
-      });
+    } else if (op == "idiv" || op == "mod") {
+      const std::int32_t b = pop_integer(s);
+      const std::int32_t a = pop_integer(s);
+      if (b == 0 || (op == "idiv" && b == -1 &&
+                     a == std::numeric_limits<std::int32_t>::min())) {
+        throw std::runtime_error("undefined calculator integer division");
+      }
+      const std::int32_t result = op == "idiv" ? a / b : b == -1 ? 0 : a % b;
+      s.emplace_back(CalculatorNumber{static_cast<double>(result), true});
     } else if (op == "neg") {
-      unary([](double a) { return -a; });
+      unary([](double a) { return -a; }, true);
     } else if (op == "abs") {
-      unary([](double a) { return std::abs(a); });
+      unary([](double a) { return std::abs(a); }, true);
     } else if (op == "sqrt") {
-      unary([](double a) { return std::sqrt(std::max(0.0, a)); });
+      unary([](double a) { return std::sqrt(a); });
     } else if (op == "sin") {
       unary([](double a) { return std::sin(a / deg); });
     } else if (op == "cos") {
       unary([](double a) { return std::cos(a / deg); });
     } else if (op == "atan") {
-      const double den = pop_number(s);
-      const double num = pop_number(s);
+      const double den = pop_number(s).value;
+      const double num = pop_number(s).value;
+      if (num == 0 && den == 0) {
+        throw std::runtime_error("undefined calculator angle");
+      }
       double a = std::atan2(num, den) * deg;
       if (a < 0) {
         a += 360;
       }
-      s.emplace_back(a);
+      s.emplace_back(calculator_number(a, false));
     } else if (op == "exp") {
       binary([](double a, double b) { return std::pow(a, b); });
     } else if (op == "ln") {
-      unary([](double a) { return std::log(std::max(1e-12, a)); });
+      unary([](double a) { return std::log(a); });
     } else if (op == "log") {
-      unary([](double a) { return std::log10(std::max(1e-12, a)); });
-    } else if (op == "cvi" || op == "truncate") {
-      unary([](double a) { return std::trunc(a); });
+      unary([](double a) { return std::log10(a); });
+    } else if (op == "cvi") {
+      const CalculatorNumber value =
+          calculator_number(std::trunc(pop_number(s).value), true);
+      if (!value.integer) {
+        throw std::runtime_error("calculator integer overflow");
+      }
+      s.emplace_back(value);
+    } else if (op == "truncate") {
+      unary([](double a) { return std::trunc(a); }, true);
     } else if (op == "cvr") {
-      // no-op: every value is already real
+      s.emplace_back(CalculatorNumber{pop_number(s).value, false});
     } else if (op == "floor") {
-      unary([](double a) { return std::floor(a); });
+      unary([](double a) { return std::floor(a); }, true);
     } else if (op == "ceiling") {
-      unary([](double a) { return std::ceil(a); });
+      unary([](double a) { return std::ceil(a); }, true);
     } else if (op == "round") {
-      unary([](double a) { return std::round(a); });
-    } else if (op == "eq") {
-      binary([](double a, double b) { return a == b ? 1.0 : 0.0; });
-    } else if (op == "ne") {
-      binary([](double a, double b) { return a != b ? 1.0 : 0.0; });
-    } else if (op == "gt") {
-      binary([](double a, double b) { return a > b ? 1.0 : 0.0; });
-    } else if (op == "ge") {
-      binary([](double a, double b) { return a >= b ? 1.0 : 0.0; });
-    } else if (op == "lt") {
-      binary([](double a, double b) { return a < b ? 1.0 : 0.0; });
-    } else if (op == "le") {
-      binary([](double a, double b) { return a <= b ? 1.0 : 0.0; });
+      unary(
+          [](double a) {
+            const double lower = std::floor(a);
+            return a - lower < 0.5 ? lower : lower + 1;
+          },
+          true);
+    } else if (op == "eq" || op == "ne") {
+      const Item b = pop(s);
+      const Item a = pop(s);
+      bool equal = false;
+      if (const auto *number = std::get_if<CalculatorNumber>(&a)) {
+        const auto *other = std::get_if<CalculatorNumber>(&b);
+        equal = other != nullptr && number->value == other->value;
+      } else if (const auto *boolean = std::get_if<bool>(&a)) {
+        const auto *other = std::get_if<bool>(&b);
+        equal = other != nullptr && *boolean == *other;
+      }
+      s.emplace_back(op == "eq" ? equal : !equal);
+    } else if (op == "gt" || op == "ge" || op == "lt" || op == "le") {
+      const double b = pop_number(s).value;
+      const double a = pop_number(s).value;
+      s.emplace_back(op == "gt"   ? a > b
+                     : op == "ge" ? a >= b
+                     : op == "lt" ? a < b
+                                  : a <= b);
     } else if (op == "and") {
       bitwise_or_logical(
           s, [](std::int32_t a, std::int32_t b) { return a & b; },
@@ -450,28 +463,26 @@ private:
           s, [](std::int32_t a, std::int32_t b) { return a ^ b; },
           [](bool a, bool b) { return a != b; });
     } else if (op == "not") {
-      const double a = pop_number(s);
-      if (a == 0.0 || a == 1.0) {
-        s.emplace_back(a == 0.0 ? 1.0 : 0.0);
+      if (!s.empty() && std::holds_alternative<bool>(s.back())) {
+        s.emplace_back(!pop_boolean(s));
       } else {
-        s.emplace_back(static_cast<double>(~to_int32(a)));
+        s.emplace_back(
+            CalculatorNumber{static_cast<double>(~pop_integer(s)), true});
       }
     } else if (op == "bitshift") {
-      const double shift = pop_number(s);
-      const std::int32_t value = to_int32(pop_number(s));
-      // Shifting a 32-bit value by 32 or more is undefined in C++; PostScript
-      // shifts every bit out. (The comparison also catches a NaN shift.)
-      const double magnitude = std::abs(shift);
-      const std::int32_t by =
-          magnitude < 32.0 ? static_cast<std::int32_t>(magnitude) : 32;
-      s.emplace_back(static_cast<double>(
-          by == 32 ? 0 : (shift >= 0 ? value << by : value >> by)));
+      const std::int32_t shift = pop_integer(s);
+      const auto value = static_cast<std::uint32_t>(pop_integer(s));
+      const std::uint32_t result = shift <= -32 || shift >= 32 ? 0
+                                   : shift >= 0                ? value << shift
+                                                : value >> -shift;
+      s.emplace_back(CalculatorNumber{
+          static_cast<double>(static_cast<std::int32_t>(result)), true});
     } else if (op == "true") {
-      s.emplace_back(1.0);
+      s.emplace_back(true);
     } else if (op == "false") {
-      s.emplace_back(0.0);
+      s.emplace_back(false);
     } else if (op == "pop") {
-      pop_number(s);
+      pop(s);
     } else if (op == "exch") {
       const Item b = s.at(s.size() - 1);
       const Item a = s.at(s.size() - 2);
@@ -503,15 +514,15 @@ private:
       }
     } else if (op == "if") {
       const auto *proc = pop_block(s);
-      const double cond = pop_number(s);
-      if (cond != 0.0) {
+      const bool cond = pop_boolean(s);
+      if (cond) {
         run(*proc, s, remaining, depth + 1);
       }
     } else if (op == "ifelse") {
       const auto *proc2 = pop_block(s);
       const auto *proc1 = pop_block(s);
-      const double cond = pop_number(s);
-      run(cond != 0.0 ? *proc1 : *proc2, s, remaining, depth + 1);
+      const bool cond = pop_boolean(s);
+      run(cond ? *proc1 : *proc2, s, remaining, depth + 1);
     } else {
       throw std::runtime_error("unknown PostScript operator: " + op);
     }
@@ -520,13 +531,14 @@ private:
   template <typename IntOp, typename BoolOp>
   static void bitwise_or_logical(std::vector<Item> &s, IntOp int_op,
                                  BoolOp bool_op) {
-    const double b = pop_number(s);
-    const double a = pop_number(s);
-    const bool boolean = (a == 0.0 || a == 1.0) && (b == 0.0 || b == 1.0);
-    if (boolean) {
-      s.emplace_back(bool_op(a != 0.0, b != 0.0) ? 1.0 : 0.0);
+    if (!s.empty() && std::holds_alternative<bool>(s.back())) {
+      const bool b = pop_boolean(s);
+      const bool a = pop_boolean(s);
+      s.emplace_back(bool_op(a, b));
     } else {
-      s.emplace_back(static_cast<double>(int_op(to_int32(a), to_int32(b))));
+      const std::int32_t b = pop_integer(s);
+      const std::int32_t a = pop_integer(s);
+      s.emplace_back(CalculatorNumber{static_cast<double>(int_op(a, b)), true});
     }
   }
 
@@ -579,7 +591,8 @@ parse_postscript(const std::string &text, std::size_t &pos,
           return std::nullopt;
         }
         item.kind = PostScriptItem::Kind::number;
-        item.number = *number;
+        item.number = calculator_number(*number, token.find_first_of(".eE") ==
+                                                     std::string_view::npos);
       } else {
         item.kind = PostScriptItem::Kind::op;
         item.op = token;
