@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- SFNT fonts check character-map ranges before they expand them. A broken or
+  unsupported character map no longer hides the next supported one.
+
 - Legacy Office reports unencrypted documents as decodable and derives metadata
   from the shared file-type table.
 

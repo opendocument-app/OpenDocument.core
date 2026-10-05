@@ -5,7 +5,9 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -311,4 +313,104 @@ TEST(SfntFont, write_pads_a_short_hmtx) {
   }
   EXPECT_EQ(hmtx_length, 2 * 4 + 3 * 2);
   EXPECT_EQ(SfntFont(written).advance_width(4), 600);
+}
+
+TEST(SfntFont, rejects_invalid_headers_and_clips_quirky_ranges) {
+  EXPECT_THROW(SfntFont(std::string(12, '\0')), std::runtime_error);
+  std::string collection("ttcf");
+  collection.resize(16, '\0');
+  EXPECT_THROW(SfntFont{collection}, std::runtime_error);
+
+  std::string bytes = sample_font(cmap_table(3, 1, cmap_format4('A', 3)));
+  std::string clipped = bytes;
+  bs::write_u32_be(clipped, 24, static_cast<std::uint32_t>(bytes.size()));
+  EXPECT_EQ(SfntFont(clipped).glyph_for_code_point('B'), 2);
+  bs::write_u32_be(bytes, 20, static_cast<std::uint32_t>(bytes.size() + 1));
+  EXPECT_THROW(SfntFont{bytes}, std::runtime_error);
+
+  std::string head = head_table();
+  bs::write_u16_be(head, 18, 0);
+  EXPECT_THROW(SfntFont(build_sfnt({{"head", head}})), std::runtime_error);
+
+  std::string name = name_table("A");
+  bs::write_u16_be(name, 14, 4);
+  EXPECT_EQ(SfntFont(build_sfnt({{"name", name}})).name(), "A");
+  bs::write_u16_be(name, 14, 1);
+  EXPECT_EQ(SfntFont(build_sfnt({{"name", name}})).name(), "");
+}
+
+TEST(SfntFont, drops_an_invalid_cmap_and_keeps_the_font) {
+  const std::string valid = cmap_format12(0x1f600, 2);
+  const std::array<std::pair<std::size_t, std::uint32_t>, 5> patches{
+      {{20, std::numeric_limits<std::uint32_t>::max()},
+       {20, 0x1f5ff},
+       {24, 0xFFFF},
+       {12, 2},
+       {4, 16}}};
+  for (const auto &[offset, value] : patches) {
+    std::string subtable = valid;
+    bs::write_u32_be(subtable, offset, value);
+    const SfntFont font(sample_font(cmap_table(3, 10, subtable)));
+    EXPECT_TRUE(font.cmap().empty());
+    EXPECT_EQ(font.advance_width(1), 600);
+  }
+  std::string overlapping = valid;
+  overlapping += valid.substr(16);
+  bs::write_u32_be(overlapping, 4,
+                   static_cast<std::uint32_t>(overlapping.size()));
+  bs::write_u32_be(overlapping, 12, 2);
+  EXPECT_TRUE(
+      SfntFont(sample_font(cmap_table(3, 10, overlapping))).cmap().empty());
+
+  std::string short_subtable = cmap_format4('A', 3);
+  bs::write_u16_be(short_subtable, 2, 16);
+  EXPECT_TRUE(
+      SfntFont(sample_font(cmap_table(3, 1, short_subtable))).cmap().empty());
+  short_subtable = cmap_format4('A', 3);
+  bs::write_u16_be(short_subtable, 6, 3);
+  EXPECT_TRUE(
+      SfntFont(sample_font(cmap_table(3, 1, short_subtable))).cmap().empty());
+}
+
+TEST(SfntFont, skips_a_format4_segment_out_of_order) {
+  std::string subtable = cmap_format4('A', 3);
+  bs::write_u16_be(subtable, 14, 'A' - 1); // endCode[0] below startCode[0]
+  const SfntFont font(sample_font(cmap_table(3, 1, subtable)));
+  EXPECT_EQ(font.glyph_for_code_point('A'), 0);
+}
+
+namespace {
+
+/// One cmap with a (0, 6) record for @p first and a (3, 1) record for a valid
+/// format-4 subtable after it.
+std::string cmap_with_fallback(const std::string &first) {
+  std::string cmap;
+  bs::put_u16_be(cmap, 0);
+  bs::put_u16_be(cmap, 2);
+  bs::put_u16_be(cmap, 0);
+  bs::put_u16_be(cmap, 6); // Unicode full repertoire.
+  bs::put_u32_be(cmap, 20);
+  bs::put_u16_be(cmap, 3);
+  bs::put_u16_be(cmap, 1);
+  bs::put_u32_be(cmap, static_cast<std::uint32_t>(20 + first.size()));
+  cmap += first;
+  std::string supported = cmap_format4('A', 3);
+  bs::write_u16_be(supported, 30, 0xFFFF); // The terminator offset is unused.
+  cmap += supported;
+  return cmap;
+}
+
+} // namespace
+
+TEST(SfntFont, unsupported_cmap_does_not_hide_a_supported_one) {
+  std::string unsupported;
+  bs::put_u16_be(unsupported, 13);
+  EXPECT_EQ(SfntFont(sample_font(cmap_with_fallback(unsupported)))
+                .glyph_for_code_point('B'),
+            2);
+  std::string broken = cmap_format12(0x1f600, 2);
+  bs::write_u32_be(broken, 20, 0x1f5ff);
+  EXPECT_EQ(SfntFont(sample_font(cmap_with_fallback(broken)))
+                .glyph_for_code_point('B'),
+            2);
 }
