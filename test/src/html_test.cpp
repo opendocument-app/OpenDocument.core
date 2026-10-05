@@ -121,42 +121,70 @@ TEST(html, linked_images_are_served) {
   check("odr-public/xlsx/sample.xlsx");
 }
 
-// The one archive the reference-output suite renders has no directory in it.
-// An archive may hold a file named like the stylesheet. Forcing the collision
-// through the locator saves needing such an archive in the test data.
-TEST(html, archive_entry_yields_to_a_shipped_resource) {
-  const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
-
+TEST(html, archive_entry_yields_to_each_shipped_resource) {
   const DecodedFile file =
       open(TestData::test_file_path("odr-public/odt/about.odt"),
-           DecodeOptions::as(FileType::zip), logger);
-
-  HtmlConfig config((std::filesystem::current_path() / "collision").string());
-  config.embed_shipped_resources = false;
-  config.resource_locator = [](const HtmlResource &resource,
-                               const HtmlConfig &) -> HtmlResourceLocation {
-    return resource.is_shipped() ? "content.xml" : resource.path();
-  };
-
-  std::ostringstream out;
-  const HtmlResources resources =
-      html::translate(file, config, logger).list_views().at(0).write_html(out);
-
-  // The locator puts every shipped resource on that one location, so what the
-  // count says is that the entry of that name is not among them.
-  std::size_t shipped = 0;
-  std::size_t claimants = 0;
-  for (const auto &[resource, location] : resources) {
-    if (resource.is_shipped()) {
-      ++shipped;
+           DecodeOptions::as(FileType::zip));
+  for (const std::string asset : {"filesystem.css", "search.js", "viewport.js",
+                                  "host-bridge.js", "SEARCH.JS"}) {
+    HtmlConfig config;
+    config.embed_shipped_resources = false;
+    config.host_message_handler = "host";
+    config.resource_locator =
+        [asset](const HtmlResource &resource,
+                const HtmlConfig &) -> HtmlResourceLocation {
+      return resource.is_shipped() &&
+                     resource.name() ==
+                         (asset == "SEARCH.JS" ? "search.js" : asset)
+                 ? (asset == "SEARCH.JS" ? "CONTENT.XML" : "content.xml")
+                 : resource.path();
+    };
+    const HtmlService service = html::translate(file, config);
+    std::ostringstream out;
+    const HtmlResources resources = service.list_views().at(0).write_html(out);
+    std::size_t claimants = 0;
+    for (const auto &[resource, location] : resources) {
+      if (location == "content.xml" || location == "CONTENT.XML") {
+        ++claimants;
+        EXPECT_TRUE(resource.is_shipped());
+        EXPECT_EQ(resource.name(), asset == "SEARCH.JS" ? "search.js" : asset);
+      }
     }
-    if (location.has_value() && *location == "content.xml") {
-      ++claimants;
-      EXPECT_TRUE(resource.is_shipped());
+    EXPECT_EQ(claimants, 1u);
+    std::ostringstream served;
+    const std::string path =
+        asset == "SEARCH.JS" ? "CONTENT.XML" : "content.xml";
+    service.write(path, served);
+    EXPECT_FALSE(served.str().starts_with("<?xml"));
+    EXPECT_EQ(service.mimetype(path),
+              asset.ends_with(".css") ? "text/css" : "text/javascript");
+  }
+}
+
+TEST(html, archive_entry_links_use_the_uri_policy) {
+  const DecodedFile file =
+      open(TestData::test_file_path("odr-public/odt/about.odt"),
+           DecodeOptions::as(FileType::zip));
+  for (const std::string location :
+       {"javascript:alert(1)", "files.html", "https://example.com/file"}) {
+    HtmlConfig config;
+    config.resource_locator =
+        [location](const HtmlResource &resource,
+                   const HtmlConfig &) -> HtmlResourceLocation {
+      return resource.is_shipped() ? std::nullopt : std::optional(location);
+    };
+    std::ostringstream out;
+    html::translate(file, config).list_views().at(0).write_html(out);
+    const std::string page = out.str();
+    if (location != "https://example.com/file") {
+      EXPECT_EQ(page.find(location), std::string::npos);
+    } else {
+      EXPECT_NE(page.find(R"(href="https://example.com/file")"),
+                std::string::npos);
+      EXPECT_NE(page.find(R"(target="_blank" rel="noopener noreferrer")"),
+                std::string::npos);
     }
   }
-  EXPECT_GT(shipped, 0);
-  EXPECT_EQ(claimants, shipped);
 }
 
 TEST(html, archive_listing) {

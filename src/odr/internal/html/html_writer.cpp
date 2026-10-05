@@ -87,7 +87,7 @@ void write_element_options(std::ostream &out,
   if (options.attributes) {
     write_attributes(out, *options.attributes);
   }
-  if (options.extra) {
+  if (options.extra && !is_empty(*options.extra)) {
     out << " ";
     write_writable(out, *options.extra);
   }

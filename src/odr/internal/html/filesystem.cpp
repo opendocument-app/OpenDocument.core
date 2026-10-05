@@ -12,7 +12,10 @@
 #include <odr/internal/html/frontend.hpp>
 #include <odr/internal/html/html_service.hpp>
 #include <odr/internal/html/html_writer.hpp>
+#include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
+
+#include <algorithm>
 
 #include <array>
 
@@ -162,10 +165,14 @@ public:
         entry_path->string(), file, false, false, true);
     HtmlResourceLocation location =
         config().resource_locator(resource, config());
-    // Two resources at one location write over each other; the stylesheet is
-    // registered first, so an entry landing on it yields.
+    // Shipped resources reserve their locations before archive entries.
     if (location.has_value() &&
-        resource_at(state.resources(), *location) != nullptr) {
+        (uri_kind(*location) == UriKind::refused ||
+         util::string::equals_ignore_case(*location, listing_path) ||
+         std::ranges::any_of(state.resources(), [&](const auto &entry) {
+           return entry.second &&
+                  util::string::equals_ignore_case(*entry.second, *location);
+         }))) {
       return std::nullopt;
     }
 
@@ -174,7 +181,7 @@ public:
   }
 
   HtmlResources write_filesystem(HtmlWriter &out) const {
-    HtmlResources resources;
+    HtmlResources resources = locate_filesystem_resources(config());
     const WritingState state(out, config(), resources, logger());
 
     const FileWalker file_walker = m_filesystem.file_walker("/");
@@ -223,10 +230,13 @@ public:
           HtmlElementOptions().set_inline(true).set_class("odr-files-name"));
       if (location.has_value()) {
         out.write_element_begin(
-            "a",
-            HtmlElementOptions().set_inline(true).set_attributes(
-                HtmlAttributesVector{{"href", xml::escape_attribute(*location)},
-                                     {"title", xml::escape_attribute(name)}}));
+            "a", HtmlElementOptions()
+                     .set_inline(true)
+                     .set_extra(std::string(
+                         link_target_attributes(uri_kind(*location))))
+                     .set_attributes(HtmlAttributesVector{
+                         {"href", xml::escape_attribute(*location)},
+                         {"title", xml::escape_attribute(name)}}));
         out.write_raw(escape_text(file_path.string()));
         out.write_element_end("a");
       } else {
@@ -251,11 +261,15 @@ public:
                   : entry_data_url(file, mime_type_of(file_path));
           href.has_value()) {
         out.write_element_begin(
-            "a",
-            HtmlElementOptions().set_inline(true).set_attributes(
-                HtmlAttributesVector{{"href", *href},
-                                     {"download", xml::escape_attribute(name)},
-                                     {"title", xml::escape_attribute(name)}}));
+            "a", HtmlElementOptions()
+                     .set_inline(true)
+                     .set_extra(std::string(
+                         location ? link_target_attributes(uri_kind(*location))
+                                  : std::string_view()))
+                     .set_attributes(HtmlAttributesVector{
+                         {"href", *href},
+                         {"download", xml::escape_attribute(name)},
+                         {"title", xml::escape_attribute(name)}}));
         out.write_raw("\u2193");
         out.write_element_end("a");
       }

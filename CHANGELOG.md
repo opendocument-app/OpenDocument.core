@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Archive listings reserve shipped script and stylesheet paths before exposing
+  entries, and reject unsafe entry links. Archives cannot replace viewer scripts.
+
 - HTML and SVG rendering validates document length units before writing styles
   or coordinates, preventing malformed units from injecting output markup.
 
