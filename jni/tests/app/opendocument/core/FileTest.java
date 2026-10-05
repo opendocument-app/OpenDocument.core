@@ -173,5 +173,4 @@ class FileTest {
     Path odt = TestFiles.odtFile(tempDir);
     assertTrue(Odr.listFileTypes(odt.toString()).contains(FileType.OPENDOCUMENT_TEXT));
   }
-
 }
