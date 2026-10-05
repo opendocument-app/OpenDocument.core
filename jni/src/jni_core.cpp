@@ -13,6 +13,7 @@
 
 namespace {
 
+using odr_jni::checked_integer;
 using odr_jni::from_handle;
 using odr_jni::guarded;
 using odr_jni::make_file_type_capabilities;
@@ -277,10 +278,12 @@ Java_app_opendocument_core_Odr_openWithOptionsNative(
       options.csv.encoding = static_cast<odr::TextEncoding>(csv_encoding);
     }
     if (csv_separator >= 0) {
-      options.csv.separator = static_cast<char>(csv_separator);
+      options.csv.separator =
+          static_cast<char>(checked_integer<std::uint8_t>(csv_separator));
     }
     if (csv_quote >= 0) {
-      options.csv.quote = static_cast<char>(csv_quote);
+      options.csv.quote =
+          static_cast<char>(checked_integer<std::uint8_t>(csv_quote));
     }
     return make_handle(odr::open(to_string(env, path), options));
   });
@@ -340,7 +343,7 @@ extern "C" JNIEXPORT jint JNICALL
 Java_app_opendocument_core_TablePosition_toColumnNum(JNIEnv *env, jclass,
                                                      jstring string) {
   return guarded(env, [&] {
-    return static_cast<jint>(
+    return checked_integer<jint>(
         odr::TablePosition::to_column_num(to_string(env, string)));
   });
 }
@@ -349,7 +352,7 @@ extern "C" JNIEXPORT jint JNICALL
 Java_app_opendocument_core_TablePosition_toRowNum(JNIEnv *env, jclass,
                                                   jstring string) {
   return guarded(env, [&] {
-    return static_cast<jint>(
+    return checked_integer<jint>(
         odr::TablePosition::to_row_num(to_string(env, string)));
   });
 }
@@ -359,7 +362,7 @@ Java_app_opendocument_core_TablePosition_toColumnString(JNIEnv *env, jclass,
                                                         jint column) {
   return guarded(env, [&] {
     return to_jstring(env, odr::TablePosition::to_column_string(
-                               static_cast<std::uint32_t>(column)));
+                               checked_integer<std::uint32_t>(column)));
   });
 }
 
@@ -368,6 +371,6 @@ Java_app_opendocument_core_TablePosition_toRowString(JNIEnv *env, jclass,
                                                      jint row) {
   return guarded(env, [&] {
     return to_jstring(env, odr::TablePosition::to_row_string(
-                               static_cast<std::uint32_t>(row)));
+                               checked_integer<std::uint32_t>(row)));
   });
 }

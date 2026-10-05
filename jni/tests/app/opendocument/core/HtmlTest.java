@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Arrays;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -54,6 +56,37 @@ class HtmlTest {
     assertNull(config.viewportContent);
     assertNull(config.viewportWidth);
     assertNull(config.initialZoom);
+  }
+
+  @Test
+  void invalidIntegerLimitsAreRejected() throws IOException {
+    List<Consumer<HtmlConfig>> invalid = Arrays.asList(
+        c -> c.spreadsheetLimit = new TableDimensions(-1, 1),
+        c -> c.spreadsheetLimit = new TableDimensions(1, -1),
+        c -> c.spreadsheetCellLimit = -1L,
+        c -> c.spreadsheetStyleBuffer = -1L,
+        c -> c.viewportWidth = -1,
+        c -> c.htmlIndent = -1,
+        c -> c.htmlIndent = 256,
+        c -> c.pageRangeBegin = -1,
+        c -> c.pageRangeEnd = -1);
+    try (DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString())) {
+      for (Consumer<HtmlConfig> change : invalid) {
+        HtmlConfig config = new HtmlConfig();
+        change.accept(config);
+        assertThrows(OdrException.class, () -> Html.translate(file, config));
+      }
+      HtmlConfig config = new HtmlConfig();
+      config.htmlIndent = 255;
+      config.pageRangeEnd = Integer.MAX_VALUE;
+      config.spreadsheetCellLimit = Long.MAX_VALUE;
+      try (HtmlService service = Html.translate(file, config)) {
+        HtmlConfig result = service.config();
+        assertEquals(255, result.htmlIndent);
+        assertEquals(Integer.valueOf(Integer.MAX_VALUE), result.pageRangeEnd);
+        assertEquals(Long.valueOf(Long.MAX_VALUE), result.spreadsheetCellLimit);
+      }
+    }
   }
 
   @Test

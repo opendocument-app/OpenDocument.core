@@ -165,6 +165,8 @@ class FileTest {
     // detection would find the semicolon; a pipe it would not, so the caller says
     DecodeOptions options = new DecodeOptions();
     options.asFileType = FileType.COMMA_SEPARATED_VALUES;
+    options.csv.separator = '\u017c';
+    assertThrows(OdrException.class, () -> Odr.open(path.toString(), options));
     options.csv.separator = '|';
 
     try (DecodedFile file = Odr.open(path.toString(), options)) {

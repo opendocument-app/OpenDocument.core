@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Java bindings reject out-of-range coordinates, style channels, CSV delimiters
+  and rendering limits instead of silently wrapping their integer values.
+
 - Java bindings preserve supplementary Unicode in exception messages, reject
   unpaired UTF-16 surrogates, and replace invalid native UTF-8 sequences.
 

@@ -11,6 +11,7 @@
 
 namespace {
 
+using odr_jni::checked_integer;
 using odr_jni::destroy_handle;
 using odr_jni::from_handle;
 using odr_jni::guarded;
@@ -76,14 +77,14 @@ Java_app_opendocument_core_Document_recalculateNative(JNIEnv *env, jobject,
     std::vector<jint> stated;
     for (const auto *positions :
          {&result.changed(), &result.circular(), &result.unevaluated()}) {
-      stated.push_back(static_cast<jint>(positions->size()));
+      stated.push_back(checked_integer<jint>(positions->size()));
     }
     for (const auto *positions :
          {&result.changed(), &result.circular(), &result.unevaluated()}) {
       for (const odr::SheetPosition &position : *positions) {
-        stated.push_back(static_cast<jint>(position.sheet));
-        stated.push_back(static_cast<jint>(position.cell.column));
-        stated.push_back(static_cast<jint>(position.cell.row));
+        stated.push_back(checked_integer<jint>(position.sheet));
+        stated.push_back(checked_integer<jint>(position.cell.column));
+        stated.push_back(checked_integer<jint>(position.cell.row));
       }
     }
     jintArray array = env->NewIntArray(static_cast<jsize>(stated.size()));
@@ -477,9 +478,9 @@ Java_app_opendocument_core_Sheet_contentNative(JNIEnv *env, jobject,
                                                jint columns) {
   return guarded(env, [&] {
     std::optional<odr::TableDimensions> range;
-    if (rows >= 0 && columns >= 0) {
-      range = odr::TableDimensions(static_cast<std::uint32_t>(rows),
-                                   static_cast<std::uint32_t>(columns));
+    if (rows != -1 || columns != -1) {
+      range = odr::TableDimensions(checked_integer<std::uint32_t>(rows),
+                                   checked_integer<std::uint32_t>(columns));
     }
     return odr_jni::make_table_dimensions(
         env, element(handle).as_sheet().content(range));
@@ -489,8 +490,9 @@ Java_app_opendocument_core_Sheet_contentNative(JNIEnv *env, jobject,
 extern "C" JNIEXPORT jlong JNICALL Java_app_opendocument_core_Sheet_cellNative(
     JNIEnv *env, jobject, jlong handle, jint column, jint row) {
   return guarded(env, [&] {
-    return wrap_element(element(handle).as_sheet().cell(
-        static_cast<std::uint32_t>(column), static_cast<std::uint32_t>(row)));
+    return wrap_element(
+        element(handle).as_sheet().cell(checked_integer<std::uint32_t>(column),
+                                        checked_integer<std::uint32_t>(row)));
   });
 }
 
@@ -516,7 +518,7 @@ Java_app_opendocument_core_Sheet_columnStyleNative(JNIEnv *env, jobject,
   return guarded(env, [&] {
     return odr_jni::make_table_column_style(
         env, element(handle).as_sheet().column_style(
-                 static_cast<std::uint32_t>(column)));
+                 checked_integer<std::uint32_t>(column)));
   });
 }
 
@@ -525,8 +527,8 @@ Java_app_opendocument_core_Sheet_rowStyleNative(JNIEnv *env, jobject,
                                                 jlong handle, jint row) {
   return guarded(env, [&] {
     return odr_jni::make_table_row_style(
-        env,
-        element(handle).as_sheet().row_style(static_cast<std::uint32_t>(row)));
+        env, element(handle).as_sheet().row_style(
+                 checked_integer<std::uint32_t>(row)));
   });
 }
 
@@ -537,8 +539,8 @@ Java_app_opendocument_core_Sheet_cellStyleNative(JNIEnv *env, jobject,
   return guarded(env, [&] {
     return odr_jni::make_table_cell_style(
         env, element(handle).as_sheet().cell_style(
-                 static_cast<std::uint32_t>(column),
-                 static_cast<std::uint32_t>(row)));
+                 checked_integer<std::uint32_t>(column),
+                 checked_integer<std::uint32_t>(row)));
   });
 }
 
@@ -550,7 +552,8 @@ Java_app_opendocument_core_Sheet_setCellStyleNative(JNIEnv *env, jobject,
                                                     jobject text_style) {
   guarded(env, [&] {
     element(handle).as_sheet().set_cell_style(
-        static_cast<std::uint32_t>(column), static_cast<std::uint32_t>(row),
+        checked_integer<std::uint32_t>(column),
+        checked_integer<std::uint32_t>(row),
         odr_jni::table_cell_style_from_java(env, cell_style),
         odr_jni::text_style_from_java(env, text_style));
   });
@@ -563,7 +566,7 @@ Java_app_opendocument_core_Sheet_setRowStyleNative(JNIEnv *env, jobject,
                                                    jobject text_style) {
   guarded(env, [&] {
     element(handle).as_sheet().set_row_style(
-        static_cast<std::uint32_t>(row),
+        checked_integer<std::uint32_t>(row),
         odr_jni::table_cell_style_from_java(env, cell_style),
         odr_jni::text_style_from_java(env, text_style));
   });
@@ -576,7 +579,7 @@ Java_app_opendocument_core_Sheet_setColumnStyleNative(JNIEnv *env, jobject,
                                                       jobject text_style) {
   guarded(env, [&] {
     element(handle).as_sheet().set_column_style(
-        static_cast<std::uint32_t>(column),
+        checked_integer<std::uint32_t>(column),
         odr_jni::table_cell_style_from_java(env, cell_style),
         odr_jni::text_style_from_java(env, text_style));
   });
@@ -587,8 +590,9 @@ Java_app_opendocument_core_Sheet_insertRowsNative(JNIEnv *env, jobject,
                                                   jlong handle, jint row,
                                                   jint count) {
   guarded(env, [&] {
-    element(handle).as_sheet().insert_rows(static_cast<std::uint32_t>(row),
-                                           static_cast<std::uint32_t>(count));
+    element(handle).as_sheet().insert_rows(
+        checked_integer<std::uint32_t>(row),
+        checked_integer<std::uint32_t>(count));
   });
 }
 
@@ -597,8 +601,9 @@ Java_app_opendocument_core_Sheet_deleteRowsNative(JNIEnv *env, jobject,
                                                   jlong handle, jint row,
                                                   jint count) {
   guarded(env, [&] {
-    element(handle).as_sheet().delete_rows(static_cast<std::uint32_t>(row),
-                                           static_cast<std::uint32_t>(count));
+    element(handle).as_sheet().delete_rows(
+        checked_integer<std::uint32_t>(row),
+        checked_integer<std::uint32_t>(count));
   });
 }
 
@@ -608,7 +613,8 @@ Java_app_opendocument_core_Sheet_insertColumnsNative(JNIEnv *env, jobject,
                                                      jint count) {
   guarded(env, [&] {
     element(handle).as_sheet().insert_columns(
-        static_cast<std::uint32_t>(column), static_cast<std::uint32_t>(count));
+        checked_integer<std::uint32_t>(column),
+        checked_integer<std::uint32_t>(count));
   });
 }
 
@@ -618,7 +624,8 @@ Java_app_opendocument_core_Sheet_deleteColumnsNative(JNIEnv *env, jobject,
                                                      jint count) {
   guarded(env, [&] {
     element(handle).as_sheet().delete_columns(
-        static_cast<std::uint32_t>(column), static_cast<std::uint32_t>(count));
+        checked_integer<std::uint32_t>(column),
+        checked_integer<std::uint32_t>(count));
   });
 }
 
@@ -833,7 +840,7 @@ Java_app_opendocument_core_ListItem_numberNative(JNIEnv *env, jobject,
     if (const std::optional<std::uint32_t> value =
             element(handle).as_list_item().number();
         value.has_value()) {
-      number = static_cast<std::int32_t>(*value);
+      number = checked_integer<std::int32_t>(*value);
     }
     return odr_jni::make_integer_opt(env, number);
   });

@@ -219,6 +219,11 @@ class DocumentTest {
     TextStyle style = new TextStyle();
     style.fontWeight = FontWeight.BOLD;
     style.fontSize = new Measure(14, "pt");
+    for (Color invalid : new Color[] {new Color(-1, 0, 0), new Color(0, 256, 0),
+        new Color(0, 0, -1), new Color(0, 0, 0, 256)}) {
+      style.backgroundColor = invalid;
+      assertThrows(OdrException.class, () -> run.setStyle(style));
+    }
     style.backgroundColor = new Color(255, 255, 0);
     run.setStyle(style);
 
@@ -319,6 +324,23 @@ class DocumentTest {
 
     assertEquals(new Color(255, 255, 0), reloadedSheet.cellStyle(0, 40).backgroundColor);
     assertEquals(new Color(255, 255, 0), reloadedSheet.cellStyle(30, 90).backgroundColor);
+  }
+
+  @Test
+  void negativeSheetCoordinatesAreRejected() throws IOException {
+    try (DecodedFile file = Odr.open(TestFiles.odsFile(tempDir).toString())) {
+      Document document = file.asDocumentFile().document();
+      Sheet sheet = document.rootElement().firstChild().asSheet();
+      assertThrows(OdrException.class, () -> sheet.cell(-1, 0));
+      assertThrows(OdrException.class, () -> sheet.cell(0, -1));
+      assertThrows(OdrException.class, () -> sheet.insertRows(0, -1));
+      assertThrows(OdrException.class, () -> sheet.deleteColumns(-1, 1));
+      assertThrows(IllegalArgumentException.class,
+          () -> sheet.content(new TableDimensions(-1, 1)));
+      assertThrows(IllegalArgumentException.class,
+          () -> sheet.content(new TableDimensions(-1, -1)));
+      assertNotNull(sheet.content(null));
+    }
   }
 
   @Test

@@ -26,6 +26,9 @@ public final class Sheet extends Element {
     if (range == null) {
       return contentNative(handle(), -1, -1);
     }
+    if (range.rows < 0 || range.columns < 0) {
+      throw new IllegalArgumentException("range dimensions must be nonnegative");
+    }
     return contentNative(handle(), range.rows, range.columns);
   }
 
