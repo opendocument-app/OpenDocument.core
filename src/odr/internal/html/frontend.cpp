@@ -135,6 +135,11 @@ constexpr Asset host_bridge_js_asset{HtmlResourceType::js, "text/javascript",
 /// Appends @p asset to @p resources; `nullopt` to embed it.
 HtmlResourceLocation locate(const Asset &asset, const HtmlConfig &config,
                             HtmlResources &resources) {
+  for (const auto &[resource, location] : resources) {
+    if (resource.is_shipped() && resource.name() == asset.name) {
+      return location;
+    }
+  }
   const odr::HtmlResource resource = HtmlResource::create(
       asset.type, std::string(asset.mime_type), std::string(asset.name),
       std::string(asset.name), odr::File::from_memory(written(asset)), true,
@@ -360,6 +365,16 @@ void html::write_host_bridge_script(const WritingState &state) {
   state.out().write_script_end();
 
   write_script(host_bridge_js_asset, state);
+}
+
+HtmlResources html::locate_filesystem_resources(const HtmlConfig &config) {
+  static constexpr std::array assets{filesystem_css_asset, search_css_asset,
+                                     search_js_asset, viewport_js_asset};
+  static constexpr std::array dark{filesystem_dark_css_asset,
+                                   search_dark_css_asset};
+  HtmlResources resources = locate_all(assets, dark, config);
+  locate_host_bridge(config, resources);
+  return resources;
 }
 
 HtmlResources html::locate_text_resources(const HtmlConfig &config) {
