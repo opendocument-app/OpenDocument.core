@@ -156,3 +156,57 @@ TEST(OdfChart, a_part_with_no_chart_renders_nothing) {
                         R"(svg:height="9cm" chart:class="chart:bar"/>)"))
           .has_value());
 }
+
+TEST(OdfChart, ragged_repeated_rows_keep_all_series_on_their_categories) {
+  for (const bool implicit : {false, true}) {
+    pugi::xml_document document;
+    ASSERT_TRUE(document.load_string(bar_chart("chart:scatter").c_str()));
+    const pugi::xml_node chart = document.document_element()
+                                     .child("office:body")
+                                     .child("office:chart")
+                                     .child("chart:chart");
+    if (implicit) {
+      chart.child("chart:plot-area").remove_children();
+    }
+    pugi::xml_node first =
+        chart.child("table:table").child("table:table-rows").first_child();
+    first.remove_child(first.last_child());
+    first.append_attribute("table:number-rows-repeated").set_value(2);
+
+    const auto svg = render_chart(document.document_element());
+    ASSERT_TRUE(svg);
+    pugi::xml_document output;
+    ASSERT_TRUE(output.load_string(svg->c_str()));
+    const auto points = output.select_nodes("/svg/circle");
+    ASSERT_EQ(points.size(), 3u);
+    EXPECT_NEAR(points[0].node().attribute("cx").as_double(), 3333.33, 0.01);
+    EXPECT_NEAR(points[1].node().attribute("cx").as_double(), 8000, 0.01);
+    EXPECT_NEAR(points[2].node().attribute("cx").as_double(), 12666.7, 0.1);
+    EXPECT_EQ(count(*svg, "<path"), 2u);
+  }
+}
+
+TEST(OdfChart, repeated_tables_are_bounded_before_expansion) {
+  for (const char *count : {"0", "1048577", "4294967295"}) {
+    for (const bool rows : {false, true}) {
+      pugi::xml_document document;
+      ASSERT_TRUE(document.load_string(bar_chart().c_str()));
+      pugi::xml_node row =
+          document.select_node("//table:table-rows/table:table-row").node();
+      (rows ? row : row.first_child())
+          .append_attribute(rows ? "table:number-rows-repeated"
+                                 : "table:number-columns-repeated")
+          .set_value(count);
+      EXPECT_FALSE(render_chart(document.document_element()));
+    }
+  }
+  pugi::xml_document document;
+  ASSERT_TRUE(document.load_string(bar_chart().c_str()));
+  pugi::xml_node row =
+      document.select_node("//table:table-rows/table:table-row").node();
+  row.append_attribute("table:number-rows-repeated").set_value(1025);
+  row.last_child()
+      .append_attribute("table:number-columns-repeated")
+      .set_value(1025);
+  EXPECT_FALSE(render_chart(document.document_element()));
+}

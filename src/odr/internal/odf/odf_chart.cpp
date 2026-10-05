@@ -126,8 +126,7 @@ public:
     const pugi::xml_node plot_area = m_chart.child("chart:plot-area");
     read_class();
     read_plot_box(plot_area);
-    read_data(plot_area);
-    if (m_series.empty()) {
+    if (!read_data(plot_area) || m_series.empty()) {
       return {};
     }
 
@@ -196,38 +195,60 @@ private:
 
   /// The `local-table` carries the plotted values; its header columns are the
   /// categories and its header rows the series labels.
-  void read_data(const pugi::xml_node plot_area) {
+  bool read_data(const pugi::xml_node plot_area) {
     const pugi::xml_node table = m_chart.find_child_by_attribute(
         "table:table", "table:name", "local-table");
     if (!table) {
-      return;
+      return false;
     }
 
     const std::size_t leading = std::max<std::size_t>(
         1, count_cells(table.child("table:table-header-columns")
                            .child("table:table-column")));
+    if (leading > max_cells) {
+      return false;
+    }
 
     std::vector<std::string> labels;
-    for (const pugi::xml_node header :
-         table.child("table:table-header-rows").children("table:table-row")) {
-      labels = read_row_text(header);
-      break;
+    if (const pugi::xml_node header =
+            table.child("table:table-header-rows").child("table:table-row")) {
+      const auto cells = read_row(header);
+      if (!cells) {
+        return false;
+      }
+      labels = *cells | std::views::transform(read_text) |
+               std::ranges::to<std::vector<std::string>>();
     }
 
     std::vector<std::vector<std::optional<double>>> columns;
     for (const pugi::xml_node row :
          table.child("table:table-rows").children("table:table-row")) {
-      const std::vector<pugi::xml_node> cells = read_row(row);
-      if (cells.size() <= leading) {
-        continue;
+      const auto cells = read_row(row);
+      const std::uint32_t repeated =
+          row.attribute("table:number-rows-repeated").as_uint(1);
+      if (!cells || repeated == 0 ||
+          repeated > max_cells - m_categories.size()) {
+        return false;
       }
-      m_categories.emplace_back(read_text(cells[leading - 1]));
-      for (std::size_t i = leading; i < cells.size(); ++i) {
-        if (columns.size() < i - leading + 1) {
-          columns.resize(i - leading + 1);
-        }
-        columns[i - leading].push_back(read_value(cells[i]));
+      const std::size_t rows = m_categories.size() + repeated;
+      const std::size_t width =
+          std::max(columns.size(),
+                   cells->size() > leading ? cells->size() - leading : 0);
+      if (width > max_cells / rows) {
+        return false;
       }
+      columns.resize(width);
+      for (std::size_t i = 0; i < width; ++i) {
+        columns[i].resize(m_categories.size());
+        columns[i].insert(columns[i].end(), repeated,
+                          leading + i < cells->size()
+                              ? read_value((*cells)[leading + i])
+                              : std::nullopt);
+      }
+      m_categories.insert(m_categories.end(), repeated,
+                          leading <= cells->size()
+                              ? read_text((*cells)[leading - 1])
+                              : std::string());
     }
 
     std::size_t index = 0;
@@ -245,26 +266,38 @@ private:
       ++index;
     }
     // A chart with no `chart:series` at all still has its table.
-    for (; index < columns.size() && m_series.empty(); ++index) {
-      m_series.push_back({.label = {},
-                          .values = columns[index],
-                          .colour = std::string(colour_at(index))});
+    if (m_series.empty()) {
+      for (; index < columns.size(); ++index) {
+        m_series.push_back({.label = leading + index < labels.size()
+                                         ? labels[leading + index]
+                                         : std::string(),
+                            .values = std::move(columns[index]),
+                            .colour = std::string(colour_at(index))});
+      }
     }
 
     trim();
     read_range();
+    return true;
   }
+
+  static constexpr std::size_t max_cells = 1048576;
 
   [[nodiscard]] static std::size_t count_cells(const pugi::xml_node column) {
     std::size_t result = 0;
     for (pugi::xml_node node = column; node;
          node = node.next_sibling("table:table-column")) {
-      result += node.attribute("table:number-columns-repeated").as_uint(1);
+      const std::size_t repeated =
+          node.attribute("table:number-columns-repeated").as_uint(1);
+      if (repeated > max_cells - result) {
+        return max_cells + 1;
+      }
+      result += repeated;
     }
     return result;
   }
 
-  [[nodiscard]] static std::vector<pugi::xml_node>
+  [[nodiscard]] static std::optional<std::vector<pugi::xml_node>>
   read_row(const pugi::xml_node row) {
     std::vector<pugi::xml_node> result;
     for (const pugi::xml_node cell : row.children()) {
@@ -274,17 +307,12 @@ private:
       }
       const auto repeated =
           cell.attribute("table:number-columns-repeated").as_uint(1);
-      for (unsigned i = 0; i < repeated; ++i) {
-        result.push_back(cell);
+      if (repeated == 0 || repeated > max_cells - result.size()) {
+        return std::nullopt;
       }
+      result.insert(result.end(), repeated, cell);
     }
     return result;
-  }
-
-  [[nodiscard]] static std::vector<std::string>
-  read_row_text(const pugi::xml_node row) {
-    return read_row(row) | std::views::transform(read_text) |
-           std::ranges::to<std::vector<std::string>>();
   }
 
   /// A missing data point is written `office:value="NaN"`.

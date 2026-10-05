@@ -206,6 +206,9 @@ Unreadable geometry is dropped rather than emitting invalid SVG.
 Number-format digit counts are clamped to 4,096 per field before expanding
 placeholders; a negative count keeps the default.
 
+Chart tables expand at most 1,048,576 cells, including gaps in ragged rows.
+Larger tables fall back to the embedded replacement image.
+
 ## Open work
 
 1. **Save never re-encrypts.** A document decrypted from a password-protected
