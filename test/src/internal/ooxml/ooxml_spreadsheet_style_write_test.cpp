@@ -69,20 +69,8 @@ TextStyle text_style_at(const Sheet &sheet, const std::uint32_t column) {
   return sheet.cell(column, 0).first_child().as_text().style();
 }
 
-Document reopened(const Document &document) {
-  std::ostringstream saved;
-  document.save(saved);
-  return open(File::from_memory(saved.str())).as_document_file().document();
-}
-
 std::string styles_of(const Document &document) {
-  std::ostringstream xml;
-  xml << reopened(document)
-             .as_filesystem()
-             .open("/xl/styles.xml")
-             .stream()
-             ->rdbuf();
-  return xml.str();
+  return saved_part(document, "/xl/styles.xml");
 }
 
 std::size_t count(const std::string &text, const std::string &part) {
@@ -103,7 +91,7 @@ TEST(OoxmlSpreadsheetStyleWrite,
   first_sheet(document).set_cell_style(0, 0, fill(0xffff00_rgb), {});
 
   EXPECT_EQ(fill_at(first_sheet(document), 0, 0), 0xffff00u);
-  const Document saved = reopened(document);
+  const Document saved = saved_document(document);
   EXPECT_EQ(fill_at(first_sheet(saved), 0, 0), 0xffff00u);
   EXPECT_EQ(first_sheet(saved).cell(0, 0).value().text(), "a");
 }
@@ -120,7 +108,8 @@ TEST(OoxmlSpreadsheetStyleWrite, a_font_takes_every_text_key) {
 
   first_sheet(document).set_cell_style(0, 0, {}, style);
 
-  const TextStyle read = text_style_at(first_sheet(reopened(document)), 0);
+  const TextStyle read =
+      text_style_at(first_sheet(saved_document(document)), 0);
   EXPECT_EQ(read.font_weight, FontWeight::bold);
   EXPECT_EQ(read.font_style, FontStyle::italic);
   EXPECT_EQ(read.font_underline, true);
@@ -176,8 +165,9 @@ TEST(OoxmlSpreadsheetStyleWrite, an_alignment_lands_in_the_format) {
 
   first_sheet(document).set_cell_style(0, 0, right, {});
 
-  EXPECT_EQ(first_sheet(reopened(document)).cell_style(0, 0).horizontal_align,
-            HorizontalAlign::right);
+  EXPECT_EQ(
+      first_sheet(saved_document(document)).cell_style(0, 0).horizontal_align,
+      HorizontalAlign::right);
 }
 
 TEST(OoxmlSpreadsheetStyleWrite, a_cell_the_file_does_not_state_is_made) {
@@ -185,7 +175,7 @@ TEST(OoxmlSpreadsheetStyleWrite, a_cell_the_file_does_not_state_is_made) {
 
   first_sheet(document).set_cell_style(2, 3, fill(0x0000ff_rgb), {});
 
-  EXPECT_EQ(fill_at(first_sheet(reopened(document)), 2, 3), 0x0000ffu);
+  EXPECT_EQ(fill_at(first_sheet(saved_document(document)), 2, 3), 0x0000ffu);
 }
 
 TEST(OoxmlSpreadsheetStyleWrite, a_cell_without_a_format_starts_from_its_row) {
@@ -196,7 +186,7 @@ TEST(OoxmlSpreadsheetStyleWrite, a_cell_without_a_format_starts_from_its_row) {
 
   first_sheet(document).set_cell_style(0, 0, {}, bold());
 
-  const Document saved = reopened(document);
+  const Document saved = saved_document(document);
   const Sheet sheet = first_sheet(saved);
   EXPECT_EQ(fill_at(sheet, 0, 0), 0xff0000u);
   EXPECT_EQ(text_style_at(sheet, 0).font_weight, FontWeight::bold);
@@ -210,7 +200,7 @@ TEST(OoxmlSpreadsheetStyleWrite, a_cell_starts_from_its_own_column_only) {
   first_sheet(document).set_cell_style(0, 0, {}, bold());
   first_sheet(document).set_cell_style(2, 0, {}, bold());
 
-  const Document saved = reopened(document);
+  const Document saved = saved_document(document);
   const Sheet sheet = first_sheet(saved);
   EXPECT_EQ(fill_at(sheet, 0, 0), std::nullopt);
   EXPECT_EQ(fill_at(sheet, 2, 0), 0xff0000u);
@@ -249,8 +239,9 @@ TEST(OoxmlSpreadsheetStyleWrite, align_null_is_general_again) {
                 R"({"op": "setCellStyle", "sheet": 0, "column": 0, "row": 0,)"
                 R"( "style": {"align": null}}]})");
 
-  EXPECT_EQ(first_sheet(reopened(document)).cell_style(0, 0).horizontal_align,
-            std::nullopt);
+  EXPECT_EQ(
+      first_sheet(saved_document(document)).cell_style(0, 0).horizontal_align,
+      std::nullopt);
   EXPECT_EQ(count(styles_of(document), R"(horizontal="general")"), 1);
 }
 
@@ -262,7 +253,7 @@ TEST(OoxmlSpreadsheetStyleWrite, a_line_break_makes_the_cell_wrap) {
   first_sheet(document).set_cell(0, 0, CellValue("a\nb"));
   first_sheet(document).set_cell(1, 0, CellValue("c"));
 
-  const Document saved = reopened(document);
+  const Document saved = saved_document(document);
   const Sheet sheet = first_sheet(saved);
   EXPECT_EQ(sheet.cell(0, 0).first_child().as_text().content(), "a\nb");
   EXPECT_EQ(sheet.cell_style(0, 0).wrap_text, true);
@@ -282,13 +273,7 @@ Document rows_and_columns() {
 }
 
 std::string sheet_of(const Document &document) {
-  std::ostringstream xml;
-  xml << reopened(document)
-             .as_filesystem()
-             .open("/xl/worksheets/sheet1.xml")
-             .stream()
-             ->rdbuf();
-  return xml.str();
+  return saved_part(document, "/xl/worksheets/sheet1.xml");
 }
 
 } // namespace
@@ -298,7 +283,7 @@ TEST(OoxmlSpreadsheetStyleWrite, a_row_style_keeps_what_each_cell_showed) {
 
   first_sheet(document).set_row_style(0, {}, bold());
 
-  const Document saved = reopened(document);
+  const Document saved = saved_document(document);
   const Sheet sheet = first_sheet(saved);
   EXPECT_EQ(fill_at(sheet, 0, 0), 0xff0000u);
   EXPECT_EQ(fill_at(sheet, 1, 0), 0xff0000u);
@@ -312,7 +297,7 @@ TEST(OoxmlSpreadsheetStyleWrite, a_row_style_reaches_past_the_cells) {
 
   first_sheet(document).set_row_style(1, fill(0x00ff00_rgb), {});
 
-  const Document saved = reopened(document);
+  const Document saved = saved_document(document);
   const Sheet sheet = first_sheet(saved);
   EXPECT_EQ(fill_at(sheet, 0, 1), 0x00ff00u);
   EXPECT_EQ(fill_at(sheet, 1, 1), 0x00ff00u);
@@ -328,7 +313,7 @@ TEST(OoxmlSpreadsheetStyleWrite, a_row_style_keeps_a_styled_column) {
 
   first_sheet(document).set_row_style(1, {}, bold());
 
-  const Document saved = reopened(document);
+  const Document saved = saved_document(document);
   const Sheet sheet = first_sheet(saved);
   EXPECT_EQ(fill_at(sheet, 1, 1), 0xff0000u);
   EXPECT_EQ(fill_at(sheet, 0, 1), std::nullopt);
@@ -340,7 +325,7 @@ TEST(OoxmlSpreadsheetStyleWrite, a_column_style_reaches_every_row) {
   first_sheet(document).set_column_style(0, fill(0x00ff00_rgb), {});
   first_sheet(document).set_column_style(1, {}, bold());
 
-  const Document saved = reopened(document);
+  const Document saved = saved_document(document);
   const Sheet sheet = first_sheet(saved);
   EXPECT_EQ(fill_at(sheet, 0, 0), 0x00ff00u);
   EXPECT_EQ(fill_at(sheet, 0, 2), 0x00ff00u);
@@ -355,7 +340,7 @@ TEST(OoxmlSpreadsheetStyleWrite, a_column_without_a_col_gets_one_of_its_own) {
   first_sheet(document).set_row_style(0, {}, bold());
   first_sheet(document).set_column_style(3, fill(0x00ff00_rgb), {});
 
-  const Document saved = reopened(document);
+  const Document saved = saved_document(document);
   const Sheet sheet = first_sheet(saved);
   EXPECT_EQ(fill_at(sheet, 3, 50), 0x00ff00u);
   EXPECT_EQ(fill_at(sheet, 2, 50), std::nullopt);
@@ -380,7 +365,7 @@ TEST(OoxmlSpreadsheetStyleWrite, a_col_of_several_columns_is_cut) {
       << xml;
   EXPECT_NE(xml.find(R"(<col min="4" max="5" width="12" customWidth="1"/>)"),
             std::string::npos);
-  const Document saved = reopened(document);
+  const Document saved = saved_document(document);
   const Sheet sheet = first_sheet(saved);
   EXPECT_EQ(fill_at(sheet, 2, 9), 0x00ff00u);
   EXPECT_EQ(fill_at(sheet, 1, 9), std::nullopt);
@@ -396,7 +381,7 @@ TEST(OoxmlSpreadsheetStyleWrite, the_ops_name_a_row_and_a_column) {
                 R"({"op": "setColumnStyle", "sheet": 0, "column": 4,)"
                 R"( "style": {"fill": "#0000ff"}}]})");
 
-  const Document saved = reopened(document);
+  const Document saved = saved_document(document);
   const Sheet sheet = first_sheet(saved);
   EXPECT_EQ(fill_at(sheet, 0, 2), 0x00ff00u);
   EXPECT_EQ(fill_at(sheet, 4, 7), 0x0000ffu);
@@ -468,7 +453,7 @@ TEST(OoxmlSpreadsheetStyleWrite, relocated_styles_and_strings_survive_edits) {
   EXPECT_EQ(fill_at(sheet, 0, 0), 0xff0000u);
   sheet.set_cell_style(0, 0, fill(0x00ff00_rgb), bold());
 
-  const Document saved = reopened(document);
+  const Document saved = saved_document(document);
   EXPECT_EQ(first_sheet(saved).cell(0, 0).value().text(), "shared");
   EXPECT_EQ(fill_at(first_sheet(saved), 0, 0), 0x00ff00u);
   EXPECT_EQ(text_style_at(first_sheet(saved), 0).font_weight, FontWeight::bold);
@@ -495,9 +480,10 @@ TEST(OoxmlSpreadsheetStyleWrite,
   const Sheet sheet = first_sheet(document);
   EXPECT_EQ(sheet.cell(0, 0).value().text(), "a");
   EXPECT_EQ(fill_at(sheet, 0, 0), std::nullopt);
-  EXPECT_EQ(first_sheet(reopened(document)).cell(0, 0).value().text(), "a");
+  EXPECT_EQ(first_sheet(saved_document(document)).cell(0, 0).value().text(),
+            "a");
   sheet.set_cell_style(0, 0, fill(0x00ff00_rgb), bold());
-  const Document saved = reopened(document);
+  const Document saved = saved_document(document);
   EXPECT_EQ(fill_at(first_sheet(saved), 0, 0), 0x00ff00u);
   EXPECT_EQ(text_style_at(first_sheet(saved), 0).font_weight, FontWeight::bold);
   for (const char *path :
@@ -506,7 +492,7 @@ TEST(OoxmlSpreadsheetStyleWrite,
     xml << saved.as_filesystem().open(path).stream()->rdbuf();
     EXPECT_NE(xml.str().find("styles.xml"), std::string::npos) << path;
   }
-  EXPECT_EQ(fill_at(first_sheet(reopened(saved)), 0, 0), 0x00ff00u);
+  EXPECT_EQ(fill_at(first_sheet(saved_document(saved)), 0, 0), 0x00ff00u);
 }
 
 TEST(OoxmlSpreadsheetStyleWrite, an_unknown_style_index_keeps_the_default) {

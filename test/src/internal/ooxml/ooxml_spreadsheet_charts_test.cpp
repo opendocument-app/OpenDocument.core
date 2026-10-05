@@ -95,16 +95,7 @@ std::shared_ptr<internal::abstract::File> with_chart() {
 }
 
 std::string chart_xml(const Document &document) {
-  std::ostringstream saved;
-  document.save(saved);
-  const Document reopened =
-      open(File::from_memory(saved.str())).as_document_file().document();
-  std::ostringstream xml;
-  xml << reopened.as_filesystem()
-             .open("/xl/charts/chart1.xml")
-             .stream()
-             ->rdbuf();
-  return xml.str();
+  return saved_part(document, "/xl/charts/chart1.xml");
 }
 
 } // namespace

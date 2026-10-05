@@ -72,16 +72,6 @@ std::shared_ptr<internal::abstract::File> with_pivot(
   return std::make_shared<internal::MemoryFile>(out.str());
 }
 
-std::string part_of(const Document &document, const std::string &path) {
-  std::ostringstream saved;
-  document.save(saved);
-  const Document reopened =
-      open(File::from_memory(saved.str())).as_document_file().document();
-  std::ostringstream xml;
-  xml << reopened.as_filesystem().open(path).stream()->rdbuf();
-  return xml.str();
-}
-
 bool contains(const std::string &xml, const std::string &part) {
   return xml.find(part) != std::string::npos;
 }
@@ -94,9 +84,9 @@ TEST(OoxmlSpreadsheetPivots, a_row_edit_moves_the_source_and_the_place) {
   first_sheet(document).insert_rows(1, 1);
 
   EXPECT_TRUE(
-      contains(part_of(document, "/xl/pivotCache/pivotCacheDefinition1.xml"),
+      contains(saved_part(document, "/xl/pivotCache/pivotCacheDefinition1.xml"),
                R"(<worksheetSource ref="A1:B4" sheet="s"/>)"));
-  EXPECT_TRUE(contains(part_of(document, "/xl/pivotTables/pivotTable1.xml"),
+  EXPECT_TRUE(contains(saved_part(document, "/xl/pivotTables/pivotTable1.xml"),
                        R"(<location ref="D11:E13")"));
 }
 
@@ -106,9 +96,9 @@ TEST(OoxmlSpreadsheetPivots, a_column_edit_moves_them_too) {
   first_sheet(document).insert_columns(0, 1);
 
   EXPECT_TRUE(
-      contains(part_of(document, "/xl/pivotCache/pivotCacheDefinition1.xml"),
+      contains(saved_part(document, "/xl/pivotCache/pivotCacheDefinition1.xml"),
                R"(<worksheetSource ref="B1:C3" sheet="s"/>)"));
-  EXPECT_TRUE(contains(part_of(document, "/xl/pivotTables/pivotTable1.xml"),
+  EXPECT_TRUE(contains(saved_part(document, "/xl/pivotTables/pivotTable1.xml"),
                        R"(<location ref="E10:F12")"));
 }
 
@@ -124,7 +114,7 @@ TEST(OoxmlSpreadsheetPivots,
 
   sheet.delete_rows(1, 1);
   EXPECT_TRUE(
-      contains(part_of(document, "/xl/pivotCache/pivotCacheDefinition1.xml"),
+      contains(saved_part(document, "/xl/pivotCache/pivotCacheDefinition1.xml"),
                R"(<worksheetSource ref="A1:B2" sheet="s"/>)"));
 }
 
@@ -135,6 +125,6 @@ TEST(OoxmlSpreadsheetPivots, a_source_in_another_workbook_stays) {
   first_sheet(document).delete_rows(0, 3);
 
   EXPECT_TRUE(
-      contains(part_of(document, "/xl/pivotCache/pivotCacheDefinition1.xml"),
+      contains(saved_part(document, "/xl/pivotCache/pivotCacheDefinition1.xml"),
                R"(<worksheetSource ref="A1:B3" sheet="s" r:id="rId1"/>)"));
 }
