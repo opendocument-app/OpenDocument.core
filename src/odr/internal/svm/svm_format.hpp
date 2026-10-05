@@ -362,7 +362,7 @@ struct TextArrayAction final {
   std::string text;
   std::uint16_t offset{};
   std::uint16_t length{};
-  std::vector<std::uint32_t> dx_array;
+  std::vector<std::int32_t> dx_array;
 };
 
 struct StretchTextAction final {

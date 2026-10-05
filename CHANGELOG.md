@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- StarView text arrays retain character positioning for supplementary Unicode
+  characters instead of discarding their UTF-16 advance arrays.
+
 - Large StarView coordinates, text advances and bitmap dimensions no longer
   overflow or narrow while being converted to SVG.
 

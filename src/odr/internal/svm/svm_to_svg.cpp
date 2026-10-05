@@ -19,6 +19,8 @@
 #include <utility>
 #include <vector>
 
+#include <utf8cpp/utf8/checked.h>
+
 namespace odr::internal::svm {
 
 namespace {
@@ -734,30 +736,27 @@ void write_path(const std::span<const Polygon> polygons, const bool fill,
   out.write_element_end();
 }
 
-/// What an `x` list has to match one for one.
-std::size_t count_characters(const std::string_view text) {
-  return std::ranges::count_if(text, [](const char c) {
-    return (static_cast<unsigned char>(c) & 0xc0) != 0x80;
-  });
-}
-
-/// The dx array holds the advance from the run's start to the end of each
-/// character, so character *i* starts where character *i-1* ended.
-std::string get_x_list_string(const IntPair &point,
-                              const std::vector<std::uint32_t> &dx_array,
-                              const Context &context) {
-  std::string result = svg::format_number(transform_x(point.x, context));
-  if (dx_array.empty()) {
-    return result;
+/// Converts UTF-16 advances to one SVG position per Unicode code point.
+std::optional<std::string>
+get_x_list_string(const IntPair &point, const std::string &text,
+                  const std::vector<std::int32_t> &dx_array,
+                  const Context &context) {
+  std::string result;
+  std::size_t unit = 0;
+  auto position = text.begin();
+  while (position != text.end()) {
+    if (unit > dx_array.size()) {
+      return std::nullopt;
+    }
+    const double advance = unit == 0 ? 0 : dx_array[unit - 1];
+    if (!result.empty()) {
+      result += " ";
+    }
+    result += svg::format_number(transform_x(point.x + advance, context));
+    unit += utf8::next(position, text.end()) >= 0x10000 ? 2 : 1;
   }
-
-  for (const std::uint32_t dx :
-       dx_array | std::views::take(dx_array.size() - 1)) {
-    result += " ";
-    result += svg::format_number(transform_x(
-        static_cast<double>(point.x) + static_cast<std::int32_t>(dx), context));
-  }
-  return result;
+  return unit == dx_array.size() ? std::optional(std::move(result))
+                                 : std::nullopt;
 }
 
 /// @p dx_array places the characters one by one where the file measured them;
@@ -1007,21 +1006,22 @@ void write_point(const IntPair &point, const Context &context) {
 }
 
 void write_text(const IntPair &point, const std::string &text,
-                const std::vector<std::uint32_t> &dx_array,
+                const std::vector<std::int32_t> &dx_array,
                 const std::uint32_t width, const Context &context) {
   svg::SvgWriter &out = *context.out;
   const Font &font = context.state.font;
 
   out.write_element_begin("text");
 
-  if (!dx_array.empty() && dx_array.size() == count_characters(text)) {
-    out.write_attribute("x", get_x_list_string(point, dx_array, context));
+  const auto positions =
+      dx_array.empty() ? std::nullopt
+                       : get_x_list_string(point, text, dx_array, context);
+  if (positions) {
+    out.write_attribute("x", *positions);
   } else {
     if (!dx_array.empty()) {
-      ODR_DEBUG(*context.logger, "dropping a dx array of "
-                                     << dx_array.size() << " for "
-                                     << count_characters(text)
-                                     << " characters");
+      ODR_DEBUG(*context.logger,
+                "dropping a dx array that does not match the text");
     }
     out.write_attribute("x", transform_x(point.x, context));
   }
