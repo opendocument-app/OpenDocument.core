@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF literal strings accept one- and two-digit octal escapes and normalize
+  line endings. Malformed dictionary closing delimiters are rejected.
+
 - WebAssembly TypeScript declarations include the existing `ErrorCode` table
   and `spreadsheetStyleBuffer` setting.
 

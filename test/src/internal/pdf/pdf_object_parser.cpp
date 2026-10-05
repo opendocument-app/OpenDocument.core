@@ -236,6 +236,7 @@ TEST(PdfObjectParser, standard_string_basic) {
   EXPECT_EQ(read_standard_string("(Hello)"), "Hello");
   EXPECT_EQ(read_standard_string("()"), "");
   EXPECT_EQ(read_standard_string("(a b\tc)"), "a b\tc");
+  EXPECT_EQ(read_standard_string("(a\rb\r\nc\nd)"), "a\nb\nc\nd");
 }
 
 // 7.3.4.2, Table 3: the control escapes translate to their byte value. A CFF
@@ -258,6 +259,7 @@ TEST(PdfObjectParser, standard_string_literal_escapes) {
   EXPECT_EQ(read_standard_string("(a\\(b\\)c)"), "a(b)c");
   EXPECT_EQ(read_standard_string("(a\\\\b)"), "a\\b");
   EXPECT_EQ(read_standard_string("(a\\qb)"), "aqb");
+  EXPECT_EQ(read_standard_string("(\\8\\9)"), "89");
 }
 
 // 7.3.4.2: a balanced pair of parentheses needs no escaping, so only the `)`
@@ -274,8 +276,12 @@ TEST(PdfObjectParser, standard_string_balanced_parentheses) {
 
 // 7.3.4.2: a `\ddd` octal escape (1-3 digits) is the byte of that value.
 TEST(PdfObjectParser, standard_string_octal_escape) {
-  EXPECT_EQ(read_standard_string("(\\101)"), "A");
-  EXPECT_EQ(read_standard_string("(\\000)"), std::string("\000", 1));
+  EXPECT_EQ(read_standard_string(R"((\101))"), "A");
+  EXPECT_EQ(read_standard_string(R"((\1))"), std::string(1, char{1}));
+  EXPECT_EQ(read_standard_string(R"((\12x))"), "\nx");
+  EXPECT_EQ(read_standard_string(R"((\1012))"), "A2");
+  EXPECT_EQ(read_standard_string(R"((\777))"), std::string(1, '\xff'));
+  EXPECT_EQ(read_standard_string(R"((\000))"), std::string(1, '\0'));
 }
 
 // 7.3.4.2: a backslash before an end-of-line marker is a line continuation;
@@ -338,4 +344,13 @@ TEST(PdfObjectParser, serialization_round_trips) {
   EXPECT_EQ(read_dictionary.as_dictionary().get("Type").as_string(), "Annot");
   EXPECT_EQ(read_dictionary.as_dictionary().get("Odd Key").as_integer(), 1);
   EXPECT_DOUBLE_EQ(read_dictionary.as_dictionary().get("Rect").as_real(), 72.5);
+}
+
+TEST(PdfObjectParser, dictionary_requires_closing_delimiter) {
+  EXPECT_THROW(read_object("<< /A 1 >x"), std::runtime_error);
+  EXPECT_THROW(read_object("<< /A 1 >"), std::runtime_error);
+  EXPECT_THROW(read_object("<< /A 1 > >"), std::runtime_error);
+  const auto [object, rest] = read_object("<< /A 1 >>tail");
+  EXPECT_EQ(object.as_dictionary()["A"].as_integer(), 1);
+  EXPECT_EQ(rest, "tail");
 }

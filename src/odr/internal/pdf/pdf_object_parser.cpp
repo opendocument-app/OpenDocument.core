@@ -79,13 +79,6 @@ void ObjectParser::ungetc() {
   }
 }
 
-std::uint8_t ObjectParser::octet_char_to_int(const char_type c) {
-  if (c >= '0' && c <= '7') {
-    return c - '0';
-  }
-  throw std::runtime_error("invalid character in octet_char_to_int");
-}
-
 std::uint8_t ObjectParser::hex_char_to_int(const char_type c) {
   const std::optional<std::uint8_t> value = util::string::hex_digit(c);
   if (!value) {
@@ -98,14 +91,6 @@ ObjectParser::char_type ObjectParser::two_hex_to_char(const char_type first,
                                                       const char_type second) {
   return static_cast<char_type>(hex_char_to_int(first) * 16 +
                                 hex_char_to_int(second));
-}
-
-ObjectParser::char_type
-ObjectParser::three_octet_to_char(const char_type first, const char_type second,
-                                  const char_type third) {
-  return static_cast<char_type>(octet_char_to_int(first) * 64 +
-                                octet_char_to_int(second) * 8 +
-                                octet_char_to_int(third));
 }
 
 bool ObjectParser::is_whitespace(const char c) {
@@ -425,9 +410,17 @@ std::variant<StandardString, HexString> ObjectParser::read_string() {
 
       if (c == '\\') {
         c = getc();
-        if (std::isdigit(c)) {
-          const std::array octet = bumpnc<3>();
-          string += three_octet_to_char(octet[0], octet[1], octet[2]);
+        if (c >= '0' && c <= '7') {
+          // ISO 32000-1 7.3.4.2: one to three octal digits, modulo 256.
+          std::uint32_t value = 0;
+          for (std::uint32_t digits = 0; digits < 3; ++digits) {
+            const int_type next = geti();
+            if (next < '0' || next > '7') {
+              break;
+            }
+            value = value * 8 + (bumpc() - '0');
+          }
+          string += static_cast<char>(value & 0xff);
         } else {
           bumpc();
           // Reverse-solidus escapes (ISO 32000-1 7.3.4.2, Table 3). A
@@ -462,6 +455,12 @@ std::variant<StandardString, HexString> ObjectParser::read_string() {
           }
         }
         continue;
+      }
+      if (c == '\r') {
+        if (geti() == '\n') {
+          bumpc();
+        }
+        c = '\n';
       }
       if (c == '(') {
         ++depth;
@@ -572,8 +571,7 @@ Dictionary ObjectParser::read_dictionary() {
 
   while (true) {
     if (const char_type c = getc(); c == '>') {
-      bumpc();
-      bumpc();
+      expect_characters(">>");
       return Dictionary(std::move(result));
     }
 
