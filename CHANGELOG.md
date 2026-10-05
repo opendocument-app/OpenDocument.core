@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- iWork parsing rejects overflowing varints, invalid field tags and combined
+  payload lengths before narrowing or allocation; text budgets cannot wrap.
+  Unknown wide archive types no longer alias known types.
+
 - StarView text arrays retain character positioning for supplementary Unicode
   characters instead of discarding their UTF-16 advance arrays.
 

@@ -164,18 +164,18 @@ std::vector<iwork::Object> iwork::read_objects(const std::string_view data) {
       const Message message_info(message.bytes);
       const std::uint64_t length =
           message_info.number_field(message_info_length).value_or(0);
+      if (length > data.size() - position - payload_length) {
+        throw std::runtime_error(
+            "iwork: object payload runs past the component");
+      }
       if (first) {
-        object.type = static_cast<std::uint32_t>(
-            message_info.number_field(message_info_type).value_or(0));
+        object.type = message_info.number_field(message_info_type).value_or(0);
         first_length = length;
         first = false;
       }
       payload_length += length;
     }
 
-    if (payload_length > data.size() - position) {
-      throw std::runtime_error("iwork: object payload runs past the component");
-    }
     object.payload = data.substr(position, first_length);
     position += payload_length;
 

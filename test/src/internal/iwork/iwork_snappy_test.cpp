@@ -82,6 +82,8 @@ TEST(SnappyDecompressBlock, length_does_not_match) {
 
 TEST(SnappyDecompressBlock, literal_runs_past_the_block) {
   EXPECT_ANY_THROW(std::ignore = snappy_decompress_block(
+                       std::string("\0\xfc\xff\xff\xff\xff", 6)));
+  EXPECT_ANY_THROW(std::ignore = snappy_decompress_block(
                        block(5, std::string{'\x10'} + "hel")));
 }
 
@@ -97,7 +99,9 @@ TEST(SnappyDecompressBlock, declared_length_is_not_trusted) {
                        '\xff', '\xff', '\xff', '\xff', '\x0f', '\x00'}));
 }
 
-TEST(SnappyDecompressBlock, length_varint_does_not_terminate) {
+TEST(SnappyDecompressBlock, malformed_length_varint) {
+  EXPECT_ANY_THROW(std::ignore =
+                       snappy_decompress_block("\x80\x80\x80\x80\x10"));
   EXPECT_ANY_THROW(std::ignore = snappy_decompress_block("\x80\x80\x80"));
 }
 

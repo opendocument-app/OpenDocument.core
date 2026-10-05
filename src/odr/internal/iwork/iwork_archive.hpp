@@ -24,7 +24,7 @@ class Message;
 /// one message, only the first is modelled.
 struct Object final {
   std::uint64_t identifier{};
-  std::uint32_t type{};
+  std::uint64_t type{};
   std::string_view payload;
 };
 
