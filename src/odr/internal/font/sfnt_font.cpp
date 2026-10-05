@@ -579,7 +579,7 @@ std::string SfntFont::write() const {
     if (tag == "cmap" || !is_kept_table(tag)) {
       continue;
     }
-    std::string data = table_data(location);
+    std::string data = std::string(table_data(location));
     if (tag == "hmtx") {
       // OTS rejects an `hmtx` shorter than `hhea` and `maxp` say.
       const std::size_t side_bearings =
