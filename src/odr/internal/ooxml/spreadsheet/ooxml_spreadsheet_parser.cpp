@@ -4,8 +4,13 @@
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/common/table_range.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element_registry.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
+#include <charconv>
+#include <cstdint>
+#include <limits>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -15,6 +20,20 @@
 namespace odr::internal::ooxml::spreadsheet {
 
 namespace {
+
+std::uint32_t read_index(std::string_view text) {
+  text = util::string::trim_view(text);
+  if (text.starts_with('+')) {
+    text.remove_prefix(1);
+  }
+  std::uint32_t result = 0;
+  const auto [end, error] =
+      std::from_chars(text.data(), text.data() + text.size(), result);
+  if (error != std::errc{} || end != text.data() + text.size()) {
+    throw std::runtime_error("invalid spreadsheet index");
+  }
+  return result;
+}
 
 using TreeParser = std::function<std::tuple<ElementIdentifier, pugi::xml_node>(
     ElementRegistry &registry, const ParseContext &context,
@@ -89,8 +108,7 @@ void parse_sheet_cell_children(ElementRegistry &registry,
   // one carries the same content model under `is`. Both hold the text one
   // level below the cell, where the walker does not descend on its own.
   if (type == "s") {
-    const pugi::xml_node v_node = node.child("v");
-    const std::size_t ref = v_node.first_child().text().as_ullong();
+    const std::uint32_t ref = read_index(node.child("v").text().get());
     const pugi::xml_node shared_node = context.shared_strings().at(ref);
     parse_any_element_children(registry, context, parent_id, shared_node);
     return;
@@ -115,19 +133,47 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
                                     context.document_path());
 
   for (const pugi::xml_node col_node : node.child("cols").children("col")) {
-    const std::uint32_t min = col_node.attribute("min").as_uint() - 1;
-    const std::uint32_t max = col_node.attribute("max").as_uint() - 1;
-    sheet.register_column(min, max, col_node);
+    const std::uint32_t min = read_index(col_node.attribute("min").value());
+    const std::uint32_t max = read_index(col_node.attribute("max").value());
+    if (min == 0 || max < min) {
+      throw std::runtime_error("invalid spreadsheet column range");
+    }
+    sheet.register_column(min - 1, max - 1, col_node);
   }
 
   TableDimensions used;
-  for (const pugi::xml_node row_node :
-       node.child("sheetData").children("row")) {
-    const std::uint32_t row = row_node.attribute("r").as_uint() - 1;
+  // State inferred coordinates so later edits read the same positions.
+  std::uint64_t next_row = 1;
+  for (pugi::xml_node row_node : node.child("sheetData").children("row")) {
+    const pugi::xml_attribute row_attribute = row_node.attribute("r");
+    const std::uint64_t row_number =
+        row_attribute ? read_index(row_attribute.value()) : next_row;
+    if (row_number == 0 ||
+        row_number > std::numeric_limits<std::uint32_t>::max()) {
+      throw std::runtime_error("invalid spreadsheet row");
+    }
+    const std::uint32_t row = static_cast<std::uint32_t>(row_number - 1);
+    next_row = row_number + 1;
+    if (!row_attribute) {
+      row_node.append_attribute("r").set_value(
+          static_cast<std::uint32_t>(row_number));
+    }
     sheet.register_row(row, row_node);
 
-    for (const pugi::xml_node cell_node : row_node.children("c")) {
-      TablePosition position(cell_node.attribute("r").value());
+    std::uint32_t next_column = 0;
+    for (pugi::xml_node cell_node : row_node.children("c")) {
+      const pugi::xml_attribute reference = cell_node.attribute("r");
+      if (!reference &&
+          next_column == std::numeric_limits<std::uint32_t>::max()) {
+        throw std::runtime_error("invalid spreadsheet column");
+      }
+      const TablePosition position = reference
+                                         ? TablePosition(reference.value())
+                                         : TablePosition(next_column, row);
+      next_column = position.column + 1;
+      if (!reference) {
+        cell_node.append_attribute("r").set_value(position.to_string().c_str());
+      }
 
       const auto &[cell_id, unused1, unused2] =
           registry.create_sheet_cell_element(cell_node, position);
