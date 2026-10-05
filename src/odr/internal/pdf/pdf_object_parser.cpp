@@ -38,13 +38,18 @@ template <typename T> T parse_integer(std::string_view token) {
   return value;
 }
 
+template <typename Id, typename Gen>
+ObjectReference checked_reference(const Id id, const Gen gen) {
+  if (!std::in_range<std::uint32_t>(id) || !std::in_range<std::uint16_t>(gen)) {
+    throw std::runtime_error("out-of-range PDF object reference");
+  }
+  return {static_cast<std::uint64_t>(id), static_cast<std::uint64_t>(gen)};
+}
+
 } // namespace
 
 ObjectParser::ObjectParser(std::istream &in) : m_in{&in}, m_sb{in.rdbuf()} {
-  // One-time stream preparation (flush tied streams, state check) for the
-  // raw-streambuf reads below; a sentry's effects live entirely in its
-  // constructor, so it is not kept as state (it would also make the parser
-  // immovable).
+  // Prepare the stream before switching to raw streambuf reads.
   const std::istream::sentry se(in, true);
 }
 
@@ -176,9 +181,7 @@ bool ObjectParser::skip_past(const std::string_view marker) {
     return true;
   }
 
-  // KMP failure function over the (typically tiny) marker, so the streaming
-  // scan stays correct even when the marker has internal repetition (e.g. the
-  // two `e`s in `endstream`).
+  // KMP preserves overlapping partial matches without rewinding.
   std::vector<std::size_t> fail(marker.size(), 0);
   for (std::size_t i = 1, k = 0; i < marker.size(); ++i) {
     while (k > 0 && marker[i] != marker[k]) {
@@ -210,15 +213,9 @@ bool ObjectParser::skip_past(const std::string_view marker) {
   }
 }
 
-/// The keyword is lowercase in ISO 32000-1 7.3.2, but the `peek_` above take
-/// either case, so what follows has to as well - and it has to be read, or
-/// `nXYZ` parses as null.
 void ObjectParser::expect_keyword(const std::string &keyword) {
-  const std::string observed = bumpnc(keyword.size());
-  if (!std::ranges::equal(observed, keyword, [](char a, char b) {
-        return std::tolower(static_cast<unsigned char>(a)) ==
-               std::tolower(static_cast<unsigned char>(b));
-      })) {
+  const std::string observed = read_keyword();
+  if (observed != keyword) {
     throw std::runtime_error("unexpected keyword (expected: " + keyword +
                              ", observed: " + observed + ")");
   }
@@ -328,15 +325,18 @@ void ObjectParser::read_name(std::ostream &out) {
       return;
     }
     const auto c = static_cast<char_type>(i);
-    if (c < 0x21 || c > 0x7e || c == '/' || c == '%' || c == '(' || c == ')' ||
-        c == '<' || c == '>' || c == '[' || c == ']' || c == '{' || c == '}') {
+    if (is_whitespace(c) || is_delimiter(c)) {
       return;
     }
 
     if (c == '#') {
       bumpc();
       const std::array hex = bumpnc<2>();
-      out.put(two_hex_to_char(hex[0], hex[1]));
+      const char value = two_hex_to_char(hex[0], hex[1]);
+      if (value == '\0') {
+        throw std::runtime_error("null byte in PDF name");
+      }
+      out.put(value);
       continue;
     }
 
@@ -353,25 +353,25 @@ Name ObjectParser::read_name() {
 
 bool ObjectParser::peek_null() {
   const int_type c = geti();
-  return c != eof && (c == 'n' || c == 'N');
+  return c == 'n';
 }
 
 void ObjectParser::read_null() { expect_keyword("null"); }
 
 bool ObjectParser::peek_boolean() {
   const int_type c = geti();
-  return c != eof && (c == 't' || c == 'T' || c == 'f' || c == 'F');
+  return c == 't' || c == 'f';
 }
 
 Boolean ObjectParser::read_boolean() {
   const int_type c = geti();
 
-  if (c == 't' || c == 'T') {
+  if (c == 't') {
     expect_keyword("true");
     return true;
   }
 
-  if (c == 'f' || c == 'F') {
+  if (c == 'f') {
     expect_keyword("false");
     return false;
   }
@@ -528,18 +528,20 @@ Array ObjectParser::read_array() {
     result.emplace_back(read_object());
     skip_whitespace_and_comments();
 
-    // Array elements may be bare adjacent integers, so a reference can only be
-    // recognised once the `R` token actually appears: it retroactively folds
-    // the two preceding integers (`n g`) into an `n g R` reference.
+    // Adjacent integers become a reference only when followed by `R`.
     if (const char_type c = getc(); c == 'R' && result.size() >= 2) {
-      bumpc();
+      expect_keyword("R");
       skip_whitespace_and_comments();
 
-      const UnsignedInteger gen = result.back().as_integer();
+      const auto &id = result[result.size() - 2];
+      const auto &gen = result.back();
+      if (!id.is_integer() || !gen.is_integer()) {
+        throw std::runtime_error("non-integer PDF object reference");
+      }
+      const auto reference =
+          checked_reference(id.as_integer(), gen.as_integer());
       result.pop_back();
-      const UnsignedInteger id = result.back().as_integer();
-      result.pop_back();
-      result.emplace_back(ObjectReference(id, gen));
+      result.back() = Object(reference);
     }
   }
 }
@@ -582,7 +584,9 @@ Dictionary ObjectParser::read_dictionary() {
     skip_whitespace_and_comments();
     promote_indirect_reference(value);
 
-    result.emplace(std::move(name.string), std::move(value));
+    if (!result.emplace(std::move(name.string), std::move(value)).second) {
+      throw std::runtime_error("duplicate PDF dictionary key");
+    }
   }
 }
 
@@ -618,33 +622,26 @@ Object ObjectParser::read_object() {
 }
 
 void ObjectParser::promote_indirect_reference(Object &value) {
-  // Called only where a value cannot legitimately be followed by another
-  // number — the next token is a key, `>>` or `endobj` — so a digit here can
-  // only be the `g` of an `n g R` whose object number is `value`.
+  // A following number can only be the generation in this context.
   if (!value.is_integer() || !peek_unsigned_integer()) {
     return;
   }
-  const auto id = static_cast<UnsignedInteger>(value.as_integer());
+  const Integer id = value.as_integer();
   const UnsignedInteger gen = read_unsigned_integer();
   skip_whitespace_and_comments();
-  if (bumpc() != 'R') {
-    throw std::runtime_error("expected 'R' to complete indirect reference");
-  }
+  expect_keyword("R");
   skip_whitespace_and_comments();
-  value = Object(ObjectReference{id, gen});
+  value = Object(checked_reference(id, gen));
 }
 
 ObjectReference ObjectParser::read_object_reference() {
-  UnsignedInteger id = read_unsigned_integer();
+  const UnsignedInteger id = read_unsigned_integer();
   skip_whitespace_and_comments();
-  UnsignedInteger gen = read_unsigned_integer();
+  const UnsignedInteger gen = read_unsigned_integer();
   skip_whitespace_and_comments();
 
-  if (bumpc() != 'R') {
-    throw std::runtime_error("unexpected character");
-  }
-
-  return {id, gen};
+  expect_keyword("R");
+  return checked_reference(id, gen);
 }
 
 } // namespace odr::internal::pdf

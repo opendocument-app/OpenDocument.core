@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF names preserve non-ASCII bytes. Object parsing rejects malformed keywords,
+  invalid reference indices, null name escapes and duplicate dictionary keys.
+
 - PDF recovery removes obsolete generations and uses the latest compressed
   copy when no direct definition exists.
 

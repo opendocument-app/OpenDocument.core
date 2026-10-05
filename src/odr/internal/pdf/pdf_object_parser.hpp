@@ -44,18 +44,13 @@ public:
   static bool is_delimiter(char c);
   [[nodiscard]] bool peek_whitespace();
   void skip_whitespace();
-  /// White space plus the comments (`%` to the end of the line, 7.2.4) it may
-  /// be interleaved with. Not between entries: `%PDF-` and `%%EOF` are read as
-  /// entries of their own.
+  /// Skip white space and comments (7.2.4); do not call between file entries.
   void skip_whitespace_and_comments();
   void skip_line();
   std::string read_line(bool inclusive = false);
-  /// Advance the cursor just past the next occurrence of `marker`. Returns true
-  /// if it was found; on false the stream has been consumed to eof. Operates on
-  /// raw bytes, so the marker may straddle line breaks.
+  /// Consume through the next raw-byte marker; return false at EOF.
   bool skip_past(std::string_view marker);
-  /// @p keyword, compared without case. @throws std::runtime_error on a
-  /// mismatch.
+  /// Require an exact, complete keyword (7.2.2).
   void expect_keyword(const std::string &keyword);
   void expect_characters(const std::string &string);
   /// A bareword such as `endobj` or `Tj`, up to the next white space or
@@ -88,27 +83,18 @@ public:
   [[nodiscard]] bool peek_dictionary();
   [[nodiscard]] Dictionary read_dictionary();
 
-  /// Read one *self-delimiting* object: null, boolean, number, name, string,
-  /// array, or dictionary. A bare `n g R` is **not** one: it is
-  /// indistinguishable from the integer `n` until the `R` two tokens later, so
-  /// it comes back as that integer and the enclosing context folds it in —
-  /// `read_array` at the `R`, dictionary values and indirect-object bodies via
-  /// `promote_indirect_reference`. Use `read_object_reference` where a
-  /// reference is required outright.
+  /// Read one object. Enclosing containers fold `n g R` into a reference;
+  /// use read_object_reference when a reference is required.
   [[nodiscard]] Object read_object();
 
-  /// With the cursor just past a freshly-read `value` (trailing whitespace
-  /// skipped), fold it into an `n g R` reference if a `g R` tail follows. Only
-  /// valid where a value cannot be followed by another bare number — so not for
-  /// array elements.
+  /// Fold a following `g R` into value, with leading whitespace skipped.
+  /// Valid only where another bare number cannot follow, never in arrays.
   void promote_indirect_reference(Object &value);
 
   [[nodiscard]] ObjectReference read_object_reference();
 
 private:
-  /// Bounds the `read_array`/`read_dictionary` -> `read_object` recursion: each
-  /// level is a C++ stack frame, so an unbounded nesting depth would overflow
-  /// it. Well past anything real content nests to.
+  /// Bound recursive composite parsing to protect the C++ stack.
   static constexpr std::uint32_t max_nesting_depth = 256;
 
   /// RAII depth counter around one composite read; `throw`s past the limit.

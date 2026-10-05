@@ -392,3 +392,45 @@ TEST(PdfObjectParser, dictionary_requires_closing_delimiter) {
   EXPECT_EQ(object.as_dictionary()["A"].as_integer(), 1);
   EXPECT_EQ(rest, "tail");
 }
+
+TEST(PdfObjectParser, keywords_are_complete_and_case_sensitive) {
+  for (const std::string input : {"nullx", "truefalse", "False", "NULL"}) {
+    SCOPED_TRACE(input);
+    EXPECT_THROW(read_object(input), std::runtime_error);
+  }
+  const auto [object, rest] = read_object("[null true false]/Next");
+  const auto &array = object.as_array();
+  ASSERT_EQ(array.size(), 3u);
+  EXPECT_TRUE(array[0].is_null());
+  EXPECT_TRUE(array[1].as_bool());
+  EXPECT_FALSE(array[2].as_bool());
+  EXPECT_EQ(rest, "/Next");
+}
+
+TEST(PdfObjectParser, names_preserve_regular_bytes) {
+  const std::string name = "A\x80\xff\x01";
+  const auto [object, rest] = read_object("/" + name + "/Next");
+  EXPECT_EQ(object.as_string(), name);
+  EXPECT_EQ(rest, "/Next");
+  EXPECT_THROW(read_object("/Bad#00Name"), std::runtime_error);
+}
+
+TEST(PdfObjectParser, references_require_valid_indices_and_complete_marker) {
+  for (const std::string input :
+       {"[-1 0 R]", "[1 -1 R]", "[1 65536 R]", "[4294967296 0 R]", "[1 0 R2]",
+        "[true 0 R]", "<< /A -1 0 R >>", "<< /A 1 65536 R >>",
+        "<< /A 1 0 Rtail >>"}) {
+    SCOPED_TRACE(input);
+    EXPECT_THROW(read_object(input), std::runtime_error);
+  }
+  for (const std::string input : {"4294967296 0 R", "1 65536 R", "1 0 Rtail"}) {
+    SCOPED_TRACE(input);
+    std::istringstream in(input);
+    ObjectParser parser(in);
+    EXPECT_THROW((void)parser.read_object_reference(), std::runtime_error);
+  }
+}
+
+TEST(PdfObjectParser, dictionary_rejects_duplicate_decoded_keys) {
+  EXPECT_THROW(read_object("<< /A 1 /#41 2 >>"), std::runtime_error);
+}
