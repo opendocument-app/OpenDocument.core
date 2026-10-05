@@ -132,6 +132,12 @@
     const run1 = document.querySelector('[data-odr-page="0"] .sr');
 
     const first = payload().annotations[0];
+    const savedHighlight = api.getAnnotations();
+    const highlightSnapshot = api.list()[0];
+    highlightSnapshot.color[0] = 0;
+    highlightSnapshot.boxes[0][0] = -100;
+    check("listed highlights do not expose pending geometry or color",
+      api.getAnnotations() === savedHighlight);
     check("it names its page", first.page === 0, first.page);
     check("it is a highlight", first.type === "highlight", first.type);
     check("it has one quad of eight numbers", first.quads.length === 1 &&
@@ -258,6 +264,11 @@
     check("another pointer does not split the stroke", api.list().length === 1);
 
     const ink = payload().annotations[0];
+    const savedInk = api.getAnnotations();
+    const inkSnapshot = api.list()[0];
+    inkSnapshot.width = 100;
+    inkSnapshot.strokes[0].push(0, 0);
+    check("listed strokes do not expose pending state", api.getAnnotations() === savedInk);
     check("a drag makes an ink annotation", ink && ink.type === "ink", ink);
     check("its width carries", ink && ink.width === 3, ink && ink.width);
     check(
@@ -416,15 +427,19 @@
 
     let threw = false;
     try {
-      api.setOptions({ nonesuch: 1 });
+      api.setOptions({ touchAction: "auto", nonesuch: 1 });
     } catch (e) {
       threw = true;
     }
     check("an unknown option throws rather than being ignored", threw);
+    check("a refused update leaves options unchanged", api.getOptions().touchAction === "none");
 
     // --- pointer types the host does not want are not drawn with ----------
     api.clear();
-    api.setOptions({ inkPointerTypes: ["pen"] });
+    const pointerTypes = ["pen"];
+    api.setOptions({ inkPointerTypes: pointerTypes });
+    pointerTypes.push("touch");
+    api.getOptions().inkPointerTypes.push("touch");
     const withType = (type, x, y) =>
       Object.assign(at(x, y), { pointerType: type, pointerId: 7 });
     document.dispatchEvent(new PointerEvent("pointerdown", withType("touch", 100, 200)));
