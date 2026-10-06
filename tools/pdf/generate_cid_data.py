@@ -248,19 +248,24 @@ def split_runs(
 def merge_cid_ranges(
     ranges: list[tuple[int, int, int, int]],
 ) -> list[tuple[int, int, int, int]]:
-    """Sort by (width, code_low) and merge adjacent contiguous CID runs."""
+    """Resolve later overrides, then merge adjacent contiguous CID mappings."""
+    mappings: dict[tuple[int, int], int] = {}
+    for low, high, cid, width in ranges:
+        for code in range(low, high + 1):
+            mappings[width, code] = cid + code - low
+
     merged: list[tuple[int, int, int, int]] = []
-    for low, high, cid, width in sorted(ranges, key=lambda r: (r[3], r[0])):
+    for (width, code), cid in sorted(mappings.items()):
         if merged:
             p_low, p_high, p_cid, p_width = merged[-1]
             if (
                 width == p_width
-                and low == p_high + 1
+                and code == p_high + 1
                 and cid == p_cid + (p_high - p_low) + 1
             ):
-                merged[-1] = (p_low, high, p_cid, p_width)
+                merged[-1] = (p_low, code, p_cid, p_width)
                 continue
-        merged.append((low, high, cid, width))
+        merged.append((code, code, cid, width))
     return merged
 
 

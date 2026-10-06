@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF predefined CMaps preserve inherited character mappings after local
+  overrides, restoring text previously lost from vertical CJK fonts.
+
 - PDF fax images cut a run that exceeds the remaining row width at the row
   end and keep decoding, so run lengths no longer overflow.
 
