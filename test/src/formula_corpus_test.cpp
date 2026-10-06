@@ -125,9 +125,8 @@ void evaluate_file(const TestFile &file, Tally &tally) {
 
 } // namespace
 
-/// Decision 29 of `docs/design/spreadsheet-editing.md`: an answer is never
-/// wrong. Every formula of the spreadsheets in the corpus is evaluated, and
-/// each answer is compared with the result the file caches.
+/// Compare supported formulas with cached results (spreadsheet-editing decision
+/// 29).
 TEST(FormulaCorpus, every_answer_is_the_result_the_file_caches) {
   Tally tally;
   for (const FileType type : {FileType::opendocument_spreadsheet,
@@ -139,6 +138,11 @@ TEST(FormulaCorpus, every_answer_is_the_result_the_file_caches) {
       evaluate_file(file, tally);
     }
   }
+
+  if (tally.formulas == 0) {
+    GTEST_SKIP() << "No formula-bearing corpus files available";
+  }
+  ASSERT_GT(tally.answered, 0u) << "No cached formula results were checked";
 
   std::cout << tally.answered << " of " << tally.formulas
             << " formulas answered, " << tally.differences.size()

@@ -246,88 +246,95 @@ TEST(FileTypeTable, capabilities_build_on_each_other) {
 
 /// Holds the declared `color_scheme` against what the renderer emits.
 TEST(FileTypeCapabilities, color_scheme_matches_the_html) {
-  const auto &logger = Logger::null();
-
+  std::size_t candidates = 0;
   for (const FileType type : every_file_type()) {
     const FileTypeCapabilities declared = capabilities_by_file_type(type);
     if (!declared.translate_html) {
       continue;
     }
-
-    const std::vector<TestFile> test_files = TestData::test_files(type);
-    if (test_files.empty() || test_files.front().password.has_value()) {
-      continue;
+    const std::size_t before = candidates;
+    bool checked = false;
+    std::string error;
+    for (const TestFile &test_file : TestData::test_files(type)) {
+      if (test_file.password.has_value()) {
+        continue;
+      }
+      ++candidates;
+      try {
+        const DecodedFile file =
+            open(test_file.absolute_path, DecodeOptions::as(type));
+        const auto render = [&](const HtmlColorScheme scheme) {
+          HtmlConfig config;
+          config.color_scheme = scheme;
+          // one page of a pdf is enough, and the rest is slow
+          config.page_range_end = 1;
+          std::ostringstream out;
+          html::translate(file, config).list_views().at(0).write_html(out);
+          return out.str();
+        };
+        EXPECT_EQ(render(HtmlColorScheme::light) !=
+                      render(HtmlColorScheme::dark),
+                  declared.color_scheme)
+            << test_file.short_path;
+        checked = true;
+        break;
+      } catch (const std::exception &failure) {
+        error = test_file.short_path + ": " + failure.what();
+      }
     }
-
-    std::optional<DecodedFile> file;
-    try {
-      file = open(test_files.front().absolute_path, DecodeOptions::as(type),
-                  logger);
-    } catch (...) {
-      continue;
+    if (candidates != before) {
+      EXPECT_TRUE(checked) << file_type_to_string(type) << ": " << error;
     }
-
-    const auto render = [&](const HtmlColorScheme scheme) {
-      HtmlConfig config;
-      config.color_scheme = scheme;
-      // one page of a pdf is enough, and the rest is slow
-      config.page_range_end = 1;
-
-      std::ostringstream out;
-      html::translate(*file, config).list_views().at(0).write_html(out);
-      return out.str();
-    };
-
-    std::string light;
-    std::string dark;
-    try {
-      light = render(HtmlColorScheme::light);
-      dark = render(HtmlColorScheme::dark);
-    } catch (...) {
-      continue;
-    }
-
-    EXPECT_EQ(light != dark, declared.color_scheme)
-        << file_type_to_string(type) << " " << test_files.front().short_path;
+  }
+  if (candidates == 0) {
+    GTEST_SKIP() << "No unencrypted corpus files available for rendering";
   }
 }
 
-/// The anti-drift check behind `capabilities_by_file_type`: what the engines
-/// actually do must never exceed what the table declares. Capabilities are
-/// per-format constants today, so a couple of files per type is enough.
+/// Engine capabilities must stay within the format's declarations.
 TEST(FileTypeCapabilities, declaration_matches_the_engines) {
-  static constexpr std::size_t files_per_file_type = 2;
-
-  const auto &logger = Logger::null();
-
+  constexpr std::size_t files_per_file_type = 2;
+  std::size_t candidates = 0;
   for (const FileType type : every_file_type()) {
     const FileTypeCapabilities declared = capabilities_by_file_type(type);
-    const std::vector<TestFile> test_files = TestData::test_files(type);
-
-    const std::size_t count = std::min(files_per_file_type, test_files.size());
-    for (std::size_t i = 0; i < count; ++i) {
-      const TestFile &test_file = test_files[i];
-
+    const std::size_t before = candidates;
+    std::size_t checked = 0;
+    std::string error;
+    for (const TestFile &test_file : TestData::test_files(type)) {
+      if (checked == files_per_file_type) {
+        break;
+      }
+      if ((declared.edit || declared.save) && test_file.password.has_value()) {
+        continue;
+      }
+      ++candidates;
       if (!declared.open) {
         EXPECT_ANY_THROW(std::ignore = open(test_file.absolute_path,
-                                            DecodeOptions::as(type), logger))
+                                            DecodeOptions::as(type)))
             << test_file.short_path;
+        ++checked;
         continue;
       }
 
       std::optional<DecodedFile> file;
+      std::optional<Document> document;
       try {
-        file = open(test_file.absolute_path, DecodeOptions::as(type), logger);
-      } catch (...) {
-        // declared support is an upper bound — a single file may still fail
+        file = open(test_file.absolute_path, DecodeOptions::as(type));
+        if (file->is_document_file() && !file->password_encrypted()) {
+          document = file->as_document_file().document();
+        }
+      } catch (const std::exception &failure) {
+        // declared support is an upper bound: one file may fail, as long as
+        // another of its type passes
+        error = test_file.short_path + ": " + failure.what();
         continue;
       }
-
-      // whatever detection sees, the table has to admit to — from the bytes,
+      ++checked;
+      // whatever detection sees, the table has to admit to - from the bytes,
       // or from the name for a type that has no signature to find
       const std::vector<FileType> detected =
-          list_file_types(test_file.absolute_path, logger);
-      if (std::ranges::find(detected, type) != std::ranges::end(detected)) {
+          list_file_types(test_file.absolute_path);
+      if (std::ranges::find(detected, type) != detected.end()) {
         EXPECT_TRUE(declared.detect_by_content ||
                     file_type_by_file_extension(
                         Path(test_file.absolute_path).extension()) == type)
@@ -343,31 +350,26 @@ TEST(FileTypeCapabilities, declaration_matches_the_engines) {
           << test_file.short_path;
       EXPECT_TRUE(!actual.translate_html || declared_actual.translate_html)
           << test_file.short_path;
-
-      // A plain file is not a document, so `Document::is_savable` never
-      // answers for it - and without this the table could claim anything.
+      // a plain file is not a document, so `Document::is_savable` never
+      // answers for it, and without this the table could claim anything
       if (file->is_text_file()) {
         EXPECT_EQ(file->as_text_file().is_savable(), declared_actual.save)
             << test_file.short_path;
       }
-
-      if (!file->is_document_file() || file->password_encrypted()) {
-        continue;
+      if (document.has_value()) {
+        EXPECT_EQ(document->is_editable(), declared_actual.edit)
+            << test_file.short_path;
+        EXPECT_EQ(document->is_savable(false), declared_actual.save)
+            << test_file.short_path;
+        EXPECT_EQ(document->is_savable(true), declared_actual.encrypt)
+            << test_file.short_path;
       }
-
-      std::optional<Document> document;
-      try {
-        document = file->as_document_file().document();
-      } catch (...) {
-        continue;
-      }
-
-      EXPECT_EQ(document->is_editable(), declared_actual.edit)
-          << test_file.short_path;
-      EXPECT_EQ(document->is_savable(false), declared_actual.save)
-          << test_file.short_path;
-      EXPECT_EQ(document->is_savable(true), declared_actual.encrypt)
-          << test_file.short_path;
     }
+    if (candidates != before) {
+      EXPECT_GT(checked, 0u) << file_type_to_string(type) << ": " << error;
+    }
+  }
+  if (candidates == 0) {
+    GTEST_SKIP() << "No corpus files available for capability checks";
   }
 }
