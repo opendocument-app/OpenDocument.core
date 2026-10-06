@@ -127,8 +127,8 @@ std::string hash_r6(const std::string &password, const std::string &salt,
     }
     e = crypto::util::encrypt_aes_cbc(k.substr(0, 16), k.substr(16, 16), k1);
 
-    std::uint32_t mod =
-        0; // the first 16 bytes of E as a big-endian integer, mod 3
+    // the first 16 bytes of E as a big-endian integer, mod 3
+    std::uint32_t mod = 0;
     for (std::size_t i = 0; i < 16; ++i) {
       mod = (mod * 256 + static_cast<std::uint8_t>(e[i])) % 3;
     }
