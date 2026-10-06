@@ -224,8 +224,8 @@ Both run by hand, and `--dry-run` mutates nothing.
 - To patch an older line, branch off the tag (`git branch release/v6.1.X
   v6.1.0`) and dispatch against that. A `feat:` there bumps the minor to a
   number main may have shipped, so `release.py version` refuses a version that
-  is already tagged. Pass `--version` when you mean it. That changelog is not
-  merged back.
+  is already tagged, including an explicit override. Use `--version` to select
+  an unused version. That changelog is not merged back.
 - A human publishes the draft. GitHub creates the tag at publish. A release
   created by `GITHUB_TOKEN` raises no `release: published` event, and that
   event starts the conan, maven and android workflows.
@@ -238,7 +238,8 @@ Both run by hand, and `--dry-run` mutates nothing.
   `release-asset-*`.
 - `release_status.yml` waits for the publish workflows and fails if one failed
   or never started. `EXPECTED` in `scripts/release_status.py` lists the
-  destinations.
+  destinations. Status matches the release tag and commit; use GitHub's rerun
+  action to retry a failed publish run. Manual dispatches are not status evidence.
 
 ## Specs
 
