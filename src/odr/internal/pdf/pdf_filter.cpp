@@ -487,11 +487,9 @@ std::string pdf::lzw_decode(const std::string &input,
       }
     }
 
-    if (!previous.empty()) {
-      // ISO 32000-1 7.4.4.2: entry 4095 is the last; a full table must clear.
-      if (table.size() == 4096 - 258) {
-        throw std::runtime_error("LZWDecode: missing clear-table code");
-      }
+    // ISO 32000-1 7.4.4.2 ends the table at entry 4095 and asks for a clear
+    // code then; without one, the codes go on at 12 bits over the full table
+    if (!previous.empty() && table.size() < 4096 - 258) {
       table.push_back(previous + entry[0]);
       const std::uint64_t next_code = 258 + table.size();
       if (next_code + early_change == 512) {

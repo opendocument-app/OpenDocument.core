@@ -82,9 +82,10 @@ TEST(PdfFilter, lzw_full_dictionary_and_reset) {
     }
     const std::string full = encoded;
     const std::size_t full_bit = bit;
+    // Without a clear code, decoding goes on over the full table.
     append('A', 12);
     append(257, 12);
-    EXPECT_THROW(lzw_decode(encoded, early_change), std::runtime_error);
+    EXPECT_EQ(lzw_decode(encoded, early_change), std::string(3840, 'A'));
 
     encoded = full;
     bit = full_bit;
