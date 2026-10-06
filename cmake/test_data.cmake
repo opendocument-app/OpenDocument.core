@@ -1,5 +1,15 @@
-# Fetch pinned test data. Configure leaves existing checkouts untouched;
-# ODR_TEST_DATA_UPDATE moves clean checkouts to their pins.
+# Fetch pinned test data. Configure leaves existing checkouts untouched,
+# because during a reference-output regeneration the local revision is ahead
+# of the pin on purpose; ODR_TEST_DATA_UPDATE moves clean checkouts to their
+# pins.
+#
+# This runs plain `git`, so the two private repositories need whatever git is
+# set up with: a credential helper (`gh auth setup-git`, as CI does), or ssh:
+#
+#   git config --global url."git@github.com:".insteadOf "https://github.com/"
+
+# Only in script mode: from an include() this would reset the policy defaults
+# of the including directory.
 if (CMAKE_SCRIPT_MODE_FILE)
     cmake_minimum_required(VERSION 3.15)
 endif ()
@@ -69,6 +79,8 @@ function(odr_test_data)
     cmake_parse_arguments(PARSE_ARGV 0 ARG "" "PATH;URL;REVISION" "")
     set(directory "${ODR_TEST_DATA_ROOT}/${ARG_PATH}")
 
+    # a submodule checkout carries `.git` as a file, a plain clone as a
+    # directory, so test for either
     if (NOT EXISTS "${directory}/.git")
         odr_test_data_clone("${directory}" "${ARG_URL}" "${ARG_REVISION}")
         return()
