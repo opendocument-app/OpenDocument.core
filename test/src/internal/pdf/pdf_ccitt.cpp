@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace odr::internal::pdf;
@@ -135,11 +136,25 @@ TEST(PdfCcitt, rows_cut_the_data) {
             std::vector<std::string>(ring.begin(), ring.begin() + 3));
 }
 
+// A run past the end of the row stops there, and decoding goes on.
+TEST(PdfCcitt, runs_past_the_row_end_are_cut) {
+  const std::optional<std::string> long_run =
+      decode_ccitt("\xd9\x2c", parameters(0, 16));
+  ASSERT_TRUE(long_run.has_value());
+  EXPECT_EQ(picture(*long_run, 16),
+            std::vector<std::string>{"................"});
+  // two runs that each fit the row but not together
+  for (const auto &[data, k] : {std::pair{"\x98\xa0", 0}, {"\x33\x14", -1}}) {
+    const std::optional<std::string> samples =
+        decode_ccitt(data, parameters(k, 10, 1));
+    ASSERT_TRUE(samples.has_value());
+    EXPECT_EQ(picture(*samples, 10), std::vector<std::string>{"........##"});
+  }
+}
+
 TEST(PdfCcitt, rejects_invalid_data) {
   EXPECT_FALSE(decode_ccitt("", parameters(-1, 16)).has_value());
   // `0000001` opens the uncompressed-mode extension, which is not supported
   EXPECT_FALSE(decode_ccitt("\x02\xff", parameters(-1, 16)).has_value());
-  // a white run longer than the row
-  EXPECT_FALSE(decode_ccitt("\xd9\x2c", parameters(0, 16)).has_value());
   EXPECT_FALSE(decode_ccitt("\x80", parameters(-1, 0)).has_value());
 }
