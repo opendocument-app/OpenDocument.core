@@ -365,3 +365,21 @@ TEST(OoxmlSpreadsheetValue, content_extent_clips_merged_cells_at_the_window) {
   EXPECT_EQ(content.rows, 3);
   EXPECT_EQ(content.columns, 3);
 }
+
+// An empty cell still draws its border, so the preview has to reach it.
+TEST(OoxmlSpreadsheetValue, content_extent_counts_an_empty_cell_with_a_border) {
+  const Document document = decode(workbook(
+      R"(<row r="2"><c r="B2"><v>1</v></c></row>)"
+      R"(<row r="4"><c r="D4" s="1"/></row>)"
+      R"(<row r="6"><c r="F6" s="0"/></row>)",
+      "", "", "", "",
+      R"(<fonts count="1"><font><sz val="11"/></font></fonts>)"
+      R"(<fills count="1"><fill><patternFill patternType="none"/></fill></fills>)"
+      R"(<borders count="2"><border/>)"
+      R"(<border><bottom style="thin"/></border></borders>)"
+      R"(<cellXfs count="2"><xf fontId="0" fillId="0" borderId="0"/>)"
+      R"(<xf fontId="0" fillId="0" borderId="1" applyBorder="1"/></cellXfs>)"));
+  const TableDimensions content = first_sheet(document).content(std::nullopt);
+  EXPECT_EQ(content.rows, 4);
+  EXPECT_EQ(content.columns, 4);
+}

@@ -308,6 +308,13 @@ pugi::xml_node Document::create_styles_() {
 
 namespace {
 
+/// Whether a cell draws something on its own: a border or a visible fill.
+bool draws(const TableCellStyle &style) {
+  const DirectionalStyle<std::string> &border = style.border;
+  return (style.background_color && style.background_color->alpha != 0) ||
+         border.top || border.right || border.bottom || border.left;
+}
+
 using AdapterBase = internal::RegistryElementAdapter<
     ElementRegistry, abstract::SheetAdapter, abstract::SheetCellAdapter,
     abstract::LineBreakAdapter, abstract::ParagraphAdapter,
@@ -341,8 +348,12 @@ public:
     TableDimensions result;
     for (const auto &[position, cell] :
          m_registry->sheet_element_at(element_id).cells) {
-      if (!cell.node.first_child() || position.row >= limit.rows ||
-          position.column >= limit.columns) {
+      if (position.row >= limit.rows || position.column >= limit.columns) {
+        continue;
+      }
+      // an empty cell still counts where its border or fill draws something
+      if (!cell.node.first_child() &&
+          !draws(sheet_cell_style(element_id, position.column, position.row))) {
         continue;
       }
       const ElementRegistry::SheetCell &element =
