@@ -343,8 +343,9 @@ TEST(PdfImage, decode_mask_alpha_soft_mask_grey_to_alpha) {
        {Case{{0.2, 0.8}, {51, 128, 204, 89}},
         Case{{0.8, 0.2}, {204, 127, 51, 166}},
         Case{{0.5, 0.5}, {128, 128, 128, 128}}, Case{{-1, 2}, {0, 129, 255, 0}},
-        Case{{std::numeric_limits<double>::quiet_NaN(), 1}, {}},
-        Case{{0, std::numeric_limits<double>::infinity()}, {}}}) {
+        Case{{std::numeric_limits<double>::quiet_NaN(), 1}, {0, 128, 255, 64}},
+        Case{{0, std::numeric_limits<double>::infinity()},
+             {0, 128, 255, 64}}}) {
     EXPECT_EQ(decode_mask_alpha(samples, 2, 2, 8, test.decode, false, 2, 2),
               test.expected);
   }

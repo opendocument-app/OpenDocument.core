@@ -275,11 +275,11 @@ std::vector<std::uint8_t> pdf::decode_mask_alpha(
     return {};
   }
   const auto row_bytes = static_cast<std::size_t>(row_bytes_wide);
-  const double low = decode.size() >= 2 ? decode[0] : 0;
-  const double high = decode.size() >= 2 ? decode[1] : 1;
-  if (!std::isfinite(low) || !std::isfinite(high)) {
-    return {};
-  }
+  // A malformed /Decode falls back to the default [0 1], so the mask stays.
+  const bool decodes = decode.size() >= 2 && std::isfinite(decode[0]) &&
+                       std::isfinite(decode[1]);
+  const double low = decodes ? decode[0] : 0;
+  const double high = decodes ? decode[1] : 1;
 
   // Decode the mask at its native resolution first, then resample.
   std::vector<std::uint8_t> native(*native_size);
