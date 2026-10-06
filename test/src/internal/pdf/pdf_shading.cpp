@@ -158,3 +158,22 @@ TEST(PdfShading, bad_function_is_null) {
   dict["Function"] = Object(fn);
   EXPECT_EQ(parse_shading(Object(dict), context(), color_context()), nullptr);
 }
+
+// A tint function without a finite answer at a sample makes the shading null
+// rather than aborting the page.
+TEST(PdfShading, non_finite_function_is_null) {
+  Dictionary fn;
+  fn["FunctionType"] = Object(Integer{2});
+  fn["Domain"] = reals({0, 2});
+  fn["C0"] = reals({0, 0, 0});
+  fn["C1"] = reals({1, 1, 1});
+  fn["N"] = Object(Real{2048}); // 2^2048 overflows
+
+  Dictionary dict;
+  dict["ShadingType"] = Object(Integer{2});
+  dict["ColorSpace"] = Object(Name{"DeviceRGB"});
+  dict["Coords"] = reals({0, 0, 1, 0});
+  dict["Domain"] = reals({0, 2});
+  dict["Function"] = Object(fn);
+  EXPECT_EQ(parse_shading(Object(dict), context(), color_context()), nullptr);
+}

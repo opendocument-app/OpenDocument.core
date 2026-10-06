@@ -5,8 +5,10 @@
 
 #include <array>
 #include <cstdint>
+#include <limits>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -204,6 +206,8 @@ TEST(PdfFunction, malformed_layout_is_null) {
        {"/FunctionType 3 /Domain [0] /Functions []",
         "/FunctionType 2 /Domain [0 1 2] /N 1",
         "/FunctionType 2 /Domain [1 0] /N 1",
+        "/FunctionType 2 /Domain [-1 1] /N 0.5",
+        "/FunctionType 2 /Domain [0 1] /N -1",
         "/FunctionType 2 /Domain [0 1] /Range [0] /N 1",
         "/FunctionType 4294967298 /Domain [0 1] /N 1",
         "/FunctionType 3 /Domain [0 1] /Functions ["
@@ -330,4 +334,64 @@ TEST(PdfFunction, calculator_instruction_limit) {
   const auto fn = parse_function(Object(dict), context(program + "}"));
   ASSERT_NE(fn, nullptr);
   EXPECT_EQ(fn->eval({0.5}), std::vector<double>{0});
+}
+
+TEST(PdfFunction, interpolation_avoids_intermediate_overflow) {
+  const double limit = std::numeric_limits<double>::max();
+  Dictionary sampled;
+  sampled["FunctionType"] = Object(Integer{0});
+  sampled["Domain"] = reals({-limit, limit});
+  sampled["Range"] = reals({-limit, limit});
+  sampled["Size"] = integers({2});
+  sampled["BitsPerSample"] = Object(Integer{8});
+  const auto grid =
+      parse_function(Object(sampled), context(std::string("\0\xff", 2)));
+  ASSERT_NE(grid, nullptr);
+  EXPECT_DOUBLE_EQ(grid->eval({0})[0], 0);
+  EXPECT_DOUBLE_EQ(grid->eval({-limit})[0], -limit);
+  EXPECT_DOUBLE_EQ(grid->eval({limit})[0], limit);
+  EXPECT_THROW(std::ignore =
+                   grid->eval({std::numeric_limits<double>::quiet_NaN()}),
+               std::invalid_argument);
+
+  Dictionary exponential;
+  exponential["FunctionType"] = Object(Integer{2});
+  exponential["Domain"] = reals({0, 1});
+  exponential["C0"] = reals({-limit});
+  exponential["C1"] = reals({limit});
+  exponential["N"] = Object(Real{1});
+  const auto linear = parse_function(Object(exponential), context());
+  ASSERT_NE(linear, nullptr);
+  EXPECT_DOUBLE_EQ(linear->eval({0.5})[0], 0);
+}
+
+TEST(PdfFunction, rejects_non_finite_values) {
+  Dictionary dict;
+  dict["FunctionType"] = Object(Integer{2});
+  dict["Domain"] = reals({0, 2});
+  dict["N"] = Object(Real{2048});
+  const auto fn = parse_function(Object(dict), context());
+  ASSERT_NE(fn, nullptr);
+  for (const double value : {std::numeric_limits<double>::quiet_NaN(),
+                             std::numeric_limits<double>::infinity()}) {
+    EXPECT_THROW(std::ignore = fn->eval({value}), std::invalid_argument);
+    for (const char *key : {"C0", "C1"}) {
+      Dictionary invalid = dict;
+      invalid[key] = reals({value});
+      EXPECT_EQ(parse_function(Object(invalid), context()), nullptr);
+    }
+  }
+  EXPECT_THROW(std::ignore = fn->eval({2}), std::runtime_error);
+  dict["C0"] = reals({1});
+  const auto constant = parse_function(Object(dict), context());
+  ASSERT_NE(constant, nullptr);
+  EXPECT_DOUBLE_EQ(constant->eval({2})[0], 1);
+  dict["Range"] = reals({0, 1});
+  for (const double start : {0.0, 1.0}) {
+    dict["C0"] = reals({start});
+    dict["C1"] = reals({1 - start});
+    const auto clipped = parse_function(Object(dict), context());
+    ASSERT_NE(clipped, nullptr);
+    EXPECT_DOUBLE_EQ(clipped->eval({2})[0], 1 - start);
+  }
 }

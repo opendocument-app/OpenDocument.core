@@ -17,6 +17,11 @@ namespace odr::internal::pdf {
 
 namespace {
 
+bool finite_values(const std::span<const double> values) {
+  return std::ranges::all_of(
+      values, [](const double value) { return std::isfinite(value); });
+}
+
 double clamp(const double v, const double lo, const double hi) {
   return std::clamp(v, std::min(lo, hi), std::max(lo, hi));
 }
@@ -29,7 +34,10 @@ double interpolate(const double x, const double a0, const double a1,
   if (a1 == a0) {
     return b0;
   }
-  return b0 + (x - a0) * (b1 - b0) / (a1 - a0);
+  const double width = a1 - a0;
+  const double t = std::isfinite(width) ? (x - a0) / width
+                                        : (x / 2 - a0 / 2) / (a1 / 2 - a0 / 2);
+  return std::lerp(b0, b1, t);
 }
 
 // --- type 2: exponential interpolation (ISO 32000-1 7.10.3) ----------------
@@ -49,7 +57,13 @@ protected:
     const std::size_t count = m_c0.size();
     std::vector<double> out(count);
     for (std::size_t j = 0; j < count; ++j) {
-      out[j] = m_c0[j] + xn * (m_c1[j] - m_c0[j]);
+      if (m_c0[j] == m_c1[j]) {
+        out[j] = m_c0[j];
+      } else if (std::isinf(xn)) {
+        out[j] = m_c1[j] > m_c0[j] ? xn : -xn;
+      } else {
+        out[j] = std::lerp(m_c0[j], m_c1[j], xn);
+      }
     }
     return out;
   }
@@ -161,8 +175,8 @@ protected:
     const double max_value = std::ldexp(1.0, m_bits) - 1.0;
     for (std::size_t j = 0; j < n; ++j) {
       const std::size_t d = 2 * j;
-      out[j] =
-          interpolate(out[j], 0.0, max_value, m_decode[d], m_decode[d + 1]);
+      out[j] = interpolate(clamp(out[j], 0.0, max_value), 0.0, max_value,
+                           m_decode[d], m_decode[d + 1]);
     }
     return out;
   }
@@ -582,6 +596,9 @@ std::vector<double> Function::eval(std::vector<double> in) const {
   const std::size_t m = input_arity();
   in.resize(m, 0.0);
   for (std::size_t i = 0; i < m; ++i) {
+    if (!std::isfinite(in[i])) {
+      throw std::invalid_argument("non-finite PDF function input");
+    }
     const std::size_t d = 2 * i;
     in[i] = clamp(in[i], m_domain[d], m_domain[d + 1]);
   }
@@ -593,6 +610,9 @@ std::vector<double> Function::eval(std::vector<double> in) const {
       const std::size_t d = 2 * j;
       out[j] = clamp(out[j], m_range[d], m_range[d + 1]);
     }
+  }
+  if (!finite_values(out)) {
+    throw std::runtime_error("non-finite PDF function result");
   }
   return out;
 }
@@ -654,7 +674,12 @@ std::shared_ptr<Function> parse_function_impl(const Object &object,
     c1.resize(outputs);
     if (domain.size() != 2 ||
         (!range.empty() && range.size() / 2 != c0.size()) ||
-        !std::isfinite(n)) {
+        !finite_values(c0) || !finite_values(c1) || !std::isfinite(n)) {
+      return nullptr;
+    }
+    // ISO 32000-1 7.10.3 constrains the domain for fractional/negative N.
+    if ((std::trunc(n) != n && domain[0] < 0) ||
+        (n < 0 && domain[0] <= 0 && domain[1] >= 0)) {
       return nullptr;
     }
     return std::make_shared<ExponentialFunction>(
@@ -686,8 +711,7 @@ std::shared_ptr<Function> parse_function_impl(const Object &object,
       }
       previous = bound;
     }
-    if (!std::ranges::all_of(encode,
-                             [](const double v) { return std::isfinite(v); })) {
+    if (!finite_values(encode)) {
       return nullptr;
     }
     return std::make_shared<StitchingFunction>(
@@ -733,11 +757,8 @@ std::shared_ptr<Function> parse_function_impl(const Object &object,
     constexpr std::size_t max_inputs = 8;
     if (size.empty() || size.size() > max_inputs || range.empty() ||
         domain.size() != 2 * size.size() || encode.size() != domain.size() ||
-        decode.size() != range.size() ||
-        !std::ranges::all_of(encode,
-                             [](const double v) { return std::isfinite(v); }) ||
-        !std::ranges::all_of(decode,
-                             [](const double v) { return std::isfinite(v); })) {
+        decode.size() != range.size() || !finite_values(encode) ||
+        !finite_values(decode)) {
       return nullptr;
     }
     std::size_t sample_bits = range.size() / 2;

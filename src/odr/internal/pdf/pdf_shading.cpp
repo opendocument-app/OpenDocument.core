@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <stdexcept>
 
 namespace odr::internal::pdf {
 
@@ -121,11 +122,19 @@ pdf::parse_shading(const Object &object, const ShadingContext &context,
   const double t0 = shading->domain[0];
   const double t1 = shading->domain[1];
   shading->stops.reserve(sample_count);
-  for (std::size_t i = 0; i < sample_count; ++i) {
-    const double f = static_cast<double>(i) / (sample_count - 1);
-    const double t = t0 + (t1 - t0) * f;
-    shading->stops.push_back(
-        GradientStop{f, color_space->to_rgb(eval_components(functions, t))});
+  // a function without a finite answer leaves the shading unusable, like an
+  // unsupported one
+  try {
+    for (std::size_t i = 0; i < sample_count; ++i) {
+      const double f = static_cast<double>(i) / (sample_count - 1);
+      const double t = t0 + (t1 - t0) * f;
+      shading->stops.push_back(
+          GradientStop{f, color_space->to_rgb(eval_components(functions, t))});
+    }
+  } catch (const std::invalid_argument &) {
+    return nullptr;
+  } catch (const std::runtime_error &) {
+    return nullptr;
   }
 
   const std::vector<double> background =
