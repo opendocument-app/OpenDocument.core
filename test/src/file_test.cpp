@@ -15,11 +15,15 @@
 #include <test_util.hpp>
 
 #include <array>
+#include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <tuple>
+#include <utility>
 
 #include <gtest/gtest.h>
 
@@ -341,4 +345,61 @@ TEST(DecodedFile, wpd) {
   } catch (const UnsupportedFileType &e) {
     EXPECT_EQ(e.file_type, FileType::word_perfect);
   }
+}
+
+TEST(File, temporary_names_never_replace_existing_files) {
+  std::istringstream original("original");
+  const auto existing =
+      internal::TemporaryDiskFileFactory::system_default().copy(original);
+  const internal::AbsPath path = existing.disk_path().value();
+  std::uint32_t attempts = 0;
+  const internal::TemporaryDiskFileFactory factory(path.parent(), [&] {
+    if (++attempts > 1000) {
+      throw std::runtime_error("unbounded name retries");
+    }
+    return existing.name();
+  });
+  std::istringstream replacement("replacement");
+  EXPECT_THROW(std::ignore = factory.copy(replacement), FileWriteError);
+  EXPECT_EQ(internal::MemoryFile(existing).content(), "original");
+}
+
+TEST(File, temporary_moves_transfer_cleanup_ownership) {
+  std::string first_path;
+  std::string second_path;
+  {
+    std::istringstream source("bytes");
+    auto first =
+        internal::TemporaryDiskFileFactory::system_default().copy(source);
+    first_path = first.disk_path()->string();
+    auto moved = std::move(first);
+    EXPECT_TRUE(std::filesystem::exists(first_path));
+    std::istringstream other("other");
+    auto second =
+        internal::TemporaryDiskFileFactory::system_default().copy(other);
+    second_path = second.disk_path()->string();
+    second = std::move(moved);
+    EXPECT_FALSE(std::filesystem::exists(second_path));
+    EXPECT_EQ(internal::MemoryFile(second).content(), "bytes");
+  }
+  EXPECT_FALSE(std::filesystem::exists(first_path));
+}
+
+TEST(File, temporary_creation_does_not_follow_a_dangling_symlink) {
+  const auto directory = std::filesystem::temp_directory_path();
+  const std::string name = "odr-symlink-" + internal::random_string(12);
+  const auto link = directory / name;
+  const auto target = directory / (name + "-target");
+  std::error_code error;
+  std::filesystem::create_symlink(target, link, error);
+  if (error) {
+    GTEST_SKIP() << "symlink creation unavailable: " << error.message();
+  }
+  const internal::TemporaryDiskFileFactory factory(internal::AbsPath(directory),
+                                                   [name] { return name; });
+  std::istringstream source("bytes");
+  EXPECT_THROW(std::ignore = factory.copy(source), FileWriteError);
+  EXPECT_FALSE(std::filesystem::exists(target));
+  std::filesystem::remove(link, error);
+  std::filesystem::remove(target, error);
 }

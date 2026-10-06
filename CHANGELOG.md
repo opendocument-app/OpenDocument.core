@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Temporary copies create files exclusively, bound name-collision retries,
+  and keep cleanup from throwing during destruction or move assignment.
+
 - PDF calculator functions bound execution and validate stack operands and
   results, preventing malformed programs from crashing or exhausting memory.
 
