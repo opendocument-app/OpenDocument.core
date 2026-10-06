@@ -49,7 +49,7 @@ TEST(odr, types_odt) {
 
   const auto path = TestData::test_file_path("odr-public/odt/about.odt");
   const auto types = list_file_types(path, logger);
-  EXPECT_EQ(types.size(), 2);
+  ASSERT_EQ(types.size(), 2);
   EXPECT_EQ(types[0], FileType::zip);
   EXPECT_EQ(types[1], FileType::opendocument_text);
 
@@ -63,7 +63,7 @@ TEST(odr, types_wpd) {
   const auto path =
       TestData::test_file_path("odr-public/wpd/Sync3 Sample Page.wpd");
   const auto types = list_file_types(path, logger);
-  EXPECT_EQ(types.size(), 1);
+  ASSERT_EQ(types.size(), 1);
   EXPECT_EQ(types[0], FileType::word_perfect);
 
   // wpd has a MIME type in the table now, so both paths agree
@@ -90,9 +90,15 @@ TEST(odr, a_misnamed_file_is_what_its_bytes_are) {
   const auto logger = Logger::create_stdio("odr-test", LogLevel::verbose);
 
   const auto path = TestData::test_file_path("odr-public/odt/about.odt");
-  EXPECT_EQ(open(path, {}, logger).file_type(), FileType::opendocument_text);
+  std::ostringstream bytes;
+  File::from_disk(path).pipe(bytes);
+  for (const std::string name : {"wrong.md", "wrong.pdf"}) {
+    EXPECT_EQ(
+        open(File::from_memory(bytes.str(), name), {}, logger).file_type(),
+        FileType::opendocument_text);
+  }
 
-  // no name at all, so no hint: the same bytes come back as plain text
+  // Markdown needs a name hint.
   const DecodedFile from_memory =
       open(File::from_memory("# heading\n"), {}, logger);
   EXPECT_EQ(from_memory.file_type(), FileType::text_file);

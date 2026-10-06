@@ -439,9 +439,9 @@ TEST(DocumentEdit, inserting_a_run_beside_something_that_is_not_one_refuses) {
   EXPECT_THROW((void)document.insert_text_after(paragraph.as_text(), "x"),
                std::invalid_argument);
 }
-/// Every paragraph of @p document, its runs joined.
 namespace {
 
+/// Every paragraph of @p document, its runs joined.
 std::vector<std::string> paragraph_texts(const Document &document) {
   std::vector<std::string> result;
   for (const Element child : document.root_element().children()) {
