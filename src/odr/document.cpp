@@ -626,6 +626,7 @@ void Document::recalculate_edits_() const {
   try {
     recalculate();
   } catch (const UnsupportedOperation &) {
+    return;
   }
 }
 

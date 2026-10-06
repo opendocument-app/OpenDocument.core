@@ -355,6 +355,7 @@ internal::recalculate(const abstract::Document &document) {
                                 position.cell.row,
                                 CellValue(ValueType::unknown));
       } catch (const UnsupportedOperation &) {
+        continue;
       }
       continue;
     }

@@ -583,6 +583,7 @@ std::vector<AbsPath> ooxml::parse_relationship_targets(
           resolve_part_path(path, e.node().attribute("Target").value()));
     } catch (const std::invalid_argument &) {
       // An invalid optional relationship contributes no part.
+      continue;
     }
   }
   return result;

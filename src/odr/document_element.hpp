@@ -25,7 +25,6 @@ struct PageLayout;
 } // namespace odr
 
 namespace odr::internal::abstract {
-class Document;
 
 class ElementAdapter;
 class TextRootAdapter;

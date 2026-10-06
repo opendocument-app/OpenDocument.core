@@ -482,6 +482,7 @@ void StyleRegistry::generate_indices_(const pugi::xml_node styles_root) {
           number_format::Format(format.attribute("formatCode").value()));
     } catch (const std::invalid_argument &) {
       // a code this cannot read shows its value as `General` does
+      continue;
     }
   }
 }
