@@ -9,22 +9,30 @@ const ObjectReference &Trailer::root_reference() const {
 }
 
 void Xref::append(const Xref &xref) {
-  table.insert(std::begin(xref.table), std::end(xref.table));
+  for (const auto &[reference, entry] : xref.table) {
+    const auto next = table.lower_bound(ObjectReference(reference.id, 0));
+    if (next == table.end() || next->first.id != reference.id) {
+      table.emplace_hint(next, reference, entry);
+    }
+  }
 }
 
 void Xref::merge_hybrid(const Xref &xref_stream) {
+  if (this == &xref_stream) {
+    return;
+  }
   for (const auto &[reference, entry] : xref_stream.table) {
-    bool absent_or_free = true;
-    for (auto it = table.lower_bound(ObjectReference(reference.id, 0));
-         it != std::end(table) && it->first.id == reference.id; ++it) {
-      if (!it->second.is_free()) {
-        absent_or_free = false;
-        break;
-      }
+    const auto first = table.lower_bound(ObjectReference(reference.id, 0));
+    auto last = first;
+    while (last != table.end() && last->first.id == reference.id &&
+           last->second.is_free()) {
+      ++last;
     }
-    if (absent_or_free) {
-      table.insert_or_assign(reference, entry);
+    if (last != table.end() && last->first.id == reference.id) {
+      continue;
     }
+    table.erase(first, last);
+    table.emplace_hint(last, reference, entry);
   }
 }
 

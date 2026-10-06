@@ -82,7 +82,7 @@ struct Xref {
 
   Table table;
 
-  /// Merge an older section into this one; existing (newer) entries win.
+  /// Merge an older section; newer entries win by object id across generations.
   void append(const Xref &xref);
   /// Hybrid-reference combine (ISO 32000-1 7.5.8.4): adopt entries from the
   /// `XRefStm` cross-reference stream for ids this (classic) section lacks
