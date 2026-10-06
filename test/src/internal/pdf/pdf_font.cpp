@@ -113,6 +113,25 @@ TEST(PdfFont, composite_to_unicode_splits_by_cmap_codespace) {
   EXPECT_EQ(font.to_unicode("\x41\x42"), "Z");
 }
 
+TEST(PdfFont, identity_encoding_ignores_tounicode_codespace) {
+  Font font;
+  font.composite = true;
+  font.cmap.add_codespace_range(codes2({0x00e0}), codes2({0x028c}));
+  font.cmap.map_single(codes2({0x00fc}), u"\u0107");
+  font.cmap.map_single(codes2({0x0105}), u"\u0105");
+  const std::string bytes = codes2({0x00fc, 0x0105}) + '\0';
+
+  for (const auto *encoding : {"Identity-H", "Identity-V"}) {
+    font.cid_encoding_name = encoding;
+    EXPECT_EQ(font.to_unicode(bytes), "ćą");
+    std::vector<std::uint32_t> codes;
+    for (const std::uint32_t code : font.codes(bytes)) {
+      codes.push_back(code);
+    }
+    EXPECT_EQ(codes, (std::vector<std::uint32_t>{0x00fc, 0x0105}));
+  }
+}
+
 TEST(PdfFont, simple_font_glyph_for_code_via_cmap) {
   // A simple (1-byte) TrueType font: the code's Unicode reaches the glyph
   // through the embedded (3,1) cmap.
