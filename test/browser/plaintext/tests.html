@@ -186,7 +186,10 @@
       while (odr.editing.undo()) {
         // wind the whole session back
       }
-      check("undo reaches the start", odr.editing.undo() === false);
+      check(
+        "undo reaches the start",
+        changes[changes.length - 1].canUndo === false
+      );
       check(
         "and the file is what the render wrote",
         lines() === "first line|second line|third line"
