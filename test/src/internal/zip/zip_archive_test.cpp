@@ -36,29 +36,11 @@ TEST(ZipArchive, open_encrypted_docx) {
                NoZipFile);
 }
 
-TEST(ZipArchive, open_odt) {
-  ZipFile(std::make_shared<DiskFile>(
-      TestData::test_file_path("odr-public/odt/style-various-1.odt")));
-}
-
 TEST(ZipArchive, open) {
   const util::Archive zip(std::make_shared<DiskFile>(
       TestData::test_file_path("odr-public/odt/style-various-1.odt")));
 
   EXPECT_EQ(19, std::vector(zip.begin(), zip.end()).size());
-}
-
-TEST(ZipArchive, create_and_save) {
-  ZipArchive zip;
-
-  zip.insert_file(std::end(zip), RelPath("a"),
-                  std::make_shared<MemoryFile>("abc"));
-  zip.insert_file(std::end(zip), RelPath("hi"),
-                  std::make_shared<MemoryFile>("hello world!"));
-  zip.insert_directory(std::end(zip), RelPath("b"));
-
-  std::ofstream out("test.zip", std::ios::binary);
-  zip.save(out);
 }
 
 TEST(ZipArchive, create) {

@@ -125,7 +125,8 @@ TEST(ByteStream, length_prefixed_reads_handle_chunks_and_stream_exceptions) {
 }
 
 // Nothing reaches the stream until the buffer is released, and the release
-// writes the prologue the held bytes need in front of them.
+// writes the prologue the held bytes need in front of them, once however often
+// it is called.
 TEST(DeferredBuffer, holds_until_released) {
   std::ostringstream out;
   stream::DeferredBuffer buffer(out, 1024, [&out] { out << "head"; });
@@ -134,6 +135,7 @@ TEST(DeferredBuffer, holds_until_released) {
   deferred << "body";
   EXPECT_EQ(out.str(), "");
 
+  buffer.release();
   buffer.release();
   EXPECT_EQ(out.str(), "headbody");
 
@@ -152,19 +154,6 @@ TEST(DeferredBuffer, releases_itself_past_the_cap) {
 
   deferred << "de";
   EXPECT_EQ(out.str(), "headabcde");
-}
-
-// Releasing twice writes the prologue once.
-TEST(DeferredBuffer, releases_once) {
-  std::ostringstream out;
-  stream::DeferredBuffer buffer(out, 1024, [&out] { out << "head"; });
-  std::ostream deferred(&buffer);
-
-  deferred << "body";
-  buffer.release();
-  buffer.release();
-
-  EXPECT_EQ(out.str(), "headbody");
 }
 
 TEST(DeferredBuffer, propagates_sink_failures_before_and_after_release) {

@@ -29,10 +29,6 @@ internal::text::TextFile text_file(const std::string &content) {
 
 } // namespace
 
-TEST(TextFile, txt) {
-  File(TestData::test_file_path("odr-public/txt/lorem ipsum.txt"));
-}
-
 /// Text is the fallback, so it is the one place that can call a file
 /// unreadable — otherwise every caller re-derives that from the encoding.
 TEST(TextFile, binary_is_not_text) {

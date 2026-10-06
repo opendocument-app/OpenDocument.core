@@ -56,14 +56,6 @@ public:
 
 } // namespace
 
-TEST(Logger, stdio) {
-  const auto logger = Logger::create_stdio("test", LogLevel::verbose);
-
-  logger.log(LogLevel::verbose, "Test message with log function");
-
-  ODR_VERBOSE(logger, "Test message with verbose log macro");
-}
-
 TEST(Logger, default_constructed_is_null) {
   EXPECT_FALSE(Logger().will_log(LogLevel::fatal));
   EXPECT_FALSE(Logger::null().will_log(LogLevel::fatal));

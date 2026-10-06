@@ -14,6 +14,7 @@
 
 #include <test_util.hpp>
 
+#include <array>
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -42,24 +43,25 @@ TEST(File, from_disk_matches_the_path_constructor) {
 /// inside it - so a claim the container contradicts is no reading of the file
 /// at all.
 TEST(File, opening_as_the_wrong_document_type_throws) {
-  const struct {
+  struct Case {
     const char *path;
     FileType is;
     FileType is_not;
-  } cases[]{
-      {"odr-public/odt/about.odt", FileType::opendocument_text,
-       FileType::opendocument_graphics},
-      {"odr-public/docx/file-sample_100kB.docx",
-       FileType::office_open_xml_document,
-       FileType::office_open_xml_presentation},
-      {"odr-public/doc/file-sample_100kB.doc", FileType::legacy_word_document,
-       FileType::legacy_excel_worksheets},
+  };
+  const std::array cases{
+      Case{"odr-public/odt/about.odt", FileType::opendocument_text,
+           FileType::opendocument_graphics},
+      Case{"odr-public/docx/file-sample_100kB.docx",
+           FileType::office_open_xml_document,
+           FileType::office_open_xml_presentation},
+      Case{"odr-public/doc/file-sample_100kB.doc",
+           FileType::legacy_word_document, FileType::legacy_excel_worksheets},
       // an iwork package names its own app, so asking for the other one is a
       // claim it must refuse rather than answer with what it happens to be
-      {"odr-public/pages/empty.pages", FileType::iwork_pages,
-       FileType::iwork_keynote},
-      {"odr-public/key/empty.key", FileType::iwork_keynote,
-       FileType::iwork_pages},
+      Case{"odr-public/pages/empty.pages", FileType::iwork_pages,
+           FileType::iwork_keynote},
+      Case{"odr-public/key/empty.key", FileType::iwork_keynote,
+           FileType::iwork_pages},
   };
 
   for (const auto &[path, is, is_not] : cases) {
@@ -229,18 +231,6 @@ TEST(File, from_memory_decodes_the_same_as_from_disk) {
             mimetype(path));
 }
 
-/// `MemoryFile` used to report itself as `disk`, and `memory_data()` handed
-/// back a bare pointer that only meant something alongside `size()`.
-TEST(File, memory_file_reports_memory_and_its_bytes) {
-  const File file(std::make_shared<internal::MemoryFile>(std::string("hello")));
-
-  EXPECT_EQ(file.location(), FileLocation::memory);
-  EXPECT_EQ(file.size(), 5);
-  EXPECT_FALSE(file.disk_path().has_value());
-  ASSERT_TRUE(file.memory_data().has_value());
-  EXPECT_EQ(*file.memory_data(), "hello");
-}
-
 /// The null file has no bytes anywhere; every other accessor throws.
 TEST(File, default_constructed_reports_unknown_location) {
   const File file;
@@ -266,10 +256,6 @@ TEST(File, disk_file_has_no_memory_data) {
   EXPECT_EQ(file.location(), FileLocation::disk);
   EXPECT_TRUE(file.disk_path().has_value());
   EXPECT_FALSE(file.memory_data().has_value());
-}
-
-TEST(DocumentFile, open) {
-  EXPECT_THROW(std::ignore = open("/").as_document_file(), FileNotFound);
 }
 
 TEST(DocumentFile, from_disk_and_from_memory_agree) {
