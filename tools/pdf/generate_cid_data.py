@@ -255,18 +255,17 @@ def merge_cid_ranges(
             mappings[width, code] = cid + code - low
 
     merged: list[tuple[int, int, int, int]] = []
-    for (width, low), cid in sorted(mappings.items()):
-        high = low
+    for (width, code), cid in sorted(mappings.items()):
         if merged:
             p_low, p_high, p_cid, p_width = merged[-1]
             if (
                 width == p_width
-                and low == p_high + 1
+                and code == p_high + 1
                 and cid == p_cid + (p_high - p_low) + 1
             ):
-                merged[-1] = (p_low, high, p_cid, p_width)
+                merged[-1] = (p_low, code, p_cid, p_width)
                 continue
-        merged.append((low, high, cid, width))
+        merged.append((code, code, cid, width))
     return merged
 
 
