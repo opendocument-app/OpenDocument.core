@@ -35,6 +35,9 @@
   window.addEventListener("error", function (event) {
     window.check("threw: " + event.message, false);
   });
+  window.addEventListener("unhandledrejection", function (event) {
+    window.check("rejected: " + String(event.reason), false);
+  });
 
   /// @p detail is printed on a failure only: what the check saw.
   window.check = function (name, condition, detail) {
