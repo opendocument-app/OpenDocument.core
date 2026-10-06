@@ -16,7 +16,6 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
-#include <stdexcept>
 #include <string_view>
 #include <utility>
 
@@ -135,13 +134,13 @@ encode_jpx(const std::string &data, const ColorSpaceDef *color_space,
 
 namespace odr::internal {
 
-std::int32_t pdf::image_integer(const Object &value,
-                                const std::int32_t fallback) {
+std::optional<std::int32_t> pdf::image_integer(const Object &value,
+                                               const std::int32_t fallback) {
   if (value.is_null()) {
     return fallback;
   }
   if (!value.is_integer() || !std::in_range<std::int32_t>(value.as_integer())) {
-    throw std::runtime_error("invalid PDF image integer");
+    return std::nullopt;
   }
   return static_cast<std::int32_t>(value.as_integer());
 }

@@ -880,16 +880,30 @@ TEST(DocumentParser, recovery_keeps_the_latest_compressed_copy) {
   }
 }
 
-TEST(DocumentParser, rejects_invalid_image_parameters) {
+TEST(DocumentParser, skips_images_with_invalid_parameters) {
   for (const std::string parameters :
        {"/Width 4294967298 /Height 2 /BitsPerComponent 8",
         "/Width 2 /Height -4294967294 /BitsPerComponent 8",
         "/Width 2 /Height 2 /BitsPerComponent 4294967304",
-        "/Width 2 /Height 2 /BitsPerComponent 8 /SMaskInData 4294967296",
         "/Width 2 /Height 2 /BitsPerComponent 8 /ImageMask true"}) {
     SCOPED_TRACE(parameters);
     DocumentParser parser(std::make_unique<std::istringstream>(
         named_colorspace_image_mini_pdf(parameters)));
-    EXPECT_THROW((void)parser.parse_document(), std::runtime_error);
+    const std::unique_ptr<Document> document = parser.parse_document();
+    const XObject *image = first_page(*document)->resources->x_object.at("Im0");
+    ASSERT_NE(image, nullptr);
+    EXPECT_TRUE(image->image_data.empty());
+    EXPECT_FALSE(image->stencil_mask);
   }
+}
+
+// An invalid optional entry reads as its default, so the image stays.
+TEST(DocumentParser, ignores_an_invalid_smask_in_data) {
+  DocumentParser parser(
+      std::make_unique<std::istringstream>(named_colorspace_image_mini_pdf(
+          "/Width 2 /Height 2 /BitsPerComponent 8 /SMaskInData 4294967296")));
+  const std::unique_ptr<Document> document = parser.parse_document();
+  const XObject *image = first_page(*document)->resources->x_object.at("Im0");
+  ASSERT_NE(image, nullptr);
+  EXPECT_FALSE(image->image_data.empty());
 }

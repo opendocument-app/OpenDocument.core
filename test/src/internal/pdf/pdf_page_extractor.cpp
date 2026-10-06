@@ -1619,18 +1619,18 @@ TEST(PdfPageExtractor, form_preserves_enclosing_marked_content) {
   EXPECT_EQ(texts[2].text, "tail");
 }
 
-TEST(PdfPageExtractor, rejects_invalid_inline_image_parameters) {
+TEST(PdfPageExtractor, skips_inline_images_with_invalid_parameters) {
   const Resources resources;
   for (const std::string parameters :
        {"/W 4294967297 /H 1 /BPC 8", "/W 1 /H -4294967295 /BPC 8",
         "/W 1 /H 1 /BPC 4294967304", "/W 1 /H 1 /BPC 8 /IM true"}) {
     const std::string content =
         "BI /CS /G /F /AHx " + parameters + " ID FF> EI";
-    EXPECT_THROW(extract_page(content, resources, Logger::null()),
-                 std::runtime_error);
+    SCOPED_TRACE(parameters);
+    EXPECT_TRUE(extract_page(content, resources, Logger::null()).empty());
   }
-  EXPECT_THROW(extract_page("BI /W 2147483647 /H 2147483647 /BPC 16 "
-                            "/CS /CMYK ID x EI",
-                            resources, Logger::null()),
-               std::runtime_error);
+  EXPECT_TRUE(extract_page("BI /W 2147483647 /H 2147483647 /BPC 16 "
+                           "/CS /CMYK ID x EI",
+                           resources, Logger::null())
+                  .empty());
 }

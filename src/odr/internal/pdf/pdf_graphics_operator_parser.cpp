@@ -8,7 +8,6 @@
 
 #include <cstdint>
 #include <optional>
-#include <stdexcept>
 #include <unordered_map>
 
 namespace odr::internal::pdf {
@@ -158,10 +157,12 @@ inline_image_raw_length(const Dictionary &dictionary) {
           .value_or(false)) {
     // A stencil mask is one bit per sample (8.9.6.2).
     components = 1;
-    bits_per_component = image_integer(
-        inline_image_entry(dictionary, "BPC", "BitsPerComponent"), 1);
+    bits_per_component =
+        image_integer(inline_image_entry(dictionary, "BPC", "BitsPerComponent"),
+                      1)
+            .value_or(0);
     if (bits_per_component != 1) {
-      throw std::runtime_error("PDF stencil masks require one-bit samples");
+      return std::nullopt;
     }
   } else {
     const std::optional<std::int32_t> resolved = inline_color_components(
@@ -170,16 +171,20 @@ inline_image_raw_length(const Dictionary &dictionary) {
       return std::nullopt;
     }
     components = *resolved;
-    bits_per_component = image_integer(
-        inline_image_entry(dictionary, "BPC", "BitsPerComponent"), 8);
+    bits_per_component =
+        image_integer(inline_image_entry(dictionary, "BPC", "BitsPerComponent"),
+                      8)
+            .value_or(0);
   }
 
-  const auto width =
-      image_integer(inline_image_entry(dictionary, "W", "Width"), 0);
-  const auto height =
-      image_integer(inline_image_entry(dictionary, "H", "Height"), 0);
+  const std::int32_t width =
+      image_integer(inline_image_entry(dictionary, "W", "Width"), 0)
+          .value_or(0);
+  const std::int32_t height =
+      image_integer(inline_image_entry(dictionary, "H", "Height"), 0)
+          .value_or(0);
   if (width <= 0 || height <= 0 || !valid_image_bit_depth(bits_per_component)) {
-    throw std::runtime_error("invalid PDF inline image geometry");
+    return std::nullopt;
   }
 
   // Sample rows are byte-aligned (8.9.5.2).
@@ -188,7 +193,7 @@ inline_image_raw_length(const Dictionary &dictionary) {
   const auto bytes_per_row = (bits_per_row + 7) / 8;
   if (bytes_per_row >
       std::string{}.max_size() / static_cast<std::size_t>(height)) {
-    throw std::runtime_error("PDF inline image is too large");
+    return std::nullopt;
   }
   return static_cast<std::size_t>(bytes_per_row) *
          static_cast<std::size_t>(height);

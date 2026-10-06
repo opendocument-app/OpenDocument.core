@@ -14,9 +14,10 @@ namespace odr::internal::pdf {
 class Object;
 struct ColorSpaceDef;
 
-/// Read a signed 32-bit image parameter; null uses fallback, invalid values
-/// throw.
-std::int32_t image_integer(const Object &value, std::int32_t fallback);
+/// A signed 32-bit image parameter: @p fallback where it is absent, nothing
+/// where it is no integer or does not fit.
+std::optional<std::int32_t> image_integer(const Object &value,
+                                          std::int32_t fallback);
 
 /// Image sample depths allowed by ISO 32000-1 Table 89.
 bool valid_image_bit_depth(std::int32_t bits);
