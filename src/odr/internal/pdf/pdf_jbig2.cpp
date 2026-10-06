@@ -14,6 +14,7 @@
 #include <span>
 #include <stdexcept>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace odr::internal {
@@ -30,6 +31,14 @@ struct Jbig2Error final : Exception {
 /// Past this a header is corrupt, not a scan; the decoder holds a byte a
 /// pixel.
 constexpr std::int64_t max_pixels = 200'000'000;
+constexpr std::size_t max_symbols = 100'000;
+
+std::int32_t checked_integer(const std::int64_t value) {
+  if (!std::in_range<std::int32_t>(value)) {
+    fail("jbig2: integer out of range");
+  }
+  return static_cast<std::int32_t>(value);
+}
 
 // --- MQ arithmetic decoder (ITU-T T.88 Annex E) ----------------------------
 
@@ -187,16 +196,16 @@ std::int32_t decode_int(MqDecoder &decoder, IntContext &context) {
     prev = prev < 256 ? (prev << 1) | b : (((((prev << 1) | b) & 511)) | 256);
     return static_cast<std::int32_t>(b);
   };
-  const auto bits = [&](const int count) {
-    std::int32_t value = 0;
-    for (int i = 0; i < count; ++i) {
+  const auto bits = [&](const std::uint32_t count) {
+    std::int64_t value = 0;
+    for (std::uint32_t i = 0; i < count; ++i) {
       value = (value << 1) | bit();
     }
     return value;
   };
 
   const std::int32_t sign = bit();
-  std::int32_t value = 0;
+  std::int64_t value = 0;
   if (bit() == 0) {
     value = bits(2);
   } else if (bit() == 0) {
@@ -211,13 +220,16 @@ std::int32_t decode_int(MqDecoder &decoder, IntContext &context) {
     value = bits(32) + 4436;
   }
 
+  if (value > std::numeric_limits<std::int32_t>::max()) {
+    fail("jbig2: arithmetic integer out of range");
+  }
   if (sign == 0) {
-    return value;
+    return static_cast<std::int32_t>(value);
   }
   if (value == 0) {
     return int_oob; // negative zero is OOB (A.2, step 7)
   }
-  return -value;
+  return static_cast<std::int32_t>(-value);
 }
 
 /// A.3: the symbol id, `code_length` bits through its own context tree.
@@ -243,7 +255,8 @@ struct Bitmap {
   Bitmap(const std::int32_t w, const std::int32_t h,
          const std::uint8_t fill = 0)
       : width{w}, height{h} {
-    if (w < 0 || h < 0 || static_cast<std::int64_t>(w) * h > max_pixels) {
+    if (w < 0 || h < 0 || w > max_pixels || h > max_pixels ||
+        static_cast<std::int64_t>(w) * h > max_pixels) {
       fail("jbig2: implausible bitmap size");
     }
     pixels.assign(static_cast<std::size_t>(w) * static_cast<std::size_t>(h),
@@ -276,15 +289,23 @@ enum class CombOp : std::uint8_t {
   replace = 4
 };
 
-void compose(Bitmap &page, const Bitmap &region, const std::int32_t x0,
-             const std::int32_t y0, const CombOp op) {
-  for (std::int32_t y = 0; y < region.height; ++y) {
-    for (std::int32_t x = 0; x < region.width; ++x) {
-      const std::int32_t px = x0 + x;
-      const std::int32_t py = y0 + y;
-      if (px < 0 || py < 0 || px >= page.width || py >= page.height) {
-        continue;
-      }
+void compose(Bitmap &page, const Bitmap &region, const std::int64_t x0,
+             const std::int64_t y0, const CombOp op) {
+  if (x0 >= page.width || y0 >= page.height ||
+      x0 <= -static_cast<std::int64_t>(region.width) ||
+      y0 <= -static_cast<std::int64_t>(region.height)) {
+    return;
+  }
+  const auto left = static_cast<std::int32_t>(std::max<std::int64_t>(0, -x0));
+  const auto top = static_cast<std::int32_t>(std::max<std::int64_t>(0, -y0));
+  const auto right = static_cast<std::int32_t>(
+      std::min<std::int64_t>(region.width, page.width - x0));
+  const auto bottom = static_cast<std::int32_t>(
+      std::min<std::int64_t>(region.height, page.height - y0));
+  for (std::int32_t y = top; y < bottom; ++y) {
+    for (std::int32_t x = left; x < right; ++x) {
+      const auto px = static_cast<std::int32_t>(x0 + x);
+      const auto py = static_cast<std::int32_t>(y0 + y);
       const std::uint8_t s =
           region.pixels[static_cast<std::size_t>(y) * region.width + x];
       const std::uint8_t d = page.get(px, py);
@@ -303,7 +324,6 @@ void compose(Bitmap &page, const Bitmap &region, const std::int32_t x0,
         value = static_cast<std::uint8_t>((d ^ s) ^ 1);
         break;
       case CombOp::replace:
-        value = s;
         break;
       }
       page.set(px, py, value);
@@ -415,6 +435,9 @@ Bitmap decode_generic_region(const std::int32_t width,
   }
 
   Bitmap bitmap(width, height);
+  if (width == 0 || height == 0) {
+    return bitmap;
+  }
   bool ltp = false;
   for (std::int32_t y = 0; y < height; ++y) {
     if (tpgdon) {
@@ -601,6 +624,9 @@ RegionInfo read_region_info(Reader &reader) {
 /// The symbol code length: `ceil(log2(count))`, at least 1 (6.5.8.2.3 as
 /// amended).
 std::uint32_t symbol_code_length(const std::size_t count) {
+  if (count > max_symbols) {
+    fail("jbig2: too many input symbols");
+  }
   std::uint32_t bits = 1;
   while (count > (static_cast<std::size_t>(1) << bits)) {
     ++bits;
@@ -610,10 +636,17 @@ std::uint32_t symbol_code_length(const std::size_t count) {
 
 using SymbolList = std::vector<std::shared_ptr<const Bitmap>>;
 
+struct SymbolDictionary {
+  SymbolList exported;
+  std::int64_t pixels{0}; ///< of the new symbols, against the stream's budget
+};
+
 /// 6.5: a symbol dictionary segment, arithmetic, no refinement or aggregation.
-/// Returns the input and new symbols the export run lengths select.
-SymbolList decode_symbol_dictionary(const std::string_view data,
-                                    const SymbolList &input) {
+/// Exports the input and new symbols the export run lengths select; the new
+/// symbols may hold at most @p pixel_budget pixels.
+SymbolDictionary decode_symbol_dictionary(const std::string_view data,
+                                          const SymbolList &input,
+                                          const std::int64_t pixel_budget) {
   Reader reader(data);
   const std::uint16_t flags = reader.u16();
   const bool huffman = (flags & 0x0001) != 0;
@@ -642,7 +675,8 @@ SymbolList decode_symbol_dictionary(const std::string_view data,
 
   const std::uint32_t exported_count = reader.u32();
   const std::uint32_t new_count = reader.u32();
-  if (new_count > 100'000 || exported_count > 100'000) {
+  if (input.size() > max_symbols || new_count > max_symbols - input.size() ||
+      exported_count > input.size() + new_count) {
     fail("jbig2: implausible symbol count");
   }
 
@@ -654,27 +688,37 @@ SymbolList decode_symbol_dictionary(const std::string_view data,
 
   SymbolList new_symbols;
   new_symbols.reserve(new_count);
+  std::int64_t used_pixels = 0;
   std::int32_t height = 0;
   while (new_symbols.size() < new_count) {
     const std::int32_t delta_height = decode_int(decoder, iadh);
     if (delta_height == int_oob) {
       fail("jbig2: unexpected OOB in a symbol dictionary height class");
     }
-    height += delta_height;
+    height = checked_integer(static_cast<std::int64_t>(height) + delta_height);
+    const std::size_t previous_count = new_symbols.size();
     std::int32_t width = 0;
     while (true) {
       const std::int32_t delta_width = decode_int(decoder, iadw);
       if (delta_width == int_oob) {
         break; // end of the height class
       }
-      width += delta_width;
+      width = checked_integer(static_cast<std::int64_t>(width) + delta_width);
       if (new_symbols.size() >= new_count) {
         fail("jbig2: symbol dictionary overruns its symbol count");
       }
+      const std::int64_t pixels = static_cast<std::int64_t>(width) * height;
+      if (width < 0 || height < 0 || pixels > pixel_budget - used_pixels) {
+        fail("jbig2: symbol bitmaps exceed the pixel budget");
+      }
+      used_pixels += pixels;
       new_symbols.push_back(std::make_shared<const Bitmap>(
           decode_generic_region(width, height, template_index, at,
                                 /*tpgdon=*/false, decoder, generic_contexts,
                                 nullptr)));
+    }
+    if (new_symbols.size() == previous_count) {
+      fail("jbig2: empty symbol height class");
     }
   }
 
@@ -684,9 +728,15 @@ SymbolList decode_symbol_dictionary(const std::string_view data,
   SymbolList exported;
   std::size_t index = 0;
   bool current = false;
+  std::size_t run_count = 0;
   while (index < all.size() && exported.size() < exported_count) {
+    if (++run_count > 2 * all.size() + 2) {
+      fail("jbig2: symbol export makes no progress");
+    }
     const std::int32_t run = decode_int(decoder, iaex);
-    if (run == int_oob || run < 0) {
+    if (run < 0 || static_cast<std::size_t>(run) > all.size() - index ||
+        (current &&
+         static_cast<std::size_t>(run) > exported_count - exported.size())) {
       fail("jbig2: bad symbol export run");
     }
     if (current) {
@@ -698,7 +748,10 @@ SymbolList decode_symbol_dictionary(const std::string_view data,
     }
     current = !current;
   }
-  return exported;
+  if (exported.size() != exported_count) {
+    fail("jbig2: incomplete symbol export");
+  }
+  return {std::move(exported), used_pixels};
 }
 
 /// 6.4: decode a text region segment, arithmetic coding, no refinement.
@@ -725,14 +778,10 @@ Bitmap decode_text_region(const std::string_view data,
   if (refine) {
     fail("jbig2: refined text region");
   }
-  if (comb_op > 4) {
-    fail("jbig2: unknown text region combination operator");
-  }
-
   const std::int32_t strips = 1 << log_strips;
   const std::uint32_t instance_count = reader.u32();
-  if (symbols.empty()) {
-    fail("jbig2: text region with no symbols");
+  if (symbols.empty() || instance_count > max_pixels) {
+    fail("jbig2: invalid text region symbol count");
   }
 
   const std::uint32_t code_length = symbol_code_length(symbols.size());
@@ -745,29 +794,33 @@ Bitmap decode_text_region(const std::string_view data,
 
   Bitmap region(info.width, info.height, default_pixel);
 
-  std::int32_t strip_t = -decode_int(decoder, iadt) * strips;
-  std::int32_t first_s = 0;
+  const std::int32_t initial_t = decode_int(decoder, iadt);
+  if (initial_t == int_oob) {
+    fail("jbig2: unexpected OOB before text region strips");
+  }
+  std::int64_t strip_t = -static_cast<std::int64_t>(initial_t) * strips;
+  std::int64_t first_s = 0;
   std::uint32_t instances = 0;
   while (instances < instance_count) {
     const std::int32_t delta_t = decode_int(decoder, iadt);
     if (delta_t == int_oob) {
       fail("jbig2: unexpected OOB between text region strips");
     }
-    strip_t += delta_t * strips;
+    strip_t += static_cast<std::int64_t>(delta_t) * strips;
 
     const std::int32_t delta_first_s = decode_int(decoder, iafs);
     if (delta_first_s == int_oob) {
       fail("jbig2: unexpected OOB at a text region strip start");
     }
     first_s += delta_first_s;
-    std::int32_t cur_s = first_s;
+    std::int64_t cur_s = first_s;
 
     while (true) {
       const std::int32_t cur_t = strips == 1 ? 0 : decode_int(decoder, iait);
-      if (cur_t == int_oob) {
-        fail("jbig2: unexpected OOB in a text region strip offset");
+      if (cur_t < 0 || cur_t >= strips) {
+        fail("jbig2: invalid text region strip offset");
       }
-      const std::int32_t t = strip_t + cur_t;
+      const std::int64_t t = strip_t + cur_t;
       const std::uint32_t id = decode_iaid(decoder, iaid_contexts, code_length);
       if (id >= symbols.size()) {
         fail("jbig2: symbol id out of range");
@@ -784,10 +837,10 @@ Bitmap decode_text_region(const std::string_view data,
         cur_s += symbol.height - 1;
       }
 
-      const std::int32_t s = cur_s;
-      const std::int32_t x =
+      const std::int64_t s = cur_s;
+      const std::int64_t x =
           transposed ? t : (right_corner ? s - symbol.width + 1 : s);
-      const std::int32_t y = transposed
+      const std::int64_t y = transposed
                                  ? (bottom_corner ? s - symbol.height + 1 : s)
                                  : (bottom_corner ? t - symbol.height + 1 : t);
       compose(region, symbol, x, y, static_cast<CombOp>(comb_op));
@@ -806,7 +859,7 @@ Bitmap decode_text_region(const std::string_view data,
       if (delta_s == int_oob) {
         break; // end of the strip
       }
-      cur_s += delta_s + ds_offset;
+      cur_s += static_cast<std::int64_t>(delta_s) + ds_offset;
     }
   }
   return region;
@@ -842,12 +895,16 @@ pdf::Jbig2Image decode_stream(const std::string_view data,
                               const std::string_view globals) {
   std::map<std::uint32_t, SymbolList> dictionaries;
   std::unique_ptr<Bitmap> page;
+  std::int64_t remaining_symbol_pixels = max_pixels;
 
   const auto symbols_for = [&](const Segment &segment) {
     SymbolList symbols;
     for (const std::uint32_t referred : segment.referred) {
       const auto it = dictionaries.find(referred);
       if (it != dictionaries.end()) {
+        if (it->second.size() > max_symbols - symbols.size()) {
+          fail("jbig2: too many referred symbols");
+        }
         symbols.insert(symbols.end(), it->second.begin(), it->second.end());
       }
     }
@@ -858,10 +915,13 @@ pdf::Jbig2Image decode_stream(const std::string_view data,
     for (const Segment &segment : parse_segments(stream)) {
       switch (segment.type) {
       case 0: // symbol dictionary
-        dictionaries[segment.number] =
-            decode_symbol_dictionary(segment.data, symbols_for(segment));
+      {
+        SymbolDictionary dictionary = decode_symbol_dictionary(
+            segment.data, symbols_for(segment), remaining_symbol_pixels);
+        remaining_symbol_pixels -= dictionary.pixels;
+        dictionaries[segment.number] = std::move(dictionary.exported);
         break;
-      case 4: // intermediate text region
+      }
       case 6: // immediate text region
       case 7: // immediate lossless text region
       {
@@ -874,7 +934,6 @@ pdf::Jbig2Image decode_stream(const std::string_view data,
         compose(*page, region, info.x, info.y, info.comb_op);
         break;
       }
-      case 36: // intermediate generic region
       case 38: // immediate generic region
       case 39: // immediate lossless generic region
       {

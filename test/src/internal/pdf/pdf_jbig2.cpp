@@ -190,3 +190,37 @@ TEST(PdfJbig2, rejects_mmr_coding) {
 
   EXPECT_FALSE(decode_jbig2(stream, "").has_value());
 }
+
+TEST(PdfJbig2, region_placement_and_intermediate_types) {
+  std::string region;
+  bs::put_u32_be(region, 2);
+  bs::put_u32_be(region, 2);
+  bs::put_u32_be(region, 0);
+  bs::put_u32_be(region, 0);
+  region += '\0';
+  region += '\x06'; // Arithmetic, template 3.
+  region += '\x02';
+  region += '\xff'; // Adaptive pixel (2, -1).
+  region += std::string(16, '\0');
+  const std::string page = segment(0, 48, page_info(2, 2, 0));
+  ASSERT_TRUE(decode_jbig2(page + segment(1, 38, region), "").has_value());
+  EXPECT_FALSE(decode_jbig2(page + segment(1, 36, region), "").has_value());
+  bs::write_u32_be(region, 8, 0x7fffffff);
+  bs::write_u32_be(region, 12, 0x7fffffff);
+  const auto outside = decode_jbig2(page + segment(1, 38, region), "");
+  ASSERT_TRUE(outside.has_value());
+  EXPECT_EQ(outside->samples, std::string(2, '\xff'));
+}
+
+TEST(PdfJbig2, rejects_impossible_symbol_exports) {
+  std::string dictionary;
+  bs::put_u16_be(dictionary, 0);
+  dictionary += std::string(8, '\0');
+  bs::put_u32_be(dictionary, 1); // Export one symbol, with none available.
+  bs::put_u32_be(dictionary, 0);
+  dictionary += std::string(16, '\0');
+  EXPECT_FALSE(decode_jbig2(segment(0, 48, page_info(2, 2, 0)) +
+                                segment(1, 0, dictionary),
+                            "")
+                   .has_value());
+}

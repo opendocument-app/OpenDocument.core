@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- JBIG2 decoding checks integer arithmetic, clips off-page regions and bounds
+  symbol allocation and loops. Unsupported intermediate regions are rejected
+  instead of painted onto the page.
+
 - PDF names preserve non-ASCII bytes. Object parsing rejects malformed keywords,
   invalid reference indices and null name escapes.
 
