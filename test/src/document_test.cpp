@@ -504,15 +504,15 @@ std::string text_of(const Element element) {
 /// Every run under @p element, in document order.
 std::vector<Element> runs_of(const Element element) {
   std::vector<Element> runs;
-  const auto walk = [&](auto &&self, const Element at) -> void {
+  const auto walk = [&](this auto &&self, const Element at) -> void {
     if (at.type() == ElementType::text) {
       runs.push_back(at);
     }
     for (const Element child : at.children()) {
-      self(self, child);
+      self(child);
     }
   };
-  walk(walk, element);
+  walk(element);
   return runs;
 }
 
@@ -643,19 +643,19 @@ namespace {
 /// The first paragraph of at least three runs, found anywhere in the tree - a
 /// presentation puts its text inside frames rather than under the root.
 Element slide_paragraph_of_several_runs(const Document &document) {
-  const auto walk = [](auto &&self, const Element element) -> Element {
+  const auto walk = [](this auto &&self, const Element element) -> Element {
     if (element.type() == ElementType::paragraph &&
         runs_of(element).size() >= 3) {
       return element;
     }
     for (const Element child : element.children()) {
-      if (const Element found = self(self, child)) {
+      if (const Element found = self(child)) {
         return found;
       }
     }
     return {};
   };
-  return walk(walk, document.root_element());
+  return walk(document.root_element());
 }
 
 } // namespace

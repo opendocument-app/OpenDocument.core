@@ -255,18 +255,18 @@ Element paragraph_at(const Document &document, const std::uint32_t ordinal) {
 Element run_at(const Document &document, const std::uint32_t paragraph,
                const std::uint32_t ordinal) {
   std::uint32_t seen = 0;
-  const auto walk = [&](auto &&self, const Element element) -> Element {
+  const auto walk = [&](this auto &&self, const Element element) -> Element {
     if (element.type() == ElementType::text && seen++ == ordinal) {
       return element;
     }
     for (const Element child : element.children()) {
-      if (const Element found = self(self, child)) {
+      if (const Element found = self(child)) {
         return found;
       }
     }
     return {};
   };
-  return walk(walk, paragraph_at(document, paragraph));
+  return walk(paragraph_at(document, paragraph));
 }
 
 std::string ops(const std::string &body) {
@@ -776,9 +776,7 @@ TEST(DocumentEdit, a_highlight_of_null_takes_the_highlight_away) {
   document.edit(ops(style_op(run, R"({"highlight":"#ffff00"})") + "," +
                     style_op(run, R"({"highlight":null})")));
 
-  const auto color = run.as_text().style().background_color;
-  ASSERT_TRUE(color);
-  EXPECT_EQ(color->alpha, 0);
+  EXPECT_EQ(run.as_text().style().background_color, std::nullopt);
 }
 
 TEST(DocumentEdit, a_second_style_op_keeps_what_the_first_wrote) {
@@ -947,18 +945,18 @@ Document pptx_of(const std::string &paragraphs,
 Element nth_of_type(const Document &document, const ElementType type,
                     const std::uint32_t ordinal) {
   std::uint32_t seen = 0;
-  const auto walk = [&](auto &&self, const Element element) -> Element {
+  const auto walk = [&](this auto &&self, const Element element) -> Element {
     if (element.type() == type && seen++ == ordinal) {
       return element;
     }
     for (const Element child : element.children()) {
-      if (const Element found = self(self, child)) {
+      if (const Element found = self(child)) {
         return found;
       }
     }
     return {};
   };
-  return walk(walk, document.root_element());
+  return walk(document.root_element());
 }
 
 Element nth_run(const Document &document, const std::uint32_t ordinal) {
