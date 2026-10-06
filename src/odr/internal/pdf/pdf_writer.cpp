@@ -59,9 +59,9 @@ std::string xref_stream_table(const Placements &placements) {
 
 class InputPosition final {
 public:
-  explicit InputPosition(std::istream &in) : m_in(in) {
-    m_in.clear();
-    m_position = m_in.tellg();
+  explicit InputPosition(std::istream &in) : m_in{&in} {
+    m_in->clear();
+    m_position = m_in->tellg();
     if (m_position == std::streampos{-1}) {
       throw std::ios_base::failure("cannot save PDF input position");
     }
@@ -79,16 +79,16 @@ public:
     if (m_restored) {
       return;
     }
-    m_in.clear();
-    m_in.seekg(m_position);
-    if (!m_in) {
+    m_in->clear();
+    m_in->seekg(m_position);
+    if (!*m_in) {
       throw std::ios_base::failure("cannot restore PDF input position");
     }
     m_restored = true;
   }
 
 private:
-  std::istream &m_in;
+  std::istream *m_in{nullptr};
   std::streampos m_position;
   bool m_restored{false};
 };
@@ -277,7 +277,8 @@ void IncrementalWriter::write(std::ostream &out) const {
 
   update += fmt::format("startxref\n{}\n%%EOF\n", xref_position);
 
-  position();
+  // the finished file has to fit the 32-bit offsets its xref states
+  (void)position();
   if (!std::in_range<std::streamsize>(update.size())) {
     throw std::length_error("PDF update is too large");
   }
