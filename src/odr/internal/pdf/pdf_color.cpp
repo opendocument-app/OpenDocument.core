@@ -314,12 +314,14 @@ pdf::parse_color_space(const Object &object, const ColorSpaceContext &context,
       return nullptr;
     }
     def->components = static_cast<std::int32_t>(count.as_integer());
-    if (dict.has_value("Range") &&
-        !read_ranges(dict.get("Range"),
-                     std::span(def->icc_range)
-                         .first(2 * static_cast<std::size_t>(def->components)),
-                     context)) {
-      return nullptr;
+    // an invalid optional Range keeps the default 0 to 1 per component
+    if (std::array<double, 8> range = def->icc_range;
+        dict.has_value("Range") &&
+        read_ranges(dict.get("Range"),
+                    std::span(range).first(
+                        2 * static_cast<std::size_t>(def->components)),
+                    context)) {
+      def->icc_range = range;
     }
     if (dict.has_value("Alternate")) {
       def->alternate =
@@ -343,20 +345,22 @@ pdf::parse_color_space(const Object &object, const ColorSpaceContext &context,
     auto def = std::make_shared<ColorSpaceDef>();
     def->kind = ColorSpaceKind::lab;
     def->components = 3;
-    if (array.size() < 2) {
-      return nullptr;
-    }
-    const Object params = context.resolve(array[1]);
+    const Object params =
+        array.size() >= 2 ? context.resolve(array[1]) : Object{};
     if (!params.is_dictionary()) {
-      return nullptr;
+      return def;
     }
     const Dictionary &dict = params.as_dictionary();
-    if (!read_numbers(dict.get("WhitePoint"), def->white_point, context) ||
-        def->white_point[0] <= 0 || def->white_point[1] != 1 ||
-        def->white_point[2] <= 0 ||
-        (dict.has_value("Range") &&
-         !read_ranges(dict.get("Range"), def->lab_range, context))) {
-      return nullptr;
+    // an invalid WhitePoint or Range keeps the default, as a missing one does
+    if (std::array<double, 3> point{};
+        read_numbers(dict.get("WhitePoint"), point, context) && point[0] > 0 &&
+        point[1] == 1 && point[2] > 0) {
+      def->white_point = point;
+    }
+    if (std::array<double, 4> range{};
+        dict.has_value("Range") &&
+        read_ranges(dict.get("Range"), range, context)) {
+      def->lab_range = range;
     }
     return def;
   }

@@ -282,17 +282,17 @@ TEST(PdfColor, lab_parameters_and_palette_ranges) {
   for (const Object &point :
        {Object{}, reals({0, 1, 1}), reals({1, 2, 1}), reals({1, 1, -1})}) {
     params["WhitePoint"] = point;
-    EXPECT_EQ(
-        parse_color_space(Object(Array({Object(Name{"Lab"}), Object(params)})),
-                          context()),
-        nullptr);
+    const auto fallback = parse_color_space(
+        Object(Array({Object(Name{"Lab"}), Object(params)})), context());
+    ASSERT_NE(fallback, nullptr);
+    EXPECT_EQ(fallback->white_point, (std::array<double, 3>{0.9505, 1, 1.089}));
   }
   params["WhitePoint"] = reals({1, 1, 1});
   params["Range"] = reals({10, -10, -20, 20});
-  EXPECT_EQ(
-      parse_color_space(Object(Array({Object(Name{"Lab"}), Object(params)})),
-                        context()),
-      nullptr);
+  const auto fallback = parse_color_space(
+      Object(Array({Object(Name{"Lab"}), Object(params)})), context());
+  ASSERT_NE(fallback, nullptr);
+  EXPECT_EQ(fallback->lab_range, (std::array<double, 4>{-100, 100, -100, 100}));
 }
 
 TEST(PdfColor, icc_component_ranges_clip_and_scale_palette_values) {
@@ -314,9 +314,10 @@ TEST(PdfColor, icc_component_ranges_clip_and_scale_palette_values) {
         reals({0, std::numeric_limits<double>::infinity(), 0, 1, 0, 1}),
         Object(Name{"Bad"})}) {
     profile["Range"] = range;
-    EXPECT_EQ(parse_color_space(
-                  Object(Array({Object(Name{"ICCBased"}), Object(profile)})),
-                  context()),
-              nullptr);
+    const auto fallback = parse_color_space(
+        Object(Array({Object(Name{"ICCBased"}), Object(profile)})), context());
+    ASSERT_NE(fallback, nullptr);
+    EXPECT_EQ(fallback->icc_range,
+              (std::array<double, 8>{0, 1, 0, 1, 0, 1, 0, 1}));
   }
 }

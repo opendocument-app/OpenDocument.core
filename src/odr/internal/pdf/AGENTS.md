@@ -182,7 +182,8 @@ above. So each run is raised by one font ascent:
   An ICC alternate that cannot stand in is dropped for the device space `N`
   names, and a short palette reads its missing bytes as 0.
 - Lab and ICC component ranges are shared by direct colors, Indexed palette
-  scaling and default image decoding (Table 90). ICC still uses its alternate;
+  scaling and default image decoding (Table 90). An invalid Lab `WhitePoint`
+  or `Range`, or an invalid ICC `Range`, keeps the default. ICC still uses its alternate;
   profiles are not evaluated. CMYK uses the Adobe polynomial approximation,
   and overprint is ignored. CIE, ICCBased, Indexed,
   Separation, DeviceN and Lab resolve to RGB at emission by sampling the tint
