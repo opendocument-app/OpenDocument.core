@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -21,6 +22,11 @@
 namespace odr::internal::pdf {
 
 namespace {
+
+bool valid_bit_depth(const std::int32_t bits) {
+  return bits > 0 && bits <= 16 &&
+         std::has_single_bit(static_cast<std::uint32_t>(bits));
+}
 
 /// Reads fixed-width big-endian sample values out of a byte buffer, MSB first.
 /// Constructed at a row offset; rows are byte-aligned (8.9.5.2). Reads past the
@@ -83,7 +89,6 @@ void unpremultiply(std::string &samples, const std::int32_t components,
 /// (ISO 32000-1 8.9.5.1: `/ColorSpace` is optional for `JPXDecode`).
 std::optional<EncodedImage>
 encode_jpx(const std::string &data, const ColorSpaceDef *color_space,
-           const std::span<const double> decode_array,
            const std::span<const std::uint8_t> alpha,
            const std::span<const double> color_key,
            const std::int32_t smask_in_data) {
@@ -120,7 +125,7 @@ encode_jpx(const std::string &data, const ColorSpaceDef *color_space,
           : device;
 
   const std::string png = encode_image_png(
-      image->samples, image->width, image->height, 8, space, decode_array,
+      image->samples, image->width, image->height, 8, space, {},
       alpha.empty() ? std::span<const std::uint8_t>{image->alpha} : alpha,
       color_key);
   if (png.empty()) {
@@ -143,8 +148,8 @@ std::string pdf::encode_image_png(const std::string &samples,
                                   const std::span<const std::uint8_t> alpha,
                                   const std::span<const double> color_key) {
   const std::int32_t components = color_space.components;
-  if (width <= 0 || height <= 0 || components <= 0 || bits_per_component <= 0 ||
-      bits_per_component > 16) {
+  if (width <= 0 || height <= 0 || components <= 0 ||
+      !valid_bit_depth(bits_per_component)) {
     return {};
   }
 
@@ -262,7 +267,8 @@ std::vector<std::uint8_t> pdf::decode_mask_alpha(
     const std::span<const double> decode, const bool stencil,
     const std::int32_t base_width, const std::int32_t base_height) {
   if (width <= 0 || height <= 0 || base_width <= 0 || base_height <= 0 ||
-      bits_per_component <= 0 || bits_per_component > 16) {
+      !valid_bit_depth(bits_per_component) ||
+      (stencil && bits_per_component != 1)) {
     return {};
   }
   const std::uint32_t max_sample =
@@ -379,7 +385,7 @@ std::optional<pdf::EncodedImage> pdf::encode_image(
     if (result.stopped_at_filter != "JPXDecode") {
       return std::nullopt;
     }
-    return encode_jpx(result.data, color_space, decode_array, alpha, color_key,
+    return encode_jpx(result.data, color_space, alpha, color_key,
                       smask_in_data);
   }
   // A fully decodable raster: decode, assemble samples and PNG-encode.

@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- JPEG 2000 images ignore the PDF Decode array as required. Raster decoding
+  rejects invalid sample depths, including non-1-bit stencil masks.
+
 - Conan packages include the license text. Android profiles identify NDK 28.1
   as Clang 19 so dependency package IDs match the compiler.
 
