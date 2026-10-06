@@ -146,14 +146,10 @@ PredictorLayout predictor_layout(const Integer colors, const Integer bits,
           static_cast<std::size_t>((pixel_bits + 7) / 8)};
 }
 
-std::string apply_tiff_predictor(std::string data,
+std::string apply_tiff_predictor(std::string data, const Integer colors,
+                                 const Integer columns,
                                  const Integer bits_per_component,
                                  const PredictorLayout layout) {
-  if (bits_per_component != 8 && bits_per_component != 16) {
-    throw std::runtime_error("unsupported TIFF predictor bits per component: " +
-                             std::to_string(bits_per_component));
-  }
-
   const std::size_t component_bytes = bits_per_component / 8;
   const auto [row_bytes, pixel_bytes] = layout;
   if (data.size() % row_bytes != 0) {
@@ -161,6 +157,28 @@ std::string apply_tiff_predictor(std::string data,
   }
 
   for (std::size_t row = 0; row < data.size(); row += row_bytes) {
+    if (bits_per_component < 8) {
+      // ISO 32000-1 7.4.4.4: TIFF predicts components, not packed bytes.
+      const auto bits = static_cast<std::uint32_t>(bits_per_component);
+      const std::uint32_t mask = (1u << bits) - 1;
+      const auto samples = static_cast<std::uint64_t>(colors) * columns;
+      const auto sample = [&](const std::uint64_t index) {
+        const std::uint64_t bit = index * bits;
+        return (static_cast<std::uint8_t>(data[row + bit / 8]) >>
+                (8 - bits - bit % 8)) &
+               mask;
+      };
+      for (auto i = static_cast<std::uint64_t>(colors); i < samples; ++i) {
+        const std::uint32_t value = (sample(i) + sample(i - colors)) & mask;
+        const std::uint64_t bit = i * bits;
+        const auto shift = static_cast<std::uint32_t>(8 - bits - bit % 8);
+        auto &byte = data[row + bit / 8];
+        byte = static_cast<char>(
+            (static_cast<std::uint8_t>(byte) & ~(mask << shift)) |
+            (value << shift));
+      }
+      continue;
+    }
     for (std::size_t i = pixel_bytes; i < row_bytes; i += component_bytes) {
       if (component_bytes == 1) {
         data[row + i] = static_cast<char>(
@@ -417,6 +435,9 @@ std::string pdf::ascii85_decode(const std::string &input) {
 
 std::string pdf::lzw_decode(const std::string &input,
                             const Integer early_change) {
+  if (early_change != 0 && early_change != 1) {
+    throw std::runtime_error("LZWDecode: invalid EarlyChange");
+  }
   std::string result;
 
   std::vector<std::string> table; // codes 258 and up
@@ -466,7 +487,9 @@ std::string pdf::lzw_decode(const std::string &input,
       }
     }
 
-    if (!previous.empty()) {
+    // ISO 32000-1 7.4.4.2 ends the table at entry 4095 and asks for a clear
+    // code then; without one, the codes go on at 12 bits over the full table
+    if (!previous.empty() && table.size() < 4096 - 258) {
       table.push_back(previous + entry[0]);
       const std::uint64_t next_code = 258 + table.size();
       if (next_code + early_change == 512) {
@@ -519,7 +542,7 @@ std::string pdf::apply_predictor(std::string data, const Integer predictor,
   }
   if (predictor == 2) {
     return apply_tiff_predictor(
-        std::move(data), bits_per_component,
+        std::move(data), colors, columns, bits_per_component,
         predictor_layout(colors, bits_per_component, columns));
   }
   if (predictor >= 10 && predictor <= 15) {
