@@ -461,7 +461,8 @@ public:
       : HtmlService(std::move(config), logger), m_document{std::move(document)},
         m_fragments{std::move(fragments)} {
     m_views.emplace_back(std::make_shared<HtmlDocumentView>(
-        *this, "document", 0, "document.html", m_fragments));
+        *this, "document", 0, this->config().document_output_file_name,
+        m_fragments));
     // the one fragment of a text document is the document view itself
     if (m_document.document_type() != DocumentType::text) {
       for (const auto &fragment : m_fragments) {
@@ -538,7 +539,7 @@ public:
 
   HtmlResources write_html(const std::string &path,
                            HtmlWriter &out) const override {
-    if (path == "document.html") {
+    if (path == config().document_output_file_name) {
       return write_document(out);
     }
 

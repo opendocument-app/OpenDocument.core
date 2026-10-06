@@ -12,6 +12,7 @@
 
 #include <odr/html.hpp>
 
+#include <odr/document.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/odr.hpp>
 
@@ -34,6 +35,27 @@ TEST(html, empty_handles_throw_on_access) {
   EXPECT_THROW(HtmlService(nullptr), NullPointerError);
   EXPECT_THROW(HtmlView(nullptr), NullPointerError);
   EXPECT_THROW(HtmlResource(nullptr), NullPointerError);
+}
+
+TEST(html, document_view_uses_the_configured_output_name) {
+  for (const FileType type :
+       {FileType::opendocument_text, FileType::opendocument_spreadsheet}) {
+    HtmlConfig config;
+    config.document_output_file_name = "custom.html";
+    const HtmlService service = html::translate(create_document(type), config);
+    const HtmlView &view = service.list_views().front();
+    EXPECT_EQ(view.path(), "custom.html");
+    EXPECT_TRUE(service.exists("custom.html"));
+    EXPECT_FALSE(service.exists("document.html"));
+    EXPECT_EQ(service.mimetype("custom.html"), "text/html");
+
+    std::ostringstream rendered;
+    view.write_html(rendered);
+    EXPECT_NE(rendered.str().find("<html"), std::string::npos);
+    std::ostringstream served;
+    service.write("custom.html", served);
+    EXPECT_EQ(served.str(), rendered.str());
+  }
 }
 
 // A linked stylesheet is of no use to a host serving the service over http if

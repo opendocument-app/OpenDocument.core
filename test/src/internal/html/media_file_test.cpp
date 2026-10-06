@@ -121,6 +121,43 @@ TEST(media_file, bring_offline_writes_the_media_next_to_the_page) {
   EXPECT_EQ(copied.str(), mp4_signature + "payload");
 }
 
+TEST(media_file, located_media_is_served_and_does_not_replace_the_view_or_css) {
+  for (const std::string location :
+       {"assets/clip.mp4", "VIDEO.HTML", "media.css"}) {
+    SCOPED_TRACE(location);
+    HtmlConfig config;
+    config.embed_shipped_resources = false;
+    config.resource_locator = [location](const HtmlResource &resource,
+                                         const HtmlConfig &options) {
+      return resource.type() == HtmlResourceType::media
+                 ? HtmlResourceLocation(location)
+                 : html::standard_resource_locator()(resource, options);
+    };
+    const HtmlService service = html::translate(open(mp4_file()), config);
+    const std::string page = write_path(service, "video.html");
+    if (location == "assets/clip.mp4") {
+      EXPECT_NE(page.find("src=\"assets/clip.mp4\""), std::string::npos);
+      EXPECT_TRUE(service.exists(location));
+      EXPECT_EQ(service.mimetype(location), "video/mp4");
+      EXPECT_EQ(write_path(service, location), mp4_signature + "payload");
+    } else {
+      EXPECT_NE(page.find("src=\"data:video/mp4;base64,"), std::string::npos);
+    }
+    EXPECT_EQ(service.mimetype("video.html"), "text/html");
+    EXPECT_EQ(service.mimetype("media.css"), "text/css");
+    EXPECT_FALSE(service.exists("video.mp4"));
+  }
+}
+
+TEST(media_file, named_memory_webm_keeps_its_mime_type) {
+  const DecodedFile file =
+      open(File::from_memory("\x1a\x45\xdf\xa3payload", "clip.WEBM"));
+  const HtmlService service = html::translate(file, HtmlConfig());
+  EXPECT_EQ(service.mimetype("video.webm"), "video/webm");
+  EXPECT_NE(write_path(service, "video.html").find("src=\"video.webm\""),
+            std::string::npos);
+}
+
 /// `.mkv` and `.webm` are one file type, so the canonical name would serve a
 /// webm as `video/x-matroska` and no browser would play it. The name it came
 /// in under wins whenever the same type claims it.

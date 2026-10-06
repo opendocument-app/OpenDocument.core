@@ -23,7 +23,7 @@ namespace odr::internal::html {
 namespace {
 
 /// The extension the media goes out under: the file type's canonical one,
-/// unless the file came from disk named with another extension the same type
+/// unless the file was named with another extension the same type
 /// claims. `.mkv` and `.webm` are one type here - the two are the same bytes
 /// down to the EBML DocType, deeper than a signature reaches - and a browser
 /// handed a webm under the matroska name and MIME will not play it.
@@ -34,15 +34,13 @@ std::string source_extension(const DecodedFile &media_file) {
     return "bin";
   }
 
-  if (const std::optional<std::string> path = media_file.file().disk_path();
-      path.has_value()) {
-    std::string extension = std::filesystem::path(*path).extension().string();
-    if (!extension.empty()) {
-      extension.erase(0, 1); // the dot
-      extension = util::string::to_lower(extension);
-      if (std::ranges::find(extensions, extension) != extensions.end()) {
-        return extension;
-      }
+  std::string extension =
+      std::filesystem::path(media_file.file().name()).extension().string();
+  if (!extension.empty()) {
+    extension.erase(0, 1); // the dot
+    extension = util::string::to_lower(extension);
+    if (std::ranges::find(extensions, extension) != extensions.end()) {
+      return extension;
     }
   }
 
@@ -94,6 +92,16 @@ public:
         m_source_path{m_element + "." + m_extension},
         m_mime_type{mime_type_for(m_media_file.file_type(), m_extension)},
         m_resources{locate_media_resources(this->config())} {
+    const odr::HtmlResource resource = HtmlResource::create(
+        HtmlResourceType::media, m_mime_type, m_source_path, m_source_path,
+        m_media_file.file(), false, false, true);
+    HtmlResourceLocation location =
+        this->config().resource_locator(resource, this->config());
+    if (location && (util::string::equals_ignore_case(*location, m_view_path) ||
+                     resource_location_taken(m_resources, *location))) {
+      location.reset();
+    }
+    m_resources.emplace_back(resource, std::move(location));
     m_views.emplace_back(
         std::make_shared<HtmlView>(*this, m_element, 0, m_view_path));
   }
@@ -103,16 +111,12 @@ public:
   [[nodiscard]] const HtmlViews &list_views() const override { return m_views; }
 
   [[nodiscard]] bool exists(const std::string &path) const override {
-    return path == m_view_path || path == m_source_path ||
-           resource_at(m_resources, path) != nullptr;
+    return path == m_view_path || resource_at(m_resources, path) != nullptr;
   }
 
   [[nodiscard]] std::string mimetype(const std::string &path) const override {
     if (path == m_view_path) {
       return "text/html";
-    }
-    if (path == m_source_path) {
-      return m_mime_type;
     }
     if (const odr::HtmlResource *resource = resource_at(m_resources, path);
         resource != nullptr) {
@@ -126,10 +130,6 @@ public:
     if (path == m_view_path) {
       HtmlWriter writer(out, config());
       write_media(writer);
-      return;
-    }
-    if (path == m_source_path) {
-      m_media_file.file().pipe(out);
       return;
     }
     if (const odr::HtmlResource *resource = resource_at(m_resources, path);
@@ -157,11 +157,7 @@ public:
     // The media stays a resource rather than a data URI: a video is regularly
     // larger than everything else we emit put together, and base64 in the
     // markup would cost a third on top of it again.
-    const odr::HtmlResource resource = HtmlResource::create(
-        HtmlResourceType::media, m_mime_type, m_source_path, m_source_path,
-        m_media_file.file(), false, false, true);
-    const HtmlResourceLocation location =
-        config().resource_locator(resource, config());
+    const auto &[resource, location] = m_resources.back();
     resources.emplace_back(resource, location);
 
     out.write_begin();
@@ -206,7 +202,7 @@ private:
   std::string m_extension;
   std::string m_source_path;
   std::string m_mime_type;
-  /// The css this view links; empty of locations when the config embeds it.
+  /// Shipped resources followed by the media, at their located paths.
   HtmlResources m_resources;
 
   HtmlViews m_views;
