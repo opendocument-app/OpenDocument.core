@@ -18,6 +18,7 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <new>
 #include <optional>
@@ -446,6 +447,27 @@ TEST(File, atomic_writes_preserve_the_destination_on_failure) {
                            [](std::ostream &out) { out << "replacement"; });
   EXPECT_EQ(util::file::read(name), "replacement");
   EXPECT_EQ(std::filesystem::status(path).permissions(), permissions);
+}
+
+TEST(File, temporary_copies_are_private_and_new_saves_are_not) {
+  using namespace odr::internal;
+  std::istringstream source("bytes");
+  const auto copy = TemporaryDiskFileFactory::system_default().copy(source);
+  constexpr auto others =
+      std::filesystem::perms::group_all | std::filesystem::perms::others_all;
+  EXPECT_EQ(std::filesystem::status(copy.path().path()).permissions() & others,
+            std::filesystem::perms::none);
+
+  const std::string name = "odr-atomic-" + random_string(12);
+  const std::string plain = name + "-plain";
+  std::ofstream(plain) << "plain";
+  const TemporaryDiskFile plain_cleanup(
+      AbsPath(std::filesystem::absolute(plain)));
+  util::file::write_atomic(name, [](std::ostream &out) { out << "saved"; });
+  const TemporaryDiskFile saved_cleanup(
+      AbsPath(std::filesystem::absolute(name)));
+  EXPECT_EQ(std::filesystem::status(name).permissions(),
+            std::filesystem::status(plain).permissions());
 }
 
 TEST(File, atomic_writes_follow_existing_symlinks_and_reject_dangling_ones) {

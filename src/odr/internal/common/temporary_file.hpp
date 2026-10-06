@@ -34,12 +34,18 @@ public:
       AbsPath directory, RandomFileNameGenerator random_file_name_generator =
                              default_random_file_name_generator());
 
+  /// Private to the owner, because a copy can hold decrypted content.
   [[nodiscard]] TemporaryDiskFile copy(const abstract::File &file) const;
   [[nodiscard]] TemporaryDiskFile copy(std::istream &in) const;
+  /// With the permissions any new file in the directory gets.
   [[nodiscard]] TemporaryDiskFile
   create(const std::function<void(std::ostream &)> &write) const;
 
 private:
+  [[nodiscard]] TemporaryDiskFile
+  create_(const std::function<void(std::ostream &)> &write,
+          bool private_to_owner) const;
+
   AbsPath m_directory;
   RandomFileNameGenerator m_random_file_name_generator;
 };
