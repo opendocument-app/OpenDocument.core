@@ -1235,11 +1235,8 @@ public:
         build_link_resolver(*m_parser, *m_document, pages));
     const std::size_t begin =
         std::min<std::size_t>(config().page_range_begin, pages.size());
-    const std::size_t end =
-        config().page_range_end
-            ? std::clamp<std::size_t>(*config().page_range_end, begin,
-                                      pages.size())
-            : pages.size();
+    const std::size_t end = std::clamp<std::size_t>(
+        config().page_range_end.value_or(pages.size()), begin, pages.size());
     m_first_page = begin;
     m_pages.assign(pages.begin() + static_cast<std::ptrdiff_t>(begin),
                    pages.begin() + static_cast<std::ptrdiff_t>(end));

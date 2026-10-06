@@ -115,7 +115,8 @@ public:
       m_circular.insert(busy, m_stack.end());
       return std::nullopt;
     }
-    if (!formula->second.node.has_value() || formula->second.spanned) {
+    const Formula &entry = formula->second;
+    if (!entry.node.has_value() || entry.spanned) {
       m_results.emplace(position, std::nullopt);
       return std::nullopt;
     }
@@ -127,8 +128,8 @@ public:
       return std::nullopt;
     }
     m_stack.push_back(position);
-    const std::optional<formula::Value> result = formula::evaluate(
-        *formula->second.node, position, *this, m_base->settings());
+    const std::optional<formula::Value> result =
+        formula::evaluate(*entry.node, position, *this, m_base->settings());
     m_stack.pop_back();
     // a result the depth limit cut short is computed again
     if (!m_frontier.has_value()) {

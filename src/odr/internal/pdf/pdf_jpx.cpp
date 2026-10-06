@@ -166,10 +166,10 @@ std::optional<pdf::JpxImage> pdf::decode_jpx(const std::string &data) {
   // A component the `cdef` box marks as opacity is the alpha plane; the rest
   // are colour, in codestream order.
   std::vector<std::uint32_t> colour;
-  std::optional<std::uint32_t> alpha_index;
+  const opj_image_comp_t *alpha = nullptr;
   for (std::uint32_t i = 0; i < image->numcomps; ++i) {
-    if (image->comps[i].alpha != 0 && !alpha_index.has_value()) {
-      alpha_index = i;
+    if (image->comps[i].alpha != 0 && alpha == nullptr) {
+      alpha = &image->comps[i];
     } else {
       colour.push_back(i);
     }
@@ -188,7 +188,7 @@ std::optional<pdf::JpxImage> pdf::decode_jpx(const std::string &data) {
   result.height = height;
   result.components = static_cast<std::int32_t>(colour.size());
   result.samples.resize(*output_size);
-  if (alpha_index.has_value()) {
+  if (alpha != nullptr) {
     result.alpha.resize(*output_size / colour.size());
   }
 
@@ -199,9 +199,9 @@ std::optional<pdf::JpxImage> pdf::decode_jpx(const std::string &data) {
         result.samples[out++] =
             static_cast<char>(sample_at(image->comps[c], x, y));
       }
-      if (alpha_index.has_value()) {
+      if (alpha != nullptr) {
         result.alpha[static_cast<std::size_t>(y) * width + x] =
-            sample_at(image->comps[*alpha_index], x, y);
+            sample_at(*alpha, x, y);
       }
     }
   }
