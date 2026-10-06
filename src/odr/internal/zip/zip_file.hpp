@@ -25,6 +25,8 @@ public:
   [[nodiscard]] bool is_decodable() const noexcept override;
 
   [[nodiscard]] std::shared_ptr<abstract::Archive> archive() const override;
+  /// The package, which reads its entries from @ref file lazily.
+  [[nodiscard]] const std::shared_ptr<util::Archive> &zip() const noexcept;
 
 private:
   std::shared_ptr<util::Archive> m_zip;

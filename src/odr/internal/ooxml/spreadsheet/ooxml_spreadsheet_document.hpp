@@ -18,7 +18,8 @@ namespace odr::internal::ooxml::spreadsheet {
 
 class Document final : public internal::Document {
 public:
-  explicit Document(std::shared_ptr<abstract::ReadableFilesystem> files);
+  explicit Document(std::shared_ptr<abstract::ReadableFilesystem> files,
+                    std::shared_ptr<zip::util::Archive> archive = nullptr);
 
   [[nodiscard]] const ElementRegistry &element_registry() const;
   [[nodiscard]] const StyleRegistry &style_registry() const;

@@ -4,10 +4,14 @@
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
 #include <odr/html.hpp>
+#include <odr/internal/abstract/document.hpp>
+#include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/temporary_file.hpp>
+#include <odr/internal/odf/odf_file.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
+#include <odr/internal/zip/zip_file.hpp>
 #include <odr/odr.hpp>
 #include <odr/style.hpp>
 #include <odr/table_position.hpp>
@@ -21,6 +25,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <functional>
 #include <optional>
 #include <sstream>
@@ -804,8 +809,10 @@ TEST(Document, saving_an_unsavable_format_leaves_no_file) {
   EXPECT_THROW((void)document.save_to_memory(), UnsupportedOperation);
 }
 
-TEST(Document, repeated_saves_over_source_preserve_lazy_resources) {
-  using namespace odr::internal;
+namespace {
+
+/// Bytes that do not compress, so the package reads them lazily from disk.
+std::string incompressible_payload() {
   std::string payload(100000, '\0');
   std::uint32_t state = 1;
   for (char &byte : payload) {
@@ -814,6 +821,12 @@ TEST(Document, repeated_saves_over_source_preserve_lazy_resources) {
     state ^= state << 5;
     byte = static_cast<char>(state);
   }
+  return payload;
+}
+
+/// An `.odt` on disk with one paragraph and @p payload as a picture.
+odr::internal::TemporaryDiskFile odt_with(const std::string &payload) {
+  using namespace odr::internal;
   zip::ZipArchive archive;
   archive.insert_file(
       archive.end(), RelPath("mimetype"),
@@ -828,7 +841,15 @@ TEST(Document, repeated_saves_over_source_preserve_lazy_resources) {
                       std::make_shared<MemoryFile>(payload));
   std::stringstream bytes;
   archive.save(bytes);
-  const auto source = TemporaryDiskFileFactory::system_default().copy(bytes);
+  return TemporaryDiskFileFactory::system_default().copy(bytes);
+}
+
+} // namespace
+
+TEST(Document, repeated_saves_over_source_preserve_lazy_resources) {
+  using namespace odr::internal;
+  const std::string payload = incompressible_payload();
+  const TemporaryDiskFile source = odt_with(payload);
   const std::string path = source.disk_path()->string();
   const odr::Document document = odr::open(path).as_document_file().document();
   const odr::File resource =
@@ -837,7 +858,8 @@ TEST(Document, repeated_saves_over_source_preserve_lazy_resources) {
   ASSERT_EQ(active->get(), static_cast<unsigned char>(payload[0]));
   std::filesystem::create_hard_link(path, path + ".alias");
   const TemporaryDiskFile alias(path + ".alias");
-  for (const std::string &destination : {alias.path().string(), path}) {
+  for (const std::string &destination :
+       {alias.disk_path().value().string(), path}) {
     for (const std::string text :
          {std::string(2000, 'a'), std::string("bye")}) {
       ASSERT_EQ(set_every_text(document.root_element(), text), 1u);
@@ -853,4 +875,25 @@ TEST(Document, repeated_saves_over_source_preserve_lazy_resources) {
     }
   }
   EXPECT_EQ(util::stream::read(*active), payload.substr(1));
+}
+
+// The pooled read streams keep the replaced bytes readable on POSIX, so this
+// truncates the source in place: only a released source survives that.
+TEST(Document, a_released_source_reads_from_its_own_copy) {
+  using namespace odr::internal;
+  const std::string payload = incompressible_payload();
+  const TemporaryDiskFile source = odt_with(payload);
+  const AbsPath path = source.disk_path().value();
+  const zip::ZipFile zip_file(std::make_shared<DiskFile>(path));
+  const auto document =
+      odf::OpenDocumentFile(zip_file.archive()->as_filesystem(), zip_file.zip())
+          .document();
+  const auto resource =
+      document->as_filesystem()->open(AbsPath("/Pictures/data.bin"));
+  ASSERT_EQ(util::stream::read(*resource->stream()), payload);
+
+  document->release_source(path);
+  std::ofstream(path.string(), std::ios::binary | std::ios::trunc) << "x";
+
+  EXPECT_EQ(util::stream::read(*resource->stream()), payload);
 }

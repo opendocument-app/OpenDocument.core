@@ -15,8 +15,9 @@ class File;
 namespace odr::internal::odf {
 
 OpenDocumentFile::OpenDocumentFile(
-    std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-    : m_filesystem{std::move(filesystem)} {
+    std::shared_ptr<abstract::ReadableFilesystem> filesystem,
+    std::shared_ptr<zip::util::Archive> archive)
+    : m_filesystem{std::move(filesystem)}, m_archive{std::move(archive)} {
   if (m_filesystem->exists(AbsPath("/META-INF/manifest.xml"))) {
     const pugi::xml_document manifest =
         xml::parse(*m_filesystem, AbsPath("/META-INF/manifest.xml"));
@@ -77,6 +78,7 @@ OpenDocumentFile::decrypt(const std::string &password) const {
   auto decrypted_filesystem = odf::decrypt(m_filesystem, m_manifest, password);
   auto decrypted_file = std::make_shared<OpenDocumentFile>(*this);
   decrypted_file->m_filesystem = std::move(decrypted_filesystem);
+  decrypted_file->m_archive = nullptr;
   decrypted_file->m_file_meta =
       parse_file_meta(*decrypted_file->m_filesystem, nullptr, true);
   decrypted_file->m_encryption_state = EncryptionState::decrypted;
@@ -95,18 +97,20 @@ std::shared_ptr<abstract::Document> OpenDocumentFile::document() const {
   switch (file_type()) {
   case FileType::opendocument_text:
     return std::make_shared<Document>(m_file_meta.type, DocumentType::text,
-                                      m_filesystem, m_encryption_state);
+                                      m_filesystem, m_encryption_state,
+                                      m_archive);
   case FileType::opendocument_presentation:
     return std::make_shared<Document>(m_file_meta.type,
                                       DocumentType::presentation, m_filesystem,
-                                      m_encryption_state);
+                                      m_encryption_state, m_archive);
   case FileType::opendocument_spreadsheet:
     return std::make_shared<Document>(m_file_meta.type,
                                       DocumentType::spreadsheet, m_filesystem,
-                                      m_encryption_state);
+                                      m_encryption_state, m_archive);
   case FileType::opendocument_graphics:
     return std::make_shared<Document>(m_file_meta.type, DocumentType::drawing,
-                                      m_filesystem, m_encryption_state);
+                                      m_filesystem, m_encryption_state,
+                                      m_archive);
   default:
     throw UnsupportedFileType(file_type());
   }

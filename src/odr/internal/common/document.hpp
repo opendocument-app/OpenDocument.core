@@ -11,6 +11,10 @@
 #include <utility>
 #include <vector>
 
+namespace odr::internal::zip::util {
+class Archive;
+} // namespace odr::internal::zip::util
+
 namespace odr::internal::abstract {
 class ReadableFilesystem;
 } // namespace odr::internal::abstract
@@ -21,9 +25,11 @@ class SheetDependencies;
 
 class Document : public abstract::Document {
 public:
+  /// @p archive is the package @p files reads from lazily, if any.
   Document(FileType file_type, DocumentType document_type,
            std::shared_ptr<abstract::ReadableFilesystem> files,
-           EncryptionState encryption_state = EncryptionState::not_encrypted);
+           EncryptionState encryption_state = EncryptionState::not_encrypted,
+           std::shared_ptr<zip::util::Archive> archive = nullptr);
   ~Document() override;
 
   /// Read-only, which every engine but odf and ooxml text is.
@@ -31,6 +37,7 @@ public:
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
   void save(std::ostream &out) const override;
   void save(std::ostream &out, const char *password) const override;
+  void release_source(const AbsPath &path) const final;
 
   [[nodiscard]] FileType file_type() const noexcept final;
   [[nodiscard]] DocumentType document_type() const noexcept final;
@@ -73,6 +80,7 @@ protected:
   EncryptionState m_encryption_state{EncryptionState::not_encrypted};
 
   std::shared_ptr<abstract::ReadableFilesystem> m_files;
+  std::shared_ptr<zip::util::Archive> m_archive;
 
   ElementIdentifier m_root_element{null_element_id};
   std::unique_ptr<abstract::ElementAdapter> m_element_adapter;

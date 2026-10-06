@@ -32,6 +32,7 @@ struct GraphicStyle;
 } // namespace odr
 
 namespace odr::internal {
+class AbsPath;
 class SheetDependencies;
 } // namespace odr::internal
 
@@ -77,6 +78,9 @@ public:
 
   virtual void save(std::ostream &out) const = 0;
   virtual void save(std::ostream &out, const char *password) const = 0;
+  /// Called before a save replaces the file at @p path: whatever still reads
+  /// from that file reads from a private copy from then on.
+  virtual void release_source(const AbsPath & /*path*/) const {}
 
   [[nodiscard]] virtual FileType file_type() const noexcept = 0;
   [[nodiscard]] virtual DocumentType document_type() const noexcept = 0;

@@ -70,9 +70,11 @@ PageLayout read_page_layout(const pugi::xml_node body) {
 } // namespace
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
-                   const EncryptionState encryption_state)
+                   const EncryptionState encryption_state,
+                   std::shared_ptr<zip::util::Archive> archive)
     : internal::Document(FileType::office_open_xml_document, DocumentType::text,
-                         std::move(files), encryption_state) {
+                         std::move(files), encryption_state,
+                         std::move(archive)) {
   m_document_xml = xml::parse(*m_files, AbsPath("/word/document.xml"));
   if (m_files->is_file(AbsPath("/word/styles.xml"))) {
     m_styles_xml = xml::parse(*m_files, AbsPath("/word/styles.xml"));

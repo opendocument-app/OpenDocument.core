@@ -34,9 +34,6 @@ class ReadableFilesystem {
 public:
   virtual ~ReadableFilesystem() = default;
 
-  /// Preserve backing files before a document replaces @p path.
-  void preserve_source(const AbsPath &path) const;
-
   [[nodiscard]] virtual bool exists(const AbsPath &path) const = 0;
   [[nodiscard]] virtual bool is_file(const AbsPath &path) const = 0;
   [[nodiscard]] virtual bool is_directory(const AbsPath &path) const = 0;

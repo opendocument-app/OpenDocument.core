@@ -87,15 +87,6 @@ private:
 };
 } // namespace
 
-void abstract::ReadableFilesystem::preserve_source(const AbsPath &path) const {
-  for (auto walker = file_walker(AbsPath("/")); !walker->end();
-       walker->next()) {
-    if (walker->is_file()) {
-      open(walker->path())->preserve_source(path);
-    }
-  }
-}
-
 SystemFilesystem::SystemFilesystem(AbsPath root) : m_root{std::move(root)} {}
 
 AbsPath SystemFilesystem::to_system_path_(const AbsPath &path) const {

@@ -59,9 +59,11 @@ pugi::xml_node calc_pr(pugi::xml_node workbook) {
 }
 } // namespace
 
-Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
+Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
+                   std::shared_ptr<zip::util::Archive> archive)
     : internal::Document(FileType::office_open_xml_workbook,
-                         DocumentType::spreadsheet, std::move(files)) {
+                         DocumentType::spreadsheet, std::move(files),
+                         EncryptionState::not_encrypted, std::move(archive)) {
   const AbsPath workbook_path("/xl/workbook.xml");
   const auto [workbook_xml, workbook_relations] = parse_xml_(workbook_path);
   m_written_parts.push_back(workbook_path);

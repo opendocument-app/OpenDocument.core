@@ -62,9 +62,7 @@ void Document::save_file_(const std::string &path, const char *password) const {
     throw UnsupportedOperation();
   }
   recalculate_edits_();
-  if (const auto files = m_impl->as_filesystem()) {
-    files->preserve_source(internal::AbsPath(std::filesystem::absolute(path)));
-  }
+  m_impl->release_source(internal::AbsPath(std::filesystem::absolute(path)));
   internal::util::file::write_atomic(path, [&](std::ostream &out) {
     if (password == nullptr) {
       m_impl->save(out);

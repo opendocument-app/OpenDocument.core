@@ -8,7 +8,10 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <filesystem>
 #include <limits>
+#include <optional>
+#include <system_error>
 #include <utility>
 
 namespace odr::internal::zip::util {
@@ -95,10 +98,6 @@ public:
     if (m_archive == nullptr) {
       throw NullPointerError("FileInZip: archive is nullptr");
     }
-  }
-
-  void preserve_source(const AbsPath &path) const override {
-    m_archive->preserve_source(path);
   }
 
   [[nodiscard]] FileLocation location() const noexcept override {
@@ -201,17 +200,18 @@ ReadSource::ReadSource(std::shared_ptr<abstract::File> file)
   m_memory = m_file->memory_data();
 }
 
-void ReadSource::preserve_source(const AbsPath &path) {
-  std::lock_guard lock(m_mutex);
-  const auto source = m_file->disk_path();
-  if (!source.has_value()) {
-    m_file->preserve_source(path);
-  } else if (std::filesystem::exists(path.path()) &&
-             std::filesystem::equivalent(source->path(), path.path())) {
-    m_file = std::make_shared<TemporaryDiskFile>(
-        TemporaryDiskFileFactory::system_default().copy(*m_file));
-    m_streams.clear();
+void ReadSource::release_source(const AbsPath &path) {
+  const std::lock_guard lock(m_mutex);
+  const std::optional<AbsPath> source = m_file->disk_path();
+  // false where either file is missing, such as a source deleted after open
+  std::error_code error;
+  if (!source.has_value() ||
+      !std::filesystem::equivalent(source->path(), path.path(), error)) {
+    return;
   }
+  m_file = std::make_shared<TemporaryDiskFile>(
+      TemporaryDiskFileFactory::system_default().copy(*m_file));
+  m_streams.clear();
 }
 
 std::size_t ReadSource::read(const std::uint64_t offset, void *buffer,
@@ -276,8 +276,8 @@ Archive::Archive(std::shared_ptr<abstract::File> file)
 
 Archive::~Archive() { mz_zip_end(&m_zip); }
 
-void Archive::preserve_source(const AbsPath &path) const {
-  m_source->preserve_source(path);
+void Archive::release_source(const AbsPath &path) const {
+  m_source->release_source(path);
 }
 
 mz_zip_archive *Archive::zip() const { return &m_zip; }

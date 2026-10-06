@@ -27,6 +27,10 @@ FileMeta ZipFile::file_meta() const {
 
 bool ZipFile::is_decodable() const noexcept { return true; }
 
+const std::shared_ptr<util::Archive> &ZipFile::zip() const noexcept {
+  return m_zip;
+}
+
 std::shared_ptr<abstract::Archive> ZipFile::archive() const {
   return std::make_shared<ZipArchive>(m_zip);
 }

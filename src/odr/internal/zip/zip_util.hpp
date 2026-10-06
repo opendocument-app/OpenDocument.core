@@ -32,7 +32,9 @@ enum class Method {
 class ReadSource final {
 public:
   explicit ReadSource(std::shared_ptr<abstract::File> file);
-  void preserve_source(const AbsPath &path);
+  /// Reads from a private copy from now on if the source is the file at
+  /// @p path, which a save is about to replace.
+  void release_source(const AbsPath &path);
 
   [[nodiscard]] std::size_t read(std::uint64_t offset, void *buffer,
                                  std::size_t size) const;
@@ -50,7 +52,8 @@ class Archive final : public std::enable_shared_from_this<Archive> {
 public:
   explicit Archive(std::shared_ptr<abstract::File> file);
   ~Archive();
-  void preserve_source(const AbsPath &path) const;
+  /// See @ref ReadSource::release_source.
+  void release_source(const AbsPath &path) const;
 
   [[nodiscard]] mz_zip_archive *zip() const;
 

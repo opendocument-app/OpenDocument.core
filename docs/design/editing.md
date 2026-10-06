@@ -114,8 +114,11 @@ replay does not clone or roll back the document. The envelope states a
 `version`, and replay refuses any other.
 
 Saving is a separate call. Path saves write a temporary file beside the
-destination and replace it after a successful close. Saving over a backing
-archive first preserves its bytes for lazy resource reads and later saves.
+destination and replace it after a successful close. Before that, the
+document's `release_source` moves a ZIP package that reads from the
+destination onto a private copy, so lazy resource reads and later saves keep
+working. Only the saving document is moved: a second document open on the
+same file is not, and a hard link to the destination keeps the old bytes.
 Stream saves leave partial output on failure.
 
 Open: a conformance corpus of `(base document, op log) → expected saved

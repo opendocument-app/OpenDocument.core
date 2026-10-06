@@ -53,17 +53,18 @@ void file::write_atomic(const std::string &path,
   const std::filesystem::path target =
       std::filesystem::weakly_canonical(std::filesystem::absolute(path));
   const auto status = std::filesystem::status(target);
+  // a rename needs only the directory to be writable, so the file's own
+  // permissions refuse as truncating it would
   if (std::filesystem::is_symlink(std::filesystem::symlink_status(target)) ||
       (std::filesystem::exists(status) &&
-       !std::filesystem::is_regular_file(status))) {
+       (!std::filesystem::is_regular_file(status) ||
+        (status.permissions() & std::filesystem::perms::owner_write) ==
+            std::filesystem::perms::none))) {
     throw FileWriteError(path);
   }
-  const TemporaryDiskFile temporary =
-      TemporaryDiskFileFactory(AbsPath(target.parent_path())).create(write);
-  if (std::filesystem::exists(status)) {
-    std::filesystem::permissions(temporary.path().path(), status.permissions());
-  }
-  std::filesystem::rename(temporary.path().path(), target);
+  TemporaryDiskFileFactory(AbsPath(target.parent_path()))
+      .create(write)
+      .persist(AbsPath(target));
 }
 
 void file::write(const std::string &data, const std::string &path) {

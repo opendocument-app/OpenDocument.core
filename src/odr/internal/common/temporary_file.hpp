@@ -19,6 +19,10 @@ public:
   TemporaryDiskFile &operator=(const TemporaryDiskFile &) = delete;
   TemporaryDiskFile &operator=(TemporaryDiskFile &&) noexcept;
 
+  /// Replaces @p target with this file, keeping the permissions @p target
+  /// has, and leaves it in place from then on.
+  void persist(const AbsPath &target);
+
 private:
   bool m_owns_path{true}; ///< cleared by a move, so only one owner removes
 };

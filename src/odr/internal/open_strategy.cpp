@@ -86,7 +86,8 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     try {
       auto zip_file = std::make_unique<zip::ZipFile>(file);
       auto filesystem = zip_file->archive()->as_filesystem();
-      auto odf_file = std::make_unique<odf::OpenDocumentFile>(filesystem);
+      auto odf_file =
+          std::make_unique<odf::OpenDocumentFile>(filesystem, zip_file->zip());
       if (odf_file->file_type() == as) {
         return odf_file;
       }
@@ -134,7 +135,8 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     try {
       auto zip_file = std::make_unique<zip::ZipFile>(file);
       auto filesystem = zip_file->archive()->as_filesystem();
-      auto ooxml_file = std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
+      auto ooxml_file = std::make_unique<ooxml::OfficeOpenXmlFile>(
+          filesystem, zip_file->zip());
       if (is_the_requested_ooxml(*ooxml_file, as)) {
         return ooxml_file;
       }
@@ -481,14 +483,16 @@ open_by_cascade(const std::shared_ptr<abstract::File> &file,
 
     try {
       ODR_VERBOSE(logger, "try open as odf");
-      return std::make_unique<odf::OpenDocumentFile>(filesystem);
+      return std::make_unique<odf::OpenDocumentFile>(filesystem,
+                                                     zip_file->zip());
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as odf");
     }
 
     try {
       ODR_VERBOSE(logger, "try open as ooxml");
-      return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
+      return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem,
+                                                        zip_file->zip());
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as ooxml");
     }

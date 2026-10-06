@@ -31,9 +31,11 @@ create_element_adapter(const Document &document, ElementRegistry &registry);
 
 } // namespace
 
-Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
+Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
+                   std::shared_ptr<zip::util::Archive> archive)
     : internal::Document(FileType::office_open_xml_presentation,
-                         DocumentType::presentation, std::move(files)) {
+                         DocumentType::presentation, std::move(files),
+                         EncryptionState::not_encrypted, std::move(archive)) {
   m_document_xml = xml::parse(*m_files, AbsPath("/ppt/presentation.xml"));
 
   // Only the parts the slide-id list names: a package may relate anything at

@@ -6,7 +6,9 @@
 #include <odr/internal/util/stream_util.hpp>
 
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
+#include <system_error>
 #include <utility>
 
 namespace odr::internal {
@@ -54,6 +56,24 @@ TemporaryDiskFile::operator=(TemporaryDiskFile &&other) noexcept {
   DiskFile::operator=(std::move(static_cast<DiskFile &>(other)));
   m_owns_path = std::exchange(other.m_owns_path, false);
   return *this;
+}
+
+void TemporaryDiskFile::persist(const AbsPath &target) {
+  // a missing target is no error: it has no permissions to keep
+  std::error_code missing;
+  const std::filesystem::file_status status =
+      std::filesystem::status(target.path(), missing);
+  std::error_code error;
+  if (std::filesystem::exists(status)) {
+    std::filesystem::permissions(path().path(), status.permissions(), error);
+  }
+  if (!error) {
+    std::filesystem::rename(path().path(), target.path(), error);
+  }
+  if (error) {
+    throw FileWriteError(target.string());
+  }
+  m_owns_path = false;
 }
 
 const TemporaryDiskFileFactory &TemporaryDiskFileFactory::system_default() {
