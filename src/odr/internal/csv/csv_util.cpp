@@ -322,7 +322,8 @@ bool csv::is_number(std::string_view field) noexcept {
   if (first == std::string_view::npos) {
     return false;
   }
-  field = field.substr(first, field.find_last_not_of(blanks) - first + 1);
+  field.remove_suffix(field.size() - field.find_last_not_of(blanks) - 1);
+  field.remove_prefix(first);
 
   std::size_t i = 0;
   const auto digits = [&] {

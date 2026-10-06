@@ -60,7 +60,10 @@ TEST(TextEncoding, a_name_matches_regardless_of_case_and_punctuation) {
   EXPECT_EQ(text_encoding_by_name("cp1252"), TextEncoding::windows_1252);
   EXPECT_EQ(text_encoding_by_name("utf8"), TextEncoding::utf8);
   EXPECT_EQ(text_encoding_by_name("Latin1"), TextEncoding::iso_8859_1);
+  EXPECT_EQ(text_encoding_by_name(" u T_f - 8 "), TextEncoding::utf8);
   EXPECT_EQ(text_encoding_by_name("nonsense"), TextEncoding::unknown);
+  EXPECT_EQ(text_encoding_by_name(" _- "), TextEncoding::unknown);
+  EXPECT_EQ(text_encoding_by_name(""), TextEncoding::unknown);
 }
 
 TEST(TextEncoding, uchardet_names_map_home) {

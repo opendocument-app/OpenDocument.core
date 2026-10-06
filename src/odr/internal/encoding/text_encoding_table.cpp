@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <string>
+#include <ranges>
 
 namespace odr::internal::encoding {
 
@@ -122,16 +122,12 @@ constexpr std::array table{
 };
 
 /// Case, `-`, `_` and spaces carry no meaning in an encoding label.
-std::string normalize(const std::string_view name) {
-  std::string result;
-  result.reserve(name.size());
-  for (const char c : name) {
-    if (c == '-' || c == '_' || c == ' ') {
-      continue;
-    }
-    result.push_back(util::string::to_lower(c));
-  }
-  return result;
+auto normalize(const std::string_view name) {
+  return name | std::views::filter([](const char c) {
+           return c != '-' && c != '_' && c != ' ';
+         }) |
+         std::views::transform(
+             [](const char c) { return util::string::to_lower(c); });
 }
 
 constexpr auto encodings_column = [] {
@@ -160,10 +156,10 @@ text_encoding_table::find(const TextEncoding encoding) noexcept {
 
 const text_encoding_table::Row *
 text_encoding_table::find_by_name(const std::string_view name) noexcept {
-  const std::string needle = normalize(name);
+  auto needle = normalize(name);
   const auto it = std::ranges::find_if(table, [&](const Row &row) {
     return std::ranges::any_of(row.names, [&](const std::string_view alias) {
-      return normalize(alias) == needle;
+      return std::ranges::equal(normalize(alias), needle);
     });
   });
   return it == std::ranges::end(table) ? nullptr : &*it;

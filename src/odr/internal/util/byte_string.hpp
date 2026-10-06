@@ -70,7 +70,9 @@ public:
   }
   /// The bytes from the cursor to the end; leaves the cursor where it is.
   [[nodiscard]] std::string_view rest() const noexcept {
-    return m_data.substr(m_position);
+    std::string_view result = m_data;
+    result.remove_prefix(m_position);
+    return result;
   }
 
 private:
