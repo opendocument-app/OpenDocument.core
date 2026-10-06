@@ -18,6 +18,7 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <new>
 #include <optional>
@@ -422,4 +423,88 @@ TEST(File, metadata_failures_propagate_to_the_caller) {
   };
   const DecodedFile file(std::make_shared<FailingMetadata>());
   EXPECT_THROW((void)file.file_meta(), std::bad_alloc);
+}
+
+TEST(File, atomic_writes_preserve_the_destination_on_failure) {
+  using namespace odr::internal;
+  const AbsPath directory(std::filesystem::current_path());
+  const std::string name = "odr-atomic-" + random_string(12);
+  const std::filesystem::path path = directory.join(RelPath(name)).path();
+  util::file::write_atomic(name, [](std::ostream &out) { out << "original"; });
+  const TemporaryDiskFile cleanup(path.string());
+  for (const bool throws : {false, true}) {
+    EXPECT_ANY_THROW(util::file::write_atomic(name, [&](std::ostream &out) {
+      out << "partial";
+      if (throws) {
+        out.exceptions(std::ios::badbit);
+      }
+      out.setstate(std::ios::badbit);
+    }));
+    EXPECT_EQ(util::file::read(name), "original");
+  }
+  const auto permissions = std::filesystem::status(path).permissions();
+  util::file::write_atomic(name,
+                           [](std::ostream &out) { out << "replacement"; });
+  EXPECT_EQ(util::file::read(name), "replacement");
+  EXPECT_EQ(std::filesystem::status(path).permissions(), permissions);
+}
+
+TEST(File, atomic_writes_refuse_a_read_only_destination) {
+  using namespace odr::internal;
+  const std::string name = "odr-atomic-" + random_string(12);
+  util::file::write_atomic(name, [](std::ostream &out) { out << "original"; });
+  const TemporaryDiskFile cleanup(AbsPath(std::filesystem::absolute(name)));
+  std::filesystem::permissions(name, std::filesystem::perms::owner_read);
+  EXPECT_THROW(util::file::write_atomic(
+                   name, [](std::ostream &out) { out << "replacement"; }),
+               FileWriteError);
+  EXPECT_EQ(util::file::read(name), "original");
+}
+
+TEST(File, temporary_copies_are_private_and_new_saves_are_not) {
+  using namespace odr::internal;
+  std::istringstream source("bytes");
+  const auto copy = TemporaryDiskFileFactory::system_default().copy(source);
+  constexpr auto others =
+      std::filesystem::perms::group_all | std::filesystem::perms::others_all;
+  EXPECT_EQ(
+      std::filesystem::status(copy.disk_path().value().path()).permissions() &
+          others,
+      std::filesystem::perms::none);
+
+  const std::string name = "odr-atomic-" + random_string(12);
+  const std::string plain = name + "-plain";
+  std::ofstream(plain) << "plain";
+  const TemporaryDiskFile plain_cleanup(
+      AbsPath(std::filesystem::absolute(plain)));
+  util::file::write_atomic(name, [](std::ostream &out) { out << "saved"; });
+  const TemporaryDiskFile saved_cleanup(
+      AbsPath(std::filesystem::absolute(name)));
+  EXPECT_EQ(std::filesystem::status(name).permissions(),
+            std::filesystem::status(plain).permissions());
+}
+
+TEST(File, atomic_writes_follow_existing_symlinks_and_reject_dangling_ones) {
+  using namespace odr::internal;
+  const auto target = TemporaryDiskFileFactory::system_default().create(
+      [](std::ostream &out) { out << "original"; });
+  const std::string link_path = target.disk_path().value().string() + ".link";
+  std::error_code error;
+  std::filesystem::create_symlink(target.disk_path().value().path(), link_path,
+                                  error);
+  if (error) {
+    GTEST_SKIP() << "Symlinks unavailable: " << error.message();
+  }
+  const TemporaryDiskFile link(link_path);
+  util::file::write_atomic(link.disk_path().value().string(),
+                           [](std::ostream &out) { out << "replacement"; });
+  EXPECT_TRUE(std::filesystem::is_symlink(link.disk_path().value().path()));
+  EXPECT_EQ(util::file::read(target.disk_path().value().string()),
+            "replacement");
+  std::filesystem::remove(target.disk_path().value().path());
+  EXPECT_THROW(
+      util::file::write_atomic(link.disk_path().value().string(),
+                               [](std::ostream &out) { out << "lost"; }),
+      FileWriteError);
+  EXPECT_TRUE(std::filesystem::is_symlink(link.disk_path().value().path()));
 }

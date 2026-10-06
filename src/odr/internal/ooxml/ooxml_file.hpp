@@ -15,12 +15,18 @@ namespace odr::internal::abstract {
 class ReadableFilesystem;
 }
 
+namespace odr::internal::zip::util {
+class Archive;
+} // namespace odr::internal::zip::util
+
 namespace odr::internal::ooxml {
 
 class OfficeOpenXmlFile final : public abstract::DocumentFile {
 public:
+  /// @p archive is the package @p files reads from lazily, if any.
   explicit OfficeOpenXmlFile(
-      std::shared_ptr<abstract::ReadableFilesystem> files);
+      std::shared_ptr<abstract::ReadableFilesystem> files,
+      std::shared_ptr<zip::util::Archive> archive = nullptr);
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept override;
 
@@ -43,6 +49,7 @@ public:
 
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_files;
+  std::shared_ptr<zip::util::Archive> m_archive;
   FileMeta m_file_meta;
   EncryptionState m_encryption_state{EncryptionState::not_encrypted};
 };

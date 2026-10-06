@@ -49,22 +49,27 @@ bool Document::is_savable(const bool encrypted) const noexcept {
 // Every overload checks before it writes, so an unsavable format leaves no
 // empty file behind and no half-written stream.
 void Document::save(const std::string &path) const {
-  if (!m_impl->is_savable(false)) {
-    throw UnsupportedOperation();
-  }
-  recalculate_edits_();
-  std::ofstream out = internal::util::file::create(path);
-  m_impl->save(out);
+  save_file_(path, nullptr);
 }
 
 void Document::save(const std::string &path,
                     const std::string &password) const {
-  if (!m_impl->is_savable(true)) {
+  save_file_(path, password.c_str());
+}
+
+void Document::save_file_(const std::string &path, const char *password) const {
+  if (!m_impl->is_savable(password != nullptr)) {
     throw UnsupportedOperation();
   }
   recalculate_edits_();
-  std::ofstream out = internal::util::file::create(path);
-  m_impl->save(out, password.c_str());
+  m_impl->release_source(internal::AbsPath(std::filesystem::absolute(path)));
+  internal::util::file::write_atomic(path, [&](std::ostream &out) {
+    if (password == nullptr) {
+      m_impl->save(out);
+    } else {
+      m_impl->save(out, password);
+    }
+  });
 }
 
 void Document::save(std::ostream &out) const {

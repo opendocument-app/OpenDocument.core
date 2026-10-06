@@ -19,7 +19,8 @@ namespace odr::internal::ooxml::presentation {
 
 class Document final : public internal::Document {
 public:
-  explicit Document(std::shared_ptr<abstract::ReadableFilesystem> files);
+  explicit Document(std::shared_ptr<abstract::ReadableFilesystem> files,
+                    std::shared_ptr<zip::util::Archive> archive = nullptr);
 
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;

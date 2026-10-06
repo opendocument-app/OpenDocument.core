@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Document path saves preserve the destination on write failure and retain
+  lazy resources when saving repeatedly over the input. Existing permissions
+  are preserved; temporary copies are private to their owner.
+
 - PDF calculator functions distinguish booleans, integers and reals; correct
   bit shifts and rounding; and reject invalid arithmetic and operand types.
 

@@ -18,7 +18,8 @@ namespace odr::internal::ooxml::text {
 class Document final : public internal::Document {
 public:
   Document(std::shared_ptr<abstract::ReadableFilesystem> files,
-           EncryptionState encryption_state);
+           EncryptionState encryption_state,
+           std::shared_ptr<zip::util::Archive> archive = nullptr);
 
   ElementRegistry &element_registry();
   StyleRegistry &style_registry();

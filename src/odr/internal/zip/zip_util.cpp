@@ -3,11 +3,15 @@
 #include <odr/exceptions.hpp>
 
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/common/temporary_file.hpp>
 
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <filesystem>
 #include <limits>
+#include <optional>
+#include <system_error>
 #include <utility>
 
 namespace odr::internal::zip::util {
@@ -196,6 +200,20 @@ ReadSource::ReadSource(std::shared_ptr<abstract::File> file)
   m_memory = m_file->memory_data();
 }
 
+void ReadSource::release_source(const AbsPath &path) {
+  const std::lock_guard lock(m_mutex);
+  const std::optional<AbsPath> source = m_file->disk_path();
+  // false where either file is missing, such as a source deleted after open
+  std::error_code error;
+  if (!source.has_value() ||
+      !std::filesystem::equivalent(source->path(), path.path(), error)) {
+    return;
+  }
+  m_file = std::make_shared<TemporaryDiskFile>(
+      TemporaryDiskFileFactory::system_default().copy(*m_file));
+  m_streams.clear();
+}
+
 std::size_t ReadSource::read(const std::uint64_t offset, void *buffer,
                              const std::size_t size) const {
   if (m_memory.has_value()) {
@@ -213,15 +231,16 @@ std::size_t ReadSource::read(const std::uint64_t offset, void *buffer,
     return 0;
   }
   std::unique_ptr<std::istream> stream;
+  std::shared_ptr<abstract::File> source;
   {
     std::lock_guard lock(m_mutex);
+    source = m_file;
     if (!m_streams.empty()) {
       stream = std::move(m_streams.back());
       m_streams.pop_back();
+    } else {
+      stream = source->stream();
     }
-  }
-  if (stream == nullptr) {
-    stream = m_file->stream();
   }
 
   // A short read has to surface as one. Clear first so an earlier read past the
@@ -233,7 +252,9 @@ std::size_t ReadSource::read(const std::uint64_t offset, void *buffer,
 
   {
     std::lock_guard lock(m_mutex);
-    m_streams.push_back(std::move(stream));
+    if (source == m_file) {
+      m_streams.push_back(std::move(stream));
+    }
   }
 
   return result;
@@ -254,6 +275,10 @@ Archive::Archive(std::shared_ptr<abstract::File> file)
 }
 
 Archive::~Archive() { mz_zip_end(&m_zip); }
+
+void Archive::release_source(const AbsPath &path) const {
+  m_source->release_source(path);
+}
 
 mz_zip_archive *Archive::zip() const { return &m_zip; }
 

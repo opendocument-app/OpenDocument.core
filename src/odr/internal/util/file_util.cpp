@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 
 #include <odr/internal/abstract/file.hpp>
+#include <odr/internal/common/temporary_file.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <fstream>
@@ -45,6 +46,25 @@ std::ofstream file::create(const std::string &path) {
     throw FileWriteError(path);
   }
   return out;
+}
+
+void file::write_atomic(const std::string &path,
+                        const std::function<void(std::ostream &)> &write) {
+  const std::filesystem::path target =
+      std::filesystem::weakly_canonical(std::filesystem::absolute(path));
+  const auto status = std::filesystem::status(target);
+  // a rename needs only the directory to be writable, so the file's own
+  // permissions refuse as truncating it would
+  if (std::filesystem::is_symlink(std::filesystem::symlink_status(target)) ||
+      (std::filesystem::exists(status) &&
+       (!std::filesystem::is_regular_file(status) ||
+        (status.permissions() & std::filesystem::perms::owner_write) ==
+            std::filesystem::perms::none))) {
+    throw FileWriteError(path);
+  }
+  TemporaryDiskFileFactory(AbsPath(target.parent_path()))
+      .create(write)
+      .persist(AbsPath(target));
 }
 
 void file::write(const std::string &data, const std::string &path) {

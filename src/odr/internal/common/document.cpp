@@ -5,14 +5,17 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/sheet_dependencies.hpp>
 #include <odr/internal/formula/formula_value.hpp>
+#include <odr/internal/zip/zip_util.hpp>
 
 namespace odr::internal {
 
 Document::Document(const FileType file_type, const DocumentType document_type,
                    std::shared_ptr<abstract::ReadableFilesystem> files,
-                   const EncryptionState encryption_state)
+                   const EncryptionState encryption_state,
+                   std::shared_ptr<zip::util::Archive> archive)
     : m_file_type{file_type}, m_document_type{document_type},
-      m_encryption_state{encryption_state}, m_files{std::move(files)} {}
+      m_encryption_state{encryption_state}, m_files{std::move(files)},
+      m_archive{std::move(archive)} {}
 
 Document::~Document() = default;
 
@@ -22,6 +25,12 @@ std::optional<std::string> Document::locale() const { return std::nullopt; }
 
 bool Document::is_savable(const bool /*encrypted*/) const noexcept {
   return false;
+}
+
+void Document::release_source(const AbsPath &path) const {
+  if (m_archive != nullptr) {
+    m_archive->release_source(path);
+  }
 }
 
 void Document::save(std::ostream & /*out*/) const {

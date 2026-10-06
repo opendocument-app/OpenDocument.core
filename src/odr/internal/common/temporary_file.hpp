@@ -19,6 +19,10 @@ public:
   TemporaryDiskFile &operator=(const TemporaryDiskFile &) = delete;
   TemporaryDiskFile &operator=(TemporaryDiskFile &&) noexcept;
 
+  /// Replaces @p target with this file, keeping the permissions @p target
+  /// has, and leaves it in place from then on.
+  void persist(const AbsPath &target);
+
 private:
   bool m_owns_path{true}; ///< cleared by a move, so only one owner removes
 };
@@ -34,10 +38,18 @@ public:
       AbsPath directory, RandomFileNameGenerator random_file_name_generator =
                              default_random_file_name_generator());
 
+  /// Private to the owner, because a copy can hold decrypted content.
   [[nodiscard]] TemporaryDiskFile copy(const abstract::File &file) const;
   [[nodiscard]] TemporaryDiskFile copy(std::istream &in) const;
+  /// With the permissions any new file in the directory gets.
+  [[nodiscard]] TemporaryDiskFile
+  create(const std::function<void(std::ostream &)> &write) const;
 
 private:
+  [[nodiscard]] TemporaryDiskFile
+  create_(const std::function<void(std::ostream &)> &write,
+          bool private_to_owner) const;
+
   AbsPath m_directory;
   RandomFileNameGenerator m_random_file_name_generator;
 };

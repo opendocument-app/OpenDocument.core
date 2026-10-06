@@ -53,9 +53,10 @@ create_element_adapter(Document &document, ElementRegistry &registry);
 
 Document::Document(const FileType file_type, const DocumentType document_type,
                    std::shared_ptr<abstract::ReadableFilesystem> files,
-                   const EncryptionState encryption_state)
+                   const EncryptionState encryption_state,
+                   std::shared_ptr<zip::util::Archive> archive)
     : internal::Document(file_type, document_type, std::move(files),
-                         encryption_state) {
+                         encryption_state, std::move(archive)) {
   m_content_xml = xml::parse(*m_files, AbsPath("/content.xml"));
 
   if (m_files->exists(AbsPath("/styles.xml"))) {

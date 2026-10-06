@@ -6,7 +6,9 @@
 #include <odr/internal/util/stream_util.hpp>
 
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
+#include <system_error>
 #include <utility>
 
 namespace odr::internal {
@@ -56,6 +58,24 @@ TemporaryDiskFile::operator=(TemporaryDiskFile &&other) noexcept {
   return *this;
 }
 
+void TemporaryDiskFile::persist(const AbsPath &target) {
+  // a missing target is no error: it has no permissions to keep
+  std::error_code missing;
+  const std::filesystem::file_status status =
+      std::filesystem::status(target.path(), missing);
+  std::error_code error;
+  if (std::filesystem::exists(status)) {
+    std::filesystem::permissions(path().path(), status.permissions(), error);
+  }
+  if (!error) {
+    std::filesystem::rename(path().path(), target.path(), error);
+  }
+  if (error) {
+    throw FileWriteError(target.string());
+  }
+  m_owns_path = false;
+}
+
 const TemporaryDiskFileFactory &TemporaryDiskFileFactory::system_default() {
   static TemporaryDiskFileFactory instance(
       AbsPath(std::filesystem::temp_directory_path()),
@@ -79,6 +99,17 @@ TemporaryDiskFileFactory::copy(const abstract::File &file) const {
 }
 
 TemporaryDiskFile TemporaryDiskFileFactory::copy(std::istream &in) const {
+  return create_([&](std::ostream &out) { util::stream::pipe(in, out); }, true);
+}
+
+TemporaryDiskFile TemporaryDiskFileFactory::create(
+    const std::function<void(std::ostream &)> &write) const {
+  return create_(write, false);
+}
+
+TemporaryDiskFile TemporaryDiskFileFactory::create_(
+    const std::function<void(std::ostream &)> &write,
+    const bool private_to_owner) const {
   std::ofstream file;
   AbsPath file_path;
   for (std::uint32_t attempt = 0; attempt < 128; ++attempt) {
@@ -98,12 +129,18 @@ TemporaryDiskFile TemporaryDiskFileFactory::copy(std::istream &in) const {
   }
 
   try {
-    util::stream::pipe(in, file);
+    if (private_to_owner) {
+      std::filesystem::permissions(file_path.path(),
+                                   std::filesystem::perms::owner_read |
+                                       std::filesystem::perms::owner_write);
+    }
+    write(file);
     file.close();
     if (!file) {
       throw FileWriteError(file_path.string());
     }
   } catch (...) {
+    file.exceptions(std::ios::goodbit);
     file.close();
     remove_quietly(file_path);
     throw;

@@ -61,6 +61,7 @@ public:
   /// out in the clear.
   [[nodiscard]] bool is_savable(bool encrypted = false) const noexcept;
 
+  /// Replaces the destination only after writing and closing successfully.
   void save(const std::string &path) const;
   void save(const std::string &path, const std::string &password) const;
 
@@ -161,6 +162,7 @@ private:
 
   /// Recalculates formulas made stale by edits before saving.
   void recalculate_edits_() const;
+  void save_file_(const std::string &path, const char *password) const;
 
   /// @p element 's identifier, checked to be one this document holds.
   [[nodiscard]] ElementIdentifier check_(const Element &element) const;
