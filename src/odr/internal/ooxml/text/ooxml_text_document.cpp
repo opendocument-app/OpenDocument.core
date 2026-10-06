@@ -610,7 +610,8 @@ public:
     const pugi::xml_node node = get_node(element_id);
     TableColumnStyle result;
     if (const std::optional<Measure> width =
-            read_twips_attribute(node.attribute("w:w"))) {
+            read_twips_attribute(node.attribute("w:w"));
+        width.has_value()) {
       result.width = width;
     }
     return result;

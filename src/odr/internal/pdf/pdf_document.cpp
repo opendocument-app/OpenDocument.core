@@ -41,7 +41,7 @@ double Font::advance_width(const std::uint32_t code) const {
     return cid_default_width / 1000.0;
   }
   const std::int64_t index = static_cast<std::int64_t>(code) - first_char;
-  if (type3) {
+  if (type3.has_value()) {
     // Type3 widths are in glyph space, mapped to text space by `/FontMatrix`
     // (ISO 32000-1 9.6.5) — not the fixed 1/1000 em of other fonts. The
     // horizontal advance is the x-component of `(w, 0)` through the matrix.
@@ -55,9 +55,10 @@ double Font::advance_width(const std::uint32_t code) const {
   }
   // Non-embedded standard-14 fonts usually ship no `/Widths`: fall back to the
   // substitute's AFM metrics (ISO 32000-1 9.6.2.2) so placement stays correct.
-  if (substitute && substitute->metrics && code <= 0xFF) {
+  if (substitute.has_value() && substitute->metrics.has_value() &&
+      code <= 0xFF) {
     const StandardFont metrics = *substitute->metrics;
-    if (encoding) {
+    if (encoding.has_value()) {
       // An explicit `/Encoding` (a `/Differences` override or a base encoding)
       // names the glyph; look that name up only. The built-in code table
       // assumes the font's own code->glyph mapping, which the encoding
@@ -66,12 +67,14 @@ double Font::advance_width(const std::uint32_t code) const {
       if (const std::string_view name =
               encoding->glyph_name(static_cast<std::uint8_t>(code));
           !name.empty()) {
-        if (const std::optional<double> width = afm_width(metrics, name)) {
+        if (const std::optional<double> width = afm_width(metrics, name);
+            width.has_value()) {
           return *width / 1000.0;
         }
       }
     } else if (const std::optional<double> width =
-                   afm_code_width(metrics, static_cast<std::uint8_t>(code))) {
+                   afm_code_width(metrics, static_cast<std::uint8_t>(code));
+               width.has_value()) {
       // No `/Encoding`: the font's built-in encoding (the AFM's own codes) maps
       // code->glyph — the Symbol/ZapfDingbats case (text fonts default to
       // StandardEncoding).
@@ -183,7 +186,8 @@ std::string Font::to_unicode(const std::string &codes) const {
     // tables. Both are authoritative, so a match — even a partial one — wins.
     if (!cid_encoding_name.empty()) {
       if (std::optional<std::string> unicode =
-              translate_predefined_cmap(cid_encoding_name, codes)) {
+              translate_predefined_cmap(cid_encoding_name, codes);
+          unicode.has_value()) {
         return *unicode;
       }
     }
@@ -199,7 +203,8 @@ std::string Font::to_unicode(const std::string &codes) const {
       std::string result;
       for (const std::uint32_t cid : this->codes(codes)) {
         if (const std::optional<char32_t> unicode =
-                cid_to_unicode(cid_registry, cid_ordering, cid)) {
+                cid_to_unicode(cid_registry, cid_ordering, cid);
+            unicode.has_value()) {
           util::string::append_c32(*unicode, result);
         }
       }

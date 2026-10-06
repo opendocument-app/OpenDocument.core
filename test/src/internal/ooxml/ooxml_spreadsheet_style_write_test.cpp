@@ -59,7 +59,7 @@ std::optional<std::uint32_t> fill_at(const Sheet &sheet,
                                      const std::uint32_t row) {
   const std::optional<Color> color =
       sheet.cell_style(column, row).background_color;
-  return color ? std::optional(color->rgb()) : std::nullopt;
+  return color.has_value() ? std::optional(color->rgb()) : std::nullopt;
 }
 
 /// The style the one run of the cell shows.

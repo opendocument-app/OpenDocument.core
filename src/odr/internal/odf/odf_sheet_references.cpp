@@ -194,13 +194,15 @@ void move_subtree(const pugi::xml_node node, std::string sheet,
     } else if (std::ranges::find(condition_attributes, name) !=
                condition_attributes.end()) {
       if (const std::optional<std::string> moved =
-              move_bracketed(attribute.value(), own, shift, edit)) {
+              move_bracketed(attribute.value(), own, shift, edit);
+          moved.has_value()) {
         attribute.set_value(moved->c_str());
       }
     } else if (std::ranges::find(address_attributes, name) !=
                address_attributes.end()) {
       if (const std::optional<std::string> moved = formula::move_addresses(
-              attribute.value(), edit, sheet, formula::Syntax::opendocument)) {
+              attribute.value(), edit, sheet, formula::Syntax::opendocument);
+          moved.has_value()) {
         attribute.set_value(moved->empty() ? "#REF!" : moved->c_str());
       }
     }
@@ -254,7 +256,8 @@ odf::move_sheet_references(const pugi::xml_node spreadsheet,
               const std::uint32_t along = rows ? row : column;
               if (!edited) {
                 result.emplace_back(ordinal, column, row);
-              } else if (const auto moved = edit.span(along, along)) {
+              } else if (const auto moved = edit.span(along, along);
+                         moved.has_value()) {
                 result.emplace_back(ordinal, rows ? column : moved->first,
                                     rows ? moved->first : row);
               }

@@ -329,8 +329,8 @@ std::optional<double> date_days(const std::string_view text) {
       util::number::parse_integer<std::uint32_t>(text.substr(5, 2));
   const auto day =
       util::number::parse_integer<std::uint32_t>(text.substr(8, 2));
-  if (!year || !month || !day || *month < 1 || *month > 12 || *day < 1 ||
-      *day > 31) {
+  if (!year.has_value() || !month.has_value() || !day.has_value() ||
+      *month < 1 || *month > 12 || *day < 1 || *day > 31) {
     return std::nullopt;
   }
   const double result =
@@ -351,7 +351,7 @@ std::optional<double> date_days(const std::string_view text) {
     seconds.remove_suffix(1);
   }
   const std::optional<double> second = util::number::parse(seconds);
-  if (!hours || !minutes || !second) {
+  if (!hours.has_value() || !minutes.has_value() || !second.has_value()) {
     return std::nullopt;
   }
   return result + (*hours * 3600.0 + *minutes * 60.0 + *second) / 86400;
@@ -381,7 +381,7 @@ std::optional<double> duration_days(std::string_view text) {
         unit == std::string_view::npos
             ? std::nullopt
             : util::number::parse(text.substr(0, unit));
-    if (!amount) {
+    if (!amount.has_value()) {
       return std::nullopt;
     }
     switch (text[unit]) {
@@ -885,7 +885,8 @@ public:
     }
     std::string text;
     if (const std::optional<std::string> shown =
-            shown_value(element_id, cell_id, position, typed)) {
+            shown_value(element_id, cell_id, position, typed);
+        shown.has_value()) {
       text = *shown;
     } else if (typed.type() == ValueType::boolean) {
       text = typed.number() != 0 ? "TRUE" : "FALSE";
@@ -1709,7 +1710,8 @@ public:
                 ? date_days(node.attribute("office:date-value").value())
             : result.type() == ValueType::time
                 ? duration_days(node.attribute("office:time-value").value())
-                : util::number::parse(node.attribute("office:value").value())) {
+                : util::number::parse(node.attribute("office:value").value());
+        number.has_value()) {
       result = result.with_number(*number);
     }
     if (result.type() == ValueType::boolean) {
@@ -2008,10 +2010,12 @@ public:
   frame_x(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
     if (const std::optional<Measure> measure =
-            read_measure(node.attribute("svg:x"))) {
+            read_measure(node.attribute("svg:x"));
+        measure.has_value()) {
       return measure;
     }
-    if (const std::optional<DrawingPath> box = connector_box(node)) {
+    if (const std::optional<DrawingPath> box = connector_box(node);
+        box.has_value()) {
       return hundredth_millimetres(box->x);
     }
     return {};
@@ -2020,10 +2024,12 @@ public:
   frame_y(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
     if (const std::optional<Measure> measure =
-            read_measure(node.attribute("svg:y"))) {
+            read_measure(node.attribute("svg:y"));
+        measure.has_value()) {
       return measure;
     }
-    if (const std::optional<DrawingPath> box = connector_box(node)) {
+    if (const std::optional<DrawingPath> box = connector_box(node);
+        box.has_value()) {
       return hundredth_millimetres(box->y);
     }
     return {};
@@ -2032,10 +2038,12 @@ public:
   frame_width(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
     if (const std::optional<Measure> measure =
-            read_measure(node.attribute("svg:width"))) {
+            read_measure(node.attribute("svg:width"));
+        measure.has_value()) {
       return measure;
     }
-    if (const std::optional<DrawingPath> box = connector_box(node)) {
+    if (const std::optional<DrawingPath> box = connector_box(node);
+        box.has_value()) {
       return hundredth_millimetres(box->width);
     }
     return {};
@@ -2044,10 +2052,12 @@ public:
   frame_height(const ElementIdentifier element_id) const override {
     const pugi::xml_node node = get_node(element_id);
     if (const std::optional<Measure> measure =
-            read_measure(node.attribute("svg:height"))) {
+            read_measure(node.attribute("svg:height"));
+        measure.has_value()) {
       return measure;
     }
-    if (const std::optional<DrawingPath> box = connector_box(node)) {
+    if (const std::optional<DrawingPath> box = connector_box(node);
+        box.has_value()) {
       return hundredth_millimetres(box->height);
     }
     return {};
@@ -2525,7 +2535,8 @@ private:
 
   [[nodiscard]] std::optional<File>
   object_file(const ElementIdentifier element_id) const {
-    if (const std::optional<std::string> svg = chart_svg(element_id)) {
+    if (const std::optional<std::string> svg = chart_svg(element_id);
+        svg.has_value()) {
       return File(std::make_shared<MemoryFile>(*svg));
     }
     const std::optional<std::string> replacement = replacement_href(element_id);
@@ -2565,7 +2576,8 @@ private:
       return it->second;
     }
     std::optional<std::string> result;
-    if (const std::optional<AbsPath> path = object_part(element_id)) {
+    if (const std::optional<AbsPath> path = object_part(element_id);
+        path.has_value()) {
       try {
         const pugi::xml_document content =
             xml::parse(*m_document->as_filesystem()->open(*path));
@@ -2660,7 +2672,7 @@ private:
         format_code(data_style, [&styles](const std::string_view name) {
           return styles.data_style_node(name);
         });
-    if (!code) {
+    if (!code.has_value()) {
       return std::nullopt;
     }
     try {
@@ -2690,7 +2702,7 @@ private:
         format_code(data_style, [&styles](const std::string_view name) {
           return styles.data_style_node(name);
         });
-    if (!code) {
+    if (!code.has_value()) {
       return std::nullopt;
     }
     try {
@@ -2795,7 +2807,8 @@ formula::Settings Document::formula_settings() const {
   if (const std::optional<double> days =
           date_days(settings.child("table:null-date")
                         .attribute("table:date-value")
-                        .value())) {
+                        .value());
+      days.has_value()) {
     result.null_date = static_cast<std::int64_t>(*days);
   }
   // [ODF 1.2] 4.3.2.1 `meta:generator`, the application that computed the

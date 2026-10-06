@@ -148,7 +148,7 @@ void parse_bracket(const std::string_view content, Section &section) {
     }
     const std::optional<double> operand =
         util::number::parse(content.substr(length));
-    if (!operand) {
+    if (!operand.has_value()) {
       throw std::invalid_argument("condition without a number");
     }
     condition.operand = *operand;
@@ -167,7 +167,8 @@ void parse_bracket(const std::string_view content, Section &section) {
                                     ? std::string_view()
                                     : content.substr(dash + 1);
     if (const auto lcid =
-            util::number::parse_integer<std::uint32_t>(id, {.base = 16})) {
+            util::number::parse_integer<std::uint32_t>(id, {.base = 16});
+        lcid.has_value()) {
       section.names = names_of(language_of(*lcid & 0xffff));
     }
     return;
@@ -681,7 +682,7 @@ std::string format_fraction(const std::vector<Token> &tokens,
   std::int64_t denominator = 1;
   if (fixed_denominator) {
     const auto parsed = util::number::parse_integer<std::int64_t>(fixed);
-    if (!parsed) {
+    if (!parsed.has_value()) {
       return format_general(value, symbols);
     }
     denominator = *parsed;
@@ -1005,13 +1006,13 @@ std::string Format::format(const double value, const Epoch epoch,
     chosen = count - 1;
     for (std::size_t i = 0; i < count; ++i) {
       const std::optional<Condition> &condition = m_sections[i].condition;
-      if (!condition || condition->matches(value)) {
+      if (!condition.has_value() || condition->matches(value)) {
         chosen = i;
         break;
       }
     }
     const std::optional<Condition> &condition = m_sections[chosen].condition;
-    negative_section = condition &&
+    negative_section = condition.has_value() &&
                        (condition->op == Condition::Operator::less ||
                         condition->op == Condition::Operator::less_equal) &&
                        condition->operand <= 0;

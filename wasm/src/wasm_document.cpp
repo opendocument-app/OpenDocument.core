@@ -35,7 +35,8 @@ emscripten::val locale(const Handle handle) {
       return ok(emscripten::val::null());
     }
     const std::optional<std::string> result = document_of(s).locale();
-    return ok(result ? emscripten::val(*result) : emscripten::val::null());
+    return ok(result.has_value() ? emscripten::val(*result)
+                                 : emscripten::val::null());
   });
 }
 

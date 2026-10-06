@@ -60,11 +60,13 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
   if (const pugi::xml_node slide_size =
           m_document_xml.document_element().child("p:sldSz")) {
     if (const std::optional<Measure> width =
-            read_emus_attribute(slide_size.attribute("cx"))) {
+            read_emus_attribute(slide_size.attribute("cx"));
+        width.has_value()) {
       m_slide_layout.width = width;
     }
     if (const std::optional<Measure> height =
-            read_emus_attribute(slide_size.attribute("cy"))) {
+            read_emus_attribute(slide_size.attribute("cy"));
+        height.has_value()) {
       m_slide_layout.height = height;
     }
   }
@@ -163,7 +165,8 @@ void Document::load_slide_styles_(const std::vector<AbsPath> &slides) {
 
     std::optional<Color> background = layout_style.background;
     if (const std::optional<std::optional<Color>> stated =
-            read_background_color(slide_node, layout_style.color_scheme)) {
+            read_background_color(slide_node, layout_style.color_scheme);
+        stated.has_value()) {
       background = *stated;
     }
     if (background.has_value()) {
@@ -528,7 +531,8 @@ public:
   table_column_style(const ElementIdentifier element_id) const override {
     TableColumnStyle result;
     if (const std::optional<Measure> width =
-            read_emus_attribute(get_node(element_id).attribute("w"))) {
+            read_emus_attribute(get_node(element_id).attribute("w"));
+        width.has_value()) {
       result.width = width;
     }
     return result;
@@ -538,7 +542,8 @@ public:
   table_row_style(const ElementIdentifier element_id) const override {
     TableRowStyle result;
     if (const std::optional<Measure> height =
-            read_emus_attribute(get_node(element_id).attribute("h"))) {
+            read_emus_attribute(get_node(element_id).attribute("h"));
+        height.has_value()) {
       result.height = height;
     }
     return result;
@@ -608,12 +613,14 @@ public:
       result.fill_color = Color(0, 0, 0, 0);
     } else if (const std::optional<Color> fill_color =
                    read_drawing_color(shape_properties.child("a:solidFill"),
-                                      get_color_scheme(element_id))) {
+                                      get_color_scheme(element_id));
+               fill_color.has_value()) {
       result.fill_color = fill_color;
     }
     if (const std::optional<VerticalAlign> vertical_align =
             read_drawing_vertical_align_attribute(
-                node.child("p:txBody").child("a:bodyPr").attribute("anchor"))) {
+                node.child("p:txBody").child("a:bodyPr").attribute("anchor"));
+        vertical_align.has_value()) {
       result.vertical_align = vertical_align;
     }
     return result;

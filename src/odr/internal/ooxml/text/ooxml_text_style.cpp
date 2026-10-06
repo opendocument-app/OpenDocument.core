@@ -19,40 +19,49 @@ void resolve_text_style_(const pugi::xml_node node, TextStyle &result) {
     result.font_name = font_name.value();
   }
   if (const std::optional<Measure> font_size = read_half_point_attribute(
-          run_properties.child("w:sz").attribute("w:val"))) {
+          run_properties.child("w:sz").attribute("w:val"));
+      font_size.has_value()) {
     result.font_size = font_size;
   }
   if (const std::optional<FontWeight> font_weight =
-          read_font_weight_attribute(run_properties.child("w:b"))) {
+          read_font_weight_attribute(run_properties.child("w:b"));
+      font_weight.has_value()) {
     result.font_weight = font_weight;
   }
   if (const std::optional<FontStyle> font_style =
-          read_font_style_attribute(run_properties.child("w:i"))) {
+          read_font_style_attribute(run_properties.child("w:i"));
+      font_style.has_value()) {
     result.font_style = font_style;
   }
   if (const std::optional<bool> font_underline =
-          read_line_attribute(run_properties.child("w:u"))) {
+          read_line_attribute(run_properties.child("w:u"));
+      font_underline.has_value()) {
     result.font_underline = font_underline;
   }
   if (const std::optional<bool> font_line_through =
-          read_line_attribute(run_properties.child("w:strike"))) {
+          read_line_attribute(run_properties.child("w:strike"));
+      font_line_through.has_value()) {
     result.font_line_through = font_line_through;
   }
   if (const std::optional<std::string> font_shadow =
-          read_shadow_attribute(run_properties.child("w:shadow"))) {
+          read_shadow_attribute(run_properties.child("w:shadow"));
+      font_shadow.has_value()) {
     result.font_shadow = font_shadow;
   }
   if (const std::optional<Color> font_color = read_color_attribute(
-          run_properties.child("w:color").attribute("w:val"))) {
+          run_properties.child("w:color").attribute("w:val"));
+      font_color.has_value()) {
     result.font_color = font_color;
   }
   // [ECMA-376] 17.3.2.32: a highlight paints over a shading, so the shading
   // is read only where no highlight names a colour
   if (const std::optional<Color> background_color = read_color_attribute(
-          run_properties.child("w:highlight").attribute("w:val"))) {
+          run_properties.child("w:highlight").attribute("w:val"));
+      background_color.has_value()) {
     result.background_color = background_color;
   } else if (const std::optional<Color> shading = read_color_attribute(
-                 run_properties.child("w:shd").attribute("w:fill"))) {
+                 run_properties.child("w:shd").attribute("w:fill"));
+             shading.has_value()) {
     result.background_color = shading;
   }
 }
@@ -62,27 +71,33 @@ void resolve_paragraph_style_(const pugi::xml_node node,
   const pugi::xml_node paragraph_properties = node.child("w:pPr");
 
   if (const std::optional<TextAlign> text_align = read_text_align_attribute(
-          paragraph_properties.child("w:jc").attribute("w:val"))) {
+          paragraph_properties.child("w:jc").attribute("w:val"));
+      text_align.has_value()) {
     result.text_align = text_align;
   }
   if (const std::optional<TextDirection> direction =
-          read_text_direction_attribute(paragraph_properties.child("w:bidi"))) {
+          read_text_direction_attribute(paragraph_properties.child("w:bidi"));
+      direction.has_value()) {
     result.direction = direction;
   }
   if (const std::optional<Measure> margin_left = read_twips_attribute(
-          paragraph_properties.child("w:ind").attribute("w:left"))) {
+          paragraph_properties.child("w:ind").attribute("w:left"));
+      margin_left.has_value()) {
     result.margin.left = margin_left;
   }
   if (const std::optional<Measure> margin_left = read_twips_attribute(
-          paragraph_properties.child("w:ind").attribute("w:start"))) {
+          paragraph_properties.child("w:ind").attribute("w:start"));
+      margin_left.has_value()) {
     result.margin.left = margin_left;
   }
   if (const std::optional<Measure> margin_right = read_twips_attribute(
-          paragraph_properties.child("w:ind").attribute("w:right"))) {
+          paragraph_properties.child("w:ind").attribute("w:right"));
+      margin_right.has_value()) {
     result.margin.right = margin_right;
   }
   if (const std::optional<Measure> margin_right = read_twips_attribute(
-          paragraph_properties.child("w:ind").attribute("w:end"))) {
+          paragraph_properties.child("w:ind").attribute("w:end"));
+      margin_right.has_value()) {
     result.margin.right = margin_right;
   }
 
@@ -92,13 +107,15 @@ void resolve_paragraph_style_(const pugi::xml_node node,
   // value next to it
   if (!read_on_off_attribute(spacing.attribute("w:beforeAutospacing"))) {
     if (const std::optional<Measure> margin_top =
-            read_twips_attribute(spacing.attribute("w:before"))) {
+            read_twips_attribute(spacing.attribute("w:before"));
+        margin_top.has_value()) {
       result.margin.top = margin_top;
     }
   }
   if (!read_on_off_attribute(spacing.attribute("w:afterAutospacing"))) {
     if (const std::optional<Measure> margin_bottom =
-            read_twips_attribute(spacing.attribute("w:after"))) {
+            read_twips_attribute(spacing.attribute("w:after"));
+        margin_bottom.has_value()) {
       result.margin.bottom = margin_bottom;
     }
   }
@@ -128,7 +145,8 @@ void resolve_table_style_(const pugi::xml_node node, TableStyle &result) {
   const pugi::xml_node table_properties = node.child("w:tblPr");
 
   if (const std::optional<Measure> width =
-          read_width_attribute(table_properties.child("w:tblW"))) {
+          read_width_attribute(table_properties.child("w:tblW"));
+      width.has_value()) {
     result.width = width;
   }
 
@@ -136,11 +154,13 @@ void resolve_table_style_(const pugi::xml_node node, TableStyle &result) {
   const pugi::xml_node borders = table_properties.child("w:tblBorders");
   result.border.override(read_borders_node(borders));
   if (const std::optional<std::string> inside_horizontal =
-          read_border_node(borders.child("w:insideH"))) {
+          read_border_node(borders.child("w:insideH"));
+      inside_horizontal.has_value()) {
     result.border_inside_horizontal = inside_horizontal;
   }
   if (const std::optional<std::string> inside_vertical =
-          read_border_node(borders.child("w:insideV"))) {
+          read_border_node(borders.child("w:insideV"));
+      inside_vertical.has_value()) {
     result.border_inside_vertical = inside_vertical;
   }
 }
@@ -154,7 +174,8 @@ void resolve_table_row_style_(const pugi::xml_node node,
   const pugi::xml_node height = table_row_properties.child("w:trHeight");
   if (std::strcmp("auto", height.attribute("w:hRule").value()) != 0) {
     if (const std::optional<Measure> height_value =
-            read_twips_attribute(height.attribute("w:val"))) {
+            read_twips_attribute(height.attribute("w:val"));
+        height_value.has_value()) {
       result.height = height_value;
     }
   }
@@ -167,11 +188,13 @@ void resolve_table_cell_style_(const pugi::xml_node node,
   // TODO `w:tcW` is read and dropped. A cell width here fights the column
   // width the table already states, and the two disagree in real documents.
   if (const std::optional<Measure> width =
-          read_width_attribute(table_cell_properties.child("w:tcW"))) {
+          read_width_attribute(table_cell_properties.child("w:tcW"));
+      width.has_value()) {
   }
   if (const std::optional<VerticalAlign> vertical_align =
           read_vertical_align_attribute(
-              table_cell_properties.child("w:vAlign").attribute("w:val"))) {
+              table_cell_properties.child("w:vAlign").attribute("w:val"));
+      vertical_align.has_value()) {
     result.vertical_align = vertical_align;
   }
   result.border.override(

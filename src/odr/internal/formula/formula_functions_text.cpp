@@ -142,7 +142,8 @@ Value concat(const Call &call) {
         throw NoAnswer{};
       }
     });
-    if (const std::optional<ErrorType> error = errors.first()) {
+    if (const std::optional<ErrorType> error = errors.first();
+        error.has_value()) {
       return Value{*error};
     }
   }

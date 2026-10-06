@@ -361,7 +361,7 @@ Value matched(const Call &call, const std::span<const Condition> conditions,
           errors.add(*error);
         }
       });
-  if (const auto error = errors.first()) {
+  if (const auto error = errors.first(); error.has_value()) {
     throw ErrorResult{*error};
   }
   if (average && numbers.empty()) {

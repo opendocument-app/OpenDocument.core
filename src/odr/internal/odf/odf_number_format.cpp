@@ -200,7 +200,7 @@ namespace odr::internal {
 std::optional<std::string> odf::format_code(const pugi::xml_node data_style,
                                             const DataStyleLookup &lookup) {
   std::optional<std::string> main = section_code(data_style);
-  if (!main) {
+  if (!main.has_value()) {
     return std::nullopt;
   }
 
@@ -214,7 +214,7 @@ std::optional<std::string> odf::format_code(const pugi::xml_node data_style,
         lookup(map.attribute("style:apply-style-name").value());
     const std::optional<std::string> code =
         mapped ? section_code(mapped) : std::nullopt;
-    if (!condition || !code) {
+    if (!condition.has_value() || !code.has_value()) {
       return std::nullopt;
     }
     maps.emplace_back(*condition, *code);

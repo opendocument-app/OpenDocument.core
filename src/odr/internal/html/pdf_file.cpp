@@ -252,15 +252,16 @@ std::vector<LinkOut> collect_page_links(const pdf::Page &page,
             target_attributes = target.attributes;
           }
         } else if (kind == "GoTo" && a.has_value("D")) {
-          if (const auto index = resolver.resolve_dest_page(a.get("D"))) {
+          if (const auto index = resolver.resolve_dest_page(a.get("D"));
+              index.has_value()) {
             href = page_href(*index);
           }
         }
       }
     }
     if (href.empty() && dictionary.has_value("Dest")) {
-      if (const auto index =
-              resolver.resolve_dest_page(dictionary.get("Dest"))) {
+      if (const auto index = resolver.resolve_dest_page(dictionary.get("Dest"));
+          index.has_value()) {
         href = page_href(*index);
       }
     }
@@ -1586,7 +1587,8 @@ public:
           const double vis_local = local_scale(font_size_pt);
           std::ostringstream key;
           key << font << '|' << font_size_pt << '|' << round2(asc * text.size);
-          if (font == 0 && text.font != nullptr && text.font->substitute) {
+          if (font == 0 && text.font != nullptr &&
+              text.font->substitute.has_value()) {
             key << '|' << font_substitute_declaration(*text.font->substitute);
           }
           const std::string vis_flow_key = std::move(key).str();
@@ -1621,7 +1623,8 @@ public:
           if (font != 0) {
             run_classes += ' ';
             run_classes += font_class(font_class_used, font, invisible);
-          } else if (text.font != nullptr && text.font->substitute) {
+          } else if (text.font != nullptr &&
+                     text.font->substitute.has_value()) {
             // Non-embedded: real Unicode in the substitute family, whose
             // metric-overriding face pins the baseline to `asc`.
             add_class(
@@ -1697,7 +1700,7 @@ public:
           const double unit_font_pt = is_matrix ? text.size * scale : font_pt;
           double unit_ox = is_matrix ? 0 : ox;
           double unit_baseline = is_matrix ? 0 : baseline;
-          if (sel_matrix_origin) {
+          if (sel_matrix_origin.has_value()) {
             unit_ox = (*sel_matrix_origin)[0];
             unit_baseline = (*sel_matrix_origin)[1];
           }
@@ -1810,7 +1813,7 @@ public:
               if (const double owed = round2(sel_pending_space);
                   owed > 0 && sel_prev_ends_space && !runs.empty()) {
                 sel_tail_width_pt = round2(sel_tail_width_pt + owed);
-                if (sel_tail_gap_font_size_pt) {
+                if (sel_tail_gap_font_size_pt.has_value()) {
                   runs.back().classes = gap_classes(*sel_tail_gap_font_size_pt,
                                                     sel_tail_width_pt);
                 } else {
@@ -2301,7 +2304,7 @@ public:
         // a Times run never share one line block's `font_class`.
         const std::string substitute_declaration =
             (font == 0 && !invisible && text.font != nullptr &&
-             text.font->substitute)
+             text.font->substitute.has_value())
                 ? substitute_faces.declaration(*text.font->substitute, asc)
                 : std::string();
         std::ostringstream fk;
@@ -3027,7 +3030,7 @@ public:
   /// the `@font-face` descent can make the two sum to it.
   static double ascent_em(const pdf::Font *font) {
     double em = 0.8;
-    if (font != nullptr && font->descriptor_ascent) {
+    if (font != nullptr && font->descriptor_ascent.has_value()) {
       em = *font->descriptor_ascent;
     } else if (font != nullptr && font->embedded_font != nullptr) {
       const std::uint16_t units = font->embedded_font->units_per_em();

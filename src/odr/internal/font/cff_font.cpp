@@ -110,7 +110,7 @@ std::string_view checked_slice(const std::string_view bytes,
 std::uint32_t dict_offset(const double value) {
   const std::optional<std::uint32_t> result =
       util::number::to_integer<std::uint32_t>(value);
-  if (!result) {
+  if (!result.has_value()) {
     throw std::runtime_error("cff: invalid DICT offset or length");
   }
   return *result;
@@ -177,7 +177,8 @@ using Dict = std::map<std::uint16_t, std::vector<double>>;
       }
       // An unreadable real reads as zero, so it does not refuse the font.
       const std::optional<double> value = util::number::parse(number);
-      operands.push_back(value && std::isfinite(*value) ? *value : 0.0);
+      operands.push_back(value.has_value() && std::isfinite(*value) ? *value
+                                                                    : 0.0);
     } else if (b0 >= 32 && b0 <= 246) {
       operands.push_back(static_cast<std::int32_t>(b0) - 139);
       ++p;

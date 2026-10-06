@@ -46,7 +46,7 @@ namespace {
 [[nodiscard]] double parse_double(const std::string_view token) {
   // An unreadable number reads as zero, so it does not refuse the font.
   const std::optional<double> value = util::number::parse(token);
-  return value && std::isfinite(*value) ? *value : 0.0;
+  return value.has_value() && std::isfinite(*value) ? *value : 0.0;
 }
 
 /// A `/FontBBox` number as an FWord. Clamping keeps an out-of-range number out
@@ -91,7 +91,7 @@ read_rd_binary(const std::string_view s, std::size_t &p) {
   std::size_t q = p;
   const std::string_view length_token = read_token(s, q);
   const auto length = util::number::parse_integer<std::int32_t>(length_token);
-  if (!length || *length < 0) {
+  if (!length.has_value() || *length < 0) {
     return std::nullopt;
   }
   const std::string_view rd = read_token(s, q); // "RD" or "-|"
@@ -209,7 +209,7 @@ void Type1Font::parse_clear(const std::string_view clear) {
         const std::size_t slash = after.find('/', q);
         if (const auto code =
                 util::number::parse_integer<std::int32_t>(code_token);
-            code && slash != std::string_view::npos) {
+            code.has_value() && slash != std::string_view::npos) {
           std::size_t r = slash + 1;
           m_encoding[*code] = std::string(read_token(after, r));
         }
@@ -224,8 +224,9 @@ void Type1Font::parse_private(const std::string_view decrypted) {
   if (const std::size_t k = decrypted.find("/lenIV");
       k != std::string_view::npos) {
     std::size_t p = k + 6;
-    if (const auto value = util::number::parse_integer<std::int32_t>(
-            read_token(decrypted, p))) {
+    if (const auto value =
+            util::number::parse_integer<std::int32_t>(read_token(decrypted, p));
+        value.has_value()) {
       if (*value < -1) {
         throw std::runtime_error("type1: invalid /lenIV");
       }
@@ -254,7 +255,7 @@ void Type1Font::parse_private(const std::string_view decrypted) {
           util::number::parse_integer<std::int32_t>(read_token(decrypted, q));
       // Every subr needs at least one byte of input, so an index at or past the
       // input size cannot name one — and must not size the vector.
-      if (!index || *index < 0 ||
+      if (!index.has_value() || *index < 0 ||
           static_cast<std::size_t>(*index) >= decrypted.size()) {
         p += 4;
         continue;

@@ -93,7 +93,7 @@ private:
     ++m_depth;
     const std::optional<double> value = primary();
     --m_depth;
-    return value && negate ? std::optional(-*value) : value;
+    return value.has_value() && negate ? std::optional(-*value) : value;
   }
 
   [[nodiscard]] std::optional<double> primary() {

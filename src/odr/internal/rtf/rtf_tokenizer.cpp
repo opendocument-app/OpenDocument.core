@@ -18,7 +18,7 @@ namespace {
 
 std::uint8_t hex_char_to_int(const char c) {
   const std::optional<std::uint8_t> value = str::hex_digit(c);
-  if (!value) {
+  if (!value.has_value()) {
     throw std::runtime_error("invalid hex digit");
   }
   return *value;

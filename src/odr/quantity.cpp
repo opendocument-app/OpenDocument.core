@@ -37,7 +37,7 @@ double QuantityBase::parse_magnitude(std::string_view &text) {
   }
   const auto magnitude = internal::util::number::parse(
       start.substr(0, start.size() - cursor.rest().size()));
-  if (!magnitude) {
+  if (!magnitude.has_value()) {
     throw std::invalid_argument("invalid quantity magnitude");
   }
   cursor.skip_whitespace();

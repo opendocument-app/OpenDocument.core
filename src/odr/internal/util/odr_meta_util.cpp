@@ -20,13 +20,13 @@ nlohmann::json meta_to_json(const FileMeta &meta) {
   if (meta.document_type != DocumentType::unknown) {
     result["documentType"] = document_type_to_string(meta.document_type);
 
-    if (meta.entry_count) {
+    if (meta.entry_count.has_value()) {
       result["entryCount"] = *meta.entry_count;
     }
 
     const auto put = [&](const char *key,
                          const std::optional<std::string> &value) {
-      if (value) {
+      if (value.has_value()) {
         result[key] = *value;
       }
     };

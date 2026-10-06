@@ -283,7 +283,7 @@ Authenticator::create(const Dictionary &encrypt, const std::string &file_id0) {
         filter_method(encrypt, "StmF", EncryptionMethod::aes_v3);
     const auto string_method =
         filter_method(encrypt, "StrF", EncryptionMethod::aes_v3);
-    if (!stream_method || !string_method) {
+    if (!stream_method.has_value() || !string_method.has_value()) {
       return std::nullopt; // unsupported crypt filter
     }
     d.m_stream_method = *stream_method;
@@ -307,7 +307,7 @@ Authenticator::create(const Dictionary &encrypt, const std::string &file_id0) {
         filter_method(encrypt, "StmF", EncryptionMethod::none);
     const auto string_method =
         filter_method(encrypt, "StrF", EncryptionMethod::none);
-    if (!stream_method || !string_method) {
+    if (!stream_method.has_value() || !string_method.has_value()) {
       return std::nullopt; // unsupported crypt filter
     }
     d.m_stream_method = *stream_method;

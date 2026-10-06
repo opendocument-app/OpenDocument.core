@@ -264,7 +264,7 @@ std::optional<Color> read_background(const pugi::xml_attribute attribute,
     return {};
   }
   const std::optional<Color> color = read_color(attribute);
-  return color ? color : inherited;
+  return color.has_value() ? color : inherited;
 }
 
 /// A stated `none` clears the @p inherited border.
@@ -373,13 +373,15 @@ void Style::resolve_text_style_(const StyleRegistry *registry,
                    registry->font_face_node(font_name.value()), result);
   }
   if (const std::optional<Measure> font_size =
-          read_measure(text_properties.attribute("fo:font-size"))) {
+          read_measure(text_properties.attribute("fo:font-size"));
+      font_size.has_value()) {
     // A percentage is of the parent's size, resolved here rather than passed
     // to css - the parent style is not on the element in the render.
     if (font_size->unit().name() != "%") {
       result.font_size = font_size;
     } else {
-      if (const std::optional<Measure> parent_font_size = result.font_size) {
+      if (const std::optional<Measure> parent_font_size = result.font_size;
+          parent_font_size.has_value()) {
         result.font_size = Measure(parent_font_size->magnitude() *
                                        font_size->magnitude() * 1e-2,
                                    parent_font_size->unit());
@@ -387,11 +389,13 @@ void Style::resolve_text_style_(const StyleRegistry *registry,
     }
   }
   if (const std::optional<FontWeight> font_weight =
-          read_font_weight(text_properties.attribute("fo:font-weight"))) {
+          read_font_weight(text_properties.attribute("fo:font-weight"));
+      font_weight.has_value()) {
     result.font_weight = font_weight;
   }
   if (const std::optional<FontStyle> font_style =
-          read_font_style(text_properties.attribute("fo:font-style"))) {
+          read_font_style(text_properties.attribute("fo:font-style"));
+      font_style.has_value()) {
     result.font_style = font_style;
   }
   if (const pugi::xml_attribute font_underline =
@@ -406,11 +410,13 @@ void Style::resolve_text_style_(const StyleRegistry *registry,
         std::strcmp("none", font_line_through.value()) != 0;
   }
   if (const std::optional<std::string> font_shadow =
-          read_string(text_properties.attribute("fo:text-shadow"))) {
+          read_string(text_properties.attribute("fo:text-shadow"));
+      font_shadow.has_value()) {
     result.font_shadow = font_shadow;
   }
   if (const std::optional<Color> font_color =
-          read_color(text_properties.attribute("fo:color"))) {
+          read_color(text_properties.attribute("fo:color"));
+      font_color.has_value()) {
     result.font_color = font_color;
   }
   result.background_color =
@@ -419,7 +425,8 @@ void Style::resolve_text_style_(const StyleRegistry *registry,
   if (const pugi::xml_attribute text_position =
           text_properties.attribute("style:text-position")) {
     if (const std::optional<FontPosition> font_position =
-            read_font_position(text_position)) {
+            read_font_position(text_position);
+        font_position.has_value()) {
       result.font_position = font_position;
     }
     // optional second component: relative font size in percent
@@ -448,53 +455,64 @@ void Style::resolve_paragraph_style_(const pugi::xml_node node,
     result.text_align.reset();
   }
   if (const std::optional<TextAlign> text_align =
-          read_text_align(paragraph_properties.attribute("fo:text-align"))) {
+          read_text_align(paragraph_properties.attribute("fo:text-align"));
+      text_align.has_value()) {
     result.text_align = text_align;
   }
   if (const std::optional<TextDirection> direction = read_text_direction(
-          paragraph_properties.attribute("style:writing-mode"))) {
+          paragraph_properties.attribute("style:writing-mode"));
+      direction.has_value()) {
     result.direction = direction;
   }
   // the shorthand is the four sides, each against its own inherited value
   if (const std::optional<Measure> margin =
-          read_measure(paragraph_properties.attribute("fo:margin"))) {
+          read_measure(paragraph_properties.attribute("fo:margin"));
+      margin.has_value()) {
     result.margin.right = resolve_margin(*margin, result.margin.right);
     result.margin.top = resolve_margin(*margin, result.margin.top);
     result.margin.left = resolve_margin(*margin, result.margin.left);
     result.margin.bottom = resolve_margin(*margin, result.margin.bottom);
   }
   if (const std::optional<Measure> margin_right =
-          read_measure(paragraph_properties.attribute("fo:margin-right"))) {
+          read_measure(paragraph_properties.attribute("fo:margin-right"));
+      margin_right.has_value()) {
     result.margin.right = resolve_margin(*margin_right, result.margin.right);
   }
   if (const std::optional<Measure> margin_top =
-          read_measure(paragraph_properties.attribute("fo:margin-top"))) {
+          read_measure(paragraph_properties.attribute("fo:margin-top"));
+      margin_top.has_value()) {
     result.margin.top = resolve_margin(*margin_top, result.margin.top);
   }
   if (const std::optional<Measure> margin_left =
-          read_measure(paragraph_properties.attribute("fo:margin-left"))) {
+          read_measure(paragraph_properties.attribute("fo:margin-left"));
+      margin_left.has_value()) {
     result.margin.left = resolve_margin(*margin_left, result.margin.left);
   }
   if (const std::optional<Measure> margin_bottom =
-          read_measure(paragraph_properties.attribute("fo:margin-bottom"))) {
+          read_measure(paragraph_properties.attribute("fo:margin-bottom"));
+      margin_bottom.has_value()) {
     result.margin.bottom = resolve_margin(*margin_bottom, result.margin.bottom);
   }
   if (const std::optional<Measure> line_height =
-          read_measure(paragraph_properties.attribute("fo:line-height"))) {
+          read_measure(paragraph_properties.attribute("fo:line-height"));
+      line_height.has_value()) {
     // percent line height is relative to the text font size; the HTML
     // translation emits it as a unitless ratio
     result.line_height = line_height;
   }
   if (const std::optional<Measure> text_indent =
-          read_measure(paragraph_properties.attribute("fo:text-indent"))) {
+          read_measure(paragraph_properties.attribute("fo:text-indent"));
+      text_indent.has_value()) {
     result.text_indent = text_indent;
   }
   if (const std::optional<BreakType> break_before =
-          read_break(paragraph_properties.attribute("fo:break-before"))) {
+          read_break(paragraph_properties.attribute("fo:break-before"));
+      break_before.has_value()) {
     result.break_before = break_before;
   }
   if (const std::optional<BreakType> break_after =
-          read_break(paragraph_properties.attribute("fo:break-after"))) {
+          read_break(paragraph_properties.attribute("fo:break-after"));
+      break_after.has_value()) {
     result.break_after = break_after;
   }
 }
@@ -504,7 +522,8 @@ void Style::resolve_table_style_(const pugi::xml_node node,
   const pugi::xml_node table_properties = node.child("style:table-properties");
 
   if (const std::optional<Measure> width =
-          read_measure(table_properties.attribute("style:width"))) {
+          read_measure(table_properties.attribute("style:width"));
+      width.has_value()) {
     result.width = width;
   }
 }
@@ -514,8 +533,9 @@ void Style::resolve_table_column_style_(const pugi::xml_node node,
   const pugi::xml_node table_column_properties =
       node.child("style:table-column-properties");
 
-  if (const std::optional<Measure> width = read_measure(
-          table_column_properties.attribute("style:column-width"))) {
+  if (const std::optional<Measure> width =
+          read_measure(table_column_properties.attribute("style:column-width"));
+      width.has_value()) {
     result.width = width;
   }
 }
@@ -526,7 +546,8 @@ void Style::resolve_table_row_style_(const pugi::xml_node node,
       node.child("style:table-row-properties");
 
   if (const std::optional<Measure> height =
-          read_measure(table_row_properties.attribute("style:row-height"))) {
+          read_measure(table_row_properties.attribute("style:row-height"));
+      height.has_value()) {
     result.height = height;
   }
 }
@@ -537,7 +558,8 @@ void Style::resolve_table_cell_style_(const pugi::xml_node node,
       node.child("style:table-cell-properties");
 
   if (const std::optional<VerticalAlign> vertical_align = read_vertical_align(
-          table_cell_properties.attribute("style:vertical-align"))) {
+          table_cell_properties.attribute("style:vertical-align"));
+      vertical_align.has_value()) {
     result.vertical_align = vertical_align;
   }
   if (const pugi::xml_attribute wrap_option =
@@ -548,23 +570,28 @@ void Style::resolve_table_cell_style_(const pugi::xml_node node,
       read_background(table_cell_properties.attribute("fo:background-color"),
                       result.background_color);
   if (const std::optional<Measure> padding =
-          read_measure(table_cell_properties.attribute("fo:padding"))) {
+          read_measure(table_cell_properties.attribute("fo:padding"));
+      padding.has_value()) {
     result.padding = DirectionalStyle(padding);
   }
   if (const std::optional<Measure> padding_right =
-          read_measure(table_cell_properties.attribute("fo:padding-right"))) {
+          read_measure(table_cell_properties.attribute("fo:padding-right"));
+      padding_right.has_value()) {
     result.padding.right = padding_right;
   }
   if (const std::optional<Measure> padding_top =
-          read_measure(table_cell_properties.attribute("fo:padding-top"))) {
+          read_measure(table_cell_properties.attribute("fo:padding-top"));
+      padding_top.has_value()) {
     result.padding.top = padding_top;
   }
   if (const std::optional<Measure> padding_left =
-          read_measure(table_cell_properties.attribute("fo:padding-left"))) {
+          read_measure(table_cell_properties.attribute("fo:padding-left"));
+      padding_left.has_value()) {
     result.padding.left = padding_left;
   }
   if (const std::optional<Measure> padding_bottom =
-          read_measure(table_cell_properties.attribute("fo:padding-bottom"))) {
+          read_measure(table_cell_properties.attribute("fo:padding-bottom"));
+      padding_bottom.has_value()) {
     result.padding.bottom = padding_bottom;
   }
   if (const pugi::xml_attribute border =
@@ -588,11 +615,13 @@ void Style::resolve_graphic_style_(const pugi::xml_node node,
       node.child("style:graphic-properties");
 
   if (const std::optional<Measure> stroke_width =
-          read_measure(graphic_properties.attribute("svg:stroke-width"))) {
+          read_measure(graphic_properties.attribute("svg:stroke-width"));
+      stroke_width.has_value()) {
     result.stroke_width = stroke_width;
   }
   if (const std::optional<Color> stroke_color =
-          read_color(graphic_properties.attribute("svg:stroke-color"))) {
+          read_color(graphic_properties.attribute("svg:stroke-color"));
+      stroke_color.has_value()) {
     result.stroke_color = stroke_color;
   }
   // `draw:fill` and `draw:fill-color` cascade independently, so the fill state
@@ -605,17 +634,20 @@ void Style::resolve_graphic_style_(const pugi::xml_node node,
               std::strcmp("solid", fill.value()) == 0 ? 255 : 0);
   }
   if (const std::optional<Color> fill_color =
-          read_color(graphic_properties.attribute("draw:fill-color"))) {
+          read_color(graphic_properties.attribute("draw:fill-color"));
+      fill_color.has_value()) {
     result.fill_color =
         Color(fill_color->red, fill_color->green, fill_color->blue,
               result.fill_color.has_value() ? result.fill_color->alpha : 0);
   }
   if (const std::optional<VerticalAlign> vertical_align = read_vertical_align(
-          graphic_properties.attribute("draw:textarea-vertical-align"))) {
+          graphic_properties.attribute("draw:textarea-vertical-align"));
+      vertical_align.has_value()) {
     result.vertical_align = vertical_align;
   }
   if (const std::optional<TextWrap> text_wrap =
-          read_text_wrap(graphic_properties.attribute("style:wrap"))) {
+          read_text_wrap(graphic_properties.attribute("style:wrap"));
+      text_wrap.has_value()) {
     result.text_wrap = text_wrap;
   }
   // assigned even when it reads as none, so a `from-*` overrides an inherited
@@ -667,7 +699,7 @@ void StyleRegistry::generate_indices_(const pugi::xml_node node) {
     } else if (name == "style:master-page") {
       std::string master_page_name = e.attribute("style:name").value();
       m_index_master_page[master_page_name] = e;
-      if (!m_first_master_page) {
+      if (!m_first_master_page.has_value()) {
         m_first_master_page = master_page_name;
       }
     }
@@ -781,7 +813,7 @@ void StyleRegistry::generate_master_pages_(Document &document) {
         parse_tree(document.element_registry(), node);
   }
 
-  if (m_first_master_page) {
+  if (m_first_master_page.has_value()) {
     m_first_master_page_element = m_master_page_elements[*m_first_master_page];
   }
 }
@@ -895,14 +927,16 @@ std::string StyleRegistry::create_cell_style(pugi::xml_node automatic_styles,
   };
   const std::string key = fmt::format(
       "{}|{}|{}|{}|{}|{}|{}|{}|{}", base,
-      cell.background_color
+      cell.background_color.has_value()
           ? fmt::format("{:08x}", cell.background_color->argb())
           : "-",
       key_of(cell.horizontal_align), key_of(text.font_weight),
       key_of(text.font_style), key_of(text.font_underline),
       key_of(text.font_line_through),
-      text.font_color ? fmt::format("{:08x}", text.font_color->argb()) : "-",
-      text.font_size ? text.font_size->to_string() : "-");
+      text.font_color.has_value()
+          ? fmt::format("{:08x}", text.font_color->argb())
+          : "-",
+      text.font_size.has_value() ? text.font_size->to_string() : "-");
   if (const auto it = m_created_cell_styles.find(key);
       it != std::end(m_created_cell_styles)) {
     return it->second;
@@ -930,9 +964,12 @@ std::string StyleRegistry::create_cell_style(pugi::xml_node automatic_styles,
   }
   TextStyle text_properties = text;
   text_properties.background_color.reset();
-  if (text_properties.font_size || text_properties.font_weight ||
-      text_properties.font_style || text_properties.font_underline ||
-      text_properties.font_line_through || text_properties.font_color) {
+  if (text_properties.font_size.has_value() ||
+      text_properties.font_weight.has_value() ||
+      text_properties.font_style.has_value() ||
+      text_properties.font_underline.has_value() ||
+      text_properties.font_line_through.has_value() ||
+      text_properties.font_color.has_value()) {
     write_text_properties(properties_of(node, "style:text-properties"),
                           text_properties);
   }

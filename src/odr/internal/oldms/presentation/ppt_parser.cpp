@@ -99,7 +99,8 @@ find_child(std::istream &in, const RecordHeader &container,
            const std::uint16_t rec_type,
            const std::optional<std::uint16_t> rec_instance = std::nullopt) {
   ChildCursor children(in, container);
-  while (const std::optional<RecordHeader> child = children.next()) {
+  for (std::optional<RecordHeader> child = children.next(); child.has_value();
+       child = children.next()) {
     if (child->recType == rec_type &&
         (!rec_instance.has_value() || child->recInstance == *rec_instance)) {
       return child; // stream is positioned at the child body
@@ -112,7 +113,8 @@ find_child(std::istream &in, const RecordHeader &container,
 RecordHeader require_child(std::istream &in, const RecordHeader &container,
                            const std::uint16_t rec_type) {
   if (const std::optional<RecordHeader> child =
-          find_child(in, container, rec_type)) {
+          find_child(in, container, rec_type);
+      child.has_value()) {
     return *child;
   }
   throw std::runtime_error("ppt: missing required record type " +
@@ -346,7 +348,8 @@ void gather_text(std::istream &in, const RecordHeader &container,
   };
 
   ChildCursor children(in, container);
-  while (const std::optional<RecordHeader> child = children.next()) {
+  for (std::optional<RecordHeader> child = children.next(); child.has_value();
+       child = children.next()) {
     if (child->recType == RT_TextCharsAtom ||
         child->recType == RT_TextBytesAtom) {
       flush({});
@@ -385,7 +388,8 @@ Shape read_shape(std::istream &in, const RecordHeader &header,
                  StyleContext &context) {
   Shape shape;
   ChildCursor children(in, header);
-  while (const std::optional<RecordHeader> child = children.next()) {
+  for (std::optional<RecordHeader> child = children.next(); child.has_value();
+       child = children.next()) {
     if (child->recType == RT_OfficeArtClientAnchor) {
       shape.anchor = read_client_anchor(in, child->recLen);
       children.consume(child->recLen);
@@ -445,11 +449,13 @@ read_slide_shapes(std::istream &in, const RecordHeader &slide,
 
   bool seen_group = false;
   ChildCursor children(in, dg);
-  while (const std::optional<RecordHeader> child = children.next()) {
+  for (std::optional<RecordHeader> child = children.next(); child.has_value();
+       child = children.next()) {
     if (child->recType == RT_OfficeArtSpgrContainer) {
       seen_group = true;
       ChildCursor group(in, *child);
-      while (const std::optional<RecordHeader> shape = group.next()) {
+      for (std::optional<RecordHeader> shape = group.next(); shape.has_value();
+           shape = group.next()) {
         if (shape->recType != RT_OfficeArtSpContainer) {
           continue; // not a shape; the cursor skips it
         }
@@ -534,7 +540,8 @@ SlideListText read_slide_list_text(std::istream &in,
   };
 
   ChildCursor children(in, slide_list);
-  while (const std::optional<RecordHeader> child = children.next()) {
+  for (std::optional<RecordHeader> child = children.next(); child.has_value();
+       child = children.next()) {
     if (child->recType == RT_SlidePersistAtom &&
         child->recLen >= persist_ref_size) {
       flush({});
@@ -624,7 +631,8 @@ std::vector<BlipSlot> read_blip_store(std::istream &in,
   }
 
   ChildCursor entries(in, *store);
-  while (const std::optional<RecordHeader> child = entries.next()) {
+  for (std::optional<RecordHeader> child = entries.next(); child.has_value();
+       child = entries.next()) {
     BlipSlot &slot = slots.emplace_back();
     if (child->recType == RT_OfficeArtFBSE) {
       entries.consume(sizeof(OfficeArtFbseFixed));
@@ -677,7 +685,8 @@ std::vector<std::string> read_font_collection(std::istream &in,
   }
 
   ChildCursor entries(in, *collection);
-  while (const std::optional<RecordHeader> child = entries.next()) {
+  for (std::optional<RecordHeader> child = entries.next(); child.has_value();
+       child = entries.next()) {
     if (child->recType != RT_FontEntityAtom) {
       continue;
     }

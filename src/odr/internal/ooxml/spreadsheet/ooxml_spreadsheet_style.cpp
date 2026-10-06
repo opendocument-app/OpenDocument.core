@@ -270,7 +270,8 @@ StyleRegistry::read_color_(const pugi::xml_node node) const {
           std::strtoull(rgb.value(), nullptr, 16) & 0xffffff));
     }
   }
-  if (const pugi::xml_attribute tint = node.attribute("tint"); result && tint) {
+  if (const pugi::xml_attribute tint = node.attribute("tint");
+      result.has_value() && tint) {
     result = apply_tint(*result, tint.as_double());
   }
   return result;
@@ -331,7 +332,8 @@ void StyleRegistry::resolve_border_(const std::uint32_t i,
     }
     // TODO: thin only
     std::string declaration = "0.75pt solid ";
-    if (const std::optional<Color> color = read_color_(node.child("color"))) {
+    if (const std::optional<Color> color = read_color_(node.child("color"));
+        color.has_value()) {
       declaration.append(html::color(*color));
     }
     return declaration;
@@ -353,34 +355,35 @@ std::uint32_t StyleRegistry::create_cell_format(
   pugi::xml_node xf = scratch.append_copy(
       m_cell_formats_index.at(base < m_cell_formats_index.size() ? base : 0));
 
-  if (text_style.font_weight || text_style.font_style ||
-      text_style.font_underline || text_style.font_line_through ||
-      text_style.font_color || text_style.font_size) {
+  if (text_style.font_weight.has_value() || text_style.font_style.has_value() ||
+      text_style.font_underline.has_value() ||
+      text_style.font_line_through.has_value() ||
+      text_style.font_color.has_value() || text_style.font_size.has_value()) {
     const std::uint32_t font_id = xf.attribute("fontId").as_uint();
     pugi::xml_node font = scratch.append_copy(
         m_fonts_index.at(font_id < m_fonts_index.size() ? font_id : 0));
-    if (text_style.font_weight) {
+    if (text_style.font_weight.has_value()) {
       set_toggle(font, "b", *text_style.font_weight == FontWeight::bold);
     }
-    if (text_style.font_style) {
+    if (text_style.font_style.has_value()) {
       set_toggle(font, "i", *text_style.font_style == FontStyle::italic);
     }
-    if (text_style.font_line_through) {
+    if (text_style.font_line_through.has_value()) {
       set_toggle(font, "strike", *text_style.font_line_through);
     }
-    if (text_style.font_underline) {
+    if (text_style.font_underline.has_value()) {
       pugi::xml_node underline = ordered_child(font, "u", font_order);
       underline.remove_attribute("val");
       if (!*text_style.font_underline) {
         underline.append_attribute("val").set_value("none");
       }
     }
-    if (text_style.font_size) {
+    if (text_style.font_size.has_value()) {
       xml::set_attribute(
           ordered_child(font, "sz", font_order), "val",
           fmt::format("{:g}", points(*text_style.font_size)).c_str());
     }
-    if (text_style.font_color) {
+    if (text_style.font_color.has_value()) {
       pugi::xml_node color = ordered_child(font, "color", font_order);
       color.remove_attributes();
       color.append_attribute("rgb").set_value(
@@ -392,7 +395,7 @@ std::uint32_t StyleRegistry::create_cell_format(
     xml::set_attribute(xf, "applyFont", "1");
   }
 
-  if (cell_style.background_color) {
+  if (cell_style.background_color.has_value()) {
     pugi::xml_node fill = scratch.append_child("fill");
     pugi::xml_node pattern = fill.append_child("patternFill");
     if (cell_style.background_color->alpha == 0) {
@@ -410,7 +413,7 @@ std::uint32_t StyleRegistry::create_cell_format(
     xml::set_attribute(xf, "applyFill", "1");
   }
 
-  if (cell_style.wrap_text) {
+  if (cell_style.wrap_text.has_value()) {
     pugi::xml_node alignment = xf.child("alignment");
     if (!alignment) {
       alignment = xf.prepend_child("alignment");
@@ -419,7 +422,7 @@ std::uint32_t StyleRegistry::create_cell_format(
                        *cell_style.wrap_text ? "1" : "0");
     xml::set_attribute(xf, "applyAlignment", "1");
   }
-  if (cell_style.horizontal_align) {
+  if (cell_style.horizontal_align.has_value()) {
     pugi::xml_node alignment = xf.child("alignment");
     if (!alignment) {
       alignment = xf.prepend_child("alignment");
@@ -436,7 +439,7 @@ std::uint32_t StyleRegistry::create_cell_format(
     xml::set_attribute(xf, "applyAlignment", "1");
   }
 
-  if (number_format_id) {
+  if (number_format_id.has_value()) {
     xml::set_attribute(xf, "numFmtId",
                        std::to_string(*number_format_id).c_str());
     xml::set_attribute(xf, "applyNumberFormat", "1");

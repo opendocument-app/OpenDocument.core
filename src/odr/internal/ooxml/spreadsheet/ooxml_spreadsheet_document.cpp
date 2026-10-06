@@ -78,7 +78,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
       parse_relationship_target(*m_files, workbook_path, "styles");
   const AbsPath styles_path = styles_target.value_or(AbsPath("/xl/styles.xml"));
   pugi::xml_node styles_root;
-  if (styles_target || m_files->is_file(styles_path)) {
+  if (styles_target.has_value() || m_files->is_file(styles_path)) {
     styles_root = parse_xml_(styles_path).first.document_element();
     m_written_parts.push_back(styles_path);
   } else {
@@ -116,7 +116,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
   pugi::xml_node theme_root;
   if (const std::optional<AbsPath> theme_path =
           parse_relationship_target(*m_files, workbook_path, "theme");
-      theme_path && m_files->is_file(*theme_path)) {
+      theme_path.has_value() && m_files->is_file(*theme_path)) {
     theme_root = parse_xml_(*theme_path).first.document_element();
   }
   m_style_registry = StyleRegistry(styles_root, theme_root);
@@ -311,8 +311,10 @@ namespace {
 /// Whether a cell draws something on its own: a border or a visible fill.
 bool draws(const TableCellStyle &style) {
   const DirectionalStyle<std::string> &border = style.border;
-  return (style.background_color && style.background_color->alpha != 0) ||
-         border.top || border.right || border.bottom || border.left;
+  return (style.background_color.has_value() &&
+          style.background_color->alpha != 0) ||
+         border.top.has_value() || border.right.has_value() ||
+         border.bottom.has_value() || border.left.has_value();
 }
 
 using AdapterBase = internal::RegistryElementAdapter<
@@ -908,7 +910,7 @@ public:
         sheet_id, edit);
 
     for (const auto &[position, cell] : sheet.cells) {
-      if (!move_position(position, edit)) {
+      if (!move_position(position, edit).has_value()) {
         m_registry->invalidate(cell.element_id);
       }
     }
@@ -930,8 +932,9 @@ public:
       }
       for (pugi::xml_node cell = row_node.child("c"); cell;) {
         const pugi::xml_node next_cell = cell.next_sibling("c");
-        if (const std::optional<TablePosition> moved = move_position(
-                TablePosition(cell.attribute("r").value()), edit)) {
+        if (const std::optional<TablePosition> moved =
+                move_position(TablePosition(cell.attribute("r").value()), edit);
+            moved.has_value()) {
           cell.attribute("r").set_value(moved->to_string().c_str());
         } else {
           row_node.remove_child(cell);
@@ -970,7 +973,8 @@ public:
         const pugi::xml_node next = merge.next_sibling("mergeCell");
         if (const std::optional<std::string> moved =
                 move_addresses(merge.attribute("ref").value(), edit, sheet.name,
-                               formula::Syntax::ooxml)) {
+                               formula::Syntax::ooxml);
+            moved.has_value()) {
           if (moved->empty()) {
             merges.remove_child(merge);
           } else {
@@ -991,7 +995,8 @@ public:
             sheet_node.child("dimension").attribute("ref");
         ref) {
       if (const std::optional<std::string> moved = move_addresses(
-              ref.value(), edit, sheet.name, formula::Syntax::ooxml)) {
+              ref.value(), edit, sheet.name, formula::Syntax::ooxml);
+          moved.has_value()) {
         ref.set_value(moved->empty() ? "A1" : moved->c_str());
       }
     }
@@ -1005,7 +1010,7 @@ public:
     if (rows_edited) {
       decltype(sheet.rows) rows;
       for (const auto &[index, entry] : sheet.rows) {
-        if (const auto moved = edit.span(index, index)) {
+        if (const auto moved = edit.span(index, index); moved.has_value()) {
           rows.emplace(moved->first, entry);
         }
       }
@@ -1013,8 +1018,8 @@ public:
     }
     decltype(sheet.cells) cells;
     for (const auto &[position, cell] : sheet.cells) {
-      if (const std::optional<TablePosition> at =
-              move_position(position, edit)) {
+      if (const std::optional<TablePosition> at = move_position(position, edit);
+          at.has_value()) {
         m_registry->sheet_cell_element_at(cell.element_id).position = *at;
         cells.emplace(*at, cell);
       }
@@ -1060,7 +1065,7 @@ public:
               std::uint64_t{edit.index} + edit.count,
               std::uint64_t{max} + edit.count);
         place(col, min, edit.index - 1);
-      } else if (const auto span = edit.span(min, max)) {
+      } else if (const auto span = edit.span(min, max); span.has_value()) {
         place(col, span->first, span->second);
       } else {
         cols.remove_child(col);
@@ -1214,7 +1219,7 @@ public:
     const std::optional<std::uint32_t> format = shown_format(
         sheet_element.cell_node(column, row), sheet_element.row_node(row),
         sheet_element.column_node(column));
-    if (!format) {
+    if (!format.has_value()) {
       return {};
     }
     return m_document->style_registry().cell_style(*format).table_cell_style;
@@ -1275,7 +1280,8 @@ public:
         result.type() == ValueType::date || result.type() == ValueType::time ||
         result.type() == ValueType::boolean) {
       if (const std::optional<double> number =
-              util::number::parse(node.child("v").text().get())) {
+              util::number::parse(node.child("v").text().get());
+          number.has_value()) {
         // a date states days since 1899-12-30, whatever the workbook counts;
         // a time is a duration, which no epoch moves
         result = result
@@ -1363,7 +1369,8 @@ public:
          std::string_view(cell.attribute("t").value()) == "n" ||
          std::string_view(cell.attribute("t").value()) == "b")) {
       if (const std::optional<double> number =
-              util::number::parse(first.text().get())) {
+              util::number::parse(first.text().get());
+          number.has_value()) {
         return shown_value(element_parent(element_id), cell, *number);
       }
     }
@@ -1626,7 +1633,8 @@ private:
             .column_node(
                 m_registry->sheet_cell_element_at(element_id).position.column);
     if (const std::optional<std::uint32_t> format =
-            shown_format(node, node.parent(), column_node)) {
+            shown_format(node, node.parent(), column_node);
+        format.has_value()) {
       return m_document->style_registry().cell_style(*format);
     }
     return {};

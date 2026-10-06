@@ -77,7 +77,7 @@ std::optional<std::uint32_t> fill_at(const Sheet &sheet,
                                      const std::uint32_t row) {
   const std::optional<Color> color =
       sheet.cell_style(column, row).background_color;
-  return color ? std::optional(color->rgb()) : std::nullopt;
+  return color.has_value() ? std::optional(color->rgb()) : std::nullopt;
 }
 
 std::size_t count(const std::string &text, const std::string &part) {

@@ -95,7 +95,7 @@ namespace odr::internal {
 bool html::resource_location_taken(const HtmlResources &resources,
                                    const std::string_view location) {
   return std::ranges::any_of(resources, [&](const auto &entry) {
-    return entry.second &&
+    return entry.second.has_value() &&
            util::string::equals_ignore_case(*entry.second, location);
   });
 }

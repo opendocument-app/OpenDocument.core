@@ -48,7 +48,8 @@ namespace odr::internal::ooxml {
 presentation::ColorScheme::ColorScheme(const pugi::xml_node color_scheme,
                                        const pugi::xml_node color_map) {
   for (const pugi::xml_node slot : color_scheme.children()) {
-    if (const std::optional<Color> color = read_drawing_rgb_color(slot)) {
+    if (const std::optional<Color> color = read_drawing_rgb_color(slot);
+        color.has_value()) {
       // the slot names are `a:dk1`, `a:lt1`, `a:accent1`, …
       const std::string_view name = slot.name();
       const std::size_t colon = name.find(':');
@@ -78,7 +79,8 @@ presentation::ColorScheme::resolve(const char *name) const {
 std::optional<Color>
 presentation::read_drawing_color(const pugi::xml_node parent,
                                  const ColorScheme *color_scheme) {
-  if (const std::optional<Color> color = read_drawing_rgb_color(parent)) {
+  if (const std::optional<Color> color = read_drawing_rgb_color(parent);
+      color.has_value()) {
     return color;
   }
   if (const pugi::xml_attribute scheme_color =
@@ -138,8 +140,9 @@ presentation::LayoutStyle presentation::load_layout_style(
             .value_or(std::optional<Color>());
   }
 
-  if (const std::optional<std::optional<Color>> stated = read_background_color(
-          layout.document_element(), result.color_scheme)) {
+  if (const std::optional<std::optional<Color>> stated =
+          read_background_color(layout.document_element(), result.color_scheme);
+      stated.has_value()) {
     result.background = *stated;
   }
   return result;
@@ -155,35 +158,43 @@ void presentation::resolve_text_style(const pugi::xml_node node,
     result.font_name = font_name.value();
   }
   if (const std::optional<Measure> font_size =
-          read_hundredth_point_attribute(run_properties.attribute("sz"))) {
+          read_hundredth_point_attribute(run_properties.attribute("sz"));
+      font_size.has_value()) {
     result.font_size = font_size;
   }
   if (const std::optional<FontWeight> font_weight =
-          read_font_weight_attribute(run_properties.attribute("b"))) {
+          read_font_weight_attribute(run_properties.attribute("b"));
+      font_weight.has_value()) {
     result.font_weight = font_weight;
   }
   if (const std::optional<FontStyle> font_style =
-          read_font_style_attribute(run_properties.attribute("i"))) {
+          read_font_style_attribute(run_properties.attribute("i"));
+      font_style.has_value()) {
     result.font_style = font_style;
   }
   if (const std::optional<bool> font_underline =
-          read_line_attribute(run_properties.attribute("u"))) {
+          read_line_attribute(run_properties.attribute("u"));
+      font_underline.has_value()) {
     result.font_underline = font_underline;
   }
   if (const std::optional<bool> font_line_through =
-          read_line_attribute(run_properties.attribute("strike"))) {
+          read_line_attribute(run_properties.attribute("strike"));
+      font_line_through.has_value()) {
     result.font_line_through = font_line_through;
   }
   if (const std::optional<std::string> font_shadow =
-          read_shadow_attribute(run_properties.attribute("shadow"))) {
+          read_shadow_attribute(run_properties.attribute("shadow"));
+      font_shadow.has_value()) {
     result.font_shadow = font_shadow;
   }
-  if (const std::optional<Color> font_color = read_drawing_color(
-          run_properties.child("a:solidFill"), color_scheme)) {
+  if (const std::optional<Color> font_color =
+          read_drawing_color(run_properties.child("a:solidFill"), color_scheme);
+      font_color.has_value()) {
     result.font_color = font_color;
   }
-  if (const std::optional<Color> background_color = read_drawing_color(
-          run_properties.child("a:highlight"), color_scheme)) {
+  if (const std::optional<Color> background_color =
+          read_drawing_color(run_properties.child("a:highlight"), color_scheme);
+      background_color.has_value()) {
     result.background_color = background_color;
   }
   // the sign carries the direction
@@ -201,24 +212,29 @@ void presentation::resolve_paragraph_style(const pugi::xml_node node,
 
   if (const std::optional<TextAlign> text_align =
           read_drawing_text_align_attribute(
-              paragraph_properties.attribute("algn"))) {
+              paragraph_properties.attribute("algn"));
+      text_align.has_value()) {
     result.text_align = text_align;
   }
   if (const std::optional<TextDirection> direction =
           read_drawing_text_direction_attribute(
-              paragraph_properties.attribute("rtl"))) {
+              paragraph_properties.attribute("rtl"));
+      direction.has_value()) {
     result.direction = direction;
   }
   if (const std::optional<Measure> margin_left =
-          read_emus_attribute(paragraph_properties.attribute("marL"))) {
+          read_emus_attribute(paragraph_properties.attribute("marL"));
+      margin_left.has_value()) {
     result.margin.left = margin_left;
   }
   if (const std::optional<Measure> margin_right =
-          read_emus_attribute(paragraph_properties.attribute("marR"))) {
+          read_emus_attribute(paragraph_properties.attribute("marR"));
+      margin_right.has_value()) {
     result.margin.right = margin_right;
   }
   if (const std::optional<Measure> line_height =
-          read_line_spacing(paragraph_properties.child("a:lnSpc"))) {
+          read_line_spacing(paragraph_properties.child("a:lnSpc"));
+      line_height.has_value()) {
     result.line_height = line_height;
   }
   // absolute only: a percent here is of the text size, which css would
@@ -226,13 +242,15 @@ void presentation::resolve_paragraph_style(const pugi::xml_node node,
   if (const std::optional<Measure> margin_top =
           read_hundredth_point_attribute(paragraph_properties.child("a:spcBef")
                                              .child("a:spcPts")
-                                             .attribute("val"))) {
+                                             .attribute("val"));
+      margin_top.has_value()) {
     result.margin.top = margin_top;
   }
   if (const std::optional<Measure> margin_bottom =
           read_hundredth_point_attribute(paragraph_properties.child("a:spcAft")
                                              .child("a:spcPts")
-                                             .attribute("val"))) {
+                                             .attribute("val"));
+      margin_bottom.has_value()) {
     result.margin.bottom = margin_bottom;
   }
 }

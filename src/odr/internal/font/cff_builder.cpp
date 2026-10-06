@@ -51,7 +51,8 @@ void dict_number(std::string &out, const double value) {
     throw std::runtime_error("cff: non-finite DICT operand");
   }
   if (const std::optional<std::int32_t> integer =
-          util::number::to_integer<std::int32_t>(value)) {
+          util::number::to_integer<std::int32_t>(value);
+      integer.has_value()) {
     dict_int(out, *integer);
     return;
   }

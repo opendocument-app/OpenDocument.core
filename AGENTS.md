@@ -167,6 +167,9 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file to HTML
   for index-like values (`std::size_t`) or where an API forces them.
 - Use `std::array`, never a C array.
 - Mark locals, parameters and members `const` where they do not mutate.
+- For `std::optional` and similar value-or-error types, test presence with
+  `.has_value()`. Access the value with `.value()`, or use `*` and `->` where
+  they read more naturally.
 - Prefer `std::ranges` algorithms and range-based loops over iterator pairs.
 - Define a header-declared free function with its qualified name inside the
   reopened namespace, never as a bare redeclaration. A signature that drifts

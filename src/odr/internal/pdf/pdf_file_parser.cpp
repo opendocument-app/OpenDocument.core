@@ -498,8 +498,8 @@ std::pair<Xref, Dictionary> FileParser::recover_xref() {
     const std::string line = p.read_line();
     const auto [lead, content] = trim_line(line);
 
-    if (const std::optional<ObjectReference> ref =
-            match_object_start(content)) {
+    if (const std::optional<ObjectReference> ref = match_object_start(content);
+        ref.has_value()) {
       // the last definition of an id wins, whatever its generation
       const auto previous = xref.table.lower_bound(ObjectReference(ref->id, 0));
       if (previous != xref.table.end() && previous->first.id == ref->id) {

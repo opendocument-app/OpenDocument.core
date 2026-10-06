@@ -52,7 +52,7 @@ std::uint32_t read_number(
   }
   const auto result = util::number::parse_integer<std::uint32_t>(
       util::string::trim_view(attribute.value()), {.allow_plus = true});
-  if (!result || *result > maximum) {
+  if (!result.has_value() || *result > maximum) {
     return fallback;
   }
   return *result;

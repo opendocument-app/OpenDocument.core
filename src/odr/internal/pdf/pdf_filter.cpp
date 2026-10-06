@@ -304,14 +304,16 @@ pdf::DecodeResult pdf::decode(const Object &filter, const Object &decode_parms,
     // the other image codecs.
     if (name == "CCITTFaxDecode") {
       if (std::optional<std::string> samples =
-              decode_ccitt(data, ccitt_parameters(parms))) {
+              decode_ccitt(data, ccitt_parameters(parms));
+          samples.has_value()) {
         data = std::move(*samples);
         continue;
       }
     }
     if (name == "JBIG2Decode") {
       if (std::optional<Jbig2Image> image =
-              decode_jbig2(data, options.jbig2_globals)) {
+              decode_jbig2(data, options.jbig2_globals);
+          image.has_value()) {
         data = std::move(image->samples);
         continue;
       }

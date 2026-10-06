@@ -22,7 +22,7 @@ namespace {
 template <typename T> T parse_integer(const std::string_view token) {
   const auto value = util::number::parse_integer<T>(
       token, {.allow_plus = std::is_signed_v<T>});
-  if (!value) {
+  if (!value.has_value()) {
     throw std::runtime_error("invalid or out-of-range PDF integer");
   }
   return *value;
@@ -101,7 +101,7 @@ void ObjectParser::ungetc() {
 
 std::uint8_t ObjectParser::hex_char_to_int(const char_type c) {
   const std::optional<std::uint8_t> value = util::string::hex_digit(c);
-  if (!value) {
+  if (!value.has_value()) {
     throw std::runtime_error("invalid character in hex_char_to_int");
   }
   return *value;
@@ -292,7 +292,7 @@ std::variant<Integer, Real> ObjectParser::read_integer_or_real() {
   }
 
   const auto value = util::number::parse(token);
-  if (!value || !std::isfinite(*value)) {
+  if (!value.has_value() || !std::isfinite(*value)) {
     throw std::runtime_error("out-of-range PDF number");
   }
   return *value;

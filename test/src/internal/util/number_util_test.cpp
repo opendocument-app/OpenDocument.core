@@ -15,17 +15,18 @@ TEST(ParseInteger, checks_the_destination_range_without_rounding) {
             std::numeric_limits<std::int64_t>::max());
   EXPECT_EQ(parse_integer<std::int64_t>("-9223372036854775808"),
             std::numeric_limits<std::int64_t>::min());
-  EXPECT_FALSE(parse_integer<std::int64_t>("9223372036854775808"));
-  EXPECT_FALSE(parse_integer<std::int64_t>("-9223372036854775809"));
+  EXPECT_FALSE(parse_integer<std::int64_t>("9223372036854775808").has_value());
+  EXPECT_FALSE(parse_integer<std::int64_t>("-9223372036854775809").has_value());
   EXPECT_EQ(parse_integer<std::uint64_t>("18446744073709551615"),
             std::numeric_limits<std::uint64_t>::max());
-  EXPECT_FALSE(parse_integer<std::uint64_t>("18446744073709551616"));
+  EXPECT_FALSE(
+      parse_integer<std::uint64_t>("18446744073709551616").has_value());
   EXPECT_EQ(parse_integer<std::int8_t>("127"), 127);
   EXPECT_EQ(parse_integer<std::int8_t>("-128"), -128);
-  EXPECT_FALSE(parse_integer<std::int8_t>("128"));
-  EXPECT_FALSE(parse_integer<std::int8_t>("-129"));
+  EXPECT_FALSE(parse_integer<std::int8_t>("128").has_value());
+  EXPECT_FALSE(parse_integer<std::int8_t>("-129").has_value());
   EXPECT_EQ(parse_integer<std::uint8_t>("255"), 255);
-  EXPECT_FALSE(parse_integer<std::uint8_t>("256"));
+  EXPECT_FALSE(parse_integer<std::uint8_t>("256").has_value());
 }
 
 TEST(ParseInteger, accepts_plus_only_when_requested) {
@@ -33,29 +34,34 @@ TEST(ParseInteger, accepts_plus_only_when_requested) {
   EXPECT_EQ(parse_integer<std::int32_t>("-42", {.allow_plus = true}), -42);
   EXPECT_EQ(parse_integer<std::int32_t>("+42", {.allow_plus = true}), 42);
   EXPECT_EQ(parse_integer<std::uint32_t>("+42", {.allow_plus = true}), 42U);
-  EXPECT_FALSE(parse_integer<std::int32_t>("+42"));
-  EXPECT_FALSE(parse_integer<std::uint32_t>("+42"));
+  EXPECT_FALSE(parse_integer<std::int32_t>("+42").has_value());
+  EXPECT_FALSE(parse_integer<std::uint32_t>("+42").has_value());
   for (const auto token : std::array{"+", "-", "++1", "+-1", "-+1", "--1"}) {
     SCOPED_TRACE(token);
-    EXPECT_FALSE(parse_integer<std::int32_t>(token, {.allow_plus = true}));
-    EXPECT_FALSE(parse_integer<std::uint32_t>(token, {.allow_plus = true}));
+    EXPECT_FALSE(
+        parse_integer<std::int32_t>(token, {.allow_plus = true}).has_value());
+    EXPECT_FALSE(
+        parse_integer<std::uint32_t>(token, {.allow_plus = true}).has_value());
   }
   for (const auto token : std::array{"-1", "-0"}) {
     SCOPED_TRACE(token);
-    EXPECT_FALSE(parse_integer<std::uint32_t>(token));
-    EXPECT_FALSE(parse_integer<std::uint32_t>(token, {.allow_plus = true}));
+    EXPECT_FALSE(parse_integer<std::uint32_t>(token).has_value());
+    EXPECT_FALSE(
+        parse_integer<std::uint32_t>(token, {.allow_plus = true}).has_value());
   }
 }
 
 TEST(ParseInteger, requires_a_whole_token_without_whitespace) {
   EXPECT_EQ(parse_integer<std::int32_t>("00042"), 42);
   EXPECT_EQ(parse_integer<std::uint32_t>("0"), 0U);
-  EXPECT_FALSE(parse_integer<std::int32_t>(std::string_view{}));
-  EXPECT_FALSE(parse_integer<std::int32_t>(std::string_view("1\0x", 3)));
+  EXPECT_FALSE(parse_integer<std::int32_t>(std::string_view{}).has_value());
+  EXPECT_FALSE(
+      parse_integer<std::int32_t>(std::string_view("1\0x", 3)).has_value());
   for (const auto token :
        std::array{"", " 1", "1 ", "1\n", "1x", "1.0", "1e2", "0x10", "+ 1"}) {
     SCOPED_TRACE(token);
-    EXPECT_FALSE(parse_integer<std::int32_t>(token, {.allow_plus = true}));
+    EXPECT_FALSE(
+        parse_integer<std::int32_t>(token, {.allow_plus = true}).has_value());
   }
 }
 
@@ -67,11 +73,12 @@ TEST(ParseInteger, reads_digits_in_the_requested_base) {
       255U);
   EXPECT_EQ(parse_integer<std::uint32_t>("101", {.base = 2}), 5U);
   EXPECT_EQ(parse_integer<std::uint32_t>("z", {.base = 36}), 35U);
-  EXPECT_FALSE(parse_integer<std::uint32_t>("0xff", {.base = 16}));
-  EXPECT_FALSE(parse_integer<std::uint32_t>("100000000", {.base = 16}));
-  EXPECT_FALSE(parse_integer<std::uint32_t>("2", {.base = 2}));
+  EXPECT_FALSE(parse_integer<std::uint32_t>("0xff", {.base = 16}).has_value());
+  EXPECT_FALSE(
+      parse_integer<std::uint32_t>("100000000", {.base = 16}).has_value());
+  EXPECT_FALSE(parse_integer<std::uint32_t>("2", {.base = 2}).has_value());
   for (const std::int32_t base : std::array<std::int32_t, 4>{-1, 0, 1, 37}) {
-    EXPECT_FALSE(parse_integer<std::uint32_t>("1", {.base = base}));
+    EXPECT_FALSE(parse_integer<std::uint32_t>("1", {.base = base}).has_value());
   }
 }
 

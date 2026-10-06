@@ -175,7 +175,7 @@ TEST(OdfChart, ragged_repeated_rows_keep_all_series_on_their_categories) {
     first.append_attribute("table:number-rows-repeated").set_value(2);
 
     const auto svg = render_chart(document.document_element());
-    ASSERT_TRUE(svg);
+    ASSERT_TRUE(svg.has_value());
     pugi::xml_document output;
     ASSERT_TRUE(output.load_string(svg->c_str()));
     const auto points = output.select_nodes("/svg/circle");
@@ -198,7 +198,7 @@ TEST(OdfChart, repeated_tables_are_bounded_before_expansion) {
           .append_attribute(rows ? "table:number-rows-repeated"
                                  : "table:number-columns-repeated")
           .set_value(count);
-      EXPECT_FALSE(render_chart(document.document_element()));
+      EXPECT_FALSE(render_chart(document.document_element()).has_value());
     }
   }
   pugi::xml_document document;
@@ -209,7 +209,7 @@ TEST(OdfChart, repeated_tables_are_bounded_before_expansion) {
   row.last_child()
       .append_attribute("table:number-columns-repeated")
       .set_value(1025);
-  EXPECT_FALSE(render_chart(document.document_element()));
+  EXPECT_FALSE(render_chart(document.document_element()).has_value());
 }
 
 TEST(OdfChart, invalid_geometry_falls_back_before_integer_conversion) {
@@ -220,7 +220,7 @@ TEST(OdfChart, invalid_geometry_falls_back_before_integer_conversion) {
         .node()
         .attribute("svg:width")
         .set_value(width);
-    EXPECT_FALSE(render_chart(document.document_element()));
+    EXPECT_FALSE(render_chart(document.document_element()).has_value());
   }
   for (const char *value : {"1e308", "5e-324"}) {
     pugi::xml_document document;
@@ -230,7 +230,7 @@ TEST(OdfChart, invalid_geometry_falls_back_before_integer_conversion) {
       cell.node().attribute("office:value").set_value(value);
     }
     const auto svg = render_chart(document.document_element());
-    if (svg) {
+    if (svg.has_value()) {
       EXPECT_EQ(svg->find("nan"), std::string::npos);
       EXPECT_EQ(svg->find("inf"), std::string::npos);
     }
@@ -246,7 +246,7 @@ TEST(OdfChart, pie_and_ring_totals_do_not_overflow) {
       cell.node().attribute("office:value").set_value("1e308");
     }
     const auto svg = render_chart(document.document_element());
-    ASSERT_TRUE(svg);
+    ASSERT_TRUE(svg.has_value());
     EXPECT_EQ(count(*svg, "<path"), 2u);
     EXPECT_EQ(svg->find("nan"), std::string::npos);
     EXPECT_EQ(svg->find("inf"), std::string::npos);
@@ -261,7 +261,7 @@ TEST(OdfChart, a_constant_large_line_still_has_an_axis) {
     cell.node().attribute("office:value").set_value("1e300");
   }
   const auto svg = render_chart(document.document_element());
-  ASSERT_TRUE(svg);
+  ASSERT_TRUE(svg.has_value());
   EXPECT_EQ(svg->find("nan"), std::string::npos);
   EXPECT_EQ(svg->find("inf"), std::string::npos);
 }

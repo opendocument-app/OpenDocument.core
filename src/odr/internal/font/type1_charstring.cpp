@@ -83,7 +83,7 @@ void emit_num(std::string &out, const double v) {
   }
   const std::optional<std::int32_t> scaled =
       util::number::to_integer<std::int32_t>(std::round(v * 65536.0));
-  if (!scaled) {
+  if (!scaled.has_value()) {
     throw std::runtime_error("type1: operand exceeds Type2 fixed-point range");
   }
   const std::int32_t fixed = *scaled;
@@ -97,7 +97,7 @@ void emit_num(std::string &out, const double v) {
 std::int32_t integer_operand(const double value) {
   const std::optional<std::int32_t> result =
       util::number::to_integer<std::int32_t>(value);
-  if (!result) {
+  if (!result.has_value()) {
     throw std::runtime_error("type1: invalid integer operand");
   }
   return *result;

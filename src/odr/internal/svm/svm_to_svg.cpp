@@ -1002,7 +1002,7 @@ void write_text(const IntPair &point, const std::string &text,
   const auto positions =
       dx_array.empty() ? std::nullopt
                        : get_x_list_string(point, text, dx_array, context);
-  if (positions) {
+  if (positions.has_value()) {
     out.write_attribute("x", *positions);
   } else {
     if (!dx_array.empty()) {
@@ -1223,7 +1223,7 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
   case META_CLIPREGION_ACTION: {
     const auto [region, clip] = read_clip_region_action(in);
     state.clip.clear();
-    if (clip && region) {
+    if (clip && region.has_value()) {
       intersect_clip(get_region_path_data(*region, context), state);
     }
   } break;
@@ -1233,7 +1233,8 @@ void translate_action(const ActionHeader &action_header, std::istream &in,
     intersect_clip(get_path_data_string({&polygon, 1}, true, context), state);
   } break;
   case META_ISECTREGIONCLIPREGION_ACTION: {
-    if (const std::optional<Region> region = read_region(in)) {
+    if (const std::optional<Region> region = read_region(in);
+        region.has_value()) {
       intersect_clip(get_region_path_data(*region, context), state);
     }
   } break;
