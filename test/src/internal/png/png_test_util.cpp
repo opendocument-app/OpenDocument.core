@@ -1,4 +1,4 @@
-#include "png_test_util.hpp"
+#include <internal/png/png_test_util.hpp>
 
 #include <odr/internal/crypto/crypto_util.hpp>
 
