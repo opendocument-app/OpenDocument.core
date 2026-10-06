@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF annotation authors and comments preserve Unicode text when saved.
+
 - Embedded PDF CMaps match complete character codes, keeping mixed-width CJK
   text extraction and glyph selection aligned.
 

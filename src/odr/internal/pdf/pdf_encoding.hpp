@@ -38,6 +38,9 @@ base_encoding_from_name(std::string_view name);
 /// `/ActualText` and `/Info` document-information strings.
 [[nodiscard]] std::string decode_text_string(const std::string &string);
 
+/// Encode UTF-8 as a PDF text string (ISO 32000-1 7.9.2.2).
+[[nodiscard]] std::string encode_text_string(std::string_view string);
+
 /// Glyph name -> Unicode (UTF-16) via the Adobe Glyph List, plus the
 /// algorithmic `uniXXXX` / `uXXXXXX` forms (ISO 32000-1 9.10.2 / the AGL
 /// specification). Returns an empty string for a name with no mapping — the

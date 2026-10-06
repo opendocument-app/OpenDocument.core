@@ -2,6 +2,7 @@
 
 #include <odr/internal/pdf/pdf_document_element.hpp>
 #include <odr/internal/pdf/pdf_document_parser.hpp>
+#include <odr/internal/pdf/pdf_encoding.hpp>
 #include <odr/internal/pdf/pdf_writer.hpp>
 #include <odr/internal/util/number_util.hpp>
 
@@ -103,10 +104,11 @@ void write_common(Dictionary &dictionary, const AnnotationCommon &common,
   dictionary["F"] = Object(Integer{4});
   dictionary["NM"] = Object(StandardString{fmt::format("odr-{}", self.id)});
   if (!common.author.empty()) {
-    dictionary["T"] = Object(StandardString{common.author});
+    dictionary["T"] = Object(StandardString{encode_text_string(common.author)});
   }
   if (!common.contents.empty()) {
-    dictionary["Contents"] = Object(StandardString{common.contents});
+    dictionary["Contents"] =
+        Object(StandardString{encode_text_string(common.contents)});
   }
 }
 
