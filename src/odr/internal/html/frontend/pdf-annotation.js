@@ -500,6 +500,11 @@
   }
 
   function onPointerDown(event) {
+    // another pointer cannot take over a stroke; the same one going down again
+    // lost its pointerup and starts afresh
+    if (stroke && event.pointerId !== strokePointer) {
+      return;
+    }
     pointerDown = true;
     // a new gesture supersedes a mark the previous one had queued
     window.clearTimeout(settle);
@@ -574,12 +579,18 @@
   }
 
   function onPointerUp(event) {
+    if (stroke && event.pointerId !== strokePointer) {
+      return;
+    }
     pointerDown = false;
     dragging = false;
     updateSelecting();
     scheduleMark();
-    if (!stroke || (event && event.pointerId !== strokePointer)) {
+    if (!stroke) {
       return;
+    }
+    if (event.type === "pointerup") {
+      onPointerMove(event);
     }
     var points = stroke.strokes[0];
     if (points.length < 4) {
