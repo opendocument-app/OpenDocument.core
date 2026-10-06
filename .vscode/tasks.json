@@ -28,15 +28,8 @@
       "type": "process",
       "command": "cmake",
       "group": "build",
-      "problemMatcher": [
-        "$gcc"
-      ],
-      "args": [
-        "--build",
-        "cmake-build-relwithdebinfo",
-        "--target",
-        "odr"
-      ]
+      "problemMatcher": ["$gcc"],
+      "args": ["--build", "cmake-build-relwithdebinfo", "--target", "odr"]
     },
     {
       "label": "build: odr_test",
@@ -46,39 +39,23 @@
         "kind": "build",
         "isDefault": true
       },
-      "problemMatcher": [
-        "$gcc"
-      ],
-      "args": [
-        "--build",
-        "cmake-build-relwithdebinfo",
-        "--target",
-        "odr_test"
-      ]
+      "problemMatcher": ["$gcc"],
+      "args": ["--build", "cmake-build-relwithdebinfo", "--target", "odr_test"]
     },
     {
       "label": "build: translate",
       "type": "process",
       "command": "cmake",
       "group": "build",
-      "problemMatcher": [
-        "$gcc"
-      ],
-      "args": [
-        "--build",
-        "cmake-build-relwithdebinfo",
-        "--target",
-        "translate"
-      ]
+      "problemMatcher": ["$gcc"],
+      "args": ["--build", "cmake-build-relwithdebinfo", "--target", "translate"]
     },
     {
       "label": "build: all CLI tools",
       "type": "process",
       "command": "cmake",
       "group": "build",
-      "problemMatcher": [
-        "$gcc"
-      ],
+      "problemMatcher": ["$gcc"],
       "args": [
         "--build",
         "cmake-build-relwithdebinfo",
@@ -96,26 +73,19 @@
       "options": {
         "cwd": "${workspaceFolder}/cmake-build-relwithdebinfo"
       },
-      "dependsOn": [
-        "build: odr_test"
-      ],
+      "dependsOn": ["build: odr_test"],
       "group": {
         "kind": "test",
         "isDefault": true
       },
       "problemMatcher": [],
-      "args": [
-        "./test/odr_test",
-        "--gtest_filter=${input:gtestFilter}"
-      ]
+      "args": ["./test/odr_test", "--gtest_filter=${input:gtestFilter}"]
     },
     {
       "label": "cli: translate <input> <output>",
       "type": "process",
       "command": "${workspaceFolder}/scripts/run-with-env.sh",
-      "dependsOn": [
-        "build: translate"
-      ],
+      "dependsOn": ["build: translate"],
       "problemMatcher": [],
       "args": [
         "./cmake-build-relwithdebinfo/cli/translate",
@@ -144,9 +114,7 @@
       "type": "process",
       "command": "python3",
       "problemMatcher": [],
-      "args": [
-        "scripts/gen-vscode-env.py"
-      ]
+      "args": ["scripts/gen-vscode-env.py"]
     },
     {
       "label": "profile: Instruments Time Profiler (odr_test, filtered)",
@@ -156,23 +124,16 @@
       "options": {
         "cwd": "${workspaceFolder}/cmake-build-relwithdebinfo"
       },
-      "dependsOn": [
-        "build: odr_test"
-      ],
+      "dependsOn": ["build: odr_test"],
       "problemMatcher": [],
-      "args": [
-        "./test/odr_test",
-        "--gtest_filter=${input:gtestFilter}"
-      ]
+      "args": ["./test/odr_test", "--gtest_filter=${input:gtestFilter}"]
     },
     {
       "label": "profile: Instruments Time Profiler (translate)",
       "detail": "Records a .trace of the translate CLI on one file.",
       "type": "process",
       "command": "${workspaceFolder}/scripts/profile.sh",
-      "dependsOn": [
-        "build: translate"
-      ],
+      "dependsOn": ["build: translate"],
       "problemMatcher": [],
       "args": [
         "./cmake-build-relwithdebinfo/cli/translate",
