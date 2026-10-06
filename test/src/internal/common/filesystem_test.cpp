@@ -4,6 +4,7 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/common/random.hpp>
+#include <odr/internal/common/temporary_file.hpp>
 #include <odr/internal/util/file_util.hpp>
 
 #include <gtest/gtest.h>
@@ -11,6 +12,7 @@
 #include <array>
 #include <filesystem>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <system_error>
 #include <vector>
@@ -44,6 +46,45 @@ filesystem_of(const std::vector<std::string> &files,
 }
 
 } // namespace
+
+TEST(Filesystem, copying_a_file_over_itself_preserves_its_bytes) {
+  const MemoryFile source(std::string(8193, 'x'));
+  const auto file = TemporaryDiskFileFactory::system_default().copy(source);
+  SystemFilesystem disk(file.disk_path()->parent());
+  const AbsPath target("/" + file.name());
+
+  const auto copied = disk.copy(file, target);
+
+  ASSERT_NE(copied, nullptr);
+  EXPECT_EQ(MemoryFile(*copied).content(), source.content());
+}
+
+TEST(Filesystem, a_failed_copy_preserves_the_destination) {
+  class UnreadableFile final : public abstract::File {
+  public:
+    odr::FileLocation location() const noexcept override {
+      return odr::FileLocation::memory;
+    }
+    std::size_t size() const override { return 11; }
+    std::string name() const override { return {}; }
+    std::optional<AbsPath> disk_path() const override { return std::nullopt; }
+    std::optional<std::string_view> memory_data() const override {
+      return std::nullopt;
+    }
+    std::unique_ptr<std::istream> stream() const override {
+      auto result = std::make_unique<std::istringstream>("replacement");
+      result->setstate(std::ios::badbit);
+      return result;
+    }
+  } source;
+  const auto file =
+      TemporaryDiskFileFactory::system_default().copy(MemoryFile("original"));
+  SystemFilesystem disk(file.disk_path()->parent());
+  const AbsPath target("/" + file.name());
+
+  EXPECT_THROW(disk.copy(source, target), std::ios_base::failure);
+  EXPECT_EQ(MemoryFile(file).content(), "original");
+}
 
 TEST(Filesystem, copied_walkers_advance_independently) {
   struct Directory final {

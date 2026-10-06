@@ -141,11 +141,9 @@ bool SystemFilesystem::copy(const AbsPath &from, const AbsPath &to) {
 
 std::shared_ptr<abstract::File>
 SystemFilesystem::copy(const abstract::File &from, const AbsPath &to) {
-  // `create_file` and `open` translate `to` themselves
-  const auto istream = from.stream();
-  const auto ostream = create_file(to);
-
-  util::stream::pipe(*istream, *ostream);
+  util::file::write_atomic(
+      to_system_path_(to).string(),
+      [&](std::ostream &out) { util::stream::pipe(*from.stream(), out); });
 
   return open(to);
 }

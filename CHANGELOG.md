@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Filesystem copies preserve their source when copying onto itself and leave
+  existing destinations intact when reading or writing fails.
+
 - PDF Identity-H/V fonts retain two-byte character codes even when their
   text-extraction map declares a conflicting codespace, preserving glyphs and
   spacing.
