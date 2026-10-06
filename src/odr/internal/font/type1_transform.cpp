@@ -30,10 +30,11 @@ std::string type1::to_cff(const Type1Font &font) {
     }
     // A charstring that does not translate becomes an empty glyph, so one
     // broken glyph does not refuse the font.
-    std::string charstring(1, static_cast<char>(14));
+    std::string charstring;
     try {
       charstring = to_type2(glyph.charstring, font.subrs());
     } catch (const std::runtime_error &) {
+      charstring.assign(1, static_cast<char>(14));
     }
     glyphs.push_back({glyph.name, std::move(charstring)});
   };

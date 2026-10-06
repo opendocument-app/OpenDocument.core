@@ -280,14 +280,17 @@ void parse_cid_widths(const Array &w, Font &font) {
     }
     const std::optional<std::uint32_t> first = font_code(w[i], max_cid);
     if (i + 1 < w.size() && w[i + 1].is_array()) {
-      const Array &list = w[i + 1].as_array();
-      // widths past the CID range are dropped
-      const std::size_t count =
-          first ? std::min<std::size_t>(list.size(), max_cid - *first + 1) : 0;
-      for (std::size_t j = 0; j < count; ++j) {
-        if (list[j].is_real()) {
-          font.cid_widths[*first + static_cast<std::uint32_t>(j)] =
-              list[j].as_real();
+      if (first.has_value()) {
+        const std::uint32_t start = *first;
+        const Array &list = w[i + 1].as_array();
+        // widths past the CID range are dropped
+        const std::size_t count =
+            std::min<std::size_t>(list.size(), max_cid - start + 1);
+        for (std::size_t j = 0; j < count; ++j) {
+          if (list[j].is_real()) {
+            font.cid_widths[start + static_cast<std::uint32_t>(j)] =
+                list[j].as_real();
+          }
         }
       }
       i += 2;
