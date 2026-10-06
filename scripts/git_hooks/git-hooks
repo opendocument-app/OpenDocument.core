@@ -12,8 +12,8 @@ function hook_dirs
 
   git rev-parse --git-dir &> /dev/null
   if [ $? -eq 0 ]; then
-    if [ $(git rev-parse --is-bare-repository) = 'false' ]; then
-      cd $(git rev-parse --show-toplevel)
+    if [ "$(git rev-parse --is-bare-repository)" = 'false' ]; then
+      cd "$(git rev-parse --show-toplevel)" || return
       echo "${PWD}/scripts/git_hooks${hook}"
     fi
   fi
@@ -23,17 +23,13 @@ function list_hooks_in_dir
 {
   path="${1}"
   level="${2}"
-  find --help 2>&1 | grep -- '-L' 2>/dev/null >/dev/null
-  if [ $? -eq 1 ] ; then
-    find "${path}/" -mindepth ${level} -maxdepth ${level} -perm -111 -type f 2>/dev/null | grep -v "^.$" | sort
-  else
-    find -L "${path}/" -mindepth ${level} -maxdepth ${level} -perm -111 -type f 2>/dev/null | grep -v "^.$" | sort
-  fi
+  find -L "${path}/" -mindepth "${level}" -maxdepth "${level}" \
+    -perm -111 -type f -print0 2>/dev/null | sort -z
 }
 
 function list_hooks
 {
-  GITDIR=`git rev-parse --git-dir`
+  GITDIR=$(git rev-parse --git-common-dir)
   cat "${GITDIR}/hooks/pre-commit" 2> /dev/null | grep 'git-hooks' > /dev/null 2> /dev/null
   if [ $? = 0 ]; then
     echo "Git hooks ARE installed in this repository."
@@ -45,14 +41,11 @@ function list_hooks
 
   echo 'Listing Project hooks:'
   echo '---'
-  for dir in `hook_dirs`; do
-    echo "${dir}:"
-    for hook in `list_hooks_in_dir "${dir}" 2`; do
-      echo -n *`basename \`dirname "${hook}"\``
-      echo -e "/`basename "${hook}"` - `${hook} --about`"
-    done
-    echo ""
-  done
+  dir="$(hook_dirs)"
+  echo "${dir}:"
+  while IFS= read -r -d '' hook; do
+    echo "*$(basename "$(dirname "${hook}")")/$(basename "${hook}") - $("${hook}" --about)"
+  done < <(list_hooks_in_dir "${dir}" 2)
 }
 
 function run_hooks
@@ -63,16 +56,14 @@ function run_hooks
     return 1
   fi
   shift 1
-  for hook in `list_hooks_in_dir "${dir}" 1`
-  do
-    export last_run_hook="${hook} $@"
-    if [ ! -z ${GIT_HOOKS_VERBOSE} ]; then
+  while IFS= read -r -d '' hook; do
+    export last_run_hook="${hook} $*"
+    if [ -n "${GIT_HOOKS_VERBOSE:-}" ]; then
       echo -n "@@ Running hook: "
-      echo -n `basename \`dirname "${hook}"\``
-      echo "/`basename "${hook}"`"
+      echo "$(basename "$(dirname "${hook}")")/$(basename "${hook}")"
     fi
-    ${hook} "$@"
-  done
+    "${hook}" "$@"
+  done < <(list_hooks_in_dir "${dir}" 1)
 }
 
 function run_hook
@@ -84,12 +75,10 @@ function run_hook
     return 1
   fi
   shift 1
-  for dir in `hook_dirs "${hook}"`; do
-    if [ ! -d "${dir}" ] ; then
-      continue
-    fi
+  dir="$(hook_dirs "${hook}")"
+  if [ -d "${dir}" ]; then
     run_hooks "${dir}" "$@"
-  done
+  fi
   set +e
 }
 
@@ -113,12 +102,12 @@ function install_hooks_into
 
 function install_hooks
 {
-  GITDIR=`git rev-parse --git-dir`
+  GITDIR=$(git rev-parse --git-common-dir)
   if [ ! $? -eq 0 ]; then
     echo "${1} must be run inside a git repository"
     return 1
   fi
-  cd "${GITDIR}"
+  cd "${GITDIR}" || return
   if [ "${1}" = "--install" ]; then
     if [ -d hooks.old ]; then
       echo "hooks.old already exists, perhaps you already installed?"

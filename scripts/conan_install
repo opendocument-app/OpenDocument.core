@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 conan install . --output-folder=cmake-build-relwithdebinfo --build=missing -s build_type=RelWithDebInfo -s "&:build_type=RelWithDebInfo"
 conan install . --output-folder=cmake-build-debug --build=missing -s build_type=RelWithDebInfo -s "&:build_type=Debug"
