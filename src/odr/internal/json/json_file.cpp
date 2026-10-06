@@ -22,7 +22,7 @@ std::string_view JsonFile::mimetype() const noexcept {
   return "application/json";
 }
 
-FileMeta JsonFile::file_meta() const noexcept {
+FileMeta JsonFile::file_meta() const {
   FileMeta result;
   result.type = file_type();
   result.mimetype = mimetype();

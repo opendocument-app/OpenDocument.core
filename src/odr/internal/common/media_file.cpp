@@ -18,7 +18,7 @@ FileCategory MediaFile::file_category() const noexcept {
   return file_category_by_file_type(m_file_type);
 }
 
-FileMeta MediaFile::file_meta() const noexcept {
+FileMeta MediaFile::file_meta() const {
   FileMeta result;
   result.type = file_type();
   result.mimetype = mimetype();

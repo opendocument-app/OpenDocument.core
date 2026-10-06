@@ -75,7 +75,7 @@ FileType CsvFile::file_type() const noexcept {
 
 std::string_view CsvFile::mimetype() const noexcept { return "text/csv"; }
 
-FileMeta CsvFile::file_meta() const noexcept {
+FileMeta CsvFile::file_meta() const {
   FileMeta result;
   result.type = file_type();
   result.mimetype = mimetype();

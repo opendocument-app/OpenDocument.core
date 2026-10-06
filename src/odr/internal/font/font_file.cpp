@@ -29,7 +29,7 @@ std::string_view FontFile::mimetype() const noexcept {
   return m_file_type == FileType::opentype_font ? "font/otf" : "font/ttf";
 }
 
-FileMeta FontFile::file_meta() const noexcept {
+FileMeta FontFile::file_meta() const {
   FileMeta result;
   result.type = file_type();
   result.mimetype = mimetype();

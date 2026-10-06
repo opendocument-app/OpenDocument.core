@@ -23,7 +23,7 @@ std::string_view MarkdownFile::mimetype() const noexcept {
   return "text/markdown";
 }
 
-FileMeta MarkdownFile::file_meta() const noexcept {
+FileMeta MarkdownFile::file_meta() const {
   FileMeta result;
   result.type = file_type();
   result.mimetype = mimetype();

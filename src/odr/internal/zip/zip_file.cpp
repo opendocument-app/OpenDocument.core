@@ -18,7 +18,7 @@ std::string_view ZipFile::mimetype() const noexcept {
   return "application/zip";
 }
 
-FileMeta ZipFile::file_meta() const noexcept {
+FileMeta ZipFile::file_meta() const {
   FileMeta result;
   result.type = file_type();
   result.mimetype = mimetype();

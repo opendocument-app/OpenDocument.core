@@ -36,7 +36,7 @@ FileType TextFile::file_type() const noexcept { return FileType::text_file; }
 
 std::string_view TextFile::mimetype() const noexcept { return "text/plain"; }
 
-FileMeta TextFile::file_meta() const noexcept {
+FileMeta TextFile::file_meta() const {
   FileMeta result;
   result.type = file_type();
   result.mimetype = mimetype();

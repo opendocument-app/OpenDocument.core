@@ -20,7 +20,7 @@ std::string_view CfbFile::mimetype() const noexcept {
   return "application/x-cfb";
 }
 
-FileMeta CfbFile::file_meta() const noexcept {
+FileMeta CfbFile::file_meta() const {
   FileMeta result;
   result.type = file_type();
   result.mimetype = mimetype();
