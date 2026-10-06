@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- HTTP server shutdown avoids user logging callbacks, so logging failures
+  cannot interrupt cleanup or terminate the process during destruction.
+
 - `DecodedFile::file_meta`, `identify`, and position `to_string` methods no
   longer promise `noexcept`; allocation failures can propagate instead of
   terminating the process.
