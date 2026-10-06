@@ -565,23 +565,32 @@ TEST(DocumentParser, recovers_root_from_catalog_scan) {
 // Recovery: an id defined more than once (e.g. a botched incremental update)
 // resolves to the last definition in the file.
 TEST(DocumentParser, recovery_last_definition_wins) {
-  const std::string pdf =
-      "%PDF-1.7\n"
-      "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
-      "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
-      "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] "
-      "/Resources << >> /Contents 4 0 R >>\nendobj\n"
-      "4 0 obj\n<< /Length 5 >>\nstream\nBT ET\nendstream\nendobj\n"
-      "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] "
-      "/Resources << >> /Contents 4 0 R >>\nendobj\n"
-      "trailer\n<< /Root 1 0 R >>\n%%EOF\n";
+  for (const std::string generation : {"0", "1"}) {
+    const std::string pdf =
+        "%PDF-1.7\n"
+        "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+        "2 0 obj\n<< /Type /Pages /Kids [3 " +
+        generation +
+        " R] /Count 1 >>\nendobj\n"
+        "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] "
+        "/Resources << >> /Contents 4 0 R >>\nendobj\n"
+        "4 0 obj\n<< /Length 5 >>\nstream\nBT ET\nendstream\nendobj\n"
+        "3 " +
+        generation +
+        " obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] "
+        "/Resources << >> /Contents 4 0 R >>\nendobj\n"
+        "trailer\n<< /Root 1 0 R >>\n%%EOF\n";
 
-  DocumentParser parser(std::make_unique<std::istringstream>(pdf));
-  const std::unique_ptr<Document> document = parser.parse_document();
-  const std::vector<Page *> pages = document->collect_pages();
+    DocumentParser parser(std::make_unique<std::istringstream>(pdf));
+    const std::unique_ptr<Document> document = parser.parse_document();
+    const std::vector<Page *> pages = document->collect_pages();
 
-  ASSERT_EQ(pages.size(), 1);
-  EXPECT_EQ(pages[0]->media_box.as_array()[2].as_real(), 200.0);
+    ASSERT_EQ(pages.size(), 1);
+    EXPECT_EQ(pages[0]->media_box.as_array()[2].as_real(), 200.0);
+    if (generation == "1") {
+      EXPECT_TRUE(parser.read_object(ObjectReference{3, 0}).object.is_null());
+    }
+  }
 }
 
 // Recovery: an object that inlines its dictionary and the `stream` token on a
@@ -843,4 +852,29 @@ TEST(DocumentParser, malformed_xref_index_requires_recovery) {
                 .get("Type")
                 .as_name(),
             "Catalog");
+}
+
+TEST(DocumentParser, recovery_keeps_the_latest_compressed_copy) {
+  PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>")
+      .object("<< /Type /Pages /Kids [] /Count 0 >>")
+      .stream_object("/Type /ObjStm /N 1 /First 4", "6 0 (older)")
+      .stream_object("/Type /ObjStm /N 1 /First 4", "6 0 (newer)")
+      .trailer("/Root 1 0 R");
+  for (const bool direct : {false, true}) {
+    std::string source = "broken\n" + builder.build_classic();
+    if (direct) {
+      source += "6 1 obj\n(direct)\nendobj\n";
+    }
+    DocumentParser parser(std::make_unique<std::istringstream>(source));
+    ASSERT_TRUE(parser.is_recovered());
+    if (direct) {
+      EXPECT_TRUE(parser.read_object(ObjectReference{6, 0}).object.is_null());
+      EXPECT_EQ(parser.read_object(ObjectReference{6, 1}).object.as_string(),
+                "direct");
+    } else {
+      EXPECT_EQ(parser.read_object(ObjectReference{6, 0}).object.as_string(),
+                "newer");
+    }
+  }
 }

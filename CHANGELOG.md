@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF recovery removes obsolete generations and uses the latest compressed
+  copy when no direct definition exists.
+
 - PDF file indices are checked before narrowing; malformed cross-reference
   widths, counts and object-stream offsets cannot wrap or drive unchecked
   allocation. Incomplete cross-reference index pairs trigger recovery.
