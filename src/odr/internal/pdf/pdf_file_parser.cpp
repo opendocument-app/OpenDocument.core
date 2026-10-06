@@ -500,6 +500,7 @@ std::pair<Xref, Dictionary> FileParser::recover_xref() {
 
     if (const std::optional<ObjectReference> ref =
             match_object_start(content)) {
+      // the last definition of an id wins, whatever its generation
       const auto previous = xref.table.lower_bound(ObjectReference(ref->id, 0));
       if (previous != xref.table.end() && previous->first.id == ref->id) {
         xref.table.erase(previous);

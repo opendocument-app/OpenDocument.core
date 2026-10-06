@@ -1950,6 +1950,9 @@ void DocumentParser::recover_xref() {
 }
 
 void DocumentParser::index_object_streams() {
+  // Snapshot the directly recovered objects, latest in the file first: reading
+  // object streams adds compressed entries, which would invalidate an
+  // in-flight iterator.
   std::vector<std::pair<std::uint32_t, ObjectReference>> candidates;
   for (const auto &[reference, entry] : m_xref.table) {
     if (entry.is_used()) {
@@ -1973,6 +1976,7 @@ void DocumentParser::index_object_streams() {
       }
       const ObjectStream &members = load_object_stream(reference);
       for (std::size_t i = 0; i < members.size(); ++i) {
+        // a direct definition, or a later object stream, already wins
         const auto existing =
             m_xref.table.lower_bound(ObjectReference(members[i].id, 0));
         if (existing != m_xref.table.end() &&
