@@ -304,10 +304,37 @@ TEST(PdfFunction, calculator_invalid_execution_returns_zero) {
   dict["Domain"] = reals({0, 1});
   dict["Range"] = reals({0, 1});
   for (const std::string program :
-       {"{ pop {} }", "{ pop }", "{ pop 1e308 dup mul }", "{ -1 copy }",
-        "{ 1e100 copy }", "{ 0.5 copy }", "{ 2 copy }", "{ -1 index }",
-        "{ 1e100 index }", "{ 1 index }", "{ -1 0 roll }", "{ 1 1e100 roll }",
-        "{ 1 0.5 roll }", "{ pop { dup true exch if } dup true exch if }"}) {
+       {"{ pop {} }",
+        "{ pop }",
+        "{ pop 1e308 dup mul }",
+        "{ -1 copy }",
+        "{ 1e100 copy }",
+        "{ 0.5 copy }",
+        "{ 2 copy }",
+        "{ -1 index }",
+        "{ 1e100 index }",
+        "{ 1 index }",
+        "{ -1 0 roll }",
+        "{ 1 1e100 roll }",
+        "{ 1 0.5 roll }",
+        "{ pop true }",
+        "{ pop true 1 add }",
+        "{ pop 1 { 1 } if }",
+        "{ pop 1.0 not }",
+        "{ pop true 1 and }",
+        "{ pop 1 0 div 1 add }",
+        "{ pop -1 sqrt 1 add }",
+        "{ pop 0 ln pop 1 }",
+        "{ pop 0 log pop 1 }",
+        "{ pop 1.5 cvi 1.0 idiv }",
+        "{ pop 1.0 1 bitshift }",
+        "{ pop 1 0.5 bitshift }",
+        "{ pop 2147483648 cvi pop 1 }",
+        "{ pop 1 cvr not }",
+        "{ pop 1.0 1 add 1 and }",
+        "{ pop 1.0 1 mod 1 add }",
+        "{ pop -2147483648 -1 idiv 1 add }",
+        "{ pop { dup true exch if } dup true exch if }"}) {
     SCOPED_TRACE(program);
     const auto fn = parse_function(Object(dict), context(program));
     ASSERT_NE(fn, nullptr);
@@ -393,5 +420,30 @@ TEST(PdfFunction, rejects_non_finite_values) {
     const auto clipped = parse_function(Object(dict), context());
     ASSERT_NE(clipped, nullptr);
     EXPECT_DOUBLE_EQ(clipped->eval({2})[0], 1 - start);
+  }
+}
+
+TEST(PdfFunction, calculator_operand_types_and_numeric_operators) {
+  Dictionary dict;
+  dict["FunctionType"] = Object(Integer{4});
+  dict["Domain"] = reals({0, 1});
+  dict["Range"] = reals({-2147483648.0, 2147483647.0});
+  for (const auto &[program, expected] : std::array{
+           std::pair{"0 not", -1.0}, std::pair{"1 not", -2.0},
+           std::pair{"-1 -1 bitshift", 2147483647.0},
+           std::pair{"-6.5 round", -6.0},
+           std::pair{"true not { 3 } { 4 } ifelse", 4.0},
+           std::pair{"true false xor { 3 } { 4 } ifelse", 3.0},
+           std::pair{"true false and pop 3", 3.0},
+           std::pair{"true 1 eq { 3 } { 4 } ifelse", 4.0},
+           std::pair{"1 1.0 eq { 3 } { 4 } ifelse", 3.0},
+           std::pair{"2 3 add 1 and", 1.0},
+           std::pair{"-2147483648 neg 2147483648 eq { 3 } { 4 } ifelse", 3.0},
+           std::pair{"3.9 cvi 2 idiv", 1.0}}) {
+    SCOPED_TRACE(program);
+    const auto fn = parse_function(
+        Object(dict), context(std::string("{ pop ") + program + " }"));
+    ASSERT_NE(fn, nullptr);
+    EXPECT_DOUBLE_EQ(fn->eval({0.5})[0], expected);
   }
 }

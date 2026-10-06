@@ -158,6 +158,8 @@ above. So each run is raised by one font ascent:
   them one `ClipPath`. The HTML writer draws it as `<text>` in the glyph
   layer's `@font-face`. Every glyph has its own `x`, so SVG white-space
   handling moves nothing.
+- Calculator operands retain boolean, integer or real types. Integers use
+  signed 32-bit semantics, with arithmetic overflow promoted to real values.
 - Calculator functions cap evaluation at 100,000 tokens, 4,096 stack entries
   and 64 nested calls. Invalid operands or results use the existing zero-result
   fallback, before range clipping. ISO 32000-1 7.10.5 requires at least 100
