@@ -431,6 +431,10 @@ TEST(PdfObjectParser, references_require_valid_indices_and_complete_marker) {
   }
 }
 
-TEST(PdfObjectParser, dictionary_rejects_duplicate_decoded_keys) {
-  EXPECT_THROW(read_object("<< /A 1 /#41 2 >>"), std::runtime_error);
+TEST(PdfObjectParser, dictionary_keeps_the_first_of_duplicate_decoded_keys) {
+  EXPECT_EQ(read_object("<< /A 1 /#41 2 >>")
+                .first.as_dictionary()
+                .get("A")
+                .as_integer(),
+            1);
 }

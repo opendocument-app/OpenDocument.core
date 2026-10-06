@@ -584,9 +584,8 @@ Dictionary ObjectParser::read_dictionary() {
     skip_whitespace_and_comments();
     promote_indirect_reference(value);
 
-    if (!result.emplace(std::move(name.string), std::move(value)).second) {
-      throw std::runtime_error("duplicate PDF dictionary key");
-    }
+    // a repeated key keeps its first value, as Ghostscript reads it
+    result.emplace(std::move(name.string), std::move(value));
   }
 }
 
