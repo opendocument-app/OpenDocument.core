@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v7.5.0 - 2026-10-06
+
 ### Spreadsheets
 
 - `Sheet::insert_rows`, `delete_rows`, `insert_columns` and `delete_columns`,
