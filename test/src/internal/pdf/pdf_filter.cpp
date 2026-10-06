@@ -53,6 +53,53 @@ TEST(PdfFilter, lzw_decode) {
   EXPECT_EQ(lzw_decode(encoded), "-----A---B");
 }
 
+TEST(PdfFilter, lzw_full_dictionary_and_reset) {
+  for (const Integer early_change : {Integer{0}, Integer{1}}) {
+    SCOPED_TRACE(early_change);
+    std::string encoded;
+    std::size_t bit = 0;
+    const auto append = [&](const std::uint32_t code,
+                            const std::uint32_t width) {
+      for (std::uint32_t i = width; i > 0; --i, ++bit) {
+        if (bit % 8 == 0) {
+          encoded.push_back('\0');
+        }
+        encoded.back() =
+            static_cast<char>(static_cast<std::uint8_t>(encoded.back()) |
+                              (((code >> (i - 1)) & 1u) << (7 - bit % 8)));
+      }
+    };
+    append(256, 9);
+    // Literal codes fill entries 258 through 4095, crossing each width
+    // boundary.
+    const auto first = static_cast<std::size_t>(255 - early_change);
+    for (std::size_t i = 0; i < 3839; ++i) {
+      const std::uint32_t width = i < first          ? 9
+                                  : i < first + 512  ? 10
+                                  : i < first + 1536 ? 11
+                                                     : 12;
+      append('A', width);
+    }
+    const std::string full = encoded;
+    const std::size_t full_bit = bit;
+    append('A', 12);
+    append(257, 12);
+    EXPECT_THROW(lzw_decode(encoded, early_change), std::runtime_error);
+
+    encoded = full;
+    bit = full_bit;
+    append(256, 12);
+    append('B', 9);
+    append(257, 9);
+    EXPECT_EQ(lzw_decode(encoded, early_change), std::string(3839, 'A') + 'B');
+  }
+}
+
+TEST(PdfFilter, lzw_rejects_invalid_early_change) {
+  EXPECT_THROW(lzw_decode("", -1), std::runtime_error);
+  EXPECT_THROW(lzw_decode("", 2), std::runtime_error);
+}
+
 TEST(PdfFilter, run_length_decode) {
   // copy 3 literal bytes, then repeat 'z' 257-254 = 3 times
   EXPECT_EQ(run_length_decode("\x02"
@@ -127,6 +174,20 @@ TEST(PdfFilter, tiff_predictor) {
   const std::string data("\x01\x02\x03\x01\x02\x03", 6);
   EXPECT_EQ(apply_predictor(data, 2, 3, 8, 2),
             std::string("\x01\x02\x03\x02\x04\x06", 6));
+}
+
+TEST(PdfFilter, tiff_predictor_packed_components) {
+  // Each row starts fresh; unused low bits stay untouched.
+  EXPECT_EQ(apply_predictor(std::string("\xEB\xEB", 2), 2, 1, 1, 5),
+            std::string("\xB3\xB3", 2));
+  // RGB components straddle bytes: (1,2,3), (3,1,2), (0,3,1).
+  EXPECT_EQ(apply_predictor(std::string("\x6E\xF6\xFF", 3), 2, 3, 2, 3),
+            std::string("\x6F\x63\x7F", 3));
+  // Four-bit addition wraps independently of adjacent components.
+  EXPECT_EQ(apply_predictor(std::string("\xF2\x1A", 2), 2, 1, 4, 3),
+            std::string("\xF1\x2A", 2));
+  EXPECT_EQ(apply_predictor("", 2, 1, 2, 3), "");
+  EXPECT_THROW(apply_predictor("x", 2, 3, 4, 2), std::runtime_error);
 }
 
 TEST(PdfFilter, decode_no_filter) {

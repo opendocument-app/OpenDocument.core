@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF streams support TIFF predictor samples packed at 1, 2, or 4 bits per
+  component. LZW decoding rejects invalid width parameters and dictionary
+  growth beyond the format's limit.
+
 - HTML document views honor their configured output filename. Audio and video
   resources are served at custom locator paths without replacing the player
   or stylesheet, and named in-memory WebM files retain their playable MIME type.
