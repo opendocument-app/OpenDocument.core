@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF AES decryption validates every padding byte before removing a trailer,
+  preserving data with malformed padding.
+
 - `ODR_CLANG_TIDY=ON` runs clang-tidy during C++ compilation and fails
   configuration if the executable is unavailable.
 
