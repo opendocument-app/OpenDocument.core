@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Embedded PDF CMaps match complete character codes, keeping mixed-width CJK
+  text extraction and glyph selection aligned.
+
 - Embedded PDF CMaps skip comments, retain commands at end of stream, skip a
   block with an invalid record count and validate CID bounds. Later CID ranges
   override earlier ones.

@@ -7,11 +7,34 @@
 #include <cstdint>
 #include <optional>
 #include <ranges>
+#include <stdexcept>
+
+namespace odr::internal {
+
+bool pdf::matches_codespace(const std::string_view bytes,
+                            const std::uint32_t low, const std::uint32_t high,
+                            const std::size_t width) {
+  if (width == 0 || width > 4 || bytes.size() < width) {
+    return false;
+  }
+  const std::uint32_t value = util::byte_string::read_uint_be(bytes, width);
+  return value >= low && value <= high;
+}
+
+} // namespace odr::internal
 
 namespace odr::internal::pdf {
 
-void CMap::add_codespace_range(std::string low_code, std::string high_code) {
-  m_codespace_ranges.push_back({std::move(low_code), std::move(high_code)});
+void CMap::add_codespace_range(const std::string_view low_code,
+                               const std::string_view high_code) {
+  if (low_code.empty() || low_code.size() > 4 ||
+      low_code.size() != high_code.size()) {
+    throw std::invalid_argument("pdf: invalid codespace width");
+  }
+  m_codespace_ranges.push_back(
+      {util::byte_string::read_uint_be(low_code, low_code.size()),
+       util::byte_string::read_uint_be(high_code, high_code.size()),
+       low_code.size()});
 }
 
 void CMap::map_single(std::string code, std::u16string unicode) {
@@ -70,22 +93,17 @@ CMap::cid_for_code(const std::string_view code) const {
   return std::nullopt;
 }
 
-std::size_t CMap::code_width(const std::uint8_t first) const {
+std::size_t CMap::code_width(const std::string_view bytes) const {
+  std::size_t width = 0;
   for (const CodespaceRange &range : m_codespace_ranges) {
-    if (first >= static_cast<std::uint8_t>(range.low.front()) &&
-        first <= static_cast<std::uint8_t>(range.high.front())) {
-      return range.low.size();
+    if ((width == 0 || range.width < width) &&
+        matches_codespace(bytes, range.low, range.high, range.width)) {
+      width = range.width;
     }
   }
-  // No codespace range declares this code; assume single-byte (the historic
-  // behaviour, which is also correct for the simple-font ToUnicode CMaps that
-  // omit the codespace declaration).
-  return 1;
-}
-
-std::size_t CMap::code_length(const std::string &codes,
-                              const std::size_t pos) const {
-  return code_width(static_cast<std::uint8_t>(codes[pos]));
+  // A single byte is also right for the simple-font ToUnicode CMaps that omit
+  // the codespace.
+  return width == 0 ? 1 : width;
 }
 
 std::string CMap::translate_string(const std::string &codes,
@@ -95,9 +113,7 @@ std::string CMap::translate_string(const std::string &codes,
   std::size_t pos = 0;
   while (pos < codes.size()) {
     const std::size_t width =
-        single_byte_codes
-            ? 1
-            : std::min(code_length(codes, pos), codes.size() - pos);
+        single_byte_codes ? 1 : code_width(std::string_view(codes).substr(pos));
     const std::string code = codes.substr(pos, width);
     pos += width;
 

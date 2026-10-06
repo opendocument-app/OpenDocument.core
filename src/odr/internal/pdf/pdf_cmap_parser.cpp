@@ -131,7 +131,7 @@ void CMapParser::read_codespacerange(const std::uint32_t n, CMap &cmap) {
                                 << " bytes)");
       continue; // skip an out-of-spec range, keep parsing the rest
     }
-    cmap.add_codespace_range(std::move(low), std::move(high));
+    cmap.add_codespace_range(low, high);
   }
 }
 

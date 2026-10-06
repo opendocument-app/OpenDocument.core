@@ -10,13 +10,20 @@
 
 namespace odr::internal::pdf {
 
+/// Compares the first @p width bytes as one number, like pdf.js and MuPDF.
+/// ISO 32000-1 9.7.6.2 matches each byte, but producers write ranges such as
+/// `<00e0> <028c>` whose bytes do not each form a range.
+[[nodiscard]] bool matches_codespace(std::string_view bytes, std::uint32_t low,
+                                     std::uint32_t high, std::size_t width);
+
 /// A parsed CMap: character codes (1+ big-endian bytes, width from the
 /// codespace ranges) to Unicode (several UTF-16 units for a ligature) and/or to
 /// CIDs. `translate_string` splits an input string and concatenates the
 /// destinations.
 class CMap {
 public:
-  void add_codespace_range(std::string low_code, std::string high_code);
+  void add_codespace_range(std::string_view low_code,
+                           std::string_view high_code);
   void map_single(std::string code, std::u16string unicode);
   /// `low + i` maps to @p unicode with its last unit advanced by `i` (ISO
   /// 32000-1 9.10.3). A `map_single` code wins over a range, and a later range
@@ -55,11 +62,9 @@ public:
     return !m_codespace_ranges.empty() && !m_inherits_external_cmap;
   }
 
-  /// Byte width of a code starting with `first`, from the codespace ranges
-  /// (matched on the first byte, ISO 32000-1 9.7.6.2); 1 when none matches.
-  /// Public so the glyph/advance paths split exactly as `translate_string`
-  /// does, keeping a mixed 1-/2-byte codespace aligned across both.
-  [[nodiscard]] std::size_t code_width(std::uint8_t first) const;
+  /// Shortest matching code width; one byte when no codespace matches. Public
+  /// so the glyph paths split codes exactly as `translate_string` does.
+  [[nodiscard]] std::size_t code_width(std::string_view bytes) const;
 
   /// `single_byte_codes` overrides the codespace ranges. An imposed
   /// single-byte code is also looked up zero-padded to two bytes, producers
@@ -85,10 +90,9 @@ public:
 
 private:
   struct CodespaceRange {
-    // `low` and `high` share the same length; that length is the code width in
-    // bytes for codes that start within this range.
-    std::string low;
-    std::string high;
+    std::uint32_t low;
+    std::uint32_t high;
+    std::size_t width;
   };
 
   struct UnicodeRange {
@@ -114,11 +118,6 @@ private:
 
   [[nodiscard]] std::optional<std::u16string>
   unicode_for_code(const std::string &code) const;
-
-  /// Byte width of the code starting at `pos`, decided by the codespace ranges;
-  /// falls back to a single byte when no range declares/matches it.
-  [[nodiscard]] std::size_t code_length(const std::string &codes,
-                                        std::size_t pos) const;
 };
 
 } // namespace odr::internal::pdf

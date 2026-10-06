@@ -205,7 +205,7 @@ TEST(PdfCMap, codespace_is_authoritative_without_usecmap) {
 
   EXPECT_FALSE(cmap.inherits_external_cmap());
   EXPECT_TRUE(cmap.has_codespace());
-  EXPECT_EQ(cmap.code_width(0x00), 2);
+  EXPECT_EQ(cmap.code_width(std::string_view("\0\0", 2)), 2);
 }
 
 TEST(PdfCMap, usecmap_disables_local_codespace_authority) {
@@ -299,4 +299,19 @@ TEST(PdfCMap, validates_cid_ranges_and_later_overrides) {
   EXPECT_EQ(cmap.cid_for_code("\x40"), 100u);
   EXPECT_EQ(cmap.cid_for_code("\x41"), 65535u);
   EXPECT_EQ(cmap.cid_for_code("\x42"), 102u);
+}
+
+TEST(PdfCMap, invalid_codespace_widths) {
+  CMap cmap;
+  EXPECT_THROW(cmap.add_codespace_range("", ""), std::invalid_argument);
+  EXPECT_THROW(cmap.add_codespace_range("a", "ab"), std::invalid_argument);
+  EXPECT_THROW(cmap.add_codespace_range("abcde", "abcde"),
+               std::invalid_argument);
+}
+
+TEST(PdfCMap, codespace_ranges_compare_as_numbers) {
+  const CMap cmap =
+      parse("1 begincodespacerange <00e0> <028c> endcodespacerange");
+  EXPECT_EQ(cmap.code_width("\x02\x49"), 2);
+  EXPECT_EQ(cmap.code_width("\x02\x8d"), 1);
 }

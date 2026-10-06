@@ -281,8 +281,7 @@ public:
       }
       std::size_t width = m_fixed_width;
       if (m_codespace != nullptr && m_codespace->has_codespace()) {
-        width =
-            m_codespace->code_width(static_cast<std::uint8_t>(m_range.front()));
+        width = m_codespace->code_width(m_range);
       }
       if (width == 0 || width > m_range.size()) {
         m_range.remove_prefix(m_range.size()); // drop the trailing partial code

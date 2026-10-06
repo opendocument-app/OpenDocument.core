@@ -1,6 +1,7 @@
 #include <odr/internal/pdf/pdf_cid.hpp>
 
 #include <odr/internal/pdf/pdf_cid_data.hpp>
+#include <odr/internal/pdf/pdf_cmap.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
@@ -73,33 +74,13 @@ find_predefined_cmap(const std::string_view name) {
   return it != end && it->name == name ? it : nullptr;
 }
 
-/// Byte width of the code at the front of `bytes`, matched *per byte* against
-/// the codespace ranges (ISO 32000-1 9.7.6.2). Full-byte matching (not just the
-/// leading byte) is required where ranges share a leading byte but diverge
-/// later: GB18030's 2-byte (`0x8140`-`0xfefe`) and 4-byte
-/// (`0x81308130`-`0xfe39fe39`) ranges both lead with `0x81`-`0xfe`, and the
-/// second byte (`0x40`-`0xfe` vs `0x30`-`0x39`) decides. Ranges are stored
-/// width-ascending, so the first full match is the shortest valid code. Falls
-/// back to a single byte when none matches (or the tail is a partial code).
+/// Generated codespace ranges are ordered by width, so the first match is the
+/// shortest code; one byte when none matches.
 std::size_t code_width(const cid_data::PredefinedCMap &cmap,
                        const std::string_view bytes) {
   for (std::uint32_t i = 0; i < cmap.codespace_count; ++i) {
     const cid_data::CodespaceRange &range = cmap.codespace[i];
-    if (bytes.size() < range.width) {
-      continue;
-    }
-    bool matched = true;
-    for (unsigned b = 0; b < range.width; ++b) {
-      const auto shift = static_cast<unsigned>(8 * (range.width - 1 - b));
-      const auto low = static_cast<std::uint8_t>(range.low >> shift);
-      const auto high = static_cast<std::uint8_t>(range.high >> shift);
-      const auto value = static_cast<std::uint8_t>(bytes[b]);
-      if (value < low || value > high) {
-        matched = false;
-        break;
-      }
-    }
-    if (matched) {
+    if (matches_codespace(bytes, range.low, range.high, range.width)) {
       return range.width;
     }
   }
