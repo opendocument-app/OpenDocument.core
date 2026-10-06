@@ -204,10 +204,22 @@ target_link_libraries(odr_test
 
 gtest_add_tests(TARGET odr_test)
 
-# Holds the public headers to C++20. Not a gtest: it compiles or it does not.
-add_library(odr_public_headers_cpp20 OBJECT "public_headers_cpp20.cpp")
+# Compile each installed public header independently as a C++20 consumer.
+file(GLOB ODR_PUBLIC_HEADERS CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/src/odr/*.hpp")
+set(ODR_PUBLIC_HEADER_TESTS)
+foreach (header IN LISTS ODR_PUBLIC_HEADERS)
+    get_filename_component(name "${header}" NAME)
+    if (name STREQUAL "http_server.hpp" AND NOT ODR_WITH_HTTP_SERVER)
+        continue()
+    endif ()
+    set(source "${CMAKE_CURRENT_BINARY_DIR}/public_headers_cpp20/${name}.cpp")
+    file(GENERATE OUTPUT "${source}" CONTENT "#include <odr/${name}>\n")
+    list(APPEND ODR_PUBLIC_HEADER_TESTS "${source}")
+endforeach ()
+add_library(odr_public_headers_cpp20 OBJECT ${ODR_PUBLIC_HEADER_TESTS})
 target_link_libraries(odr_public_headers_cpp20 PRIVATE odr)
 set_target_properties(odr_public_headers_cpp20 PROPERTIES
+        UNITY_BUILD OFF
         CXX_STANDARD 20
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF)
