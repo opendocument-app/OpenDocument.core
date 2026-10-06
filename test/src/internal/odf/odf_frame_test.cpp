@@ -41,7 +41,7 @@ std::string write_odg(const std::string &name, const std::string &body) {
                       "application/vnd.oasis.opendocument.graphics"));
   zip.insert_file(std::end(zip), RelPath("content.xml"),
                   std::make_shared<MemoryFile>(content));
-  std::ofstream out(path);
+  std::ofstream out(path, std::ios::binary);
   zip.save(out);
 
   return path;

@@ -2,91 +2,24 @@
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
-#include <odr/logger.hpp>
 #include <odr/table_dimension.hpp>
 
-#include <odr/internal/abstract/file.hpp>
-#include <odr/internal/common/file.hpp>
-#include <odr/internal/open_strategy.hpp>
+#include <internal/odf/odf_sheet_test_util.hpp>
 
 #include <gtest/gtest.h>
 
 #include <cstdint>
-#include <memory>
-#include <sstream>
 #include <string>
 
 using namespace odr;
-using namespace odr::internal;
+using namespace odr::test::odf;
 
 namespace {
-
-/// A flat spreadsheet of the sheets @p tables spell, after @p body.
-std::string flat_spreadsheet(const std::string &tables,
-                             const std::string &body = "") {
-  return R"(<?xml version="1.0" encoding="UTF-8"?>)"
-         R"(<office:document office:mimetype=")"
-         R"(application/vnd.oasis.opendocument.spreadsheet">)"
-         R"(<office:body><office:spreadsheet>)" +
-         tables + body +
-         R"(</office:spreadsheet></office:body></office:document>)";
-}
-
-std::string table(const std::string &name, const std::string &rows) {
-  return R"(<table:table table:name=")" + name + R"(">)" + rows +
-         R"(</table:table>)";
-}
-
-std::string row(const std::string &cells, const std::uint32_t repeated = 1) {
-  return R"(<table:table-row)" +
-         (repeated > 1 ? R"( table:number-rows-repeated=")" +
-                             std::to_string(repeated) + R"(")"
-                       : std::string()) +
-         ">" + cells + R"(</table:table-row>)";
-}
-
-std::string string_cell(const std::string &text) {
-  return R"(<table:table-cell office:value-type="string"><text:p>)" + text +
-         R"(</text:p></table:table-cell>)";
-}
-
-std::string formula_cell(const std::string &formula) {
-  return R"(<table:table-cell table:formula=")" + formula +
-         R"(" office:value-type="float" office:value="1"><text:p>1</text:p>)"
-         R"(</table:table-cell>)";
-}
 
 /// A sheet `s` whose first column reads `a`, `b`, `c`.
 std::string abc() {
   return table("s", row(string_cell("a")) + row(string_cell("b")) +
                         row(string_cell("c")));
-}
-
-Document document_of(const std::string &source) {
-  return DecodedFile(
-             open_strategy::open_file(std::make_shared<MemoryFile>(source), {},
-                                      Logger::null()))
-      .as_document_file()
-      .document();
-}
-
-Sheet sheet_at(const Document &document, const std::uint32_t index) {
-  auto it = document.root_element().children().begin();
-  for (std::uint32_t i = 0; i < index; ++i) {
-    ++it;
-  }
-  return (*it).as_sheet();
-}
-
-std::string text_at(const Sheet &sheet, const std::uint32_t column,
-                    const std::uint32_t row) {
-  return sheet.cell(column, row).value().text();
-}
-
-std::string saved(const Document &document) {
-  std::ostringstream out;
-  document.save(out);
-  return out.str();
 }
 
 } // namespace

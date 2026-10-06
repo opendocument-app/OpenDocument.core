@@ -2,24 +2,21 @@
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
-#include <odr/logger.hpp>
 #include <odr/odr.hpp>
 #include <odr/table_dimension.hpp>
 #include <odr/table_position.hpp>
 
-#include <odr/internal/abstract/file.hpp>
-#include <odr/internal/common/file.hpp>
-#include <odr/internal/open_strategy.hpp>
+#include <internal/odf/odf_sheet_test_util.hpp>
 
 #include <gtest/gtest.h>
 
 #include <limits>
-#include <memory>
 #include <sstream>
 #include <string>
 
 using namespace odr;
-using namespace odr::internal;
+using odr::test::odf::document_of;
+using odr::test::odf::string_cell;
 
 namespace {
 
@@ -33,19 +30,6 @@ std::string flat_sheet(const std::string &cells) {
          cells +
          R"(</table:table-row></table:table>)"
          R"(</office:spreadsheet></office:body></office:document>)";
-}
-
-std::string string_cell(const std::string &text) {
-  return R"(<table:table-cell office:value-type="string"><text:p>)" + text +
-         R"(</text:p></table:table-cell>)";
-}
-
-Document document_of(const std::string &source) {
-  return DecodedFile(
-             open_strategy::open_file(std::make_shared<MemoryFile>(source), {},
-                                      Logger::null()))
-      .as_document_file()
-      .document();
 }
 
 Sheet first_sheet(const Document &document) {
@@ -655,8 +639,8 @@ TEST(OdfSheetWrite, a_boolean_is_written_as_its_value_and_text) {
   EXPECT_EQ(value.text(), "TRUE");
 }
 
-/// No form to write these in yet, and the refusal leaves the cell as it was.
-TEST(OdfSheetWrite, a_date_a_time_and_an_error_refuse_to_be_written) {
+TEST(OdfSheetWrite,
+     missing_date_or_time_values_and_errors_leave_the_cell_alone) {
   const Document document = document_of(flat_sheet(string_cell("old")));
   const Sheet sheet = first_sheet(document);
 
@@ -816,16 +800,6 @@ TEST(OdfSheetWrite, a_date_takes_the_names_of_its_style_language) {
 
   EXPECT_NE(saved_of(document).find("<text:p>15 марта</text:p>"),
             std::string::npos);
-}
-
-TEST(OdfSheetWrite, a_date_without_its_number_refuses) {
-  const Document document = dated_sheet();
-
-  EXPECT_THROW(first_sheet(document).set_cell(
-                   2, 0, CellValue(ValueType::time).with_number(1e300)),
-               UnsupportedOperation);
-  EXPECT_THROW(first_sheet(document).set_cell(1, 0, CellValue(ValueType::date)),
-               UnsupportedOperation);
 }
 
 TEST(OdfSheetWrite, a_date_or_a_time_out_of_range_refuses) {

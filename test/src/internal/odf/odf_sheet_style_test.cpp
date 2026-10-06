@@ -2,24 +2,20 @@
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
-#include <odr/logger.hpp>
 #include <odr/style.hpp>
 
-#include <odr/internal/abstract/file.hpp>
-#include <odr/internal/common/file.hpp>
-#include <odr/internal/open_strategy.hpp>
+#include <internal/odf/odf_sheet_test_util.hpp>
 
 #include <gtest/gtest.h>
 
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <optional>
-#include <sstream>
 #include <string>
 
 using namespace odr;
-using namespace odr::internal;
+using odr::test::odf::document_of;
+using odr::test::odf::saved;
 
 namespace {
 
@@ -54,14 +50,6 @@ constexpr const char *red_cell_style =
     R"(<style:table-cell-properties fo:background-color="#ff0000"/>)"
     R"(</style:style>)";
 
-Document document_of(const std::string &source) {
-  return DecodedFile(
-             open_strategy::open_file(std::make_shared<MemoryFile>(source), {},
-                                      Logger::null()))
-      .as_document_file()
-      .document();
-}
-
 Sheet first_sheet(const Document &document) {
   return (*document.root_element().children().begin()).as_sheet();
 }
@@ -90,12 +78,6 @@ std::optional<std::uint32_t> fill_at(const Sheet &sheet,
   const std::optional<Color> color =
       sheet.cell_style(column, row).background_color;
   return color ? std::optional(color->rgb()) : std::nullopt;
-}
-
-std::string saved(const Document &document) {
-  std::ostringstream out;
-  document.save(out);
-  return out.str();
 }
 
 std::size_t count(const std::string &text, const std::string &part) {
