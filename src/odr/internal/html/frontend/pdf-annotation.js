@@ -10,6 +10,18 @@
   var pending = [];
   var nextId = 1;
 
+  function copyArrays(value) {
+    return Array.isArray(value) ? value.map(copyArrays) : value;
+  }
+
+  function snapshot(value) {
+    var copy = {};
+    Object.keys(value).forEach(function (key) {
+      copy[key] = copyArrays(value[key]);
+    });
+    return copy;
+  }
+
   /// Gesture policy, the viewer's to set. `inkPointerTypes` null takes any.
   var options = {
     markOnSelection:
@@ -659,29 +671,28 @@
     },
     /// Merged into what is set; an unknown key throws.
     setOptions: function (value) {
-      Object.keys(value || {}).forEach(function (key) {
+      var keys = Object.keys(value || {});
+      keys.forEach(function (key) {
         if (!Object.prototype.hasOwnProperty.call(options, key)) {
           throw new Error("odr.annotation: unknown option " + key);
         }
-        options[key] = value[key];
+      });
+      keys.forEach(function (key) {
+        options[key] = copyArrays(value[key]);
       });
       applyOptions();
     },
     getOptions: function () {
-      var copy = {};
-      Object.keys(options).forEach(function (key) {
-        copy[key] = options[key];
-      });
-      return copy;
+      return snapshot(options);
     },
     /// Marks the selection with the armed tool, and answers whether anything
     /// was added. The selection is left standing.
     mark: function () {
       return markSelection(tool, color, true);
     },
-    /// What is pending, newest last. Geometry is in page-box points.
+    /// Snapshot of pending annotations, newest last, in page-box points.
     list: function () {
-      return pending.slice();
+      return pending.map(snapshot);
     },
     remove: function (id) {
       pending = pending.filter(function (a) {

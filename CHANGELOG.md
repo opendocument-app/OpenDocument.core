@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF annotation snapshots no longer expose mutable pending state. Pointer
+  options are copied, and unknown option keys leave the settings unchanged.
+
 - PDF ink annotations retain their final pointer-up position and ignore
   competing pointers until the active stroke ends.
 
