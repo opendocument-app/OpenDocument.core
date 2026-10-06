@@ -1,12 +1,15 @@
 #include <odr/internal/pdf/pdf_function.hpp>
 
 #include <odr/internal/pdf/pdf_object.hpp>
+#include <odr/internal/pdf/pdf_object_parser.hpp>
+#include <odr/internal/util/number_util.hpp>
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <limits>
 #include <numbers>
+#include <optional>
 #include <stdexcept>
 #include <variant>
 
@@ -481,56 +484,61 @@ private:
   std::vector<PostScriptItem> m_program;
 };
 
-/// Tokenize a type-4 program body into a nested item tree. `pos` advances past
-/// the consumed text; a `{` recurses and the matching `}` returns.
-std::vector<PostScriptItem> parse_postscript(const std::string &text,
-                                             std::size_t &pos) {
+/// Tokenizes a type-4 program (ISO 32000-1, 7.10.5.1) into a nested item tree.
+/// `pos` advances past the consumed text. Nothing if the braces do not balance,
+/// nest too deep or a number token is malformed.
+std::optional<std::vector<PostScriptItem>>
+parse_postscript(const std::string &text, std::size_t &pos,
+                 const std::size_t depth = 0) {
+  if (depth >= 64) {
+    return std::nullopt;
+  }
   std::vector<PostScriptItem> items;
   while (pos < text.size()) {
     const char c = text[pos];
-    if (std::isspace(static_cast<unsigned char>(c)) != 0) {
+    if (ObjectParser::is_whitespace(c)) {
       ++pos;
+    } else if (c == '%') {
+      pos = text.find_first_of("\r\n", pos);
+      if (pos == std::string::npos) {
+        pos = text.size();
+      }
     } else if (c == '{') {
       ++pos;
+      auto block = parse_postscript(text, pos, depth + 1);
+      if (!block.has_value()) {
+        return std::nullopt;
+      }
       PostScriptItem item;
       item.kind = PostScriptItem::Kind::block;
-      item.block = parse_postscript(text, pos);
+      item.block = std::move(*block);
       items.push_back(std::move(item));
     } else if (c == '}') {
       ++pos;
-      return items;
-    } else if ((std::isdigit(static_cast<unsigned char>(c)) != 0) || c == '-' ||
-               c == '+' || c == '.') {
-      std::size_t end = pos;
-      while (end < text.size() &&
-             (std::isdigit(static_cast<unsigned char>(text[end])) != 0 ||
-              text[end] == '-' || text[end] == '+' || text[end] == '.' ||
-              text[end] == 'e' || text[end] == 'E')) {
-        ++end;
-      }
-      PostScriptItem item;
-      item.kind = PostScriptItem::Kind::number;
-      item.number = std::stod(text.substr(pos, end - pos));
-      items.push_back(std::move(item));
-      pos = end;
+      return depth == 0 ? std::nullopt : std::optional(std::move(items));
     } else {
-      std::size_t end = pos;
-      while (end < text.size() &&
-             std::isalpha(static_cast<unsigned char>(text[end])) != 0) {
-        ++end;
+      const std::size_t start = pos;
+      while (pos < text.size() && !ObjectParser::is_whitespace(text[pos]) &&
+             text[pos] != '%' && text[pos] != '{' && text[pos] != '}') {
+        ++pos;
       }
-      if (end == pos) {
-        ++pos; // skip an unexpected character
-        continue;
-      }
+      const std::string_view token(text.data() + start, pos - start);
       PostScriptItem item;
-      item.kind = PostScriptItem::Kind::op;
-      item.op = text.substr(pos, end - pos);
+      if ((c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.') {
+        const auto number = util::number::parse(token);
+        if (!number.has_value() || !std::isfinite(*number)) {
+          return std::nullopt;
+        }
+        item.kind = PostScriptItem::Kind::number;
+        item.number = *number;
+      } else {
+        item.kind = PostScriptItem::Kind::op;
+        item.op = token;
+      }
       items.push_back(std::move(item));
-      pos = end;
     }
   }
-  return items;
+  return depth == 0 ? std::optional(std::move(items)) : std::nullopt;
 }
 
 } // namespace
@@ -720,20 +728,14 @@ std::shared_ptr<Function> parse_function_impl(const Object &object,
   case 4: {
     const std::string program = context.load_stream(object);
     std::size_t pos = 0;
-    std::vector<PostScriptItem> items = parse_postscript(program, pos);
-    // Unwrap the outer `{ ... }` block so the program runs at top level. Move
-    // the inner block out to a local first: assigning it back into `items`
-    // directly would free the vector the source still lives in.
-    if (items.size() == 1 &&
-        items.front().kind == PostScriptItem::Kind::block) {
-      std::vector<PostScriptItem> body = std::move(items.front().block);
-      items = std::move(body);
-    }
-    if (domain.empty() || range.empty()) {
+    auto items = parse_postscript(program, pos);
+    if (!items.has_value() || items->size() != 1 ||
+        items->front().kind != PostScriptItem::Kind::block || domain.empty() ||
+        range.empty()) {
       return nullptr;
     }
     return std::make_shared<PostScriptFunction>(
-        std::move(domain), std::move(range), std::move(items));
+        std::move(domain), std::move(range), std::move(items->front().block));
   }
   default:
     return nullptr;

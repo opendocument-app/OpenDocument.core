@@ -255,3 +255,23 @@ TEST(PdfFunction, exponential_uses_the_shorter_of_c0_and_c1) {
   ASSERT_NE(fn, nullptr);
   EXPECT_EQ(fn->eval({0.5}).size(), 1u);
 }
+
+TEST(PdfFunction, calculator_tokens_and_braces) {
+  Dictionary dict;
+  dict["FunctionType"] = Object(Integer{4});
+  dict["Domain"] = reals({0, 1});
+  dict["Range"] = reals({0, 1});
+  const auto fn = parse_function(
+      Object(dict),
+      context("% leading { comment\n{ +.75% pop } comment\r exch sub }% tail"));
+  ASSERT_NE(fn, nullptr);
+  EXPECT_DOUBLE_EQ(fn->eval({0.25})[0], 0.5);
+  for (const std::string program : {"{ 1..2 }", "{ + }", "{ 1e999 }", "{ 1",
+                                    "1 }", "{ 1 } }", "1", "{1}{2}"}) {
+    SCOPED_TRACE(program);
+    EXPECT_EQ(parse_function(Object(dict), context(program)), nullptr);
+  }
+  EXPECT_EQ(parse_function(Object(dict), context(std::string(1000, '{') + "1" +
+                                                 std::string(1000, '}'))),
+            nullptr);
+}
