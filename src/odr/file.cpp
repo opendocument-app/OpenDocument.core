@@ -82,7 +82,8 @@ std::size_t File::size() const { return deref(m_impl).size(); }
 std::string File::name() const { return deref(m_impl).name(); }
 
 std::optional<std::string> File::disk_path() const {
-  if (const std::optional<internal::AbsPath> path = deref(m_impl).disk_path()) {
+  if (const std::optional<internal::AbsPath> path = deref(m_impl).disk_path();
+      path.has_value()) {
     return path->string();
   }
   return {};

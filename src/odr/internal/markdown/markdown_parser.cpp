@@ -42,7 +42,7 @@ std::string resolve_entity(const std::string_view entity) {
     const std::string_view digits = name.substr(hexadecimal ? 2 : 1);
     const auto code_point = util::number::parse_integer<std::uint32_t>(
         digits, {.base = hexadecimal ? 16 : 10});
-    if (!code_point) {
+    if (!code_point.has_value()) {
       return std::string(entity);
     }
     // an unpaired surrogate or an out-of-range value is not a character

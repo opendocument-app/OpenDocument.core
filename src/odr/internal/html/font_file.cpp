@@ -150,7 +150,7 @@ public:
       out.out() << "<div class=\"cell\"><span class=\"glyph\">&#x" << std::hex
                 << static_cast<std::uint32_t>(font::pua_code_point(gid))
                 << std::dec << ";</span><span class=\"gid\">" << gid;
-      if (const auto cp = font->code_point_for_glyph(gid)) {
+      if (const auto cp = font->code_point_for_glyph(gid); cp.has_value()) {
         out.out() << " U+" << std::hex << std::uppercase
                   << static_cast<std::uint32_t>(*cp) << std::nouppercase
                   << std::dec;

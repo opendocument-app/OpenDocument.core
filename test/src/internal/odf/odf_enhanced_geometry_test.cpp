@@ -190,8 +190,9 @@ TEST(OdfFormula, nesting_is_bounded_and_results_must_be_finite) {
                      square(), none()),
             1);
   EXPECT_FALSE(evaluate(std::string(10000, '(') + "1" + std::string(10000, ')'),
-                        square(), none()));
-  EXPECT_FALSE(evaluate("1e308*1e308", square(), none()));
+                        square(), none())
+                   .has_value());
+  EXPECT_FALSE(evaluate("1e308*1e308", square(), none()).has_value());
 }
 
 TEST(OdfFormula, an_equation_continues_the_nesting_of_its_reference) {
@@ -214,7 +215,8 @@ TEST(OdfEnhancedPath,
                                  "U 0 0 1 1 0 6000000 U 0 0 1 1 0 6000000",
                                  "M 1e999 0", "M 0 0 X 1e999 1"}) {
     SCOPED_TRACE(path);
-    EXPECT_FALSE(convert_enhanced_path(path, square(), none()));
+    EXPECT_FALSE(convert_enhanced_path(path, square(), none()).has_value());
   }
-  EXPECT_TRUE(convert_enhanced_path("U 0 0 -1 1 0 90", square(), none()));
+  EXPECT_TRUE(
+      convert_enhanced_path("U 0 0 -1 1 0 90", square(), none()).has_value());
 }

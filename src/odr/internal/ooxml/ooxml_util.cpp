@@ -188,7 +188,8 @@ ooxml::read_color_attribute(const pugi::xml_attribute attribute) {
 std::optional<Color>
 ooxml::read_drawing_rgb_color(const pugi::xml_node parent) {
   if (const std::optional<Color> color =
-          read_color_attribute(parent.child("a:srgbClr").attribute("val"))) {
+          read_color_attribute(parent.child("a:srgbClr").attribute("val"));
+      color.has_value()) {
     return color;
   }
   return read_color_attribute(parent.child("a:sysClr").attribute("lastClr"));
@@ -487,7 +488,8 @@ std::optional<std::string> ooxml::read_border_node(const pugi::xml_node node) {
   // `auto` reads as no color, which css then takes from the text
   std::string result = size->to_string() + " solid";
   if (const std::optional<Color> color =
-          read_color_attribute(node.attribute("w:color"))) {
+          read_color_attribute(node.attribute("w:color"));
+      color.has_value()) {
     result.append(" ").append(html::color(*color));
   }
   return result;

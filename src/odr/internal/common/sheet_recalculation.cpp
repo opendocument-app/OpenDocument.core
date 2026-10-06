@@ -148,7 +148,8 @@ public:
     std::vector<std::pair<SheetPosition, std::size_t>> pending{{position, 0}};
     while (true) {
       const std::optional<formula::Value> result = cell(pending.back().first);
-      if (const auto frontier = std::exchange(m_frontier, std::nullopt)) {
+      if (const auto frontier = std::exchange(m_frontier, std::nullopt);
+          frontier.has_value()) {
         const std::size_t previous = m_ancestors.size();
         m_ancestors.insert(m_ancestors.end(), m_frontier_path.begin(),
                            m_frontier_path.end());

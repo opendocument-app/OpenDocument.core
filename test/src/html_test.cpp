@@ -172,7 +172,7 @@ TEST(html, document_images_yield_to_shipped_resources) {
       if (resource.type() == HtmlResourceType::image) {
         ++images;
         EXPECT_FALSE(location.has_value());
-      } else if (resource.is_shipped() && location) {
+      } else if (resource.is_shipped() && location.has_value()) {
         std::ostringstream expected;
         resource.write_resource(expected);
         std::ostringstream served;

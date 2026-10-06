@@ -223,7 +223,7 @@ private:
     if (const pugi::xml_node header =
             table.child("table:table-header-rows").child("table:table-row")) {
       const auto cells = read_row(header);
-      if (!cells) {
+      if (!cells.has_value()) {
         return false;
       }
       labels = *cells | std::views::transform(read_text) |
@@ -236,7 +236,7 @@ private:
       const auto cells = read_row(row);
       const std::uint32_t repeated =
           row.attribute("table:number-rows-repeated").as_uint(1);
-      if (!cells || repeated == 0 ||
+      if (!cells.has_value() || repeated == 0 ||
           repeated > max_cells - m_categories.size()) {
         return false;
       }

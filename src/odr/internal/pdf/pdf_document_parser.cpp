@@ -195,7 +195,7 @@ struct PageAttributes {
 std::optional<std::uint32_t> font_code(const Object &object,
                                        const std::uint32_t maximum) {
   const std::optional<Integer> value = object.as_integer_opt();
-  if (!value || *value < 0 || *value > maximum) {
+  if (!value.has_value() || *value < 0 || *value > maximum) {
     return std::nullopt;
   }
   return static_cast<std::uint32_t>(*value);
@@ -209,7 +209,8 @@ std::optional<Encoding> parse_encoding(DocumentParser &parser,
   const Object resolved = parser.resolve_object_copy(encoding_object);
 
   if (resolved.is_name()) {
-    if (const auto base = base_encoding_from_name(resolved.as_name())) {
+    if (const auto base = base_encoding_from_name(resolved.as_name());
+        base.has_value()) {
       return Encoding(*base);
     }
     ODR_WARNING(parser.logger(),
@@ -230,7 +231,8 @@ std::optional<Encoding> parse_encoding(DocumentParser &parser,
   if (dictionary.has_key("BaseEncoding")) {
     const Object &base_object = dictionary["BaseEncoding"];
     if (base_object.is_name()) {
-      if (const auto named = base_encoding_from_name(base_object.as_name())) {
+      if (const auto named = base_encoding_from_name(base_object.as_name());
+          named.has_value()) {
         base = *named;
       } else {
         // An explicitly named base we cannot represent: bail out rather than
@@ -299,7 +301,7 @@ void parse_cid_widths(const Array &w, Font &font) {
       const Integer last = w[i + 1].as_integer();
       const double width = w[i + 2].as_real();
       // a reversed range is empty, and one past the CID range is cut there
-      if (first && last >= *first) {
+      if (first.has_value() && last >= *first) {
         const auto end =
             static_cast<std::uint32_t>(std::min<Integer>(last, max_cid));
         for (std::uint32_t c = *first; c <= end; ++c) {
@@ -442,11 +444,13 @@ void resolve_font_substitute(DocumentParser &parser,
     if (descriptor.is_dictionary()) {
       const Dictionary &d = descriptor.as_dictionary();
       if (const auto v =
-              parser.resolve_object_copy(d.get("Flags")).as_integer_opt()) {
+              parser.resolve_object_copy(d.get("Flags")).as_integer_opt();
+          v.has_value()) {
         flags = static_cast<std::uint32_t>(*v);
       }
-      if (const auto v = parser.resolve_object_copy(d.get("FontWeight"))
-                             .as_integer_opt()) {
+      if (const auto v =
+              parser.resolve_object_copy(d.get("FontWeight")).as_integer_opt();
+          v.has_value()) {
         font_weight = static_cast<std::int32_t>(*v);
       }
       const Object angle = parser.resolve_object_copy(d.get("ItalicAngle"));
@@ -460,7 +464,8 @@ void resolve_font_substitute(DocumentParser &parser,
       pdf::resolve_font_substitute(base_font, flags, font_weight, italic_angle);
   // A substitute with standard-14 metrics can supply the baseline shift the
   // HTML layer needs when the descriptor declared no `/Ascent`.
-  if (!font.descriptor_ascent && font.substitute->metrics) {
+  if (!font.descriptor_ascent.has_value() &&
+      font.substitute->metrics.has_value()) {
     font.descriptor_ascent = afm_ascender(*font.substitute->metrics);
   }
 }
@@ -918,7 +923,8 @@ void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
           parser.read_object_stream(object), filter, decode_parms, width,
           height, bits_per_component, color_space.get(), decode_array, alpha,
           color_key, smask_in_data,
-          jbig2_decode_options(parser, dictionary.get("DecodeParms")))) {
+          jbig2_decode_options(parser, dictionary.get("DecodeParms")));
+      encoded.has_value()) {
     x_object.image_data = std::move(encoded->data);
     x_object.image_mime = std::move(encoded->mime);
   }
@@ -1371,7 +1377,8 @@ void parse_annotation_appearance(State &state, const Dictionary &dictionary,
   annotation.appearance_transform =
       fit_appearance_to_rect(*appearance->bbox, appearance->matrix, corners);
   if (const std::optional<Real> alpha =
-          parser.resolve_object_copy(dictionary.get("CA")).as_real_opt()) {
+          parser.resolve_object_copy(dictionary.get("CA")).as_real_opt();
+      alpha.has_value()) {
     annotation.appearance_alpha = std::clamp(*alpha, 0.0, 1.0);
   }
 }

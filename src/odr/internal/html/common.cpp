@@ -377,7 +377,7 @@ html::fill_path_variables(const std::string &path,
                           const std::optional<std::uint32_t> index) {
   std::string result = path;
   util::string::replace_all(result, "{index}",
-                            index ? std::to_string(*index) : "");
+                            index.has_value() ? std::to_string(*index) : "");
   return result;
 }
 

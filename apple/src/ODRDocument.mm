@@ -118,7 +118,7 @@ using odr::apple::to_string;
   return guarded_value(
       [&]() -> NSString * {
         const std::optional<std::string> locale = _handle->locale();
-        return locale ? odr::apple::to_nsstring(*locale) : nil;
+        return locale.has_value() ? odr::apple::to_nsstring(*locale) : nil;
       },
       nil);
 }

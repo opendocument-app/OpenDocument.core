@@ -54,7 +54,7 @@ public:
     }
     const std::optional<double> value =
         util::number::parse(rest().substr(0, end));
-    if (value) {
+    if (value.has_value()) {
       advance(end);
     }
     return value;

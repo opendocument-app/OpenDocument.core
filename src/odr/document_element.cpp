@@ -433,12 +433,15 @@ namespace {
 void refuse_unwritable(const TableCellStyle &cell_style,
                        const TextStyle &text_style) {
   const auto stated = [](const auto &sides) {
-    return sides.right || sides.top || sides.left || sides.bottom;
+    return sides.right.has_value() || sides.top.has_value() ||
+           sides.left.has_value() || sides.bottom.has_value();
   };
-  if (cell_style.vertical_align || stated(cell_style.padding) ||
-      stated(cell_style.border) || cell_style.text_rotation ||
-      cell_style.wrap_text || text_style.font_name || text_style.font_shadow ||
-      text_style.background_color || text_style.font_position) {
+  if (cell_style.vertical_align.has_value() || stated(cell_style.padding) ||
+      stated(cell_style.border) || cell_style.text_rotation.has_value() ||
+      cell_style.wrap_text.has_value() || text_style.font_name.has_value() ||
+      text_style.font_shadow.has_value() ||
+      text_style.background_color.has_value() ||
+      text_style.font_position.has_value()) {
     throw UnsupportedOperation();
   }
 }

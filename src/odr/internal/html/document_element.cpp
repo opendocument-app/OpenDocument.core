@@ -159,12 +159,12 @@ TableDimensions html::sheet_rendered_extent(const Sheet &sheet,
     end_column = content.columns;
     end_row = content.rows;
   }
-  if (config.spreadsheet_limit) {
+  if (config.spreadsheet_limit.has_value()) {
     end_column = std::min(end_column, config.spreadsheet_limit->columns);
     end_row = std::min(end_row, config.spreadsheet_limit->rows);
   }
   end_column = std::max(1u, end_column);
-  if (config.spreadsheet_cell_limit) {
+  if (config.spreadsheet_cell_limit.has_value()) {
     const std::uint64_t limit =
         std::max<std::uint64_t>(1, *config.spreadsheet_cell_limit);
     end_column =
@@ -1175,7 +1175,7 @@ void html::translate_image(const Element &element, const WritingState &state) {
                                     path, image.file(), false, false, true);
     resource_location =
         state.config().resource_locator(resource, state.config());
-    if (resource_location) {
+    if (resource_location.has_value()) {
       // a location taken by anything but this same image embeds instead
       const odr::HtmlResource *existing =
           resource_at(state.resources(), *resource_location);

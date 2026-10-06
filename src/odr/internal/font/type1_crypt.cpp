@@ -23,7 +23,7 @@ constexpr std::uint16_t c2 = 22719;
       continue;
     }
     const std::optional<std::uint8_t> value = util::string::hex_digit(ch);
-    if (!value) {
+    if (!value.has_value()) {
       break;
     }
     if (high < 0) {
@@ -44,7 +44,7 @@ constexpr std::uint16_t c2 = 22719;
     if (util::string::is_ascii_whitespace(ch)) {
       continue;
     }
-    if (!util::string::hex_digit(ch)) {
+    if (!util::string::hex_digit(ch).has_value()) {
       return false;
     }
     if (++seen == 4) {

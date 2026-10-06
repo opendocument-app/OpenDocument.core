@@ -135,34 +135,35 @@ private:
       const std::optional<double> d = read_number();
       const std::optional<double> e = read_length();
       const std::optional<double> f = read_length();
-      if (!a || !b || !c || !d || !e || !f) {
+      if (!a.has_value() || !b.has_value() || !c.has_value() ||
+          !d.has_value() || !e.has_value() || !f.has_value()) {
         return false;
       }
       compose({*a, *b, *c, *d, *e, *f});
     } else if (name == "translate") {
       const std::optional<double> x = read_length();
-      if (!x) {
+      if (!x.has_value()) {
         return false;
       }
       const std::optional<double> y =
           peek_argument() ? read_length() : std::optional<double>(0);
-      if (!y) {
+      if (!y.has_value()) {
         return false;
       }
       compose(util::math::Transform2D::translation(*x, *y));
     } else if (name == "scale") {
       const std::optional<double> x = read_number();
-      if (!x) {
+      if (!x.has_value()) {
         return false;
       }
       const std::optional<double> y = peek_argument() ? read_number() : x;
-      if (!y) {
+      if (!y.has_value()) {
         return false;
       }
       compose(util::math::Transform2D::scaling(*x, *y));
     } else if (name == "rotate" || name == "skewX" || name == "skewY") {
       const std::optional<double> angle = read_number();
-      if (!angle) {
+      if (!angle.has_value()) {
         return false;
       }
       // Radians, counter-clockwise, so the sine changes sign against svg's
@@ -532,7 +533,8 @@ std::optional<DrawingPath> read_enhanced_geometry(const pugi::xml_node node) {
   }
 
   EnhancedGeometryContext context;
-  if (const std::optional<ViewBox> view_box = read_view_box(geometry)) {
+  if (const std::optional<ViewBox> view_box = read_view_box(geometry);
+      view_box.has_value()) {
     context.left = view_box->x;
     context.top = view_box->y;
     context.right = view_box->x + view_box->width;
@@ -667,7 +669,8 @@ std::optional<DrawingPath> odf::read_path(const pugi::xml_node node) {
       return {};
     }
     // The path's own extent is only the fallback for a shape stating none.
-    if (const std::optional<ViewBox> view_box = odf::read_view_box(node)) {
+    if (const std::optional<ViewBox> view_box = odf::read_view_box(node);
+        view_box.has_value()) {
       data->x = view_box->x;
       data->y = view_box->y;
       data->width = view_box->width;

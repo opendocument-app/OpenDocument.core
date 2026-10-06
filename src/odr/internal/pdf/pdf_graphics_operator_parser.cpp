@@ -313,7 +313,8 @@ GraphicsOperatorParser::read_inline_image_data(const Dictionary &dictionary) {
   // contain `E I <white-space>`, which the scan below would mistake for the
   // real `EI`, truncating the image and derailing the rest of the page.
   if (const std::optional<std::size_t> length =
-          inline_image_raw_length(dictionary)) {
+          inline_image_raw_length(dictionary);
+      length.has_value()) {
     std::string data;
     for (std::size_t i = 0; i < *length; ++i) {
       const int_type c = m_parser.geti();

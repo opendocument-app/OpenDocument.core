@@ -47,7 +47,8 @@ void move_ref(pugi::xml_node formula, const std::string &sheet,
               const formula::SheetEdit &edit) {
   if (pugi::xml_attribute ref = formula.attribute("ref")) {
     if (const std::optional<std::string> moved =
-            formula::move_addresses(ref.value(), edit, sheet, syntax)) {
+            formula::move_addresses(ref.value(), edit, sheet, syntax);
+        moved.has_value()) {
       ref.set_value(moved->c_str());
     }
   }
@@ -85,7 +86,8 @@ void move_anchored_formulas(const std::string &sqref,
     if (stays == anchor) {
       move_text(text, edit.sheet, edit);
     } else if (const std::optional<formula::Node> expression =
-                   formula::parse(text.text().get(), syntax)) {
+                   formula::parse(text.text().get(), syntax);
+               expression.has_value()) {
       formula::Node moved = shifted(*expression, anchor, stays);
       formula::move_references(moved, edit, edit.sheet);
       text.text().set(formula::to_string(moved, syntax).c_str());
@@ -170,7 +172,8 @@ void move_extensions(const NamedWorksheet &worksheet, const bool edited,
       }
       move_anchored_formulas(sqref.text().get(), formulas, edit);
       if (const std::optional<std::string> moved = formula::move_addresses(
-              sqref.text().get(), edit, edit.sheet, syntax)) {
+              sqref.text().get(), edit, edit.sheet, syntax);
+          moved.has_value()) {
         if (moved->empty()) {
           lost.push_back(rule);
         } else {
@@ -194,7 +197,8 @@ void move_extensions(const NamedWorksheet &worksheet, const bool edited,
       continue;
     }
     if (const std::optional<std::string> moved = formula::move_addresses(
-            sqref.text().get(), edit, edit.sheet, syntax)) {
+            sqref.text().get(), edit, edit.sheet, syntax);
+        moved.has_value()) {
       if (moved->empty()) {
         lost.push_back(sparkline);
       } else {
@@ -308,8 +312,9 @@ void move_calc_chain(pugi::xml_node calc_chain,
       sheet_id = id.value();
     }
     if (sheet_id == edited_sheet_id) {
-      if (const std::optional<TablePosition> at = move_position(
-              TablePosition(entry.attribute("r").value()), edit)) {
+      if (const std::optional<TablePosition> at =
+              move_position(TablePosition(entry.attribute("r").value()), edit);
+          at.has_value()) {
         entry.attribute("r").set_value(at->to_string().c_str());
       } else {
         if (next && !next.attribute("i") && entry.attribute("i")) {
@@ -344,8 +349,8 @@ constexpr std::array<RangeAttribute, 8> removable_ranges{{
 std::string moved_cell(const std::string &address,
                        const formula::SheetEdit &edit) {
   const TablePosition position(address);
-  if (const std::optional<TablePosition> moved =
-          move_position(position, edit)) {
+  if (const std::optional<TablePosition> moved = move_position(position, edit);
+      moved.has_value()) {
     return moved->to_string();
   }
   return (edit.axis == formula::Axis::row
@@ -371,7 +376,7 @@ void move_filter_columns(pugi::xml_node filter,
     const pugi::xml_node next = column.next_sibling("filterColumn");
     const std::uint32_t at =
         range.from().column + column.attribute("colId").as_uint();
-    if (const auto moved = edit.span(at, at)) {
+    if (const auto moved = edit.span(at, at); moved.has_value()) {
       column.attribute("colId").set_value(moved->first - columns->first);
     } else {
       filter.remove_child(column);
@@ -387,7 +392,8 @@ void move_range(pugi::xml_node node, const formula::SheetEdit &edit) {
     return;
   }
   if (const std::optional<std::string> moved =
-          formula::move_addresses(ref.value(), edit, edit.sheet, syntax)) {
+          formula::move_addresses(ref.value(), edit, edit.sheet, syntax);
+      moved.has_value()) {
     if (moved->empty()) {
       node.parent().remove_child(node);
     } else {
@@ -433,7 +439,8 @@ void collect_ranges(const pugi::xml_node node, const formula::SheetEdit &edit,
         continue;
       }
       if (const std::optional<std::string> moved = formula::move_addresses(
-              attribute.value(), edit, edit.sheet, syntax)) {
+              attribute.value(), edit, edit.sheet, syntax);
+          moved.has_value()) {
         if (moved->empty()) {
           lost.push_back(child);
           removed = true;
@@ -449,7 +456,8 @@ void collect_ranges(const pugi::xml_node node, const formula::SheetEdit &edit,
       }
       if (pugi::xml_attribute sqref = child.attribute("sqref")) {
         if (const std::optional<std::string> moved = formula::move_addresses(
-                sqref.value(), edit, edit.sheet, syntax)) {
+                sqref.value(), edit, edit.sheet, syntax);
+            moved.has_value()) {
           if (!moved->empty()) {
             sqref.set_value(moved->c_str());
           } else if (active) {
@@ -479,7 +487,8 @@ const char *corner_axis(const formula::SheetEdit &edit) {
 /// ones that stay where a delete takes it.
 void move_corner(pugi::xml_node corner, const formula::SheetEdit &edit) {
   pugi::xml_text at = corner.child(corner_axis(edit)).text();
-  if (const auto span = edit.span(at.as_uint(), at.as_uint())) {
+  if (const auto span = edit.span(at.as_uint(), at.as_uint());
+      span.has_value()) {
     at.set(span->first);
   } else {
     at.set(edit.index);
@@ -607,7 +616,8 @@ void ooxml::spreadsheet::move_comments(const pugi::xml_node comments,
       const pugi::xml_node next = comment.next_sibling(name);
       pugi::xml_attribute ref = comment.attribute("ref");
       if (const std::optional<std::string> moved =
-              formula::move_addresses(ref.value(), edit, edit.sheet, syntax)) {
+              formula::move_addresses(ref.value(), edit, edit.sheet, syntax);
+          moved.has_value()) {
         if (moved->empty()) {
           list.remove_child(comment);
         } else {

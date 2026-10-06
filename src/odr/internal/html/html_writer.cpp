@@ -65,13 +65,13 @@ void write_attributes(std::ostream &out, const HtmlAttributes &attributes) {
 
 void write_element_options(std::ostream &out,
                            const HtmlElementOptions &options) {
-  const bool has_clazz = options.clazz && !is_empty(*options.clazz);
-  if (has_clazz || options.style_class) {
+  const bool has_clazz = options.clazz.has_value() && !is_empty(*options.clazz);
+  if (has_clazz || options.style_class.has_value()) {
     out << " class=\"";
     if (has_clazz) {
       write_writable(out, *options.clazz);
     }
-    if (options.style_class) {
+    if (options.style_class.has_value()) {
       if (has_clazz) {
         out << " ";
       }
@@ -79,15 +79,15 @@ void write_element_options(std::ostream &out,
     }
     out << "\"";
   }
-  if (options.style && !is_empty(*options.style)) {
+  if (options.style.has_value() && !is_empty(*options.style)) {
     out << " style=\"";
     write_writable(out, *options.style);
     out << "\"";
   }
-  if (options.attributes) {
+  if (options.attributes.has_value()) {
     write_attributes(out, *options.attributes);
   }
-  if (options.extra && !is_empty(*options.extra)) {
+  if (options.extra.has_value() && !is_empty(*options.extra)) {
     out << " ";
     write_writable(out, *options.extra);
   }

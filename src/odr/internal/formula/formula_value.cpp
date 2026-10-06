@@ -127,7 +127,8 @@ formula::number_of_text(const std::string_view text) {
   }
   const bool percent = trimmed.ends_with('%');
   if (const std::optional<double> number = plain_number(
-          percent ? trimmed.substr(0, trimmed.size() - 1) : trimmed)) {
+          percent ? trimmed.substr(0, trimmed.size() - 1) : trimmed);
+      number.has_value()) {
     // a point is the decimal sign of some locales only
     if (trimmed.find('.') != std::string_view::npos) {
       return std::nullopt;

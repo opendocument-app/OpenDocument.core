@@ -21,7 +21,7 @@ bool BiffReader::next_record() {
   }
 
   const std::optional header = util::byte_stream::try_read<RecordHeader>(*m_in);
-  if (!header) {
+  if (!header.has_value()) {
     if (m_in->bad() || !m_in->eof() || m_in->gcount() != 0) {
       throw std::runtime_error("xls: truncated or unreadable record header");
     }

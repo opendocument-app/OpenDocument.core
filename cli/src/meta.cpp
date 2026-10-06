@@ -29,7 +29,7 @@ int main(const int argc, char **argv) {
     DecodedFile file = open(input);
 
     if (file.password_encrypted()) {
-      if (!password) {
+      if (!password.has_value()) {
         ODR_FATAL(logger, "document encrypted but no password given");
         return 2;
       }

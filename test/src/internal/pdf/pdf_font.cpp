@@ -245,12 +245,12 @@ TEST(PdfAfm, glyph_and_code_widths) {
   EXPECT_EQ(afm_width(StandardFont::helvetica, "space"), 278.0);
   EXPECT_EQ(afm_width(StandardFont::times_roman, "A"), 722.0);
   EXPECT_EQ(afm_width(StandardFont::courier, "A"), 600.0);
-  EXPECT_FALSE(afm_width(StandardFont::helvetica, "nonexistent"));
+  EXPECT_FALSE(afm_width(StandardFont::helvetica, "nonexistent").has_value());
 
   // Built-in-encoding fallback: Symbol code 32 is space = 250; an empty slot
   // (code 0) has no width.
   EXPECT_EQ(afm_code_width(StandardFont::symbol, 32), 250.0);
-  EXPECT_FALSE(afm_code_width(StandardFont::symbol, 0));
+  EXPECT_FALSE(afm_code_width(StandardFont::symbol, 0).has_value());
 }
 
 TEST(PdfFont, advance_width_afm_fallback_via_encoding) {

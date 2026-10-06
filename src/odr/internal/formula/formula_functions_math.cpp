@@ -268,7 +268,8 @@ std::optional<Value> no_numbers(const Call &call, const Collected &collected) {
 
 Value median(const Call &call) {
   Collected collected = collect(call);
-  if (const std::optional<Value> refused = no_numbers(call, collected)) {
+  if (const std::optional<Value> refused = no_numbers(call, collected);
+      refused.has_value()) {
     return *refused;
   }
   std::vector<double> &numbers = collected.numbers;
@@ -285,7 +286,8 @@ Value median(const Call &call) {
 template <bool largest> Value kth(const Call &call) {
   expect_arguments(call, 2, 2);
   Collected collected = collect(call, 1);
-  if (const std::optional<Value> refused = no_numbers(call, collected)) {
+  if (const std::optional<Value> refused = no_numbers(call, collected);
+      refused.has_value()) {
     return *refused;
   }
   double rank = number_argument(call, 1);
@@ -435,7 +437,8 @@ Value sum_product(const Call &call) {
       products[i] *= factor;
     }
   }
-  if (const std::optional<ErrorType> error = errors.first()) {
+  if (const std::optional<ErrorType> error = errors.first();
+      error.has_value()) {
     return Value{*error};
   }
   return sum_of(call, products);

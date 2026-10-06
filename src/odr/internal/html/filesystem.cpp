@@ -260,8 +260,9 @@ public:
             "a", HtmlElementOptions()
                      .set_inline(true)
                      .set_extra(std::string(
-                         location ? link_target_attributes(uri_kind(*location))
-                                  : std::string_view()))
+                         location.has_value()
+                             ? link_target_attributes(uri_kind(*location))
+                             : std::string_view()))
                      .set_attributes(HtmlAttributesVector{
                          {"href", *href},
                          {"download", xml::escape_attribute(name)},

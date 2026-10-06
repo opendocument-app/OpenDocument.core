@@ -103,7 +103,7 @@ void parse_sheet_cell_children(ElementRegistry &registry,
     // Like LibreOffice, an unknown shared string leaves the cell empty.
     const std::optional<std::uint32_t> ref =
         read_index(node.child("v").text().get());
-    if (ref && *ref < context.shared_strings().size()) {
+    if (ref.has_value() && *ref < context.shared_strings().size()) {
       parse_any_element_children(registry, context, parent_id,
                                  context.shared_strings()[*ref]);
     }
@@ -134,7 +134,7 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
         read_index(col_node.attribute("min").value());
     const std::optional<std::uint32_t> max =
         read_index(col_node.attribute("max").value());
-    if (!min || !max || *min == 0 || *max < *min) {
+    if (!min.has_value() || !max.has_value() || *min == 0 || *max < *min) {
       continue;
     }
     sheet.register_column(*min - 1, *max - 1, col_node);
@@ -149,13 +149,13 @@ parse_sheet_element(ElementRegistry &registry, const ParseContext &context,
     const std::optional<std::uint32_t> stated =
         row_attribute ? read_index(row_attribute.value()) : std::nullopt;
     const std::uint64_t row_number =
-        stated && *stated != 0 ? *stated : next_row;
+        stated.has_value() && *stated != 0 ? *stated : next_row;
     if (row_number > std::numeric_limits<std::uint32_t>::max()) {
       throw std::runtime_error("invalid spreadsheet row");
     }
     const std::uint32_t row = static_cast<std::uint32_t>(row_number - 1);
     next_row = row_number + 1;
-    if (!stated || *stated != row_number) {
+    if (!stated.has_value() || *stated != row_number) {
       if (!row_attribute) {
         row_attribute = row_node.append_attribute("r");
       }

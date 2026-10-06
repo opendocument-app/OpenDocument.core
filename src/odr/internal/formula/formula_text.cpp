@@ -68,7 +68,8 @@ std::optional<char16_t> mapped(const char16_t c, const bool to_upper) {
         {0x14A, 0x177, false},
         {0x179, 0x17E, true}}) {
     if (const std::optional<char16_t> other =
-            alternating(c, first, last, parity, to_upper)) {
+            alternating(c, first, last, parity, to_upper);
+        other.has_value()) {
       return other;
     }
   }

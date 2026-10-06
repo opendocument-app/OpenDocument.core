@@ -245,7 +245,8 @@ public:
     CellValue result = CellValue(sheet_cell_value_type(element_id));
     if (result.type() == ValueType::float_number) {
       if (const std::optional<double> number = util::number::parse(
-              m_document->cell(column_of(element_id), row_of(element_id)))) {
+              m_document->cell(column_of(element_id), row_of(element_id)));
+          number.has_value()) {
         result = result.with_number(*number);
       }
     }

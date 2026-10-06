@@ -87,7 +87,7 @@ std::string ListCounter::advance(const std::uint32_t level,
   if (number == std::numeric_limits<std::uint32_t>::max()) {
     throw std::overflow_error("List counter overflow");
   }
-  number = number ? *number + 1 : list_level.start;
+  number = number.has_value() ? *number + 1 : list_level.start;
   m_formats[level] = list_level.format;
   std::ranges::fill(m_numbers |
                         std::views::drop(static_cast<std::size_t>(level) + 1),

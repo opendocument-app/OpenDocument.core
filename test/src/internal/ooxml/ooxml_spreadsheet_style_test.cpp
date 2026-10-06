@@ -45,7 +45,7 @@ std::string fill_of(const std::string &fill) {
   const ResolvedStyle style =
       resolve("", "<fill>" + fill + "</fill>", R"(<xf fillId="0"/>)");
   const std::optional<Color> color = style.table_cell_style.background_color;
-  return color ? internal::html::color(*color) : "none";
+  return color.has_value() ? internal::html::color(*color) : "none";
 }
 
 TextStyle font_of(const std::string &font) {

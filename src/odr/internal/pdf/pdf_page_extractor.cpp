@@ -875,7 +875,7 @@ void show_type3(std::vector<PageElement> &out, const Resources &resources,
     ++i;
 
     const std::string_view name =
-        font->encoding
+        font->encoding.has_value()
             ? font->encoding->glyph_name(static_cast<std::uint8_t>(code))
             : std::string_view{};
     const auto it = name.empty() ? type3.char_procs.end()
@@ -919,7 +919,7 @@ void run_content(const std::string &content, const Resources &resources,
   // Route a shown string through the Type3 char-proc renderer or the normal
   // text path, by the font kind.
   const auto show_run = [&](const std::string &codes, Font *font) {
-    if (font != nullptr && font->type3) {
+    if (font != nullptr && font->type3.has_value()) {
       show_type3(out, resources, state, logger, warned, active, marked, pen,
                  codes, font, *font->type3);
     } else {

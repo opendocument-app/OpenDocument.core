@@ -47,10 +47,12 @@ TEST(OdfNumberFormat, a_number_style_is_its_placeholders) {
               R"(<number:text> k</number:text></number:number-style>)"),
       "00.0##,\" k\"");
   for (const std::string factor : {"100", "inf", "1e999", "0"}) {
-    EXPECT_FALSE(code_of(
-        "<number:number-style><number:number number:decimal-places=\"2\" "
-        "number:display-factor=\"" +
-        factor + "\"/></number:number-style>"));
+    EXPECT_FALSE(
+        code_of(
+            "<number:number-style><number:number number:decimal-places=\"2\" "
+            "number:display-factor=\"" +
+            factor + "\"/></number:number-style>")
+            .has_value());
   }
 }
 
@@ -123,7 +125,7 @@ TEST(OdfNumberFormat, placeholder_counts_are_clamped) {
                               "\"/></number:number-style>";
       SCOPED_TRACE(xml);
       const auto code = code_of(xml);
-      ASSERT_TRUE(code);
+      ASSERT_TRUE(code.has_value());
       EXPECT_LE(code->size(), 4096 + 16);
     }
   }

@@ -21,7 +21,8 @@ std::optional<formula::Value> value_of(const CellValue &value,
   if (value.has_formula() && value.type() == ValueType::float_number &&
       value.has_text()) {
     if (const std::optional<formula::ErrorType> error =
-            formula::error_of_text(value.text())) {
+            formula::error_of_text(value.text());
+        error.has_value()) {
       return Value{*error};
     }
     if (value.text().starts_with('#') || value.text().starts_with("Err:")) {
@@ -55,7 +56,8 @@ std::optional<formula::Value> value_of(const CellValue &value,
   case ValueType::error:
     if (const std::optional<formula::ErrorType> error =
             value.has_text() ? formula::error_of_text(value.text())
-                             : std::nullopt) {
+                             : std::nullopt;
+        error.has_value()) {
       return Value{*error};
     }
     return std::nullopt;
@@ -129,7 +131,8 @@ TableDimensions SheetCellSource::extent(const std::uint32_t sheet) const {
   }
   // the stated cells, a formula without a result too, which shows no content
   TableDimensions extent;
-  if (const std::optional<std::vector<RowBand>> &sheet_bands = bands(sheet)) {
+  if (const std::optional<std::vector<RowBand>> &sheet_bands = bands(sheet);
+      sheet_bands.has_value()) {
     for (const RowBand &band : *sheet_bands) {
       extent.rows = std::max(extent.rows, band.end_row);
       for (const CellRun &run : band.cells) {

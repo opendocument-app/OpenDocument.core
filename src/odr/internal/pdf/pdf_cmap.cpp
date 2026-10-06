@@ -121,7 +121,8 @@ std::string CMap::translate_string(const std::string &codes,
     const std::string code = codes.substr(pos, width);
     pos += width;
 
-    if (const std::optional<std::u16string> unicode = unicode_for_code(code)) {
+    if (const std::optional<std::u16string> unicode = unicode_for_code(code);
+        unicode.has_value()) {
       result += *unicode;
       continue;
     }
@@ -130,7 +131,8 @@ std::string CMap::translate_string(const std::string &codes,
     // `<0020>` distinct.
     if (fixed_width == 1) {
       if (const std::optional<std::u16string> unicode =
-              unicode_for_code(std::string(1, '\0') + code)) {
+              unicode_for_code(std::string(1, '\0') + code);
+          unicode.has_value()) {
         result += *unicode;
         continue;
       }

@@ -201,9 +201,9 @@ std::string html::translate_text_style(const TextStyle &text_style) {
   }
   // one declaration: a second `text-decoration` replaces the first
   const bool underline =
-      text_style.font_underline && *text_style.font_underline;
+      text_style.font_underline.has_value() && *text_style.font_underline;
   const bool line_through =
-      text_style.font_line_through && *text_style.font_line_through;
+      text_style.font_line_through.has_value() && *text_style.font_line_through;
   if (underline || line_through) {
     result += "text-decoration:";
     if (underline) {
