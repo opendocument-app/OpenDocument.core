@@ -5,8 +5,7 @@
 #   cmake -DASSET_DIR=<dir> -DASSETS=<name|name|…> -DOUTPUT=<header> \
 #         -P cmake/frontend_assets.cmake
 #
-# The bytes become a `char` array rather than a string literal: msvc caps a
-# literal at 16380 bytes and an array at nothing.
+# Byte arrays avoid MSVC's 16380-byte string-literal limit.
 
 cmake_minimum_required(VERSION 3.15)
 
@@ -44,11 +43,13 @@ foreach (_asset IN LISTS ASSETS)
     string(REGEX REPLACE "(..)" "'\\\\x\\1'," _bytes "${_hex}")
     string(REGEX REPLACE "(${_row_pattern})" "\\1\n    " _bytes "${_bytes}")
 
+    string(LENGTH "${_hex}" _hex_length)
+    math(EXPR _size "${_hex_length} / 2")
     string(APPEND _storage
-            "inline constexpr char ${_name}[]{\n    ${_bytes}\n};\n\n")
+            "inline constexpr std::array<char, ${_size}> ${_name}{\n    ${_bytes}\n};\n\n")
     string(APPEND _views
             "inline constexpr std::string_view ${_name}{\n"
-            "    storage::${_name}, sizeof(storage::${_name})};\n")
+            "    storage::${_name}.data(), storage::${_name}.size()};\n")
 endforeach ()
 
 set(_content "// Generated from src/odr/internal/html/frontend/ by\n\
@@ -56,6 +57,7 @@ set(_content "// Generated from src/odr/internal/html/frontend/ by\n\
 \n\
 #pragma once\n\
 \n\
+#include <array>\n\
 #include <string_view>\n\
 \n\
 namespace odr::internal::html::frontend_assets {\n\
