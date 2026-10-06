@@ -18,8 +18,6 @@
 #include <utility>
 #include <vector>
 
-#include <utf8cpp/utf8/checked.h>
-
 namespace odr::internal::iwork {
 
 namespace {
@@ -229,7 +227,7 @@ void iwork::parse_storage(const Context &context,
     text += part.bytes;
   }
 
-  if (!utf8::is_valid(text.begin(), text.end())) {
+  if (!util::string::is_valid_utf8(text)) {
     throw std::runtime_error("iwork: text storage is not UTF-8");
   }
 

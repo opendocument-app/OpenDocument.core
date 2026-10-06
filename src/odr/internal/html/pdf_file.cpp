@@ -30,8 +30,6 @@
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
-#include <utf8cpp/utf8/unchecked.h>
-
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -2082,7 +2080,7 @@ public:
     };
 
     // A leading inferred space carries no character code or advance, so the 1:1
-    // codes-to-text alignment starts after it — as `core_text_begin` views it.
+    // codes-to-text alignment starts after it — as `core_text_view` views it.
     const auto core_char_count = [](const pdf::TextElement &t) {
       return util::string::utf8_length(t.text) -
              (t.leading_space_inferred ? 1u : 0u);
@@ -2155,9 +2153,9 @@ public:
         if (core_char_count(*text) != text->advances.size()) {
           continue;
         }
-        auto cp = core_text_begin(*text);
+        auto remaining = core_text_view(*text);
         for (const std::uint32_t code : text->font->codes(text->codes)) {
-          const char32_t uchar = utf8::unchecked::next(cp);
+          const char32_t uchar = util::string::next_utf8(remaining);
           if (!collapsible_unicode(uchar)) {
             continue;
           }
@@ -2269,9 +2267,9 @@ public:
           if (collapse) {
             const std::map<char32_t, std::uint16_t> &won =
                 used_unicode[font - 1];
-            auto cp = core_text_begin(text);
+            auto remaining = core_text_view(text);
             for (const std::uint32_t code : text.font->codes(text.codes)) {
-              const char32_t uchar = utf8::unchecked::next(cp);
+              const char32_t uchar = util::string::next_utf8(remaining);
               const std::uint16_t glyph = text.font->glyph_for_code(code);
               const auto it = won.find(uchar);
               if (!collapsible_unicode(uchar) || it == won.end() ||
@@ -2288,8 +2286,7 @@ public:
             // gap as its width (pdf2htmlEX's model: one real space that is both
             // the copyable character and the advance), else it is zero-width.
             run.lead_space = text.leading_space_inferred;
-            run.text = escape_markup(
-                std::string(core_text_begin(text), text.text.end()));
+            run.text = escape_markup(core_text(text));
           } else {
             run.glyph_data = glyph_run_str(*text.font, text.codes);
             run.text = escape_markup(text.text); // overlay (empty=no_unicode)
@@ -3069,17 +3066,13 @@ public:
   }
 
   /// `text.text` past an inferred leading space, which backs no advance.
-  static std::string::const_iterator
-  core_text_begin(const pdf::TextElement &text) {
-    auto cp = text.text.begin();
-    if (text.leading_space_inferred) {
-      utf8::unchecked::next(cp); // skip the one-byte U+0020
-    }
-    return cp;
+  static std::string_view core_text_view(const pdf::TextElement &text) {
+    return std::string_view(text.text).substr(text.leading_space_inferred ? 1
+                                                                          : 0);
   }
 
   static std::string core_text(const pdf::TextElement &text) {
-    return std::string(core_text_begin(text), text.text.end());
+    return std::string(core_text_view(text));
   }
 
   /// Escapes only the three markup-significant characters. Deliberately *not*

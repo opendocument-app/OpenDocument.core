@@ -5,6 +5,7 @@
 #include <odr/internal/iwork/iwork_protobuf.hpp>
 #include <odr/internal/iwork/iwork_types.hpp>
 #include <odr/internal/util/byte_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <array>
@@ -19,7 +20,6 @@
 #include <unordered_map>
 
 #include <fmt/format.h>
-#include <utf8cpp/utf8/checked.h>
 
 namespace odr::internal::iwork {
 
@@ -190,7 +190,7 @@ read_cell(const std::string_view record, const std::uint32_t row,
     }
     result.text = std::string(it->second.bytes_field(data_list_entry::string)
                                   .value_or(std::string_view()));
-    if (!utf8::is_valid(result.text.begin(), result.text.end())) {
+    if (!util::string::is_valid_utf8(result.text)) {
       throw std::runtime_error("iwork: cell text is not UTF-8");
     }
     result.value_type = ValueType::string;

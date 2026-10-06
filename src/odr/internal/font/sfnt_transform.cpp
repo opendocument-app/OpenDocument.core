@@ -15,8 +15,6 @@
 #include <string_view>
 #include <utility>
 
-#include <utf8cpp/utf8/cpp17.h>
-
 namespace odr::internal::font {
 
 namespace {
@@ -292,7 +290,8 @@ std::string font::serialize_cmap(const std::map<char32_t, std::uint16_t> &map) {
 std::string font::serialize_name(const std::string &font_name) {
   // A CFF name may hold any bytes, and the UTF-16 conversion throws on them.
   const std::string family =
-      font_name.empty() ? "ODR Font" : utf8::replace_invalid(font_name);
+      font_name.empty() ? "ODR Font"
+                        : util::string::replace_invalid_utf8(font_name);
   const auto utf16be = [](const std::string &value) {
     std::string out;
     for (const char16_t c : util::string::string_to_u16string(value)) {
