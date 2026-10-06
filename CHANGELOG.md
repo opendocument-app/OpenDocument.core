@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Embedded PDF CMaps skip comments, retain commands at end of stream, skip a
+  block with an invalid record count and validate CID bounds. Later CID ranges
+  override earlier ones.
+
 - PDF predefined CMaps preserve inherited character mappings after local
   overrides, restoring text previously lost from vertical CJK fonts.
 

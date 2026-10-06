@@ -24,10 +24,11 @@ TEST(PdfCMap, bfchar_single_byte) {
   CMap cmap = parse("1 begincodespacerange\n"
                     "<00> <FF>\n"
                     "endcodespacerange\n"
-                    "2 beginbfchar\n"
-                    "<41> <0041>\n"
+                    "% 99 beginbfchar ignored comment\n"
+                    "2 beginbfchar% adjacent comment\n"
+                    "<41> % comment between operands\n<0041>\n"
                     "<42> <0042>\n"
-                    "endbfchar\n");
+                    "endbfchar\nendcmap\n3 ><0S");
 
   EXPECT_EQ(cmap.translate_string("\x41\x42"), "AB");
 }
@@ -219,6 +220,7 @@ TEST(PdfCMap, usecmap_disables_local_codespace_authority) {
                     "<20> 1\n"
                     "endcidchar\n");
 
+  EXPECT_TRUE(parse("/Identity-H usecmap").inherits_external_cmap());
   EXPECT_TRUE(cmap.inherits_external_cmap());
   // The partial local codespace is no longer authoritative.
   EXPECT_FALSE(cmap.has_codespace());
@@ -268,4 +270,33 @@ TEST(PdfCMap, imposed_code_width_keeps_a_mixed_codespace_distinct) {
 
   EXPECT_EQ(cmap.translate_string("\x20"), "A");
   EXPECT_EQ(cmap.translate_string("\x21\x20"), "B");
+}
+
+TEST(PdfCMap, an_invalid_record_count_skips_its_block) {
+  for (const std::string count : {"-1", "4294967296", "1.5", "1 pop", ""}) {
+    SCOPED_TRACE(count);
+    const CMap cmap = parse(count + " beginbfchar <41> <0058> endbfchar\n"
+                                    "1 beginbfchar <42> <0059> endbfchar");
+    // the skipped code falls back to itself
+    EXPECT_EQ(cmap.translate_string("\x41\x42"), "AY");
+  }
+}
+
+TEST(PdfCMap, validates_cid_ranges_and_later_overrides) {
+  const CMap cmap = parse("5 begincidchar "
+                          "<01> -1 <02> 65536 <03> 4294967296 "
+                          "<04> 0 <05> 65535 endcidchar "
+                          "5 begincidrange "
+                          "<10> <11> -1 <20> <21> 65535 "
+                          "<30> <31> 4294967296 <40> <42> 100 "
+                          "<41> <41> 65535 endcidrange");
+  for (const std::string code :
+       {"\x01", "\x02", "\x03", "\x10", "\x20", "\x30"}) {
+    EXPECT_FALSE(cmap.cid_for_code(code).has_value());
+  }
+  EXPECT_EQ(cmap.cid_for_code("\x04"), 0u);
+  EXPECT_EQ(cmap.cid_for_code("\x05"), 65535u);
+  EXPECT_EQ(cmap.cid_for_code("\x40"), 100u);
+  EXPECT_EQ(cmap.cid_for_code("\x41"), 65535u);
+  EXPECT_EQ(cmap.cid_for_code("\x42"), 102u);
 }

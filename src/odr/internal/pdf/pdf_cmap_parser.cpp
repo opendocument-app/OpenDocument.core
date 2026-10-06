@@ -5,6 +5,8 @@
 #include <odr/logger.hpp>
 
 #include <cstdint>
+#include <limits>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 
@@ -104,18 +106,24 @@ std::variant<Object, std::string> CMapParser::read_token() {
     if (ObjectParser::is_whitespace(c)) {
       return token;
     }
+    if (ObjectParser::is_delimiter(c)) {
+      if (token.empty()) {
+        token += m_parser.bumpc();
+      }
+      return token;
+    }
     m_parser.bumpc();
     token += c;
   }
 }
 
 void CMapParser::read_codespacerange(const std::uint32_t n, CMap &cmap) {
-  m_parser.skip_whitespace();
+  m_parser.skip_whitespace_and_comments();
   for (std::uint32_t i = 0; i < n; ++i) {
     std::string low = m_parser.read_object().as_string();
-    m_parser.skip_whitespace();
+    m_parser.skip_whitespace_and_comments();
     std::string high = m_parser.read_object().as_string();
-    m_parser.skip_whitespace();
+    m_parser.skip_whitespace_and_comments();
 
     if (low.size() != high.size() || !valid_code_width(low.size())) {
       ODR_WARNING(m_logger, "pdf: skipping out-of-spec codespace range (low "
@@ -128,12 +136,12 @@ void CMapParser::read_codespacerange(const std::uint32_t n, CMap &cmap) {
 }
 
 void CMapParser::read_bfchar(const std::uint32_t n, CMap &cmap) {
-  m_parser.skip_whitespace();
+  m_parser.skip_whitespace_and_comments();
   for (std::uint32_t i = 0; i < n; ++i) {
     std::string code = m_parser.read_object().as_string();
-    m_parser.skip_whitespace();
+    m_parser.skip_whitespace_and_comments();
     std::string destination = m_parser.read_object().as_string();
-    m_parser.skip_whitespace();
+    m_parser.skip_whitespace_and_comments();
 
     if (!valid_code_width(code.size()) || destination.size() % 2 != 0) {
       ODR_WARNING(m_logger, "pdf: skipping malformed bfchar entry (code "
@@ -146,14 +154,14 @@ void CMapParser::read_bfchar(const std::uint32_t n, CMap &cmap) {
 }
 
 void CMapParser::read_bfrange(const std::uint32_t n, CMap &cmap) {
-  m_parser.skip_whitespace();
+  m_parser.skip_whitespace_and_comments();
   for (std::uint32_t i = 0; i < n; ++i) {
     std::string low = m_parser.read_object().as_string();
-    m_parser.skip_whitespace();
+    m_parser.skip_whitespace_and_comments();
     std::string high = m_parser.read_object().as_string();
-    m_parser.skip_whitespace();
+    m_parser.skip_whitespace_and_comments();
     Object destination = m_parser.read_object();
-    m_parser.skip_whitespace();
+    m_parser.skip_whitespace_and_comments();
 
     if (low.size() != high.size() || !valid_code_width(low.size())) {
       ODR_WARNING(m_logger, "pdf: skipping out-of-spec bfrange (low "
@@ -217,35 +225,37 @@ void CMapParser::read_bfrange(const std::uint32_t n, CMap &cmap) {
 }
 
 void CMapParser::read_cidchar(const std::uint32_t n, CMap &cmap) {
-  m_parser.skip_whitespace();
+  m_parser.skip_whitespace_and_comments();
   for (std::uint32_t i = 0; i < n; ++i) {
     std::string code = m_parser.read_object().as_string();
-    m_parser.skip_whitespace();
+    m_parser.skip_whitespace_and_comments();
     const Object cid = m_parser.read_object();
-    m_parser.skip_whitespace();
+    m_parser.skip_whitespace_and_comments();
 
-    if (!valid_code_width(code.size()) || !cid.is_integer()) {
+    const auto value = cid.as_integer_opt();
+    if (!valid_code_width(code.size()) || !value.has_value() || *value < 0 ||
+        *value > 65535) {
       ODR_WARNING(m_logger, "pdf: skipping malformed cidchar entry (code "
                                 << code.size() << " bytes)");
       continue; // skip a malformed mapping, keep the rest of the CMap
     }
-    cmap.map_cid_char(std::move(code),
-                      static_cast<std::uint32_t>(cid.as_integer()));
+    cmap.map_cid_char(std::move(code), static_cast<std::uint32_t>(*value));
   }
 }
 
 void CMapParser::read_cidrange(const std::uint32_t n, CMap &cmap) {
-  m_parser.skip_whitespace();
+  m_parser.skip_whitespace_and_comments();
   for (std::uint32_t i = 0; i < n; ++i) {
     std::string low = m_parser.read_object().as_string();
-    m_parser.skip_whitespace();
+    m_parser.skip_whitespace_and_comments();
     std::string high = m_parser.read_object().as_string();
-    m_parser.skip_whitespace();
+    m_parser.skip_whitespace_and_comments();
     const Object cid = m_parser.read_object();
-    m_parser.skip_whitespace();
+    m_parser.skip_whitespace_and_comments();
 
+    const auto value = cid.as_integer_opt();
     if (low.size() != high.size() || !valid_code_width(low.size()) ||
-        !cid.is_integer()) {
+        !value.has_value() || *value < 0 || *value > 65535) {
       ODR_WARNING(m_logger, "pdf: skipping out-of-spec cidrange (low "
                                 << low.size() << " bytes, high " << high.size()
                                 << " bytes)");
@@ -259,11 +269,12 @@ void CMapParser::read_cidrange(const std::uint32_t n, CMap &cmap) {
                                 << high_code << ")");
       continue; // a reversed range would map codes to nonsense CIDs
     }
-    // Unlike a `bfrange`, a `cidrange` commonly spans the whole 2-byte code
-    // space (the identity block), so it is stored as a range rather than
-    // materialized code-by-code; no per-range span cap is needed.
-    cmap.add_cid_range(low_code, high_code,
-                       static_cast<std::uint32_t>(cid.as_integer()),
+    // CID values are limited to 65535 (ISO 32000-1 Annex C, Table C.1).
+    if (high_code - low_code > 65535 - static_cast<std::uint32_t>(*value)) {
+      ODR_WARNING(m_logger, "pdf: skipping CID range past 65535");
+      continue;
+    }
+    cmap.add_cid_range(low_code, high_code, static_cast<std::uint32_t>(*value),
                        low.size());
   }
 }
@@ -271,32 +282,41 @@ void CMapParser::read_cidrange(const std::uint32_t n, CMap &cmap) {
 CMap CMapParser::parse_cmap() {
   CMap cmap;
 
-  std::uint32_t last_int{};
-
-  m_parser.skip_whitespace();
+  std::optional<std::int64_t> last_int;
   while (true) {
-    Token token = read_token();
-    if (in().eof()) {
+    m_parser.skip_whitespace_and_comments();
+    if (m_parser.geti() == eof) {
       break;
     }
-    m_parser.skip_whitespace();
-
-    if (std::holds_alternative<Object>(token)) {
-      if (const Object &object = std::get<Object>(token); object.is_integer()) {
-        last_int = object.as_integer();
-      }
-    } else if (std::holds_alternative<std::string>(token)) {
+    const Token token = read_token();
+    if (const auto *object = std::get_if<Object>(&token)) {
+      last_int = object->as_integer_opt();
+    } else {
+      // A bad count loses only its own block: the records then pass through
+      // this loop as operands.
+      const auto read_records =
+          [&](void (CMapParser::*read)(std::uint32_t, CMap &)) {
+            if (!last_int.has_value() || *last_int < 0 ||
+                *last_int > std::numeric_limits<std::uint32_t>::max()) {
+              ODR_WARNING(m_logger, "pdf: skipping CMap block with an invalid "
+                                    "record count");
+              return;
+            }
+            (this->*read)(static_cast<std::uint32_t>(*last_int), cmap);
+          };
       if (const std::string &command = std::get<std::string>(token);
           command == "begincodespacerange") {
-        read_codespacerange(last_int, cmap);
+        read_records(&CMapParser::read_codespacerange);
       } else if (command == "beginbfchar") {
-        read_bfchar(last_int, cmap);
+        read_records(&CMapParser::read_bfchar);
       } else if (command == "beginbfrange") {
-        read_bfrange(last_int, cmap);
+        read_records(&CMapParser::read_bfrange);
       } else if (command == "begincidchar") {
-        read_cidchar(last_int, cmap);
+        read_records(&CMapParser::read_cidchar);
       } else if (command == "begincidrange") {
-        read_cidrange(last_int, cmap);
+        read_records(&CMapParser::read_cidrange);
+      } else if (command == "endcmap") {
+        break;
       } else if (command == "usecmap") {
         // `/BaseCMap usecmap` inherits another CMap (ISO 32000-1 9.7.5.3).
         // We do not resolve the base, so what is declared locally may be an
@@ -307,6 +327,7 @@ CMap CMapParser::parse_cmap() {
                     "pdf: unresolved 'usecmap'; local codespace not treated as "
                     "authoritative");
       }
+      last_int.reset();
     }
   }
 
