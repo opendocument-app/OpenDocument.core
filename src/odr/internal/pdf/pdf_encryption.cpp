@@ -195,7 +195,7 @@ std::optional<EncryptionMethod> cfm_method(const std::string &cfm) {
   if (cfm == "AESV3") {
     return EncryptionMethod::aes_v3;
   }
-  if (cfm == "Identity") {
+  if (cfm == "None" || cfm == "Identity") {
     return EncryptionMethod::none;
   }
   return std::nullopt;
@@ -216,6 +216,10 @@ std::optional<EncryptionMethod> resolve_crypt_filter(const Dictionary &encrypt,
     return std::nullopt;
   }
   const Dictionary &filter = cf[name].as_dictionary();
+  // ISO 32000-1 Table 25: an omitted CFM defaults to None.
+  if (filter.get("CFM").is_null()) {
+    return EncryptionMethod::none;
+  }
   if (!filter.get("CFM").is_name()) {
     return std::nullopt;
   }
@@ -307,15 +311,17 @@ Authenticator::authenticate(const std::string &password) const {
     // ISO 32000-2 Algorithms 11/12: validate against the salts in /U and /O,
     // then unwrap the file key from /UE or /OE with AES-256-CBC (zero IV).
     const std::string zero_iv(aes_block, '\0');
+    // Algorithm 2.A: only the first 127 bytes of the UTF-8 password count.
+    const std::string truncated = password.substr(0, 127);
 
-    if (hash_r6(password, m_u.substr(32, 8), {}) == m_u.substr(0, 32)) {
-      const std::string ik = hash_r6(password, m_u.substr(40, 8), {});
+    if (hash_r6(truncated, m_u.substr(32, 8), {}) == m_u.substr(0, 32)) {
+      const std::string ik = hash_r6(truncated, m_u.substr(40, 8), {});
       std::string key = crypto::util::decrypt_aes_cbc(ik, zero_iv, m_ue);
       return Decryptor(std::move(key), m_stream_method, m_string_method);
     }
     const std::string u48 = m_u.substr(0, 48);
-    if (hash_r6(password, m_o.substr(32, 8), u48) == m_o.substr(0, 32)) {
-      const std::string ik = hash_r6(password, m_o.substr(40, 8), u48);
+    if (hash_r6(truncated, m_o.substr(32, 8), u48) == m_o.substr(0, 32)) {
+      const std::string ik = hash_r6(truncated, m_o.substr(40, 8), u48);
       std::string key = crypto::util::decrypt_aes_cbc(ik, zero_iv, m_oe);
       return Decryptor(std::move(key), m_stream_method, m_string_method);
     }

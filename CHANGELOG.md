@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF authentication accepts named crypt filters with an explicit or default
+  `None` method, and applies the 127-byte password limit for AES-256 revision 6.
+
 - Spreadsheet recalculation recognizes STDEV.S, STDEV.P, VAR.S, and VAR.P,
   including their Excel and LibreOffice compatibility prefixes.
 
