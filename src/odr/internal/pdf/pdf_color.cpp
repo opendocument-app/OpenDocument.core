@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 
 namespace odr::internal::pdf {
@@ -60,7 +61,8 @@ std::vector<double> read_numbers(const Object &object) {
 /// Resolve a colour-space name to a device/pattern space, or a resource space
 /// via `context.named`.
 std::shared_ptr<ColorSpaceDef> space_from_name(const std::string &name,
-                                               const ColorSpaceContext &ctx) {
+                                               const ColorSpaceContext &ctx,
+                                               const std::uint32_t depth) {
   if (name == "DeviceGray" || name == "G") {
     return device_space(ColorSpaceKind::device_gray, 1);
   }
@@ -74,7 +76,7 @@ std::shared_ptr<ColorSpaceDef> space_from_name(const std::string &name,
     return device_space(ColorSpaceKind::pattern, 1);
   }
   if (ctx.named) {
-    return ctx.named(name);
+    return ctx.named(name, depth + 1);
   }
   return nullptr;
 }
@@ -118,11 +120,11 @@ ColorSpaceDef::to_rgb(const std::span<const double> c) const {
       return {0, 0, 0};
     }
     const std::int32_t n = base->components;
-    const auto index = static_cast<std::int32_t>(std::lround(at(0)));
-    // `std::clamp` is undefined for hi < lo, so a negative `/HiVal` (malformed)
-    // must not reach it.
-    const auto offset = static_cast<std::size_t>(std::clamp<std::int32_t>(
-                            index, 0, std::max(hival, 0))) *
+    if (n <= 0 || hival < 0 || hival > 255 || !std::isfinite(at(0))) {
+      return {0, 0, 0};
+    }
+    const double index = std::clamp(at(0), 0.0, static_cast<double>(hival));
+    const auto offset = static_cast<std::size_t>(std::lround(index)) *
                         static_cast<std::size_t>(n);
     std::vector<double> base_components(static_cast<std::size_t>(n), 0.0);
     for (std::int32_t j = 0; j < n; ++j) {
@@ -219,11 +221,15 @@ std::array<double, 3> pdf::cmyk_to_rgb(const double c, const double m,
 }
 
 std::shared_ptr<pdf::ColorSpaceDef>
-pdf::parse_color_space(const Object &object, const ColorSpaceContext &context) {
+pdf::parse_color_space(const Object &object, const ColorSpaceContext &context,
+                       const std::uint32_t depth) {
+  if (depth >= 64) {
+    return nullptr;
+  }
   const Object resolved = context.resolve(object);
 
   if (resolved.is_name()) {
-    return space_from_name(resolved.as_name(), context);
+    return space_from_name(resolved.as_name(), context, depth);
   }
   if (!resolved.is_array() || resolved.as_array().empty()) {
     return nullptr;
@@ -243,14 +249,25 @@ pdf::parse_color_space(const Object &object, const ColorSpaceContext &context) {
     auto def = std::make_shared<ColorSpaceDef>();
     def->kind = ColorSpaceKind::icc_based;
     const Object stream_dict = context.resolve(array[1]);
-    if (stream_dict.is_dictionary()) {
-      const Dictionary &dict = stream_dict.as_dictionary();
-      def->components =
-          dict.get("N").is_integer()
-              ? static_cast<std::int32_t>(dict.get("N").as_integer())
-              : 3;
-      if (dict.has_value("Alternate")) {
-        def->alternate = parse_color_space(dict.get("Alternate"), context);
+    if (!stream_dict.is_dictionary()) {
+      return nullptr;
+    }
+    const Dictionary &dict = stream_dict.as_dictionary();
+    const Object count = context.resolve(dict.get("N"));
+    if (!count.is_integer() ||
+        (count.as_integer() != 1 && count.as_integer() != 3 &&
+         count.as_integer() != 4)) {
+      return nullptr;
+    }
+    def->components = static_cast<std::int32_t>(count.as_integer());
+    if (dict.has_value("Alternate")) {
+      def->alternate =
+          parse_color_space(dict.get("Alternate"), context, depth + 1);
+      // an alternate that cannot stand in leaves the device space `N` names
+      if (def->alternate != nullptr &&
+          (def->alternate->kind == ColorSpaceKind::pattern ||
+           def->alternate->components != def->components)) {
+        def->alternate = nullptr;
       }
     }
     return def;
@@ -288,40 +305,54 @@ pdf::parse_color_space(const Object &object, const ColorSpaceContext &context) {
     auto def = std::make_shared<ColorSpaceDef>();
     def->kind = ColorSpaceKind::indexed;
     def->components = 1;
-    def->base = parse_color_space(array[1], context);
-    def->hival =
-        static_cast<std::int32_t>(context.resolve(array[2]).as_integer());
+    def->base = parse_color_space(array[1], context, depth + 1);
+    const Object high = context.resolve(array[2]);
+    if (def->base == nullptr || def->base->kind == ColorSpaceKind::indexed ||
+        def->base->kind == ColorSpaceKind::pattern || !high.is_integer() ||
+        high.as_integer() < 0 || high.as_integer() > 255) {
+      return nullptr;
+    }
+    def->hival = static_cast<std::int32_t>(high.as_integer());
     const Object lookup = context.resolve(array[3]);
     if (lookup.is_string()) {
       def->lookup = lookup.as_string();
     } else {
       def->lookup = context.load_stream(array[3]);
     }
+    // a short palette reads its missing bytes as 0
     return def;
   }
-  if (family == "Separation") {
+  if (family == "Separation" || family == "DeviceN") {
     if (array.size() < 4) {
       return nullptr;
     }
     auto def = std::make_shared<ColorSpaceDef>();
-    def->kind = ColorSpaceKind::separation;
-    def->components = 1;
-    def->alternate = parse_color_space(array[2], context);
-    def->tint = parse_function(
-        array[3], FunctionContext{context.resolve, context.load_stream});
-    return def;
-  }
-  if (family == "DeviceN") {
-    if (array.size() < 4) {
-      return nullptr;
-    }
-    auto def = std::make_shared<ColorSpaceDef>();
-    def->kind = ColorSpaceKind::device_n;
     const Object names = context.resolve(array[1]);
-    def->components = names.is_array()
-                          ? static_cast<std::int32_t>(names.as_array().size())
-                          : 1;
-    def->alternate = parse_color_space(array[2], context);
+    if (family == "Separation") {
+      if (!names.is_name()) {
+        return nullptr;
+      }
+      def->kind = ColorSpaceKind::separation;
+      def->components = 1;
+    } else {
+      if (!names.is_array() || names.as_array().empty() ||
+          names.as_array().size() >
+              static_cast<std::size_t>(
+                  std::numeric_limits<std::int32_t>::max())) {
+        return nullptr;
+      }
+      for (const Object &name : names.as_array()) {
+        if (!context.resolve(name).is_name()) {
+          return nullptr;
+        }
+      }
+      def->kind = ColorSpaceKind::device_n;
+      def->components = static_cast<std::int32_t>(names.as_array().size());
+    }
+    def->alternate = parse_color_space(array[2], context, depth + 1);
+    if (def->alternate == nullptr) {
+      return nullptr;
+    }
     def->tint = parse_function(
         array[3], FunctionContext{context.resolve, context.load_stream});
     return def;
@@ -329,7 +360,11 @@ pdf::parse_color_space(const Object &object, const ColorSpaceContext &context) {
   if (family == "Pattern") {
     auto def = device_space(ColorSpaceKind::pattern, 1);
     if (array.size() >= 2) {
-      def->base = parse_color_space(array[1], context);
+      def->base = parse_color_space(array[1], context, depth + 1);
+      if (def->base == nullptr || def->base->kind == ColorSpaceKind::pattern) {
+        return nullptr;
+      }
+      def->components = def->base->components;
     }
     return def;
   }

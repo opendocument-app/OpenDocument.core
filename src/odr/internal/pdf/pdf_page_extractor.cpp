@@ -527,7 +527,8 @@ resolve_inline_color_space(const Object &color_space,
   context.resolve = [](const Object &o) { return o; };
   context.load_stream = [](const Object &) { return std::string{}; };
   context.named =
-      [&resources](const std::string &name) -> std::shared_ptr<ColorSpaceDef> {
+      [&resources](const std::string &name,
+                   std::uint32_t) -> std::shared_ptr<ColorSpaceDef> {
     const auto it = resources.color_space.find(name);
     return it != resources.color_space.end() ? it->second : nullptr;
   };

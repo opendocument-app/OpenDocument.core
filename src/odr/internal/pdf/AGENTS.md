@@ -164,6 +164,11 @@ above. So each run is raised by one font ascent:
   and 64 nested calls. Invalid operands or results use the existing zero-result
   fallback, before range clipping. ISO 32000-1 7.10.5 requires at least 100
   stack entries; the larger bound accommodates ordinary tint transforms.
+- Colour-space parsing carries a 64-level bound through arrays and named
+  resource aliases. Invalid ICC component counts, an Indexed `/HiVal` outside
+  0 to 255 and unresolved base spaces are rejected before image allocation.
+  An ICC alternate that cannot stand in is dropped for the device space `N`
+  names, and a short palette reads its missing bytes as 0.
 - CMYK is naive (no ICC) and overprint is ignored. CIE, ICCBased, Indexed,
   Separation, DeviceN and Lab resolve to RGB at emission by sampling the tint
   `/Function` (types 0, 2, 3, 4).
