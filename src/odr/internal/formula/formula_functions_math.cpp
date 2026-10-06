@@ -306,7 +306,7 @@ template <bool largest> Value kth(const Call &call) {
 
 /// The variance of the numbers, of a sample where @p sample. LibreOffice
 /// takes the mean with `KahanSum` and each deviation with `approxSub`.
-Value variance_of(const Call &call, const bool sample, const bool root) {
+template <bool sample, bool root> Value variance_of(const Call &call) {
   const Collected collected = collect(call);
   if (collected.error.has_value()) {
     return Value{*collected.error};
@@ -662,23 +662,20 @@ constexpr std::array entries{
     FunctionEntry{"SINH", unary<hyperbolic_sine>},
     FunctionEntry{"SMALL", kth<false>},
     FunctionEntry{"SQRT", unary<square_root>},
-    FunctionEntry{
-        "STDEV",
-        [](const Call &call) { return variance_of(call, true, true); }},
-    FunctionEntry{
-        "STDEVP",
-        [](const Call &call) { return variance_of(call, false, true); }},
+    FunctionEntry{"STDEV", variance_of<true, true>},
+    FunctionEntry{"STDEV.P", variance_of<false, true>},
+    FunctionEntry{"STDEV.S", variance_of<true, true>},
+    FunctionEntry{"STDEVP", variance_of<false, true>},
     FunctionEntry{"SUM", sum},
     FunctionEntry{"SUMPRODUCT", sum_product},
     FunctionEntry{"SUMSQ", sum_of_squares},
     FunctionEntry{"TAN", unary<tangent>},
     FunctionEntry{"TANH", unary<hyperbolic_tangent>},
     FunctionEntry{"TRUNC", binary<round_down, 0, true>},
-    FunctionEntry{
-        "VAR", [](const Call &call) { return variance_of(call, true, false); }},
-    FunctionEntry{
-        "VARP",
-        [](const Call &call) { return variance_of(call, false, false); }},
+    FunctionEntry{"VAR", variance_of<true, false>},
+    FunctionEntry{"VAR.P", variance_of<false, false>},
+    FunctionEntry{"VAR.S", variance_of<true, false>},
+    FunctionEntry{"VARP", variance_of<false, false>},
 };
 
 } // namespace

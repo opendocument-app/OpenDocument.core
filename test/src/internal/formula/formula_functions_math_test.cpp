@@ -2,11 +2,13 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <clocale>
 #include <cmath>
 #include <numbers>
 #include <optional>
 #include <string>
+#include <utility>
 
 using namespace odr::internal::formula;
 using namespace odr::test::formula;
@@ -230,4 +232,19 @@ TEST(FormulaFunctionsMath, an_angle_past_2_to_the_27_has_no_answer) {
 TEST(FormulaFunctionsMath, the_blank_cells_of_a_whole_column_have_no_answer) {
   // the grid counts the cells past the extent of the sheet
   EXPECT_EQ(xlsx("=COUNTBLANK(A:A)"), std::nullopt);
+}
+
+TEST(FormulaFunctionsMath, modern_statistics_use_the_existing_implementations) {
+  const std::array names{std::pair{"STDEV.S", "STDEV"},
+                         std::pair{"STDEV.P", "STDEVP"},
+                         std::pair{"VAR.S", "VAR"}, std::pair{"VAR.P", "VARP"}};
+  for (const auto &[modern, legacy] : names) {
+    SCOPED_TRACE(modern);
+    EXPECT_EQ(xlsx(std::string("=") + modern + "(2,4,6)"),
+              xlsx(std::string("=") + legacy + "(2,4,6)"));
+    EXPECT_EQ(xlsx(std::string("=_xlfn.") + modern + "(A1:A6)"),
+              xlsx(std::string("=") + legacy + "(A1:A6)"));
+    EXPECT_EQ(ods(std::string("=COM.MICROSOFT.") + modern + "(2;4;6)"),
+              ods(std::string("=") + legacy + "(2;4;6)"));
+  }
 }
