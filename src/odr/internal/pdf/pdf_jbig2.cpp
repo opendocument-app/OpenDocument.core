@@ -636,11 +636,17 @@ std::uint32_t symbol_code_length(const std::size_t count) {
 
 using SymbolList = std::vector<std::shared_ptr<const Bitmap>>;
 
+struct SymbolDictionary {
+  SymbolList exported;
+  std::int64_t pixels{0}; ///< of the new symbols, against the stream's budget
+};
+
 /// 6.5: a symbol dictionary segment, arithmetic, no refinement or aggregation.
-/// Returns the input and new symbols the export run lengths select.
-SymbolList decode_symbol_dictionary(const std::string_view data,
-                                    const SymbolList &input,
-                                    std::int64_t &remaining_pixels) {
+/// Exports the input and new symbols the export run lengths select; the new
+/// symbols may hold at most @p pixel_budget pixels.
+SymbolDictionary decode_symbol_dictionary(const std::string_view data,
+                                          const SymbolList &input,
+                                          const std::int64_t pixel_budget) {
   Reader reader(data);
   const std::uint16_t flags = reader.u16();
   const bool huffman = (flags & 0x0001) != 0;
@@ -682,6 +688,7 @@ SymbolList decode_symbol_dictionary(const std::string_view data,
 
   SymbolList new_symbols;
   new_symbols.reserve(new_count);
+  std::int64_t used_pixels = 0;
   std::int32_t height = 0;
   while (new_symbols.size() < new_count) {
     const std::int32_t delta_height = decode_int(decoder, iadh);
@@ -701,10 +708,10 @@ SymbolList decode_symbol_dictionary(const std::string_view data,
         fail("jbig2: symbol dictionary overruns its symbol count");
       }
       const std::int64_t pixels = static_cast<std::int64_t>(width) * height;
-      if (width < 0 || height < 0 || pixels > remaining_pixels) {
+      if (width < 0 || height < 0 || pixels > pixel_budget - used_pixels) {
         fail("jbig2: symbol bitmaps exceed the pixel budget");
       }
-      remaining_pixels -= pixels;
+      used_pixels += pixels;
       new_symbols.push_back(std::make_shared<const Bitmap>(
           decode_generic_region(width, height, template_index, at,
                                 /*tpgdon=*/false, decoder, generic_contexts,
@@ -744,7 +751,7 @@ SymbolList decode_symbol_dictionary(const std::string_view data,
   if (exported.size() != exported_count) {
     fail("jbig2: incomplete symbol export");
   }
-  return exported;
+  return {std::move(exported), used_pixels};
 }
 
 /// 6.4: decode a text region segment, arithmetic coding, no refinement.
@@ -908,9 +915,13 @@ pdf::Jbig2Image decode_stream(const std::string_view data,
     for (const Segment &segment : parse_segments(stream)) {
       switch (segment.type) {
       case 0: // symbol dictionary
-        dictionaries[segment.number] = decode_symbol_dictionary(
+      {
+        SymbolDictionary dictionary = decode_symbol_dictionary(
             segment.data, symbols_for(segment), remaining_symbol_pixels);
+        remaining_symbol_pixels -= dictionary.pixels;
+        dictionaries[segment.number] = std::move(dictionary.exported);
         break;
+      }
       case 6: // immediate text region
       case 7: // immediate lossless text region
       {
