@@ -264,7 +264,9 @@ TEST(PdfAnnotation, optional_fields_are_omitted_when_empty) {
     EXPECT_FALSE(dictionary.has_key("Contents"));
   }
 
-  for (const std::string text : {"a reviewer", "André (中文) 😀", "\x18"}) {
+  // the parentheses survive the escaping the writer applies
+  for (const std::string text :
+       {"why (this) matters", "André (中文) 😀", "\x18"}) {
     SCOPED_TRACE(text);
     markup.common.author = text;
     markup.common.contents = text;
