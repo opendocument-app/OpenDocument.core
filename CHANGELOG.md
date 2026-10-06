@@ -17,7 +17,8 @@ The release run heads these entries with the version and opens a fresh
 ## Unreleased
 
 - PDF Identity-H/V fonts retain two-byte character codes even when their
-  text-extraction map declares a conflicting codespace, preserving glyphs and spacing.
+  text-extraction map declares a conflicting codespace, preserving glyphs and
+  spacing.
 
 - PDF annotation snapshots no longer expose mutable pending state. Pointer
   options are copied, and unknown option keys leave the settings unchanged.
