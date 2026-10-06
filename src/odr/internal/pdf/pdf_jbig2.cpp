@@ -10,6 +10,8 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <ranges>
+#include <span>
 #include <stdexcept>
 #include <string_view>
 #include <vector>
@@ -318,50 +320,50 @@ struct Point {
 
 /// The fixed part of each `GBTEMPLATE`'s neighbourhood (6.2.5.3); the adaptive
 /// (`AT`) pixels join it.
-const std::array<std::vector<Point>, 4> coding_templates{{
-    {{-1, -2},
-     {0, -2},
-     {1, -2},
-     {-2, -1},
-     {-1, -1},
-     {0, -1},
-     {1, -1},
-     {2, -1},
-     {-4, 0},
-     {-3, 0},
-     {-2, 0},
-     {-1, 0}},
-    {{-1, -2},
-     {0, -2},
-     {1, -2},
-     {2, -2},
-     {-2, -1},
-     {-1, -1},
-     {0, -1},
-     {1, -1},
-     {2, -1},
-     {-3, 0},
-     {-2, 0},
-     {-1, 0}},
-    {{-1, -2},
-     {0, -2},
-     {1, -2},
-     {-2, -1},
-     {-1, -1},
-     {0, -1},
-     {1, -1},
-     {-2, 0},
-     {-1, 0}},
-    {{-3, -1},
-     {-2, -1},
-     {-1, -1},
-     {0, -1},
-     {1, -1},
-     {-4, 0},
-     {-3, 0},
-     {-2, 0},
-     {-1, 0}},
-}};
+constexpr std::array<Point, 12> coding_template_0{{{-1, -2},
+                                                   {0, -2},
+                                                   {1, -2},
+                                                   {-2, -1},
+                                                   {-1, -1},
+                                                   {0, -1},
+                                                   {1, -1},
+                                                   {2, -1},
+                                                   {-4, 0},
+                                                   {-3, 0},
+                                                   {-2, 0},
+                                                   {-1, 0}}};
+constexpr std::array<Point, 12> coding_template_1{{{-1, -2},
+                                                   {0, -2},
+                                                   {1, -2},
+                                                   {2, -2},
+                                                   {-2, -1},
+                                                   {-1, -1},
+                                                   {0, -1},
+                                                   {1, -1},
+                                                   {2, -1},
+                                                   {-3, 0},
+                                                   {-2, 0},
+                                                   {-1, 0}}};
+constexpr std::array<Point, 9> coding_template_2{{{-1, -2},
+                                                  {0, -2},
+                                                  {1, -2},
+                                                  {-2, -1},
+                                                  {-1, -1},
+                                                  {0, -1},
+                                                  {1, -1},
+                                                  {-2, 0},
+                                                  {-1, 0}}};
+constexpr std::array<Point, 9> coding_template_3{{{-3, -1},
+                                                  {-2, -1},
+                                                  {-1, -1},
+                                                  {0, -1},
+                                                  {1, -1},
+                                                  {-4, 0},
+                                                  {-3, 0},
+                                                  {-2, 0},
+                                                  {-1, 0}}};
+constexpr std::array<std::span<const Point>, 4> coding_templates{
+    coding_template_0, coding_template_1, coding_template_2, coding_template_3};
 
 /// The context the SLTP decision is coded in when `TPGDON` is set (6.2.5.7).
 constexpr std::array<std::uint32_t, 4> typical_prediction_context{
@@ -382,7 +384,8 @@ Bitmap decode_generic_region(const std::int32_t width,
   if (template_index > 3) {
     fail("jbig2: unknown generic region template");
   }
-  std::vector<Point> tmpl = coding_templates[template_index];
+  std::vector<Point> tmpl =
+      std::ranges::to<std::vector>(coding_templates[template_index]);
   tmpl.insert(tmpl.end(), at.begin(), at.end());
   std::ranges::stable_sort(tmpl, [](const Point &a, const Point &b) {
     return a.y != b.y ? a.y < b.y : a.x < b.x;

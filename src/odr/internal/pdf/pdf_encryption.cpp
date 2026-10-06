@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <ranges>
+#include <string_view>
 
 namespace odr::internal::pdf {
 
@@ -13,14 +14,10 @@ namespace {
 constexpr std::size_t aes_block = 16;
 
 /// The 32-byte password padding constant (ISO 32000-1 Algorithm 2, step a).
-const std::string padding = [] {
-  static constexpr std::array<std::uint8_t, 32> bytes = {
-      0x28, 0xBF, 0x4E, 0x5E, 0x4E, 0x75, 0x8A, 0x41, 0x64, 0x00, 0x4E,
-      0x56, 0xFF, 0xFA, 0x01, 0x08, 0x2E, 0x2E, 0x00, 0xB6, 0xD0, 0x68,
-      0x3E, 0x80, 0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53, 0x69, 0x7A};
-  return std::string(reinterpret_cast<const char *>(bytes.data()),
-                     bytes.size());
-}();
+constexpr std::string_view padding{
+    "\x28\xBF\x4E\x5E\x4E\x75\x8A\x41\x64\x00\x4E\x56\xFF\xFA\x01\x08"
+    "\x2E\x2E\x00\xB6\xD0\x68\x3E\x80\x2F\x0C\xA9\xFE\x64\x53\x69\x7A",
+    32};
 
 /// `p` as a signed 32-bit little-endian value (Algorithm 2, step d).
 std::string int32_le(const std::int64_t p) {
@@ -174,7 +171,8 @@ std::string standard_security::compute_u_r2_r4(const std::string &key,
   }
   // Algorithm 5 (R >= 3): MD5(padding + ID[0]), RC4 with the key, then 19
   // further RC4 passes with the key XORed by the iteration number.
-  std::string x = crypto::util::rc4(key, crypto::util::md5(padding + id0));
+  std::string x =
+      crypto::util::rc4(key, crypto::util::md5(std::string(padding) + id0));
   for (std::uint8_t i = 1; i <= 19; ++i) {
     x = crypto::util::rc4(xor_key(key, i), x);
   }

@@ -10,7 +10,7 @@
 namespace odr::internal::pdf::afm_data {
 namespace {
 
-constexpr GlyphWidth glyphs_helvetica[] = {
+constexpr std::array<GlyphWidth, 315> glyphs_helvetica = {{
     {"A", 667},
     {"AE", 1000},
     {"Aacute", 667},
@@ -326,9 +326,9 @@ constexpr GlyphWidth glyphs_helvetica[] = {
     {"zcaron", 500},
     {"zdotaccent", 500},
     {"zero", 556},
-};
+}};
 
-constexpr std::int16_t code_widths_helvetica[256] = {
+constexpr std::array<std::int16_t, 256> code_widths_helvetica = {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     278, 278, 355, 556, 556, 889, 667, 222, 333, 333, 389, 584, 278, 333, 278, 278,
@@ -345,9 +345,9 @@ constexpr std::int16_t code_widths_helvetica[256] = {
     1000, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, 1000, -1, 370, -1, -1, -1, -1, 556, 778, 1000, 365, -1, -1, -1, -1,
     -1, 889, -1, -1, -1, 278, -1, -1, 222, 611, 944, 611, -1, -1, -1, -1,
-};
+}};
 
-constexpr GlyphWidth glyphs_helvetica_bold[] = {
+constexpr std::array<GlyphWidth, 315> glyphs_helvetica_bold = {{
     {"A", 722},
     {"AE", 1000},
     {"Aacute", 722},
@@ -663,9 +663,9 @@ constexpr GlyphWidth glyphs_helvetica_bold[] = {
     {"zcaron", 500},
     {"zdotaccent", 500},
     {"zero", 556},
-};
+}};
 
-constexpr std::int16_t code_widths_helvetica_bold[256] = {
+constexpr std::array<std::int16_t, 256> code_widths_helvetica_bold = {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     278, 333, 474, 556, 556, 889, 722, 278, 333, 333, 389, 584, 278, 333, 278, 278,
@@ -682,9 +682,9 @@ constexpr std::int16_t code_widths_helvetica_bold[256] = {
     1000, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, 1000, -1, 370, -1, -1, -1, -1, 611, 778, 1000, 365, -1, -1, -1, -1,
     -1, 889, -1, -1, -1, 278, -1, -1, 278, 611, 944, 611, -1, -1, -1, -1,
-};
+}};
 
-constexpr GlyphWidth glyphs_helvetica_oblique[] = {
+constexpr std::array<GlyphWidth, 315> glyphs_helvetica_oblique = {{
     {"A", 667},
     {"AE", 1000},
     {"Aacute", 667},
@@ -1000,9 +1000,9 @@ constexpr GlyphWidth glyphs_helvetica_oblique[] = {
     {"zcaron", 500},
     {"zdotaccent", 500},
     {"zero", 556},
-};
+}};
 
-constexpr std::int16_t code_widths_helvetica_oblique[256] = {
+constexpr std::array<std::int16_t, 256> code_widths_helvetica_oblique = {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     278, 278, 355, 556, 556, 889, 667, 222, 333, 333, 389, 584, 278, 333, 278, 278,
@@ -1019,9 +1019,9 @@ constexpr std::int16_t code_widths_helvetica_oblique[256] = {
     1000, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, 1000, -1, 370, -1, -1, -1, -1, 556, 778, 1000, 365, -1, -1, -1, -1,
     -1, 889, -1, -1, -1, 278, -1, -1, 222, 611, 944, 611, -1, -1, -1, -1,
-};
+}};
 
-constexpr GlyphWidth glyphs_helvetica_boldoblique[] = {
+constexpr std::array<GlyphWidth, 315> glyphs_helvetica_boldoblique = {{
     {"A", 722},
     {"AE", 1000},
     {"Aacute", 722},
@@ -1337,9 +1337,9 @@ constexpr GlyphWidth glyphs_helvetica_boldoblique[] = {
     {"zcaron", 500},
     {"zdotaccent", 500},
     {"zero", 556},
-};
+}};
 
-constexpr std::int16_t code_widths_helvetica_boldoblique[256] = {
+constexpr std::array<std::int16_t, 256> code_widths_helvetica_boldoblique = {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     278, 333, 474, 556, 556, 889, 722, 278, 333, 333, 389, 584, 278, 333, 278, 278,
@@ -1356,9 +1356,9 @@ constexpr std::int16_t code_widths_helvetica_boldoblique[256] = {
     1000, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, 1000, -1, 370, -1, -1, -1, -1, 611, 778, 1000, 365, -1, -1, -1, -1,
     -1, 889, -1, -1, -1, 278, -1, -1, 278, 611, 944, 611, -1, -1, -1, -1,
-};
+}};
 
-constexpr GlyphWidth glyphs_times_roman[] = {
+constexpr std::array<GlyphWidth, 315> glyphs_times_roman = {{
     {"A", 722},
     {"AE", 889},
     {"Aacute", 722},
@@ -1674,9 +1674,9 @@ constexpr GlyphWidth glyphs_times_roman[] = {
     {"zcaron", 444},
     {"zdotaccent", 444},
     {"zero", 500},
-};
+}};
 
-constexpr std::int16_t code_widths_times_roman[256] = {
+constexpr std::array<std::int16_t, 256> code_widths_times_roman = {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     250, 333, 408, 500, 500, 833, 778, 333, 333, 333, 500, 564, 250, 333, 250, 278,
@@ -1693,9 +1693,9 @@ constexpr std::int16_t code_widths_times_roman[256] = {
     1000, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, 889, -1, 276, -1, -1, -1, -1, 611, 722, 889, 310, -1, -1, -1, -1,
     -1, 667, -1, -1, -1, 278, -1, -1, 278, 500, 722, 500, -1, -1, -1, -1,
-};
+}};
 
-constexpr GlyphWidth glyphs_times_bold[] = {
+constexpr std::array<GlyphWidth, 315> glyphs_times_bold = {{
     {"A", 722},
     {"AE", 1000},
     {"Aacute", 722},
@@ -2011,9 +2011,9 @@ constexpr GlyphWidth glyphs_times_bold[] = {
     {"zcaron", 444},
     {"zdotaccent", 444},
     {"zero", 500},
-};
+}};
 
-constexpr std::int16_t code_widths_times_bold[256] = {
+constexpr std::array<std::int16_t, 256> code_widths_times_bold = {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     250, 333, 555, 500, 500, 1000, 833, 333, 333, 333, 500, 570, 250, 333, 250, 278,
@@ -2030,9 +2030,9 @@ constexpr std::int16_t code_widths_times_bold[256] = {
     1000, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, 1000, -1, 300, -1, -1, -1, -1, 667, 778, 1000, 330, -1, -1, -1, -1,
     -1, 722, -1, -1, -1, 278, -1, -1, 278, 500, 722, 556, -1, -1, -1, -1,
-};
+}};
 
-constexpr GlyphWidth glyphs_times_italic[] = {
+constexpr std::array<GlyphWidth, 315> glyphs_times_italic = {{
     {"A", 611},
     {"AE", 889},
     {"Aacute", 611},
@@ -2348,9 +2348,9 @@ constexpr GlyphWidth glyphs_times_italic[] = {
     {"zcaron", 389},
     {"zdotaccent", 389},
     {"zero", 500},
-};
+}};
 
-constexpr std::int16_t code_widths_times_italic[256] = {
+constexpr std::array<std::int16_t, 256> code_widths_times_italic = {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     250, 333, 420, 500, 500, 833, 778, 333, 333, 333, 500, 675, 250, 333, 250, 278,
@@ -2367,9 +2367,9 @@ constexpr std::int16_t code_widths_times_italic[256] = {
     889, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, 889, -1, 276, -1, -1, -1, -1, 556, 722, 944, 310, -1, -1, -1, -1,
     -1, 667, -1, -1, -1, 278, -1, -1, 278, 500, 667, 500, -1, -1, -1, -1,
-};
+}};
 
-constexpr GlyphWidth glyphs_times_bolditalic[] = {
+constexpr std::array<GlyphWidth, 315> glyphs_times_bolditalic = {{
     {"A", 667},
     {"AE", 944},
     {"Aacute", 667},
@@ -2685,9 +2685,9 @@ constexpr GlyphWidth glyphs_times_bolditalic[] = {
     {"zcaron", 389},
     {"zdotaccent", 389},
     {"zero", 500},
-};
+}};
 
-constexpr std::int16_t code_widths_times_bolditalic[256] = {
+constexpr std::array<std::int16_t, 256> code_widths_times_bolditalic = {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     250, 389, 555, 500, 500, 833, 778, 333, 333, 333, 500, 570, 250, 333, 250, 278,
@@ -2704,9 +2704,9 @@ constexpr std::int16_t code_widths_times_bolditalic[256] = {
     1000, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, 944, -1, 266, -1, -1, -1, -1, 611, 722, 944, 300, -1, -1, -1, -1,
     -1, 722, -1, -1, -1, 278, -1, -1, 278, 500, 722, 500, -1, -1, -1, -1,
-};
+}};
 
-constexpr GlyphWidth glyphs_courier[] = {
+constexpr std::array<GlyphWidth, 315> glyphs_courier = {{
     {"A", 600},
     {"AE", 600},
     {"Aacute", 600},
@@ -3022,9 +3022,9 @@ constexpr GlyphWidth glyphs_courier[] = {
     {"zcaron", 600},
     {"zdotaccent", 600},
     {"zero", 600},
-};
+}};
 
-constexpr std::int16_t code_widths_courier[256] = {
+constexpr std::array<std::int16_t, 256> code_widths_courier = {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600,
@@ -3041,9 +3041,9 @@ constexpr std::int16_t code_widths_courier[256] = {
     600, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, 600, -1, 600, -1, -1, -1, -1, 600, 600, 600, 600, -1, -1, -1, -1,
     -1, 600, -1, -1, -1, 600, -1, -1, 600, 600, 600, 600, -1, -1, -1, -1,
-};
+}};
 
-constexpr GlyphWidth glyphs_courier_bold[] = {
+constexpr std::array<GlyphWidth, 315> glyphs_courier_bold = {{
     {"A", 600},
     {"AE", 600},
     {"Aacute", 600},
@@ -3359,9 +3359,9 @@ constexpr GlyphWidth glyphs_courier_bold[] = {
     {"zcaron", 600},
     {"zdotaccent", 600},
     {"zero", 600},
-};
+}};
 
-constexpr std::int16_t code_widths_courier_bold[256] = {
+constexpr std::array<std::int16_t, 256> code_widths_courier_bold = {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600,
@@ -3378,9 +3378,9 @@ constexpr std::int16_t code_widths_courier_bold[256] = {
     600, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, 600, -1, 600, -1, -1, -1, -1, 600, 600, 600, 600, -1, -1, -1, -1,
     -1, 600, -1, -1, -1, 600, -1, -1, 600, 600, 600, 600, -1, -1, -1, -1,
-};
+}};
 
-constexpr GlyphWidth glyphs_courier_oblique[] = {
+constexpr std::array<GlyphWidth, 315> glyphs_courier_oblique = {{
     {"A", 600},
     {"AE", 600},
     {"Aacute", 600},
@@ -3696,9 +3696,9 @@ constexpr GlyphWidth glyphs_courier_oblique[] = {
     {"zcaron", 600},
     {"zdotaccent", 600},
     {"zero", 600},
-};
+}};
 
-constexpr std::int16_t code_widths_courier_oblique[256] = {
+constexpr std::array<std::int16_t, 256> code_widths_courier_oblique = {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600,
@@ -3715,9 +3715,9 @@ constexpr std::int16_t code_widths_courier_oblique[256] = {
     600, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, 600, -1, 600, -1, -1, -1, -1, 600, 600, 600, 600, -1, -1, -1, -1,
     -1, 600, -1, -1, -1, 600, -1, -1, 600, 600, 600, 600, -1, -1, -1, -1,
-};
+}};
 
-constexpr GlyphWidth glyphs_courier_boldoblique[] = {
+constexpr std::array<GlyphWidth, 315> glyphs_courier_boldoblique = {{
     {"A", 600},
     {"AE", 600},
     {"Aacute", 600},
@@ -4033,9 +4033,9 @@ constexpr GlyphWidth glyphs_courier_boldoblique[] = {
     {"zcaron", 600},
     {"zdotaccent", 600},
     {"zero", 600},
-};
+}};
 
-constexpr std::int16_t code_widths_courier_boldoblique[256] = {
+constexpr std::array<std::int16_t, 256> code_widths_courier_boldoblique = {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600, 600,
@@ -4052,9 +4052,9 @@ constexpr std::int16_t code_widths_courier_boldoblique[256] = {
     600, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, 600, -1, 600, -1, -1, -1, -1, 600, 600, 600, 600, -1, -1, -1, -1,
     -1, 600, -1, -1, -1, 600, -1, -1, 600, 600, 600, 600, -1, -1, -1, -1,
-};
+}};
 
-constexpr GlyphWidth glyphs_symbol[] = {
+constexpr std::array<GlyphWidth, 190> glyphs_symbol = {{
     {"Alpha", 722},
     {"Beta", 667},
     {"Chi", 722},
@@ -4245,9 +4245,9 @@ constexpr GlyphWidth glyphs_symbol[] = {
     {"xi", 493},
     {"zero", 500},
     {"zeta", 494},
-};
+}};
 
-constexpr std::int16_t code_widths_symbol[256] = {
+constexpr std::array<std::int16_t, 256> code_widths_symbol = {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     250, 333, 713, 500, 549, 833, 778, 439, 333, 333, 500, 549, 250, 549, 250, 278,
@@ -4264,9 +4264,9 @@ constexpr std::int16_t code_widths_symbol[256] = {
     768, 713, 790, 790, 890, 823, 549, 250, 713, 603, 603, 1042, 987, 603, 987, 603,
     494, 329, 790, 790, 786, 713, 384, 384, 384, 384, 384, 384, 494, 494, 494, 494,
     -1, 329, 274, 686, 686, 686, 384, 384, 384, 384, 384, 384, 494, 494, 494, -1,
-};
+}};
 
-constexpr GlyphWidth glyphs_zapfdingbats[] = {
+constexpr std::array<GlyphWidth, 202> glyphs_zapfdingbats = {{
     {"a1", 974},
     {"a10", 692},
     {"a100", 668},
@@ -4469,9 +4469,9 @@ constexpr GlyphWidth glyphs_zapfdingbats[] = {
     {"a98", 392},
     {"a99", 668},
     {"space", 278},
-};
+}};
 
-constexpr std::int16_t code_widths_zapfdingbats[256] = {
+constexpr std::array<std::int16_t, 256> code_widths_zapfdingbats = {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     278, 974, 961, 974, 980, 719, 789, 790, 791, 690, 960, 939, 549, 855, 911, 933,
@@ -4488,25 +4488,25 @@ constexpr std::int16_t code_widths_zapfdingbats[256] = {
     788, 788, 788, 788, 894, 838, 1016, 458, 748, 924, 748, 918, 927, 928, 928, 834,
     873, 828, 924, 924, 917, 930, 931, 463, 883, 836, 836, 867, 867, 696, 696, 874,
     -1, 874, 760, 946, 771, 865, 771, 888, 967, 888, 831, 873, 927, 970, 918, -1,
-};
+}};
 
 } // namespace
 
-const std::array<FontMetrics, font_count> fonts = {{
-    {"Helvetica", 718, -207, 718, glyphs_helvetica, std::size(glyphs_helvetica), code_widths_helvetica},
-    {"Helvetica-Bold", 718, -207, 718, glyphs_helvetica_bold, std::size(glyphs_helvetica_bold), code_widths_helvetica_bold},
-    {"Helvetica-Oblique", 718, -207, 718, glyphs_helvetica_oblique, std::size(glyphs_helvetica_oblique), code_widths_helvetica_oblique},
-    {"Helvetica-BoldOblique", 718, -207, 718, glyphs_helvetica_boldoblique, std::size(glyphs_helvetica_boldoblique), code_widths_helvetica_boldoblique},
-    {"Times-Roman", 683, -217, 662, glyphs_times_roman, std::size(glyphs_times_roman), code_widths_times_roman},
-    {"Times-Bold", 683, -217, 676, glyphs_times_bold, std::size(glyphs_times_bold), code_widths_times_bold},
-    {"Times-Italic", 683, -217, 653, glyphs_times_italic, std::size(glyphs_times_italic), code_widths_times_italic},
-    {"Times-BoldItalic", 683, -217, 669, glyphs_times_bolditalic, std::size(glyphs_times_bolditalic), code_widths_times_bolditalic},
-    {"Courier", 629, -157, 562, glyphs_courier, std::size(glyphs_courier), code_widths_courier},
-    {"Courier-Bold", 629, -157, 562, glyphs_courier_bold, std::size(glyphs_courier_bold), code_widths_courier_bold},
-    {"Courier-Oblique", 629, -157, 562, glyphs_courier_oblique, std::size(glyphs_courier_oblique), code_widths_courier_oblique},
-    {"Courier-BoldOblique", 629, -157, 562, glyphs_courier_boldoblique, std::size(glyphs_courier_boldoblique), code_widths_courier_boldoblique},
-    {"Symbol", 1010, 0, 0, glyphs_symbol, std::size(glyphs_symbol), code_widths_symbol},
-    {"ZapfDingbats", 820, 0, 0, glyphs_zapfdingbats, std::size(glyphs_zapfdingbats), code_widths_zapfdingbats},
+constexpr std::array<FontMetrics, font_count> fonts = {{
+    {"Helvetica", 718, -207, 718, glyphs_helvetica.data(), glyphs_helvetica.size(), code_widths_helvetica.data()},
+    {"Helvetica-Bold", 718, -207, 718, glyphs_helvetica_bold.data(), glyphs_helvetica_bold.size(), code_widths_helvetica_bold.data()},
+    {"Helvetica-Oblique", 718, -207, 718, glyphs_helvetica_oblique.data(), glyphs_helvetica_oblique.size(), code_widths_helvetica_oblique.data()},
+    {"Helvetica-BoldOblique", 718, -207, 718, glyphs_helvetica_boldoblique.data(), glyphs_helvetica_boldoblique.size(), code_widths_helvetica_boldoblique.data()},
+    {"Times-Roman", 683, -217, 662, glyphs_times_roman.data(), glyphs_times_roman.size(), code_widths_times_roman.data()},
+    {"Times-Bold", 683, -217, 676, glyphs_times_bold.data(), glyphs_times_bold.size(), code_widths_times_bold.data()},
+    {"Times-Italic", 683, -217, 653, glyphs_times_italic.data(), glyphs_times_italic.size(), code_widths_times_italic.data()},
+    {"Times-BoldItalic", 683, -217, 669, glyphs_times_bolditalic.data(), glyphs_times_bolditalic.size(), code_widths_times_bolditalic.data()},
+    {"Courier", 629, -157, 562, glyphs_courier.data(), glyphs_courier.size(), code_widths_courier.data()},
+    {"Courier-Bold", 629, -157, 562, glyphs_courier_bold.data(), glyphs_courier_bold.size(), code_widths_courier_bold.data()},
+    {"Courier-Oblique", 629, -157, 562, glyphs_courier_oblique.data(), glyphs_courier_oblique.size(), code_widths_courier_oblique.data()},
+    {"Courier-BoldOblique", 629, -157, 562, glyphs_courier_boldoblique.data(), glyphs_courier_boldoblique.size(), code_widths_courier_boldoblique.data()},
+    {"Symbol", 1010, 0, 0, glyphs_symbol.data(), glyphs_symbol.size(), code_widths_symbol.data()},
+    {"ZapfDingbats", 820, 0, 0, glyphs_zapfdingbats.data(), glyphs_zapfdingbats.size(), code_widths_zapfdingbats.data()},
 }};
 
 } // namespace odr::internal::pdf::afm_data

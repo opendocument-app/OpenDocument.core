@@ -198,7 +198,7 @@ def write(languages: dict[str, dict[str, list[str]]], root: pathlib.Path) -> Non
         note
         + "#include <odr/internal/number_format/calendar_names.hpp>\n\n"
         + "namespace odr::internal::number_format {\n\n"
-        + f"const std::array<CalendarNames, {len(languages)}> calendar_names{{{{\n"
+        + f"constexpr std::array<CalendarNames, {len(languages)}> calendar_names{{{{\n"
         + entries
         + "}};\n\n"
         + "} // namespace odr::internal::number_format\n",

@@ -8,7 +8,7 @@
 
 namespace odr::internal::number_format {
 
-const std::array<CalendarNames, 34> calendar_names{{
+constexpr std::array<CalendarNames, 34> calendar_names{{
     {"en",
      {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"},
      {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"},

@@ -517,7 +517,7 @@ def _emit_array(
     fmt,
     size_expr: str | None = None,
 ) -> None:
-    """Emit a ``const std::array<T, N> name = {{...}};`` definition.
+    """Emit a ``constexpr std::array<T, N> name = {{...}};`` definition.
 
     ``size_expr`` names the extent (e.g. the header's ``cid_data::foo_size``
     constant); it defaults to the literal element count. ``name``/``ctype`` may be
@@ -525,7 +525,7 @@ def _emit_array(
     """
     extent = size_expr if size_expr is not None else str(len(pool))
     # std::array needs the double brace (aggregate wrapping a C array).
-    out.write(f"const std::array<{ctype}, {extent}>\n    {name} = {{{{\n")
+    out.write(f"constexpr std::array<{ctype}, {extent}>\n    {name} = {{{{\n")
     line = "    "
     for item in pool:
         chunk = fmt(item) + ","
@@ -597,7 +597,7 @@ def _write_cpp(
     )
 
     out.write(
-        "const std::array<cid_data::Collection, cid_data::collection_count>\n"
+        "constexpr std::array<cid_data::Collection, cid_data::collection_count>\n"
         "    cid_data::collections = {{\n"
     )
     for c in collections:
@@ -613,7 +613,7 @@ def _write_cpp(
     out.write("}};\n\n")
 
     out.write(
-        "const std::array<cid_data::PredefinedCMap, "
+        "constexpr std::array<cid_data::PredefinedCMap, "
         "cid_data::predefined_cmap_count>\n    cid_data::predefined_cmaps = {{\n"
     )
     for c in cmaps:
