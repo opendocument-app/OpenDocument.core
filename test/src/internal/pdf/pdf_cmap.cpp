@@ -272,10 +272,13 @@ TEST(PdfCMap, imposed_code_width_keeps_a_mixed_codespace_distinct) {
   EXPECT_EQ(cmap.translate_string("\x21\x20"), "B");
 }
 
-TEST(PdfCMap, rejects_invalid_record_counts) {
+TEST(PdfCMap, an_invalid_record_count_skips_its_block) {
   for (const std::string count : {"-1", "4294967296", "1.5", "1 pop", ""}) {
     SCOPED_TRACE(count);
-    EXPECT_THROW(parse(count + " beginbfchar"), std::runtime_error);
+    const CMap cmap = parse(count + " beginbfchar <41> <0058> endbfchar\n"
+                                    "1 beginbfchar <42> <0059> endbfchar");
+    // the skipped code falls back to itself
+    EXPECT_EQ(cmap.translate_string("\x41\x42"), "AY");
   }
 }
 

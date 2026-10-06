@@ -292,24 +292,29 @@ CMap CMapParser::parse_cmap() {
     if (const auto *object = std::get_if<Object>(&token)) {
       last_int = object->as_integer_opt();
     } else {
-      const auto count = [&] {
-        if (!last_int.has_value() || *last_int < 0 ||
-            *last_int > std::numeric_limits<std::uint32_t>::max()) {
-          throw std::runtime_error("pdf: invalid CMap record count");
-        }
-        return static_cast<std::uint32_t>(*last_int);
-      };
+      // A bad count loses only its own block: the records then pass through
+      // this loop as operands.
+      const auto read_records =
+          [&](void (CMapParser::*read)(std::uint32_t, CMap &)) {
+            if (!last_int.has_value() || *last_int < 0 ||
+                *last_int > std::numeric_limits<std::uint32_t>::max()) {
+              ODR_WARNING(m_logger, "pdf: skipping CMap block with an invalid "
+                                    "record count");
+              return;
+            }
+            (this->*read)(static_cast<std::uint32_t>(*last_int), cmap);
+          };
       if (const std::string &command = std::get<std::string>(token);
           command == "begincodespacerange") {
-        read_codespacerange(count(), cmap);
+        read_records(&CMapParser::read_codespacerange);
       } else if (command == "beginbfchar") {
-        read_bfchar(count(), cmap);
+        read_records(&CMapParser::read_bfchar);
       } else if (command == "beginbfrange") {
-        read_bfrange(count(), cmap);
+        read_records(&CMapParser::read_bfrange);
       } else if (command == "begincidchar") {
-        read_cidchar(count(), cmap);
+        read_records(&CMapParser::read_cidchar);
       } else if (command == "begincidrange") {
-        read_cidrange(count(), cmap);
+        read_records(&CMapParser::read_cidrange);
       } else if (command == "endcmap") {
         break;
       } else if (command == "usecmap") {
