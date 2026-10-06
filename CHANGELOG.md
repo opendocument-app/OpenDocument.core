@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- `ODR_CLANG_TIDY=ON` runs clang-tidy during C++ compilation and fails
+  configuration if the executable is unavailable.
+
 - HTTP server shutdown avoids user logging callbacks, so logging failures
   cannot interrupt cleanup or terminate the process during destruction.
 
