@@ -1631,6 +1631,24 @@ TEST(html, a_cell_spills_over_a_blank_neighbour_and_is_cut_by_a_full_one) {
   EXPECT_EQ(spills.find("nowrap;overflow:hidden"), std::string::npos);
 }
 
+// A covered cell shows the merged cell from the row above, so a spill stops
+// before it.
+TEST(html, a_cell_does_not_spill_into_a_merged_cell) {
+  const std::string page = render_sheet(
+      fods_file(fods_row(fods_blank() + fods_blank() +
+                         R"(<table:table-cell table:number-rows-spanned="2">)"
+                         R"(<text:p>merged</text:p></table:table-cell>)") +
+                    fods_row(fods_cell("one") + fods_blank() +
+                             "<table:covered-table-cell/>"),
+                fods_columns(3)),
+      HtmlConfig());
+
+  EXPECT_NE(page.find("max-width:0;white-space:nowrap;"
+                      "clip-path:inset(0 -96px 0 0)"),
+            std::string::npos);
+  EXPECT_EQ(page.find("clip-path:inset(0 -192px 0 0)"), std::string::npos);
+}
+
 // #822: and where nothing follows it at all, out onto the canvas — there is no
 // content to the right of the last column for it to paint over.
 TEST(html, a_cell_at_the_end_of_its_row_is_not_cut) {

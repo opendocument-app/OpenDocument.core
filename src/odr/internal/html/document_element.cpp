@@ -702,6 +702,9 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   const ElementRange shapes = sheet.shapes();
   const bool has_shapes = shapes.begin() != shapes.end();
 
+  // per column, the row where a cell spanning down from above ends
+  std::vector<std::uint32_t> span_end_row(end_column, 0);
+
   TableCursor cursor;
   for (std::uint32_t row_index = cursor.row(); row_index < end_row;
        row_index = cursor.row()) {
@@ -782,7 +785,9 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
           const SheetCell cell_ahead = ahead == next_column && next.has_value()
                                            ? *next
                                            : sheet.cell(ahead, row_index);
-          if (!is_blank(cell_ahead)) {
+          // The merged cell from a row above paints over a covered position,
+          // which a reader may give as a blank cell.
+          if (span_end_row[ahead] > row_index || !is_blank(cell_ahead)) {
             bounded = true;
             break;
           }
@@ -887,6 +892,10 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
       }
       state.out().write_element_end("td");
 
+      for (std::uint32_t column = column_index;
+           column < std::min(next_column, end_column); ++column) {
+        span_end_row[column] = row_index + cell_span.rows;
+      }
       cursor.add_cell(cell_span.columns, cell_span.rows);
       if (cursor.column() == next_column) {
         pending = next;

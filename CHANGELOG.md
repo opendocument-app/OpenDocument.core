@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Spreadsheet text no longer spills over a cell that a merged cell from a row
+  above covers.
+
 - PDF annotations reject malformed indices, colors and geometry, and bound
   squiggle generation before writing output.
 
