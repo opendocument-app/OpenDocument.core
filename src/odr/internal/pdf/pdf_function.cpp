@@ -254,7 +254,8 @@ protected:
       std::size_t remaining = 100000;
       run(m_program, stack, remaining, 0);
       const std::size_t n = output_arity();
-      if (stack.size() != n) {
+      // Viewers read the top n values and ignore any left below them.
+      if (stack.size() < n) {
         throw std::runtime_error("invalid calculator result count");
       }
       std::vector<double> out(n);
@@ -315,7 +316,7 @@ private:
   static void run(const std::vector<PostScriptItem> &program,
                   std::vector<Item> &s, std::size_t &remaining,
                   const std::size_t depth) {
-    if (depth >= 64 || s.size() > max_stack) {
+    if (depth >= 64) {
       throw std::runtime_error("calculator execution limit exceeded");
     }
     for (const PostScriptItem &item : program) {

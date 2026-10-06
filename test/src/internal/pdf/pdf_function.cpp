@@ -285,7 +285,8 @@ TEST(PdfFunction, calculator_stack_operations) {
        std::array{std::pair{"{ pop 2 3 2 copy add add add }", 10.0},
                   std::pair{"{ pop 2 3 1 index add add }", 7.0},
                   std::pair{"{ pop 1 2 3 3 -1 roll pop sub }", -1.0},
-                  std::pair{"{ pop 1 2 3 3 2147483647 roll pop sub }", 2.0}}) {
+                  std::pair{"{ pop 1 2 3 3 2147483647 roll pop sub }", 2.0},
+                  std::pair{"{ 1 }", 1.0}}) {
     SCOPED_TRACE(program);
     const auto fn = parse_function(Object(dict), context(program));
     ASSERT_NE(fn, nullptr);
@@ -299,11 +300,10 @@ TEST(PdfFunction, calculator_invalid_execution_returns_zero) {
   dict["Domain"] = reals({0, 1});
   dict["Range"] = reals({0, 1});
   for (const std::string program :
-       {"{ pop {} }", "{ pop }", "{ 1 }", "{ pop 1e308 dup mul }",
-        "{ -1 copy }", "{ 1e100 copy }", "{ 0.5 copy }", "{ 2 copy }",
-        "{ -1 index }", "{ 1e100 index }", "{ 1 index }", "{ -1 0 roll }",
-        "{ 1 1e100 roll }", "{ 1 0.5 roll }",
-        "{ pop { dup true exch if } dup true exch if }"}) {
+       {"{ pop {} }", "{ pop }", "{ pop 1e308 dup mul }", "{ -1 copy }",
+        "{ 1e100 copy }", "{ 0.5 copy }", "{ 2 copy }", "{ -1 index }",
+        "{ 1e100 index }", "{ 1 index }", "{ -1 0 roll }", "{ 1 1e100 roll }",
+        "{ 1 0.5 roll }", "{ pop { dup true exch if } dup true exch if }"}) {
     SCOPED_TRACE(program);
     const auto fn = parse_function(Object(dict), context(program));
     ASSERT_NE(fn, nullptr);
