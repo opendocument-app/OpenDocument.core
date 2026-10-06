@@ -61,6 +61,9 @@ output.
   `std::streambuf`. Random access seeks, sequential tokenizing peeks one char.
   An object parses when referenced and is cached by reference. Positions are
   `std::uint32_t`, so a file of 4 GiB or more is out of scope.
+  Parsers live for one render. Their caches retain whole decoded object streams,
+  so reading another member does not inflate or parse that stream again.
+  Object IDs and generations must match the cross-reference entry.
 - **Fail early on malformed structure, tolerate unknown content.** A missing
   `obj`, `endobj`, `stream`, `endstream`, `xref` or `startxref`, an unexpected
   char, an unknown page-tree type or an exhausted stream throws

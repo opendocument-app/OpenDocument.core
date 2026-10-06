@@ -23,26 +23,11 @@ namespace odr::internal::pdf {
 
 struct Document;
 
-/// Resolution/memoization layer on top of the sequential `FileParser`: maps
-/// `ObjectReference`s to file positions via the cross-reference table and hands
-/// out resolved objects by reference.
-///
-/// The caches are intrinsic, not a convenience: reading one compressed object
-/// means inflating and parsing the whole object stream holding it, and only
-/// this class knows from the xref which objects share one. They grow
-/// monotonically and are never evicted, which is safe only because a
-/// `DocumentParser` is transient per render — build one, produce a `Document`,
-/// read its lazy streams, discard it. Never share one across documents.
+/// Resolves and caches objects for one PDF; construct a parser per render.
 class DocumentParser {
 public:
-  /// Takes ownership of the input stream (move-only: the parser is the
-  /// top-level handle for reading a PDF, so the stream's lifetime is tied to
-  /// it). The constructor walks the trailer chain and, if the file declares an
-  /// `/Encrypt` dictionary, builds the `Authenticator`. Pass an already
-  /// authenticated `decryptor` (from a prior `authenticate()` / `decryptor()`)
-  /// to re-open an encrypted file without the password; otherwise pass
-  /// `std::nullopt` to parse an unencrypted file or to call `authenticate()`
-  /// later. The logger is borrowed and must outlive the parser.
+  /// Owns the input and accepts a decryptor from an authenticated parser.
+  /// Otherwise probes the empty password; authenticate() unlocks later reads.
   explicit DocumentParser(std::unique_ptr<std::istream> in,
                           std::optional<Decryptor> decryptor = std::nullopt,
                           const Logger &logger = Logger::null());

@@ -1637,8 +1637,13 @@ DocumentParser::read_object(const ObjectReference &reference) {
                                          << " not in cross-reference table, "
                                             "treating as null");
   } else if (const Xref::Entry &entry = entry_it->second; entry.is_used()) {
+    in().clear();
     in().seekg(entry.as_used().position);
     object = parser().read_indirect_object();
+    if (object.reference != reference) {
+      throw std::runtime_error(
+          "PDF object reference does not match its xref entry");
+    }
     // Decrypt string leaves (7.6.2). The /Encrypt dictionary needs no special
     // case here: it is read and cached during construction before the
     // decryptor is installed, so its un-decrypted /O,/U,… strings are served
@@ -1657,10 +1662,8 @@ DocumentParser::read_object(const ObjectReference &reference) {
       throw std::runtime_error("object stream member index out of range");
     }
     if (members[index].id != reference.id) {
-      ODR_WARNING(m_logger, "pdf: object stream "
-                                << stream_id << " member " << index
-                                << " has id " << members[index].id
-                                << ", expected " << reference.id);
+      throw std::runtime_error(
+          "PDF object stream member does not match its xref entry");
     }
     object.object = members[index].object;
   } else {
@@ -1731,6 +1734,7 @@ std::string DocumentParser::read_object_stream(const IndirectObject &object) {
   Object length = object.object.as_dictionary().get("Length");
   resolve_object(length);
 
+  in().clear();
   // a stream object always carries a stream position
   // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
   in().seekg(object.stream_position.value());
