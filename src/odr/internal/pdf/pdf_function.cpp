@@ -1,6 +1,7 @@
 #include <odr/internal/pdf/pdf_function.hpp>
 
 #include <odr/internal/pdf/pdf_object.hpp>
+#include <odr/internal/pdf/pdf_object_parser.hpp>
 #include <odr/internal/util/number_util.hpp>
 
 #include <algorithm>
@@ -483,20 +484,19 @@ private:
   std::vector<PostScriptItem> m_program;
 };
 
-/// Type-4 braces and PDF tokens (ISO 32000-1, 7.10.5.1).
+/// Tokenizes a type-4 program (ISO 32000-1, 7.10.5.1) into a nested item tree.
+/// `pos` advances past the consumed text. Nothing if the braces do not balance,
+/// nest too deep or a number token is malformed.
 std::optional<std::vector<PostScriptItem>>
 parse_postscript(const std::string &text, std::size_t &pos,
                  const std::size_t depth = 0) {
   if (depth >= 64) {
     return std::nullopt;
   }
-  const auto whitespace = [](const char c) {
-    return c == 0 || c == 9 || c == 10 || c == 12 || c == 13 || c == 32;
-  };
   std::vector<PostScriptItem> items;
   while (pos < text.size()) {
     const char c = text[pos];
-    if (whitespace(c)) {
+    if (ObjectParser::is_whitespace(c)) {
       ++pos;
     } else if (c == '%') {
       pos = text.find_first_of("\r\n", pos);
@@ -518,8 +518,8 @@ parse_postscript(const std::string &text, std::size_t &pos,
       return depth == 0 ? std::nullopt : std::optional(std::move(items));
     } else {
       const std::size_t start = pos;
-      while (pos < text.size() && !whitespace(text[pos]) && text[pos] != '%' &&
-             text[pos] != '{' && text[pos] != '}') {
+      while (pos < text.size() && !ObjectParser::is_whitespace(text[pos]) &&
+             text[pos] != '%' && text[pos] != '{' && text[pos] != '}') {
         ++pos;
       }
       const std::string_view token(text.data() + start, pos - start);
