@@ -97,8 +97,9 @@ public:
         m_media_file.file(), false, false, true);
     HtmlResourceLocation location =
         this->config().resource_locator(resource, this->config());
-    if (location && (util::string::equals_ignore_case(*location, m_view_path) ||
-                     resource_location_taken(m_resources, *location))) {
+    if (location.has_value() &&
+        (util::string::equals_ignore_case(*location, m_view_path) ||
+         resource_location_taken(m_resources, *location))) {
       location.reset();
     }
     m_resources.emplace_back(resource, std::move(location));
