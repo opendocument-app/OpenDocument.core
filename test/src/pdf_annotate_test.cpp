@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 
 using namespace odr;
 using namespace odr::internal;
@@ -238,4 +239,30 @@ TEST(PdfAnnotate, refuses_an_encrypted_file) {
   EXPECT_THROW(open_fixture("odr-public/pdf/Casio_WVA-M650-7AJF.pdf")
                    .annotate(std::string(one_highlight), out),
                std::runtime_error);
+}
+
+TEST(PdfAnnotate, rejects_fractional_indices_and_non_array_payloads) {
+  for (const bool ink : {false, true}) {
+    auto payload = nlohmann::json::parse(one_highlight);
+    auto &annotation = payload["annotations"][0];
+    annotation["type"] = ink ? "ink" : "highlight";
+    annotation[ink ? "strokes" : "quads"] = {
+        {"unexpected", {0, 0, 0, 0, 0, 0, 0, 0}}};
+    EXPECT_THROW(annotate(payload.dump()), std::invalid_argument);
+  }
+  for (const nlohmann::json &value :
+       {nlohmann::json(0.5), nlohmann::json(-1),
+        nlohmann::json(18446744073709551615ULL)}) {
+    auto payload = nlohmann::json::parse(one_highlight);
+    payload["annotations"][0]["page"] = value;
+    EXPECT_THROW(annotate(payload.dump()), std::invalid_argument);
+  }
+  for (const std::string payload :
+       {R"({"version":1.5,"annotations":[]})",
+        R"({"version":4294967297,"annotations":[]})",
+        R"({"version":1,"annotations":{}})",
+        R"({"version":1,"annotations":null})"}) {
+    EXPECT_THROW(annotate(payload), std::invalid_argument);
+  }
+  EXPECT_NO_THROW(annotate(R"({"version":1})"));
 }

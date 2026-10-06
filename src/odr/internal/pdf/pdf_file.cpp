@@ -258,7 +258,11 @@ TextMarkup read_text_markup(const nlohmann::json &value,
                             const std::string &type) {
   TextMarkup result;
   result.kind = read_markup_kind(type);
-  for (const nlohmann::json &quad : at(value, "quads")) {
+  const auto &quads = at(value, "quads");
+  if (!quads.is_array()) {
+    throw std::invalid_argument("quads must be an array");
+  }
+  for (const nlohmann::json &quad : quads) {
     if (!quad.is_array() || quad.size() != 8) {
       throw std::invalid_argument("quad is not eight coordinates");
     }
@@ -273,7 +277,11 @@ TextMarkup read_text_markup(const nlohmann::json &value,
 
 Ink read_ink(const nlohmann::json &value) {
   Ink result;
-  for (const nlohmann::json &stroke : at(value, "strokes")) {
+  const auto &strokes = at(value, "strokes");
+  if (!strokes.is_array()) {
+    throw std::invalid_argument("strokes must be an array");
+  }
+  for (const nlohmann::json &stroke : strokes) {
     if (!stroke.is_array() || stroke.empty() || stroke.size() % 2 != 0) {
       throw std::invalid_argument("stroke is not a sequence of x y pairs");
     }
@@ -288,10 +296,16 @@ Ink read_ink(const nlohmann::json &value) {
 void write_annotations(DocumentParser &parser, const nlohmann::json &json,
                        std::ostream &out) {
   // the guard against a payload from a frontend this build does not know
-  if (json.value("version", 0) != 1) {
+  const auto &version = at(json, "version");
+  if (!version.is_number_integer() || version != 1) {
     throw std::invalid_argument("unsupported annotation format version");
   }
 
+  const nlohmann::json annotations =
+      json.value("annotations", nlohmann::json::array());
+  if (!annotations.is_array()) {
+    throw std::invalid_argument("annotations must be an array");
+  }
   const std::unique_ptr<Document> document = parser.parse_document();
   const std::vector<Page *> pages = document->collect_pages();
 
@@ -299,14 +313,12 @@ void write_annotations(DocumentParser &parser, const nlohmann::json &json,
   // one page rewrite per page, however many annotations land on it
   std::map<std::size_t, std::vector<ObjectReference>> by_page;
 
-  for (const nlohmann::json &value :
-       json.value("annotations", nlohmann::json::array())) {
-    const auto index = at(value, "page").get<std::size_t>();
-    if (index >= pages.size()) {
-      throw std::invalid_argument("annotation names page " +
-                                  std::to_string(index) +
-                                  ", which is not there");
+  for (const nlohmann::json &value : annotations) {
+    const auto &page = at(value, "page");
+    if (!page.is_number_integer() || page < 0 || page >= pages.size()) {
+      throw std::invalid_argument("annotation page is not a valid index");
     }
+    const auto index = page.get<std::size_t>();
     const auto type = at(value, "type").get<std::string>();
 
     by_page[index].push_back(

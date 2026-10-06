@@ -41,6 +41,9 @@ template <typename Points> Box box_of(const std::vector<Points> &groups) {
              groups.front()[1]};
   for (const Points &points : groups) {
     for (std::size_t i = 0; i < points.size(); i += 2) {
+      if (!std::isfinite(points[i]) || !std::isfinite(points[i + 1])) {
+        throw std::invalid_argument("annotation coordinates must be finite");
+      }
       result.include(points[i], points[i + 1]);
     }
   }
@@ -50,12 +53,18 @@ template <typename Points> Box box_of(const std::vector<Points> &groups) {
 Object rectangle(const Box &box) {
   Array result;
   for (const double v : {box.x0, box.y0, box.x1, box.y1}) {
+    if (!std::isfinite(v)) {
+      throw std::invalid_argument("annotation bounds must be finite");
+    }
     result.holder().emplace_back(Real{v});
   }
   return Object(std::move(result));
 }
 
 std::string number(const double value) {
+  if (!std::isfinite(value)) {
+    throw std::invalid_argument("annotation coordinates must be finite");
+  }
   return util::number::to_string_significant(value, 6);
 }
 
@@ -96,9 +105,15 @@ void write_common(Dictionary &dictionary, const AnnotationCommon &common,
                   const ObjectReference &self) {
   Array color;
   for (const double c : common.color) {
+    if (!(c >= 0 && c <= 1)) {
+      throw std::invalid_argument("annotation color must be in [0, 1]");
+    }
     color.holder().emplace_back(Real{c});
   }
   dictionary["C"] = Object(std::move(color));
+  if (!(common.opacity >= 0 && common.opacity <= 1)) {
+    throw std::invalid_argument("annotation opacity must be in [0, 1]");
+  }
   dictionary["CA"] = Object(Real{common.opacity});
   // 12.5.3: bit 3, Print. Without it a viewer may show but never print it.
   dictionary["F"] = Object(Integer{4});
@@ -154,8 +169,12 @@ void wave(std::ostringstream &out, const QuadCorners &quad,
           const double amplitude) {
   const double base = quad.bottom - amplitude;
   out << number(quad.left) << ' ' << number(quad.bottom) << " m\n";
-  const auto steps = static_cast<std::size_t>(
-      std::max(1.0, std::floor((quad.right - quad.left) / amplitude)));
+  const double count =
+      std::max(1.0, std::floor((quad.right - quad.left) / amplitude));
+  if (!std::isfinite(count) || count > 1'000'000) {
+    throw std::invalid_argument("annotation squiggle is too large");
+  }
+  const auto steps = static_cast<std::size_t>(count);
   for (std::size_t i = 1; i <= steps; ++i) {
     out << number(quad.left + static_cast<double>(i) * amplitude) << ' '
         << number(i % 2 == 1 ? base : quad.bottom) << " l\n";
@@ -291,6 +310,9 @@ pdf::ObjectReference pdf::write_text_markup(IncrementalWriter &writer,
 }
 
 pdf::ObjectReference pdf::write_ink(IncrementalWriter &writer, const Ink &ink) {
+  if (!std::isfinite(ink.width) || ink.width < 0) {
+    throw std::invalid_argument("ink width must be finite and nonnegative");
+  }
   if (ink.strokes.empty()) {
     throw std::invalid_argument("ink has no strokes");
   }

@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -321,4 +322,42 @@ TEST(PdfAnnotation, appends_to_an_existing_annots_array) {
   ASSERT_NE(page, nullptr);
   EXPECT_EQ(page->annotations.size(), before + 1);
   EXPECT_NE(page->annotations.back()->appearance, nullptr);
+}
+
+TEST(PdfAnnotation, refuses_invalid_geometry_and_color) {
+  DocumentParser parser(std::make_unique<std::istringstream>(mini_pdf()));
+  IncrementalWriter writer(parser);
+  for (const double value : {std::numeric_limits<double>::quiet_NaN(),
+                             std::numeric_limits<double>::infinity()}) {
+    TextMarkup markup = one_line_highlight();
+    markup.quads[0][0] = value;
+    EXPECT_THROW(std::ignore = write_text_markup(writer, markup),
+                 std::invalid_argument);
+    Ink ink;
+    ink.strokes = {{0, value}};
+    EXPECT_THROW(std::ignore = write_ink(writer, ink), std::invalid_argument);
+  }
+  for (const double value :
+       {-1.0, 2.0, std::numeric_limits<double>::quiet_NaN()}) {
+    TextMarkup markup = one_line_highlight();
+    markup.common.color[0] = value;
+    EXPECT_THROW(std::ignore = write_text_markup(writer, markup),
+                 std::invalid_argument);
+    markup.common.color[0] = 0;
+    markup.common.opacity = value;
+    EXPECT_THROW(std::ignore = write_text_markup(writer, markup),
+                 std::invalid_argument);
+  }
+  Ink ink;
+  ink.strokes = {{0, 0}};
+  for (const double width : {-1.0, std::numeric_limits<double>::infinity(),
+                             std::numeric_limits<double>::quiet_NaN()}) {
+    ink.width = width;
+    EXPECT_THROW(std::ignore = write_ink(writer, ink), std::invalid_argument);
+  }
+  TextMarkup huge = one_line_highlight();
+  huge.kind = TextMarkupKind::squiggly;
+  huge.quads[0][2] = std::numeric_limits<double>::max();
+  EXPECT_THROW(std::ignore = write_text_markup(writer, huge),
+               std::invalid_argument);
 }

@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF annotations reject malformed indices, colors and geometry, and bound
+  squiggle generation before writing output.
+
 - PDF annotation authors and comments preserve Unicode text when saved.
 
 - Embedded PDF CMaps match complete character codes, keeping mixed-width CJK
