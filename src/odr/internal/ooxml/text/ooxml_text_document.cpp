@@ -19,6 +19,7 @@
 #include <optional>
 #include <ostream>
 #include <sstream>
+#include <stdexcept>
 #include <string_view>
 
 namespace odr::internal::ooxml::text {
@@ -395,6 +396,9 @@ public:
   }
   void paragraph_set_style(const ElementIdentifier element_id,
                            const ParagraphStyle &style) const override {
+    if (!style.text_align.has_value()) {
+      throw std::invalid_argument("paragraph alignment is missing");
+    }
     pugi::xml_node node = get_node(element_id);
     pugi::xml_node properties = node.child("w:pPr");
     if (!properties) {

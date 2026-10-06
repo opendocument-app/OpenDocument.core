@@ -639,6 +639,7 @@ void ooxml::spreadsheet::move_comments(const pugi::xml_node comments,
       continue;
     }
     at.set(span->first);
+    const std::int64_t shift = static_cast<std::int64_t>(span->first) - old;
     pugi::xml_text anchor = data.child("x:Anchor").text();
     std::vector<std::int64_t> values;
     for (const std::string_view value :
@@ -649,8 +650,8 @@ void ooxml::spreadsheet::move_comments(const pugi::xml_node comments,
       values.push_back(std::strtoll(std::string(value).c_str(), nullptr, 10));
     }
     if (values.size() == 8) {
-      values[first] += static_cast<std::int64_t>(span->first) - old;
-      values[first + 4] += static_cast<std::int64_t>(span->first) - old;
+      values[first] += shift;
+      values[first + 4] += shift;
       anchor.set(fmt::format("{}", fmt::join(values, ", ")).c_str());
     }
   }

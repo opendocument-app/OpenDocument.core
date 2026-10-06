@@ -11,11 +11,12 @@ Checks: >
   performance-*,
   portability-*,
   -bugprone-easily-swappable-parameters,
+  -bugprone-derived-method-shadowing-base-method,
   -bugprone-narrowing-conversions,
   -performance-enum-size,
   -portability-avoid-pragma-once,
-# clang-analyzer-* stays enabled but advisory: its only findings are inside
-# third-party -isystem headers (cryptopp/httplib/csv), which we cannot patch.
+# Typed value handles intentionally refine inherited nonvirtual methods.
+# Path-sensitive analyzer findings remain advisory, including dependency code.
 WarningsAsErrors: '*,-clang-analyzer-*'
 HeaderFilterRegex: '(^|/)src/odr/'
 FormatStyle: file
