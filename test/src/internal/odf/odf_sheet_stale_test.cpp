@@ -1,20 +1,17 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
 #include <odr/file.hpp>
-#include <odr/logger.hpp>
 
-#include <odr/internal/abstract/file.hpp>
-#include <odr/internal/common/file.hpp>
-#include <odr/internal/open_strategy.hpp>
+#include <internal/odf/odf_sheet_test_util.hpp>
 
 #include <gtest/gtest.h>
 
-#include <memory>
 #include <sstream>
 #include <string>
 
 using namespace odr;
-using namespace odr::internal;
+using odr::test::odf::document_of;
+using odr::test::odf::sheet_at;
 
 namespace {
 
@@ -44,22 +41,6 @@ std::string computed_cell(const std::string &formula,
          R"(" office:value-type="float" office:value=")" + cached +
          R"(" calcext:value-type="float"><text:p>)" + cached +
          R"(</text:p></table:table-cell>)";
-}
-
-Document document_of(const std::string &source) {
-  return DecodedFile(
-             open_strategy::open_file(std::make_shared<MemoryFile>(source), {},
-                                      Logger::null()))
-      .as_document_file()
-      .document();
-}
-
-Sheet sheet_at(const Document &document, const std::uint32_t index) {
-  Element element = *document.root_element().children().begin();
-  for (std::uint32_t i = 0; i < index; ++i) {
-    element = element.next_sibling();
-  }
-  return element.as_sheet();
 }
 
 /// One row: A1 a number, B1 the sum of A1 and nothing else, C1 twice B1.
