@@ -636,8 +636,7 @@ private:
         return {};
       }
       if (peek() == '!') {
-        const std::string spelling(
-            start.substr(0, start.size() - rest().size()));
+        std::string spelling(start.substr(0, start.size() - rest().size()));
         advance(1);
         return spelling;
       }

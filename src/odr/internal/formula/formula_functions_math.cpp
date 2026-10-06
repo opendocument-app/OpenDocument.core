@@ -206,7 +206,7 @@ Value average(const Call &call) {
   if (collected.numbers.empty()) {
     return Value{ErrorType::division};
   }
-  const Value total = sum_of(call, collected.numbers);
+  Value total = sum_of(call, collected.numbers);
   if (!total.holds<double>()) {
     return total;
   }
@@ -617,7 +617,7 @@ Value factorial(const Call &call, const double x) {
     return Value{is_libreoffice(call) ? ErrorType::value : ErrorType::number};
   }
   double result = 1;
-  for (double i = 2; i <= n; ++i) {
+  for (std::uint32_t i = 2; i <= n; ++i) {
     result *= i;
   }
   return Value{result};

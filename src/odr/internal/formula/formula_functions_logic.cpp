@@ -68,7 +68,7 @@ Value condition(const Call &call) {
 /// @p catches answers to.
 template <bool only_not_available> Value if_error(const Call &call) {
   expect_arguments(call, 2, 2);
-  const Value value = call.scalar(0);
+  Value value = call.scalar(0);
   const auto *error = std::get_if<ErrorType>(&value.content);
   if (error != nullptr &&
       (!only_not_available || *error == ErrorType::not_available)) {
@@ -201,7 +201,7 @@ template <bool odd> Value parity(const Call &call) {
 /// `N`: a number as it is, a boolean as 1 or 0, anything else as 0.
 Value number_of(const Call &call) {
   expect_arguments(call, 1, 1);
-  const Value value = call.scalar(0);
+  Value value = call.scalar(0);
   if (value.holds<double>() || value.holds<ErrorType>()) {
     return value;
   }
@@ -214,7 +214,7 @@ Value number_of(const Call &call) {
 /// `T`: a text as it is, anything else as the empty text.
 Value text_of(const Call &call) {
   expect_arguments(call, 1, 1);
-  const Value value = call.scalar(0);
+  Value value = call.scalar(0);
   if (value.holds<std::string>() || value.holds<ErrorType>()) {
     return value;
   }
