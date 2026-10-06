@@ -9,6 +9,7 @@
 
 #include <internal/pdf/pdf_test_file_builder.hpp>
 
+#include <algorithm>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -289,5 +290,62 @@ TEST(IncrementalWriter, rewrites_a_page_out_of_an_object_stream) {
     for (const auto &content_reference : page->contents_reference) {
       EXPECT_FALSE(parser.read_decoded_stream(content_reference).empty());
     }
+  }
+}
+
+TEST(IncrementalWriter, rejects_invalid_or_conflicting_references) {
+  DocumentParser parser(stream_of(mini_pdf(true)));
+  IncrementalWriter writer(parser);
+  for (const ObjectReference reference :
+       {ObjectReference{0, 0}, ObjectReference{0x100000000ULL, 0},
+        ObjectReference{0xffffffff, 0}, ObjectReference{1, 65536}}) {
+    EXPECT_THROW(writer.set_object(reference, Object(Integer{1})),
+                 std::runtime_error);
+    EXPECT_THROW(writer.set_stream_object(reference, Dictionary{}, ""),
+                 std::runtime_error);
+  }
+  EXPECT_EQ(writer.size(), 0u);
+  writer.set_object({5, 0}, Object(Integer{1}));
+  EXPECT_THROW(writer.set_object({5, 1}, Object(Integer{2})),
+               std::runtime_error);
+  EXPECT_EQ(writer.size(), 1u);
+  writer.set_object({5, 0}, Object(Integer{3}));
+  EXPECT_EQ(writer.size(), 1u);
+  writer.set_object({0xfffffffe, 65535}, Object(Integer{4}));
+  EXPECT_THROW((void)writer.mint_object(), std::runtime_error);
+}
+
+TEST(IncrementalWriter, write_failures_restore_the_parser_position) {
+  class LimitedBuffer final : public std::streambuf {
+  public:
+    explicit LimitedBuffer(const std::size_t limit) : remaining(limit) {}
+    std::streamsize xsputn(const char *, const std::streamsize count) override {
+      const auto written = std::min(remaining, static_cast<std::size_t>(count));
+      remaining -= written;
+      return static_cast<std::streamsize>(written);
+    }
+
+  private:
+    std::size_t remaining;
+  };
+  const std::string source = mini_pdf(true);
+  for (const std::size_t limit :
+       {std::size_t{0}, source.size(), source.size() + 5}) {
+    SCOPED_TRACE(limit);
+    DocumentParser parser(stream_of(source));
+    IncrementalWriter writer(parser);
+    parser.in().clear();
+    parser.in().seekg(7);
+    LimitedBuffer buffer(limit);
+    std::ostream failed(&buffer);
+    EXPECT_THROW(writer.write(failed), std::ios_base::failure);
+    EXPECT_EQ(parser.in().tellg(), std::streampos{7});
+
+    parser.in().setstate(std::ios::eofbit);
+    std::ostringstream good;
+    EXPECT_NO_THROW(writer.write(good));
+    EXPECT_EQ(parser.in().tellg(), std::streampos{7});
+    DocumentParser written(stream_of(good.str()));
+    EXPECT_FALSE(written.is_recovered());
   }
 }
