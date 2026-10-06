@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Spreadsheet recalculation recognizes STDEV.S, STDEV.P, VAR.S, and VAR.P,
+  including their Excel and LibreOffice compatibility prefixes.
+
 - PDF streams support TIFF predictor samples packed at 1, 2, or 4 bits per
   component. LZW decoding rejects invalid width parameters and dictionary
   growth beyond the format's limit.
