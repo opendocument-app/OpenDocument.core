@@ -180,14 +180,16 @@ std::string pdf::encode_image_png(const std::string &samples,
     if (decode.size() >= 2 * (k + 1)) {
       const double d_min = decode[2 * k];
       const double d_max = decode[2 * k + 1];
-      return d_min + sample * (d_max - d_min) / max_sample;
+      return std::lerp(d_min, d_max, static_cast<double>(sample) / max_sample);
     }
     if (indexed) {
       // Default Indexed /Decode is [0, 2^bpc-1]: the sample is the palette
       // index, which `to_rgb` looks up directly (8.6.6.3).
       return sample;
     }
-    return static_cast<double>(sample) / max_sample;
+    const auto [minimum, maximum] = color_space.component_range(k);
+    return std::lerp(minimum, maximum,
+                     static_cast<double>(sample) / max_sample);
   };
 
   if (bits_per_component == 1 && components == 1 && !has_alpha) {

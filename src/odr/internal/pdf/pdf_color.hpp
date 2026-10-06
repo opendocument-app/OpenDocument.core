@@ -3,6 +3,7 @@
 #include <odr/internal/pdf/pdf_function.hpp>
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -14,9 +15,7 @@ namespace odr::internal::pdf {
 
 class Object;
 
-/// The colour-space families PDF content can select (ISO 32000-1 8.6). The
-/// device families are also reachable through the dedicated operators
-/// (`g`/`rg`/`k`); the rest arrive via `/ColorSpace` resources and `cs`/`scn`.
+/// PDF colour-space families (ISO 32000-1 8.6).
 enum class ColorSpaceKind {
   device_gray,
   device_rgb,
@@ -32,10 +31,8 @@ enum class ColorSpaceKind {
   unknown,
 };
 
-/// A resolved colour space: enough to convert a tuple of component values to
-/// sRGB at emit time (ISO 32000-1 8.6.4 / 8.6.5 / 8.6.6). Non-device spaces are
-/// approximated — ICC profiles by their alternate or component count, Cal* as
-/// device, overprint ignored.
+/// Resolved colour space for sRGB conversion (ISO 32000-1 8.6).
+/// ICC uses an alternate; Cal* uses the corresponding device approximation.
 struct ColorSpaceDef {
   ColorSpaceKind kind{ColorSpaceKind::unknown};
   /// Number of input components a colour in this space carries.
@@ -44,6 +41,10 @@ struct ColorSpaceDef {
   // Lab (8.6.5.4): the white point and the a*/b* component ranges.
   std::array<double, 3> white_point{0.9505, 1.0, 1.089};
   std::array<double, 4> lab_range{-100, 100, -100, 100};
+  std::array<double, 8> icc_range{0, 1, 0, 1, 0, 1, 0, 1};
+
+  /// Valid component range, also used by Indexed palettes and image decoding.
+  [[nodiscard]] std::array<double, 2> component_range(std::size_t index) const;
 
   // Indexed (8.6.6.3): the base space, the packed palette and the max index.
   std::shared_ptr<ColorSpaceDef> base;
@@ -64,10 +65,8 @@ struct ColorSpaceDef {
   [[nodiscard]] std::vector<double> initial_components() const;
 };
 
-/// How `parse_color_space` reaches indirect data: `resolve` dereferences,
-/// `load_stream` decodes a stream's bytes (ICC profiles, an Indexed palette
-/// given as a stream), and `named` looks up a colour space referenced by name
-/// (a base space, the `/ColorSpace` resource table), forwarding its depth.
+/// Resolve indirect objects, decode stream bytes and look up resource names.
+/// Named lookups must forward the recursion depth.
 struct ColorSpaceContext {
   std::function<Object(const Object &)> resolve;
   std::function<std::string(const Object &)> load_stream;
@@ -80,9 +79,8 @@ struct ColorSpaceContext {
 /// transform. The naive `(1-c)(1-k)` reads pure cyan as `#00ffff`.
 std::array<double, 3> cmyk_to_rgb(double c, double m, double y, double k);
 
-/// Build a colour space from its PDF object — a name (`/DeviceRGB`, …) or an
-/// array (`[/ICCBased 5 0 R]`, `[/Separation …]`, …). Returns `nullptr` for an
-/// unsupported, malformed or excessively nested definition.
+/// Parse a colour-space name or array; return null for unsupported, malformed
+/// or excessively nested definitions.
 std::shared_ptr<ColorSpaceDef>
 parse_color_space(const Object &object, const ColorSpaceContext &context,
                   std::uint32_t depth = 0);

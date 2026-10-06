@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- PDF Lab and ICC colors, indexed palettes and image samples honor component
+  ranges. Invalid Lab white points and malformed range arrays are rejected.
+
 - JBIG2 decoding checks integer arithmetic, clips off-page regions and bounds
   symbol allocation and loops. Unsupported intermediate regions are rejected
   instead of painted onto the page.

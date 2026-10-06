@@ -242,3 +242,13 @@ TEST(PdfImage, rejects_unrepresentable_output_sizes) {
         decode_mask_alpha("", 1, 1, 8, {}, false, 65536, 65536).empty());
   }
 }
+
+TEST(PdfImage, lab_default_decode_uses_the_component_ranges) {
+  ColorSpaceDef lab;
+  lab.kind = ColorSpaceKind::lab;
+  lab.components = 3;
+  lab.lab_range = {-128, 127, -128, 127};
+  const auto png =
+      decode_png(encode_image_png(bytes({255, 128, 128}), 1, 1, 8, lab, {}));
+  EXPECT_EQ(png.pixels, bytes({255, 255, 255}));
+}

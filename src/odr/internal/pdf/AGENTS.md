@@ -181,7 +181,11 @@ above. So each run is raised by one font ascent:
   0 to 255 and unresolved base spaces are rejected before image allocation.
   An ICC alternate that cannot stand in is dropped for the device space `N`
   names, and a short palette reads its missing bytes as 0.
-- CMYK is naive (no ICC) and overprint is ignored. CIE, ICCBased, Indexed,
+- Lab and ICC component ranges are shared by direct colors, Indexed palette
+  scaling and default image decoding (Table 90). An invalid Lab `WhitePoint`
+  or `Range`, or an invalid ICC `Range`, keeps the default. ICC still uses its alternate;
+  profiles are not evaluated. CMYK uses the Adobe polynomial approximation,
+  and overprint is ignored. CIE, ICCBased, Indexed,
   Separation, DeviceN and Lab resolve to RGB at emission by sampling the tint
   `/Function` (types 0, 2, 3, 4).
 
