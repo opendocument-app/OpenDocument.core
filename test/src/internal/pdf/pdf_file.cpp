@@ -183,8 +183,6 @@ std::string two_image_mini_pdf() {
 
 } // namespace
 
-// `/Info` document-information strings and the page count surface through
-// `file_meta()`; a `/Title` UTF-16BE string is decoded to UTF-8.
 TEST(PdfFile, file_meta_carries_info_and_page_count) {
   const std::shared_ptr<pdf::PdfFile> file = open_pdf(info_mini_pdf());
   const FileMeta meta = file->file_meta();
@@ -204,8 +202,6 @@ TEST(PdfFile, file_meta_carries_info_and_page_count) {
   EXPECT_FALSE(meta.keywords.has_value());
 }
 
-// A file with no `/Info` still reports its page count; the `/Info` strings stay
-// unset rather than empty.
 TEST(PdfFile, file_meta_without_info) {
   PdfFileBuilder builder;
   builder.object("<< /Type /Catalog /Pages 2 0 R >>")
@@ -223,10 +219,6 @@ TEST(PdfFile, file_meta_without_info) {
   EXPECT_FALSE(meta.author.has_value());
 }
 
-// `/Link` annotations render as `<a>` overlays: a `/URI` action → an external
-// href (`&` attr-escaped, opening away from the page), a direct `/Dest` and a
-// named `/GoTo` → internal `#pN` anchors with a matching page div `id`. An
-// active-scheme `/URI` is dropped.
 TEST(PdfFile, link_annotations_render_as_anchors) {
   const std::string pdf = link_annotations_mini_pdf();
   for (const PdfTextMode mode :
@@ -262,8 +254,6 @@ TEST(PdfFile, a_relative_uri_links_only_with_external_content) {
   EXPECT_TRUE(contains(html, R"(href="other.pdf" style=)"));
 }
 
-// A `Tm` scaling x and y differently takes the CSS matrix path: glyphs shown
-// one `Tj` at a time read as one word, and a real gap keeps its space.
 TEST(PdfFile, anisotropic_placement_does_not_space_out_glyphs) {
   const std::string tight = render_html(
       text_mini_pdf("BT /F1 12 Tf 0.9 0 0 1 72 700 Tm (H) Tj (i) Tj ET"),
@@ -367,9 +357,6 @@ TEST(PdfFile, selection_run_is_justified_after_its_last_letter) {
   EXPECT_TRUE(contains(html, R"(.sr::after{content:"";display:inline-block})"));
 }
 
-// A standalone page view (`page{index}.html`) resolves internal links to the
-// target's page view file instead of a `#pN` anchor; the page div keeps its
-// document-global `id`.
 TEST(PdfFile, page_views_link_between_page_files) {
   const std::string pdf = link_annotations_mini_pdf();
   const std::string html = render_html(pdf, PdfTextMode::dual_layer,
@@ -384,8 +371,6 @@ TEST(PdfFile, page_views_link_between_page_files) {
   EXPECT_TRUE(contains(page3, R"(id="p3")"));
 }
 
-// The service exposes the combined document plus one view per page; the views
-// carry the page file names.
 TEST(PdfFile, page_views_are_listed) {
   const HtmlService service =
       make_service(link_annotations_mini_pdf(), HtmlConfig());
@@ -448,8 +433,6 @@ TEST(PdfFile, page_range_end_caps_pages_views_and_links) {
   EXPECT_THROW(render_path(service, "page2.html"), FileNotFound);
 }
 
-// `page_range_begin` skips leading pages while page views, ids and anchors
-// keep their document-global numbering.
 TEST(PdfFile, page_range_begin_keeps_global_numbering) {
   HtmlConfig config;
   config.page_range_begin = 1;
