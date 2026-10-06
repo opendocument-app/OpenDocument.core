@@ -26,7 +26,13 @@ if (ODR_CLANG_TIDY)
     if (NOT CLANG_TIDY_COMMAND)
         message(FATAL_ERROR "ODR_CLANG_TIDY is ON but clang-tidy was not found")
     endif ()
+    configure_file(.clang-tidy "${CMAKE_CURRENT_BINARY_DIR}/.clang-tidy" COPYONLY)
     set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}")
+    if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.25")
+        # Retain the configured compiler's standard-library include paths.
+        set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+        list(APPEND CMAKE_CXX_CLANG_TIDY -p "${CMAKE_BINARY_DIR}")
+    endif ()
 endif ()
 
 include(GNUInstallDirs)
