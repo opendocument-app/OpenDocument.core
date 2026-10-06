@@ -16,554 +16,224 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- PDF authentication accepts named crypt filters with an explicit or default
-  `None` method, and applies the 127-byte password limit for AES-256 revision 6.
+### Spreadsheets
+
+- `Sheet::insert_rows`, `delete_rows`, `insert_columns` and `delete_columns`,
+  and their ops, for an ods, an xlsx and a csv, in every binding
+  (`insertRows` and so on in java and npm, `insertRows(at:count:)` and so on
+  in swift). What names a moved row or column moves with it: formulas, also
+  on other sheets and in xlsx tables, merges, conditional formats,
+  validations, cell styles, xlsx `x14` extensions, sparklines, page breaks,
+  pivot tables and tables, and the ranges of ods and xlsx charts. A reference
+  into a removed range becomes `#REF!`. An edit that cuts a merge, an xlsx
+  array formula, the place of a pivot table, or the header or totals row of a
+  table refuses with `UnsupportedOperation`.
+
+- The sheet editor inserts and deletes rows and columns, one undo step each:
+  `odr.editing.insertRows("above" | "below")`, `deleteRows()`,
+  `insertColumns("left" | "right")` and `deleteColumns()`, or Ctrl or Cmd
+  with Shift and `+` or `-` on a header. An edge inside a merge refuses with
+  `unsupportedEdit`.
+
+- `Document::recalculate`, in every binding (`recalculateWithError:` in
+  objective-c), writes the results of the stale formulas of an ods or an
+  xlsx and returns the changed, circular and unevaluated cells. A save
+  recalculates after an edit. A cell it cannot compute, such as an array
+  formula, has no result in an ods and keeps its old one in an xlsx. STDEV.S,
+  STDEV.P, VAR.S and VAR.P are new.
 
-- Spreadsheet recalculation recognizes STDEV.S, STDEV.P, VAR.S, and VAR.P,
-  including their Excel and LibreOffice compatibility prefixes.
-
-- PDF streams support TIFF predictor samples packed at 1, 2, or 4 bits per
-  component. LZW decoding rejects invalid width parameters and dictionary
-  growth beyond the format's limit.
-
-- HTML document views honor their configured output filename. Audio and video
-  resources are served at custom locator paths without replacing the player
-  or stylesheet, and named in-memory WebM files retain their playable MIME type.
-  The Python CLI correctly opens output paths containing URL-special characters.
-
-- Spreadsheet previews retain ODS cells at window boundaries, clip repeated
-  and merged cells, and trim XLSX output to populated cells inside the window.
-
-- Filesystem copies preserve their source when copying onto itself and leave
-  existing destinations intact when reading or writing fails.
-
-- PDF Identity-H/V fonts retain two-byte character codes even when their
-  text-extraction map declares a conflicting codespace, preserving glyphs and
-  spacing.
-
-- PDF annotation snapshots no longer expose mutable pending state. Pointer
-  options are copied, and unknown option keys leave the settings unchanged.
-
-- PDF ink annotations retain their final pointer-up position and ignore
-  competing pointers until the active stroke ends.
-
-- The declared CMake minimum is now 3.20, the first version that recognizes
-  the build's existing C++23 requirement. Python wheel builds select this
-  minimum too.
-
-- PDF image dimensions and sample parameters are checked before narrowing; an
-  image with an invalid one is skipped. Inline images allocate only as data is
-  read.
-
-- JPEG 2000 images ignore the PDF Decode array as required. Raster decoding
-  rejects invalid sample depths, including non-1-bit stencil masks.
-
-- Conan packages include the license text. Android profiles identify NDK 28.1
-  as Clang 19 so dependency package IDs match the compiler.
-
-- PDF incremental writes reject invalid or conflicting object references and
-  oversized output, report write failures and restore the parser position.
-
-- PDF Lab and ICC colors, indexed palettes and image samples honor component
-  ranges. Invalid Lab white points and malformed range arrays are rejected.
-
-- JBIG2 decoding checks integer arithmetic, clips off-page regions and bounds
-  symbol allocation and loops. Unsupported intermediate regions are rejected
-  instead of painted onto the page.
-
-- PDF names preserve non-ASCII bytes. Object parsing rejects malformed keywords,
-  invalid reference indices and null name escapes.
-
-- PDF recovery removes obsolete generations and uses the latest compressed
-  copy when no direct definition exists.
-
-- PDF file indices are checked before narrowing; malformed cross-reference
-  widths, counts and object-stream offsets cannot wrap or drive unchecked
-  allocation. Incomplete cross-reference index pairs trigger recovery.
-
-- PDF object reads reject mismatched cross-reference targets and recover
-  from a stream error before seeking to another object.
-
-- PDF incremental updates keep deleted and replaced objects from resolving
-  through older generations. Hybrid tables discard superseded free entries.
-
-- PDF file traversal preserves the first object without a binary comment,
-  handles objects sharing a line, and uses the last trailing `startxref`.
-
-- PDF color-space parsing bounds recursive definitions and rejects invalid
-  component counts and palette ranges. Large finite palette indices clip
-  correctly.
-
-- Document path saves preserve the destination on write failure and retain
-  lazy resources when saving repeatedly over the input. Existing permissions
-  are preserved; temporary copies are private to their owner.
-
-- PDF calculator functions distinguish booleans, integers and reals; correct
-  bit shifts and rounding; and reject invalid arithmetic and operand types.
-
-- PDF functions reject non-finite values and invalid exponential domains,
-  and interpolate large finite intervals without intermediate overflow.
-
-- PDF AES decryption validates every padding byte before removing a trailer,
-  preserving data with malformed padding.
-
-- `ODR_CLANG_TIDY=ON` runs clang-tidy during C++ compilation and fails
-  configuration if the executable is unavailable.
-
-- HTTP server shutdown avoids user logging callbacks, so logging failures
-  cannot interrupt cleanup or terminate the process during destruction.
-
-- `DecodedFile::file_meta`, `identify`, and position `to_string` methods no
-  longer promise `noexcept`; allocation failures can propagate instead of
-  terminating the process.
-
-- Temporary copies create files exclusively, bound name-collision retries,
-  and keep cleanup from throwing during destruction or move assignment.
-
-- PDF calculator functions bound execution and validate stack operands and
-  results, preventing malformed programs from crashing or exhausting memory.
-
-- PDF calculator functions ignore comments, parse complete numeric tokens
-  independent of locale, and reject unbalanced or excessively nested braces.
-
-- PDF image soft masks apply the full Decode interval to opacity.
-
-- Spreadsheet text no longer spills over a cell that a merged cell from a row
-  above covers.
-
-- PDF annotations reject malformed indices, colors and geometry, and bound
-  squiggle generation before writing output.
-
-- PDF annotation authors and comments preserve Unicode text when saved.
-
-- Embedded PDF CMaps match complete character codes, keeping mixed-width CJK
-  text extraction and glyph selection aligned.
-
-- Embedded PDF CMaps skip comments, retain commands at end of stream, skip a
-  block with an invalid record count and validate CID bounds. Later CID ranges
-  override earlier ones.
-
-- PDF predefined CMaps preserve inherited character mappings after local
-  overrides, restoring text previously lost from vertical CJK fonts.
-
-- PDF fax images cut a run that exceeds the remaining row width at the row
-  end and keep decoding, so run lengths no longer overflow.
-
-- JPEG 2000 samples scale across the full colour range, so low-bit-depth
-  white pixels no longer appear gray.
-
-- PDF functions reject malformed intervals, overflowing or truncated sample
-  tables, and excessive stitching recursion before evaluation.
-
-- PDF Type3 text spacing avoids a freed graphics-state reference. Inline
-  images retain soft masks, and malformed forms preserve enclosing text tags.
-
-- PDF gradients read sampled and calculator function streams correctly.
-
-- PDF font indices are checked before conversion. Invalid CID width ranges
-  can no longer wrap or hang document parsing.
-
-- PDF PNG prediction handles packed multi-component pixels correctly. TIFF
-  and PNG predictors reject invalid dimensions and overflowing row sizes.
-
-- PDF numeric parsing rejects overflowing integers and malformed numbers;
-  long decimal fractions retain their value instead of wrapping. Written PDF
-  integers and references no longer inherit the host locale.
-
-- PDF literal strings accept one- and two-digit octal escapes and normalize
-  line endings. Malformed dictionary closing delimiters are rejected.
-
-- WebAssembly TypeScript declarations include the existing `ErrorCode` table
-  and `spreadsheetStyleBuffer` setting.
-
-- CLI `meta` accepts every decoded file type, `server` detects the input instead
-  of forcing ZIP, and `back_translate` supports editable text and CSV files.
-  The CLI container preserves executable permissions and forwards arguments.
-
-- WebAssembly CSV editing, saving and rendering share one document. CSV and
-  Markdown capability and locale queries now use their document interfaces.
-
-- WebAssembly rejects reentrant calls from callbacks instead of allowing a
-  callback to close or mutate a document during an active native operation.
-
-- WebAssembly rejects fractional, nonfinite and out-of-range element IDs,
-  sheet coordinates, rendering limits and view indices before conversion.
-
-- Apple CSV decoding rejects multi-character and multibyte delimiters.
-  Roots without a text-root interface are exposed as `Element`, not `TextRoot`.
-
-- Apple `Measure(string:)` is now failable. An invalid length returns `nil`
-  instead of letting a C++ exception escape into Swift.
-
-- Python, Java and Apple file/image/font reads report stream failures instead
-  of returning partial data after a ZIP checksum or other read error.
-
-- Android packaging rejects ABI directories missing either native library or
-  containing empty libraries. JNI jar configuration now requires its actual JDK 17 minimum.
-
-- Java `Measure`, `DrawingPath` and `DrawingTransform` equality now agrees with
-  hashing for signed zero and is reflexive for NaN, following `Double` semantics.
-
-- Java bindings release native handles on failed allocations, avoid pinned-array
-  leaks, and check array sizes before passing them to the JVM.
-
-- Java bindings reject out-of-range coordinates, style channels, CSV delimiters
-  and rendering limits instead of silently wrapping their integer values.
-
-- Java bindings preserve supplementary Unicode in exception messages, reject
-  unpaired UTF-16 surrogates, and replace invalid native UTF-8 sequences.
-
-- Python `Frame.line()` returns a bound `DrawingLine` with its endpoints instead
-  of raising a conversion error.
-
-- Spreadsheet rendering bounds columns as well as rows by the cell budget and
-  avoids rescanning blank spans for every empty cell.
-
-- Browser text editors delete complete supplementary Unicode characters when
-  the browser supplies no deletion range, preserving valid text and undo.
-
-- Document images cannot replace viewer scripts or stylesheets at shared output
-  paths; colliding images are embedded instead.
-
-- Document HTML escapes locale metadata and keeps individual views for sheets,
-  slides and pages named `document`.
-
-- Archive listings reserve shipped script and stylesheet paths before exposing
-  entries, and reject unsafe entry links. Archives cannot replace viewer scripts.
-
-- HTML and SVG rendering validates document length units before writing styles
-  or coordinates, preventing malformed units from injecting output markup.
-
-- Explicit transparent backgrounds and `none` borders override inherited ODF
-  styles, including after clearing a cell fill and reopening the document.
-
-- ODF charts reject unrepresentable geometry, bound axis/label conversions,
-  and draw complete single-slice pies and rings without overflowing totals.
-
-- ODF charts keep missing points aligned with their categories, honor repeated
-  rows, and retain implicit series. Expanded chart tables are bounded.
-
-- ODF number formats clamp digit counts to 4,096 and the minimum decimals to
-  the decimals, as LibreOffice does, before they expand placeholders.
-
-- ODF geometry reads decimal numbers independently of the host locale and
-  bounds numeric scans to the current token instead of copying expression tails.
-
-- ODF geometry parsing terminates on invalid text after a closed path and
-  rejects excessive polygon/arc expansion, deep formulas and nonfinite results.
-
-- XLSX infers omitted row and cell coordinates and preserves them through edits.
-  An invalid row index counts as omitted; an invalid column range or
-  shared-string index is ignored.
-
-- Spreadsheet edits reject NaN and infinite numeric values before changing
-  cells or dimensions, consistently across CSV, ODS and XLSX.
-
-- XLSX workbooks without a styles part open and accept formatting edits;
-  saving adds the styles part and its package declarations.
-
-- XLSX resolves styles and shared strings through workbook relationships and
-  saves edited styles back to their original part.
-
-- iWork dates enforce the calendar range and format expanded years with their
-  sign; oversized decimal128 coefficients consistently decode as zero.
-
-- iWork validates UTF-8 throughout text storage and string cells, including
-  the final paragraph; attachment traversal no longer rescans every anchor
-  for every paragraph.
-
-- iWork tables reject overflowing dimensions and tile coordinates, and
-  truncated cell-offset entries, instead of wrapping cells into other rows.
-
-- iWork parsing rejects overflowing varints, invalid field tags and combined
-  payload lengths before narrowing or allocation; text budgets cannot wrap.
-  Unknown wide archive types no longer alias known types.
-
-- StarView text arrays retain character positioning for supplementary Unicode
-  characters instead of discarding their UTF-16 advance arrays.
-
-- Large StarView coordinates, text advances and bitmap dimensions no longer
-  overflow or narrow while being converted to SVG.
-
-- StarView parsing reads each record within its declared length, so unknown
-  extensions no longer shift later fields and truncated records are refused.
-
-- StarView bitmaps check header sizes, dimensions and their byte budget
-  before they read or allocate pixels, and skipped bytes must exist.
-
-- PNG output splits compressed image data into bounded chunks, avoiding
-  truncated or invalid chunk lengths for large images.
-
-- Formula functions refuse non-finite numeric arguments before integer
-  conversion; `TRUE`, `FALSE` and `NA` no longer ignore extra arguments.
-
-- Formula arrays, conditional aggregates and lookups check their size limits
-  before dimension arithmetic can overflow on 32-bit targets.
-
-- Spreadsheet formulas keep quoted sheet spans when rewritten, read bare
-  whole-row ranges, and report cross-sheet ranges as unresolved. Extreme
-  reference shifts give `#REF!` without signed overflow.
-
-- Number formats preserve fraction literals and percent signs, avoid integer
-  overflow for large fractions, and fall back to General when a scientific
-  mantissa or fixed fraction cannot be represented.
-
-- CFF output validates glyph names and offset limits, reuses standard glyph-name
-  identifiers, and preserves fractional width operands until the final advance.
-
-- Type1 conversion honors subroutine returns, fractional widths and vertical
-  side bearings, and drops hint commands that Type2 cannot take in order.
-
-- Type1 fonts avoid signed overflow when they decrypt, keep binary ciphertext
-  bytes, and support unencrypted charstrings.
-
-- CFF fonts bound INDEX, dictionary and glyph reads, and check offsets before
-  conversion. Real operands ignore the host locale.
-
-- SFNT output uses format 12 for large character maps and U+FFFF mappings,
-  writes Unicode font names correctly, and validates table and name sizes.
-  Synthesized PostScript names now obey OpenType character and length limits.
-
-- SFNT fonts check character-map ranges before they expand them. A broken or
-  unsupported character map no longer hides the next supported one.
-
-- Legacy Office reports unencrypted documents as decodable and derives metadata
-  from the shared file-type table.
-
-- Legacy Excel rejects truncated BIFF records and a wrong substream type. It
-  drops cells outside the BIFF8 grid, and numbers ignore the host locale.
-
-- Legacy Word bounds font and piece tables by their declared lengths, checks
-  piece coverage and offsets, and reads PLC entries without unaligned access.
-
-- Legacy Word validates FIB signatures and extension lengths. It stores the
-  shared header fields by value, removing unsafe deletion through base pointers.
-
-- Legacy PowerPoint validates nested picture bounds, record lengths, and formatting
-  counts, limits text-container nesting, and avoids overflow in frame dimensions.
-
-- Markdown replaces NUL bytes in inline code and rejects oversized input.
-  RTF rejects unreadable streams; legacy PowerPoint rejects truncated text records.
-  Both binary readers safely propagate I/O exceptions.
-
-- OOXML parts consistently resolve absolute package targets. Optional relationships
-  skip external or invalid paths. DOCX opens without styles, and PPTX retains a
-  slide’s own background when it has no layout relationship.
-
-- PPTX text edits preserve one text node per DrawingML run, including tabs.
-  Insertion copies run properties; unsupported containers and slide removal refuse.
-
-- Standard OOXML encryption rejects unsupported algorithms, inconsistent verifier
-  fields, and plaintext sizes larger than the encrypted package.
-
-- OOXML explicit off values clear inherited bold, italic, underline, strike,
-  and shadow formatting instead of retaining or re-enabling it.
-
-- DOCX refuses structural edits on synthetic list wrappers and their paragraphs,
-  preventing dangling nodes. Appending text rejects unsupported containers.
-
-- List numbering preserves zero starts and rejects counter overflow. DOCX
-  validates numbering levels, numeric values, and bullet UTF-8 before use.
-
-- Deleting spreadsheet rows or columns retires handles to deleted cells before
-  freeing their nodes. Generic removal refuses off-tree cells and table columns.
-
-- Explicit XML element removal and cell-text replacement retire old handles
-  before freeing nodes. Removing a root refuses before changing the DOM.
-
-- CFB validates header fields, directory names, and mini-stream bounds. Version
-  3 files tolerate the uninitialized high size word allowed by the format.
-
-- ZIP preserves full entry names, distinguishes iterators from different
-  archives, and isolates miniz error state during concurrent reads. Entry
-  sizes and stream offsets are checked before narrowing.
-
-- XML helpers preserve embedded zero bytes when detecting UTF-16/32, report
-  stream failures, and read encoding names only from declaration attributes.
-
-- Table spans use storage proportional to merged cells, survive skipped rows,
-  and reject overflowing dimensions. Recalculation bounds formula spans before
-  multiplying or accumulating their size.
-
-- CSV preserves carriage-return record endings and separator directives when
-  options are reapplied. Out-of-range coordinates and growth are rejected
-  before cell IDs or allocation sizes can wrap.
-
-- Quantity parsing and integer formatting are locale independent. Invalid or
-  out-of-range integer magnitudes throw instead of silently converting.
-
-- Block-cipher helpers reject incomplete blocks before calling Crypto++, and
-  password derivation rejects parameters that would be narrowed or truncated.
-
-- CFB streams retain their entry metadata after the file wrapper is released.
-  Nested directory walks finish children before resuming outer siblings.
-
-- JSON edits reject fractional and out-of-range indices before changing a
-  document, and preserve the full width of positive element identifiers.
-  Text and document edits validate the version and operations array.
-
-- Empty file and HTML handles throw instead of dereferencing null.
-  Missing master pages and table rows/columns return empty element handles.
-
-- Copied filesystem walkers keep independent traversal positions on disk,
-  matching walkers over archives and memory filesystems.
-
-- Stream copies report failed reads and writes, and file writes check their
-  final flush. Saving a text file over its source reads the text before truncation.
-
-- Shared text helpers keep ASCII matching independent of locale and reject
-  malformed UTF-8, empty replacement patterns and overflowing repetitions.
-  In-memory byte writes reject offsets that overflow their bounds checks.
-
-- Release automation preserves literal asset paths and rejects malformed
-  version overrides before changing package metadata.
-
-- Java dependent handles reject calls after their owner is explicitly closed.
-  Document edits also keep argument wrappers alive through native calls.
-
-- PDF mask resampling handles large dimensions without signed overflow. PDF
-  and PNG image buffers check sizes before narrowing or allocation, including
-  on 32-bit targets.
-
-- CFB entry streams report the consumed position and seek relative to it,
-  with bounds checks before offset arithmetic.
-
-- Paths normalize repeated separators, accept names beginning with `..`, and
-  account for parent components when comparing relative ancestry.
-
-- AES-GCM decryption returns the exact plaintext, without a zero-filled suffix.
-
-- ZIP entry streams release their extraction buffers and reject truncated or
-  CRC-corrupt data. Failed archive saves also release writer state.
-
-- The shared stream helpers stop at failed input and reject extreme seeks,
-  buffered writes report a failed sink, and a temporary copy keeps binary
-  bytes on Windows.
-
-- An inserted or deleted row or column moves the Excel 2010 extensions of an
-  xlsx worksheet: an `x14` conditional format, validation and sparkline, and
-  sparkline date-axis ranges, and references from other sheets.
-- A formula nested more than 64 levels deep, including operator chains,
-  does not parse and gets no answer. An ods `&` of a boolean follows the LibreOffice in `meta:generator`,
-  and an xlsx comparison near the 15th digit gets no answer.
-
-- Spreadsheet structural edits preserve cross-sheet rules and table formulas,
-  case-insensitive sheet references, and ODS conditions in `styles.xml`.
-  Deleting nested XLSX ranges no longer accesses removed XML nodes.
-- Formula parsing and rounding are independent of the host numeric locale;
-  recalculation identifies cycles longer than its recursion limit.
-- Correct negative signs in scaled, percentage and fraction formats, and
-  handle subnormal scientific values and overflowing display scales. Cyclic
-  ODS style inheritance no longer hangs number-format lookup.
-- Hidden and formatted numbers retain their values in HTML editing and
-  sorting. CSV date-like input stays text, and overflowing input stays text.
-- ODS date/time writes preserve fractional seconds and reject out-of-range
-  durations. XLSX rejects nonfinite dates/times before changing a cell.
-
-- `Document::recalculate` in every binding: `recalculate` in python, java,
-  npm and swift, and `recalculateWithError:` in objective-c. Each returns the
-  changed, circular and unevaluated cells as positions.
-- `Document::recalculate` writes the results of the stale formulas of an ods
-  or an xlsx, and a save recalculates after an edit. A cell it cannot compute,
-  such as an array formula, has no result in an ods and its old one in an xlsx.
-- A cell after a `table:covered-table-cell` of an ods array formula reads at
-  its own column, not one column to the left.
-- An ods or xlsx cell that states no value reads as `ValueType::unknown`, so
-  it differs from an empty text. An ods formula error reads as
-  `ValueType::error`.
-- An ods cell with a value or a formula but no text is read, so its formula
-  survives a save. After a merge, an ods cell reads at its own position, and a
-  covered position reads as no cell.
-- An inserted or deleted row or column moves the source and the place of an
-  xlsx pivot table. An edit that changes part of the place, or removes all of
-  the source, refuses with `UnsupportedOperation`.
-- An inserted or deleted row or column moves the ranges an xlsx or an ods
-  chart reads, on whichever sheet the chart sits. An ods saves the part of
-  an embedded chart again.
-- An inserted or deleted row or column moves the formulas of an xlsx
-  conditional format and validation, and its page breaks, and the conditions
-  of an ods conditional format, validation and cell style.
-- An inserted or deleted row or column moves an xlsx table: its range, filter
-  and calculated columns. An edit that removes its header row, its totals row
-  or all of it refuses with `UnsupportedOperation`.
-- `Sheet::insert_columns` and `delete_columns` in every binding:
-  `insertColumns` and `deleteColumns` in java and npm, and
-  `insertColumns(at:count:)` and `deleteColumns(at:count:)` in swift.
-- The sheet editor inserts and deletes columns, one undo step each:
-  `odr.editing.insertColumns("left" | "right")` and `deleteColumns()`. An edge
-  inside a merge refuses with `unsupportedEdit`.
-- `Sheet::insert_columns` and `delete_columns`, and their ops, for an ods, an
-  xlsx and a csv. What names a moved column moves with it, a reference into a
-  removed one becomes `#REF!`, and a cut merge or column 16384 refuses.
-- `Sheet::insert_rows` and `delete_rows` in every binding: `insertRows` and
-  `deleteRows` in java and npm, and `insertRows(at:count:)` and
-  `deleteRows(at:count:)` in swift.
-- The sheet editor inserts and deletes rows, one undo step each:
-  `odr.editing.insertRows("above" | "below")` and `deleteRows()`, or Ctrl or
-  Cmd with Shift and `+` or `-` on a row header.
-- `Sheet::insert_rows` and `delete_rows`, and their ops, for an ods, an xlsx
-  and a csv. What names a moved row moves with it, a reference into a removed
-  one becomes `#REF!`, and a cut merge or xlsx array formula refuses.
-- A date `CellValue` states days since 1899-12-30, so a 1904 xlsx date counts
-  1462 days more, and a time states its length in days. A `setCell` op takes
-  `"date"` and `"time"` values.
-- An ods cell takes a written date or time: `office:date-value` or
-  `office:time-value`, and the text of its date or time style where it has
-  one.
-- An xlsx cell takes a written date or time as a serial of the workbook's
-  date system. A cell without a date or time format gets the built-in 14,
-  20, 21, 22 or 46, as Excel gives one.
-- The sheet editor reads a typed date or time: ISO 8601, or the locale's
-  numeric order (`1/2/2025` in `en-US`) with `AM`/`PM`. A date or time cell
-  opens on its value and states `odr-value-type-date` or `-time`.
-- A sheet sorts a date or time column by the value, not by the shown text.
-  A date or time cell states `data-odr-value` in a read-only render too.
-- A date written into an ods cell shows the month and day names of its data
-  style's language, as LibreOffice shows them: `15 марта` in a Russian
-  `D MMMM` cell.
-- An xlsx date shows the month and day names of the language its format
-  code states: `[$-419]d mmmm` shows `15 марта`.
-- An xlsx cell shows its number as its `numFmt` or a built-in format says,
-  and a date or time format types it `ValueType::date` or `time`. A boolean
-  shows `TRUE` or `FALSE`, and a date or time is right-aligned.
-- A number written into an ods cell with a data style shows as the style
-  says, in the style's language: `1234.5` in a German currency cell shows
-  `1.234,50 €`. A cell without a data style keeps the typed text.
-- The sheet editor opens a formatted number on its value, in the locale's
-  spelling, and a commit of it unchanged writes nothing. Before, it opened
-  `€1.234,50` as text and a commit made the cell a string.
-- An ods cell typed `percentage` or `currency` is `ValueType::float_number`,
-  as its `office:value` is a number, and is right-aligned as one.
 - `odr::create_document(FileType)` makes an empty odt, ods, docx or xlsx, and
-  `FileTypeCapabilities::create` names the types it makes. Every binding has
-  both, such as `pyodr.create_document` and `odr.create` in npm.
-- Text typed into an empty paragraph of a docx or pptx gets a run of its own,
-  with the formatting of the paragraph mark, as Word and PowerPoint do.
-  Before, Word, PowerPoint and LibreOffice did not show it.
-- The sheet editor opens a string cell that reads as a number, or starts with
-  `'` or `=`, with a leading `'`, so a commit keeps it a string.
-- The sheet editor refuses with `ErrorCode::edit_sheet_cut` (1011,
-  `sheetCut`) over a sheet the limits cut, or a move past the rendered extent.
-  The event carries the whole extent as `columns` and `rows`.
+  `FileTypeCapabilities::create` names the types it makes, in every binding
+  (`pyodr.create_document`, `odr.create` in npm).
+
 - A csv is editable and savable: `Sheet::set_cell` and the `setCell` op write
   a value, and `Document::save` writes UTF-8, with a byte order mark unless
   the source was UTF-8 without one. A cell style is refused.
-- `HorizontalAlign::general`, in every binding, and `align: null` in a
-  `setCellStyle` op and `odr.editing.format`, set a cell back to the
-  alignment by its value type.
-- An ods cell style with `style:text-align-source="value-type"` no longer
-  takes the `fo:text-align` of its parent style, as in LibreOffice.
-- A sheet cell takes several lines: Alt or Ctrl with Enter breaks a line in
-  the sheet editor. An ods writes a `text:p` per line, and an xlsx turns
-  `wrapText` on.
+
+- Dates and times: a date `CellValue` states days since 1899-12-30 (a 1904
+  xlsx date counts 1462 more), and a time its length in days. `setCell` takes
+  `"date"` and `"time"` values. An ods writes `office:date-value` or
+  `office:time-value` and the text of its data style; an xlsx writes a serial
+  and, without a date format, the built-in format Excel gives. The sheet
+  editor reads a typed ISO 8601 or locale-order date or time, opens a cell on
+  its value, and sorts a date or time column by the value. An ods keeps
+  fractional seconds, and a non-finite number or date is refused.
+
+- Number display: an xlsx cell shows its number as its `numFmt` or a built-in
+  format says, a date or time format types it `ValueType::date` or `time`,
+  and a boolean shows `TRUE` or `FALSE`. A number written into an ods cell
+  with a data style shows as that style says, in its language (`1.234,50 €`).
+  Month and day names follow the language of an ods data style or of an xlsx
+  format code (`[$-419]d mmmm` shows `15 марта`). An ods `percentage` or
+  `currency` cell is `ValueType::float_number`.
+
+- The sheet editor opens a formatted number on its value in the spelling of
+  `Document::locale` (BCP 47, in every binding), and an unchanged commit
+  writes nothing. A string that reads as a number, or starts with `'` or `=`,
+  opens with a leading `'`, so it stays a string.
+
+- A cell takes several lines: Alt or Ctrl with Enter breaks a line. An ods
+  writes a `text:p` per line, and an xlsx turns `wrapText` on.
+
 - `Sheet::set_row_style` and `set_column_style`, and their ops, style a whole
-  row or column of an ods or an xlsx, also past the stated cells. The sheet
-  editor uses them for a header selection, and every binding has them.
-- `Document::locale` answers the BCP 47 language an odf document states on
-  its default style, such as `de-DE`, in every binding. The sheet editor reads
-  a typed number with the decimal separator of that locale.
-- An xlsx cell without its own style shows the style of its row, where the
-  row states `customFormat`, else the style of its column.
+  row or column of an ods or an xlsx, also past the stated cells, in every
+  binding. The sheet editor uses them for a header selection.
+  `HorizontalAlign::general` (`align: null` in the ops and in
+  `odr.editing.format`) sets a cell back to the alignment of its value type.
+
+- The sheet editor refuses with `ErrorCode::edit_sheet_cut` (1011, `sheetCut`)
+  over a sheet the limits cut, or a move past the rendered extent.
+
+- Reading: an ods or xlsx cell that states no value is `ValueType::unknown`,
+  and an ods formula error is `ValueType::error`. An ods cell with a value or
+  a formula but no text is read, so its formula survives a save. Merged and
+  covered ods cells, also after an array formula, read at their own column.
+  An xlsx cell without a style of its own takes the style of its row, else of
+  its column. An xlsx infers omitted row and cell coordinates, resolves its
+  styles and shared strings through relationships, and opens and takes
+  formatting edits without a styles part.
+
+- Formulas: parsing, rounding and numbers ignore the host locale. A formula
+  nested more than 64 levels deep does not parse. An ods `&` of a boolean
+  follows the LibreOffice in `meta:generator`, and an xlsx comparison near
+  the 15th digit gets no answer. Recalculation finds long cycles. Rewritten
+  references keep quoted sheet spans, and extreme shifts give `#REF!`.
+
+- Number formats: correct negative signs in scaled, percentage and fraction
+  formats, fraction literals, percent signs and subnormal values. A format
+  that cannot represent a value falls back to General, and cyclic ods style
+  inheritance no longer hangs.
+
+- Rendering: a preview keeps the ods cells at its window boundaries and
+  trims an xlsx to the cells with content, a border or a fill. The cell
+  budget bounds the columns too. Text no longer spills over a cell that a
+  merge from above covers. An explicit transparent background or `none`
+  border overrides an inherited ods style. ODF charts keep missing points at
+  their categories, honor repeated rows and draw single-slice pies.
+
+### Text documents and presentations
+
+- Text typed into an empty paragraph of a docx or pptx gets a run of its own,
+  with the formatting of the paragraph mark, so Word, PowerPoint and
+  LibreOffice show it.
+
+- An explicit OOXML off value clears inherited bold, italic, underline,
+  strike and shadow. A docx opens without a styles part, and a pptx slide
+  keeps its own background without a layout.
+
+- PPTX edits keep one text node per DrawingML run and copy run properties on
+  insert. Unsupported containers, synthetic docx list wrappers and pptx slide
+  removal refuse instead of leaving dangling nodes.
+
+- Browser text editors delete a whole supplementary Unicode character when
+  the browser gives no range.
+
+### PDF
+
+- Text: Identity-H/V fonts keep two-byte codes, embedded CMaps match complete
+  codes for mixed-width CJK text, and predefined CMaps keep inherited
+  mappings, which restores text in vertical CJK fonts.
+
+- Images: JPEG 2000 ignores the Decode array and scales low bit depths to
+  the full range. Soft masks apply the full Decode interval, and inline
+  images keep them. TIFF and PNG predictors decode packed samples of 1, 2 or
+  4 bits. Gradients read sampled and calculator functions. Lab, ICC and
+  indexed colors honor their component ranges.
+
+- Encryption: named crypt filters with an explicit or omitted `None` method
+  work, also with AES-256, and AES-256 uses only the first 127 bytes of a
+  password. AES padding is checked before it is removed.
+
+- Annotations: ink keeps its final pointer-up position and follows one
+  pointer at a time. Authors and comments keep Unicode text when saved.
+  Snapshots do not expose pending state, and unknown option keys change
+  nothing.
+
+- A malformed file no longer crashes, hangs or exhausts memory. Cross-reference
+  tables, object streams, incremental updates, objects, functions, color
+  spaces, fonts, images, JBIG2, LZW and fax data are bounds-checked. An image
+  with an invalid parameter is skipped, and the rest of the page renders.
+  Recovery and incremental updates use the latest generation of an object.
+
+### Other formats
+
+- Fonts: Type1 conversion honors subroutine returns, fractional widths,
+  vertical side bearings and unencrypted charstrings. SFNT output uses format
+  12 for large character maps, writes Unicode names, and a broken character
+  map no longer hides the next one.
+
+- StarView keeps the character positions of supplementary Unicode text, and
+  unknown record extensions no longer shift later fields.
+
+- iWork dates keep their calendar range and the sign of expanded years.
+
+- Legacy Office reports an unencrypted document as decodable.
+
+- A malformed iWork, legacy Office, StarView, Markdown, RTF, CFB, ZIP, XML,
+  CSV or font file is refused instead of overflowing, wrapping or reading
+  past its end. A CSV keeps its carriage-return line endings and separator
+  directives, and a ZIP keeps full entry names.
+
+### HTML output
+
+- A document view honors its configured output filename. Audio and video are
+  served at custom locator paths, and a named in-memory WebM keeps its MIME
+  type.
+
+- A document image or archive entry cannot replace a viewer script or
+  stylesheet; a colliding image is embedded. Locale metadata is escaped, and
+  invalid length units cannot inject markup.
+
+- PNG output splits large image data into bounded chunks.
+
+### API, files and saving
+
+- A save over a path keeps the destination on a write failure, keeps lazy
+  resources when it saves over the input, and keeps its permissions.
+  Temporary copies are private and exclusive. A filesystem copy onto itself
+  keeps its source.
+
+- Stream copies and reads report a failure instead of returning partial
+  data, also in the python, java and apple bindings.
+
+- Empty file and HTML handles throw instead of dereferencing null, and a
+  handle to a removed cell or node is retired before the node is freed.
+
+- `DecodedFile::file_meta`, `identify` and the position `to_string` methods
+  are no longer `noexcept`.
+
+- Paths normalize repeated separators and accept names that begin with
+  `..`. Quantities and integers parse independently of the host locale, and
+  JSON edits validate their indices, version and operations.
+
+### Bindings and CLI
+
+- WebAssembly: the TypeScript declarations include `ErrorCode` and
+  `spreadsheetStyleBuffer`. Reentrant calls from callbacks and invalid
+  numbers are refused, and CSV editing shares one document.
+
+- Java: handles are released on failure, dependent handles refuse calls
+  after their owner closes, out-of-range numbers are refused, equality agrees
+  with hashing, and Unicode survives in exception messages.
+
+- Apple: `Measure(string:)` is failable, a CSV delimiter must be one
+  character, and a root without a text-root interface is an `Element`.
+
+- Python: `Frame.line()` returns its `DrawingLine`, and the CLI opens output
+  paths with URL-special characters.
+
+- CLI: `meta` accepts every decoded file type, `server` detects its input,
+  and `back_translate` supports text and CSV. The container keeps executable
+  permissions and forwards arguments.
+
+### Build and packaging
+
+- The declared CMake minimum is 3.20, also for Python wheels.
+  `ODR_CLANG_TIDY=ON` runs clang-tidy during the build.
+
+- Conan packages include the license text, and Android profiles identify
+  NDK 28.1 as Clang 19. Android packaging refuses a missing or empty native
+  library, and the JNI jar requires JDK 17.
 
 ## v7.4.0 - 2026-10-03
 
