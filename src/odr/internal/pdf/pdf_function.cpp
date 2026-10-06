@@ -251,19 +251,24 @@ protected:
       stack.emplace_back(x);
     }
     try {
-      run(m_program, stack);
+      std::size_t remaining = 100000;
+      run(m_program, stack, remaining, 0);
+      const std::size_t n = output_arity();
+      // Viewers read the top n values and ignore any left below them.
+      if (stack.size() < n) {
+        throw std::runtime_error("invalid calculator result count");
+      }
+      std::vector<double> out(n);
+      for (std::size_t j = n; j-- > 0;) {
+        out[j] = pop_number(stack);
+        if (!std::isfinite(out[j])) {
+          throw std::runtime_error("non-finite calculator result");
+        }
+      }
+      return out;
     } catch (const std::exception &) {
       return std::vector<double>(output_arity(), 0.0);
     }
-
-    const std::size_t n = output_arity();
-    std::vector<double> out(n, 0.0);
-    // The function leaves n results on the stack, the last output on top.
-    for (std::size_t j = n; j-- > 0 && !stack.empty();) {
-      out[j] = std::get<double>(stack.back());
-      stack.pop_back();
-    }
-    return out;
   }
 
 private:
@@ -287,11 +292,38 @@ private:
     return b;
   }
 
+  static std::int32_t pop_integer(std::vector<Item> &s) {
+    const double value = pop_number(s);
+    if (!std::isfinite(value) || std::trunc(value) != value ||
+        value < std::numeric_limits<std::int32_t>::min() ||
+        value > std::numeric_limits<std::int32_t>::max()) {
+      throw std::runtime_error("invalid calculator integer");
+    }
+    return static_cast<std::int32_t>(value);
+  }
+
+  static std::size_t pop_count(std::vector<Item> &s) {
+    const std::int32_t count = pop_integer(s);
+    if (count < 0 || static_cast<std::size_t>(count) > s.size()) {
+      throw std::runtime_error("invalid calculator stack count");
+    }
+    return static_cast<std::size_t>(count);
+  }
+
+  static constexpr std::size_t max_stack = 4096;
   static constexpr double deg = 180.0 / std::numbers::pi;
 
   static void run(const std::vector<PostScriptItem> &program,
-                  std::vector<Item> &s) {
+                  std::vector<Item> &s, std::size_t &remaining,
+                  const std::size_t depth) {
+    if (depth >= 64) {
+      throw std::runtime_error("calculator execution limit exceeded");
+    }
     for (const PostScriptItem &item : program) {
+      if (remaining == 0) {
+        throw std::runtime_error("calculator execution limit exceeded");
+      }
+      --remaining;
       switch (item.kind) {
       case PostScriptItem::Kind::number:
         s.emplace_back(item.number);
@@ -300,13 +332,17 @@ private:
         s.emplace_back(&item.block);
         break;
       case PostScriptItem::Kind::op:
-        run_op(item.op, s);
+        run_op(item.op, s, remaining, depth);
         break;
+      }
+      if (s.size() > max_stack) {
+        throw std::runtime_error("calculator stack limit exceeded");
       }
     }
   }
 
-  static void run_op(const std::string &op, std::vector<Item> &s) {
+  static void run_op(const std::string &op, std::vector<Item> &s,
+                     std::size_t &remaining, const std::size_t depth) {
     const auto unary = [&](double (*f)(double)) {
       s.emplace_back(f(pop_number(s)));
     };
@@ -430,39 +466,38 @@ private:
     } else if (op == "dup") {
       s.push_back(s.at(s.size() - 1));
     } else if (op == "copy") {
-      const auto count = static_cast<std::size_t>(pop_number(s));
-      if (count > s.size()) {
-        throw std::runtime_error("stack underflow");
+      const std::size_t count = pop_count(s);
+      if (count > max_stack - s.size()) {
+        throw std::runtime_error("calculator stack limit exceeded");
       }
       const std::size_t start = s.size() - count;
       for (std::size_t i = 0; i < count; ++i) {
         s.push_back(s[start + i]);
       }
     } else if (op == "index") {
-      const auto i = static_cast<std::size_t>(pop_number(s));
+      const std::size_t i = pop_count(s);
       s.push_back(s.at(s.size() - 1 - i));
     } else if (op == "roll") {
-      const auto j = static_cast<std::int32_t>(pop_number(s));
-      const auto count = static_cast<std::int32_t>(pop_number(s));
+      const std::int32_t j = pop_integer(s);
+      const auto count = static_cast<std::int32_t>(pop_count(s));
       if (count > 0) {
-        if (static_cast<std::size_t>(count) > s.size()) {
-          throw std::runtime_error("stack underflow");
-        }
         const auto first = s.end() - count;
-        const std::int32_t shift = ((j % count) + count) % count;
+        const std::int32_t remainder = j % count;
+        const std::int32_t shift =
+            remainder < 0 ? remainder + count : remainder;
         std::rotate(first, s.end() - shift, s.end());
       }
     } else if (op == "if") {
       const auto *proc = pop_block(s);
       const double cond = pop_number(s);
       if (cond != 0.0) {
-        run(*proc, s);
+        run(*proc, s, remaining, depth + 1);
       }
     } else if (op == "ifelse") {
       const auto *proc2 = pop_block(s);
       const auto *proc1 = pop_block(s);
       const double cond = pop_number(s);
-      run(cond != 0.0 ? *proc1 : *proc2, s);
+      run(cond != 0.0 ? *proc1 : *proc2, s, remaining, depth + 1);
     } else {
       throw std::runtime_error("unknown PostScript operator: " + op);
     }

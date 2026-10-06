@@ -275,3 +275,59 @@ TEST(PdfFunction, calculator_tokens_and_braces) {
                                                  std::string(1000, '}'))),
             nullptr);
 }
+
+TEST(PdfFunction, calculator_stack_operations) {
+  Dictionary dict;
+  dict["FunctionType"] = Object(Integer{4});
+  dict["Domain"] = reals({0, 1});
+  dict["Range"] = reals({-10, 10});
+  for (const auto &[program, expected] :
+       std::array{std::pair{"{ pop 2 3 2 copy add add add }", 10.0},
+                  std::pair{"{ pop 2 3 1 index add add }", 7.0},
+                  std::pair{"{ pop 1 2 3 3 -1 roll pop sub }", -1.0},
+                  std::pair{"{ pop 1 2 3 3 2147483647 roll pop sub }", 2.0},
+                  std::pair{"{ 1 }", 1.0}}) {
+    SCOPED_TRACE(program);
+    const auto fn = parse_function(Object(dict), context(program));
+    ASSERT_NE(fn, nullptr);
+    EXPECT_DOUBLE_EQ(fn->eval({0.5})[0], expected);
+  }
+}
+
+TEST(PdfFunction, calculator_invalid_execution_returns_zero) {
+  Dictionary dict;
+  dict["FunctionType"] = Object(Integer{4});
+  dict["Domain"] = reals({0, 1});
+  dict["Range"] = reals({0, 1});
+  for (const std::string program :
+       {"{ pop {} }", "{ pop }", "{ pop 1e308 dup mul }", "{ -1 copy }",
+        "{ 1e100 copy }", "{ 0.5 copy }", "{ 2 copy }", "{ -1 index }",
+        "{ 1e100 index }", "{ 1 index }", "{ -1 0 roll }", "{ 1 1e100 roll }",
+        "{ 1 0.5 roll }", "{ pop { dup true exch if } dup true exch if }"}) {
+    SCOPED_TRACE(program);
+    const auto fn = parse_function(Object(dict), context(program));
+    ASSERT_NE(fn, nullptr);
+    EXPECT_EQ(fn->eval({0.5}), std::vector<double>{0});
+  }
+  std::string growth = "{ ";
+  for (std::size_t i = 0; i < 13; ++i) {
+    growth += std::to_string(std::size_t{1} << i) + " copy ";
+  }
+  const auto fn = parse_function(Object(dict), context(growth + "}"));
+  ASSERT_NE(fn, nullptr);
+  EXPECT_EQ(fn->eval({0.5}), std::vector<double>{0});
+}
+
+TEST(PdfFunction, calculator_instruction_limit) {
+  Dictionary dict;
+  dict["FunctionType"] = Object(Integer{4});
+  dict["Domain"] = reals({0, 1});
+  dict["Range"] = reals({0, 1});
+  std::string program = "{ ";
+  for (std::size_t i = 0; i < 100001; ++i) {
+    program += "cvr ";
+  }
+  const auto fn = parse_function(Object(dict), context(program + "}"));
+  ASSERT_NE(fn, nullptr);
+  EXPECT_EQ(fn->eval({0.5}), std::vector<double>{0});
+}
