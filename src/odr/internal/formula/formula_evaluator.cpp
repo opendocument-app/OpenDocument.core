@@ -124,7 +124,6 @@ public:
               throw NoAnswer{};
             }
             return *number;
-
           } else {
             return number(scalar(value));
           }
@@ -151,7 +150,6 @@ public:
           } else if constexpr (std::is_same_v<T, std::string> ||
                                std::is_same_v<T, ErrorType>) {
             return content;
-
           } else {
             return text(scalar(value));
           }
