@@ -263,10 +263,11 @@ pdf::parse_color_space(const Object &object, const ColorSpaceContext &context,
     if (dict.has_value("Alternate")) {
       def->alternate =
           parse_color_space(dict.get("Alternate"), context, depth + 1);
-      if (def->alternate == nullptr ||
-          def->alternate->kind == ColorSpaceKind::pattern ||
-          def->alternate->components != def->components) {
-        return nullptr;
+      // an alternate that cannot stand in leaves the device space `N` names
+      if (def->alternate != nullptr &&
+          (def->alternate->kind == ColorSpaceKind::pattern ||
+           def->alternate->components != def->components)) {
+        def->alternate = nullptr;
       }
     }
     return def;
@@ -318,11 +319,7 @@ pdf::parse_color_space(const Object &object, const ColorSpaceContext &context,
     } else {
       def->lookup = context.load_stream(array[3]);
     }
-    const auto entries = static_cast<std::size_t>(def->hival) + 1;
-    if (entries >
-        def->lookup.size() / static_cast<std::size_t>(def->base->components)) {
-      return nullptr;
-    }
+    // a short palette reads its missing bytes as 0
     return def;
   }
   if (family == "Separation" || family == "DeviceN") {

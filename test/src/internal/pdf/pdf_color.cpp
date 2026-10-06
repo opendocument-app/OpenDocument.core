@@ -209,12 +209,19 @@ TEST(PdfColor, invalid_component_counts_and_palettes_are_rejected) {
         nullptr)
         << hival;
   }
-  EXPECT_EQ(
-      parse_color_space(
-          Object(Array({Object(Name{"Indexed"}), Object(Name{"DeviceRGB"}),
-                        Object(Integer{1}), Object(StandardString("short"))})),
-          context()),
-      nullptr);
+}
+
+// A palette shorter than `/HiVal` asks for keeps its entries; the missing
+// bytes read as 0.
+TEST(PdfColor, a_short_palette_reads_missing_bytes_as_zero) {
+  const auto def = parse_color_space(
+      Object(Array({Object(Name{"Indexed"}), Object(Name{"DeviceRGB"}),
+                    Object(Integer{1}),
+                    Object(StandardString(std::string("\xff\0\0\0\xff", 5)))})),
+      context());
+  ASSERT_NE(def, nullptr);
+  EXPECT_EQ(to_rgb(*def, {0}), (std::array<double, 3>{1, 0, 0}));
+  EXPECT_EQ(to_rgb(*def, {1}), (std::array<double, 3>{0, 1, 0}));
 }
 
 TEST(PdfColor, device_n_requires_nonempty_colorant_names) {
@@ -228,7 +235,7 @@ TEST(PdfColor, device_n_requires_nonempty_colorant_names) {
   }
 }
 
-TEST(PdfColor, recursive_alternates_are_rejected) {
+TEST(PdfColor, recursive_alternates_stop_at_the_depth_limit) {
   Dictionary profile;
   profile["N"] = Object(Integer{3});
   profile["Alternate"] = Object(ObjectReference{1, 0});
@@ -237,6 +244,21 @@ TEST(PdfColor, recursive_alternates_are_rejected) {
   ctx.resolve = [&](const Object &object) {
     return object.is_reference() ? cyclic : object;
   };
-  EXPECT_EQ(parse_color_space(cyclic, ctx), nullptr);
+  const auto def = parse_color_space(cyclic, ctx);
+  ASSERT_NE(def, nullptr);
+  EXPECT_EQ(def->components, 3);
   ASSERT_NE(parse_color_space(Object(Name{"DeviceRGB"}), ctx), nullptr);
+}
+
+// An alternate with another component count cannot stand in, so the space
+// falls back to the device space `N` names.
+TEST(PdfColor, a_mismatched_icc_alternate_is_ignored) {
+  Dictionary profile;
+  profile["N"] = Object(Integer{3});
+  profile["Alternate"] = Object(Name{"DeviceGray"});
+  const auto def = parse_color_space(
+      Object(Array({Object(Name{"ICCBased"}), Object(profile)})), context());
+  ASSERT_NE(def, nullptr);
+  EXPECT_EQ(def->alternate, nullptr);
+  EXPECT_EQ(to_rgb(*def, {1, 0, 0}), (std::array<double, 3>{1, 0, 0}));
 }
