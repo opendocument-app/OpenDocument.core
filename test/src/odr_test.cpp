@@ -244,6 +244,7 @@ TEST(FileTypeTable, capabilities_build_on_each_other) {
   }
 }
 
+/// Holds the declared `color_scheme` against what the renderer emits.
 TEST(FileTypeCapabilities, color_scheme_matches_the_html) {
   std::size_t candidates = 0;
   for (const FileType type : every_file_type()) {
@@ -265,6 +266,7 @@ TEST(FileTypeCapabilities, color_scheme_matches_the_html) {
         const auto render = [&](const HtmlColorScheme scheme) {
           HtmlConfig config;
           config.color_scheme = scheme;
+          // one page of a pdf is enough, and the rest is slow
           config.page_range_end = 1;
           std::ostringstream out;
           html::translate(file, config).list_views().at(0).write_html(out);
@@ -322,10 +324,14 @@ TEST(FileTypeCapabilities, declaration_matches_the_engines) {
           document = file->as_document_file().document();
         }
       } catch (const std::exception &failure) {
+        // declared support is an upper bound: one file may fail, as long as
+        // another of its type passes
         error = test_file.short_path + ": " + failure.what();
         continue;
       }
       ++checked;
+      // whatever detection sees, the table has to admit to - from the bytes,
+      // or from the name for a type that has no signature to find
       const std::vector<FileType> detected =
           list_file_types(test_file.absolute_path);
       if (std::ranges::find(detected, type) != detected.end()) {
@@ -335,6 +341,7 @@ TEST(FileTypeCapabilities, declaration_matches_the_engines) {
             << test_file.short_path;
       }
 
+      // an encrypted OOXML package decodes as its own file type
       const FileTypeCapabilities declared_actual =
           capabilities_by_file_type(file->file_type());
       const FileTypeCapabilities actual = file->capabilities();
@@ -343,6 +350,8 @@ TEST(FileTypeCapabilities, declaration_matches_the_engines) {
           << test_file.short_path;
       EXPECT_TRUE(!actual.translate_html || declared_actual.translate_html)
           << test_file.short_path;
+      // a plain file is not a document, so `Document::is_savable` never
+      // answers for it, and without this the table could claim anything
       if (file->is_text_file()) {
         EXPECT_EQ(file->as_text_file().is_savable(), declared_actual.save)
             << test_file.short_path;
