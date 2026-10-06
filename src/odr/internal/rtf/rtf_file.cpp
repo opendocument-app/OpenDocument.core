@@ -28,7 +28,7 @@ std::string_view RtfFile::mimetype() const noexcept {
   return "application/rtf";
 }
 
-FileMeta RtfFile::file_meta() const noexcept {
+FileMeta RtfFile::file_meta() const {
   FileMeta result;
   result.type = file_type();
   result.mimetype = mimetype();

@@ -43,7 +43,7 @@ std::string_view svg::SvgFile::mimetype() const noexcept {
   return "image/svg+xml";
 }
 
-FileMeta svg::SvgFile::file_meta() const noexcept {
+FileMeta svg::SvgFile::file_meta() const {
   FileMeta result;
   result.type = file_type();
   result.mimetype = mimetype();

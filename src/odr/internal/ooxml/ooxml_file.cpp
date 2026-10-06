@@ -38,7 +38,7 @@ std::string_view OfficeOpenXmlFile::mimetype() const noexcept {
   return m_file_meta.mimetype;
 }
 
-FileMeta OfficeOpenXmlFile::file_meta() const noexcept { return m_file_meta; }
+FileMeta OfficeOpenXmlFile::file_meta() const { return m_file_meta; }
 
 DocumentType OfficeOpenXmlFile::document_type() const {
   return m_file_meta.document_type;

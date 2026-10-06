@@ -15,7 +15,7 @@ public:
 
   [[nodiscard]] FileType file_type() const noexcept override;
   [[nodiscard]] FileCategory file_category() const noexcept override;
-  [[nodiscard]] FileMeta file_meta() const noexcept override;
+  [[nodiscard]] FileMeta file_meta() const override;
   [[nodiscard]] std::string_view mimetype() const noexcept override;
 
   [[nodiscard]] bool is_decodable() const noexcept override;

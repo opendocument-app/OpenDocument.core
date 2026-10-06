@@ -44,7 +44,7 @@ std::string_view OpenDocumentFile::mimetype() const noexcept {
   return m_file_meta.mimetype;
 }
 
-FileMeta OpenDocumentFile::file_meta() const noexcept { return m_file_meta; }
+FileMeta OpenDocumentFile::file_meta() const { return m_file_meta; }
 
 DocumentType OpenDocumentFile::document_type() const {
   return m_file_meta.document_type;

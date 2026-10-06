@@ -23,7 +23,7 @@ const TablePosition &TableRange::from() const noexcept { return m_from; }
 
 const TablePosition &TableRange::to() const noexcept { return m_to; }
 
-std::string TableRange::to_string() const noexcept {
+std::string TableRange::to_string() const {
   return m_from.to_string() + ":" + m_to.to_string();
 }
 

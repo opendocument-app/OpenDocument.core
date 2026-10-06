@@ -44,7 +44,7 @@ public:
   [[nodiscard]] virtual FileType file_type() const noexcept = 0;
   [[nodiscard]] virtual FileCategory file_category() const noexcept = 0;
   [[nodiscard]] virtual std::string_view mimetype() const noexcept = 0;
-  [[nodiscard]] virtual FileMeta file_meta() const noexcept = 0;
+  [[nodiscard]] virtual FileMeta file_meta() const = 0;
 
   [[nodiscard]] virtual bool password_encrypted() const noexcept {
     return false;

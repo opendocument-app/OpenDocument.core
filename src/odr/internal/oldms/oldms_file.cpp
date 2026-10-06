@@ -90,7 +90,7 @@ std::string_view LegacyMicrosoftFile::mimetype() const noexcept {
   return m_file_meta.mimetype;
 }
 
-FileMeta LegacyMicrosoftFile::file_meta() const noexcept { return m_file_meta; }
+FileMeta LegacyMicrosoftFile::file_meta() const { return m_file_meta; }
 
 DocumentType LegacyMicrosoftFile::document_type() const {
   return m_file_meta.document_type;

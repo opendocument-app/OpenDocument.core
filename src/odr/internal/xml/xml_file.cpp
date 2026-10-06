@@ -67,7 +67,7 @@ std::string_view xml::XmlFile::mimetype() const noexcept {
   return "application/xml";
 }
 
-FileMeta xml::XmlFile::file_meta() const noexcept {
+FileMeta xml::XmlFile::file_meta() const {
   FileMeta result;
   result.type = file_type();
   result.mimetype = mimetype();

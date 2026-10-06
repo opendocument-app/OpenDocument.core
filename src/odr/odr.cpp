@@ -34,7 +34,7 @@ bool odr::is_dirty() noexcept { return internal::git_info::is_dirty(); }
 
 bool odr::is_debug() noexcept { return internal::project_info::is_debug(); }
 
-std::string odr::identify() noexcept {
+std::string odr::identify() {
   return (version().empty() ? "unknown version" : version()) +
          (commit_hash().empty() ? "" : " (" + commit_hash() + ")") +
          (is_dirty() ? " [dirty]" : "") + (is_debug() ? " [debug]" : "");

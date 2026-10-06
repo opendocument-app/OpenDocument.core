@@ -5,6 +5,7 @@
 #include <odr/filesystem.hpp>
 #include <odr/odr.hpp>
 
+#include <odr/internal/abstract/file.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/random.hpp>
 #include <odr/internal/common/temporary_file.hpp>
@@ -18,6 +19,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <new>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -402,4 +404,22 @@ TEST(File, temporary_creation_does_not_follow_a_dangling_symlink) {
   EXPECT_FALSE(std::filesystem::exists(target));
   std::filesystem::remove(link, error);
   std::filesystem::remove(target, error);
+}
+
+TEST(File, metadata_failures_propagate_to_the_caller) {
+  class FailingMetadata final : public internal::abstract::DecodedFile {
+  public:
+    std::shared_ptr<internal::abstract::File> file() const noexcept override {
+      return {};
+    }
+    FileType file_type() const noexcept override { return FileType::unknown; }
+    FileCategory file_category() const noexcept override {
+      return FileCategory::unknown;
+    }
+    std::string_view mimetype() const noexcept override { return {}; }
+    FileMeta file_meta() const override { throw std::bad_alloc(); }
+    bool is_decodable() const noexcept override { return false; }
+  };
+  const DecodedFile file(std::make_shared<FailingMetadata>());
+  EXPECT_THROW((void)file.file_meta(), std::bad_alloc);
 }

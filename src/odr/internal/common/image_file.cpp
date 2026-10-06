@@ -15,7 +15,7 @@ std::shared_ptr<abstract::File> ImageFile::file() const noexcept {
 
 FileType ImageFile::file_type() const noexcept { return m_file_type; }
 
-FileMeta ImageFile::file_meta() const noexcept {
+FileMeta ImageFile::file_meta() const {
   FileMeta result;
   result.type = file_type();
   result.mimetype = mimetype();

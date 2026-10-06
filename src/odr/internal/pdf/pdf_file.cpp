@@ -145,7 +145,7 @@ std::shared_ptr<abstract::File> PdfFile::file() const noexcept {
   return m_file;
 }
 
-FileMeta PdfFile::file_meta() const noexcept { return m_file_meta; }
+FileMeta PdfFile::file_meta() const { return m_file_meta; }
 
 bool PdfFile::annotatable() const noexcept { return m_annotatable; }
 

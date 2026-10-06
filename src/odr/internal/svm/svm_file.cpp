@@ -31,7 +31,7 @@ std::string_view SvmFile::mimetype() const noexcept {
   return "application/x-starview-metafile";
 }
 
-FileMeta SvmFile::file_meta() const noexcept {
+FileMeta SvmFile::file_meta() const {
   FileMeta result;
   result.type = file_type();
   result.mimetype = mimetype();

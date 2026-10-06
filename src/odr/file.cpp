@@ -121,7 +121,7 @@ FileCategory DecodedFile::file_category() const noexcept {
   return m_impl->file_category();
 }
 
-FileMeta DecodedFile::file_meta() const noexcept { return m_impl->file_meta(); }
+FileMeta DecodedFile::file_meta() const { return m_impl->file_meta(); }
 
 bool DecodedFile::password_encrypted() const {
   return m_impl->password_encrypted();
