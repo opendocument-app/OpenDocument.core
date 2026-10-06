@@ -1,8 +1,7 @@
 #include <odr/internal/pdf/pdf_image.hpp>
 
-#include <odr/internal/crypto/crypto_util.hpp>
+#include <internal/png/png_test_util.hpp>
 #include <odr/internal/pdf/pdf_color.hpp>
-#include <odr/internal/png/png_util.hpp>
 
 #include <array>
 #include <cstdint>
@@ -13,142 +12,11 @@
 #include <gtest/gtest.h>
 
 using namespace odr::internal::pdf;
+using odr::test::png::bytes;
+using odr::test::png::decode_png;
+using odr::test::png::DecodedPng;
 
 namespace {
-
-std::uint32_t be32(const std::string &data, const std::size_t offset) {
-  return (static_cast<std::uint32_t>(static_cast<std::uint8_t>(data[offset]))
-          << 24) |
-         (static_cast<std::uint32_t>(
-              static_cast<std::uint8_t>(data[offset + 1]))
-          << 16) |
-         (static_cast<std::uint32_t>(
-              static_cast<std::uint8_t>(data[offset + 2]))
-          << 8) |
-         static_cast<std::uint32_t>(
-             static_cast<std::uint8_t>(data[offset + 3]));
-}
-
-/// Minimal PNG reader for the encoder's output: walks the chunks, inflates the
-/// concatenated IDAT and strips the per-row filter byte (the encoder only emits
-/// filter type 0), yielding the raw 8-bit RGB pixels. A palette image is looked
-/// up into RGB.
-struct DecodedPng {
-  std::int32_t width{0};
-  std::int32_t height{0};
-  std::int32_t bit_depth{0};
-  std::int32_t colour_type{0};
-  std::string rgb;
-};
-
-DecodedPng decode_png(const std::string &png) {
-  EXPECT_GE(png.size(), 8u);
-  const std::string signature = {
-      static_cast<char>(0x89), 'P', 'N', 'G', '\r', '\n',
-      static_cast<char>(0x1A), '\n'};
-  EXPECT_EQ(png.substr(0, 8), signature);
-
-  DecodedPng result;
-  std::string idat;
-  std::string palette;
-  std::size_t p = 8;
-  while (p + 12 <= png.size()) {
-    const std::uint32_t length = be32(png, p);
-    const std::string type = png.substr(p + 4, 4);
-    const std::string data = png.substr(p + 8, length);
-    if (type == "IHDR") {
-      result.width = static_cast<std::int32_t>(be32(data, 0));
-      result.height = static_cast<std::int32_t>(be32(data, 4));
-      result.bit_depth = static_cast<std::uint8_t>(data[8]);
-      result.colour_type = static_cast<std::uint8_t>(data[9]);
-    } else if (type == "PLTE") {
-      palette = data;
-    } else if (type == "IDAT") {
-      idat += data;
-    } else if (type == "IEND") {
-      break;
-    }
-    p += 12 + length;
-  }
-
-  const bool indexed = result.colour_type == 3;
-  if (indexed) {
-    EXPECT_FALSE(palette.empty());
-  } else {
-    EXPECT_EQ(result.bit_depth, 8);
-    EXPECT_EQ(result.colour_type, 2); // RGB
-  }
-  const std::string raw = odr::internal::crypto::util::zlib_inflate(idat);
-  const std::size_t stride =
-      indexed
-          ? (static_cast<std::size_t>(result.width) * result.bit_depth + 7) / 8
-          : static_cast<std::size_t>(result.width) * 3;
-  for (std::int32_t y = 0; y < result.height; ++y) {
-    const std::size_t row = static_cast<std::size_t>(y) * (stride + 1);
-    EXPECT_EQ(static_cast<std::uint8_t>(raw[row]), 0); // filter type None
-    if (!indexed) {
-      result.rgb.append(raw, row + 1, stride);
-      continue;
-    }
-    for (std::int32_t x = 0; x < result.width; ++x) {
-      const std::size_t bit = static_cast<std::size_t>(x) * result.bit_depth;
-      const auto byte = static_cast<std::uint8_t>(raw[row + 1 + bit / 8]);
-      const std::size_t index = (byte >> (8 - result.bit_depth - bit % 8)) &
-                                ((1u << result.bit_depth) - 1);
-      result.rgb.append(palette, index * 3, 3);
-    }
-  }
-  return result;
-}
-
-std::string rgb_pixel(const std::string &rgb, const std::int32_t width,
-                      const std::int32_t x, const std::int32_t y) {
-  return rgb.substr((static_cast<std::size_t>(y) * width + x) * 3, 3);
-}
-
-/// Like `decode_png` but for the RGBA encoder output (colour type 6): keeps the
-/// alpha channel, yielding 4 bytes per pixel.
-struct DecodedPngRgba {
-  std::int32_t width{0};
-  std::int32_t height{0};
-  std::string rgba;
-};
-
-DecodedPngRgba decode_png_rgba(const std::string &png) {
-  EXPECT_GE(png.size(), 8u);
-  DecodedPngRgba result;
-  std::string idat;
-  std::size_t p = 8;
-  while (p + 12 <= png.size()) {
-    const std::uint32_t length = be32(png, p);
-    const std::string type = png.substr(p + 4, 4);
-    const std::string data = png.substr(p + 8, length);
-    if (type == "IHDR") {
-      result.width = static_cast<std::int32_t>(be32(data, 0));
-      result.height = static_cast<std::int32_t>(be32(data, 4));
-      EXPECT_EQ(static_cast<std::uint8_t>(data[8]), 8); // bit depth
-      EXPECT_EQ(static_cast<std::uint8_t>(data[9]), 6); // colour type RGBA
-    } else if (type == "IDAT") {
-      idat += data;
-    } else if (type == "IEND") {
-      break;
-    }
-    p += 12 + length;
-  }
-  const std::string raw = odr::internal::crypto::util::zlib_inflate(idat);
-  const auto stride = static_cast<std::size_t>(result.width) * 4;
-  for (std::int32_t y = 0; y < result.height; ++y) {
-    const std::size_t row = static_cast<std::size_t>(y) * (stride + 1);
-    EXPECT_EQ(static_cast<std::uint8_t>(raw[row]), 0); // filter type None
-    result.rgba.append(raw, row + 1, stride);
-  }
-  return result;
-}
-
-std::string rgba_pixel(const std::string &rgba, const std::int32_t width,
-                       const std::int32_t x, const std::int32_t y) {
-  return rgba.substr((static_cast<std::size_t>(y) * width + x) * 4, 4);
-}
 
 ColorSpaceDef device_rgb() {
   ColorSpaceDef def;
@@ -164,14 +32,6 @@ ColorSpaceDef device_gray() {
   return def;
 }
 
-std::string bytes(std::initializer_list<int> values) {
-  std::string result;
-  for (const int v : values) {
-    result.push_back(static_cast<char>(v));
-  }
-  return result;
-}
-
 } // namespace
 
 TEST(PdfImage, encode_rgb_8bpc) {
@@ -179,17 +39,17 @@ TEST(PdfImage, encode_rgb_8bpc) {
       bytes({10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120});
   const DecodedPng png =
       decode_png(encode_image_png(samples, 2, 2, 8, device_rgb(), {}));
-  EXPECT_EQ(png.rgb, samples); // identity for DeviceRGB 8bpc
+  EXPECT_EQ(png.pixels, samples); // identity for DeviceRGB 8bpc
 }
 
 TEST(PdfImage, encode_gray_8bpc_expands_to_rgb) {
   const std::string samples = bytes({0, 128, 200, 255});
   const DecodedPng png =
       decode_png(encode_image_png(samples, 2, 2, 8, device_gray(), {}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 2, 0, 0), bytes({0, 0, 0}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 2, 1, 0), bytes({128, 128, 128}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 2, 0, 1), bytes({200, 200, 200}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 2, 1, 1), bytes({255, 255, 255}));
+  EXPECT_EQ(png.pixel(0, 0), bytes({0, 0, 0}));
+  EXPECT_EQ(png.pixel(1, 0), bytes({128, 128, 128}));
+  EXPECT_EQ(png.pixel(0, 1), bytes({200, 200, 200}));
+  EXPECT_EQ(png.pixel(1, 1), bytes({255, 255, 255}));
 }
 
 TEST(PdfImage, encode_indexed_2x2) {
@@ -205,10 +65,10 @@ TEST(PdfImage, encode_indexed_2x2) {
   const std::string samples = bytes({0, 1, 1, 0});
   const DecodedPng png =
       decode_png(encode_image_png(samples, 2, 2, 8, indexed, {}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 2, 0, 0), bytes({255, 0, 0}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 2, 1, 0), bytes({0, 255, 0}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 2, 0, 1), bytes({0, 255, 0}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 2, 1, 1), bytes({255, 0, 0}));
+  EXPECT_EQ(png.pixel(0, 0), bytes({255, 0, 0}));
+  EXPECT_EQ(png.pixel(1, 0), bytes({0, 255, 0}));
+  EXPECT_EQ(png.pixel(0, 1), bytes({0, 255, 0}));
+  EXPECT_EQ(png.pixel(1, 1), bytes({255, 0, 0}));
 }
 
 TEST(PdfImage, encode_indexed_1bpc_packs_and_pads_rows) {
@@ -224,9 +84,9 @@ TEST(PdfImage, encode_indexed_1bpc_packs_and_pads_rows) {
   const std::string samples = bytes({0b10100000});
   const DecodedPng png =
       decode_png(encode_image_png(samples, 3, 1, 1, indexed, {}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 3, 0, 0), bytes({255, 255, 255}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 3, 1, 0), bytes({0, 0, 0}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 3, 2, 0), bytes({255, 255, 255}));
+  EXPECT_EQ(png.pixel(0, 0), bytes({255, 255, 255}));
+  EXPECT_EQ(png.pixel(1, 0), bytes({0, 0, 0}));
+  EXPECT_EQ(png.pixel(2, 0), bytes({255, 255, 255}));
   EXPECT_EQ(png.bit_depth, 1);
 }
 
@@ -238,18 +98,18 @@ TEST(PdfImage, encode_gray_1bpc_as_a_palette) {
       decode_png(encode_image_png(samples, 2, 2, 1, device_gray(), decode));
   EXPECT_EQ(png.colour_type, 3);
   EXPECT_EQ(png.bit_depth, 1);
-  EXPECT_EQ(rgb_pixel(png.rgb, 2, 0, 0), bytes({255, 255, 255}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 2, 1, 0), bytes({0, 0, 0}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 2, 0, 1), bytes({0, 0, 0}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 2, 1, 1), bytes({255, 255, 255}));
+  EXPECT_EQ(png.pixel(0, 0), bytes({255, 255, 255}));
+  EXPECT_EQ(png.pixel(1, 0), bytes({0, 0, 0}));
+  EXPECT_EQ(png.pixel(0, 1), bytes({0, 0, 0}));
+  EXPECT_EQ(png.pixel(1, 1), bytes({255, 255, 255}));
 }
 
 // Rows the samples do not reach read as zero, as on the 8-bit path.
 TEST(PdfImage, encode_gray_1bpc_pads_short_samples) {
   const DecodedPng png =
       decode_png(encode_image_png(bytes({0xff}), 8, 2, 1, device_gray(), {}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 8, 0, 0), bytes({255, 255, 255}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 8, 0, 1), bytes({0, 0, 0}));
+  EXPECT_EQ(png.pixel(0, 0), bytes({255, 255, 255}));
+  EXPECT_EQ(png.pixel(0, 1), bytes({0, 0, 0}));
 }
 
 TEST(PdfImage, encode_gray_4bpc) {
@@ -257,8 +117,8 @@ TEST(PdfImage, encode_gray_4bpc) {
   const std::string samples = bytes({0x0F});
   const DecodedPng png =
       decode_png(encode_image_png(samples, 2, 1, 4, device_gray(), {}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 2, 0, 0), bytes({0, 0, 0}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 2, 1, 0), bytes({255, 255, 255}));
+  EXPECT_EQ(png.pixel(0, 0), bytes({0, 0, 0}));
+  EXPECT_EQ(png.pixel(1, 0), bytes({255, 255, 255}));
 }
 
 TEST(PdfImage, encode_honours_decode_array) {
@@ -267,8 +127,8 @@ TEST(PdfImage, encode_honours_decode_array) {
   const std::array<double, 2> decode = {1.0, 0.0};
   const DecodedPng png =
       decode_png(encode_image_png(samples, 2, 1, 8, device_gray(), decode));
-  EXPECT_EQ(rgb_pixel(png.rgb, 2, 0, 0), bytes({255, 255, 255}));
-  EXPECT_EQ(rgb_pixel(png.rgb, 2, 1, 0), bytes({0, 0, 0}));
+  EXPECT_EQ(png.pixel(0, 0), bytes({255, 255, 255}));
+  EXPECT_EQ(png.pixel(1, 0), bytes({0, 0, 0}));
 }
 
 TEST(PdfImage, encode_rejects_bad_parameters) {
@@ -279,54 +139,44 @@ TEST(PdfImage, encode_rejects_bad_parameters) {
   EXPECT_TRUE(encode_image_png("", 1, 1, 8, zero, {}).empty());
 }
 
-TEST(PdfImage, png_rgba_round_trip) {
-  // 2x1: opaque red, half-transparent green.
-  const std::string rgba = bytes({255, 0, 0, 255, 0, 255, 0, 128});
-  const DecodedPngRgba png =
-      decode_png_rgba(odr::internal::png::write(rgba, 2, 1, 4));
-  EXPECT_EQ(png.width, 2);
-  EXPECT_EQ(png.height, 1);
-  EXPECT_EQ(png.rgba, rgba);
-}
-
 TEST(PdfImage, encode_with_alpha_plane_emits_rgba) {
   // DeviceGray 2x1, samples black/white, alpha plane opaque/transparent.
   const std::string samples = bytes({0, 255});
   const std::vector<std::uint8_t> alpha = {255, 0};
-  const DecodedPngRgba png = decode_png_rgba(
-      encode_image_png(samples, 2, 1, 8, device_gray(), {}, alpha));
-  EXPECT_EQ(rgba_pixel(png.rgba, 2, 0, 0), bytes({0, 0, 0, 255}));
-  EXPECT_EQ(rgba_pixel(png.rgba, 2, 1, 0), bytes({255, 255, 255, 0}));
+  const DecodedPng png =
+      decode_png(encode_image_png(samples, 2, 1, 8, device_gray(), {}, alpha));
+  EXPECT_EQ(png.pixel(0, 0), bytes({0, 0, 0, 255}));
+  EXPECT_EQ(png.pixel(1, 0), bytes({255, 255, 255, 0}));
 }
 
 TEST(PdfImage, encode_with_colour_key_masks_matching_pixels) {
   // DeviceRGB 2x1: pure red is keyed out, the other pixel stays opaque.
   const std::string samples = bytes({255, 0, 0, 10, 20, 30});
   const std::vector<double> color_key = {255, 255, 0, 0, 0, 0};
-  const DecodedPngRgba png = decode_png_rgba(
+  const DecodedPng png = decode_png(
       encode_image_png(samples, 2, 1, 8, device_rgb(), {}, {}, color_key));
-  EXPECT_EQ(rgba_pixel(png.rgba, 2, 0, 0), bytes({255, 0, 0, 0}));
-  EXPECT_EQ(rgba_pixel(png.rgba, 2, 1, 0), bytes({10, 20, 30, 255}));
+  EXPECT_EQ(png.pixel(0, 0), bytes({255, 0, 0, 0}));
+  EXPECT_EQ(png.pixel(1, 0), bytes({10, 20, 30, 255}));
 }
 
 TEST(PdfImage, encode_stencil_paints_fill_colour_through_mask) {
   // 1 bpc, 2x1: bits 0,1 -> 0b01000000 (row padded to a byte). Default /Decode
   // [0 1]: a 0 paints the fill colour, a 1 is transparent.
   const std::string samples = bytes({0b01000000});
-  const DecodedPngRgba png =
-      decode_png_rgba(encode_stencil_png(samples, 2, 1, {1.0, 0.0, 0.0}, {}));
-  EXPECT_EQ(rgba_pixel(png.rgba, 2, 0, 0), bytes({255, 0, 0, 255}));
-  EXPECT_EQ(static_cast<std::uint8_t>(rgba_pixel(png.rgba, 2, 1, 0)[3]), 0);
+  const DecodedPng png =
+      decode_png(encode_stencil_png(samples, 2, 1, {1.0, 0.0, 0.0}, {}));
+  EXPECT_EQ(png.pixel(0, 0), bytes({255, 0, 0, 255}));
+  EXPECT_EQ(static_cast<std::uint8_t>(png.pixel(1, 0)[3]), 0);
 }
 
 TEST(PdfImage, encode_stencil_decode_inverts) {
   // /Decode [1 0] swaps which sample paints: now the 1 paints, the 0 is clear.
   const std::string samples = bytes({0b01000000});
   const std::array<double, 2> decode = {1.0, 0.0};
-  const DecodedPngRgba png = decode_png_rgba(
-      encode_stencil_png(samples, 2, 1, {0.0, 0.0, 1.0}, decode));
-  EXPECT_EQ(static_cast<std::uint8_t>(rgba_pixel(png.rgba, 2, 0, 0)[3]), 0);
-  EXPECT_EQ(rgba_pixel(png.rgba, 2, 1, 0), bytes({0, 0, 255, 255}));
+  const DecodedPng png =
+      decode_png(encode_stencil_png(samples, 2, 1, {0.0, 0.0, 1.0}, decode));
+  EXPECT_EQ(static_cast<std::uint8_t>(png.pixel(0, 0)[3]), 0);
+  EXPECT_EQ(png.pixel(1, 0), bytes({0, 0, 255, 255}));
 }
 
 TEST(PdfImage, decode_mask_alpha_soft_mask_grey_to_alpha) {
