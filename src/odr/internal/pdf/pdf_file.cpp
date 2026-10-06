@@ -301,7 +301,8 @@ void write_annotations(DocumentParser &parser, const nlohmann::json &json,
     throw std::invalid_argument("unsupported annotation format version");
   }
 
-  const auto &annotations = at(json, "annotations");
+  const nlohmann::json annotations =
+      json.value("annotations", nlohmann::json::array());
   if (!annotations.is_array()) {
     throw std::invalid_argument("annotations must be an array");
   }

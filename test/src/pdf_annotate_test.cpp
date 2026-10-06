@@ -250,8 +250,9 @@ TEST(PdfAnnotate, rejects_fractional_indices_and_non_array_payloads) {
         {"unexpected", {0, 0, 0, 0, 0, 0, 0, 0}}};
     EXPECT_THROW(annotate(payload.dump()), std::invalid_argument);
   }
-  for (const nlohmann::json value : {nlohmann::json(0.5), nlohmann::json(-1),
-                                     nlohmann::json(18446744073709551615ULL)}) {
+  for (const nlohmann::json &value :
+       {nlohmann::json(0.5), nlohmann::json(-1),
+        nlohmann::json(18446744073709551615ULL)}) {
     auto payload = nlohmann::json::parse(one_highlight);
     payload["annotations"][0]["page"] = value;
     EXPECT_THROW(annotate(payload.dump()), std::invalid_argument);
@@ -263,4 +264,5 @@ TEST(PdfAnnotate, rejects_fractional_indices_and_non_array_payloads) {
         R"({"version":1,"annotations":null})"}) {
     EXPECT_THROW(annotate(payload), std::invalid_argument);
   }
+  EXPECT_NO_THROW(annotate(R"({"version":1})"));
 }
