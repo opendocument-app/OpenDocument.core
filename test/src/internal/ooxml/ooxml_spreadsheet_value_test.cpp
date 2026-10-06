@@ -1,6 +1,7 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
 #include <odr/filesystem.hpp>
+#include <odr/table_dimension.hpp>
 
 #include <internal/ooxml/ooxml_spreadsheet_test_util.hpp>
 
@@ -330,4 +331,37 @@ TEST(OoxmlSpreadsheetValue, an_invalid_index_keeps_the_rest_of_the_sheet) {
       decode(workbook(R"(<row r=" +1 "><c r="A1" t="s"><v> +0 </v></c></row>)",
                       "", "<si><t>zero</t></si>"));
   EXPECT_EQ(first_sheet(document).cell(0, 0).value().text(), "zero");
+}
+
+TEST(OoxmlSpreadsheetValue, content_extent_counts_only_cells_in_the_window) {
+  const Document document =
+      decode(workbook(R"(<row r="2"><c r="B2"><v>1</v></c></row>)"
+                      R"(<row r="4"><c r="D4" s="0"/></row>)"
+                      R"(<row r="10"><c r="J10"><v>2</v></c></row>)",
+                      "", "", "", R"(<dimension ref="A1:Z1000"/>)"));
+  const Sheet sheet = first_sheet(document);
+
+  for (const TableDimensions limit :
+       {TableDimensions(2, 2), TableDimensions(5, 5)}) {
+    const TableDimensions content = sheet.content(limit);
+    EXPECT_EQ(content.rows, 2);
+    EXPECT_EQ(content.columns, 2);
+  }
+  EXPECT_EQ(sheet.content(std::nullopt).rows, 10);
+  EXPECT_EQ(sheet.content(std::nullopt).columns, 10);
+  EXPECT_EQ(sheet.content(TableDimensions(1, 5)).columns, 0);
+  EXPECT_EQ(sheet.content(TableDimensions(5, 1)).rows, 0);
+}
+
+TEST(OoxmlSpreadsheetValue, content_extent_clips_merged_cells_at_the_window) {
+  const Document document =
+      decode(workbook(R"(<row r="2"><c r="B2"><v>1</v></c></row>)",
+                      R"(<mergeCells><mergeCell ref="B2:E4"/></mergeCells>)"));
+  const Sheet sheet = first_sheet(document);
+
+  EXPECT_EQ(sheet.content(std::nullopt).rows, 4);
+  EXPECT_EQ(sheet.content(std::nullopt).columns, 5);
+  const TableDimensions content = sheet.content(TableDimensions(3, 3));
+  EXPECT_EQ(content.rows, 3);
+  EXPECT_EQ(content.columns, 3);
 }

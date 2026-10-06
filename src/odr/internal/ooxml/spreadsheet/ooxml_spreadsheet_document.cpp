@@ -24,6 +24,7 @@
 #include <cmath>
 #include <cstdint>
 #include <iterator>
+#include <limits>
 #include <optional>
 #include <ostream>
 #include <ranges>
@@ -333,11 +334,32 @@ public:
   }
   [[nodiscard]] TableDimensions
   sheet_content(const ElementIdentifier element_id,
-                [[maybe_unused]] const std::optional<TableDimensions> range)
-      const override {
-    // TODO the range is ignored: this answers the whole `<dimension>` rather
-    // than trimming to the populated cells inside it.
-    return sheet_dimensions(element_id);
+                const std::optional<TableDimensions> range) const override {
+    const TableDimensions limit = range.value_or(
+        TableDimensions(std::numeric_limits<std::uint32_t>::max(),
+                        std::numeric_limits<std::uint32_t>::max()));
+    TableDimensions result;
+    for (const auto &[position, cell] :
+         m_registry->sheet_element_at(element_id).cells) {
+      if (!cell.node.first_child() || position.row >= limit.rows ||
+          position.column >= limit.columns) {
+        continue;
+      }
+      const ElementRegistry::SheetCell &element =
+          m_registry->sheet_cell_element_at(cell.element_id);
+      if (element.is_covered) {
+        continue;
+      }
+      const auto end_row = static_cast<std::uint32_t>(std::min<std::uint64_t>(
+          std::uint64_t{position.row} + element.span.rows, limit.rows));
+      const auto end_column =
+          static_cast<std::uint32_t>(std::min<std::uint64_t>(
+              std::uint64_t{position.column} + element.span.columns,
+              limit.columns));
+      result.rows = std::max(result.rows, end_row);
+      result.columns = std::max(result.columns, end_column);
+    }
+    return result;
   }
   [[nodiscard]] ElementIdentifier
   sheet_cell(const ElementIdentifier element_id, const std::uint32_t column,

@@ -679,34 +679,28 @@ public:
   [[nodiscard]] TableDimensions
   sheet_content(const ElementIdentifier element_id,
                 const std::optional<TableDimensions> range) const override {
-    const pugi::xml_node node = get_node(element_id);
-
+    const TableDimensions limit = range.value_or(
+        TableDimensions(std::numeric_limits<std::uint32_t>::max(),
+                        std::numeric_limits<std::uint32_t>::max()));
     TableDimensions result;
-
-    TableCursor cursor;
-    for_each_table_row(node, [&](const pugi::xml_node row) {
-      const auto rows_repeated =
-          row.attribute("table:number-rows-repeated").as_uint(1);
-      cursor.add_row(rows_repeated);
-
-      for (auto cell : row.children("table:table-cell")) {
-        const auto columns_repeated =
-            cell.attribute("table:number-columns-repeated").as_uint(1);
-        const auto colspan =
-            cell.attribute("table:number-columns-spanned").as_uint(1);
-        const auto rowspan =
-            cell.attribute("table:number-rows-spanned").as_uint(1);
-        cursor.add_cell(colspan, rowspan, columns_repeated);
-
-        const std::uint32_t new_rows = cursor.row();
-        const std::uint32_t new_cols =
-            std::max(result.columns, cursor.column());
-        if (cell.first_child() &&
-            (!range || (new_rows < range->rows && new_cols < range->columns))) {
-          result.rows = new_rows;
-          result.columns = new_cols;
-        }
+    for_each_cell_run(element_id, [&](const ElementRegistry::Sheet::Cell &cell,
+                                      const std::uint32_t row,
+                                      const TableDimensions &repeated) {
+      if (!cell.node.first_child() || row >= limit.rows ||
+          cell.begin >= limit.columns) {
+        return;
       }
+      const std::uint32_t colspan = std::max(
+          1u, cell.node.attribute("table:number-columns-spanned").as_uint(1));
+      const std::uint32_t rowspan = std::max(
+          1u, cell.node.attribute("table:number-rows-spanned").as_uint(1));
+      const auto end_row = static_cast<std::uint32_t>(std::min<std::uint64_t>(
+          std::uint64_t{row} + repeated.rows + rowspan - 1, limit.rows));
+      const auto end_column =
+          static_cast<std::uint32_t>(std::min<std::uint64_t>(
+              std::uint64_t{cell.end} + colspan - 1, limit.columns));
+      result.rows = std::max(result.rows, end_row);
+      result.columns = std::max(result.columns, end_column);
     });
 
     return result;

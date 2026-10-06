@@ -16,6 +16,9 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Spreadsheet previews retain ODS cells at window boundaries, clip repeated
+  and merged cells, and trim XLSX output to populated cells inside the window.
+
 - Filesystem copies preserve their source when copying onto itself and leave
   existing destinations intact when reading or writing fails.
 

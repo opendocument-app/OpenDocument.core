@@ -104,10 +104,8 @@ the evaluator cannot compute.
    stale formulas, and saving after an edit invokes it. Unsupported and array
    formulas retain their cached results. Number formats supply displayed
    numbers, dates and times.
-2. `sheet_content` ignores the requested range and returns the full
-   `<dimension>`.
-3. No `cellStyleXfs` inheritance. Borders render as `0.75pt solid` whatever
+2. No `cellStyleXfs` inheritance. Borders render as `0.75pt solid` whatever
    the style. Cell `protection` is read and dropped.
-4. `sheet_set_cell` writes numbers, strings, booleans, dates and times. `text_set_content`
+3. `sheet_set_cell` writes numbers, strings, booleans, dates and times. `text_set_content`
    throws `UnsupportedOperation`. A `<hyperlink>` is not modelled, so
    `link_href` is empty. Comments are not modelled.
