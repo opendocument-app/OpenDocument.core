@@ -270,7 +270,9 @@ bool read_eol(BitReader &reader) {
   return true;
 }
 
-/// One run: make-up codes up to the terminating code (T.4 4.1.1).
+/// One run: make-up codes up to the terminating code (T.4 4.1.1). Like
+/// libtiff, a run past the end of the row stops at the end of the row; its
+/// codes are still consumed, so the next row stays in step.
 template <std::uint32_t Bits>
 std::int32_t read_run(BitReader &reader, const RunTable<Bits> &table,
                       const std::int32_t limit) {
@@ -280,11 +282,8 @@ std::int32_t read_run(BitReader &reader, const RunTable<Bits> &table,
     if (entry.length == 0) {
       fail("ccitt: invalid run code");
     }
-    if (entry.run > limit - total) {
-      fail("ccitt: run past the end of the row");
-    }
     reader.skip(entry.length);
-    total += entry.run;
+    total = std::min(total + entry.run, limit);
     if (entry.run < 64) {
       return total;
     }
