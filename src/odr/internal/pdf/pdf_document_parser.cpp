@@ -1696,9 +1696,10 @@ DocumentParser::load_object_stream(const ObjectReference &reference) {
   const Dictionary &dictionary = object.object.as_dictionary();
 
   const std::string data = read_decoded_stream(object);
-  const std::uint32_t n = resolve_object_copy(dictionary["N"]).as_integer();
+  const std::uint32_t n =
+      checked_file_index(resolve_object_copy(dictionary["N"]).as_integer());
   const std::uint32_t first =
-      resolve_object_copy(dictionary["First"]).as_integer();
+      checked_file_index(resolve_object_copy(dictionary["First"]).as_integer());
 
   util::stream::ViewStream in(data);
   return m_object_streams
@@ -1740,10 +1741,10 @@ std::string DocumentParser::read_object_stream(const IndirectObject &object) {
   in().seekg(object.stream_position.value());
   // A missing or unresolvable `/Length` is not fatal: the no-argument overload
   // recovers the extent by scanning to the `endstream`/`endobj` terminator.
-  std::string raw = length.is_integer() && length.as_integer() >= 0
-                        ? m_parser.read_stream(
-                              static_cast<std::uint32_t>(length.as_integer()))
-                        : m_parser.read_stream();
+  std::string raw =
+      length.is_integer() && length.as_integer() >= 0
+          ? m_parser.read_stream(checked_file_index(length.as_integer()))
+          : m_parser.read_stream();
 
   // Decrypt before filter decoding (7.6.2). Cross-reference streams are read
   // during the trailer-chain walk, before the decryptor exists, so they are
@@ -1859,19 +1860,24 @@ DocumentParser::read_xref_section(const std::uint32_t position) {
         "expected three field widths in cross-reference stream /W");
   }
   const std::array<std::uint32_t, 3> field_widths = {
-      static_cast<std::uint32_t>(widths[0].as_integer()),
-      static_cast<std::uint32_t>(widths[1].as_integer()),
-      static_cast<std::uint32_t>(widths[2].as_integer())};
+      checked_file_index(widths[0].as_integer(), 8),
+      checked_file_index(widths[1].as_integer(), 8),
+      checked_file_index(widths[2].as_integer(), 8)};
 
+  const auto size = checked_file_index(dictionary["Size"].as_integer());
   std::vector<std::pair<std::uint32_t, std::uint32_t>> subsections;
   if (dictionary.has_key("Index")) {
     const Array &index = dictionary["Index"].as_array();
+    if (index.size() % 2 != 0) {
+      throw std::runtime_error(
+          "PDF cross-reference /Index needs complete pairs");
+    }
     for (std::size_t i = 0; i + 1 < index.size(); i += 2) {
-      subsections.emplace_back(index[i].as_integer(),
-                               index[i + 1].as_integer());
+      subsections.emplace_back(checked_file_index(index[i].as_integer()),
+                               checked_file_index(index[i + 1].as_integer()));
     }
   } else {
-    subsections.emplace_back(0, dictionary["Size"].as_integer());
+    subsections.emplace_back(0, size);
   }
 
   util::stream::ViewStream in(decoded.data);
@@ -1901,15 +1907,15 @@ std::pair<Xref, Dictionary> DocumentParser::read_trailer_chain() {
     // the classic table leaves absent or marks free, before older sections
     // are appended
     if (trailer_dict.has_key("XRefStm")) {
-      const XrefSection stream_section =
-          read_xref_section(trailer_dict["XRefStm"].as_integer());
+      const XrefSection stream_section = read_xref_section(
+          checked_file_index(trailer_dict["XRefStm"].as_integer()));
       xref.merge_hybrid(stream_section.xref);
     }
 
     result_xref.append(xref);
 
     if (trailer_dict.has_key("Prev")) {
-      position = trailer_dict["Prev"].as_integer();
+      position = checked_file_index(trailer_dict["Prev"].as_integer());
     } else {
       position.reset();
     }
@@ -1967,10 +1973,10 @@ void DocumentParser::index_object_streams() {
       const ObjectStream &members = load_object_stream(reference);
       for (std::size_t i = 0; i < members.size(); ++i) {
         // a directly recovered object wins over its compressed copy
-        m_xref.table.try_emplace(ObjectReference(members[i].id, 0),
-                                 Xref::Entry(Xref::CompressedEntry{
-                                     static_cast<std::uint32_t>(reference.id),
-                                     static_cast<std::uint32_t>(i)}));
+        m_xref.table.try_emplace(
+            ObjectReference(members[i].id, 0),
+            Xref::Entry(Xref::CompressedEntry{checked_file_index(reference.id),
+                                              checked_file_index(i)}));
       }
     } catch (const std::exception &) { // NOLINT(bugprone-empty-catch)
       // an unreadable (or, when encrypted, undecryptable) object stream is

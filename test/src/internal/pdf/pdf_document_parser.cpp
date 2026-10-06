@@ -832,3 +832,15 @@ TEST(DocumentParser, rejects_mismatched_object_stream_members) {
   EXPECT_THROW((void)parser.read_object(ObjectReference{2, 0}),
                std::runtime_error);
 }
+
+TEST(DocumentParser, malformed_xref_index_requires_recovery) {
+  std::string source = two_object_mini_pdf(false);
+  source.insert(source.find("/W ["), "/Index [0 6 99] ");
+  DocumentParser parser(std::make_unique<std::istringstream>(source));
+  EXPECT_TRUE(parser.is_recovered());
+  EXPECT_EQ(parser.read_object(ObjectReference{1, 0})
+                .object.as_dictionary()
+                .get("Type")
+                .as_name(),
+            "Catalog");
+}

@@ -22,20 +22,13 @@ public:
   [[nodiscard]] Xref read_xref();
   [[nodiscard]] StartXref read_start_xref();
 
-  /// Read the raw bytes of a stream object, the cursor positioned at the start
-  /// of the data (just past the `stream` keyword's EOL), leaving the cursor
-  /// past the trailing `endobj`. Use the `size` overload with a known
-  /// `/Length`; use the no-argument overload when the length is missing or
-  /// unresolvable to recover the extent by scanning to the `endstream`/`endobj`
-  /// terminator.
+  /// Read stream bytes and consume endstream/endobj from the current position.
+  /// Without /Length, scan for both terminators (ISO 32000-1 7.3.8.1).
   [[nodiscard]] std::string read_stream(std::uint32_t size);
   [[nodiscard]] std::string read_stream();
 
-  /// Parse all `n` members of a decoded object stream (`/Type /ObjStm`,
-  /// ISO 32000-1 7.5.7) from the de-filtered payload `in`: a header of `n`
-  /// (id, offset) integer pairs followed by the member objects (bare values —
-  /// no `n g obj` wrapper, no stream) at `first + offset`. `n` and `first` are
-  /// the `/N` and `/First` dictionary entries.
+  /// Read /N members from a decoded /ObjStm payload with header size /First.
+  /// The stream begins at offset zero (ISO 32000-1 7.5.7).
   [[nodiscard]] ObjectStream read_object_stream(std::uint32_t n,
                                                 std::uint32_t first);
 
@@ -45,22 +38,14 @@ public:
   /// Seek the last startxref line in the trailing search window.
   void seek_start_xref(std::uint32_t margin = 1024);
 
-  /// Decode the entry table of a cross-reference stream (ISO 32000-1 7.5.8.3)
-  /// from the already de-filtered `data`. `field_widths` is the `/W` array
-  /// (three big-endian byte widths; width 0 means the field defaults: type 1,
-  /// other fields 0), `subsections` the `/Index` pairs (first id, count).
-  /// Entries of unknown type are treated as absent.
+  /// Decode /W fields and /Index ranges from a decoded cross-reference stream.
+  /// Unknown entry types are ignored (ISO 32000-1 7.5.8.3).
   [[nodiscard]] Xref read_xref_stream_table(
       const std::array<std::uint32_t, 3> &field_widths,
       const std::vector<std::pair<std::uint32_t, std::uint32_t>> &subsections);
 
-  /// Last-resort cross-reference recovery for broken files (missing/garbage
-  /// `startxref`, wrong offsets, a damaged chain): forward-scan the whole file
-  /// for `n g obj` starts, rebuilding `m_xref` (last definition of an id wins)
-  /// and collecting `trailer` dictionaries into `m_trailer`. Then object-stream
-  /// members are indexed (`index_object_streams`) and, if no `trailer` supplied
-  /// a `/Root`, a `/Type /Catalog` object is searched (`recover_root`). Sets
-  /// `m_recovered`. Any object cached from the failed attempt is dropped first.
+  /// Scan for cross-reference offsets and trailer entries, skipping stream
+  /// bodies.
   std::pair<Xref, Dictionary> recover_xref();
 
 private:

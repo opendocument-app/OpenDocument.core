@@ -3,14 +3,28 @@
 #include <odr/internal/pdf/pdf_object.hpp>
 
 #include <array>
+#include <concepts>
 #include <iosfwd>
+#include <limits>
 #include <map>
 #include <optional>
+#include <stdexcept>
 #include <utility>
 #include <variant>
 #include <vector>
 
 namespace odr::internal::pdf {
+
+/// Validate an index against the parser's storage limit before narrowing.
+template <std::integral T>
+std::uint32_t checked_file_index(
+    const T value,
+    const std::uint32_t maximum = std::numeric_limits<std::uint32_t>::max()) {
+  if (!std::in_range<std::uint32_t>(value) || value > maximum) {
+    throw std::runtime_error("PDF file index out of range");
+  }
+  return static_cast<std::uint32_t>(value);
+}
 
 struct Header {};
 

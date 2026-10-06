@@ -4,9 +4,28 @@
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
+#include <algorithm>
 #include <stdexcept>
 
 namespace odr::internal::pdf {
+
+namespace {
+
+std::uint64_t stream_size(std::istream &in) {
+  const std::streampos position = in.tellg();
+  if (position == std::streampos(-1)) {
+    throw std::runtime_error("cannot determine PDF stream position");
+  }
+  in.seekg(0, std::ios::end);
+  const std::streamoff size = in.tellg();
+  in.seekg(position);
+  if (!in || size < 0) {
+    throw std::runtime_error("cannot determine PDF stream size");
+  }
+  return static_cast<std::uint64_t>(size);
+}
+
+} // namespace
 
 FileParser::FileParser(std::istream &in) : m_parser(in) {}
 
@@ -21,7 +40,8 @@ IndirectObject FileParser::read_indirect_object() {
 
   result.reference.id = m_parser.read_unsigned_integer();
   m_parser.skip_whitespace_and_comments();
-  result.reference.gen = m_parser.read_unsigned_integer();
+  result.reference.gen =
+      checked_file_index(m_parser.read_unsigned_integer(), 65535);
   m_parser.skip_whitespace_and_comments();
   // `obj` is not necessarily followed by a newline; some producers keep the
   // object on the same line
@@ -49,7 +69,8 @@ IndirectObject FileParser::read_indirect_object() {
     // whitespace before it (`stream \r\n`)
     m_parser.skip_line();
     result.has_stream = true;
-    result.stream_position = in().tellg();
+    result.stream_position =
+        checked_file_index(static_cast<std::streamoff>(in().tellg()));
 
     m_parser.skip_whitespace();
     return result;
@@ -65,7 +86,7 @@ Trailer FileParser::read_trailer() {
   Trailer result;
 
   result.dictionary = m_parser.read_dictionary();
-  result.size = result.dictionary["Size"].as_integer();
+  result.size = checked_file_index(result.dictionary["Size"].as_integer());
 
   m_parser.skip_line();
   m_parser.skip_whitespace();
@@ -86,17 +107,30 @@ Xref FileParser::read_xref() {
       return result;
     }
 
-    const std::uint32_t first_id = m_parser.read_integer();
+    const std::uint32_t first_id = checked_file_index(m_parser.read_integer());
     m_parser.skip_whitespace();
-    const std::uint32_t entry_count = m_parser.read_integer();
+    const std::uint32_t entry_count =
+        checked_file_index(m_parser.read_integer());
+    if (entry_count != 0) {
+      (void)checked_file_index(static_cast<std::uint64_t>(first_id) +
+                               entry_count - 1);
+    }
     m_parser.skip_line();
 
     for (std::uint32_t i = 0; i < entry_count; ++i) {
-      const std::uint32_t field1 = m_parser.read_unsigned_integer();
+      const std::uint32_t field1 =
+          checked_file_index(m_parser.read_unsigned_integer());
       m_parser.skip_whitespace();
-      const std::uint32_t field2 = m_parser.read_unsigned_integer();
+      const std::uint32_t field2 =
+          checked_file_index(m_parser.read_unsigned_integer(), 65535);
       m_parser.skip_whitespace();
-      const bool in_use = m_parser.read_line().at(0) == 'n';
+      const std::string line = m_parser.read_line();
+      const auto flag =
+          util::string::trim_view(line, &ObjectParser::is_whitespace);
+      if (flag != "n" && flag != "f") {
+        throw std::runtime_error("invalid PDF cross-reference entry flag");
+      }
+      const bool in_use = flag == "n";
 
       const Xref::Entry entry =
           in_use ? Xref::Entry(Xref::UsedEntry{field1})
@@ -113,7 +147,7 @@ StartXref FileParser::read_start_xref() {
 
   StartXref result;
 
-  result.start = m_parser.read_unsigned_integer();
+  result.start = checked_file_index(m_parser.read_unsigned_integer());
   m_parser.skip_line();
   m_parser.skip_whitespace();
 
@@ -185,8 +219,10 @@ std::string FileParser::read_stream() {
 
 ObjectStream FileParser::read_object_stream(const std::uint32_t n,
                                             const std::uint32_t first) {
-  // Read the header of `n` (id, offset) pairs, recording the absolute payload
-  // position of each member.
+  const std::uint64_t size = stream_size(in());
+  if (first > size || n > first / 3) {
+    throw std::runtime_error("invalid PDF object stream header bounds");
+  }
   std::vector<std::pair<std::uint64_t, std::uint32_t>> offsets;
   offsets.reserve(n);
   {
@@ -195,11 +231,16 @@ ObjectStream FileParser::read_object_stream(const std::uint32_t n,
       const std::uint64_t id = parser().read_unsigned_integer();
       parser().skip_whitespace_and_comments();
       const std::uint64_t offset = parser().read_unsigned_integer();
-      offsets.emplace_back(id, first + static_cast<std::uint32_t>(offset));
+      if (offset >= size - first) {
+        throw std::runtime_error("PDF object stream offset out of bounds");
+      }
+      offsets.emplace_back(id, checked_file_index(first + offset));
     }
   }
 
-  // Parse each member object (a bare value) at its position.
+  if (checked_file_index(static_cast<std::streamoff>(in().tellg())) > first) {
+    throw std::runtime_error("PDF object stream header overlaps its payload");
+  }
   ObjectStream members;
   members.reserve(n);
   for (const auto &[id, position] : offsets) {
@@ -220,7 +261,8 @@ void FileParser::read_header() {
 }
 
 Entry FileParser::read_entry() {
-  const std::uint32_t position = in().tellg();
+  const std::uint32_t position =
+      checked_file_index(static_cast<std::streamoff>(in().tellg()));
   const std::string entry_header = m_parser.read_line();
   in().clear();
   in().seekg(position);
@@ -282,9 +324,34 @@ void FileParser::seek_start_xref(const std::uint32_t margin) {
 Xref FileParser::read_xref_stream_table(
     const std::array<std::uint32_t, 3> &field_widths,
     const std::vector<std::pair<std::uint32_t, std::uint32_t>> &subsections) {
-  /// Cross-reference stream entry type (ISO 32000-1 7.5.8.3, Table 18, field
-  /// 1). Other values shall be treated as references to the null object
-  /// (ignored).
+  std::uint32_t entry_size = 0;
+  for (const auto width : field_widths) {
+    if (width > sizeof(std::uint64_t)) {
+      throw std::runtime_error(
+          "PDF cross-reference field width exceeds storage");
+    }
+    entry_size += width;
+  }
+  const auto position = static_cast<std::streamoff>(in().tellg());
+  const std::uint64_t size = stream_size(in());
+  if (position < 0 || static_cast<std::uint64_t>(position) > size) {
+    throw std::runtime_error("invalid PDF cross-reference stream position");
+  }
+  std::uint64_t remaining = size - static_cast<std::uint64_t>(position);
+  for (const auto &[first_id, count] : subsections) {
+    if (count == 0) {
+      continue;
+    }
+    (void)checked_file_index(static_cast<std::uint64_t>(first_id) + count - 1);
+    if (entry_size == 0 || count > remaining / entry_size) {
+      throw std::runtime_error(
+          "PDF cross-reference subsection exceeds its stream");
+    }
+    remaining -= static_cast<std::uint64_t>(count) * entry_size;
+  }
+
+  /// Cross-reference types; unknown values resolve to null (ISO
+  /// 32000-1 7.5.8.3).
   enum class XrefStreamType : std::uint64_t {
     free = 0,
     uncompressed = 1,
@@ -318,20 +385,19 @@ Xref FileParser::read_xref_stream_table(
       switch (type) {
       case XrefStreamType::free:
         result.table.emplace(
-            ObjectReference(id, third),
-            Xref::FreeEntry{static_cast<std::uint32_t>(second),
-                            static_cast<std::uint32_t>(third)});
+            ObjectReference(id, checked_file_index(third, 65535)),
+            Xref::FreeEntry{checked_file_index(second),
+                            checked_file_index(third)});
         break;
       case XrefStreamType::uncompressed:
         result.table.emplace(
-            ObjectReference(id, third),
-            Xref::UsedEntry{static_cast<std::uint32_t>(second)});
+            ObjectReference(id, checked_file_index(third, 65535)),
+            Xref::UsedEntry{checked_file_index(second)});
         break;
       case XrefStreamType::compressed:
-        result.table.emplace(
-            ObjectReference(id, 0),
-            Xref::CompressedEntry{static_cast<std::uint32_t>(second),
-                                  static_cast<std::uint32_t>(third)});
+        result.table.emplace(ObjectReference(id, 0),
+                             Xref::CompressedEntry{checked_file_index(second),
+                                                   checked_file_index(third)});
         break;
       }
     }
@@ -414,7 +480,8 @@ std::pair<Xref, Dictionary> FileParser::recover_xref() {
   std::istream &stream = in();
   stream.clear();
   stream.seekg(0, std::ios::end);
-  const auto size = static_cast<std::uint32_t>(stream.tellg());
+  const auto size =
+      checked_file_index(static_cast<std::streamoff>(stream.tellg()));
 
   Xref xref;
   Dictionary trailer;
@@ -426,7 +493,7 @@ std::pair<Xref, Dictionary> FileParser::recover_xref() {
     if (tell < 0 || static_cast<std::uint32_t>(tell) >= size) {
       break;
     }
-    const auto position = static_cast<std::uint32_t>(tell);
+    const auto position = checked_file_index(tell);
 
     const std::string line = p.read_line();
     const auto [lead, content] = trim_line(line);
@@ -434,8 +501,8 @@ std::pair<Xref, Dictionary> FileParser::recover_xref() {
     if (const std::optional<ObjectReference> ref =
             match_object_start(content)) {
       // last definition of an id wins (operator[] overwrites)
-      xref.table[*ref] = Xref::Entry(
-          Xref::UsedEntry{static_cast<std::uint32_t>(position + lead)});
+      xref.table[*ref] = Xref::Entry(Xref::UsedEntry{
+          checked_file_index(static_cast<std::uint64_t>(position) + lead)});
       // A compact object may inline its dictionary and the `stream` token on
       // this same line; fall through to skip the body below. Otherwise the
       // header is fully consumed and we advance to the next line.

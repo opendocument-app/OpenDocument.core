@@ -5,7 +5,9 @@
 
 #include <test_util.hpp>
 
+#include <array>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -367,4 +369,59 @@ TEST(FileParser, trailer_search_does_not_match_a_partial_line) {
   EXPECT_THROW(
       FileParser(in).seek_start_xref(static_cast<std::uint32_t>(tail.size())),
       std::runtime_error);
+}
+
+TEST(FileParser, rejects_out_of_range_classic_xref_fields) {
+  for (const std::string source :
+       {"xref\n-1 0\n", "xref\n0 4294967296\n",
+        "xref\n1 1\n4294967296 00000 n\n", "xref\n1 1\n0000000000 65536 n\n",
+        "xref\n1 1\n0000000000 00000 q\n",
+        "xref\n4294967295 2\n0000000000 00000 f\n0000000000 00000 f\n"}) {
+    std::istringstream in(source);
+    EXPECT_THROW((void)FileParser(in).read_xref(), std::runtime_error)
+        << source;
+  }
+  std::istringstream start("startxref\n4294967296\n");
+  EXPECT_THROW((void)FileParser(start).read_start_xref(), std::runtime_error);
+  std::istringstream trailer("trailer\n<< /Size -1 >>\n");
+  EXPECT_THROW((void)FileParser(trailer).read_trailer(), std::runtime_error);
+}
+
+TEST(XrefStreamTable, rejects_unrepresentable_fields_and_subsections) {
+  struct Case {
+    std::array<std::uint32_t, 3> widths;
+    std::string bytes;
+    std::uint32_t first;
+    std::uint32_t count;
+  };
+  const std::array cases{Case{{0, 9, 0}, std::string(9, '\0'), 1, 1},
+                         Case{{0, 0, 0}, "", 1, 2},
+                         Case{{1, 0, 0}, std::string(2, '\1'), UINT32_MAX, 2},
+                         Case{{0, 8, 0}, std::string(8, '\xff'), 1, 1},
+                         Case{{0, 0, 4}, std::string("\0\1\0\0", 4), 1, 1}};
+  for (const auto &[widths, bytes, first, count] : cases) {
+    std::istringstream in(bytes);
+    EXPECT_THROW(
+        (void)FileParser(in).read_xref_stream_table(widths, {{first, count}}),
+        std::runtime_error);
+  }
+}
+
+TEST(ObjectStream, rejects_wrapped_member_offsets) {
+  const std::string header = "7 4294967296 ";
+  std::istringstream in(header + "42");
+  EXPECT_THROW((void)FileParser(in).read_object_stream(
+                   1, static_cast<std::uint32_t>(header.size())),
+               std::runtime_error);
+}
+
+TEST(ObjectStream, validates_header_and_payload_bounds) {
+  for (const auto &[count, first] :
+       {std::pair{UINT32_MAX, std::uint32_t{4}},
+        std::pair{std::uint32_t{1}, UINT32_MAX},
+        std::pair{std::uint32_t{1}, std::uint32_t{3}}}) {
+    std::istringstream in("7 00 42");
+    EXPECT_THROW((void)FileParser(in).read_object_stream(count, first),
+                 std::runtime_error);
+  }
 }
