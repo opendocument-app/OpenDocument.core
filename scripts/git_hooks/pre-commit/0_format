@@ -1,25 +1,35 @@
 #!/usr/bin/env bash
-{
-format_file() {
-  local file="${1}"
-  if [ -f $file ]; then
-    clang-format -i -style=file ${1}
-  fi
-}
+set -euo pipefail
 
-case "${1}" in
-  --about)
-    echo "Runs formatters on any files that are going to be checked in."
-    ;;
-  *)
-    # make newlines the only separator
-    IFS=$'\n'
+if [[ ${1:-} == --about ]]; then
+  echo "Formats staged C++ and Objective-C++ files without staging other changes."
+  exit 0
+fi
 
-    echo "running scripts/scripts/format.sh on all staged files"
-    for file in `git diff-index --cached --name-only --diff-filter=ACMRT HEAD | grep -iE '\.(cpp|cc|h|hpp|mm)$'` ; do
-      format_file "${file}"
-      git add "${file}"
-    done
-    ;;
-esac
-}
+cd "$(git rev-parse --show-toplevel)"
+CLANG_FORMAT=${CLANG_FORMAT:-clang-format}
+shopt -s nocasematch
+
+git diff --cached --name-only --diff-filter=ACMRT -z |
+  while IFS= read -r -d '' file; do
+    case "$file" in
+      *.cpp|*.cc|*.h|*.hpp|*.mm) ;;
+      *) continue ;;
+    esac
+    read -r mode staged _ < <(git --literal-pathspecs ls-files --stage -- "$file")
+    [[ $mode == 120000 ]] && continue
+    formatted=$(git cat-file blob "$staged" |
+      "$CLANG_FORMAT" --style=file --assume-filename="$file" |
+      git hash-object -w --stdin)
+    [[ $formatted == "$staged" ]] && continue
+    # unstaged edits stay as they are; a file without any follows the index
+    if git --literal-pathspecs diff --quiet -- "$file"; then
+      follow=true
+    else
+      follow=false
+    fi
+    git update-index --cacheinfo "$mode,$formatted,$file"
+    if $follow; then
+      git checkout-index --force -- "$file"
+    fi
+  done

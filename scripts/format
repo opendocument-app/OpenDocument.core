@@ -1,26 +1,14 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 CLANG_FORMAT=${CLANG_FORMAT:-clang-format}
+"$CLANG_FORMAT" --version
 
-echo "Running clang-format on all .hpp/.cpp and .h/.mm files in the project"
-echo "Using clang-format: ${CLANG_FORMAT}"
-
-${CLANG_FORMAT} --version
-
-function format_file() {
-    echo "Formatting $1"
-    ${CLANG_FORMAT} --style=file -i $1
-}
-function format_folder() {
-  export -f format_file
-  export CLANG_FORMAT
-  find $1 -type f \( -iname \*.hpp -o -iname \*.cpp -o -iname \*.h -o -iname \*.mm \) -exec bash -c 'format_file "${1}"' -- {} \;
-}
-
-format_folder src
-format_folder cli
-format_folder test/src
-format_folder python/src
-format_folder jni/src
-format_folder apple/src
-format_folder apple/include
+find src cli test/src python/src jni/src apple/src apple/include wasm/src \
+  -type f \( -iname '*.hpp' -o -iname '*.cpp' -o -iname '*.cc' \
+             -o -iname '*.h' -o -iname '*.mm' \) -print0 |
+  while IFS= read -r -d '' file; do
+    echo "Formatting $file"
+    "$CLANG_FORMAT" --style=file -i "$file"
+  done
