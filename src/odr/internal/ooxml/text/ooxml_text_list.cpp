@@ -4,10 +4,10 @@
 
 #include <odr/internal/ooxml/text/ooxml_text_element_registry.hpp>
 
+#include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <array>
-#include <charconv>
 #include <limits>
 
 namespace odr::internal::ooxml::text {
@@ -50,18 +50,12 @@ std::uint32_t read_number(
   if (!attribute) {
     return fallback;
   }
-  auto value = util::string::trim_view(attribute.value());
-  if (value.starts_with('+')) {
-    value.remove_prefix(1);
-  }
-  std::uint32_t result{};
-  const auto [end, error] =
-      std::from_chars(value.data(), value.data() + value.size(), result);
-  if (error != std::errc{} || end != value.data() + value.size() ||
-      result > maximum) {
+  const auto result = util::number::parse_integer<std::uint32_t>(
+      util::string::trim_view(attribute.value()), {.allow_plus = true});
+  if (!result || *result > maximum) {
     return fallback;
   }
-  return result;
+  return *result;
 }
 
 /// Map private-use symbol-font bullets to Unicode.

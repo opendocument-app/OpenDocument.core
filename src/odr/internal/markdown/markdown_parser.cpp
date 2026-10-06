@@ -6,11 +6,11 @@
 
 #include <odr/internal/markdown/markdown_element_registry.hpp>
 #include <odr/internal/markdown/markdown_style.hpp>
+#include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <md4c.h>
 
-#include <charconv>
 #include <cstdint>
 #include <exception>
 #include <optional>
@@ -40,20 +40,18 @@ std::string resolve_entity(const std::string_view entity) {
     const bool hexadecimal =
         name.size() > 1 && (name[1] == 'x' || name[1] == 'X');
     const std::string_view digits = name.substr(hexadecimal ? 2 : 1);
-    std::uint32_t code_point{0};
-    const auto [end, error] =
-        std::from_chars(digits.data(), digits.data() + digits.size(),
-                        code_point, hexadecimal ? 16 : 10);
-    if (error != std::errc() || end != digits.data() + digits.size()) {
+    const auto code_point = util::number::parse_integer<std::uint32_t>(
+        digits, {.base = hexadecimal ? 16 : 10});
+    if (!code_point) {
       return std::string(entity);
     }
     // an unpaired surrogate or an out-of-range value is not a character
-    if (code_point == 0 || code_point > 0x10FFFF ||
-        (code_point >= 0xD800 && code_point <= 0xDFFF)) {
+    if (*code_point == 0 || *code_point > 0x10FFFF ||
+        (*code_point >= 0xD800 && *code_point <= 0xDFFF)) {
       return std::string(replacement_character);
     }
     std::string result;
-    util::string::append_c32(static_cast<char32_t>(code_point), result);
+    util::string::append_c32(static_cast<char32_t>(*code_point), result);
     return result;
   }
 

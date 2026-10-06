@@ -118,6 +118,7 @@ TEST(PdfObjectParser, read_unsigned_integer) {
                std::runtime_error);
   EXPECT_ANY_THROW(read_unsigned_integer("abc"));
   EXPECT_ANY_THROW(read_unsigned_integer("-5"));
+  EXPECT_ANY_THROW(read_unsigned_integer("+5"));
   EXPECT_ANY_THROW(read_unsigned_integer(""));
 }
 

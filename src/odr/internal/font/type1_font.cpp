@@ -6,7 +6,6 @@
 #include <odr/internal/util/number_util.hpp>
 
 #include <algorithm>
-#include <charconv>
 #include <cmath>
 #include <cstdint>
 #include <optional>
@@ -42,13 +41,6 @@ namespace {
     ++p;
   }
   return s.substr(begin, p - begin);
-}
-
-[[nodiscard]] bool parse_int(const std::string_view token, std::int32_t &out) {
-  const char *begin = token.data();
-  const char *end = begin + token.size();
-  const auto [ptr, ec] = std::from_chars(begin, end, out);
-  return ec == std::errc() && ptr == end;
 }
 
 [[nodiscard]] double parse_double(const std::string_view token) {
@@ -98,8 +90,8 @@ parse_number_array(const std::string_view s, const std::string_view key) {
 read_rd_binary(const std::string_view s, std::size_t &p) {
   std::size_t q = p;
   const std::string_view length_token = read_token(s, q);
-  std::int32_t length = 0;
-  if (!parse_int(length_token, length) || length < 0) {
+  const auto length = util::number::parse_integer<std::int32_t>(length_token);
+  if (!length || *length < 0) {
     return std::nullopt;
   }
   const std::string_view rd = read_token(s, q); // "RD" or "-|"
@@ -111,11 +103,11 @@ read_rd_binary(const std::string_view s, std::size_t &p) {
     return std::nullopt;
   }
   ++q; // the single delimiter space
-  if (static_cast<std::size_t>(length) > s.size() - q) {
+  if (static_cast<std::size_t>(*length) > s.size() - q) {
     return std::nullopt;
   }
-  const std::string_view bytes = s.substr(q, static_cast<std::size_t>(length));
-  p = q + static_cast<std::size_t>(length);
+  const std::string_view bytes = s.substr(q, static_cast<std::size_t>(*length));
+  p = q + static_cast<std::size_t>(*length);
   return bytes;
 }
 
@@ -213,12 +205,13 @@ void Type1Font::parse_clear(const std::string_view clear) {
       std::size_t p = 0;
       while ((p = after.find("dup ", p)) != std::string_view::npos) {
         std::size_t q = p + 4;
-        std::int32_t code = 0;
         const std::string_view code_token = read_token(after, q);
         const std::size_t slash = after.find('/', q);
-        if (parse_int(code_token, code) && slash != std::string_view::npos) {
+        if (const auto code =
+                util::number::parse_integer<std::int32_t>(code_token);
+            code && slash != std::string_view::npos) {
           std::size_t r = slash + 1;
-          m_encoding[code] = std::string(read_token(after, r));
+          m_encoding[*code] = std::string(read_token(after, r));
         }
         p = q;
       }
@@ -231,12 +224,12 @@ void Type1Font::parse_private(const std::string_view decrypted) {
   if (const std::size_t k = decrypted.find("/lenIV");
       k != std::string_view::npos) {
     std::size_t p = k + 6;
-    std::int32_t value = 0;
-    if (parse_int(read_token(decrypted, p), value)) {
-      if (value < -1) {
+    if (const auto value = util::number::parse_integer<std::int32_t>(
+            read_token(decrypted, p))) {
+      if (*value < -1) {
         throw std::runtime_error("type1: invalid /lenIV");
       }
-      len_iv = value;
+      len_iv = *value;
     }
   }
   const auto decode = [len_iv](const std::string_view bytes) {
@@ -257,11 +250,12 @@ void Type1Font::parse_private(const std::string_view decrypted) {
         break;
       }
       std::size_t q = p + 4;
-      std::int32_t index = 0;
+      const auto index =
+          util::number::parse_integer<std::int32_t>(read_token(decrypted, q));
       // Every subr needs at least one byte of input, so an index at or past the
       // input size cannot name one — and must not size the vector.
-      if (!parse_int(read_token(decrypted, q), index) || index < 0 ||
-          static_cast<std::size_t>(index) >= decrypted.size()) {
+      if (!index || *index < 0 ||
+          static_cast<std::size_t>(*index) >= decrypted.size()) {
         p += 4;
         continue;
       }
@@ -271,10 +265,10 @@ void Type1Font::parse_private(const std::string_view decrypted) {
         p += 4;
         continue;
       }
-      if (m_subrs.size() <= static_cast<std::size_t>(index)) {
-        m_subrs.resize(static_cast<std::size_t>(index) + 1);
+      if (m_subrs.size() <= static_cast<std::size_t>(*index)) {
+        m_subrs.resize(static_cast<std::size_t>(*index) + 1);
       }
-      m_subrs[index] = decode(*bytes);
+      m_subrs[*index] = decode(*bytes);
       p = q;
     }
   }

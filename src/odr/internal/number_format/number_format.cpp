@@ -5,7 +5,6 @@
 
 #include <algorithm>
 #include <array>
-#include <charconv>
 #include <cmath>
 #include <cstdint>
 #include <stdexcept>
@@ -167,11 +166,9 @@ void parse_bracket(const std::string_view content, Section &section) {
     const std::string_view id = dash == std::string_view::npos
                                     ? std::string_view()
                                     : content.substr(dash + 1);
-    std::uint32_t lcid = 0;
-    if (const auto [end, error] =
-            std::from_chars(id.data(), id.data() + id.size(), lcid, 16);
-        !id.empty() && error == std::errc() && end == id.data() + id.size()) {
-      section.names = names_of(language_of(lcid & 0xffff));
+    if (const auto lcid =
+            util::number::parse_integer<std::uint32_t>(id, {.base = 16})) {
+      section.names = names_of(language_of(*lcid & 0xffff));
     }
     return;
   }
@@ -683,11 +680,11 @@ std::string format_fraction(const std::vector<Token> &tokens,
   double numerator = 0;
   std::int64_t denominator = 1;
   if (fixed_denominator) {
-    const auto [parsed, error] =
-        std::from_chars(fixed.data(), fixed.data() + fixed.size(), denominator);
-    if (error != std::errc() || parsed != fixed.data() + fixed.size()) {
+    const auto parsed = util::number::parse_integer<std::int64_t>(fixed);
+    if (!parsed) {
       return format_general(value, symbols);
     }
+    denominator = *parsed;
     numerator = std::round(part * static_cast<double>(denominator));
     if (!std::isfinite(numerator)) {
       return format_general(value, symbols);

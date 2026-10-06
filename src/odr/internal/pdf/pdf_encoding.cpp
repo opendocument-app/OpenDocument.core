@@ -2,10 +2,10 @@
 
 #include <odr/internal/pdf/pdf_encoding_data.hpp>
 #include <odr/internal/util/byte_string.hpp>
+#include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
-#include <charconv>
 #include <stdexcept>
 
 namespace odr::internal {
@@ -163,23 +163,12 @@ namespace {
 /// units, 4 hex digits each) and `uXXXXXX` (a single 4-6 hex-digit scalar). See
 /// the AGL specification, "Step 2". Returns empty on any deviation.
 std::u16string algorithmic_glyph_name_to_unicode(const std::string_view name) {
-  const auto parse_hex =
-      [](const std::string_view hex) -> std::optional<std::uint32_t> {
-    std::uint32_t value = 0;
-    const auto *const begin = hex.data();
-    const auto *const end = begin + hex.size();
-    const auto [ptr, ec] = std::from_chars(begin, end, value, 16);
-    if (ec != std::errc() || ptr != end) {
-      return std::nullopt;
-    }
-    return value;
-  };
-
   if (name.starts_with("uni") && (name.size() - 3) % 4 == 0 &&
       name.size() > 3) {
     std::u16string result;
     for (std::size_t pos = 3; pos < name.size(); pos += 4) {
-      const auto unit = parse_hex(name.substr(pos, 4));
+      const auto unit = util::number::parse_integer<std::uint32_t>(
+          name.substr(pos, 4), {.base = 16});
       if (!unit.has_value()) {
         return {};
       }
@@ -189,7 +178,8 @@ std::u16string algorithmic_glyph_name_to_unicode(const std::string_view name) {
   }
 
   if (name.starts_with("u") && name.size() >= 5 && name.size() <= 7) {
-    const auto scalar = parse_hex(name.substr(1));
+    const auto scalar = util::number::parse_integer<std::uint32_t>(
+        name.substr(1), {.base = 16});
     if (!scalar.has_value() || *scalar > 0x10FFFF ||
         (*scalar >= 0xD800 && *scalar <= 0xDFFF)) {
       return {};

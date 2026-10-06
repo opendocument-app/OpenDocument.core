@@ -1,5 +1,6 @@
 #pragma once
 
+#include <charconv>
 #include <cmath>
 #include <concepts>
 #include <cstdint>
@@ -10,6 +11,37 @@
 #include <type_traits>
 
 namespace odr::internal::util::number {
+
+struct IntegerParseOptions {
+  std::int32_t base = 10;
+  bool allow_plus = false;
+};
+
+/// Reads a whole integer without whitespace or radix prefixes; nullopt on
+/// error.
+template <std::integral T>
+[[nodiscard]] std::optional<T>
+parse_integer(std::string_view text, const IntegerParseOptions options = {}) {
+  if (text.empty() || options.base < 2 || options.base > 36) {
+    return std::nullopt;
+  }
+  if (text.starts_with('+')) {
+    if (!options.allow_plus) {
+      return std::nullopt;
+    }
+    text.remove_prefix(1);
+    if (text.empty() || text.starts_with('-')) {
+      return std::nullopt;
+    }
+  }
+  T value{};
+  const auto [end, error] = std::from_chars(
+      text.data(), text.data() + text.size(), value, options.base);
+  if (error != std::errc{} || end != text.data() + text.size()) {
+    return std::nullopt;
+  }
+  return value;
+}
 
 /// Reads a decimal with a `.` separator in any host locale. Only whitespace may
 /// surround it: a unit or a group separator is refused, not truncated.

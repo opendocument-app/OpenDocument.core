@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <cctype>
-#include <charconv>
 #include <cmath>
 #include <cstdint>
 #include <optional>
@@ -20,22 +19,13 @@ namespace odr::internal::pdf {
 
 namespace {
 
-template <typename T> T parse_integer(std::string_view token) {
-  if constexpr (std::is_signed_v<T>) {
-    if (token.starts_with('+')) {
-      token.remove_prefix(1);
-      if (token.starts_with('-')) {
-        throw std::runtime_error("invalid PDF integer");
-      }
-    }
-  }
-  T value{};
-  const auto [end, error] =
-      std::from_chars(token.data(), token.data() + token.size(), value);
-  if (error != std::errc{} || end != token.data() + token.size()) {
+template <typename T> T parse_integer(const std::string_view token) {
+  const auto value = util::number::parse_integer<T>(
+      token, {.allow_plus = std::is_signed_v<T>});
+  if (!value) {
     throw std::runtime_error("invalid or out-of-range PDF integer");
   }
-  return value;
+  return *value;
 }
 
 template <typename Id, typename Gen>
