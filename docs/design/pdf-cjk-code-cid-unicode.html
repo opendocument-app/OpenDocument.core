@@ -284,9 +284,9 @@
           </div>
           <div class="card rec">
             <h3>codespace_pool</h3>
-            <p class="role"><b>Step 1 — split.</b> Declares code widths. Each byte is checked against the codespace bounds: <code>0x9286</code> matches a 2-byte code, while <code>0xA1</code> matches a 1-byte code.</p>
+            <p class="role"><b>Step 1 — split.</b> Declares code widths. A range reads a code of its width and checks it against its bounds: <code>0x9286</code> matches a 2-byte range, while <code>0xA1</code> matches a 1-byte range.</p>
             <pre class="struct"><span class="k">struct</span> CodespaceRange {
-  uint32_t low, high;  <span class="c">// leading-byte range</span>
+  uint32_t low, high;  <span class="c">// code bounds</span>
   uint8_t  width;      <span class="c">// 1..4 bytes</span>
 }</pre>
           </div>

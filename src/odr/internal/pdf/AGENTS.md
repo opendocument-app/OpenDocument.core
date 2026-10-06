@@ -108,11 +108,11 @@ above. So each run is raised by one font ascent:
 
 ## Non-obvious facts
 
-- `is_decodable()` is false while a PDF remains encrypted. Page-tree and content
-  parsing is lazy, on the HTML request. `file_meta()` still carries the page count and
-  the `/Info` strings, read once at construction, after the empty-password
-  unlock. It is all or nothing: a malformed structure leaves `document_type`
-  at `unknown`. XMP is not parsed.
+- `is_decodable()` is false while a PDF remains encrypted. Page-tree and
+  content parsing is lazy, on the HTML request. `file_meta()` still carries the
+  page count and the `/Info` strings, read once at construction, after the
+  empty-password unlock. It is all or nothing: a malformed structure leaves
+  `document_type` at `unknown`. XMP is not parsed.
 - The filter framework hands `DCTDecode` and `JPXDecode` payloads back
   encoded. A JPEG passes through to the browser. A JPEG 2000 goes to `pdf_jpx`
   (openjpeg) and is re-encoded as PNG like every other raster.

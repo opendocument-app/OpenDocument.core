@@ -26,8 +26,8 @@ have structural operations.
 `data-odr-id` carries the `ElementIdentifier` the registry assigns, and
 `Document::element_by_id` turns it back into an `Element` at replay. A path is
 positional: after one inserted paragraph every later path in the log names a
-different element. Ids do not move, because a registry id is the index plus one in a
-`std::deque` that only grows and no op renumbers. An id holds for one
+different element. Ids do not move, because a registry id is the index plus
+one in a `std::deque` that only grows and no op renumbers. An id holds for one
 `translate`, `edit`, `save` cycle only. `back_translate` replays against a
 fresh decode of the same bytes, which assigns the same ids because parsing is
 deterministic.
@@ -319,12 +319,11 @@ a host shows (decision 16) reads the same declarations back.
   host keeps that class the editor cancels the browser's mark and does
   nothing else.
 
-Under `paragraph`, the host may format a selection within one paragraph;
-a selection spanning paragraphs and formatting chords refuse with `outOfScope`.
-A collapsed caret inside a word marks the
-word. At a word boundary, or in a paragraph with no run, the mark is pending:
-the next typed text is cut into a run of its own and marked. A caret that
-moves away drops the pending mark.
+Under `paragraph`, the host may format a selection within one paragraph; a
+selection spanning paragraphs and formatting chords refuse with `outOfScope`.
+A collapsed caret inside a word marks the word. At a word boundary, or in a
+paragraph with no run, the mark is pending: the next typed text is cut into a
+run of its own and marked. A caret that moves away drops the pending mark.
 
 Undo needs nothing new: a step holds the runs' old and new `style`
 attributes. Two marks on one run fold into one op; any other op naming the

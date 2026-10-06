@@ -214,15 +214,15 @@ Larger tables fall back to the embedded replacement image.
 1. **Save never re-encrypts.** A document decrypted from a password-protected
    package reports `is_savable(false) == false`, and every `save` overload
    throws `UnsupportedOperation`. Unencrypted saves re-serialize `content.xml`,
-   `styles.xml` and loaded chart parts.
+   `styles.xml` and every part an edit loaded, such as an embedded chart.
 2. **No streaming.** Crypto and save read whole files into memory and rebuild
    the whole ZIP (`// TODO stream`).
 3. **Covered and repeated cells are heuristic.** `// TODO covered cells` and
    `// TODO mark as repeated` in `odf_parser.cpp`.
-4. **Style gaps.** `transparent` is an explicit alpha-zero colour. Other
-   alpha colours are not parsed. The style-versus-element cascade is provisional
-   (`// TODO use override?`). `text:outline-style` is indexed but not applied
-   to headings.
+4. **Style gaps.** `transparent` reads as no colour; as a background it clears
+   the inherited one (`// TODO use alpha`). Other alpha colours are not parsed.
+   The style-versus-element cascade is provisional (`// TODO use override?`).
+   `text:outline-style` is indexed but not applied to headings.
 5. **StarOffice, template and flat mimetypes** are aliased onto the four base
    types (`odf_meta.cpp`). A flat document is parsed twice: once to recognise
    it, once to build the tree.
