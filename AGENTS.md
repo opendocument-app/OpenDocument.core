@@ -18,8 +18,8 @@ bytes ─▶ magic / open_strategy ─▶ DecodedFile ─▶ Document ─▶ Ele
 ```
 
 1. Detect. `internal/magic.cpp` sniffs the head of the file.
-   `internal/open_strategy.cpp` picks a `FileType` and a `DecoderEngine` and
-   builds the `abstract::DecodedFile`. Only bytes can claim a file. A name adds
+   `internal/open_strategy.cpp` picks a `FileType` and constructs the
+   `abstract::DecodedFile`. Only bytes can claim a file. A name adds
    a candidate that the bytes allow. That is the only way in for a format with
    no signature (markdown).
 2. Decode. A document file yields an `abstract::Document`.
