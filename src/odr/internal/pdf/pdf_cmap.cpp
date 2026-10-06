@@ -17,15 +17,8 @@ bool pdf::matches_codespace(const std::string_view bytes,
   if (width == 0 || width > 4 || bytes.size() < width) {
     return false;
   }
-  for (std::size_t i = 0; i < width; ++i) {
-    const std::size_t shift = 8 * (width - 1 - i);
-    const auto value = static_cast<std::uint8_t>(bytes[i]);
-    if (value < static_cast<std::uint8_t>(low >> shift) ||
-        value > static_cast<std::uint8_t>(high >> shift)) {
-      return false;
-    }
-  }
-  return true;
+  const std::uint32_t value = util::byte_string::read_uint_be(bytes, width);
+  return value >= low && value <= high;
 }
 
 } // namespace odr::internal
@@ -101,14 +94,16 @@ CMap::cid_for_code(const std::string_view code) const {
 }
 
 std::size_t CMap::code_width(const std::string_view bytes) const {
-  std::size_t width = 5;
+  std::size_t width = 0;
   for (const CodespaceRange &range : m_codespace_ranges) {
-    if (range.width < width &&
+    if ((width == 0 || range.width < width) &&
         matches_codespace(bytes, range.low, range.high, range.width)) {
       width = range.width;
     }
   }
-  return width == 5 ? 1 : width;
+  // A single byte is also right for the simple-font ToUnicode CMaps that omit
+  // the codespace.
+  return width == 0 ? 1 : width;
 }
 
 std::string CMap::translate_string(const std::string &codes,

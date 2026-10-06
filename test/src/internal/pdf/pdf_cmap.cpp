@@ -308,3 +308,10 @@ TEST(PdfCMap, invalid_codespace_widths) {
   EXPECT_THROW(cmap.add_codespace_range("abcde", "abcde"),
                std::invalid_argument);
 }
+
+TEST(PdfCMap, codespace_ranges_compare_as_numbers) {
+  const CMap cmap =
+      parse("1 begincodespacerange <00e0> <028c> endcodespacerange");
+  EXPECT_EQ(cmap.code_width("\x02\x49"), 2);
+  EXPECT_EQ(cmap.code_width("\x02\x8d"), 1);
+}

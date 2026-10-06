@@ -10,7 +10,9 @@
 
 namespace odr::internal::pdf {
 
-/// Matches every byte against a codespace range (ISO 32000-1 9.7.6.2).
+/// Compares the first @p width bytes as one number, like pdf.js and MuPDF.
+/// ISO 32000-1 9.7.6.2 matches each byte, but producers write ranges such as
+/// `<00e0> <028c>` whose bytes do not each form a range.
 [[nodiscard]] bool matches_codespace(std::string_view bytes, std::uint32_t low,
                                      std::uint32_t high, std::size_t width);
 
@@ -60,7 +62,8 @@ public:
     return !m_codespace_ranges.empty() && !m_inherits_external_cmap;
   }
 
-  /// Shortest matching code width; one byte when no codespace matches.
+  /// Shortest matching code width; one byte when no codespace matches. Public
+  /// so the glyph paths split codes exactly as `translate_string` does.
   [[nodiscard]] std::size_t code_width(std::string_view bytes) const;
 
   /// `single_byte_codes` overrides the codespace ranges. An imposed

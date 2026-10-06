@@ -74,7 +74,8 @@ find_predefined_cmap(const std::string_view name) {
   return it != end && it->name == name ? it : nullptr;
 }
 
-/// Generated codespace ranges are ordered by width.
+/// Generated codespace ranges are ordered by width, so the first match is the
+/// shortest code; one byte when none matches.
 std::size_t code_width(const cid_data::PredefinedCMap &cmap,
                        const std::string_view bytes) {
   for (std::uint32_t i = 0; i < cmap.codespace_count; ++i) {
