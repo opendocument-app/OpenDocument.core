@@ -860,7 +860,7 @@ TEST(Document, repeated_saves_over_source_preserve_lazy_resources) {
   const TemporaryDiskFile alias(path + ".alias");
   for (const std::string &destination :
        {alias.disk_path().value().string(), path}) {
-    for (const std::string text :
+    for (const std::string &text :
          {std::string(2000, 'a'), std::string("bye")}) {
       ASSERT_EQ(set_every_text(document.root_element(), text), 1u);
       ASSERT_NO_THROW(document.save(destination));
