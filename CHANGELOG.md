@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- HTML document views honor their configured output filename. Audio and video
+  resources are served at custom locator paths without replacing the player
+  or stylesheet, and named in-memory WebM files retain their playable MIME type.
+  The Python CLI correctly opens output paths containing URL-special characters.
+
 - Spreadsheet previews retain ODS cells at window boundaries, clip repeated
   and merged cells, and trim XLSX output to populated cells inside the window.
 

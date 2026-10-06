@@ -49,7 +49,7 @@ def _translate(args, file) -> int:
     for page in html.pages():
         print(f"{page.name}: {page.path}")
         if not args.no_open:
-            webbrowser.open(f"file://{page.path}")
+            webbrowser.open(Path(page.path).resolve().as_uri())
 
     return 0
 
