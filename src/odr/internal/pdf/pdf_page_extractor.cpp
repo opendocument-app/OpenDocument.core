@@ -547,16 +547,19 @@ void emit_inline_image(const GraphicsOperator &op, const Resources &resources,
   const Dictionary dictionary =
       normalize_inline_image(op.arguments[0].as_dictionary());
 
-  const auto width = static_cast<std::int32_t>(
-      dictionary.get("Width").as_integer_opt().value_or(0));
-  const auto height = static_cast<std::int32_t>(
-      dictionary.get("Height").as_integer_opt().value_or(0));
+  const std::int32_t width =
+      image_integer(dictionary.get("Width"), 0).value_or(0);
+  const std::int32_t height =
+      image_integer(dictionary.get("Height"), 0).value_or(0);
   const std::vector<double> decode_array = dictionary.get("Decode").as_reals();
 
   // An inline `/ImageMask true` stencil: decode the 1-bpc bitmap and paint it
   // in the current fill colour, as for a stencil image XObject (ISO
   // 32000-1 8.9.7).
   if (dictionary.get("ImageMask").as_bool_opt().value_or(false)) {
+    if (image_integer(dictionary.get("BitsPerComponent"), 1) != 1) {
+      return; // a stencil mask has one bit per sample (8.9.6.2)
+    }
     DecodeResult mask =
         decode(dictionary.get("Filter"), dictionary.get("DecodeParms"),
                op.arguments[1].as_string());
@@ -583,8 +586,8 @@ void emit_inline_image(const GraphicsOperator &op, const Resources &resources,
 
   const std::shared_ptr<ColorSpaceDef> color_space =
       resolve_inline_color_space(dictionary.get("ColorSpace"), resources);
-  const auto bits_per_component = static_cast<std::int32_t>(
-      dictionary.get("BitsPerComponent").as_integer_opt().value_or(8));
+  const std::int32_t bits_per_component =
+      image_integer(dictionary.get("BitsPerComponent"), 8).value_or(0);
 
   std::optional<EncodedImage> encoded =
       encode_image(op.arguments[1].as_string(), dictionary.get("Filter"),

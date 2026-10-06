@@ -326,7 +326,8 @@ std::string shared_form_xobject_mini_pdf() {
 /// A mini-PDF whose page defines a named colour space `/CS0` in its
 /// `/Resources /ColorSpace` and an image XObject `Im0` referencing it by name.
 /// The image is a 2x2 RGB raster carried as ASCIIHex so the source stays text.
-std::string named_colorspace_image_mini_pdf() {
+std::string named_colorspace_image_mini_pdf(
+    const std::string &parameters = "/Width 2 /Height 2 /BitsPerComponent 8") {
   PdfFileBuilder builder;
   builder.object("<< /Type /Catalog /Pages 2 0 R >>")
       .object("<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
@@ -335,9 +336,9 @@ std::string named_colorspace_image_mini_pdf() {
               "/ColorSpace << /CS0 [/CalRGB << /WhitePoint [1 1 1] >>] >> >> "
               "/Contents 4 0 R >>")
       .stream_object("", "/Im0 Do")
-      .stream_object("/Type /XObject /Subtype /Image /Width 2 /Height 2 "
-                     "/BitsPerComponent 8 /ColorSpace /CS0 "
-                     "/Filter /ASCIIHexDecode",
+      .stream_object("/Type /XObject /Subtype /Image /ColorSpace /CS0 "
+                     "/Filter /ASCIIHexDecode " +
+                         parameters,
                      "FF000000FF000000FFFFFFFF>");
   return builder.trailer("/Root 1 0 R").build_classic();
 }
@@ -877,4 +878,32 @@ TEST(DocumentParser, recovery_keeps_the_latest_compressed_copy) {
                 "newer");
     }
   }
+}
+
+TEST(DocumentParser, skips_images_with_invalid_parameters) {
+  for (const std::string parameters :
+       {"/Width 4294967298 /Height 2 /BitsPerComponent 8",
+        "/Width 2 /Height -4294967294 /BitsPerComponent 8",
+        "/Width 2 /Height 2 /BitsPerComponent 4294967304",
+        "/Width 2 /Height 2 /BitsPerComponent 8 /ImageMask true"}) {
+    SCOPED_TRACE(parameters);
+    DocumentParser parser(std::make_unique<std::istringstream>(
+        named_colorspace_image_mini_pdf(parameters)));
+    const std::unique_ptr<Document> document = parser.parse_document();
+    const XObject *image = first_page(*document)->resources->x_object.at("Im0");
+    ASSERT_NE(image, nullptr);
+    EXPECT_TRUE(image->image_data.empty());
+    EXPECT_FALSE(image->stencil_mask);
+  }
+}
+
+// An invalid optional entry reads as its default, so the image stays.
+TEST(DocumentParser, ignores_an_invalid_smask_in_data) {
+  DocumentParser parser(
+      std::make_unique<std::istringstream>(named_colorspace_image_mini_pdf(
+          "/Width 2 /Height 2 /BitsPerComponent 8 /SMaskInData 4294967296")));
+  const std::unique_ptr<Document> document = parser.parse_document();
+  const XObject *image = first_page(*document)->resources->x_object.at("Im0");
+  ASSERT_NE(image, nullptr);
+  EXPECT_FALSE(image->image_data.empty());
 }

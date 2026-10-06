@@ -1,6 +1,7 @@
 #include <odr/internal/pdf/pdf_graphics_operator_parser.hpp>
 
 #include <odr/internal/pdf/pdf_graphics_operator.hpp>
+#include <odr/internal/pdf/pdf_image.hpp>
 #include <odr/internal/util/map_util.hpp>
 
 #include <odr/logger.hpp>
@@ -156,7 +157,13 @@ inline_image_raw_length(const Dictionary &dictionary) {
           .value_or(false)) {
     // A stencil mask is one bit per sample (8.9.6.2).
     components = 1;
-    bits_per_component = 1;
+    bits_per_component =
+        image_integer(inline_image_entry(dictionary, "BPC", "BitsPerComponent"),
+                      1)
+            .value_or(0);
+    if (bits_per_component != 1) {
+      return std::nullopt;
+    }
   } else {
     const std::optional<std::int32_t> resolved = inline_color_components(
         inline_image_entry(dictionary, "CS", "ColorSpace"));
@@ -164,26 +171,32 @@ inline_image_raw_length(const Dictionary &dictionary) {
       return std::nullopt;
     }
     components = *resolved;
-    bits_per_component = static_cast<std::int32_t>(
-        inline_image_entry(dictionary, "BPC", "BitsPerComponent")
-            .as_integer_opt()
-            .value_or(8));
+    bits_per_component =
+        image_integer(inline_image_entry(dictionary, "BPC", "BitsPerComponent"),
+                      8)
+            .value_or(0);
   }
 
-  const std::int64_t width =
-      inline_image_entry(dictionary, "W", "Width").as_integer_opt().value_or(0);
-  const std::int64_t height = inline_image_entry(dictionary, "H", "Height")
-                                  .as_integer_opt()
-                                  .value_or(0);
-  if (width <= 0 || height <= 0 || bits_per_component <= 0) {
+  const std::int32_t width =
+      image_integer(inline_image_entry(dictionary, "W", "Width"), 0)
+          .value_or(0);
+  const std::int32_t height =
+      image_integer(inline_image_entry(dictionary, "H", "Height"), 0)
+          .value_or(0);
+  if (width <= 0 || height <= 0 || !valid_image_bit_depth(bits_per_component)) {
     return std::nullopt;
   }
 
-  // Each sample row is padded to a byte boundary (8.9.5.2).
-  const std::size_t bits_per_row =
-      static_cast<std::size_t>(width) * components * bits_per_component;
-  const std::size_t bytes_per_row = (bits_per_row + 7) / 8;
-  return bytes_per_row * static_cast<std::size_t>(height);
+  // Sample rows are byte-aligned (8.9.5.2).
+  const auto bits_per_row =
+      static_cast<std::uint64_t>(width) * components * bits_per_component;
+  const auto bytes_per_row = (bits_per_row + 7) / 8;
+  if (bytes_per_row >
+      std::string{}.max_size() / static_cast<std::size_t>(height)) {
+    return std::nullopt;
+  }
+  return static_cast<std::size_t>(bytes_per_row) *
+         static_cast<std::size_t>(height);
 }
 
 } // namespace
@@ -302,7 +315,6 @@ GraphicsOperatorParser::read_inline_image_data(const Dictionary &dictionary) {
   if (const std::optional<std::size_t> length =
           inline_image_raw_length(dictionary)) {
     std::string data;
-    data.reserve(*length);
     for (std::size_t i = 0; i < *length; ++i) {
       const int_type c = m_parser.geti();
       if (c == eof) {
