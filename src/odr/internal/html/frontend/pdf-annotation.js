@@ -500,7 +500,9 @@
   }
 
   function onPointerDown(event) {
-    if (stroke) {
+    // another pointer cannot take over a stroke; the same one going down again
+    // lost its pointerup and starts afresh
+    if (stroke && event.pointerId !== strokePointer) {
       return;
     }
     pointerDown = true;
