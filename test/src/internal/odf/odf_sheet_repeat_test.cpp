@@ -159,3 +159,42 @@ TEST(OdfSheetRepeat, a_write_into_a_repeat_does_not_expand_it) {
   EXPECT_EQ(sheet.cell(512, 1023).value().text(), "x");
   EXPECT_LT(document->element_registry().size(), 32);
 }
+
+TEST(OdfSheetRepeat, content_extent_clips_repeated_runs_at_the_window) {
+  const auto held = document_of(flat_sheet(repeated_rows(4, 3)));
+  const Sheet sheet =
+      odr::Document(held).root_element().first_child().as_sheet();
+
+  for (const TableDimensions limit :
+       {TableDimensions(4, 3), TableDimensions(2, 2), TableDimensions(1, 1)}) {
+    const TableDimensions content = sheet.content(limit);
+    EXPECT_EQ(content.rows, limit.rows);
+    EXPECT_EQ(content.columns, limit.columns);
+  }
+  EXPECT_EQ(sheet.content(TableDimensions(0, 3)).columns, 0);
+  EXPECT_EQ(sheet.content(TableDimensions(4, 0)).rows, 0);
+}
+
+TEST(OdfSheetRepeat, content_extent_uses_indexed_positions_and_merged_spans) {
+  const auto held = document_of(flat_sheet(
+      R"(<table:table-row><table:covered-table-cell/>)"
+      R"(<table:table-cell table:number-columns-spanned="2")"
+      R"( table:number-rows-spanned="2"><text:p>x</text:p>)"
+      R"(</table:table-cell><table:covered-table-cell/></table:table-row>)"
+      R"(<table:table-row><table:table-cell/>)"
+      R"(<table:covered-table-cell table:number-columns-repeated="2"/>)"
+      R"(</table:table-row>)"
+      R"(<table:table-row table:number-rows-repeated="8"/>)"
+      R"(<table:table-row><table:table-cell table:number-columns-repeated="9"/>)"
+      R"(<table:table-cell><text:p>outside</text:p></table:table-cell>)"
+      R"(</table:table-row>)"));
+  const Sheet sheet =
+      odr::Document(held).root_element().first_child().as_sheet();
+
+  const TableDimensions content = sheet.content(TableDimensions(5, 5));
+  EXPECT_EQ(content.rows, 2);
+  EXPECT_EQ(content.columns, 3);
+  const TableDimensions blank = sheet.content(TableDimensions(5, 1));
+  EXPECT_EQ(blank.rows, 0);
+  EXPECT_EQ(blank.columns, 0);
+}

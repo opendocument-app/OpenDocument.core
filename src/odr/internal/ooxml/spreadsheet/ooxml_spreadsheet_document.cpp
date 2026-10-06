@@ -24,6 +24,7 @@
 #include <cmath>
 #include <cstdint>
 #include <iterator>
+#include <limits>
 #include <optional>
 #include <ostream>
 #include <ranges>
@@ -307,6 +308,13 @@ pugi::xml_node Document::create_styles_() {
 
 namespace {
 
+/// Whether a cell draws something on its own: a border or a visible fill.
+bool draws(const TableCellStyle &style) {
+  const DirectionalStyle<std::string> &border = style.border;
+  return (style.background_color && style.background_color->alpha != 0) ||
+         border.top || border.right || border.bottom || border.left;
+}
+
 using AdapterBase = internal::RegistryElementAdapter<
     ElementRegistry, abstract::SheetAdapter, abstract::SheetCellAdapter,
     abstract::LineBreakAdapter, abstract::ParagraphAdapter,
@@ -333,11 +341,36 @@ public:
   }
   [[nodiscard]] TableDimensions
   sheet_content(const ElementIdentifier element_id,
-                [[maybe_unused]] const std::optional<TableDimensions> range)
-      const override {
-    // TODO the range is ignored: this answers the whole `<dimension>` rather
-    // than trimming to the populated cells inside it.
-    return sheet_dimensions(element_id);
+                const std::optional<TableDimensions> range) const override {
+    const TableDimensions limit = range.value_or(
+        TableDimensions(std::numeric_limits<std::uint32_t>::max(),
+                        std::numeric_limits<std::uint32_t>::max()));
+    TableDimensions result;
+    for (const auto &[position, cell] :
+         m_registry->sheet_element_at(element_id).cells) {
+      if (position.row >= limit.rows || position.column >= limit.columns) {
+        continue;
+      }
+      // an empty cell still counts where its border or fill draws something
+      if (!cell.node.first_child() &&
+          !draws(sheet_cell_style(element_id, position.column, position.row))) {
+        continue;
+      }
+      const ElementRegistry::SheetCell &element =
+          m_registry->sheet_cell_element_at(cell.element_id);
+      if (element.is_covered) {
+        continue;
+      }
+      const auto end_row = static_cast<std::uint32_t>(std::min<std::uint64_t>(
+          std::uint64_t{position.row} + element.span.rows, limit.rows));
+      const auto end_column =
+          static_cast<std::uint32_t>(std::min<std::uint64_t>(
+              std::uint64_t{position.column} + element.span.columns,
+              limit.columns));
+      result.rows = std::max(result.rows, end_row);
+      result.columns = std::max(result.columns, end_column);
+    }
+    return result;
   }
   [[nodiscard]] ElementIdentifier
   sheet_cell(const ElementIdentifier element_id, const std::uint32_t column,
