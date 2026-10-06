@@ -42,7 +42,8 @@ public:
   void read_header();
   [[nodiscard]] Entry read_entry();
 
-  void seek_start_xref(std::uint32_t margin = 64);
+  /// Seek the last startxref line in the trailing search window.
+  void seek_start_xref(std::uint32_t margin = 1024);
 
   /// Decode the entry table of a cross-reference stream (ISO 32000-1 7.5.8.3)
   /// from the already de-filtered `data`. `field_widths` is the `/W` array

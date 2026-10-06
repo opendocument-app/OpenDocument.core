@@ -327,3 +327,44 @@ TEST(ObjectStream, parse_members) {
   ASSERT_EQ(members[1].object.as_array().size(), 3);
   EXPECT_EQ(members[1].object.as_array()[2].as_integer(), 3);
 }
+
+TEST(FileParser, headers_preserve_objects_without_a_binary_comment) {
+  for (const std::string comments :
+       {"", "%binary marker\n", "%first\n%second\n"}) {
+    std::istringstream in("%PDF-1.7\n" + comments +
+                          "1 0 obj 42 endobj 2 0 obj\n13\nendobj\n%%EOF");
+    FileParser parser(in);
+    ASSERT_TRUE(parser.read_entry().is_header());
+    for (const auto &[id, value] : {std::pair{Integer{1}, Integer{42}},
+                                    std::pair{Integer{2}, Integer{13}}}) {
+      const Entry entry = parser.read_entry();
+      ASSERT_TRUE(entry.is_object());
+      EXPECT_EQ(entry.as_object().reference.id, id);
+      EXPECT_EQ(entry.as_object().object.as_integer(), value);
+    }
+    EXPECT_TRUE(parser.read_entry().is_eof());
+    EXPECT_TRUE(in.eof());
+  }
+}
+
+TEST(FileParser, selects_the_last_startxref_after_eof) {
+  for (const std::string &padding : {std::string{}, std::string(100, ' ')}) {
+    for (const auto state :
+         {std::ios::goodbit, std::ios::eofbit | std::ios::failbit}) {
+      std::istringstream in("startxref\n1\n%%EOF\nstartxref\n2\n%%EOF\n" +
+                            padding);
+      FileParser parser(in);
+      in.setstate(state);
+      parser.seek_start_xref();
+      EXPECT_EQ(parser.read_start_xref().start, 2u);
+    }
+  }
+}
+
+TEST(FileParser, trailer_search_does_not_match_a_partial_line) {
+  const std::string tail = "startxref\n2\n%%EOF\n";
+  std::istringstream in("not-" + tail);
+  EXPECT_THROW(
+      FileParser(in).seek_start_xref(static_cast<std::uint32_t>(tail.size())),
+      std::runtime_error);
+}
