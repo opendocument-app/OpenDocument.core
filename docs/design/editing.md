@@ -106,11 +106,12 @@ file. An invertible removal would carry the removed payload (an image, a
 table) across the bridge for nothing. Persistent change tracking is a
 different feature and belongs to `<text:tracked-changes>`, `w:ins` and `w:del`.
 
-### 7. C++ replay is the validator; saves are atomic
+### 7. C++ validates each operation during replay
 
 The browser refuses edits for UX only. Replay validates again and throws on an
-op it cannot apply. It applies to an in-memory copy and writes only on full
-success. The envelope states a `version`, and replay refuses any other.
+op it cannot apply. Earlier operations remain applied when a later one fails;
+replay does not clone or roll back the document. Saving is a separate call and
+is not atomic. The envelope states a `version`, and replay refuses any other.
 
 Open: a conformance corpus of `(base document, op log) → expected saved
 result` cases, replayed in C++ as a GoogleTest, is not built. What stands in

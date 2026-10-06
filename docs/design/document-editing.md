@@ -26,8 +26,8 @@ have structural operations.
 `data-odr-id` carries the `ElementIdentifier` the registry assigns, and
 `Document::element_by_id` turns it back into an `Element` at replay. A path is
 positional: after one inserted paragraph every later path in the log names a
-different element. Ids do not move, because a registry id is the index of a
-`std::deque` that only grows and no op renumbers. An id holds for one
+different element. Ids do not move, because a registry id is the index plus
+one in a `std::deque` that only grows and no op renumbers. An id holds for one
 `translate`, `edit`, `save` cycle only. `back_translate` replays against a
 fresh decode of the same bytes, which assigns the same ids because parsing is
 deterministic.
@@ -319,11 +319,11 @@ a host shows (decision 16) reads the same declarations back.
   host keeps that class the editor cancels the browser's mark and does
   nothing else.
 
-Formatting sits behind the scope gate: under `paragraph` every formatting
-gesture refuses with `outOfScope`. A collapsed caret inside a word marks the
-word. At a word boundary, or in a paragraph with no run, the mark is pending:
-the next typed text is cut into a run of its own and marked. A caret that
-moves away drops the pending mark.
+Under `paragraph`, the host may format a selection within one paragraph; a
+selection spanning paragraphs and formatting chords refuse with `outOfScope`.
+A collapsed caret inside a word marks the word. At a word boundary, or in a
+paragraph with no run, the mark is pending: the next typed text is cut into a
+run of its own and marked. A caret that moves away drops the pending mark.
 
 Undo needs nothing new: a step holds the runs' old and new `style`
 attributes. Two marks on one run fold into one op; any other op naming the
@@ -401,7 +401,3 @@ refuses, as every chord does.
 - `text-decoration` is drawn through every descendant, so an underline taken
   off a run inside an underlined span still shows in the page and in a fresh
   render. The saved file is right.
-- `read_color` in `odf_style.cpp` reads `fo:background-color="transparent"`
-  as unstated, so a highlight taken away on a run inside a highlighted
-  paragraph still shows in our render, not in LibreOffice's. Reading it as
-  alpha 0 fixes it and moves every page whose styles write `transparent`.
