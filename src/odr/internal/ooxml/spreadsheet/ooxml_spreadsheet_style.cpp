@@ -481,7 +481,8 @@ void StyleRegistry::generate_indices_(const pugi::xml_node styles_root) {
           format.attribute("numFmtId").as_uint(),
           number_format::Format(format.attribute("formatCode").value()));
     } catch (const std::invalid_argument &) {
-      continue; // Fall back to General for an unsupported code.
+      // a code this cannot read shows its value as `General` does
+      continue;
     }
   }
 }
