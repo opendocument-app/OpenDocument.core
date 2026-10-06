@@ -125,7 +125,8 @@ TEST(ByteStream, length_prefixed_reads_handle_chunks_and_stream_exceptions) {
 }
 
 // Nothing reaches the stream until the buffer is released, and the release
-// writes the prologue the held bytes need in front of them.
+// writes the prologue the held bytes need in front of them, once however often
+// it is called.
 TEST(DeferredBuffer, holds_until_released) {
   std::ostringstream out;
   stream::DeferredBuffer buffer(out, 1024, [&out] { out << "head"; });
