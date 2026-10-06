@@ -226,6 +226,17 @@ std::optional<EncryptionMethod> resolve_crypt_filter(const Dictionary &encrypt,
   return cfm_method(filter["CFM"].as_name());
 }
 
+/// The method `/StmF` or `/StrF` selects, or @p fallback if the entry is
+/// absent.
+std::optional<EncryptionMethod> filter_method(const Dictionary &encrypt,
+                                              const std::string &key,
+                                              const EncryptionMethod fallback) {
+  if (!encrypt.get(key).is_name()) {
+    return fallback;
+  }
+  return resolve_crypt_filter(encrypt, encrypt[key].as_name());
+}
+
 } // namespace
 
 std::optional<Authenticator>
@@ -263,11 +274,20 @@ Authenticator::create(const Dictionary &encrypt, const std::string &file_id0) {
     d.m_oe = encrypt["OE"].as_string();
     d.m_ue = encrypt["UE"].as_string();
     d.m_key_length = 32;
-    d.m_stream_method = EncryptionMethod::aes_v3;
-    d.m_string_method = EncryptionMethod::aes_v3;
     if (d.m_r != 6) {
       return std::nullopt; // R 5 (deprecated interim revision) is out of scope
     }
+    // The spec defaults to Identity, but AES-256 writers that omit the crypt
+    // filters still encrypt everything.
+    const auto stream_method =
+        filter_method(encrypt, "StmF", EncryptionMethod::aes_v3);
+    const auto string_method =
+        filter_method(encrypt, "StrF", EncryptionMethod::aes_v3);
+    if (!stream_method || !string_method) {
+      return std::nullopt; // unsupported crypt filter
+    }
+    d.m_stream_method = *stream_method;
+    d.m_string_method = *string_method;
     return d;
   }
 
@@ -283,12 +303,10 @@ Authenticator::create(const Dictionary &encrypt, const std::string &file_id0) {
   if (d.m_v == 4) {
     // Crypt filters select the method for streams and strings; the defaults
     // are Identity (Table 20).
-    const std::string stmf =
-        encrypt.get("StmF").is_name() ? encrypt["StmF"].as_name() : "Identity";
-    const std::string strf =
-        encrypt.get("StrF").is_name() ? encrypt["StrF"].as_name() : "Identity";
-    const auto stream_method = resolve_crypt_filter(encrypt, stmf);
-    const auto string_method = resolve_crypt_filter(encrypt, strf);
+    const auto stream_method =
+        filter_method(encrypt, "StmF", EncryptionMethod::none);
+    const auto string_method =
+        filter_method(encrypt, "StrF", EncryptionMethod::none);
     if (!stream_method || !string_method) {
       return std::nullopt; // unsupported crypt filter
     }

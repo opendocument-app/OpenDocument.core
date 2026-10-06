@@ -185,8 +185,10 @@ TEST(PdfEncryption, named_unencrypted_crypt_filter) {
   }
 }
 
-TEST(PdfEncryption, qpdf_r6_truncates_user_and_owner_passwords) {
-  // Frozen qpdf 12.3.2 output, user/owner passwords: 127 'u'/'o' bytes.
+namespace {
+
+// Frozen qpdf 12.3.2 output, user/owner passwords: 127 'u'/'o' bytes.
+Dictionary qpdf_r6_encrypt() {
   Dictionary encrypt = standard_encrypt(
       5, 6, 256,
       hex_decode(
@@ -199,10 +201,18 @@ TEST(PdfEncryption, qpdf_r6_truncates_user_and_owner_passwords) {
       "db29dc16413c275e33d0f297fde819f57173d601280cfefbe90f9c1899647f03")));
   encrypt["UE"] = Object(StandardString(hex_decode(
       "3d2aa5d75ee4f90aee3fdf6a28af4b504912d9fe8678063910b673600e0c3c23")));
-  const std::string stream = hex_decode(
-      "477bf3f6b8aa0697656e2844d037d183218f77ad3f2a926118a08b694f07ea2e"
-      "1fec24dbe016dac6bbffeba92757f4ccf227c9d378efafdb8e703fe38b501a22");
-  const auto authenticator = Authenticator::create(encrypt, "");
+  return encrypt;
+}
+
+const std::string kQpdfR6Stream = hex_decode(
+    "477bf3f6b8aa0697656e2844d037d183218f77ad3f2a926118a08b694f07ea2e"
+    "1fec24dbe016dac6bbffeba92757f4ccf227c9d378efafdb8e703fe38b501a22");
+constexpr const char *kQpdfR6Content = "BT /F1 12 Tf (KAT-MARKER-12345) Tj ET";
+
+} // namespace
+
+TEST(PdfEncryption, qpdf_r6_truncates_user_and_owner_passwords) {
+  const auto authenticator = Authenticator::create(qpdf_r6_encrypt(), "");
   ASSERT_TRUE(authenticator.has_value());
   for (const char character : {'u', 'o'}) {
     SCOPED_TRACE(character);
@@ -211,10 +221,28 @@ TEST(PdfEncryption, qpdf_r6_truncates_user_and_owner_passwords) {
     for (const std::string &candidate : {password, password + "ignored"}) {
       const auto decryptor = authenticator->authenticate(candidate);
       ASSERT_TRUE(decryptor.has_value());
-      EXPECT_EQ(decryptor->decrypt_stream(kContentRef, stream),
-                "BT /F1 12 Tf (KAT-MARKER-12345) Tj ET");
+      EXPECT_EQ(decryptor->decrypt_stream(kContentRef, kQpdfR6Stream),
+                kQpdfR6Content);
     }
   }
+}
+
+TEST(PdfEncryption, r6_honors_named_crypt_filters) {
+  Dictionary encrypt = qpdf_r6_encrypt();
+  Dictionary filter;
+  filter["CFM"] = Object(Name("AESV3"));
+  Dictionary filters;
+  filters["StdCF"] = Object(std::move(filter));
+  encrypt["CF"] = Object(std::move(filters));
+  encrypt["StmF"] = Object(Name("StdCF"));
+  encrypt["StrF"] = Object(Name("Identity"));
+  const auto authenticator = Authenticator::create(encrypt, "");
+  ASSERT_TRUE(authenticator.has_value());
+  const auto decryptor = authenticator->authenticate(std::string(127, 'u'));
+  ASSERT_TRUE(decryptor.has_value());
+  EXPECT_EQ(decryptor->decrypt_stream(kContentRef, kQpdfR6Stream),
+            kQpdfR6Content);
+  EXPECT_EQ(decryptor->decrypt_string(kContentRef, kMarker), kMarker);
 }
 
 // A damaged file can end an AES string inside a block; the whole blocks before
