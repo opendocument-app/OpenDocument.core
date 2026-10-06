@@ -139,6 +139,9 @@ TEST(DocumentParser, encrypted_aes256_fixture) {
   check_fixture_parses(path, "sample-user-password");
 }
 
+// The render path re-opens an encrypted file with the authenticated decryptor
+// (carried from the initial open) instead of the password. Deriving it once and
+// replaying it must decrypt the document just as the password does.
 TEST(DocumentParser, reopen_with_decryptor) {
   const std::string short_path = "odr-public/pdf/Casio_WVA-M650-7AJF.pdf";
   const auto file =
@@ -166,6 +169,8 @@ TEST(DocumentParser, reopen_with_decryptor) {
   }
 }
 
+// Reading an encrypted file without authenticating must throw rather than serve
+// undecrypted bytes. The file reports as encrypted but not authenticated.
 TEST(DocumentParser, read_without_authentication_throws) {
   const auto file = std::make_shared<DiskFile>(
       TestData::test_file_path("odr-public/pdf/Casio_WVA-M650-7AJF.pdf"));
@@ -394,6 +399,10 @@ TEST(DocumentParser, composite_font_cid_widths) {
   EXPECT_DOUBLE_EQ(font->advance_width(65535), 0.7);
 }
 
+// Form XObjects are parsed onto the resources with their `/Matrix` and decoded
+// content. A cyclic `/Resources` reference (Fm0 -> Fm1 -> Fm0) terminates via
+// the parser's XObject cache and is represented faithfully: the back-edge
+// points at the very same `Fm0` element (no duplicate, no clipping).
 TEST(DocumentParser, form_xobject_cycle_is_represented_via_cache) {
   const std::string pdf = form_xobject_cycle_mini_pdf();
   DocumentParser parser(std::make_unique<std::istringstream>(pdf));
@@ -420,6 +429,10 @@ TEST(DocumentParser, form_xobject_cycle_is_represented_via_cache) {
   EXPECT_EQ(fm1->resources->x_object.at("Fm0"), fm0);
 }
 
+// An image XObject whose `/ColorSpace` is a name defined in the enclosing
+// `/Resources /ColorSpace` table resolves — the table is parsed before the
+// `/XObject` table and threaded into image parsing — and the raster is encoded
+// to PNG, rather than being dropped for an unresolved colour space.
 TEST(DocumentParser, image_named_colorspace_resolves_and_encodes) {
   const std::string pdf = named_colorspace_image_mini_pdf();
   DocumentParser parser(std::make_unique<std::istringstream>(pdf));
@@ -451,6 +464,8 @@ TEST(DocumentParser, shared_form_xobject_is_parsed_once) {
   EXPECT_EQ(fm_a, fm_b);
 }
 
+// Code 67 is outside `/Widths` and its `/Encoding` glyph is absent from the
+// substitute's AFM table, so it falls back to `/MissingWidth`.
 TEST(DocumentParser, simple_font_widths) {
   const std::string pdf = simple_font_mini_pdf();
   DocumentParser parser(std::make_unique<std::istringstream>(pdf));
@@ -504,6 +519,8 @@ TEST(DocumentParser, parse_facts_of_xref_stream) {
   EXPECT_EQ(parser.highest_object_id(), 5u);
 }
 
+// A rebuilt table has no section of the file's own to chain onto, so a writer
+// has nothing to point `/Prev` at — and must refuse the file.
 TEST(DocumentParser, parse_facts_of_a_recovered_file) {
   const std::string pdf =
       "HTTP/1.0 200 OK\r\nContent-Type: application/pdf\r\n\r\n" +
@@ -530,6 +547,8 @@ TEST(DocumentParser, recovers_from_garbage_startxref) {
   check_mini_pdf(pdf);
 }
 
+// Recovery: no `xref`/`trailer`/`startxref` at all — the catalog is found by
+// scanning the recovered objects for `/Type /Catalog`.
 TEST(DocumentParser, recovers_root_from_catalog_scan) {
   const std::string pdf =
       "%PDF-1.7\n"
@@ -542,6 +561,8 @@ TEST(DocumentParser, recovers_root_from_catalog_scan) {
   check_mini_pdf(pdf);
 }
 
+// Recovery: an id defined more than once (e.g. a botched incremental update)
+// resolves to the last definition in the file.
 TEST(DocumentParser, recovery_last_definition_wins) {
   const std::string pdf =
       "%PDF-1.7\n"
@@ -562,6 +583,10 @@ TEST(DocumentParser, recovery_last_definition_wins) {
   EXPECT_EQ(pages[0]->media_box.as_array()[2].as_real(), 200.0);
 }
 
+// Recovery: an object that inlines its dictionary and the `stream` token on a
+// single line (`N G obj<<...>>stream`) must still have its body skipped, so
+// object-shaped bytes inside the stream (here a fake `1 0 obj`) do not
+// overwrite the real recovered entry.
 TEST(DocumentParser, recovery_skips_same_line_stream_body) {
   const std::string pdf =
       "%PDF-1.7\n"
@@ -585,6 +610,9 @@ TEST(DocumentParser, recovery_skips_same_line_stream_body) {
   EXPECT_EQ(pages[0]->media_box.as_array()[2].as_real(), 612.0);
 }
 
+// Recovery: the page tree lives in an (uncompressed) object stream. After the
+// forward scan finds the stream, its members are indexed as compressed entries
+// so the catalog and pages resolve.
 TEST(DocumentParser, recovers_object_stream_members) {
   const std::vector<std::pair<std::uint32_t, std::string>> members = {
       {2, "<< /Type /Catalog /Pages 3 0 R >>"},
@@ -618,6 +646,9 @@ TEST(DocumentParser, recovers_object_stream_members) {
             "BT ET");
 }
 
+// Real-world recovery: an HTTP response accidentally saved as `.pdf` — the body
+// is a valid PDF but the leading `HTTP/1.0 200 OK …` header shifts every
+// offset. Skipped when the private submodule is absent.
 TEST(DocumentParser, recovers_http_response_fixture) {
   const std::string path = "odr-private/pdf/order-EK52VKL0.pdf";
   if (!std::filesystem::exists(TestData::test_file_path(path))) {

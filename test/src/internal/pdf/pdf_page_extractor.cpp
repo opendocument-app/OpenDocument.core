@@ -46,7 +46,11 @@ Font simple_font(std::uint32_t first_char, std::vector<double> widths) {
 
 } // namespace
 
-// ISO 32000-1 12.5.5.
+// `Td` places the origin via the text line matrix; the font size is carried
+// separately, not folded into the transform.
+// An annotation paints its appearance stream fitted onto its `/Rect`
+// (12.5.5): the appearance's `/BBox` maps onto the rectangle, so content at
+// the box's origin lands at the rectangle's, scaled by their size ratio.
 TEST(PdfPageExtractor, annotation_appearance_fits_the_rect) {
   XObject appearance;
   appearance.subtype = XObject::Subtype::form;
@@ -73,6 +77,8 @@ TEST(PdfPageExtractor, annotation_without_appearance_paints_nothing) {
   EXPECT_TRUE(extract_annotation(annotation, Logger::null()).empty());
 }
 
+// The appearance's own `/Matrix` concatenates onto the fit, exactly as a form
+// XObject's does at `Do`.
 TEST(PdfPageExtractor, annotation_appearance_applies_its_matrix) {
   XObject appearance;
   appearance.subtype = XObject::Subtype::form;
@@ -104,7 +110,9 @@ TEST(PdfPageExtractor, td_translation) {
   EXPECT_EQ(texts[0].text, "Hi"); // no font -> raw codes pass through
 }
 
-// ISO 32000-1 7.2.2.
+// Operators are delimited by any white-space (7.2.2), not just space/LF: a
+// CRLF stream (as Word emits) must tokenize `re\r\n` as `re`, not an unknown
+// `re\r` that drops the whole page.
 TEST(PdfPageExtractor, crlf_delimited_operators) {
   const auto texts = run("q\r\n0 0 595.3 841.9 re\r\nW* n\r\nBT\r\n/F1 12 "
                          "Tf\r\n1 0 0 1 100 700 Tm\r\n(Hi) Tj\r\nET\r\nQ\r\n");
@@ -114,7 +122,9 @@ TEST(PdfPageExtractor, crlf_delimited_operators) {
   EXPECT_EQ(texts[0].codes, "Hi");
 }
 
-// ISO 32000-1 7.2.4.
+// A comment stands where white space may (7.2.4), so a `%<TAG>` line between
+// operators is a comment and not the start of a hex string that swallows the
+// rest of the page.
 TEST(PdfPageExtractor, comment_between_operators) {
   const auto texts = run("%<ODT_ATTRIBUTION_LABEL_SIGNAL>\nq\n"
                          "%<ODT_ATTRIBUTION_LABEL_SIGNAL>\n"
@@ -133,6 +143,8 @@ TEST(PdfPageExtractor, comment_directly_after_operator) {
   EXPECT_EQ(texts[0].codes, "Hi");
 }
 
+// A closing delimiter opens no token, so an unmatched one has to be eaten or
+// the operator loop makes no progress.
 TEST(PdfPageExtractor, stray_closing_delimiter_does_not_stall) {
   const auto texts = run("BT /F1 12 Tf 1 0 0 1 5 5 Tm ) ] > } (Hi) Tj ET");
   ASSERT_EQ(texts.size(), 1);
@@ -413,6 +425,9 @@ TEST(PdfPageExtractor, form_xobject_self_cycle_terminates) {
   EXPECT_EQ(texts[0].codes, "a");
 }
 
+// The text rendering mode (`Tr`) rides along on each element; the HTML layer
+// turns the unpainted modes (3 invisible, 7 clip-only) into transparent but
+// still selectable spans.
 TEST(PdfPageExtractor, rendering_mode_propagates) {
   const auto texts = run("BT /F1 10 Tf 3 Tr 0 0 Td (x) Tj ET");
   ASSERT_EQ(texts.size(), 1);
@@ -432,6 +447,7 @@ TEST(PdfPageExtractor, no_unicode_marks_composite_without_tounicode) {
   EXPECT_EQ(texts[0].codes, std::string("\x00\x01", 2));
 }
 
+// The pen holds a break a `no_unicode` run cannot carry.
 TEST(PdfPageExtractor, break_survives_a_segment_with_no_text) {
   Font simple = simple_font(0x41, {500, 500}); // A, B = 0.5 em
   Font opaque;
@@ -469,6 +485,8 @@ TEST(PdfPageExtractor, actual_text_utf16be) {
   EXPECT_EQ(texts[0].text, "AB");
 }
 
+// A non-BOM `/ActualText` is PDFDocEncoding, not Latin-1: the upper-half bytes
+// 0x83/0x84 decode to ellipsis/em dash, not the C1 controls Latin-1 would give.
 TEST(PdfPageExtractor, actual_text_pdfdocencoding) {
   const auto texts = run("BT /F1 10 Tf 0 0 Td /Span <</ActualText "
                          "<8384>>> BDC (zz) Tj EMC ET");
@@ -555,6 +573,9 @@ TEST(PdfPageExtractor, space_inferred_on_new_line) {
   EXPECT_EQ(texts[1].text, " B");
 }
 
+// A suppressed segment (the tail of an `/ActualText` span, a `no_unicode`
+// glyph) carries no extractable text, but must not clear the trailing space of
+// the segment before it, or the next gap would infer a second space.
 TEST(PdfPageExtractor, trailing_space_survives_suppressed_segment) {
   Font font = simple_font('A', {500, 500}); // A, B = 0.5 em
   Resources res;
@@ -615,6 +636,10 @@ Font type3_font(std::uint32_t first_char, const std::string &name, double width,
 
 } // namespace
 
+// A Type3 glyph runs its char proc through the page machinery at the glyph
+// transform (`/FontMatrix` x size x `Tm` x CTM): the glyph paints as ordinary
+// path elements, and the shown run stays selectable but paints no visible text
+// of its own (`render_as_graphics`).
 TEST(PdfPageExtractor, type3_glyph_paints_char_proc) {
   // The char proc fills a 1000x1000 glyph-space box; FontMatrix 0.001 maps it
   // to a 1x1 em box, so at size 10 placed at (100, 700) it spans +10 user
@@ -645,6 +670,8 @@ TEST(PdfPageExtractor, type3_glyph_paints_char_proc) {
   EXPECT_NEAR(s.segments[0].end[1], 700, 1e-9);
 }
 
+// A Type3 glyph advance comes from `/Widths` scaled by `/FontMatrix` (glyph
+// space), not the fixed 1/1000 em of other fonts.
 TEST(PdfPageExtractor, type3_advance_uses_font_matrix) {
   Font font = type3_font('A', "a", 500, "0 0 1000 1000 re f",
                          Transform2D::scaling(0.001, 0.001));
@@ -663,7 +690,9 @@ TEST(PdfPageExtractor, type3_advance_uses_font_matrix) {
   }
 }
 
-// ISO 32000-1 Table 106.
+// Invisible (`3 Tr`) and clip-only (`7 Tr`) Type3 text paints nothing: the run
+// stays selectable (transparent text element) but the char procs must not run,
+// so no glyph graphics appear (ISO 32000-1 Table 106).
 TEST(PdfPageExtractor, type3_invisible_skips_char_proc) {
   Font font = type3_font('A', "a", 1000, "0 0 1000 1000 re f",
                          Transform2D::scaling(0.001, 0.001));
@@ -868,7 +897,9 @@ TEST(PdfPageExtractor, gs_soft_mask_scoped_by_q_Q) {
   EXPECT_EQ(path_at(page, 1).soft_mask, nullptr); // restored after Q
 }
 
-// ISO 32000-1 11.6.6.
+// A group-level parameter (a soft mask here) rides on one `GroupElement` with
+// the interior as its children, so the renderer composites and then masks
+// (ISO 32000-1 11.6.6) — surviving the group resetting the mask internally.
 TEST(PdfPageExtractor, soft_mask_wraps_transparency_group) {
   XObject mask_group = form_x_object("0 0 10 10 re f");
   Resources form_res;
@@ -893,7 +924,9 @@ TEST(PdfPageExtractor, soft_mask_wraps_transparency_group) {
             nullptr);
 }
 
-// ISO 32000-1 11.6.6.
+// The constant alpha rides on the `GroupElement`, not each interior element, so
+// overlapping interior paints composite before fading (ISO 32000-1 11.6.6) —
+// even though the group resets alpha internally.
 TEST(PdfPageExtractor, transparency_group_carries_constant_alpha) {
   Resources form_res;
   form_res.ext_g_state["GS0"] = ext_g_state(1.0, std::nullopt, ""); // reset
@@ -913,6 +946,9 @@ TEST(PdfPageExtractor, transparency_group_carries_constant_alpha) {
       std::get<PathElement>(group.children->elements.at(0)).fill_alpha, 1.0);
 }
 
+// A transparency group with only trivial parameters (alpha 1, no blend, no
+// mask) is *not* wrapped: its content inlines like any other form's, so no
+// needless `GroupElement` (or `<g>`) is produced.
 TEST(PdfPageExtractor, trivial_transparency_group_not_wrapped) {
   XObject content = form_x_object("0 0 10 10 re f");
   content.transparency_group = true;
@@ -923,6 +959,9 @@ TEST(PdfPageExtractor, trivial_transparency_group_not_wrapped) {
   EXPECT_TRUE(std::holds_alternative<PathElement>(page.at(0)));
 }
 
+// A plain (non-group) form has no isolation: its interior `gs` directly
+// overrides the graphics state, so an outer `ca` does not fold into content
+// that resets the alpha. (Contrast the transparency-group case above.)
 TEST(PdfPageExtractor, non_group_form_does_not_fold_alpha) {
   Resources form_res;
   form_res.ext_g_state["GS0"] = ext_g_state(1.0, std::nullopt, "");
@@ -1032,6 +1071,8 @@ TEST(PdfPageExtractor, path_snapshots_device_colors) {
   EXPECT_DOUBLE_EQ(p.stroke_color.rgb[2], 1);
 }
 
+// A path stroked without `w`/`M`/`J`/`j` carries the PDF initial line params
+// (line width 1, miter limit 10, butt cap, miter join), not zeros.
 TEST(PdfPageExtractor, path_stroke_uses_initial_line_defaults) {
   const auto page = run_page("0 0 m 10 0 l S");
   ASSERT_EQ(page.size(), 1);
@@ -1072,6 +1113,8 @@ TEST(PdfPageExtractor, stroke_dash_pattern) {
   EXPECT_DOUBLE_EQ(p.dash_phase, 1);
 }
 
+// A scaling CTM folds into the stroke width, the dash lengths and the phase, so
+// they share the geometry's user space.
 TEST(PdfPageExtractor, stroke_width_and_dash_scale_with_ctm) {
   const auto page = run_page("3 0 0 3 0 0 cm 4 w [3 2] 1 d 0 0 m 10 0 l S");
   const PathElement &p = path_at(page, 0);
@@ -1148,7 +1191,8 @@ TEST(PdfPageExtractor, clip_evenodd_rule) {
   EXPECT_TRUE(path_at(page, 0).clip[0].even_odd);
 }
 
-// ISO 32000-1 8.5.4.
+// The painting operator that installs a clip is itself clipped only by the
+// *previous* clip, not the one it establishes (ISO 32000-1 8.5.4).
 TEST(PdfPageExtractor, clip_excludes_its_own_paint) {
   // `re W f`: the fill paints under no clip; the rect becomes a clip
   // afterwards.
@@ -1172,7 +1216,8 @@ TEST(PdfPageExtractor, clip_save_restore) {
   EXPECT_TRUE(path_at(page, 1).clip.empty()); // after Q: clip gone
 }
 
-// ISO 32000-1 8.10.2.
+// A form XObject's `/BBox` clips its content (ISO 32000-1 8.10.2), mapped
+// through the form `/Matrix` + CTM; the clip is scoped to the form.
 TEST(PdfPageExtractor, form_bbox_clips_content) {
   XObject form = form_x_object("0 0 100 100 re f");
   form.bbox = std::array<double, 4>{10, 20, 30, 40};
@@ -1255,6 +1300,8 @@ TEST(PdfPageExtractor, scn_separation_through_tint) {
   EXPECT_DOUBLE_EQ(p.fill_color.rgb[2], 0.0);
 }
 
+// A device colour operator (`rg`) clears a previously set resource colour
+// space, so a following device colour is not mis-resolved through it.
 TEST(PdfPageExtractor, device_color_clears_color_space) {
   Resources res;
   res.color_space["CS0"] = rgb_space();
@@ -1330,6 +1377,8 @@ TEST(PdfPageExtractor, scn_tiling_pattern_fills_path) {
   EXPECT_DOUBLE_EQ(p.pattern_transform.f, 4);
 }
 
+// An uncoloured tiling pattern (`/PaintType 2`) records the current fill colour
+// alongside the pattern, so the renderer can paint the cell in it.
 TEST(PdfPageExtractor, scn_uncoloured_tiling_pattern_carries_colour) {
   Pattern pattern;
   pattern.type = Pattern::Type::tiling;
@@ -1346,6 +1395,8 @@ TEST(PdfPageExtractor, scn_uncoloured_tiling_pattern_carries_colour) {
   EXPECT_EQ(p.fill_pattern->paint_type, 2);
 }
 
+// A named Pattern space with an underlying base (`[/Pattern /DeviceRGB]`)
+// resolves the leading components through that base: `1 0 0` is red, not black.
 TEST(PdfPageExtractor, scn_uncoloured_tiling_pattern_colour_through_base) {
   Pattern pattern;
   pattern.type = Pattern::Type::tiling;
@@ -1485,6 +1536,10 @@ TEST(PdfPageExtractor, inline_image_emitted_at_ctm) {
   EXPECT_DOUBLE_EQ(img.transform.f, 20);
 }
 
+// An unfiltered image's length is fixed by its geometry, so raw sample bytes
+// that happen to spell `E I <white-space>` (here the first pixel, 0x45 0x49
+// 0x20) are not mistaken for the `EI` terminator: the image survives intact and
+// the following operator is still parsed.
 TEST(PdfPageExtractor, inline_image_data_containing_ei) {
   const std::string content = "BI /W 2 /H 1 /CS /RGB /BPC 8 ID " +
                               raw_bytes({0x45, 0x49, 0x20, 10, 20, 30}) +
@@ -1507,6 +1562,10 @@ TEST(PdfPageExtractor, inline_image_flate) {
   EXPECT_EQ(img.data.substr(0, 8), png_signature);
 }
 
+// A Flate inline image with a PNG predictor: the white-space separating the
+// data from `EI` must not leak into the encoded payload. A stray trailing byte
+// extends the inflated stream by one, so it is no longer a whole number of
+// predictor rows and decoding throws.
 TEST(PdfPageExtractor, inline_image_flate_predictor_drops_separator) {
   // One PNG predictor row: a leading filter-type tag (0, None) then the
   // samples.

@@ -269,6 +269,10 @@ TEST(PdfFile, anisotropic_placement_does_not_space_out_glyphs) {
   EXPECT_TRUE(contains(spaced, R"(<span class="sg)"));
 }
 
+// Runs one CSS matrix can place share a selection block and carry the PDF's
+// advances as widths, rather than each getting a box shrink-wrapped around the
+// fallback font. A whitespace-only run has no `.sr`, so the spacer takes its
+// advance.
 TEST(PdfFile, matrix_runs_flow_into_one_selection_block) {
   const std::string html =
       render_html(text_mini_pdf("BT /F1 12 Tf 0.9 0 0 1 72 700 Tm "
@@ -285,6 +289,9 @@ TEST(PdfFile, matrix_runs_flow_into_one_selection_block) {
   EXPECT_EQ(count(html, R"(<span class="sg f0 w)"), 1u);
 }
 
+// A word break with no gap in the PDF still gets a spacer of a stated width:
+// without one the spacer takes the space advance of the fallback font, and the
+// selection drifts off the glyphs by that much at every word.
 TEST(PdfFile, gapless_word_break_spacer_has_a_width) {
   const std::string html = render_html(
       text_mini_pdf("BT /F1 12 Tf 72 700 Td (Hello) Tj ( world) Tj ET"),
@@ -294,6 +301,8 @@ TEST(PdfFile, gapless_word_break_spacer_has_a_width) {
   EXPECT_FALSE(contains(html, R"(<span class="sg f0">)"));
 }
 
+// A run that starts inside the previous one pulls the selection back by the
+// overlap, rather than being pushed to the previous run's end.
 TEST(PdfFile, overlapping_run_pulls_the_selection_back) {
   const std::string html = render_html(
       text_mini_pdf("BT /F1 12 Tf 72 700 Td (Hello) Tj 22 0 Td ( world) Tj ET"),
@@ -303,6 +312,8 @@ TEST(PdfFile, overlapping_run_pulls_the_selection_back) {
   EXPECT_TRUE(contains(html, "margin-left:-"));
 }
 
+// The advance of a real leading space goes to the spacer, not to the run that
+// drops the space from its text: one letter cannot be justified over it.
 TEST(PdfFile, leading_space_advance_goes_to_the_spacer) {
   const std::string html =
       render_html(text_mini_pdf("BT /F1 12 Tf 72 700 Td (Hello) Tj ( a) Tj ET"),
@@ -315,6 +326,8 @@ TEST(PdfFile, leading_space_advance_goes_to_the_spacer) {
   EXPECT_FALSE(contains(html, "{width:15.01pt}"));
 }
 
+// A gap after a space widens the span that holds the space. A margin on the
+// next run is not highlighted, so the space shows narrower than the gap.
 TEST(PdfFile, gap_after_a_space_widens_the_spacer) {
   const std::string html = render_html(
       text_mini_pdf(
@@ -334,6 +347,8 @@ TEST(PdfFile, gap_after_a_trailing_space_widens_the_run) {
   EXPECT_FALSE(contains(html, R"(<span class="sr f0 ml)"));
 }
 
+// A run of one letter cannot be justified to its width without a second
+// justification opportunity, which the pseudo-element gives and copy skips.
 TEST(PdfFile, selection_run_is_justified_after_its_last_letter) {
   const std::string html =
       render_html(text_mini_pdf("BT /F1 12 Tf 72 700 Td (a) Tj ET"),
@@ -369,6 +384,9 @@ TEST(PdfFile, page_views_are_listed) {
   EXPECT_EQ(views.at(3).path(), "page2.html");
 }
 
+// With a nested `page_output_file_name`, cross-page hrefs are emitted
+// relative to the current page's own directory (the browser resolves them
+// against the current document, not the output root).
 TEST(PdfFile, page_views_nested_output_pattern_links_relatively) {
   const std::string pdf = link_annotations_mini_pdf();
 
@@ -394,6 +412,8 @@ TEST(PdfFile, page_views_nested_output_pattern_links_relatively) {
   }
 }
 
+// `page_range_end` caps the rendered pages and views; internal links to pages
+// beyond the range are dropped rather than left dangling.
 TEST(PdfFile, page_range_end_caps_pages_views_and_links) {
   HtmlConfig config;
   config.page_range_end = 2;
@@ -482,6 +502,8 @@ TEST(PdfFile, embedded_images_stay_inline) {
   EXPECT_EQ(count(html, "data:image/jpeg;base64,"), 2);
 }
 
+// A linked image is served back by the service, which is how the http server
+// hands it to a browser.
 TEST(PdfFile, linked_image_is_served_by_the_service) {
   HtmlConfig config;
   config.embed_images = false;
@@ -505,6 +527,8 @@ TEST(PdfFile, linked_image_is_served_by_the_service) {
             "\xff\xd8\xff\xd9-not-really-a-jpeg");
 }
 
+// Every view names an image the same, so a host rendering them into one
+// directory does not have one view's image overwrite another's.
 TEST(PdfFile, views_agree_on_an_image_name) {
   HtmlConfig config;
   config.embed_images = false;
@@ -532,6 +556,8 @@ TEST(PdfFile, views_agree_on_an_image_name) {
   EXPECT_EQ(bytes_by_path.size(), 2);
 }
 
+// A `1 Tf` run with its size in `Tm` must not come out at `font-size:1pt`,
+// which a browser's minimum font size would clamp up.
 TEST(PdfFile, matrix_run_font_size_clears_a_minimum_font_size) {
   const std::string html =
       render_html(text_mini_pdf("BT /F1 1 Tf 10 0 0 20 50 700 Tm (Hi) Tj ET"),
@@ -543,6 +569,8 @@ TEST(PdfFile, matrix_run_font_size_clears_a_minimum_font_size) {
   EXPECT_TRUE(contains(html, "matrix(0.555556,0,0,1.11111,0,0)"));
 }
 
+// A uniform run states its own size, and a small one is clamped just the same,
+// so its block is laid out at the floor and scaled back by `.t`'s transform.
 TEST(PdfFile, small_uniform_run_is_laid_out_at_the_floor_and_scaled_back) {
   const std::string html =
       render_html(text_mini_pdf("BT /F1 12 Tf 1 0 0 1 72 700 Tm (Hi) Tj ET"),
@@ -553,6 +581,8 @@ TEST(PdfFile, small_uniform_run_is_laid_out_at_the_floor_and_scaled_back) {
   EXPECT_TRUE(contains(html, "transform:scale(0.666667)"));
 }
 
+// At the floor no browser clamps it, so the run is laid out and placed exactly
+// as it asks to be — the blow-up is what a run needs, not what every run pays.
 TEST(PdfFile, uniform_run_at_the_floor_keeps_its_own_font_size) {
   const std::string html =
       render_html(text_mini_pdf("BT /F1 24 Tf 1 0 0 1 72 700 Tm (Hi) Tj ET"),
@@ -568,6 +598,7 @@ TEST(PdfFile, an_unencrypted_file_states_no_permissions) {
   EXPECT_THROW((void)file.permissions(), ValueNotStated);
 }
 
+// Revision 2 defines only bits 3 to 6: print allowed, the rest refused.
 TEST(PdfFile, revision_2_permissions_stand_for_the_later_bits) {
   const odr::PdfFile file(open_pdf(permissions_mini_pdf(-60)));
   ASSERT_TRUE(file.has_permissions());
