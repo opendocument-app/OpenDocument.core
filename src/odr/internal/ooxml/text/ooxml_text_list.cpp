@@ -68,7 +68,7 @@ std::uint32_t read_number(
 std::string resolve_bullet(const std::string &text, const std::uint32_t level) {
   static constexpr std::array<const char *, 3> defaults{"•", "◦", "▪"};
 
-  if (text.empty() || !utf8::is_valid(text.begin(), text.end())) {
+  if (text.empty() || !util::string::is_valid_utf8(text)) {
     return defaults[level % defaults.size()];
   }
 
