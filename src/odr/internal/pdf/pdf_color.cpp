@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 namespace odr::internal::pdf {
 
@@ -134,13 +135,22 @@ ColorSpaceDef::to_rgb(const std::span<const double> c) const {
   }
   case ColorSpaceKind::separation:
   case ColorSpaceKind::device_n: {
-    if (tint == nullptr || alternate == nullptr) {
-      // Without the tint transform, approximate a Separation as additive ink
-      // over white (1 = full colorant -> black).
+    // Without a usable tint transform, approximate a Separation as additive
+    // ink over white (1 = full colorant -> black).
+    const auto ink = [&]() -> std::array<double, 3> {
       const double v = clamp01(1 - at(0));
       return {v, v, v};
+    };
+    if (tint == nullptr || alternate == nullptr) {
+      return ink();
     }
-    return alternate->to_rgb(tint->eval({c.begin(), c.end()}));
+    try {
+      return alternate->to_rgb(tint->eval({c.begin(), c.end()}));
+    } catch (const std::invalid_argument &) {
+      return ink();
+    } catch (const std::runtime_error &) {
+      return ink();
+    }
   }
   case ColorSpaceKind::pattern:
     // An uncoloured pattern (`/PaintType 2`) carries its colour in the Pattern

@@ -139,6 +139,24 @@ TEST(PdfColor, separation_tint_transform) {
   EXPECT_NEAR(half[2], 0.5, 1e-9);
 }
 
+// A tint transform without a finite answer paints as the ink approximation
+// rather than aborting the page.
+TEST(PdfColor, separation_non_finite_tint_approximates_ink) {
+  Dictionary tint;
+  tint["FunctionType"] = Object(Integer{2});
+  tint["Domain"] = reals({0, 2});
+  tint["C0"] = reals({0});
+  tint["C1"] = reals({1});
+  tint["N"] = Object(Real{2048}); // 2^2048 overflows
+
+  std::vector<Object> array{Object(Name{"Separation"}), Object(Name{"Spot"}),
+                            Object(Name{"DeviceGray"}), Object(tint)};
+  const auto def =
+      parse_color_space(Object(Array(std::move(array))), context());
+  ASSERT_NE(def, nullptr);
+  EXPECT_EQ(to_rgb(*def, {2.0}), (std::array<double, 3>{0, 0, 0}));
+}
+
 // A colour space's initial component values (ISO 32000-1 8.6.3): zero for the
 // device families, full tint for Separation/DeviceN.
 TEST(PdfColor, initial_components) {

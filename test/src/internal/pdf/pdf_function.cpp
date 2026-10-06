@@ -8,6 +8,7 @@
 #include <limits>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -349,7 +350,8 @@ TEST(PdfFunction, interpolation_avoids_intermediate_overflow) {
   EXPECT_DOUBLE_EQ(grid->eval({0})[0], 0);
   EXPECT_DOUBLE_EQ(grid->eval({-limit})[0], -limit);
   EXPECT_DOUBLE_EQ(grid->eval({limit})[0], limit);
-  EXPECT_THROW(grid->eval({std::numeric_limits<double>::quiet_NaN()}),
+  EXPECT_THROW(std::ignore =
+                   grid->eval({std::numeric_limits<double>::quiet_NaN()}),
                std::invalid_argument);
 
   Dictionary exponential;
@@ -372,14 +374,14 @@ TEST(PdfFunction, rejects_non_finite_values) {
   ASSERT_NE(fn, nullptr);
   for (const double value : {std::numeric_limits<double>::quiet_NaN(),
                              std::numeric_limits<double>::infinity()}) {
-    EXPECT_THROW(fn->eval({value}), std::invalid_argument);
+    EXPECT_THROW(std::ignore = fn->eval({value}), std::invalid_argument);
     for (const char *key : {"C0", "C1"}) {
       Dictionary invalid = dict;
       invalid[key] = reals({value});
       EXPECT_EQ(parse_function(Object(invalid), context()), nullptr);
     }
   }
-  EXPECT_THROW(fn->eval({2}), std::runtime_error);
+  EXPECT_THROW(std::ignore = fn->eval({2}), std::runtime_error);
   dict["C0"] = reals({1});
   const auto constant = parse_function(Object(dict), context());
   ASSERT_NE(constant, nullptr);
