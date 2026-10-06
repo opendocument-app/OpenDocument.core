@@ -22,38 +22,63 @@ class FormatHookTest(unittest.TestCase):
         return subprocess.run(args, cwd=self.repo, capture_output=True,
                               check=True, **kwargs)
 
-    def test_partial_staging_and_unusual_paths_remain_unchanged(self):
+    def commit_initial(self):
         self.run_command("git", "add", ".clang-format")
         self.run_command("git", "-c", "user.name=Review", "-c",
                          "user.email=review@example.invalid", "-c",
                          "core.hooksPath=/dev/null", "commit", "-qm", "initial")
+
+    def staged(self, name):
+        return self.run_command("git", "show", f":{name}").stdout.decode()
+
+    def test_formats_only_the_staged_content(self):
+        self.commit_initial()
         for name in ("file.cpp", "-space and\nnewline.cpp"):
-            for staged, unstaged, succeeds in (
-                ("int x = 1;\n", "int x=2;\n", True),
-                ("int x=1;\n", "int x = 2;\n", False),
+            for staged, unstaged, formatted in (
+                ("int x=1;\n", "int x=2;\n", "int x = 1;\n"),
+                ("int x = 1;\n", "int x=2;\n", "int x = 1;\n"),
             ):
-                with self.subTest(name=name, succeeds=succeeds):
+                with self.subTest(name=name, staged=staged):
                     path = self.repo / name
                     path.write_text(staged)
                     self.run_command("git", "add", "--", name)
                     path.write_text(unstaged)
-                    index = (self.repo / ".git/index").read_bytes()
                     result = self.run_hook()
-                    self.assertEqual(result.returncode == 0, succeeds, result.stderr)
-                    self.assertEqual((self.repo / ".git/index").read_bytes(), index)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(self.staged(name), formatted)
                     self.assertEqual(path.read_text(), unstaged)
                     self.run_command("git", "rm", "--cached", "-f", "--", name)
 
-    def test_checks_initial_commit(self):
+    def test_formats_a_file_without_unstaged_changes_in_place(self):
+        self.commit_initial()
+        path = self.repo / "file.cpp"
+        path.write_text("int x=1;\n")
+        self.run_command("git", "add", "file.cpp")
+        self.assertEqual(self.run_hook().returncode, 0)
+        self.assertEqual(self.staged("file.cpp"), "int x = 1;\n")
+        self.assertEqual(path.read_text(), "int x = 1;\n")
+
+    def test_formats_the_initial_commit(self):
         (self.repo / "file.cpp").write_text("int x=1;\n")
         self.run_command("git", "add", "file.cpp")
-        self.assertNotEqual(self.run_hook().returncode, 0)
+        self.assertEqual(self.run_hook().returncode, 0)
+        self.assertEqual(self.staged("file.cpp"), "int x = 1;\n")
 
-    def run_hook(self):
+    def test_a_formatter_failure_stops_the_commit(self):
+        (self.repo / "file.cpp").write_text("int x=1;\n")
+        self.run_command("git", "add", "file.cpp")
+        index = (self.repo / ".git/index").read_bytes()
+        formatter = self.repo / "failing formatter"
+        formatter.write_text("#!/bin/sh\nexit 7\n")
+        formatter.chmod(0o755)
+        self.assertNotEqual(self.run_hook(str(formatter)).returncode, 0)
+        self.assertEqual((self.repo / ".git/index").read_bytes(), index)
+
+    def run_hook(self, formatter=FORMATTER):
         return subprocess.run(
             [ROOT / "scripts/git_hooks/pre-commit/0_format"],
             cwd=self.repo, capture_output=True,
-            env={**os.environ, "CLANG_FORMAT": FORMATTER},
+            env={**os.environ, "CLANG_FORMAT": formatter},
         )
 
 

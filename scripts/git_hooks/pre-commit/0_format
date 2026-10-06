@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ ${1:-} == --about ]]; then
-  echo "Checks formatting of staged C++ and Objective-C++ files."
+  echo "Formats staged C++ and Objective-C++ files without staging other changes."
   exit 0
 fi
 
@@ -13,11 +13,23 @@ shopt -s nocasematch
 git diff --cached --name-only --diff-filter=ACMRT -z |
   while IFS= read -r -d '' file; do
     case "$file" in
-      *.cpp|*.cc|*.h|*.hpp|*.mm)
-        mode=$(git --literal-pathspecs ls-files --stage -- "$file")
-        [[ $mode == 120000\ * ]] && continue
-        git show ":$file" |
-          "$CLANG_FORMAT" --style=file --assume-filename="$file" --dry-run --Werror
-        ;;
+      *.cpp|*.cc|*.h|*.hpp|*.mm) ;;
+      *) continue ;;
     esac
+    read -r mode staged _ < <(git --literal-pathspecs ls-files --stage -- "$file")
+    [[ $mode == 120000 ]] && continue
+    formatted=$(git cat-file blob "$staged" |
+      "$CLANG_FORMAT" --style=file --assume-filename="$file" |
+      git hash-object -w --stdin)
+    [[ $formatted == "$staged" ]] && continue
+    # unstaged edits stay as they are; a file without any follows the index
+    if git --literal-pathspecs diff --quiet -- "$file"; then
+      follow=true
+    else
+      follow=false
+    fi
+    git update-index --cacheinfo "$mode,$formatted,$file"
+    if $follow; then
+      git checkout-index --force -- "$file"
+    fi
   done

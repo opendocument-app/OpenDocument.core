@@ -135,9 +135,8 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file to HTML
 ## Conventions
 
 - Formatting: clang-format per `.clang-format`, clang-tidy per `.clang-tidy`.
-  Run `scripts/format`; the hook installed by `scripts/setup` checks staged
-  content without modifying files or staging additional changes. CI enforces
-  both.
+  Run `scripts/format`; the hook installed by `scripts/setup` formats only the
+  staged content and never stages other changes. CI enforces both.
 - C++23 with three ceilings. Check a new facility against all three by building
   an object file, because `-fsyntax-only` misses codegen bugs.
   - The standard library is capped by emsdk 3.1.73 (libc++ 18.1). Available:
