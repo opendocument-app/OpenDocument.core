@@ -195,7 +195,7 @@ std::optional<EncryptionMethod> cfm_method(const std::string &cfm) {
   if (cfm == "AESV3") {
     return EncryptionMethod::aes_v3;
   }
-  if (cfm == "Identity") {
+  if (cfm == "None" || cfm == "Identity") {
     return EncryptionMethod::none;
   }
   return std::nullopt;
@@ -216,10 +216,25 @@ std::optional<EncryptionMethod> resolve_crypt_filter(const Dictionary &encrypt,
     return std::nullopt;
   }
   const Dictionary &filter = cf[name].as_dictionary();
+  // ISO 32000-1 Table 25: an omitted CFM defaults to None.
+  if (filter.get("CFM").is_null()) {
+    return EncryptionMethod::none;
+  }
   if (!filter.get("CFM").is_name()) {
     return std::nullopt;
   }
   return cfm_method(filter["CFM"].as_name());
+}
+
+/// The method `/StmF` or `/StrF` selects, or @p fallback if the entry is
+/// absent.
+std::optional<EncryptionMethod> filter_method(const Dictionary &encrypt,
+                                              const std::string &key,
+                                              const EncryptionMethod fallback) {
+  if (!encrypt.get(key).is_name()) {
+    return fallback;
+  }
+  return resolve_crypt_filter(encrypt, encrypt[key].as_name());
 }
 
 } // namespace
@@ -259,11 +274,20 @@ Authenticator::create(const Dictionary &encrypt, const std::string &file_id0) {
     d.m_oe = encrypt["OE"].as_string();
     d.m_ue = encrypt["UE"].as_string();
     d.m_key_length = 32;
-    d.m_stream_method = EncryptionMethod::aes_v3;
-    d.m_string_method = EncryptionMethod::aes_v3;
     if (d.m_r != 6) {
       return std::nullopt; // R 5 (deprecated interim revision) is out of scope
     }
+    // The spec defaults to Identity, but AES-256 writers that omit the crypt
+    // filters still encrypt everything.
+    const auto stream_method =
+        filter_method(encrypt, "StmF", EncryptionMethod::aes_v3);
+    const auto string_method =
+        filter_method(encrypt, "StrF", EncryptionMethod::aes_v3);
+    if (!stream_method || !string_method) {
+      return std::nullopt; // unsupported crypt filter
+    }
+    d.m_stream_method = *stream_method;
+    d.m_string_method = *string_method;
     return d;
   }
 
@@ -279,12 +303,10 @@ Authenticator::create(const Dictionary &encrypt, const std::string &file_id0) {
   if (d.m_v == 4) {
     // Crypt filters select the method for streams and strings; the defaults
     // are Identity (Table 20).
-    const std::string stmf =
-        encrypt.get("StmF").is_name() ? encrypt["StmF"].as_name() : "Identity";
-    const std::string strf =
-        encrypt.get("StrF").is_name() ? encrypt["StrF"].as_name() : "Identity";
-    const auto stream_method = resolve_crypt_filter(encrypt, stmf);
-    const auto string_method = resolve_crypt_filter(encrypt, strf);
+    const auto stream_method =
+        filter_method(encrypt, "StmF", EncryptionMethod::none);
+    const auto string_method =
+        filter_method(encrypt, "StrF", EncryptionMethod::none);
     if (!stream_method || !string_method) {
       return std::nullopt; // unsupported crypt filter
     }
@@ -307,15 +329,17 @@ Authenticator::authenticate(const std::string &password) const {
     // ISO 32000-2 Algorithms 11/12: validate against the salts in /U and /O,
     // then unwrap the file key from /UE or /OE with AES-256-CBC (zero IV).
     const std::string zero_iv(aes_block, '\0');
+    // Algorithm 2.A: only the first 127 bytes of the UTF-8 password count.
+    const std::string truncated = password.substr(0, 127);
 
-    if (hash_r6(password, m_u.substr(32, 8), {}) == m_u.substr(0, 32)) {
-      const std::string ik = hash_r6(password, m_u.substr(40, 8), {});
+    if (hash_r6(truncated, m_u.substr(32, 8), {}) == m_u.substr(0, 32)) {
+      const std::string ik = hash_r6(truncated, m_u.substr(40, 8), {});
       std::string key = crypto::util::decrypt_aes_cbc(ik, zero_iv, m_ue);
       return Decryptor(std::move(key), m_stream_method, m_string_method);
     }
     const std::string u48 = m_u.substr(0, 48);
-    if (hash_r6(password, m_o.substr(32, 8), u48) == m_o.substr(0, 32)) {
-      const std::string ik = hash_r6(password, m_o.substr(40, 8), u48);
+    if (hash_r6(truncated, m_o.substr(32, 8), u48) == m_o.substr(0, 32)) {
+      const std::string ik = hash_r6(truncated, m_o.substr(40, 8), u48);
       std::string key = crypto::util::decrypt_aes_cbc(ik, zero_iv, m_oe);
       return Decryptor(std::move(key), m_stream_method, m_string_method);
     }
