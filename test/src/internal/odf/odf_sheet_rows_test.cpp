@@ -345,3 +345,27 @@ TEST(OdfSheetRows, an_inline_chart_moves_and_an_inline_spreadsheet_stays) {
   EXPECT_NE(xml.find(R"x(table:cell-range-address="s.A1:s.A3")x"),
             std::string::npos);
 }
+
+TEST(OdfSheetRows,
+     unparseable_formulas_refuse_structural_edits_without_mutation) {
+  for (const auto edit : {&Sheet::insert_rows, &Sheet::delete_rows,
+                          &Sheet::insert_columns, &Sheet::delete_columns}) {
+    for (const std::string &expression :
+         {std::string("of:=SUM("),
+          "of:=" + std::string(80, '(') + "[s.A1]" + std::string(80, ')')}) {
+      for (const bool named : {false, true}) {
+        const Document document = document_of(flat_spreadsheet(
+            table("s", row(string_cell("a") + formula_cell("of:=[.A1]"))) +
+                (named ? "" : table("t", row(formula_cell(expression)))),
+            named ? "<table:named-expressions><table:named-expression "
+                    "table:name=\"bad\" table:expression=\"" +
+                        expression + "\"/></table:named-expressions>"
+                  : ""));
+        const Sheet sheet = sheet_at(document, 0);
+        const std::string before = saved(document);
+        EXPECT_THROW((sheet.*edit)(0, 1), UnsupportedOperation);
+        EXPECT_EQ(saved(document), before);
+      }
+    }
+  }
+}

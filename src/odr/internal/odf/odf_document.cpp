@@ -1342,9 +1342,15 @@ public:
     } catch (const std::exception &) {
       throw UnsupportedOperation(); // a part that does not parse
     }
+    const pugi::xml_node styles = m_document->part(AbsPath("/styles.xml"));
+    check_formula_syntax(spreadsheet.parent().parent());
+    check_formula_syntax(styles);
+    for (const pugi::xml_node object : objects) {
+      check_formula_syntax(object);
+    }
     std::vector<SheetPosition> touched =
         move_sheet_references(spreadsheet, edit);
-    move_object_references(m_document->part(AbsPath("/styles.xml")), edit);
+    move_object_references(styles, edit);
     for (const pugi::xml_node object : objects) {
       move_object_references(object, edit);
     }

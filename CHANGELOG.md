@@ -26,6 +26,8 @@ The release run heads these entries with the version and opens a fresh
   Standalone XML beyond the limit opens as plain text.
 - Detect JSON after text decoding, including UTF-16 and UTF-32 files.
   Validation no longer allocates a discarded JSON value tree.
+- Refuse spreadsheet row and column edits when an affected formula cannot be
+  parsed, before changing cells or references.
 
 ## v7.5.0 - 2026-10-06
 

@@ -1,5 +1,7 @@
 #include <odr/internal/odf/odf_sheet_references.hpp>
 
+#include <odr/exceptions.hpp>
+
 #include <odr/internal/formula/formula_ast.hpp>
 #include <odr/internal/formula/formula_dependencies.hpp>
 #include <odr/internal/formula/formula_parser.hpp>
@@ -219,6 +221,17 @@ void move_subtree(const pugi::xml_node node, std::string sheet,
 } // namespace odr::internal::odf
 
 namespace odr::internal {
+
+void odf::check_formula_syntax(const pugi::xml_node part) {
+  for (const pugi::xpath_node match :
+       part.select_nodes(".//@table:formula | .//@table:expression")) {
+    if (!formula::parse(match.attribute().value(),
+                        formula::Syntax::opendocument)
+             .has_value()) {
+      throw UnsupportedOperation();
+    }
+  }
+}
 
 std::vector<SheetPosition>
 odf::move_sheet_references(const pugi::xml_node spreadsheet,

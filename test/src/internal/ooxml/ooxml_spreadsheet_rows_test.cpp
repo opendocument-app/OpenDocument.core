@@ -507,3 +507,48 @@ TEST(OoxmlSpreadsheetRows, an_extension_on_another_sheet_moves_what_it_reads) {
   EXPECT_TRUE(contains(xml, "<xm:sqref>B1</xm:sqref>"));
   EXPECT_TRUE(contains(xml, "<xm:sqref>A1:A3</xm:sqref>"));
 }
+
+TEST(OoxmlSpreadsheetRows,
+     unparseable_formulas_refuse_structural_edits_without_mutation) {
+  for (const auto edit : {&Sheet::insert_rows, &Sheet::delete_rows,
+                          &Sheet::insert_columns, &Sheet::delete_columns}) {
+    for (const std::string &expression :
+         {std::string("SUM("),
+          std::string(80, '(') + "s!A1" + std::string(80, ')')}) {
+      for (const bool named : {false, true}) {
+        const Document document = decode(two_sheets(
+            R"(<row r="1"><c r="A1"><v>1</v></c><c r="B1"><f>A1</f><v>1</v></c></row>)",
+            named ? ""
+                  : "<row r=\"1\"><c r=\"A1\"><f>" + expression +
+                        "</f><v>1</v></c></row>",
+            "",
+            named ? "<definedNames><definedName name=\"bad\">" + expression +
+                        "</definedName></definedNames>"
+                  : ""));
+        const Sheet sheet = first_sheet(document);
+        const std::string before = sheet_xml(document);
+        const std::string other =
+            saved_part(document, "/xl/worksheets/sheet2.xml");
+        const std::string workbook_before =
+            saved_part(document, "/xl/workbook.xml");
+        EXPECT_THROW((sheet.*edit)(0, 1), UnsupportedOperation);
+        EXPECT_EQ(sheet_xml(document), before);
+        EXPECT_EQ(saved_part(document, "/xl/worksheets/sheet2.xml"), other);
+        EXPECT_EQ(saved_part(document, "/xl/workbook.xml"), workbook_before);
+      }
+    }
+  }
+}
+
+TEST(OoxmlSpreadsheetRows, unparseable_rules_refuse_before_cells_move) {
+  for (
+      const std::string rule :
+      {R"(<conditionalFormatting sqref="A1"><cfRule><formula>SUM(</formula></cfRule></conditionalFormatting>)",
+       R"(<dataValidations><dataValidation sqref="A1"><formula1>SUM(</formula1></dataValidation></dataValidations>)",
+       R"(<extLst><ext><x14:conditionalFormatting><x14:cfRule><xm:f>SUM(</xm:f></x14:cfRule><xm:sqref>A1</xm:sqref></x14:conditionalFormatting></ext></extLst>)"}) {
+    const Document document = decode(two_sheets(abc, "", "", "", rule));
+    const std::string before = sheet_xml(document);
+    EXPECT_THROW(first_sheet(document).insert_rows(0, 1), UnsupportedOperation);
+    EXPECT_EQ(sheet_xml(document), before);
+  }
+}

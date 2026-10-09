@@ -12,6 +12,9 @@ class xml_node;
 
 namespace odr::internal::odf {
 
+/// Refuses unparseable formulas before a structural edit mutates the document.
+void check_formula_syntax(pugi::xml_node part);
+
 /// Moves formulas and addresses under @p spreadsheet, rewriting only changed
 /// references.
 /// @return Formula positions after the edit whose inputs were deleted or

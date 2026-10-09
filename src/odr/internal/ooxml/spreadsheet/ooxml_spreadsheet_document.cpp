@@ -904,6 +904,19 @@ public:
                             .node = get_node(id)});
       sheet_entry = sheet_entry.next_sibling("sheet");
     }
+    check_formula_syntax(m_document->workbook());
+    for (const NamedWorksheet &worksheet : worksheets) {
+      check_formula_syntax(worksheet.node);
+    }
+    for (const pugi::xml_node chart : charts) {
+      check_formula_syntax(chart);
+    }
+    for (const pugi::xml_node table : tables) {
+      check_formula_syntax(table);
+    }
+    for (const NamedWorksheet &table : other_tables) {
+      check_formula_syntax(table.node);
+    }
     move_workbook_references(
         m_document->workbook(), worksheets,
         m_document->related_part(AbsPath("/xl/workbook.xml"), "calcChain"),

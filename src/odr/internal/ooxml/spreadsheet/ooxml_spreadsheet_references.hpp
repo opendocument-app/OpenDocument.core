@@ -24,6 +24,9 @@ struct NamedWorksheet final {
 [[nodiscard]] std::optional<TablePosition>
 move_position(const TablePosition &position, const formula::SheetEdit &edit);
 
+/// Refuses unparseable formulas before a structural edit mutates the document.
+void check_formula_syntax(pugi::xml_node part);
+
 /// Moves worksheet formulas, defined names and the calc chain. Expands shared
 /// groups if shifting would change their meaning (ECMA-376 18.3.1.40).
 /// @param edited_sheet_id The edited sheetId used by the calc chain.

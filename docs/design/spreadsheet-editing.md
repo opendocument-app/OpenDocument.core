@@ -305,6 +305,10 @@ and the commits name. Git holds the full text of each decision.
     one in an `.xlsx`, which keeps `fullCalcOnLoad`. Every binding has
     `recalculate`.
 
+Structural edits validate cell, named and related-part formulas before
+mutation. Unparseable syntax, including nesting beyond 64 levels, refuses
+with `UnsupportedOperation` and preserves the document.
+
 ## Formulas, read side
 
 - `internal/formula` parses `of:=SUM([.A1:.B2])` (`table:formula`) and
@@ -325,9 +329,6 @@ and the commits name. Git holds the full text of each decision.
 
 ## Open work
 
-- **A structural edit leaves a formula that does not parse as it is.** That
-  includes a formula nested past 64 levels. The edit should refuse instead,
-  so that no reference ends up wrong.
 - **Live results in the page.** The page has no evaluator, so it marks the
   formula cells stale until something computes them. There are four ways to
   compute them while the user edits:
