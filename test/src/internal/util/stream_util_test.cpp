@@ -116,6 +116,45 @@ TEST(ByteStream, skip_moves_exactly_and_refuses_a_short_stream) {
   EXPECT_THROW(byte_stream::skip(in, 4), std::runtime_error);
 }
 
+TEST(ByteStream, single_byte_reads_preserve_failed_input) {
+  for (const auto state :
+       {std::ios::failbit, std::ios::badbit, std::ios::eofbit}) {
+    std::istringstream in("x");
+    in.setstate(state);
+    EXPECT_THROW(byte_stream::read_u8(in), std::runtime_error);
+    in.clear();
+    EXPECT_EQ(byte_stream::read_u8(in), 'x');
+    EXPECT_THROW(byte_stream::read_u8(in), std::runtime_error);
+  }
+}
+
+TEST(ByteStream, single_byte_reads_honor_stream_exceptions) {
+  std::istringstream in("\xff");
+  in.exceptions(std::ios::badbit | std::ios::failbit);
+  EXPECT_EQ(byte_stream::read_u8(in), 255);
+  EXPECT_THROW(byte_stream::read_u8(in), std::ios_base::failure);
+}
+
+TEST(ByteStream, oversized_reads_are_rejected_before_reaching_the_buffer) {
+  class RecordingBuffer final : public std::streambuf {
+  public:
+    bool read{false};
+
+  protected:
+    std::streamsize xsgetn(char *, std::streamsize) override {
+      read = true;
+      return 0;
+    }
+  } buffer;
+  std::istream in(&buffer);
+  char byte{};
+  const auto count = std::numeric_limits<std::size_t>::max();
+  EXPECT_FALSE(byte_stream::try_read(in, &byte, count));
+  EXPECT_FALSE(buffer.read);
+  EXPECT_THROW(byte_stream::read(in, &byte, count), std::runtime_error);
+  EXPECT_FALSE(buffer.read);
+}
+
 TEST(ByteStream, length_prefixed_reads_handle_chunks_and_stream_exceptions) {
   const std::string data(4097, 'x');
   std::istringstream in(data);
