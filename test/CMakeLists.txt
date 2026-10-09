@@ -47,6 +47,7 @@ add_executable(odr_test
 
         "src/internal/html/common_test.cpp"
         "src/internal/html/document_style_test.cpp"
+        "src/internal/html/html_export_test.cpp"
         "src/internal/html/image_file_test.cpp"
         "src/internal/html/media_file_test.cpp"
 
