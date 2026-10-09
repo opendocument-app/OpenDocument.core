@@ -24,6 +24,8 @@ The release run heads these entries with the version and opens a fresh
 - Reject XML deeper than 1024 nested elements before parsing document trees
   or rendering HTML, preventing stack overflow and excessive indentation.
   Standalone XML beyond the limit opens as plain text.
+- Detect JSON after text decoding, including UTF-16 and UTF-32 files.
+  Validation no longer allocates a discarded JSON value tree.
 
 ## v7.5.0 - 2026-10-06
 
