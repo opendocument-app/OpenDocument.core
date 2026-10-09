@@ -19,15 +19,8 @@
 
 #include <optional>
 
-/// Cross-translation-unit access to the C++ value each wrapper owns.
-///
-/// Each `@implementation` holds its handle as an ivar, destroyed by ARC's
-/// `.cxx_destruct` — no `long` handles as in `jni/`. Most handles own a
-/// `shared_ptr`, so a wrapper holding one needs no keep-alive; the exceptions
-/// are `ODRElement` and `ODRHtmlView` below.
-///
-/// Categories cannot add ivars, so each class declares its own accessors here
-/// and implements them next to its `@implementation`.
+/// Accessors for ARC-owned C++ handles, implemented beside each class's ivars.
+/// Elements and HTML views also retain their document or service owner.
 
 NS_ASSUME_NONNULL_BEGIN
 

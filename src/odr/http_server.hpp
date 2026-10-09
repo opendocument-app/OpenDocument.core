@@ -29,12 +29,9 @@ struct HttpServerOptions {
                             ///< connections between them, hence off
 };
 
-/// Serves connected HtmlServices over HTTP. listen() blocks and therefore runs
-/// on a thread of the caller's; stop() - and destroying the last handle, which
-/// stops the server too - returns only once that thread is out of listen()
-/// again, so neither may be called from a request handler. A thread that has
-/// not entered listen() yet is invisible to both: as with any call on an object
-/// being destroyed, it has to be in before the last handle goes.
+/// Serves HtmlServices. Enter blocking listen() before releasing the last
+/// handle. stop() and destruction wait for listen(); never call them from a
+/// handler.
 class HttpServer {
 public:
   constexpr static auto prefix_pattern = R"(([a-zA-Z0-9_-]+))";

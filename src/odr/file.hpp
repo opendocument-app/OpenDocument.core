@@ -189,12 +189,8 @@ enum class FileLocation {
   disk,
 };
 
-/// @brief What this library can do with a file format.
-///
-/// Declared, format-level support — an *upper bound*. A concrete file may still
-/// fail (corrupt, encrypted, an unsupported sub-variant); ask @ref DecodedFile
-/// or @ref Document for that. This answers what a caller has to decide before
-/// it holds a file, e.g. which MIME types to hand the platform's file picker.
+/// Format-level capability limits; a concrete file may support less.
+/// Query DecodedFile or Document for per-file capabilities.
 struct FileTypeCapabilities final {
   bool detect_by_content{}; ///< recognised from its bytes alone
   bool open{};              ///< a decoder exists; @ref odr::open can decode it

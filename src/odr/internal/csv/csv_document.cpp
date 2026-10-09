@@ -341,12 +341,8 @@ CsvDocument::CsvDocument(const abstract::File &file,
   m_line_end = reader.line_end().empty() ? "\r\n" : reader.line_end();
   m_dimensions = {static_cast<std::uint32_t>(m_rows.size()), columns};
 
-  // Walks the fields that exist rather than the rectangle they span: one wide
-  // record widens every row, and scanning `rows * columns` synthesized cells
-  // costs more than the file holds.
-  //
-  // The first row is a header, not a value — one word would otherwise make
-  // every column prose.
+  // Inspect stored fields only; ragged rows must not expand the traversal.
+  // Exclude the header from column value-type inference.
   std::vector<bool> has_value(columns, false);
   m_numeric_columns.assign(columns, true);
   for (std::size_t row = 1; row < m_rows.size(); ++row) {

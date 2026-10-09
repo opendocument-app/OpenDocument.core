@@ -118,12 +118,8 @@ PdfFile::PdfFile(std::shared_ptr<abstract::File> file)
 
   m_authenticator = parser.authenticator();
   if (parser.is_encrypted()) {
-    // Most "protected" PDFs are owner-locked only, so try the empty user
-    // password first; if it opens the file, no password is required. Install
-    // the resulting decryptor on `parser` so the metadata read below decrypts,
-    // and keep a copy so rendering needs neither the password nor decrypt().
-    // A file with an unsupported `/Encrypt` handler has no authenticator: it
-    // stays encrypted (and not decodable), rather than throwing here.
+    // Try the empty user password before metadata parsing; retain its
+    // decryptor. Unsupported handlers leave the file encrypted and undecodable.
     const bool unlocked =
         m_authenticator.has_value() && parser.authenticate("");
     if (unlocked) {

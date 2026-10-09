@@ -670,12 +670,8 @@ private:
   std::unordered_map<std::string, std::string> m_url_by_name;
 };
 
-/// An image XObject as an SVG `<image>` fragment in the page viewBox, or ""
-/// when it carries no pass-through bytes. The image fills the unit square in
-/// user space (ISO 32000-1 8.10.5), flipped vertically because its first row is
-/// its top. `clip_id` is installed on a wrapping `<g>`, not on the `<image>`:
-/// the clip geometry is `userSpaceOnUse` in the viewBox, and on the image it
-/// would resolve in the image's post-transform unit-square space instead.
+/// Emits an image in the flipped unit square (ISO 32000-1 8.10.5), or empty.
+/// Apply clip_id to a wrapper so clipping stays in page coordinates.
 std::string svg_image_fragment(const pdf::ImageElement &image,
                                const util::math::Transform2D &to_box,
                                const std::string &clip_id,
@@ -829,13 +825,8 @@ private:
   }
 };
 
-/// A page's axial/radial shadings as `<linearGradient>`/`<radialGradient>` defs
-/// (`g<page>_<n>`), placed by `gradientTransform` in `userSpaceOnUse`.
-///
-/// DEFERRED: `/Extend` is approximated by SVG's default `pad` spread, so a
-/// non-extended shading over-paints beyond its interval; `Shading::background`
-/// and `Shading::bbox` are not honoured. Both need the fill clipped to the
-/// gradient band/annulus.
+/// Emits axial/radial SVG gradients in userSpaceOnUse with gradientTransform.
+/// Extend uses pad; background and bbox remain unsupported.
 class GradientRegistry : public DefsRegistry {
 public:
   using DefsRegistry::DefsRegistry;
@@ -905,13 +896,8 @@ std::string svg_shading_fragment(const std::string &gradient_id,
   return std::move(f).str();
 }
 
-/// A page's tiling patterns (`/PatternType 1`) as SVG `<pattern>` defs
-/// (`pat<page>_<n>`). The content stream is run as a mini page into tile
-/// fragments in pattern space, repeated every `/XStep`/`/YStep` and placed by
-/// `patternTransform`. An uncoloured pattern (`/PaintType 2`) paints in the
-/// path's fill colour, so the cache key folds that colour in. Only paths and
-/// images are rendered (nested text/shadings/patterns are skipped — rare).
-/// "" for an unrepresentable pattern.
+/// Emits tiling-pattern paths and images; returns empty for unsupported
+/// patterns. PaintType 2 includes the fill colour in its cache key.
 class PatternRegistry : public DefsRegistry {
 public:
   using DefsRegistry::DefsRegistry;
@@ -1139,12 +1125,8 @@ std::string render_graphic_fragment(
   return {};
 }
 
-/// Hoists text out of transparency groups (recursively) to the top level. A
-/// group's effects ride an SVG `<g>`, but text is positioned markup, not SVG,
-/// so it cannot sit inside that `<g>` — without the hoist it would be dropped
-/// from both the visual and the selection layer. Forgone: the group effect on
-/// the text itself (see pdf/AGENTS.md gaps). The group's graphics are untouched
-/// and still composite as a unit; a group left with none is dropped.
+/// Hoists text out of SVG transparency groups into the HTML layers.
+/// Text loses group effects; graphics retain them. Drops emptied groups.
 std::vector<pdf::PageElement>
 lift_group_text(std::vector<pdf::PageElement> elements) {
   std::vector<pdf::PageElement> result;
@@ -1921,12 +1903,9 @@ public:
           << ".i::selection,.i *::selection"
              "{color:transparent;background-color:rgba(70,130,220,.32);"
              "background-color:color-mix(in srgb,Highlight 45%,transparent)}";
-      // Selection-layer run span. No clip: a system font wider than the pdf
-      // advance spills, and a webview draws no selection handle for an end it
-      // cannot see. The clip also carried the y alignment, so state it:
-      // `.t`'s zero-height strut puts the line box bottom on the baseline.
-      // `.t`'s inherited `pre` blocks wrapping while preserving a run's own
-      // leading/trailing space, which is real PDF content.
+      // Leave selection runs unclipped for WebView handles. The zero-height
+      // strut aligns the baseline; inherited pre preserves spaces and prevents
+      // wrapping.
       out.out() << ".sr{display:inline-block;vertical-align:bottom;"
                    "text-align:justify;text-align-last:justify;"
                    "text-justify:inter-character}";

@@ -58,23 +58,14 @@ struct Probe final {
   bool is_csv{false};
 };
 
-/// Scores @p text — a file's opening bytes decoded to UTF-8 — as a csv and
-/// resolves its dialect. @p complete says whether that is the whole file, since
-/// a sample cut mid-record says nothing about the record it cut.
-///
-/// The verdict is a detection heuristic, not a validity rule: two columns
-/// minimum, because one column is every line of prose ever written, and no
-/// dangling quote in a complete file. A declared csv goes straight to
-/// @ref RecordReader and is never asked to pass this.
+/// Detects a dialect from a UTF-8 sample, excluding its last record if
+/// incomplete. A heuristic, not validation; explicitly selected CSV bypasses
+/// this probe.
 [[nodiscard]] Probe probe(std::string_view text, bool complete,
                           char quote = '"');
 
-/// Whether @p field is a number: optional sign, digits, an optional fraction
-/// and exponent, surrounding blanks.
-///
-/// Rejects a leading zero (`007` is an identifier, not a quantity) and any
-/// thousands separator (`1,234` means two different numbers depending on where
-/// you live, and a csv does not say which).
+/// Accepts decimal numbers with optional sign, fraction, exponent and outer
+/// blanks. Rejects leading zeros and thousands separators.
 [[nodiscard]] bool is_number(std::string_view field) noexcept;
 
 /// Reads @p file's opening bytes, decodes them and scores them. Not a csv when

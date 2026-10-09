@@ -8,27 +8,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.LongConsumer;
 
 /**
- * Owns a handle to a heap-allocated native object. The native object is freed
- * on {@link #close()} or, at the latest, when the garbage collector reclaims
- * this wrapper.
- *
- * <p>Navigation results (e.g. document elements) keep the object they
- * originate from reachable through {@code owner}, so a root object is not
- * collected while handles into it are alive. Explicitly closing an owner
- * invalidates its dependent wrappers.
- *
- * <p>The post-mortem free is a {@link PhantomReference} drained by a daemon
- * thread, not a {@link java.lang.ref.Cleaner}: android ships Cleaner only from
- * API 33 and desugaring does not cover {@code java.lang.ref}.
+ * Owns a native object, freed by {@link #close()} or garbage collection.
+ * Navigation results retain their owner; closing it invalidates them.
+ * A {@link PhantomReference} reaper supports Android API 26.
  */
 public abstract class NativeResource implements AutoCloseable {
   private static final ReferenceQueue<NativeResource> QUEUE = new ReferenceQueue<>();
 
-  /**
-   * Keeps the pending {@link Destroyer}s reachable. A phantom reference that is
-   * itself collected never gets enqueued, so the native object behind it would
-   * leak instead of being freed.
-   */
+  /** Keeps phantom references reachable until their native objects are freed. */
   private static final Set<Destroyer> PENDING = ConcurrentHashMap.newKeySet();
 
   static {
@@ -83,12 +70,8 @@ public abstract class NativeResource implements AutoCloseable {
   }
 
   /**
-   * A use the optimiser cannot drop, keeping this object reachable across the
-   * call before it. Needed for handles passed as arguments, where no receiver
-   * holds the wrapper and the reaper could free the handle mid-call.
-   *
-   * <p>The monitor stands in for {@code Reference.reachabilityFence}, which
-   * android only has from API 28 (see {@code jni/AGENTS.md}).
+   * Call after passing this object's handle as a native argument to prevent mid-call collection.
+   * Replaces {@code Reference.reachabilityFence}, unavailable before Android API 28.
    */
   final void keepAlive() {
     synchronized (this) {
@@ -103,13 +86,7 @@ public abstract class NativeResource implements AutoCloseable {
     destroyer.destroy();
   }
 
-  /**
-   * Frees one native object, at most once, whether it is reached through
-   * {@link #close()} or through the reference queue.
-   *
-   * <p>Holds no reference to the {@link NativeResource} other than the phantom
-   * one - a strong one would keep the wrapper alive forever.
-   */
+  /** Frees the native object at most once, without retaining its wrapper. */
   private static final class Destroyer extends PhantomReference<NativeResource> {
     private final long handle;
     private final LongConsumer destroy;

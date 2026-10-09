@@ -22,12 +22,14 @@ that the workbook relationships name, normally `xl/styles.xml`, through the
   - [x] shapes and images anchored to a sheet (`xdr:twoCellAnchor`)
   - [x] cell value types (number, string, boolean, error, date)
   - [x] cell values (`<v>` as a number, `<f>` as its own string, shared formulas)
-  - [ ] computed values (the cached `<v>` result is shown)
-  - [ ] number formats (a date shows as its serial)
+  - [x] partial formula recalculation; unsupported formulas retain cached results
+  - [x] number formats, including dates and times
 - [x] edit
-  - [x] cell values (number, string, boolean, cleared); a written string goes inline
+  - [x] cell values (number, string, boolean, date, time, cleared); strings go inline
   - [x] a cell the file states no `c` for
-  - [ ] a covered cell, a formula cell, a date, time or error value
+  - [x] cell, row and column styles
+  - [x] insert and delete rows and columns, updating references
+  - [ ] writes to covered or formula cells, and error values
 - [x] save
 
 ### Styles

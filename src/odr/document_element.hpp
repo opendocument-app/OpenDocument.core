@@ -129,9 +129,8 @@ enum class AnchorType {
   at_paragraph,
 };
 
-/// What a cell states, as the file types it. A percentage and a currency are
-/// a `string` stating a number until number formats are read, and so is an
-/// ooxml date, which is a serial its format shows.
+/// Cell value category. Percentages and currencies are numeric; date and time
+/// categories may come from the cell’s number format.
 enum class ValueType {
   unknown,
   string,
@@ -142,11 +141,8 @@ enum class ValueType {
   error, ///< an evaluation error the file recorded
 };
 
-/// @brief What a sheet cell holds: what @ref SheetCell::value reads out of one,
-/// and what @ref Sheet::set_cell writes into one.
-///
-/// Immutable. A number cell states the number and the text showing it both,
-/// because only the two together say what the cell holds and how it reads.
+/// Immutable cell value for SheetCell::value and Sheet::set_cell.
+/// Numeric values may carry display text or use the cell’s number format.
 class CellValue final {
 public:
   /// A cell stating no value.
@@ -162,9 +158,7 @@ public:
   /// since a file types a cell whatever it goes on to state.
   explicit CellValue(ValueType type);
 
-  /// The same value stating @p number as well. Wider than
-  /// `type() == ValueType::float_number`: a percentage or a currency states a
-  /// number and is typed a string until its format is read.
+  /// Adds a numeric value, also used by boolean, date and time cells.
   [[nodiscard]] CellValue with_number(double number) const;
   /// The same value shown as @p text.
   [[nodiscard]] CellValue with_text(std::string text) const;

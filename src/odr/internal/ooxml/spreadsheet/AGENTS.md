@@ -36,7 +36,8 @@ strings and parses that `<si>`; otherwise its own `<v>` or `<is>` children.
 `sheet_cell_value_type` reads `c/@t`: `b` is a boolean, `e` an error, `d` a
 date, `s`, `str` and `inlineStr` a string, and a `<v>` with no type a
 `float_number`. `sheet_cell_value` adds the number and the `<f>` expression as
-a string. Nothing evaluates a formula. A shared formula ([ECMA-376] 18.3.1.40)
+a string. Recalculation is handled by the shared formula evaluator.
+A shared formula ([ECMA-376] 18.3.1.40)
 writes its expression on the group's master alone, so a member is read through
 the master its `si` names: the parser collects the masters per sheet
 (`shared_formulas`), and `sheet_cell_value` moves the master's expression by

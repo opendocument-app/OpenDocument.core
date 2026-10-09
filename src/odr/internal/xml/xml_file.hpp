@@ -42,12 +42,8 @@ public:
   /// @throws UnsupportedTextEncoding if @ref encoding cannot be decoded.
   [[nodiscard]] std::string text() const;
 
-  /// The tree the constructor parsed, keeping what a source view has to show:
-  /// the declaration, the doctype, processing instructions, comments, and
-  /// whitespace-only text where it is an element's only child.
-  ///
-  /// Held rather than reparsed per render, and pugixml's dom is roughly twice
-  /// the file — so an `XmlFile` costs that for as long as it is open.
+  /// Cached source DOM, including declarations, comments and significant
+  /// whitespace.
   [[nodiscard]] const pugi::xml_document &document() const noexcept;
 
   /// The document element's name, prefix and all, read off @ref document so

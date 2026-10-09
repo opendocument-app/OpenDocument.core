@@ -111,12 +111,8 @@ SegmentAdvances segment_advances(const GraphicsState::Text &text,
   return result;
 }
 
-/// The pen left by the previous shown segment, in user space, used to infer
-/// inter-word spaces PDFs routinely omit. `position` is the segment
-/// origin *after* its advance; `direction`/`em` give the writing line and scale
-/// the gap threshold; `trailing_space` suppresses a doubled space.
-/// `pending_space` carries a break a segment with nothing extractable could
-/// not.
+/// Previous segment’s advanced pen position and writing direction, in user
+/// space. Tracks extracted and pending spaces for inter-word gap inference.
 struct Pen {
   std::array<double, 2> position{0, 0};
   std::array<double, 2> direction{1, 0};
@@ -341,12 +337,9 @@ build_soft_mask(const SoftMaskDef &def, const Resources &resources,
                 GraphicsState &state, const Logger &logger,
                 std::set<std::string> &warned, ActiveForms &active);
 
-/// Apply `gs` (ISO 32000-1 8.4.5): fold the named `/ExtGState`'s stroke
-/// parameters (`/LW`, `/LC`, `/LJ`, `/ML`, `/D`), `ca`/`CA`, `/BM` and
-/// `/SMask` into the general state. Other entries are out of scope.
-/// `/BM` may be an array — an ordered fallback list, so pick the first
-/// supported name. An absent `/SMask` leaves the mask unchanged; `/None`
-/// clears it.
+/// Applies ExtGState stroke parameters, opacity, blend mode and soft mask
+/// (ISO 32000-1 8.4.5). BM uses the first supported fallback; SMask None
+/// clears.
 void apply_ext_g_state(const std::string &name, const Resources &resources,
                        GraphicsState &state, const Logger &logger,
                        std::set<std::string> &warned, ActiveForms &active) {

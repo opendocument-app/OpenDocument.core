@@ -3,17 +3,10 @@ package app.opendocument.core;
 import java.util.function.LongConsumer;
 
 /**
- * A {@link NativeResource} whose handle stays valid for the duration of a native
- * call, even when another thread closes it meanwhile.
- *
- * <p>Using an object while closing it is caller error everywhere except where the
- * API asks for the call to run on a thread of its own - {@code HttpServer.listen()},
- * which closing the server is meant to end.
- *
- * <p>{@link #guarded} counts such a call in and out. {@link #close()} stops new
- * ones from starting, calls {@link #unblock()} to make the ones in flight return,
- * waits for them, and only then frees. A subclass that leaves {@code unblock()}
- * alone must guard only calls that return on their own, or closing waits forever.
+ * Keeps guarded native calls valid during concurrent {@link #close()}.
+ * Closing rejects new calls, invokes {@link #unblock()}, waits, then frees the handle.
+ * Guarded calls must return after unblocking, or closing waits forever.
+ * Concurrent close is unsupported for unguarded calls.
  */
 public abstract class GuardedNativeResource extends NativeResource {
   /** Guards {@link #inFlight} and {@link #closing}. */

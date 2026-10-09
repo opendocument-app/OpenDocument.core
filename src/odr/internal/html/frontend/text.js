@@ -95,12 +95,8 @@
     }
   };
 
-  // Lines are the element children: formatted output puts a whitespace text
-  // node between them, and counting or indexing those as lines is off by as
-  // much as a factor of two. The gutter is written the same way, which is why
-  // a cell is reached by `lastElementChild` and never by `lastChild`. The line
-  // is the ancestor the body owns and the offset is measured from its start: a
-  // search `<mark>` may sit in between.
+  // Ignore formatting whitespace nodes when indexing lines and gutter cells.
+  // Measure offsets from the line ancestor, including nested search marks.
   TextEditor.prototype.getPosition = function (container, offset) {
     var line = container;
     while (line !== null && line.parentNode !== this.textBody) {

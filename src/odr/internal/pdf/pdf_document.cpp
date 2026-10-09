@@ -86,12 +86,8 @@ double Font::advance_width(const std::uint32_t code) const {
 
 namespace {
 
-/// Embedded-font reverse map: translate `codes` to Unicode via the embedded
-/// font's own character map (`code -> glyph -> code_point_for_glyph`). The
-/// last resort before byte-identity, closing the extraction gap for
-/// fonts with neither a `/ToUnicode` CMap nor a usable `/Encoding`. Returns
-/// empty (so the run stays `no_unicode`) when nothing maps or no font is
-/// embedded; a partially mapped run yields the code points it could recover.
+/// Recovers Unicode through the embedded font’s code → glyph → Unicode map.
+/// Keeps partial mappings; returns empty if none resolve.
 std::string reverse_map_unicode(const Font &font, const std::string &codes) {
   if (font.embedded_font == nullptr) {
     return {};
@@ -178,12 +174,8 @@ std::string Font::to_unicode(const std::string &codes) const {
     return cmap.translate_string(codes, width);
   }
   if (composite) {
-    // A composite (Type0) font with no `ToUnicode` CMap. A predefined
-    // `/Encoding` resolves the text on its own: a Unicode CMap
-    // (`Uni*-UCS2/UTF16/UTF32`) carries Unicode directly in its codes, and a
-    // legacy CJK CMap
-    // (`90ms-RKSJ-H`, …) maps code -> CID -> Unicode through its own collection
-    // tables. Both are authoritative, so a match — even a partial one — wins.
+    // A predefined Type0 encoding supplies Unicode directly or through its
+    // collection’s CID map; even a partial mapping takes precedence.
     if (!cid_encoding_name.empty()) {
       if (std::optional<std::string> unicode =
               translate_predefined_cmap(cid_encoding_name, codes);
@@ -191,12 +183,8 @@ std::string Font::to_unicode(const std::string &codes) const {
         return *unicode;
       }
     }
-    // No predefined-CMap answer: code -> CID is still known — `Identity-H/V`
-    // means code == CID, and an embedded `/Encoding` CMap stream is applied by
-    // `codes()` — but the collection, hence CID -> Unicode, comes from the
-    // descendant CIDFont's `/CIDSystemInfo`. Only take this when the codes
-    // really are CIDs (identity or an embedded stream); a named CMap we lack
-    // tables for must not be misread as identity CIDs.
+    // Use CIDSystemInfo only for identity or embedded encoding CMaps.
+    // An unsupported named CMap must not be treated as identity.
     const bool identity_cids =
         cid_encoding_name.empty() || has_identity_encoding();
     if (identity_cids && !cid_registry.empty() && !cid_ordering.empty()) {

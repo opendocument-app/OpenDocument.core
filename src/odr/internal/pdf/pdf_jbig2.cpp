@@ -389,12 +389,9 @@ constexpr std::array<std::span<const Point>, 4> coding_templates{
 constexpr std::array<std::uint32_t, 4> typical_prediction_context{
     0x9b25, 0x0795, 0x00e5, 0x0195};
 
-/// Decode a generic region bitmap (6.2.5.7), arithmetic coding only.
-///
-/// Template pixels are ordered by row then column, as the spec's figures and
-/// `TPGDON` constants read them. A non-nominal `AT` pixel lands in a different
-/// bit than the spec gives it, which is harmless: the context is only a label,
-/// and the decoder adapts per context.
+/// Decodes arithmetic generic regions (6.2.5.7). Context bits follow pixel
+/// order; adaptive pixels may relabel bits because contexts adapt
+/// independently.
 Bitmap decode_generic_region(const std::int32_t width,
                              const std::int32_t height,
                              const std::uint8_t template_index,

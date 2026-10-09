@@ -212,12 +212,9 @@ struct Pattern final : Element {
   std::string content;           ///< decoded tile content stream
 };
 
-/// A non-owning view over a string of PDF character codes, splitting it into
-/// big-endian codes on iteration; must not outlive the bytes. A trailing
-/// partial code is dropped, as the text-showing operators do.
-///
-/// A codespace matches every byte (ISO 32000-1 9.7.6.2); without one,
-/// `Font::code_byte_width()` supplies the fixed width.
+/// Borrowed big-endian codes, split by codespace or Font::code_byte_width().
+/// Drops trailing partial codes; codespaces match every byte (ISO
+/// 32000-1 9.7.6.2).
 class CodeRange {
 public:
   class Iterator {
@@ -365,12 +362,8 @@ struct Font final : Element {
            cid_encoding_name == "Identity-V";
   }
 
-  /// View `codes` as character codes, each yielded as the CID it selects. The
-  /// result borrows `codes`.
-  ///
-  /// The split is by the embedded CID `/Encoding` CMap's codespace if there is
-  /// one, else the `/ToUnicode` codespace. Identity-H/V always use two bytes
-  /// (ISO 32000-1 9.7.5.2).
+  /// Borrows codes and yields CIDs using the Encoding, then ToUnicode
+  /// codespace. Identity-H/V use two bytes (ISO 32000-1 9.7.5.2).
   [[nodiscard]] CodeRange codes(std::string_view codes) const {
     const std::size_t width = code_byte_width();
     if (!composite || has_identity_encoding()) {
