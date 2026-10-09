@@ -44,6 +44,7 @@ std::unique_ptr<pugi::xml_document> parse_source(const std::string &text) {
       !success) {
     throw NoXmlFile();
   }
+  xml::check_depth(*result);
   return result;
 }
 

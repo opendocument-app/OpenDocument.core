@@ -21,6 +21,9 @@ The release run heads these entries with the version and opens a fresh
   when closing output files.
 - Report dynamic spreadsheet references (`INDIRECT`, `OFFSET`) as unresolved.
   Browser edits now mark formulas with unresolved reads as stale.
+- Reject XML deeper than 1024 nested elements before parsing document trees
+  or rendering HTML, preventing stack overflow and excessive indentation.
+  Standalone XML beyond the limit opens as plain text.
 
 ## v7.5.0 - 2026-10-06
 

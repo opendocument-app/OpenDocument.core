@@ -48,6 +48,10 @@ pugixml resolves no external entities and expands no internal ones. That
 closes XXE and entity expansion by construction. An undefined entity is shown
 as written.
 
+All parse paths reject more than 1024 nested elements. `check_depth` uses
+pugixml's iterative traversal before the format parsers or HTML writers
+recurse. This also bounds indentation expansion in the XML source view.
+
 ## The encoding is declared in band
 
 pugixml's `encoding_auto` resolves UTF-8/16/32 from a BOM only, so

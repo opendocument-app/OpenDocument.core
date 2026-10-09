@@ -29,6 +29,13 @@ static_assert(sizeof(pugi::xml_attribute_struct) == 8);
 
 namespace {
 
+class DepthLimit final : public pugi::xml_tree_walker {
+public:
+  bool for_each(pugi::xml_node &node) override {
+    return node.type() != pugi::node_element || depth() < 1024;
+  }
+};
+
 /// Tab, line feed and carriage return are the only sub-`0x20` characters xml
 /// 1.0 allows.
 bool is_xml_control(const char c) {
@@ -75,6 +82,14 @@ std::string xml::escape_attribute(const std::string_view value) {
   return escape(value, true);
 }
 
+void xml::check_depth(pugi::xml_document &document) {
+  DepthLimit limit;
+  // pugixml traverses iteratively, including trees too deep for our consumers.
+  if (!document.traverse(limit)) {
+    throw NoXmlFile();
+  }
+}
+
 pugi::xml_document xml::parse(const std::string &in) {
   pugi::xml_document result;
   if (const auto success = result.load_buffer(
@@ -82,6 +97,7 @@ pugi::xml_document xml::parse(const std::string &in) {
       !success) {
     throw NoXmlFile();
   }
+  check_depth(result);
   return result;
 }
 
@@ -92,6 +108,7 @@ pugi::xml_document xml::parse(std::istream &in) {
       !success) {
     throw NoXmlFile();
   }
+  check_depth(result);
   return result;
 }
 
@@ -190,6 +207,7 @@ pugi::xml_document xml::parse(const abstract::File &file) {
       !success) {
     throw NoXmlFile();
   }
+  check_depth(result);
   return result;
 }
 

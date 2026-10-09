@@ -1,5 +1,8 @@
 #include <odr/internal/xml/xml_util.hpp>
 
+#include <odr/exceptions.hpp>
+#include <odr/internal/common/file.hpp>
+
 #include <gtest/gtest.h>
 
 #include <memory>
@@ -8,6 +11,24 @@
 #include <string>
 
 using namespace odr::internal::xml;
+
+TEST(xml_util, parsing_bounds_element_depth_on_every_input_path) {
+  std::string content;
+  for (std::size_t i = 0; i < 1024; ++i) {
+    content += "<a>";
+  }
+  content += "text";
+  for (std::size_t i = 0; i < 1024; ++i) {
+    content += "</a>";
+  }
+  EXPECT_NO_THROW(std::ignore = parse(content));
+  content = "<a>" + content + "</a>";
+  EXPECT_THROW(std::ignore = parse(content), odr::NoXmlFile);
+  std::istringstream stream(content);
+  EXPECT_THROW(std::ignore = parse(stream), odr::NoXmlFile);
+  const odr::internal::MemoryFile file(content);
+  EXPECT_THROW(std::ignore = parse(file), odr::NoXmlFile);
+}
 
 TEST(xml_util, escape_text) {
   EXPECT_EQ("a &amp; b &lt;c&gt; \"d\"", escape_text("a & b <c> \"d\""));

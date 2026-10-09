@@ -30,12 +30,13 @@ namespace odr::internal::xml {
 
 /// Parses UTF-8 text, whatever encoding its declaration still names.
 pugi::xml_document parse(const std::string &);
-/// Detects the encoding of the bytes. Buffers @p in twice on the way in; prefer
-/// the @ref abstract::File overload, which reads once against the size the file
-/// knows.
+/// Parses buffered bytes with encoding detection; File avoids a buffer copy.
 pugi::xml_document parse(std::istream &);
 pugi::xml_document parse(const abstract::File &);
 pugi::xml_document parse(const abstract::ReadableFilesystem &, const AbsPath &);
+
+/// Throws NoXmlFile above 1024 nested elements, before recursive consumers run.
+void check_depth(pugi::xml_document &document);
 
 /// Sets the attribute @p name of @p node, appending it where it is missing.
 void set_attribute(pugi::xml_node node, const char *name, const char *value);
