@@ -3,6 +3,7 @@
 #include <cctype>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -35,6 +36,40 @@ TEST(html, empty_handles_throw_on_access) {
   EXPECT_THROW(HtmlService(nullptr), NullPointerError);
   EXPECT_THROW(HtmlView(nullptr), NullPointerError);
   EXPECT_THROW(HtmlResource(nullptr), NullPointerError);
+}
+
+TEST(html, copied_views_keep_the_service_alive_without_cycles) {
+  const auto check = [](HtmlService service) {
+    const std::weak_ptr owner = service.impl();
+    HtmlViews views = service.list_views();
+    ASSERT_FALSE(views.empty());
+    service = HtmlService();
+    ASSERT_FALSE(owner.expired());
+
+    for (const HtmlView &view : views) {
+      std::ostringstream out;
+      view.write_html(out);
+      EXPECT_NE(out.str().find("<html"), std::string::npos);
+      EXPECT_NO_THROW(std::ignore = view.sheet_cut());
+    }
+
+    views.clear();
+    EXPECT_TRUE(owner.expired());
+  };
+
+  check(html::translate(create_document(FileType::opendocument_text), {}));
+  check(
+      html::translate(create_document(FileType::opendocument_spreadsheet), {}));
+  check(html::translate(open(File::from_memory("hello", "hello.txt")), {}));
+
+  const std::string pdf =
+      pdf::PdfFileBuilder()
+          .object("<< /Type /Catalog /Pages 2 0 R >>")
+          .object("<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
+          .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] >>")
+          .trailer("/Root 1 0 R")
+          .build_classic();
+  check(html::translate(open(File::from_memory(pdf)), {}));
 }
 
 TEST(html, document_view_uses_the_configured_output_name) {

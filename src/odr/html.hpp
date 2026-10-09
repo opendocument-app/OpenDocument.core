@@ -313,6 +313,7 @@ public:
   explicit HtmlService(std::shared_ptr<internal::abstract::HtmlService> impl);
 
   [[nodiscard]] const HtmlConfig &config() const;
+  /// Returned views retain the service when copied.
   [[nodiscard]] const HtmlViews &list_views() const;
 
   void warmup() const;
@@ -331,7 +332,9 @@ public:
   impl() const;
 
 private:
+  struct ViewCache;
   std::shared_ptr<internal::abstract::HtmlService> m_impl;
+  std::shared_ptr<ViewCache> m_views;
 };
 
 namespace html {
