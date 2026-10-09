@@ -19,6 +19,8 @@ The release run heads these entries with the version and opens a fresh
 - Copied HTML views remain usable after their `HtmlService` is destroyed.
 - Offline HTML export reports failed page and resource writes, including errors
   when closing output files.
+- Report dynamic spreadsheet references (`INDIRECT`, `OFFSET`) as unresolved.
+  Browser edits now mark formulas with unresolved reads as stale.
 
 ## v7.5.0 - 2026-10-06
 

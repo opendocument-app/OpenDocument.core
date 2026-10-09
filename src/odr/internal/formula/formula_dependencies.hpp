@@ -22,8 +22,8 @@ struct Extent final {
 /// What a formula reads.
 struct References final {
   std::vector<Extent> extents;
-  /// False where the formula names something no position can be read out of —
-  /// a name, or a reference over several sheets. It may then read anything.
+  /// False for unresolved names, dynamic references or ranges across sheets.
+  /// Such a formula may read any cell.
   bool complete{true};
 };
 

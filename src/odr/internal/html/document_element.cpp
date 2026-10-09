@@ -417,21 +417,26 @@ std::string spell_bound(const std::uint32_t index) {
              : std::to_string(index);
 }
 
-/// What @p formula reads, as the rectangles the page tests a written position
-/// against: `sheet,first column,last column,first row,last row`, space
-/// separated, with `*` for an axis the reference leaves open. Empty where the
-/// formula does not parse, or reads nothing this document holds.
+/// Space-separated `sheet,first column,last column,first row,last row` boxes.
+/// `*` is unbounded; unresolved reads cover every edit on this sheet.
 std::string
 cell_reads(const std::string &formula, const formula::Syntax syntax,
            const std::uint32_t own_sheet,
            const std::unordered_map<std::string, std::uint32_t> &by_name) {
   const std::optional<formula::Node> node = formula::parse(formula, syntax);
+  const auto unresolved = [own_sheet] {
+    return std::to_string(own_sheet) + ",0,*,0,*";
+  };
   if (!node.has_value()) {
-    return {};
+    return unresolved();
+  }
+  const formula::References references = formula::references(*node);
+  if (!references.complete) {
+    return unresolved();
   }
 
   std::string result;
-  for (const formula::Extent &extent : formula::references(*node).extents) {
+  for (const formula::Extent &extent : references.extents) {
     if (extent.document.has_value()) {
       continue; // another file, which no edit here reaches
     }
@@ -439,7 +444,7 @@ cell_reads(const std::string &formula, const formula::Syntax syntax,
     if (extent.sheet.has_value()) {
       const auto named = by_name.find(util::string::to_lower(*extent.sheet));
       if (named == by_name.end()) {
-        continue;
+        return unresolved();
       }
       sheet = named->second;
     }
