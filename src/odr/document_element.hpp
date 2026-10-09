@@ -375,15 +375,11 @@ public:
   [[nodiscard]] SheetCell cell(std::uint32_t column, std::uint32_t row) const;
   [[nodiscard]] ElementRange shapes() const;
 
-  /// Writes @p value into the cell. odf stores the number and its text both;
-  /// ooxml keeps no text for a number and shows it through its format.
-  ///
-  /// An odf document then takes the cached result of every formula reading
-  /// the cell away, because it can ask no reader to recompute. An ooxml one
-  /// keeps them: every save sets `calcPr/@fullCalcOnLoad`.
-  /// @throws UnsupportedOperation where the cell cannot be written, or where
-  ///         @p value holds a formula or a nonfinite numeric value.
-  /// @throws ValueNotStated where @p value is typed a number and states none.
+  /// Sets a cell value. ODF clears dependent formula caches; OOXML keeps them
+  /// and requests recalculation on load.
+  /// @throws UnsupportedOperation for unwritable cells, formulas or nonfinite
+  /// numbers.
+  /// @throws ValueNotStated for a numeric value without a number.
   void set_cell(std::uint32_t column, std::uint32_t row,
                 const CellValue &value) const;
   /// Takes the cell's value away, keeping the style it carries. Not the same

@@ -20,8 +20,8 @@ stage.
   `\fsN` (half-points), `\cfN`, `\cbN`, `\highlightN` and `\plain` (reset)
   become a `TextStyle`. Resolve them to spans as `.doc` does: equal property
   sets share one resolved style, adjacent equal-style runs merge.
-- Intern font names in the `StyleRegistry` and never mutate them, so
-  `TextStyle::font_name` (`const char *`) stays valid.
+- `TextStyle::font_name` owns its string; copy the selected font name into
+  each resolved style.
 - The encoding chain per run: `\ansi`, `\mac`, `\pc`, `\pca` set the document
   default, `\ansicpgN` overrides it, the font's `\fcharsetN` or `\cpgN` sets it
   per font, and `\fN` selects the font. `\fcharset128`, `129`, `134` and `136`

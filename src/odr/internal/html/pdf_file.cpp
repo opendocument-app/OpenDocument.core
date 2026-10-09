@@ -1360,18 +1360,9 @@ public:
     return write_pages_dual_layer(out, pages, first_page_number, page_href);
   }
 
-  // ---- DUAL-LAYER MODE ----------------------------------------------------
-  //
-  // Visual layer (`.vis`, aria-hidden): paint-order glyphs in PUA-re-encoded
-  // fonts, grouped into baseline line blocks (`.t`) whose runs flow inline. A
-  // path or image closes the open block and goes into an SVG. Invisible text
-  // (Tr 3/7) is omitted.
-  //
-  // Selection layer (`.sel`): transparent real Unicode in content-stream
-  // order, one line block per detected line. Each run is an inline-block of
-  // the PDF advance width, spread to fill it by CSS
-  // `text-justify:inter-character` — no JavaScript; gaps are zero-content
-  // spacer spans.
+  // `.vis` paints PUA glyphs; `.sel` carries transparent Unicode in stream
+  // order. Selection runs use PDF advance widths; invisible text is not
+  // painted.
 
   /// One run inside a visual line block: margin-left, font size,
   /// font-family+colour. The line block holds placement only.
@@ -2020,20 +2011,8 @@ public:
     return resources;
   }
 
-  // ---- SINGLE-LAYER MODE --------------------------------------------------
-  //
-  // One combined text layer per page: runs grouped into paint-order line
-  // blocks (`.t`), each run nudged by a `margin-left` gap.
-  //
-  // The embedded font's cmap is built by frequency analysis — a pre-pass counts
-  // (uchar, glyph) co-occurrences per font and the winner takes the entry — so
-  // the common shape wins instead of whichever run came first.
-  //
-  // A run whose pairs all match the winner ("clean") renders real Unicode
-  // directly in the embedded font, natively findable. An unclean run paints
-  // glyphs via `::before{content:attr(data-g)}` — out of the DOM text stream,
-  // so find never breaks mid-word — with a zero-width `.ov` overlay carrying
-  // the Unicode. Invisible and fallback runs render Unicode as ordinary text.
+  // Frequency-selected cmap entries render clean runs as Unicode. Other runs
+  // paint glyphs through `::before` and expose Unicode in a zero-width overlay.
 
   struct SingleRunOut {
     std::string margin;     ///< "" or a `margin-left` class

@@ -10,18 +10,8 @@
 
 namespace odr::internal::font::cff {
 
-/// @brief `abstract::Font` over a **bare CFF** font program — a PDF
-/// `/FontFile3` (`/Subtype /Type1C` or `/CIDFontType0C`) or the `CFF ` table
-/// lifted out of an OpenType font.
-///
-/// Per the "IR for facts, pass-through for glyphs" architecture this parses the
-/// CFF structure (INDEXes, DICTs, charset, Private DICT) for the facts every
-/// consumer needs but never interprets glyph charstrings as outlines — the raw
-/// CFF bytes are kept for pass-through (`data()`), to be embedded verbatim as a
-/// `CFF ` table when wrapping into an OTF. Reads CFF format 1
-/// (Adobe TN #5176); CFF2 is out of scope.
-///
-/// Throws `std::runtime_error` on a structurally invalid CFF.
+/// CFF 1 font facts with verbatim glyph data (Adobe TN #5176); no CFF2.
+/// Throws `std::runtime_error` on malformed structure.
 class CffFont final : public abstract::Font {
 public:
   /// Cheap magic test: a CFF header (major version 1, sane `hdrSize`).
