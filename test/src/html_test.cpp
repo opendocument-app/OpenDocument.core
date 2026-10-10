@@ -497,6 +497,42 @@ TEST(html, a_text_page_prints_with_its_margins_on_the_sheet) {
   EXPECT_EQ(render_odt(config).find("@page{"), std::string::npos);
 }
 
+TEST(html, a_text_page_with_a_frame_on_the_page_prints_whole) {
+  const auto render = [](const std::string &anchor) {
+    const std::string fodt =
+        R"(<?xml version="1.0" encoding="UTF-8"?>)"
+        R"(<office:document)"
+        R"( xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0")"
+        R"( xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0")"
+        R"( xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0")"
+        R"( xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0")"
+        R"( office:version="1.3")"
+        R"( office:mimetype="application/vnd.oasis.opendocument.text">)"
+        R"(<office:body><office:text><draw:frame text:anchor-type=")" +
+        anchor +
+        R"(" svg:x="1cm" svg:y="1cm" svg:width="2cm" svg:height="1cm">)"
+        R"(<draw:text-box><text:p>head</text:p></draw:text-box></draw:frame>)"
+        R"(<text:p>body</text:p></office:text></office:body></office:document>)";
+    HtmlConfig config;
+    config.text_document_margin = true;
+    std::ostringstream out;
+    html::translate(open(File::from_memory(fodt),
+                         DecodeOptions::as(FileType::opendocument_text)),
+                    config)
+        .list_views()
+        .at(0)
+        .write_html(out);
+    return std::move(out).str();
+  };
+
+  const std::string page = render("page");
+  EXPECT_NE(page.find("@page{margin:0}"), std::string::npos);
+  EXPECT_EQ(page.find(".odr-page-inner{margin:0!important}"),
+            std::string::npos);
+  EXPECT_NE(render("paragraph").find(".odr-page-inner{margin:0!important}"),
+            std::string::npos);
+}
+
 // A browser floors the page scale at 0.25, so a page more than four screens
 // wide cannot be zoomed out to. A wider page states a floor of its own.
 TEST(html, fitting_the_width_states_a_floor_a_wide_page_needs) {
