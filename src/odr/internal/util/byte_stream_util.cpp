@@ -19,17 +19,17 @@ namespace {
 
 } // namespace
 
-bool byte_stream::try_read(std::istream &in, char *out, std::size_t count) {
-  while (count > 0) {
-    in.read(out, static_cast<std::streamsize>(count));
-    if (!in) {
-      return false;
-    }
-    const std::streamsize took = in.gcount();
-    out += took;
-    count -= static_cast<std::size_t>(took);
+bool byte_stream::try_read(std::istream &in, char *out,
+                           const std::size_t count) {
+  if (count == 0) {
+    return true;
   }
-  return true;
+  if (count >
+      static_cast<std::size_t>(std::numeric_limits<std::streamsize>::max())) {
+    return false;
+  }
+  in.read(out, static_cast<std::streamsize>(count));
+  return static_cast<bool>(in);
 }
 
 void byte_stream::read(std::istream &in, char *out, std::size_t count) {
@@ -40,8 +40,9 @@ void byte_stream::read(std::istream &in, char *out, std::size_t count) {
 
 void byte_stream::skip(std::istream &in, std::uint64_t count) {
   while (count > 0) {
+    // ignore(max) disables the count limit.
     const auto step = static_cast<std::streamsize>(std::min<std::uint64_t>(
-        count, std::numeric_limits<std::streamsize>::max()));
+        count, std::numeric_limits<std::streamsize>::max() - 1));
     in.ignore(step);
     if (in.gcount() != step) {
       throw_exhausted();
@@ -51,12 +52,7 @@ void byte_stream::skip(std::istream &in, std::uint64_t count) {
 }
 
 std::uint8_t byte_stream::read_u8(std::istream &in) {
-  const auto c = in.rdbuf()->sbumpc();
-  if (c == eof) {
-    in.setstate(std::ios::eofbit);
-    throw_exhausted();
-  }
-  return static_cast<std::uint8_t>(c);
+  return static_cast<std::uint8_t>(read<char>(in));
 }
 
 std::string byte_stream::read_u8s(std::istream &in, const std::uint64_t n) {
