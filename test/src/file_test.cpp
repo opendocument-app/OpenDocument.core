@@ -156,16 +156,14 @@ TEST(File, a_decoded_package_keeps_the_file_it_was_read_from) {
   }
 }
 
-/// Each engine that reads through an archive: odf, ooxml in a zip and in a
-/// compound file, legacy Office and iWork.
+/// The engines that `create_document` cannot reach: ooxml in a compound file,
+/// legacy Office and iWork.
 TEST(File, a_decoded_file_on_disk_keeps_its_name) {
   struct Case {
     const char *path;
     const char *name;
   };
   const std::array cases{
-      Case{"odr-public/odt/about.odt", "about.odt"},
-      Case{"odr-public/docx/file-sample_100kB.docx", "file-sample_100kB.docx"},
       Case{"odr-public/docx/encrypted.docx", "encrypted.docx"},
       Case{"odr-public/doc/file-sample_100kB.doc", "file-sample_100kB.doc"},
       Case{"odr-public/pages/empty.pages", "empty.pages"},
