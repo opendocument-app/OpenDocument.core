@@ -700,6 +700,7 @@ void invoke_x_object(const std::string &name, const Resources &resources,
       // PNG-encoded raster). Codecs we cannot hand off carry none, so skip.
       image.data = x_object->image_data;
       image.mime = x_object->image_mime;
+      image.alpha_mask = x_object->image_alpha;
       // memoized per document, so its address identifies a repeat
       image.source = x_object;
     } else {

@@ -126,7 +126,7 @@ encode_jpx(const std::string &data, const ColorSpaceDef *color_space,
   if (png.empty()) {
     return std::nullopt;
   }
-  return EncodedImage{png, "image/png"};
+  return EncodedImage{png, "image/png", {}};
 }
 
 } // namespace
@@ -386,10 +386,19 @@ std::optional<pdf::EncodedImage> pdf::encode_image(
   if (terminal == "DCTDecode") {
     // A JPEG the browser decodes itself: hand back its bytes undecoded.
     DecodeResult result = decode(filter, decode_parms, std::move(raw));
-    if (result.stopped_at_filter == "DCTDecode") {
-      return EncodedImage{std::move(result.data), "image/jpeg"};
+    if (result.stopped_at_filter != "DCTDecode") {
+      return std::nullopt;
     }
-    return std::nullopt;
+    EncodedImage image{std::move(result.data), "image/jpeg", {}};
+    if (width > 0 && height > 0 &&
+        alpha.size() == static_cast<std::size_t>(width) * height) {
+      std::string rgba(alpha.size() * 4, '\0');
+      for (std::size_t i = 0; i < alpha.size(); ++i) {
+        rgba[i * 4 + 3] = static_cast<char>(alpha[i]);
+      }
+      image.alpha_png = png::write(rgba, width, height, 4);
+    }
+    return image;
   }
   if (terminal == "JPXDecode") {
     DecodeResult result = decode(filter, decode_parms, std::move(raw));
@@ -413,7 +422,7 @@ std::optional<pdf::EncodedImage> pdf::encode_image(
   if (png.empty()) {
     return std::nullopt;
   }
-  return EncodedImage{std::move(png), "image/png"};
+  return EncodedImage{std::move(png), "image/png", {}};
 }
 
 } // namespace odr::internal
