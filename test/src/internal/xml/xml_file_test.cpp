@@ -74,6 +74,18 @@ TEST(XmlFile, malformed_xml_is_no_xml_file_and_stays_text) {
   EXPECT_EQ(file.file_type(), FileType::text_file);
 }
 
+TEST(XmlFile, excessive_nesting_falls_back_to_text_before_rendering) {
+  std::string content;
+  for (std::size_t i = 0; i < 2048; ++i) {
+    content += "<a>x";
+  }
+  for (std::size_t i = 0; i < 2048; ++i) {
+    content += "</a>";
+  }
+  EXPECT_THROW(std::ignore = xml_file(content), NoXmlFile);
+  EXPECT_EQ(open(File::from_memory(content)).file_type(), FileType::text_file);
+}
+
 TEST(XmlFile, the_declaration_names_the_encoding) {
   // 0xe9 is `é` in latin-1 and not valid utf-8, so only the declaration can
   // get it right

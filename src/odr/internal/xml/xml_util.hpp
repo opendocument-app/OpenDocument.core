@@ -37,6 +37,9 @@ pugi::xml_document parse(std::istream &);
 pugi::xml_document parse(const abstract::File &);
 pugi::xml_document parse(const abstract::ReadableFilesystem &, const AbsPath &);
 
+/// Throws NoXmlFile above 1024 nested elements, before recursive consumers run.
+void check_depth(pugi::xml_document &document);
+
 /// Sets the attribute @p name of @p node, appending it where it is missing.
 void set_attribute(pugi::xml_node node, const char *name, const char *value);
 /// Inserts a child @p name into @p parent at its place in the schema
