@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+### Text documents and presentations
+
+- The browser text editor attaches to a page with an addressed paragraph and
+  no run, as a new odt or docx renders. Typing there went nowhere and said
+  nothing.
+
 ## v7.5.1 - 2026-10-10
 
 ### Spreadsheets

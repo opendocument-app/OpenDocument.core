@@ -9,4 +9,4 @@ sys.path.insert(0, str(HERE.parent))
 
 from serve import serve  # noqa: E402
 
-serve(8734, HERE, ("tests.html",))
+serve(8734, HERE, ("tests.html", "empty.html"))

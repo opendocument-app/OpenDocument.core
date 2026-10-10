@@ -6,6 +6,7 @@ so these checks run by hand and not in `odr_test`.
 ```bash
 test/browser/text/serve          # serves on :8734
 open http://localhost:8734/tests.html
+open http://localhost:8734/empty.html
 ```
 
 `serve` serves `document.css`, `editing.js`, `document.js` and `search.js` out
@@ -13,6 +14,10 @@ of `src/odr/internal/html/frontend/`, and `checks.js` out of `test/browser/`,
 so the checks run the file the library embeds. `editing.js` goes first, as the
 library writes it. `error-codes.js` is built from `src/odr/error_code.{hpp,cpp}`
 by `test/browser/serve.py`.
+
+`empty.html` is a new document: one addressed paragraph and no run. The
+editor decides on load whether a page is its own, so that shape needs a page
+of its own.
 
 `tests.html` holds the shapes the editor handles: two runs beside each other,
 a run under a link, a run under a style-only wrapper, a paragraph with a
