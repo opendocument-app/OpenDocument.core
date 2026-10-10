@@ -32,8 +32,11 @@ jobs:
           java-version: 21
           cache: maven
 
+      # jni/mvnw pins Maven 3.9. Maven 3.10 stages a maven-metadata-local.xml
+      # that central-publishing-maven-plugin 0.11.0 does not remove, and Central
+      # rejects the bundle: "Bundle has content that does NOT have a .pom file".
       - name: build
-        run: mvn --batch-mode --no-transfer-progress --file jni/pom.xml verify
+        run: jni/mvnw --batch-mode --no-transfer-progress --file jni/pom.xml verify
 
   # Split out so the secrets sit behind an environment and are never in reach of
   # a plain push build.
@@ -66,8 +69,16 @@ jobs:
             echo "REVISION=${INPUT_VERSION}" >> "$GITHUB_ENV"
           fi
 
+      # GitHub Packages refuses a second upload of a version with 409, so a rerun
+      # after a failed Maven Central step must not upload again.
       - name: publish to github packages
-        run: mvn --batch-mode --no-transfer-progress --file jni/pom.xml deploy -Drevision="${REVISION}"
+        run: |
+          if curl --silent --fail --output /dev/null --user "x:${GITHUB_TOKEN}" \
+            "https://maven.pkg.github.com/${GITHUB_REPOSITORY}/app/opendocument/odr-core-java/${REVISION}/odr-core-java-${REVISION}.pom"; then
+            echo "odr-core-java ${REVISION} is already on GitHub Packages"
+            exit 0
+          fi
+          jni/mvnw --batch-mode --no-transfer-progress --file jni/pom.xml deploy -Drevision="${REVISION}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -87,7 +98,7 @@ jobs:
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
       - name: publish to maven central
-        run: mvn --batch-mode --no-transfer-progress --file jni/pom.xml deploy -Pcentral -Drevision="${REVISION}"
+        run: jni/mvnw --batch-mode --no-transfer-progress --file jni/pom.xml deploy -Pcentral -Drevision="${REVISION}"
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
