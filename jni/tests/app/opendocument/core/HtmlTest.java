@@ -196,7 +196,7 @@ class HtmlTest {
 
     HtmlConfig system = new HtmlConfig();
     system.colorScheme = HtmlColorScheme.SYSTEM;
-    assertTrue(renderOdt(system).contains("media=\"(prefers-color-scheme: dark)\""));
+    assertTrue(renderOdt(system).contains("media=\"screen and (prefers-color-scheme: dark)\""));
 
     DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
     HtmlConfig readBack = Html.translate(file, system).config();

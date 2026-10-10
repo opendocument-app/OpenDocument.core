@@ -552,11 +552,13 @@ TEST(html, color_scheme_writes_the_dark_style) {
   const std::string dark = render_odt(config);
   EXPECT_NE(dark.find("color-scheme:dark"), std::string::npos);
   EXPECT_EQ(dark.find("prefers-color-scheme"), std::string::npos);
+  EXPECT_NE(dark.find(R"html(<style media="screen">)html"), std::string::npos);
 
   config.color_scheme = HtmlColorScheme::system;
   const std::string system = render_odt(config);
   EXPECT_NE(
-      system.find(R"html(<style media="(prefers-color-scheme: dark)">)html"),
+      system.find(
+          R"html(<style media="screen and (prefers-color-scheme: dark)">)html"),
       std::string::npos);
 }
 
@@ -575,7 +577,7 @@ TEST(html, linked_dark_style_is_served) {
 
   EXPECT_NE(
       out.str().find(
-          R"html(<link rel="stylesheet" href="document-dark.css" media="(prefers-color-scheme: dark)"/>)html"),
+          R"html(<link rel="stylesheet" href="document-dark.css" media="screen and (prefers-color-scheme: dark)"/>)html"),
       std::string::npos);
   EXPECT_TRUE(std::ranges::any_of(resources, [](const auto &entry) {
     return entry.second.has_value() && *entry.second == "document-dark.css";

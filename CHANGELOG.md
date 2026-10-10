@@ -30,6 +30,7 @@ The release run heads these entries with the version and opens a fresh
   parsed, before changing cells or references.
 - A pdf, a slide, a drawing page and a text page with margins print one page
   to a sheet, at the size of the page and without the grey viewer background.
+  A dark render prints in light colors.
 
 ## v7.5.0 - 2026-10-06
 

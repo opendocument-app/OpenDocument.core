@@ -32,7 +32,7 @@ void write_search_style(const WritingState &state);
 void write_search_dark_style(const WritingState &state);
 
 /// For a view writing its style inline: whether to write a dark one, and the
-/// `media` gating it — empty for @ref odr::HtmlColorScheme::dark.
+/// `media` gating it. A print stays light, so the query names `screen`.
 bool writes_dark_style(const HtmlConfig &config);
 std::string_view dark_style_media(const HtmlConfig &config);
 
