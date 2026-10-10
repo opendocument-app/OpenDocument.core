@@ -19,6 +19,12 @@ The coalesced log contains at most one operation with the complete text:
 No line IDs or character offsets cross the bridge. An empty envelope makes
 no edit. The whole text crosses the bridge on save.
 
+**Why not a line at a time:** a line number is a path, which an inserted line
+shifts, and a plain file has no registry for ids. An offset inside a line
+needs a rule between UTF-16 code units and bytes. If a large file makes the
+whole text too costly, one `replaceLines {from, to, text}` hunk stays one
+operation with no schema change.
+
 ## C++ API
 
 ```cpp
@@ -34,9 +40,10 @@ render. `TextFile::write_edited` remains deprecated.
 ## Encoding
 
 Only `FileType::text_file` is savable, with a decodable or unknown encoding.
-JSON and known unsupported encodings are not savable. Saves use UTF-8. Shift-JIS is detected but is
-not currently decodable or editable. Query encoding support before offering
-editing.
+JSON and known undecodable encodings are not savable, because the view hands
+their bytes to the browser as they are. Saves use UTF-8, because
+`encoding/transcode.hpp` has only `to_utf8`. Shift-JIS is detected but not
+decodable, so it is not editable.
 
 ## Open work
 

@@ -24,6 +24,10 @@ The browser applies edits locally and records operations. On save, C++
 replays the coalesced log onto the source document. No per-keystroke round
 trip is required; JavaScript and C++ must implement the same op semantics.
 
+**Why:** a live C++ model needs incremental rendering and a round trip per
+edit. Replay works offline and fits the one-shot `translate` and
+`back_translate` pipeline.
+
 ### 2. JSON over the WebView message bridge
 
 `HtmlConfig::host_message_handler` names a function from `window`, such as
@@ -37,15 +41,26 @@ Do not name an Android interface `odr`; the page uses that namespace. The
 bridge script runs last, and hosts can replace its callbacks afterwards.
 The CLI reads the same operation envelope from a file.
 
+**Why:** a localhost server has a port and a lifecycle. One script in the
+library replaces a script per app, which would drift. A string is the one
+argument both platforms take, because an `addJavascriptInterface` method
+takes no object.
+
 ### 3. Record operations, do not compute a diff
 
 The wire payload is a coalesced operation log. Undo data stays in the browser.
+
+**Why:** a diff is ambiguous (edited, or deleted and reinserted?). An op
+replays with no interpretation step.
 
 ### 4. Address by stable element id, not by path
 
 `data-odr-id` carries an `ElementIdentifier`, resolved by
 `Document::element_by_id`. IDs remain stable for one translate/edit/save
 session. New elements append to the registry; removed IDs are never reused.
+
+**Why:** a path is positional, so an insert or a delete shifts every later
+path. An id does not move.
 
 ### 5. The schema addresses locations and ranges, not only elements
 
@@ -57,6 +72,11 @@ formatting it. See [document editing](document-editing.md).
 
 The browser retains inverse data for undo/redo. The coalesced payload sent to
 C++ is not invertible and does not implement persistent change tracking.
+
+**Why:** C++ never replays backward, because the user still has the original
+file. An invertible removal would carry the removed payload (an image, a
+table) across the bridge for nothing. Change tracking belongs to
+`<text:tracked-changes>`, `w:ins` and `w:del`.
 
 ### 7. C++ validates each operation during replay
 
@@ -78,6 +98,9 @@ For the document editor, addressed DOM runs and paragraphs are the model;
 there is no parallel tree. IME composition is observed through `input`
 because it cannot be cancelled.
 
+**Why:** native `contenteditable` output differs per browser and does not
+map onto the element model.
+
 ### 9. One mode for every format; a format brings only its editor
 
 `odr.editing` exposes mode controls (`enable`, `disable`, `isEnabled`,
@@ -89,6 +112,10 @@ Editors call `odr.editing.attach({name, enable, disable, operations, undo,
 redo, ...})`; only `operations` is required. Operations are concatenated,
 and undo tries each editor in turn. Refusals use `odr.onEditRefused` with
 `odr::ErrorCode` values exposed as `odr.errorCodes`.
+
+**Why:** a host wires the mode once for every format. A cell is edited by an
+overlay and a paragraph by a caret, so the editors share the log and nothing
+else.
 
 ### 10. The page states its editing frame on `<body>`
 
@@ -113,6 +140,10 @@ false, `enable()` refuses with `readOnly`, and `getOperations()` returns an
 empty envelope. `odr.generateDiff()` remains available. Keyboard policy is
 emitted on every document view, including read-only spreadsheets.
 
+**Why:** `data-odr-id` on every run is the expensive half of the render, and
+it cannot be added later. A read-only sheet still takes Escape to clear a
+pinned cell.
+
 ### 12. A host keeps the keys it needs
 
 | Class | Keys | Config |
@@ -123,6 +154,10 @@ emitted on every document view, including read-only spreadsheets.
 
 Both options default to on. Capture-phase handlers use `preventDefault`, so
 hosts with their own bindings should disable the corresponding class.
+
+**Why:** navigation collides with a host that moves a selection, the chords
+with a host that owns undo, so the two are separate. The scripts are static
+files, so a config value reaches them only through the markup.
 
 ### 13. One editable view, and every edit it cannot replay is refused
 
@@ -146,6 +181,11 @@ The document editor enables `contenteditable` on the body and restricts
 Scripted `document.execCommand` can bypass the gate. A run removed by browser
 editing raises `unnameableEdit`.
 
+**Why:** `contenteditable` per run makes every run a wall the caret cannot
+cross. `beforeinput` fires before the browser changes anything and is
+cancelable. The list is closed, because an edit we cannot replay costs the
+reader the document.
+
 ### 14. The scope is host policy, and the page refuses past it
 
 `Document::is_editable` reports engine support. `HtmlConfig::editing_scope`
@@ -159,6 +199,9 @@ sets host policy through `data-odr-editing-scope`; violations report
 
 The editor reads the attribute per edit, so a host can change scope without
 rendering again.
+
+**Why a paragraph and not a run:** Word splits runs by revision session, so a
+limit at a run would stop in the middle of uniform text.
 
 ## Open work
 
