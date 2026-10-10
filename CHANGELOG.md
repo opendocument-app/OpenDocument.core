@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v7.5.2 - 2026-10-10
+
 ### Text documents and presentations
 
 - The browser text editor attaches to a page with an addressed paragraph and
