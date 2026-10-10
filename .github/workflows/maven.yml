@@ -70,11 +70,12 @@ jobs:
           fi
 
       # GitHub Packages refuses a second upload of a version with 409, so a rerun
-      # after a failed Maven Central step must not upload again.
+      # after a failed Maven Central step must not upload again. The jar goes up
+      # after the pom, so its presence means the upload completed.
       - name: publish to github packages
         run: |
           if curl --silent --fail --output /dev/null --user "x:${GITHUB_TOKEN}" \
-            "https://maven.pkg.github.com/${GITHUB_REPOSITORY}/app/opendocument/odr-core-java/${REVISION}/odr-core-java-${REVISION}.pom"; then
+            "https://maven.pkg.github.com/${GITHUB_REPOSITORY}/app/opendocument/odr-core-java/${REVISION}/odr-core-java-${REVISION}.jar"; then
             echo "odr-core-java ${REVISION} is already on GitHub Packages"
             exit 0
           fi

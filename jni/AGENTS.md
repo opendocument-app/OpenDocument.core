@@ -9,7 +9,7 @@ bindings (`python/`).
 | Path | What |
 |------|------|
 | `CMakeLists.txt` | Builds `libodr_jni` and `odr-core-java.jar`. Included from the root build via `ODR_JNI`, or standalone against an installed `odrcore`. `ODR_JNI_JAR=OFF` builds the native half alone, which is what `../android` does and the only build that needs no JDK. |
-| `pom.xml` | Maven distribution of the Java classes (`app.opendocument:odr-core-java`). `.github/workflows/maven.yml` publishes it to Maven Central (profile `central`) and GitHub Packages (profile `github`) on release. Keep `--release` and `-Xlint` in sync with `CMAKE_JAVA_COMPILE_FLAGS`. |
+| `pom.xml` | Maven distribution of the Java classes (`app.opendocument:odr-core-java`). `.github/workflows/maven.yml` publishes it to Maven Central (profile `central`) and GitHub Packages (profile `github`) on release. Run it through `mvnw`, which pins the Maven version that Central's publishing plugin works with. Keep `--release` and `-Xlint` in sync with `CMAKE_JAVA_COMPILE_FLAGS`. |
 | `src/` | One `jni_*` unit per public-API area. `odr_jni.hpp` (strings, exceptions, handles) and `jni_convert.hpp` (struct and POJO marshalling) are the helpers. |
 | `java/app/opendocument/core/` | The Java API: enums, POJOs (styles, metas, `HtmlConfig`), and handle-backed wrappers that extend `NativeResource`. `../android` compiles the same sources into the AAR. It stays java, because `add_jar` has no kotlin toolchain. |
 | `tests/` | JUnit 5 suite, run through ctest (`odr_jni_junit`). Inputs come from `TestFiles`. |

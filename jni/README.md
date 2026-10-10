@@ -48,11 +48,11 @@ dependencies {
 Prefer Central. GitHub Packages needs a token with `read:packages` even for a
 public package.
 
-Local build: `jni/mvnw --file jni/pom.xml verify` produces the jar plus the sources
-and javadoc jars in `jni/target/`. The `central` profile (`jni/mvnw deploy
--Pcentral`) adds the PGP signatures and the `developers` POM entry that Central
-requires. It is off the default build, so neither a signing key nor a portal
-token is needed to build or to deploy to GitHub Packages.
+Local build: `jni/mvnw --file jni/pom.xml verify` produces the jar plus the
+sources and javadoc jars in `jni/target/`. The `central` profile (`jni/mvnw
+deploy -Pcentral`) adds the PGP signatures and the `developers` POM entry that
+Central requires. It is off the default build, so neither a signing key nor a
+portal token is needed to build or to deploy to GitHub Packages.
 
 ## Building
 
