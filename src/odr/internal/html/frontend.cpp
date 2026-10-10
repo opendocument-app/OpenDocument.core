@@ -258,8 +258,8 @@ bool html::writes_dark_style(const HtmlConfig &config) {
 
 std::string_view html::dark_style_media(const HtmlConfig &config) {
   return config.color_scheme == HtmlColorScheme::system
-             ? "(prefers-color-scheme: dark)"
-             : "";
+             ? "screen and (prefers-color-scheme: dark)"
+             : "screen";
 }
 
 void html::write_document_style(const WritingState &state) {

@@ -485,6 +485,18 @@ std::string viewport_of(const std::string &page) {
 
 } // namespace
 
+TEST(html, a_text_page_prints_with_its_margins_on_the_sheet) {
+  HtmlConfig config;
+  config.text_document_margin = true;
+  const std::string paged = render_odt(config);
+  EXPECT_NE(paged.find("@page{size:"), std::string::npos);
+  EXPECT_NE(paged.find(".odr-page-inner{margin:0!important}"),
+            std::string::npos);
+
+  config.text_document_margin = false;
+  EXPECT_EQ(render_odt(config).find("@page{"), std::string::npos);
+}
+
 // A browser floors the page scale at 0.25, so a page more than four screens
 // wide cannot be zoomed out to. A wider page states a floor of its own.
 TEST(html, fitting_the_width_states_a_floor_a_wide_page_needs) {
@@ -540,11 +552,13 @@ TEST(html, color_scheme_writes_the_dark_style) {
   const std::string dark = render_odt(config);
   EXPECT_NE(dark.find("color-scheme:dark"), std::string::npos);
   EXPECT_EQ(dark.find("prefers-color-scheme"), std::string::npos);
+  EXPECT_NE(dark.find(R"html(<style media="screen">)html"), std::string::npos);
 
   config.color_scheme = HtmlColorScheme::system;
   const std::string system = render_odt(config);
   EXPECT_NE(
-      system.find(R"html(<style media="(prefers-color-scheme: dark)">)html"),
+      system.find(
+          R"html(<style media="screen and (prefers-color-scheme: dark)">)html"),
       std::string::npos);
 }
 
@@ -563,7 +577,7 @@ TEST(html, linked_dark_style_is_served) {
 
   EXPECT_NE(
       out.str().find(
-          R"html(<link rel="stylesheet" href="document-dark.css" media="(prefers-color-scheme: dark)"/>)html"),
+          R"html(<link rel="stylesheet" href="document-dark.css" media="screen and (prefers-color-scheme: dark)"/>)html"),
       std::string::npos);
   EXPECT_TRUE(std::ranges::any_of(resources, [](const auto &entry) {
     return entry.second.has_value() && *entry.second == "document-dark.css";

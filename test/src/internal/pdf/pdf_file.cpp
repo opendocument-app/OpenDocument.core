@@ -592,6 +592,26 @@ TEST(PdfFile, uniform_run_at_the_floor_keeps_its_own_font_size) {
   EXPECT_FALSE(contains(html, "transform:scale("));
 }
 
+TEST(PdfFile, each_page_prints_on_a_sheet_of_its_own_size) {
+  PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>")
+      .object("<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 >>")
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>")
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 612] >>")
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>");
+  const std::string bytes = builder.trailer("/Root 1 0 R").build_classic();
+
+  for (const PdfTextMode mode :
+       {PdfTextMode::dual_layer, PdfTextMode::single_layer}) {
+    const std::string html = render_html(bytes, mode);
+    EXPECT_EQ(count(html, "@page odr-61200x79200{size:8.5in 11in}"), 1);
+    EXPECT_EQ(count(html, "@page odr-79200x61200{size:11in 8.5in}"), 1);
+    EXPECT_EQ(count(html, "{page:odr-61200x79200}"), 1);
+    EXPECT_EQ(count(html, "{page:odr-79200x61200}"), 1);
+    EXPECT_TRUE(contains(html, "break-after:page"));
+  }
+}
+
 TEST(PdfFile, an_unencrypted_file_states_no_permissions) {
   const odr::PdfFile file(open_pdf(info_mini_pdf()));
   EXPECT_FALSE(file.has_permissions());

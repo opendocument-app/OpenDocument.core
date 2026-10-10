@@ -155,6 +155,49 @@ viewport_mode_override(const Document &document, const HtmlConfig &config) {
              : std::nullopt;
 }
 
+/// The sheet a page box prints on, sized by the first page. A text page puts
+/// its margins on the sheet instead, so text that runs past a sheet keeps them.
+void write_print_page_style(HtmlWriter &out, const Document &document) {
+  const Element root = document.root_element();
+  const bool text = document.document_type() == DocumentType::text;
+
+  PageLayout page_layout;
+  if (text) {
+    page_layout = root.as_text_root().page_layout();
+  } else if (const Element first = root.first_child(); !first) {
+    return;
+  } else if (document.document_type() == DocumentType::presentation) {
+    page_layout = first.as_slide().page_layout();
+  } else {
+    page_layout = first.as_page().page_layout();
+  }
+
+  out.write_header_style_begin();
+  out.out() << "@page{";
+  if (page_layout.width.has_value() && page_layout.height.has_value()) {
+    out.out() << "size:" << css_length(*page_layout.width) << " "
+              << css_length(*page_layout.height) << ";";
+  }
+  if (!text) {
+    out.out() << "margin:0}";
+    out.write_header_style_end();
+    return;
+  }
+  const auto write_margin = [&](const std::string_view side,
+                                const std::optional<Measure> &margin) {
+    if (margin.has_value()) {
+      out.out() << "margin-" << side << ":" << css_length(*margin) << ";";
+    }
+  };
+  write_margin("top", page_layout.margin.top);
+  write_margin("right", page_layout.margin.right);
+  write_margin("bottom", page_layout.margin.bottom);
+  write_margin("left", page_layout.margin.left);
+  out.out() << "}@media print{.odr-page-outer{width:auto!important;"
+               "min-height:0!important}.odr-page-inner{margin:0!important}}";
+  out.write_header_style_end();
+}
+
 /// @p name titles the view; empty for the file that holds every view.
 void write_head(const Document &document, const WritingState &state,
                 const std::string &name,
@@ -184,6 +227,9 @@ void write_head(const Document &document, const WritingState &state,
 
   write_document_style(state);
   write_document_dark_style(state);
+  if (paged_content) {
+    write_print_page_style(out, document);
+  }
   write_search_style(state);
   write_search_dark_style(state);
   if (document.document_type() == DocumentType::spreadsheet) {
