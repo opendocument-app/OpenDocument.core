@@ -16,31 +16,39 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
-- Copied HTML views remain usable after their `HtmlService` is destroyed.
-- Offline HTML export reports failed page and resource writes, including errors
-  when closing output files.
-- Report dynamic spreadsheet references (`INDIRECT`, `OFFSET`) as unresolved.
-  Browser edits now mark formulas with unresolved reads as stale.
-- Reject XML deeper than 1024 nested elements before parsing document trees
-  or rendering HTML, preventing stack overflow and excessive indentation.
-  Standalone XML beyond the limit opens as plain text.
-- Detect JSON after text decoding, including UTF-16 and UTF-32 files.
-  Validation no longer allocates a discarded JSON value tree.
-- Refuse spreadsheet row and column edits when an affected formula cannot be
-  parsed, before changing cells or references.
-- A pdf, a slide, a drawing page and a text page with margins print one page
+### Spreadsheets
+
+- A formula that reads through `INDIRECT` or `OFFSET` is unresolved, and a
+  browser edit marks a formula with unresolved reads as stale.
+- An ods formula with spaces before a function's parenthesis, as LibreOffice
+  writes `ROUND (`, parses, computes and moves with structural edits.
+- A row or column edit refuses before it changes anything where an affected
+  formula does not parse.
+
+### Printing
+
+- A pdf page, a slide, a drawing page and a text page with margins print one
   to a sheet, at the size of the page and without the grey viewer background.
   A dark render prints in light colors.
-- An ods formula with spaces between a function name and its parenthesis, as
-  LibreOffice writes `ROUND (`, parses, computes and moves with structural
-  edits.
 - A text page that holds a frame anchored to the page, such as a letter
-  template, prints whole on one sheet, so the frame stays where the page puts
-  it.
-- pdf text in Adobe small capitals and old-style figures (`Asmall`,
+  template, prints whole on one sheet, so the frame stays in place.
+
+### PDF
+
+- A JPEG image with a soft mask shows its transparency, not the color the
+  JPEG holds there, which is often black.
+- Text in Adobe small capitals and old-style figures (`Asmall`,
   `oneoldstyle`) is found by a search and copies as letters and digits.
-- A pdf JPEG image with a soft mask shows its transparency instead of the
-  colour the JPEG holds there, which is often black.
+
+### Other
+
+- A copied `HtmlView` stays usable after its `HtmlService` is destroyed.
+- `bring_offline` reports a page or a resource it fails to write, also where
+  only closing the file fails.
+- XML nested deeper than 1024 elements is refused before a document tree is
+  built or HTML is rendered, so it cannot overflow the stack. A standalone XML
+  file that deep opens as plain text.
+- A UTF-16 or UTF-32 json is detected as json.
 
 ## v7.5.0 - 2026-10-06
 
