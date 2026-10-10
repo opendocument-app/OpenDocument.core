@@ -636,6 +636,24 @@ Font type3_font(std::uint32_t first_char, const std::string &name, double width,
 
 } // namespace
 
+// Adobe's private-use small capitals and old-style figures fold back to their
+// letters and digits in the text, as pdf.js extracts them.
+TEST(PdfPageExtractor, adobe_small_caps_extract_as_letters) {
+  Font font = simple_font('A', {500, 500, 500, 500});
+  Encoding encoding(BaseEncoding::standard);
+  encoding.set_difference('A', "Asmall");
+  encoding.set_difference('B', "Bsmall");
+  encoding.set_difference('C', "oneoldstyle");
+  font.encoding = encoding;
+  Resources res;
+  res.font["F1"] = &font;
+
+  const std::vector<TextElement> text = run("BT /F1 10 Tf (ABCD) Tj ET", res);
+
+  ASSERT_EQ(text.size(), 1);
+  EXPECT_EQ(text[0].text, "ab1D");
+}
+
 // A Type3 glyph runs its char proc through the page machinery at the glyph
 // transform (`/FontMatrix` x size x `Tm` x CTM): the glyph paints as ordinary
 // path elements, and the shown run stays selectable but paints no visible text

@@ -64,6 +64,19 @@ struct ResolvedText {
   bool no_unicode{false};
 };
 
+/// Adobe's corporate-use small capitals and old-style figures (`Asmall` is
+/// U+F761, `zerooldstyle` U+F730) mirror ASCII and Latin-1 at U+F700. Their
+/// letters are what a search or a copy wants; the glyphs drawn stay the same.
+std::string fold_adobe_small_caps(const std::string &text) {
+  std::string result;
+  for (std::string_view rest = text; !rest.empty();) {
+    const char32_t c = util::string::next_utf8(rest);
+    util::string::append_c32(c >= 0xf721 && c <= 0xf7ff ? c - 0xf700 : c,
+                             result);
+  }
+  return result;
+}
+
 ResolvedText resolve_text(MarkedContentStack &marked, const Font *font,
                           const std::string &codes) {
   for (MarkedContent &entry : marked | std::views::reverse) {
@@ -78,7 +91,7 @@ ResolvedText resolve_text(MarkedContentStack &marked, const Font *font,
   if (font == nullptr) {
     return {codes, false}; // unknown font: historic raw-code passthrough
   }
-  std::string unicode = font->to_unicode(codes);
+  std::string unicode = fold_adobe_small_caps(font->to_unicode(codes));
   const bool no_unicode = unicode.empty() && !codes.empty();
   return {std::move(unicode), no_unicode};
 }

@@ -37,6 +37,8 @@ The release run heads these entries with the version and opens a fresh
 - A text page that holds a frame anchored to the page, such as a letter
   template, prints whole on one sheet, so the frame stays where the page puts
   it.
+- pdf text in Adobe small capitals and old-style figures (`Asmall`,
+  `oneoldstyle`) is found by a search and copies as letters and digits.
 
 ## v7.5.0 - 2026-10-06
 
