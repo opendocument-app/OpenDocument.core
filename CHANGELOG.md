@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Copied HTML views remain usable after their `HtmlService` is destroyed.
+
 ## v7.5.0 - 2026-10-06
 
 ### Spreadsheets

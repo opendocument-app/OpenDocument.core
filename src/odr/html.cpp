@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <mutex>
 #include <unordered_set>
 
 using namespace odr::internal;
@@ -76,15 +77,30 @@ HtmlPage::HtmlPage(std::string name, std::string path)
 
 HtmlService::HtmlService() = default;
 
+struct HtmlService::ViewCache final {
+  std::once_flag initialized;
+  HtmlViews views;
+};
+
 HtmlService::HtmlService(std::shared_ptr<abstract::HtmlService> impl)
-    : m_impl{std::move(impl)} {
+    : m_impl{std::move(impl)}, m_views{std::make_shared<ViewCache>()} {
   static_cast<void>(deref(m_impl));
 }
 
 const HtmlConfig &HtmlService::config() const { return deref(m_impl).config(); }
 
 const HtmlViews &HtmlService::list_views() const {
-  return deref(m_impl).list_views();
+  const auto &service = deref(m_impl);
+  std::call_once(m_views->initialized, [&] {
+    HtmlViews views;
+    for (const HtmlView &view : service.list_views()) {
+      // The public cache retains the service; its own views remain non-owning.
+      views.emplace_back(
+          std::shared_ptr<abstract::HtmlView>(m_impl, view.impl().get()));
+    }
+    m_views->views = std::move(views);
+  });
+  return m_views->views;
 }
 
 void HtmlService::warmup() const { deref(m_impl).warmup(); }
