@@ -34,6 +34,9 @@ The release run heads these entries with the version and opens a fresh
 - An ods formula with spaces between a function name and its parenthesis, as
   LibreOffice writes `ROUND (`, parses, computes and moves with structural
   edits.
+- A text page that holds a frame anchored to the page, such as a letter
+  template, prints whole on one sheet, so the frame stays where the page puts
+  it.
 
 ## v7.5.0 - 2026-10-06
 

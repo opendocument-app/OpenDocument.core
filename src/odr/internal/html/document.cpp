@@ -157,9 +157,16 @@ viewport_mode_override(const Document &document, const HtmlConfig &config) {
 
 /// The sheet a page box prints on, sized by the first page. A text page puts
 /// its margins on the sheet instead, so text that runs past a sheet keeps them.
+/// A frame placed on the page stands off the page edge, not the margin, so a
+/// text page holding one prints whole like a slide.
 void write_print_page_style(HtmlWriter &out, const Document &document) {
   const Element root = document.root_element();
   const bool text = document.document_type() == DocumentType::text;
+  const bool fixed =
+      !text || std::ranges::any_of(root.children(), [](const Element &child) {
+        return child.type() == ElementType::frame &&
+               child.as_frame().anchor_type() == AnchorType::at_page;
+      });
 
   PageLayout page_layout;
   if (text) {
@@ -178,8 +185,11 @@ void write_print_page_style(HtmlWriter &out, const Document &document) {
     out.out() << "size:" << css_length(*page_layout.width) << " "
               << css_length(*page_layout.height) << ";";
   }
-  if (!text) {
+  if (fixed) {
     out.out() << "margin:0}";
+    if (text) {
+      out.out() << "@media print{.odr-page-outer{min-height:0!important}}";
+    }
     out.write_header_style_end();
     return;
   }
