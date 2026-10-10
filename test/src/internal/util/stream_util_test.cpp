@@ -116,7 +116,7 @@ TEST(ByteStream, skip_moves_exactly_and_refuses_a_short_stream) {
   EXPECT_THROW(byte_stream::skip(in, 4), std::runtime_error);
 }
 
-TEST(ByteStream, single_byte_reads_preserve_failed_input) {
+TEST(ByteStream, single_byte_reads_respect_a_failed_stream) {
   for (const auto state :
        {std::ios::failbit, std::ios::badbit, std::ios::eofbit}) {
     std::istringstream in("x");
