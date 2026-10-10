@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v7.5.1 - 2026-10-10
+
 ### Spreadsheets
 
 - A formula that reads through `INDIRECT` or `OFFSET` is unresolved, and a
