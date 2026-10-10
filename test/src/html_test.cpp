@@ -485,6 +485,18 @@ std::string viewport_of(const std::string &page) {
 
 } // namespace
 
+TEST(html, a_text_page_prints_with_its_margins_on_the_sheet) {
+  HtmlConfig config;
+  config.text_document_margin = true;
+  const std::string paged = render_odt(config);
+  EXPECT_NE(paged.find("@page{size:"), std::string::npos);
+  EXPECT_NE(paged.find(".odr-page-inner{margin:0!important}"),
+            std::string::npos);
+
+  config.text_document_margin = false;
+  EXPECT_EQ(render_odt(config).find("@page{"), std::string::npos);
+}
+
 // A browser floors the page scale at 0.25, so a page more than four screens
 // wide cannot be zoomed out to. A wider page states a floor of its own.
 TEST(html, fitting_the_width_states_a_floor_a_wide_page_needs) {

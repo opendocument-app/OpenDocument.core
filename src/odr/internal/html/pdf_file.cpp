@@ -38,6 +38,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <span>
 #include <sstream>
 #include <string>
@@ -1856,8 +1857,7 @@ public:
     }
     substitute_faces.append_faces(font_faces);
 
-    const std::optional<double> content = content_pixels(pages_out, config());
-    write_header_common(state, font_faces, font_styles, styles, content, [&] {
+    write_header_common(state, font_faces, font_styles, styles, pages_out, [&] {
       // Visual layer glyph spans: not selectable (selection rides the `.sel`
       // layer).
       out.out() << ".g{user-select:none}";
@@ -2349,8 +2349,7 @@ public:
     substitute_faces.append_faces(font_faces);
 
     // ---- Pass 2: write HTML ---------------------------------------------
-    const std::optional<double> content = content_pixels(pages_out, config());
-    write_header_common(state, font_faces, font_styles, styles, content, [&] {
+    write_header_common(state, font_faces, font_styles, styles, pages_out, [&] {
       // Invisible text render modes (Tr 3/7).
       out.out() << ".i{color:transparent}";
       // Unclean glyphs via generated content, out of the DOM text stream.
@@ -2649,6 +2648,7 @@ public:
       std::ostringstream h;
       h << "height:" << height * pt_to_in << "in";
       add_class(classes, "y", std::move(h).str());
+      add_class(classes, "q", "page:" + print_page_name(width, height));
     }
 
     // Onto the displayed box: 90° sends the top-left corner to the top-right,
@@ -2748,16 +2748,23 @@ public:
     return widest * pt_to_in * 96.0 + page_column_gutter_pixels(config);
   }
 
+  /// The named `@page` a page box prints on, one per distinct size.
+  static std::string print_page_name(const double width, const double height) {
+    return "odr-" + std::to_string(std::lround(width * 100)) + "x" +
+           std::to_string(std::lround(height * 100));
+  }
+
   /// The document/head prologue shared by both modes, with `write_mode_css()`
   /// slotted between the constant rules. Leaves the writer after `</head>`.
-  template <typename WriteModeCss>
+  template <typename PageOut, typename WriteModeCss>
   void write_header_common(const WritingState &state,
                            const std::string &font_faces,
                            const std::string &font_styles,
                            const StyleRegistry &styles,
-                           const std::optional<double> content,
+                           const std::vector<PageOut> &pages,
                            WriteModeCss &&write_mode_css) const {
     HtmlWriter &out = state.out();
+    const std::optional<double> content = content_pixels(pages, config());
 
     out.write_begin();
     out.write_header_begin();
@@ -2783,6 +2790,21 @@ public:
                  "margin:0 max(16px,var(--odr-min-margin-right,0px)) 0 "
                  "max(16px,var(--odr-min-margin-left,0px));background:#fff;"
                  "overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.5)}";
+    // One page to a sheet. WebKit prints an off-screen `content-visibility`
+    // page blank.
+    out.out() << "@media print{body{background:none}"
+                 ".d{display:block;padding:0;width:auto;min-width:0}"
+                 ".p{content-visibility:visible;margin:0;box-shadow:none;"
+                 "break-after:page}.p:last-child{break-after:auto}}"
+                 "@page{margin:0}";
+    std::set<std::string> print_pages;
+    for (const PageOut &page : pages) {
+      if (std::string name = print_page_name(page.width, page.height);
+          print_pages.insert(name).second) {
+        out.out() << "@page " << name << "{size:" << page.width * pt_to_in
+                  << "in " << page.height * pt_to_in << "in}";
+      }
+    }
     // `.t`: shared base for all absolutely-positioned line blocks.
     // `font-size:0` collapses its strut, which outranks the run it holds and
     // would take the line box's baseline.

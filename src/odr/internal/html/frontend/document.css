@@ -32,3 +32,10 @@ x-s{display:inline;white-space-collapse:preserve;tab-size:.5in}
    It hangs into the item's padding so wrapped lines align under the text. */
 .odr-list-item{padding-left:2em}
 .odr-list-marker{display:inline-block;min-width:2em;margin-left:-2em;white-space:pre}
+/* One page box to a sheet. The `@page` rule the head writes sizes the sheet. */
+@media print{
+.odr-background{background:none}
+.odr-pages{display:block;padding:0;width:auto;min-width:0}
+.odr-page-outer{margin:0;box-shadow:none;break-after:page}
+.odr-page-outer:last-child{break-after:auto}
+}
