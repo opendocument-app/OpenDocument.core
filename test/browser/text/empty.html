@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>text editing checks: an empty document</title>
+    <link rel="stylesheet" href="document.css" />
+  </head>
+  <body
+    class="odr-body"
+    data-odr-editable="true"
+    data-odr-keyboard="navigation shortcuts"
+  >
+    <!-- A new document as `create_document` makes one and `translate` writes
+         it: one paragraph with an address, no run, and the `<br>` line box of
+         an empty paragraph. The editor decides on load whether the page is
+         its own, so this needs a page of its own. -->
+    <div class="odr-text-flow" id="flow">
+      <x-p data-odr-id="2" style="display:block"><br></x-p>
+    </div>
+
+    <div id="out" contenteditable="false"><div id="report"></div></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="document.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var refusals = [];
+      odr.onEditRefused = function (event) {
+        refusals.push(event.reason + " " + event.code);
+      };
+
+      var paragraph = document.querySelector('x-p[data-odr-id="2"]');
+      function ops() {
+        return JSON.parse(odr.editing.getOperations()).ops;
+      }
+      function input(type, data) {
+        var before = refusals.length;
+        var event = new InputEvent("beforeinput", {
+          inputType: type,
+          data: data,
+          bubbles: true,
+          cancelable: true,
+        });
+        document.body.dispatchEvent(event);
+        return refusals.length > before ? "refused" : "taken";
+      }
+
+      note("an empty document");
+      check("the mode turns on", odr.editing.enable() === true);
+      check(
+        "the text editor attached",
+        document.body.getAttribute("contenteditable") === "true"
+      );
+
+      var range = document.createRange();
+      range.setStart(paragraph, 0);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+      check("typing is taken", input("insertText", "Hello") === "taken", refusals);
+      check("the paragraph holds it", paragraph.textContent === "Hello");
+      check(
+        "in a run of its own",
+        paragraph.querySelector("x-s[data-odr-id]") !== null &&
+          paragraph.querySelector("x-s[data-odr-id]").textContent === "Hello"
+      );
+      check(
+        "which the log states by its parent",
+        ops().length === 1 &&
+          ops()[0].op === "insertText" &&
+          ops()[0].parent === 2 &&
+          ops()[0].text === "Hello",
+        ops()
+      );
+      check(
+        "the line box is a wbr now",
+        paragraph.lastChild.nodeName === "WBR",
+        paragraph.lastChild.nodeName
+      );
+      odr.editing.undo();
+      check("undo empties it again", paragraph.textContent === "" && ops().length === 0);
+    </script>
+  </body>
+</html>

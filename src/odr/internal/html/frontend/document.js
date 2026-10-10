@@ -6,9 +6,10 @@
 
   var odr = (window.odr = window.odr || {});
 
-  // A view whose runs carry no address is not this editor's: a sheet's editing
-  // is an overlay, and its cells state no id.
-  if (document.querySelector("x-s[data-odr-id]") === null) {
+  // A view with no addressed paragraph or run is not this editor's: a sheet's
+  // editing is an overlay, and its cells state no id. A new document has one
+  // empty paragraph and no run.
+  if (document.querySelector("x-p[data-odr-id], x-s[data-odr-id]") === null) {
     return;
   }
 
