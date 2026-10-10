@@ -462,7 +462,14 @@ private:
     if (name.empty()) {
       return {};
     }
-    if (peek() == '(') {
+    // OpenFormula 5.14 puts no space before the `(`, but LibreOffice writes
+    // and reads `ROUND (`. A tab or a line break there is `#NAME?` to it.
+    std::size_t spaces = 0;
+    while (peek(spaces) == ' ') {
+      ++spaces;
+    }
+    if (peek(spaces) == '(') {
+      advance(spaces);
       return function_call(std::string(name));
     }
     const bool boolean_true = str::equals_ignore_case(name, "TRUE");

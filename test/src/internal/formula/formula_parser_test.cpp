@@ -174,6 +174,17 @@ TEST(FormulaParser, a_name_in_front_of_a_paren_is_a_function) {
   ASSERT_EQ(node->children.size(), 1);
 }
 
+TEST(FormulaParser, an_odf_function_name_may_stand_spaces_before_its_paren) {
+  const std::optional<Node> node = odf("of:=ROUND  ([.A1];2)");
+
+  ASSERT_TRUE(node.has_value());
+  ASSERT_TRUE(node->holds<FunctionCall>());
+  EXPECT_EQ(node->get<FunctionCall>().name, "ROUND");
+  ASSERT_EQ(node->children.size(), 2);
+  EXPECT_FALSE(odf("of:=ROUND\t([.A1];2)").has_value());
+  EXPECT_FALSE(ooxml("ROUND (A1,2)").has_value());
+}
+
 TEST(FormulaParser, a_word_that_is_no_reference_is_a_name) {
   const std::optional<Node> node = ooxml("Sales");
 
