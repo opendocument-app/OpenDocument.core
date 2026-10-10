@@ -86,8 +86,8 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     try {
       auto zip_file = std::make_unique<zip::ZipFile>(file);
       auto filesystem = zip_file->archive()->as_filesystem();
-      auto odf_file =
-          std::make_unique<odf::OpenDocumentFile>(filesystem, zip_file->zip());
+      auto odf_file = std::make_unique<odf::OpenDocumentFile>(
+          filesystem, zip_file->zip(), file);
       if (odf_file->file_type() == as) {
         return odf_file;
       }
@@ -116,7 +116,7 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     try {
       auto zip_file = std::make_unique<zip::ZipFile>(file);
       auto filesystem = zip_file->archive()->as_filesystem();
-      auto iwork_file = std::make_unique<iwork::IworkFile>(filesystem);
+      auto iwork_file = std::make_unique<iwork::IworkFile>(filesystem, file);
       if (iwork_file->file_type() == as) {
         return iwork_file;
       }
@@ -136,7 +136,7 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
       auto zip_file = std::make_unique<zip::ZipFile>(file);
       auto filesystem = zip_file->archive()->as_filesystem();
       auto ooxml_file = std::make_unique<ooxml::OfficeOpenXmlFile>(
-          filesystem, zip_file->zip());
+          filesystem, zip_file->zip(), file);
       if (is_the_requested_ooxml(*ooxml_file, as)) {
         return ooxml_file;
       }
@@ -147,7 +147,8 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     try {
       auto cfb_file = std::make_unique<cfb::CfbFile>(file);
       auto filesystem = cfb_file->archive()->as_filesystem();
-      auto ooxml_file = std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
+      auto ooxml_file =
+          std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem, nullptr, file);
       if (is_the_requested_ooxml(*ooxml_file, as)) {
         return ooxml_file;
       }
@@ -166,7 +167,7 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
       auto cfb_file = std::make_unique<cfb::CfbFile>(file);
       auto filesystem = cfb_file->archive()->as_filesystem();
       auto oldms_file =
-          std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
+          std::make_unique<oldms::LegacyMicrosoftFile>(filesystem, file);
       if (oldms_file->file_type() == as) {
         return oldms_file;
       }
@@ -484,7 +485,7 @@ open_by_cascade(const std::shared_ptr<abstract::File> &file,
     try {
       ODR_VERBOSE(logger, "try open as odf");
       return std::make_unique<odf::OpenDocumentFile>(filesystem,
-                                                     zip_file->zip());
+                                                     zip_file->zip(), file);
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as odf");
     }
@@ -492,14 +493,14 @@ open_by_cascade(const std::shared_ptr<abstract::File> &file,
     try {
       ODR_VERBOSE(logger, "try open as ooxml");
       return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem,
-                                                        zip_file->zip());
+                                                        zip_file->zip(), file);
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as ooxml");
     }
 
     try {
       ODR_VERBOSE(logger, "try open as iwork");
-      return std::make_unique<iwork::IworkFile>(filesystem);
+      return std::make_unique<iwork::IworkFile>(filesystem, file);
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as iwork");
     }
@@ -515,14 +516,15 @@ open_by_cascade(const std::shared_ptr<abstract::File> &file,
 
     try {
       ODR_VERBOSE(logger, "try open as legacy ms");
-      return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem);
+      return std::make_unique<oldms::LegacyMicrosoftFile>(filesystem, file);
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as legacy ms");
     }
 
     try {
       ODR_VERBOSE(logger, "try open as ooxml");
-      return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem);
+      return std::make_unique<ooxml::OfficeOpenXmlFile>(filesystem, nullptr,
+                                                        file);
     } catch (...) {
       ODR_VERBOSE(logger, "failed to open as ooxml");
     }

@@ -22,6 +22,12 @@ The release run heads these entries with the version and opens a fresh
   no run, as a new odt or docx renders. Typing there went nowhere and said
   nothing.
 
+### API, files and saving
+
+- `DecodedFile::file()` returns the file an odf, ooxml, iWork or legacy Office
+  package was read from. It returned an empty handle, so `file().name()` threw
+  `NullPointerError`, and so did `fileName` in npm for every such document.
+
 ## v7.5.1 - 2026-10-10
 
 ### Spreadsheets
