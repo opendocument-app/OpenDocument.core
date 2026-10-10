@@ -257,7 +257,8 @@ and the commits name. Git holds the full text of each decision.
     reference all inside removed cells becomes `#REF!`.
   - The writers of `.ods`, `.xlsx` and `.csv` move the cells and everything
     the file addresses. An edit refuses before it writes anything where it
-    cuts a merge or an xlsx array formula, or pushes a cell off the grid.
+    cuts a merge or an xlsx array formula, pushes a cell off the grid, or
+    meets a formula that does not parse, one nested past 64 levels too.
   - A new row or column is plain. The grid ends at column 16384 (`XFD`).
   - A structural op splits the log, so no op merges across it. The stale
     marks follow every op of the log in order.
@@ -325,9 +326,6 @@ and the commits name. Git holds the full text of each decision.
 
 ## Open work
 
-- **A structural edit leaves a formula that does not parse as it is.** That
-  includes a formula nested past 64 levels. The edit should refuse instead,
-  so that no reference ends up wrong.
 - **Live results in the page.** The page has no evaluator, so it marks the
   formula cells stale until something computes them. There are four ways to
   compute them while the user edits:

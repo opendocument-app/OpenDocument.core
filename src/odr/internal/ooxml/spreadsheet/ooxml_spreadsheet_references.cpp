@@ -1,5 +1,6 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_references.hpp>
 
+#include <odr/exceptions.hpp>
 #include <odr/table_position.hpp>
 
 #include <odr/internal/common/table_range.hpp>
@@ -503,6 +504,21 @@ void move_corner(pugi::xml_node corner, const formula::SheetEdit &edit) {
 } // namespace odr::internal::ooxml::spreadsheet
 
 namespace odr::internal {
+
+void ooxml::spreadsheet::check_formula_syntax(const pugi::xml_node part) {
+  for (const pugi::xpath_node match : part.select_nodes(
+           ".//*[local-name()='f' or local-name()='formula' or "
+           "local-name()='formula1' or local-name()='formula2' or "
+           "local-name()='definedName' or "
+           "local-name()='calculatedColumnFormula' or "
+           "local-name()='totalsRowFormula']")) {
+    const std::string_view text = match.node().text().get();
+    // Shared-formula members carry no expression.
+    if (!text.empty() && !formula::parse(text, syntax).has_value()) {
+      throw UnsupportedOperation();
+    }
+  }
+}
 
 void ooxml::spreadsheet::move_workbook_references(
     const pugi::xml_node workbook,
