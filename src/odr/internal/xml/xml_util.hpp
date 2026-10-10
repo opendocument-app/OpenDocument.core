@@ -30,7 +30,9 @@ namespace odr::internal::xml {
 
 /// Parses UTF-8 text, whatever encoding its declaration still names.
 pugi::xml_document parse(const std::string &);
-/// Parses buffered bytes with encoding detection; File avoids a buffer copy.
+/// Detects the encoding of the bytes. Buffers @p in twice on the way in; prefer
+/// the @ref abstract::File overload, which reads once against the size the file
+/// knows.
 pugi::xml_document parse(std::istream &);
 pugi::xml_document parse(const abstract::File &);
 pugi::xml_document parse(const abstract::ReadableFilesystem &, const AbsPath &);
