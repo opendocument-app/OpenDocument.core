@@ -4,11 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * An element in a document. Mirrors {@code odr::Element}. Navigation returns
- * {@code null} where the C++ API returns an empty element; {@code as*}
- * accessors return {@code null} when the element is not of that type.
- *
- * <p>Elements keep the {@link Document} they originate from reachable.
+ * Document element retaining its {@link Document}. Missing navigation results and
+ * incompatible {@code as*} casts return {@code null}.
  */
 public class Element extends NativeResource {
   Element(long handle, Object owner) {

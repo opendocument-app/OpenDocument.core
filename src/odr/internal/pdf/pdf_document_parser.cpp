@@ -861,12 +861,9 @@ void parse_stencil_mask(DocumentParser &parser, const Dictionary &dictionary,
   x_object.stencil_decode = image_decode(parser, dictionary);
 }
 
-/// Build the browser-ready bytes of an image XObject (ISO 32000-1 8.9): a JPEG
-/// passes through, any other decodable raster is assembled through its colour
-/// space and re-encoded as PNG (RGBA when masked). An undecodable codec or
-/// colour space leaves the bytes empty, so `Do` skips the image. Transparency
-/// on a JPEG base is ignored — compositing it would mean decoding the JPEG.
-/// `resources` resolves a named `/CS…` colour space.
+/// Builds image bytes: JPEG passthrough or PNG/RGBA (ISO 32000-1 8.9).
+/// Resolves named colours through resources; unsupported images return no
+/// bytes. JPEG transparency is ignored.
 void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
                       const IndirectObject &object, XObject &x_object,
                       const Resources *resources) {

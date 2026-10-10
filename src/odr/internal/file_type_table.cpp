@@ -266,12 +266,9 @@ constexpr std::array keynote_mimetypes{
 constexpr std::array html_extensions{"html"sv, "htm"sv, "xhtml"sv};
 constexpr std::array html_mimetypes{"text/html"sv, "application/xhtml+xml"sv};
 
-// The single source of truth behind every public format lookup; `odr_test`
-// asserts one row per `FileType` and capabilities that match the engines.
-//
-// `decrypt` on an OOXML document type means a password-protected package,
-// detected as `office_open_xml_encrypted` and decrypting into the type named
-// here. ODF files decrypt in place and keep their type.
+// All public format lookups use this table. Tests check rows and capabilities.
+// OOXML decrypts from office_open_xml_encrypted into its document type; ODF
+// keeps its type.
 constexpr std::array table{
     Row{FileType::unknown,
         "unknown"sv,

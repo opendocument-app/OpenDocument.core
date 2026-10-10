@@ -6,12 +6,9 @@
 
 namespace odr {
 
-/// @brief What went wrong, as one number every binding reports.
-///
-/// Below 1000 an @ref Exception names itself, 1 to 15 in the order `ODRError`
-/// shipped. From 1000 the rendered page names an edit it refused, which
-/// nothing throws. **Appended, never renumbered.** Every code needs a row in
-/// `error_code.cpp`.
+/// Stable error codes: exceptions below 1000, browser edit refusals from 1000.
+/// Append only; every code needs an error_code.cpp entry. Values 1–15 match
+/// ODRError.
 enum class ErrorCode : std::int32_t {
   unknown = 1, ///< Also any `std::exception` that is not an @ref Exception.
   unsupported_operation = 2,

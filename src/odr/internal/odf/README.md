@@ -28,7 +28,8 @@ variants. Design and open work are in [`AGENTS.md`](AGENTS.md). Relies on
     background)
   - [x] structural edits: insert text, split, merge and insert paragraphs,
     remove elements
-  - [ ] paragraph style, page and drawing attributes
+  - [x] paragraph alignment
+  - [ ] other paragraph, page and drawing attributes
 
 ### Styles (all document types)
 
@@ -97,7 +98,8 @@ variants. Design and open work are in [`AGENTS.md`](AGENTS.md). Relies on
 - [x] bookmarks
 - [x] sections, date / time fields (rendered as generic groups)
 - [x] table of contents / indices (rendered as generic groups)
-- [x] soft page breaks
+- [x] manual page breaks (`fo:break-before`, `fo:break-after`)
+- [ ] producer-recorded automatic breaks (`text:soft-page-break`)
 - [x] listings
   - [x] bullets
   - [x] numbering (`text:list-style` levels resolved to markers: format,
@@ -113,9 +115,12 @@ variants. Design and open work are in [`AGENTS.md`](AGENTS.md). Relies on
   - [x] cell value types (float, boolean, date, time, string)
   - [x] cell values (`office:value`, and `table:formula` as its own string)
   - [x] shapes anchored to a sheet
-  - [ ] computed values (formulas are read, not evaluated)
+  - [x] partial formula recalculation; unsupported stale results are cleared
+  - [x] number formats, including dates and times
 - [x] edit
-  - [x] cell values (number, string, cleared)
+  - [x] cell values (number, string, boolean, date, time, cleared)
+  - [x] cell, row and column styles
+  - [x] insert and delete rows and columns, updating references
   - [x] a repeated cell, by cutting the run around the position written
   - [x] a cell the file states no element for
   - [x] a cell past the last row or column

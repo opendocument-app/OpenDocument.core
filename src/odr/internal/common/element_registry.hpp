@@ -51,9 +51,8 @@ private:
   std::unordered_map<ElementIdentifier, T> m_entries;
 };
 
-/// A per-type payload appended as its elements are created, so the ids only
-/// grow and a lookup is a binary search. `emplace` refuses one out of order,
-/// and hands out a reference — hence a deque.
+/// Ordered payloads with binary-search lookup and stable references.
+/// `emplace` requires strictly increasing IDs.
 template <typename T, typename Id = ElementIdentifier>
 class SortedSideTable final {
 public:
@@ -96,11 +95,8 @@ private:
   std::deque<Entry> m_entries;
 };
 
-/// The flat store an engine builds its element tree in: an id is the index
-/// plus one, and @p ElementT derives from @ref ElementNode for the links.
-///
-/// A deque, not a vector: `create_element_` hands back a reference the parser
-/// holds on to, and a vector both invalidates it and peaks holding two copies.
+/// Append-only element store with index-plus-one IDs and stable references.
+/// @p ElementT derives from @ref ElementNode.
 template <typename ElementT, typename Id = ElementIdentifier>
 class ElementRegistry {
 public:

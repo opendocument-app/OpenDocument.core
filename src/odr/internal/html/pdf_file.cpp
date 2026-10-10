@@ -670,12 +670,8 @@ private:
   std::unordered_map<std::string, std::string> m_url_by_name;
 };
 
-/// An image XObject as an SVG `<image>` fragment in the page viewBox, or ""
-/// when it carries no pass-through bytes. The image fills the unit square in
-/// user space (ISO 32000-1 8.10.5), flipped vertically because its first row is
-/// its top. `clip_id` is installed on a wrapping `<g>`, not on the `<image>`:
-/// the clip geometry is `userSpaceOnUse` in the viewBox, and on the image it
-/// would resolve in the image's post-transform unit-square space instead.
+/// Emits an image in the flipped unit square (ISO 32000-1 8.10.5), or empty.
+/// Apply clip_id to a wrapper so clipping stays in page coordinates.
 std::string svg_image_fragment(const pdf::ImageElement &image,
                                const util::math::Transform2D &to_box,
                                const std::string &clip_id,
@@ -829,13 +825,8 @@ private:
   }
 };
 
-/// A page's axial/radial shadings as `<linearGradient>`/`<radialGradient>` defs
-/// (`g<page>_<n>`), placed by `gradientTransform` in `userSpaceOnUse`.
-///
-/// DEFERRED: `/Extend` is approximated by SVG's default `pad` spread, so a
-/// non-extended shading over-paints beyond its interval; `Shading::background`
-/// and `Shading::bbox` are not honoured. Both need the fill clipped to the
-/// gradient band/annulus.
+/// Emits axial/radial SVG gradients in userSpaceOnUse with gradientTransform.
+/// Extend uses pad; background and bbox remain unsupported.
 class GradientRegistry : public DefsRegistry {
 public:
   using DefsRegistry::DefsRegistry;
@@ -905,13 +896,8 @@ std::string svg_shading_fragment(const std::string &gradient_id,
   return std::move(f).str();
 }
 
-/// A page's tiling patterns (`/PatternType 1`) as SVG `<pattern>` defs
-/// (`pat<page>_<n>`). The content stream is run as a mini page into tile
-/// fragments in pattern space, repeated every `/XStep`/`/YStep` and placed by
-/// `patternTransform`. An uncoloured pattern (`/PaintType 2`) paints in the
-/// path's fill colour, so the cache key folds that colour in. Only paths and
-/// images are rendered (nested text/shadings/patterns are skipped — rare).
-/// "" for an unrepresentable pattern.
+/// Emits tiling-pattern paths and images; returns empty for unsupported
+/// patterns. PaintType 2 includes the fill colour in its cache key.
 class PatternRegistry : public DefsRegistry {
 public:
   using DefsRegistry::DefsRegistry;
@@ -1139,12 +1125,8 @@ std::string render_graphic_fragment(
   return {};
 }
 
-/// Hoists text out of transparency groups (recursively) to the top level. A
-/// group's effects ride an SVG `<g>`, but text is positioned markup, not SVG,
-/// so it cannot sit inside that `<g>` — without the hoist it would be dropped
-/// from both the visual and the selection layer. Forgone: the group effect on
-/// the text itself (see pdf/AGENTS.md gaps). The group's graphics are untouched
-/// and still composite as a unit; a group left with none is dropped.
+/// Hoists text out of SVG transparency groups into the HTML layers.
+/// Text loses group effects; graphics retain them. Drops emptied groups.
 std::vector<pdf::PageElement>
 lift_group_text(std::vector<pdf::PageElement> elements) {
   std::vector<pdf::PageElement> result;
@@ -1360,18 +1342,9 @@ public:
     return write_pages_dual_layer(out, pages, first_page_number, page_href);
   }
 
-  // ---- DUAL-LAYER MODE ----------------------------------------------------
-  //
-  // Visual layer (`.vis`, aria-hidden): paint-order glyphs in PUA-re-encoded
-  // fonts, grouped into baseline line blocks (`.t`) whose runs flow inline. A
-  // path or image closes the open block and goes into an SVG. Invisible text
-  // (Tr 3/7) is omitted.
-  //
-  // Selection layer (`.sel`): transparent real Unicode in content-stream
-  // order, one line block per detected line. Each run is an inline-block of
-  // the PDF advance width, spread to fill it by CSS
-  // `text-justify:inter-character` — no JavaScript; gaps are zero-content
-  // spacer spans.
+  // `.vis` paints PUA glyphs; `.sel` carries transparent Unicode in stream
+  // order. Selection runs use PDF advance widths; invisible text is not
+  // painted.
 
   /// One run inside a visual line block: margin-left, font size,
   /// font-family+colour. The line block holds placement only.
@@ -1930,12 +1903,9 @@ public:
           << ".i::selection,.i *::selection"
              "{color:transparent;background-color:rgba(70,130,220,.32);"
              "background-color:color-mix(in srgb,Highlight 45%,transparent)}";
-      // Selection-layer run span. No clip: a system font wider than the pdf
-      // advance spills, and a webview draws no selection handle for an end it
-      // cannot see. The clip also carried the y alignment, so state it:
-      // `.t`'s zero-height strut puts the line box bottom on the baseline.
-      // `.t`'s inherited `pre` blocks wrapping while preserving a run's own
-      // leading/trailing space, which is real PDF content.
+      // Leave selection runs unclipped for WebView handles. The zero-height
+      // strut aligns the baseline; inherited pre preserves spaces and prevents
+      // wrapping.
       out.out() << ".sr{display:inline-block;vertical-align:bottom;"
                    "text-align:justify;text-align-last:justify;"
                    "text-justify:inter-character}";
@@ -2020,20 +1990,8 @@ public:
     return resources;
   }
 
-  // ---- SINGLE-LAYER MODE --------------------------------------------------
-  //
-  // One combined text layer per page: runs grouped into paint-order line
-  // blocks (`.t`), each run nudged by a `margin-left` gap.
-  //
-  // The embedded font's cmap is built by frequency analysis — a pre-pass counts
-  // (uchar, glyph) co-occurrences per font and the winner takes the entry — so
-  // the common shape wins instead of whichever run came first.
-  //
-  // A run whose pairs all match the winner ("clean") renders real Unicode
-  // directly in the embedded font, natively findable. An unclean run paints
-  // glyphs via `::before{content:attr(data-g)}` — out of the DOM text stream,
-  // so find never breaks mid-word — with a zero-width `.ov` overlay carrying
-  // the Unicode. Invisible and fallback runs render Unicode as ordinary text.
+  // Frequency-selected cmap entries render clean runs as Unicode. Other runs
+  // paint glyphs through `::before` and expose Unicode in a zero-width overlay.
 
   struct SingleRunOut {
     std::string margin;     ///< "" or a `margin-left` class

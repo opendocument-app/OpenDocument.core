@@ -13,9 +13,8 @@ pins it.
   sets share one resolved style as `.doc` does.
 - Character and paragraph properties map to `TextStyle` and `ParagraphStyle`.
   Adjacent runs with equal styles merge into one span.
-- Font names are interned in the style registry and never mutated afterwards,
-  so `TextStyle::font_name` (`const char *`) stays valid. This is the `.doc`
-  and `.xls` rule.
+- `TextStyle::font_name` owns its string; resolved styles need no separate
+  font-name lifetime management.
 - Page geometry goes to `TextRootAdapter::text_root_page_layout`, which is
   empty today.
 - `iwork_style.cpp` is the file for `TSS` property-set inheritance.

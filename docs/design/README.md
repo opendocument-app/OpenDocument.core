@@ -3,8 +3,9 @@
 ## Principles
 
 - One API for every format. The format specifics stay behind it.
-- The public API has value semantics. Handles are immutable.
-- Iterators only traverse immutable objects, so nothing invalidates them.
+- Public handles share document state; edits are visible through every handle.
+- Element IDs are stable. Removed elements and their descendants reject access;
+  traversal does not provide a snapshot across edits.
 - Saving depends on the recorded changes, not on the internal representation
   of the document.
 - Sparse tables are not stored densely in memory.

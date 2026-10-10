@@ -8,8 +8,9 @@ module.
 ## What this is
 
 `odr` (also `odrcore`) is a C++23 library. It decodes documents and renders
-them to HTML. Every format sits behind one abstract document model and one
-generic HTML renderer. Build: CMake plus Conan.
+them to HTML. Document formats share an abstract element model and a generic
+HTML renderer. PDF and non-document files use specialized HTML services.
+Build: CMake plus Conan.
 
 ## How a file becomes HTML
 
@@ -84,7 +85,7 @@ Two model rules that every engine follows:
 | `src/odr/internal/cfb/`, `zip/` | Containers. |
 | `src/odr/internal/odf/` | OpenDocument. See [`odf/AGENTS.md`](src/odr/internal/odf/AGENTS.md). |
 | `src/odr/internal/ooxml/` | Office Open XML. See [`ooxml/AGENTS.md`](src/odr/internal/ooxml/AGENTS.md) and the per-format docs. |
-| `src/odr/internal/oldms/` | Legacy Microsoft binary (`.doc`, `.ppt`, `.xls`). Visible text only. See [`oldms/AGENTS.md`](src/odr/internal/oldms/AGENTS.md) and the per-format docs. |
+| `src/odr/internal/oldms/` | Legacy Microsoft binary (`.doc`, `.ppt`, `.xls`): text, direct formatting and ppt pictures. See [`oldms/AGENTS.md`](src/odr/internal/oldms/AGENTS.md) and the per-format docs. |
 | `src/odr/internal/iwork/` | Apple iWork (`.pages`, `.key`, `.numbers`). No spec; fixtures are the citation. See [`iwork/AGENTS.md`](src/odr/internal/iwork/AGENTS.md) and [`iwork/PLAN.md`](src/odr/internal/iwork/PLAN.md). |
 | `src/odr/internal/pdf/` | PDF, own parser. See [`pdf/AGENTS.md`](src/odr/internal/pdf/AGENTS.md). |
 | `src/odr/internal/png/` | PNG encoder for `pdf` image extraction and `svm` bitmaps. |
@@ -182,8 +183,8 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file to HTML
   a data url. Every `href` goes through `html::uri_kind` in `html/common.cpp`.
   A refused target loses its `href`, an external one gets `target="_blank"`, a
   relative one no target. No view declares a document-wide `<base target>`.
-- Public API: value semantics, immutable handles, iterators only for immutable
-  traversal.
+- Public handles have value semantics and share document state. Edits preserve
+  IDs; removal invalidates elements. Iterators provide traversal, not mutation.
 - Byte parsing reads POD structs with `util::byte_stream::read`. It assumes a
   little-endian host. Big-endian is a known gap.
 - Match the surrounding file. Mirror a sibling engine when you add a format.

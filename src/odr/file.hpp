@@ -189,12 +189,8 @@ enum class FileLocation {
   disk,
 };
 
-/// @brief What this library can do with a file format.
-///
-/// Declared, format-level support — an *upper bound*. A concrete file may still
-/// fail (corrupt, encrypted, an unsupported sub-variant); ask @ref DecodedFile
-/// or @ref Document for that. This answers what a caller has to decide before
-/// it holds a file, e.g. which MIME types to hand the platform's file picker.
+/// Format-level capability limits; a concrete file may support less.
+/// Query DecodedFile or Document for per-file capabilities.
 struct FileTypeCapabilities final {
   bool detect_by_content{}; ///< recognised from its bytes alone
   bool open{};              ///< a decoder exists; @ref odr::open can decode it
@@ -578,14 +574,8 @@ public:
 
   [[nodiscard]] PdfFile decrypt(const std::string &password) const;
 
-  /// @brief Whether this file can take annotations.
-  ///
-  /// The counterpart of @ref Document::is_editable, and the question to ask
-  /// before offering the user an annotate button: @ref FileTypeCapabilities
-  /// answers for the *format*, this one for the file in hand. False for a pdf
-  /// declaring an `/Encrypt` — including an owner-locked one that opened with
-  /// the empty password and so reports itself unencrypted — and for one whose
-  /// cross-reference table had to be rebuilt by scanning.
+  /// Whether annotation is supported for this file. False for any `/Encrypt`
+  /// dictionary (even after unlocking) or a recovered cross-reference table.
   [[nodiscard]] bool is_annotatable() const noexcept;
 
   /// Whether the file states permissions: an `/Encrypt` with a `/P`.
@@ -593,13 +583,9 @@ public:
   /// @throws ValueNotStated if @ref has_permissions is false.
   [[nodiscard]] PdfPermissions permissions() const;
 
-  /// @brief Applies markup @p annotations, writing the annotated pdf to
-  ///        @p out.
-  ///
-  /// The wire format our browser-side annotator produces: highlight, underline,
-  /// strike-out, squiggly and freehand ink, placed in pdf user space. The
-  /// source is copied and the annotations appended, so nothing else about the
-  /// file changes.
+  /// Appends highlight, underline, strike-out, squiggly or ink annotations in
+  /// PDF user space to a copy of the source, using the browser annotator
+  /// schema.
   /// @throws std::invalid_argument if @p annotations is malformed.
   /// @throws std::runtime_error if @ref is_annotatable is false.
   void annotate(std::string_view annotations, std::ostream &out,

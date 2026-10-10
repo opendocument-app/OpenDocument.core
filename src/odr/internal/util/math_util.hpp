@@ -5,16 +5,8 @@
 
 namespace odr::internal::util::math {
 
-/// 2-D affine transform using PDF's row-vector convention: `[a b c d e f]`
-/// denotes
-///
-///     | a b 0 |
-///     | c d 0 |
-///     | e f 1 |
-///
-/// Points are row vectors multiplied on the left: `[x y 1] * M`. Composition
-/// follows the same order: `a * b` means "apply `a`, then `b`" (ISO 32000-1
-/// 8.3.4).
+/// PDF affine transform: `(x,y)` maps to `(ax+cy+e,bx+dy+f)`.
+/// `a * b` applies `a` then `b` (ISO 32000-1 8.3.4).
 struct Transform2D {
   double a{1};
   double b{0};

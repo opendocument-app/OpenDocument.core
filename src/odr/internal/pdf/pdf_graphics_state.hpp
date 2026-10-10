@@ -206,12 +206,8 @@ struct GraphicsState {
   /// unaffected.
   void advance_text(double tx, double ty);
 
-  /// Scopes a nested content stream (form XObject, Type3 char proc): pushes a
-  /// state like `q` and pops back to exactly the entry depth on destruction,
-  /// while confining the stream's own `q`/`Q` to that region. Content streams
-  /// are required to be q/Q-balanced (ISO 32000-1 8.10.1) and real files are
-  /// not, so an unbalanced stream must neither leak a state to nor pop one off
-  /// its caller.
+  /// Isolates a nested stream’s q/Q stack and restores its entry depth.
+  /// Tolerates unbalanced streams (ISO 32000-1 8.10.1).
   class ContentScope final {
   public:
     explicit ContentScope(GraphicsState &state);

@@ -29,12 +29,8 @@ namespace odr {
 /// The file type for a file extension, @ref FileType::unknown if none.
 [[nodiscard]] FileType
 file_type_by_file_extension(const std::string &extension) noexcept;
-/// @brief Every file extension accepted for the file type, without a leading
-/// dot, canonical one first.
-///
-/// Empty for a file type with no extension of its own, e.g.
-/// @ref FileType::office_open_xml_encrypted, which is carried by an ordinary
-/// `docx`/`pptx`/`xlsx` file.
+/// Accepted extensions without leading dots, canonical first.
+/// Empty when the type has no extension, such as office_open_xml_encrypted.
 [[nodiscard]] std::span<const std::string_view>
 file_extensions_by_file_type(FileType type) noexcept;
 /// The canonical file extension, without a leading dot.
@@ -98,12 +94,8 @@ list_file_types(const std::string &path, const Logger &logger = Logger::null());
 [[nodiscard]] std::string_view mimetype(const std::string &path,
                                         const Logger &logger = Logger::null());
 
-/// @brief Decodes @p file, per @p options.
-///
-/// The default @ref DecodeOptions detects everything, so
-/// `open(file)` is the common call and
-/// `open(file, DecodeOptions::as(FileType::comma_separated_values))` the way
-/// to insist on a type.
+/// Decodes @p file with automatic detection by default.
+/// Use DecodeOptions::as(type) to require a file type.
 [[nodiscard]] DecodedFile open(const File &file,
                                const DecodeOptions &options = {},
                                const Logger &logger = Logger::null());

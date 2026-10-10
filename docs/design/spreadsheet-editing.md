@@ -120,8 +120,8 @@ position map and the `setCell` op.
 A strict grammar parses the typed string: optional sign, digits, one `.`,
 optional exponent is a number. Anything else is a string. A leading `'` forces
 a string, and the editor opens a string cell with one where the grammar would
-read it otherwise. `=` is refused with `formulaInput` until the evaluator
-exists.
+read it otherwise. Formula input remains unsupported and refuses with
+`formulaInput`.
 
 **Why:** the file states the type per cell (`office:value-type`, `c/@t`) and
 changes it freely, so a cell has no fixed type. A number cell writes
@@ -135,8 +135,8 @@ editable sheet page carries it as `data-odr-locale`, and the editor asks
 `Intl.NumberFormat` for the separator, so no table of locales ships. The
 op states the number with `.` and the text as typed. A point in a German
 sheet makes a string, as a comma in an English one does. An `.xlsx` states
-no locale and shows its numbers with `.` until number formats are read, so
-it keeps `.`.
+no document locale; its editor uses `.`. Number formats control the displayed
+value.
 
 ### 5. Formulas are recomputed in C++, once, and reached through the host
 

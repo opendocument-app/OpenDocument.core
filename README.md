@@ -12,7 +12,7 @@ and [OpenDocument.ios](https://github.com/opendocument-app/OpenDocument.ios).
 |---|---|---|---|
 | odt, odp, ods, odg, and the flat xml forms fodt, fodp, fods, fodg | yes | yes | OpenDocument. Encrypted files are decrypted. |
 | docx, pptx, xlsx | yes | yes | Office Open XML. Encrypted files are decrypted. |
-| doc, ppt, xls | yes | no | Legacy Microsoft binary. Visible text only. |
+| doc, ppt, xls | yes | no | Legacy Microsoft binary. Text and direct formatting; ppt also supports JPEG/PNG pictures. |
 | pdf | yes | no | Own parser. Encrypted files are decrypted. Supports annotation. |
 | pages, key, numbers | yes | no | Apple iWork. Text and tables. No styles, images, masters, presenter notes, number formats or merged cells. |
 | rtf | yes | no | Body text only. |

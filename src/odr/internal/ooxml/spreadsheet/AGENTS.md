@@ -31,17 +31,17 @@ hang off the sheet in their own chain (`first_shape_id`). Dimensions come from
 coordinates follow the previous entry; parsing writes them into the DOM so
 structural edits and saves use the same positions.
 
-**Values.** A cell with `t="s"` reads `<v>` as an index into the shared
-strings and parses that `<si>`; otherwise its own `<v>` or `<is>` children.
+**Values.** A cell with `t="s"` reads `<v>` as an index into the shared strings
+and parses that `<si>`; otherwise its own `<v>` or `<is>` children.
 `sheet_cell_value_type` reads `c/@t`: `b` is a boolean, `e` an error, `d` a
 date, `s`, `str` and `inlineStr` a string, and a `<v>` with no type a
-`float_number`. `sheet_cell_value` adds the number and the `<f>` expression as
-a string. Nothing evaluates a formula. A shared formula ([ECMA-376] 18.3.1.40)
-writes its expression on the group's master alone, so a member is read through
-the master its `si` names: the parser collects the masters per sheet
-(`shared_formulas`), and `sheet_cell_value` moves the master's expression by
-the offset between the two cells (`internal/formula`), with `#REF!` where that
-leaves the grid. A master that does not parse is handed out as it stands. A
+`float_number`. `sheet_cell_value` adds the number and the `<f>` expression as a
+string. The shared formula evaluator recalculates. A shared formula ([ECMA-376]
+18.3.1.40) writes its expression on the group's master alone, so a member is
+read through the master its `si` names: the parser collects the masters per
+sheet (`shared_formulas`), and `sheet_cell_value` moves the master's expression
+by the offset between the two cells (`internal/formula`), with `#REF!` where
+that leaves the grid. A master that does not parse is handed out as it stands. A
 member whose `si` names no master is set and empty. Merged ranges from
 `mergeCells` land in the `SheetCell` side map as the anchor's `span` and the
 `is_covered` flags at parse time.

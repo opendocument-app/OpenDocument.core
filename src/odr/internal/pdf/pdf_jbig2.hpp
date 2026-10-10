@@ -15,13 +15,9 @@ struct Jbig2Image {
   std::string samples;
 };
 
-/// Decode a `JBIG2Decode` payload in the PDF embedded-stream organization
-/// (ISO 32000-1 7.4.7), `globals` holding the `/JBIG2Globals` stream (empty
-/// when there is none).
-///
-/// Covers arithmetic generic regions, symbol dictionaries and text regions.
-/// `nullopt` for a malformed stream or anything else — MMR/Huffman, refinement,
-/// halftone — so the caller skips the image rather than painting a wrong one.
+/// Decodes arithmetic generic regions, symbol dictionaries and text regions
+/// (ISO 32000-1 7.4.7). Optional globals; nullopt for malformed or unsupported
+/// data.
 std::optional<Jbig2Image> decode_jbig2(const std::string &data,
                                        const std::string &globals);
 

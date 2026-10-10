@@ -21,16 +21,8 @@ struct GradientStop {
   std::array<double, 3> rgb{};
 };
 
-/// A resolved axial (type 2) or radial (type 3) shading (ISO 32000-1 8.7.4.5).
-/// The tint `/Function` is pre-sampled into `stops`, so a renderer maps this to
-/// an SVG `<linearGradient>`/`<radialGradient>` directly. Other shading types
-/// (1, 4–7) are not modelled here (a later stage tessellates them).
-///
-/// NOTE: `extend`, `background` and `bbox` are parsed but not yet honoured by
-/// the renderer — it always emits the gradient with SVG's `pad` spread, which
-/// over-paints a non-extended shading beyond its interval (see
-/// `GradientRegistry` in `html/pdf_file.cpp`). They are carried here so the
-/// deferred bounds and background handling needs no re-parse.
+/// Sampled axial/radial shading (ISO 32000-1 8.7.4.5). The renderer uses SVG
+/// `pad` spread and ignores `extend`, `background` and `bbox`.
 struct Shading {
   /// `/ShadingType`: 2 (axial) or 3 (radial).
   std::int32_t type{0};

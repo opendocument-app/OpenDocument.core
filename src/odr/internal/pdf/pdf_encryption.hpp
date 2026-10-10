@@ -50,16 +50,8 @@ private:
   EncryptionMethod m_string_method{EncryptionMethod::rc4};
 };
 
-/// The authenticating half of the PDF standard security handler (ISO 32000-1
-/// 7.6; AES-256 / R 6 per ISO 32000-2 7.6.4): validates a password against the
-/// `/Encrypt` dictionary, producing a `Decryptor`. Permission bits are recorded
-/// here; `PdfFile::permissions` reports them.
-///
-/// Supported configurations (anything else → `create` returns `nullopt`):
-///   - `V 1/2`, `R 2/3` — RC4, 40-128 bit.
-///   - `V 4`, `R 4` — crypt filters `StdCF` with `CFM` `V2` (RC4) or `AESV2`
-///     (AES-128-CBC), plus `Identity`; honours `StmF`/`StrF`.
-///   - `V 5`, `R 6` — AES-256-CBC, file key used directly (no per-object key).
+/// Validates standard-handler passwords and records permissions (ISO 32000-1
+/// 7.6; ISO 32000-2 7.6.4). Supports RC4 R2/3/4, AES-128 R4 and AES-256 R6.
 class Authenticator {
 public:
   /// Build from the already-reference-resolved `/Encrypt` dictionary and the
