@@ -1,6 +1,6 @@
 # JSON plan
 
-Nothing of this has landed. Sibling of [`csv/PLAN.md`](../csv/PLAN.md); it
+Stage 1 has landed. Sibling of [`csv/PLAN.md`](../csv/PLAN.md); it
 uses what `internal/encoding` already provides.
 
 ## Today
@@ -9,15 +9,14 @@ uses what `internal/encoding` already provides.
 `FileCategory::text`. `html::translate` routes it to `create_text_service`, so
 a json renders like a `.txt`.
 
-`check_json_file(std::istream &)` runs `nlohmann::json::parse` over the whole
-undecoded stream and throws the result away (`json_util.cpp`). `open_strategy`
-constructs a `JsonFile` only to name the type, so a 200 MB json is fully
-parsed to be called a json. Because the parse reads raw bytes, a UTF-16 json
-fails detection and falls back to plain text, where `html/text_file.cpp`
-renders it correctly.
+`check_json_file(std::string_view)` runs `nlohmann::json::accept` over
+`TextFile::text()`, so a UTF-16 or UTF-32 json is decoded first and no value
+tree is built. `open_strategy` constructs a `JsonFile` only to name the type,
+so a 200 MB json is still read in full to be called a json.
 
-json is on the skip list in `html_output_test.cpp`, and there is no
-`test/src/internal/json/`. `nlohmann_json` is a direct link dependency.
+json is on the skip list in `html_output_test.cpp`. The tests are in
+`test/src/internal/json/json_file_test.cpp`. `nlohmann_json` is a direct link
+dependency.
 
 ## Target
 
@@ -63,16 +62,12 @@ stays reachable.
   visible `… N more values, not rendered`. `HtmlConfig::spreadsheet_limit` is
   the precedent for the knob.
 
-## Stage 1 — parse decoded text
+## Stage 1 — parse decoded text (landed)
 
-- `check_json_file` takes a `std::string_view` of decoded UTF-8; `JsonFile`
-  passes `m_file->text()`.
-- A non-decodable encoding is not a json (RFC 8259 §8.1). `text()` throws
-  `UnsupportedTextEncoding`, and `open_strategy` already turns that into "not
-  a json".
-- First `test/src/internal/json/json_util_test.cpp`, inline string literals:
-  an object, an array, a bare scalar, a truncated document, a UTF-16LE json
-  with a BOM.
+`check_json_file` validates the decoded UTF-8 that `JsonFile` passes from
+`m_file->text()`. A non-decodable encoding is not a json (RFC 8259 §8.1):
+`text()` throws `UnsupportedTextEncoding`, and `open_strategy` turns that into
+"not a json".
 
 ## Stage 2 — bounded detection
 

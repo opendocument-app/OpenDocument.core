@@ -81,6 +81,7 @@ add_executable(odr_test
         "src/internal/svg/svg_writer_test.cpp"
         "src/internal/xml/xml_file_test.cpp"
         "src/internal/xml/xml_util_test.cpp"
+        "src/internal/json/json_file_test.cpp"
 
         "src/internal/markdown/markdown_file_test.cpp"
 
