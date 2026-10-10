@@ -25,9 +25,11 @@ namespace odr::internal::odf {
 class OpenDocumentFile final : public virtual abstract::DocumentFile {
 public:
   /// @p archive is the package @p filesystem reads from lazily, if any.
+  /// @p source is the file the package was read from, if any.
   explicit OpenDocumentFile(
       std::shared_ptr<abstract::ReadableFilesystem> filesystem,
-      std::shared_ptr<zip::util::Archive> archive = nullptr);
+      std::shared_ptr<zip::util::Archive> archive = nullptr,
+      std::shared_ptr<abstract::File> source = nullptr);
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept override;
 
@@ -51,6 +53,7 @@ public:
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
   std::shared_ptr<zip::util::Archive> m_archive;
+  std::shared_ptr<abstract::File> m_source;
   EncryptionState m_encryption_state{EncryptionState::not_encrypted};
   FileMeta m_file_meta;
   Manifest m_manifest;

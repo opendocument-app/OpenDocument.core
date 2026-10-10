@@ -16,8 +16,10 @@ namespace odr::internal::odf {
 
 OpenDocumentFile::OpenDocumentFile(
     std::shared_ptr<abstract::ReadableFilesystem> filesystem,
-    std::shared_ptr<zip::util::Archive> archive)
-    : m_filesystem{std::move(filesystem)}, m_archive{std::move(archive)} {
+    std::shared_ptr<zip::util::Archive> archive,
+    std::shared_ptr<abstract::File> source)
+    : m_filesystem{std::move(filesystem)}, m_archive{std::move(archive)},
+      m_source{std::move(source)} {
   if (m_filesystem->exists(AbsPath("/META-INF/manifest.xml"))) {
     const pugi::xml_document manifest =
         xml::parse(*m_filesystem, AbsPath("/META-INF/manifest.xml"));
@@ -34,7 +36,7 @@ OpenDocumentFile::OpenDocumentFile(
 }
 
 std::shared_ptr<abstract::File> OpenDocumentFile::file() const noexcept {
-  return {};
+  return m_source;
 }
 
 FileType OpenDocumentFile::file_type() const noexcept {

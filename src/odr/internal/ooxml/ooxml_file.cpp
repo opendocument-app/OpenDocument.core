@@ -18,8 +18,10 @@ namespace odr::internal::ooxml {
 
 OfficeOpenXmlFile::OfficeOpenXmlFile(
     std::shared_ptr<abstract::ReadableFilesystem> files,
-    std::shared_ptr<zip::util::Archive> archive)
-    : m_files(std::move(files)), m_archive(std::move(archive)) {
+    std::shared_ptr<zip::util::Archive> archive,
+    std::shared_ptr<abstract::File> source)
+    : m_files(std::move(files)), m_archive(std::move(archive)),
+      m_source(std::move(source)) {
   m_file_meta = parse_file_meta(*m_files);
 
   if (m_file_meta.password_encrypted) {
@@ -28,7 +30,7 @@ OfficeOpenXmlFile::OfficeOpenXmlFile(
 }
 
 std::shared_ptr<abstract::File> OfficeOpenXmlFile::file() const noexcept {
-  return {};
+  return m_source;
 }
 
 FileType OfficeOpenXmlFile::file_type() const noexcept {

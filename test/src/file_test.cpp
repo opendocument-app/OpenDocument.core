@@ -136,6 +136,51 @@ TEST(File, a_file_read_into_memory_keeps_its_name) {
             "about.odt");
 }
 
+TEST(File, a_decoded_package_keeps_the_file_it_was_read_from) {
+  for (const FileType type : all_file_types()) {
+    if (!capabilities_by_file_type(type).create) {
+      continue;
+    }
+    std::ostringstream bytes;
+    create_document(type).save(bytes);
+    const std::string name = "blank." + file_type_to_string(type);
+    const std::size_t size = bytes.str().size();
+
+    for (const DecodedFile &decoded :
+         {open(File::from_memory(bytes.str(), name)),
+          open(File::from_memory(bytes.str(), name),
+               DecodeOptions::as(type))}) {
+      EXPECT_EQ(decoded.file().name(), name) << name;
+      EXPECT_EQ(decoded.file().size(), size) << name;
+    }
+  }
+}
+
+/// The engines that `create_document` cannot reach: ooxml in a compound file,
+/// legacy Office and iWork.
+TEST(File, a_decoded_file_on_disk_keeps_its_name) {
+  struct Case {
+    const char *path;
+    const char *name;
+  };
+  const std::array cases{
+      Case{"odr-public/docx/encrypted.docx", "encrypted.docx"},
+      Case{"odr-public/doc/file-sample_100kB.doc", "file-sample_100kB.doc"},
+      Case{"odr-public/pages/empty.pages", "empty.pages"},
+  };
+
+  for (const auto &[path, name] : cases) {
+    const DecodedFile decoded = open(TestData::test_file_path(path));
+    EXPECT_EQ(decoded.file().name(), name) << path;
+    EXPECT_EQ(open(TestData::test_file_path(path),
+                   DecodeOptions::as(decoded.file_type()))
+                  .file()
+                  .name(),
+              name)
+        << path;
+  }
+}
+
 TEST(File, copying_into_memory_uses_one_size_snapshot) {
   class ChangingFile final : public internal::abstract::File {
   public:

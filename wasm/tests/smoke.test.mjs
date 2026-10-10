@@ -75,6 +75,22 @@ describe('smoke', () => {
     }
   });
 
+  // A package reads through its archive, and still names the file it came from.
+  it('names a package upload, and leaves a new document unnamed', () => {
+    for (const [doc, name] of [
+      [odr.open(minimalOdt(), { name: 'letter.odt' }), 'letter.odt'],
+      [odr.open(minimalOdt()), ''],
+      [odr.create(odr.enums.FileType.odt), ''],
+      [odr.create(odr.enums.FileType.xlsx), ''],
+    ]) {
+      try {
+        assert.equal(doc.fileName, name);
+      } finally {
+        doc.close();
+      }
+    }
+  });
+
   it('throws a typed error for a wrong password', () => {
     const doc = odr.open(fixture('encrypted.docx'));
     try {

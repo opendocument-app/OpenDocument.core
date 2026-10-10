@@ -17,8 +17,10 @@ namespace odr::internal::oldms {
 
 class LegacyMicrosoftFile final : public abstract::DocumentFile {
 public:
+  /// @p source is the file the compound file was read from, if any.
   explicit LegacyMicrosoftFile(
-      std::shared_ptr<abstract::ReadableFilesystem> files);
+      std::shared_ptr<abstract::ReadableFilesystem> files,
+      std::shared_ptr<abstract::File> source = nullptr);
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept override;
 
@@ -39,6 +41,7 @@ public:
 
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_files;
+  std::shared_ptr<abstract::File> m_source;
   FileMeta m_file_meta;
   EncryptionState m_encryption_state{EncryptionState::unknown};
 };

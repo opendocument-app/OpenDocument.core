@@ -17,7 +17,9 @@ namespace odr::internal::iwork {
 /// An iWork package, detected from its archives and component list.
 class IworkFile final : public abstract::DocumentFile {
 public:
-  explicit IworkFile(std::shared_ptr<abstract::ReadableFilesystem> filesystem);
+  /// @p source is the file the package was read from, if any.
+  explicit IworkFile(std::shared_ptr<abstract::ReadableFilesystem> filesystem,
+                     std::shared_ptr<abstract::File> source = nullptr);
 
   [[nodiscard]] std::shared_ptr<abstract::File> file() const noexcept override;
 
@@ -33,6 +35,7 @@ public:
 
 private:
   std::shared_ptr<abstract::ReadableFilesystem> m_filesystem;
+  std::shared_ptr<abstract::File> m_source;
   FileMeta m_file_meta;
 };
 

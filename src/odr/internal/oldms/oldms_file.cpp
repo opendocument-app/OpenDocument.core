@@ -65,8 +65,9 @@ FileMeta parse_meta(const abstract::ReadableFilesystem &files) {
 } // namespace
 
 LegacyMicrosoftFile::LegacyMicrosoftFile(
-    std::shared_ptr<abstract::ReadableFilesystem> files)
-    : m_files{std::move(files)} {
+    std::shared_ptr<abstract::ReadableFilesystem> files,
+    std::shared_ptr<abstract::File> source)
+    : m_files{std::move(files)}, m_source{std::move(source)} {
   m_file_meta = parse_meta(*m_files);
 
   // An unreadable encryption marker leaves the state unknown.
@@ -79,7 +80,7 @@ LegacyMicrosoftFile::LegacyMicrosoftFile(
 }
 
 std::shared_ptr<abstract::File> LegacyMicrosoftFile::file() const noexcept {
-  return {};
+  return m_source;
 }
 
 FileType LegacyMicrosoftFile::file_type() const noexcept {

@@ -59,8 +59,9 @@ FileType parse_file_type(const abstract::ReadableFilesystem &filesystem) {
 
 } // namespace
 
-IworkFile::IworkFile(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
-    : m_filesystem{std::move(filesystem)} {
+IworkFile::IworkFile(std::shared_ptr<abstract::ReadableFilesystem> filesystem,
+                     std::shared_ptr<abstract::File> source)
+    : m_filesystem{std::move(filesystem)}, m_source{std::move(source)} {
   if (!m_filesystem->is_file(AbsPath("/Index/Document.iwa"))) {
     throw NoIworkFile();
   }
@@ -70,7 +71,9 @@ IworkFile::IworkFile(std::shared_ptr<abstract::ReadableFilesystem> filesystem)
   m_file_meta.document_type = document_type_by_file_type(m_file_meta.type);
 }
 
-std::shared_ptr<abstract::File> IworkFile::file() const noexcept { return {}; }
+std::shared_ptr<abstract::File> IworkFile::file() const noexcept {
+  return m_source;
+}
 
 FileType IworkFile::file_type() const noexcept { return m_file_meta.type; }
 
