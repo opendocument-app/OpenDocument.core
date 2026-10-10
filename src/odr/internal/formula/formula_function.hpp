@@ -153,7 +153,8 @@ void expect_arguments(const Call &call, std::size_t least, std::size_t most);
 /// (`OFFSET`, `INDIRECT`).
 [[nodiscard]] bool is_volatile(const Node &node);
 
-/// Whether a function computes references at runtime (`OFFSET`, `INDIRECT`).
+/// Whether @p node calls a function that computes a reference at runtime
+/// (`OFFSET`, `INDIRECT`).
 [[nodiscard]] bool has_dynamic_references(const Node &node);
 
 /// The function a formula names as @p name, with or without the prefix a

@@ -1,6 +1,6 @@
 #include <odr/internal/formula/formula_dependencies.hpp>
-#include <odr/internal/formula/formula_function.hpp>
 
+#include <odr/internal/formula/formula_function.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
