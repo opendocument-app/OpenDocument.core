@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <mutex>
 #include <unordered_set>
 
@@ -37,6 +38,17 @@ template <typename T> const T &deref(const std::shared_ptr<T> &impl) {
   return *impl;
 }
 
+void write_file(const Path &path,
+                const std::function<void(std::ostream &)> &write) {
+  std::filesystem::create_directories(path.parent().path());
+  std::ofstream out = util::file::create(path.string());
+  write(out);
+  out.close();
+  if (!out) {
+    throw FileWriteError(path.string());
+  }
+}
+
 void bring_offline(const HtmlResources &resources,
                    const std::string &output_path) {
   for (const auto &[resource, location] : resources) {
@@ -46,9 +58,7 @@ void bring_offline(const HtmlResources &resources,
     }
     const Path path = Path(output_path).join(RelPath(*location));
 
-    std::filesystem::create_directories(path.parent().path());
-    std::ofstream ostream = util::file::create(path.string());
-    resource.write_resource(ostream);
+    write_file(path, [&](std::ostream &out) { resource.write_resource(out); });
   }
 }
 
@@ -136,9 +146,10 @@ Html HtmlService::bring_offline(const std::string &output_path,
   for (const HtmlView &view : views) {
     const Path path = Path(output_path).join(RelPath(view.path()));
 
-    std::filesystem::create_directories(path.parent().path());
-    std::ofstream ostream = util::file::create(path.string());
-    HtmlResources view_resources = view.write_html(ostream);
+    HtmlResources view_resources;
+    write_file(path, [&](std::ostream &out) {
+      view_resources = view.write_html(out);
+    });
 
     resources.insert(resources.end(), view_resources.begin(),
                      view_resources.end());
@@ -195,11 +206,7 @@ Html HtmlView::bring_offline(const std::string &output_path) const {
 
   const Path path = Path(output_path).join(RelPath(this->path()));
 
-  {
-    std::filesystem::create_directories(path.parent().path());
-    std::ofstream ostream = util::file::create(path.string());
-    resources = write_html(ostream);
-  }
+  write_file(path, [&](std::ostream &out) { resources = write_html(out); });
 
   odr::bring_offline(resources, output_path);
 

@@ -17,6 +17,8 @@ The release run heads these entries with the version and opens a fresh
 ## Unreleased
 
 - Copied HTML views remain usable after their `HtmlService` is destroyed.
+- Offline HTML export reports failed page and resource writes, including errors
+  when closing output files.
 
 ## v7.5.0 - 2026-10-06
 
