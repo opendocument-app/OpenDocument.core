@@ -863,7 +863,7 @@ void parse_stencil_mask(DocumentParser &parser, const Dictionary &dictionary,
 
 /// Builds image bytes: JPEG passthrough or PNG/RGBA (ISO 32000-1 8.9).
 /// Resolves named colours through resources; unsupported images return no
-/// bytes. JPEG transparency is ignored.
+/// bytes. A JPEG keeps its alpha apart and drops a colour key.
 void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
                       const IndirectObject &object, XObject &x_object,
                       const Resources *resources) {
@@ -924,6 +924,7 @@ void parse_image_data(DocumentParser &parser, const Dictionary &dictionary,
       encoded.has_value()) {
     x_object.image_data = std::move(encoded->data);
     x_object.image_mime = std::move(encoded->mime);
+    x_object.image_alpha = std::move(encoded->alpha_png);
   }
 }
 

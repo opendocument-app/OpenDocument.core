@@ -27,10 +27,14 @@ bool valid_image_bit_depth(std::int32_t bits);
 struct EncodedImage {
   std::string data;
   std::string mime;
+  /// The alpha of a JPEG, which cannot hold one, as an RGBA png for the
+  /// browser to mask with. Empty where there is none.
+  std::string alpha_png;
 };
 
 /// Convert encoded samples to JPEG or PNG; nullopt if unsupported or invalid.
-/// JPEG passes through without masks; JPX ignores Decode (Table 89).
+/// JPEG passes through, its alpha apart and its colour key dropped; JPX
+/// ignores Decode (Table 89).
 std::optional<EncodedImage>
 encode_image(std::string raw, const Object &filter, const Object &decode_parms,
              std::int32_t width, std::int32_t height,

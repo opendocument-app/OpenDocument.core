@@ -174,6 +174,8 @@ struct XObject final : Element {
   /// for an undecodable image and for a stencil, so `Do` skips it.
   std::string image_data;
   std::string image_mime;
+  /// The alpha of a JPEG `image_data` as an RGBA png; empty for none.
+  std::string image_alpha;
 
   /// `/ImageMask true` (8.9.6.2): a 1-bpc stencil painted in the current fill
   /// colour, which is known only at `Do` time — so the bitmap is carried raw

@@ -631,27 +631,29 @@ public:
         return it->second;
       }
     }
+    std::string result = url(image.data, image.mime);
+    if (image.source != nullptr) {
+      m_url_by_source.emplace(image.source, result);
+    }
+    return result;
+  }
 
+  /// Keyed on the bytes: a stencil, an inline image and an alpha mask carry no
+  /// object to key on, so identical bytes reach us as separate elements.
+  std::string url(const std::string &data, const std::string &mime) {
     const std::string name =
         "image" +
-        crypto::util::hex_encode(crypto::util::sha256(image.data))
-            .substr(0, 16) +
-        extension(image.mime);
-    // a stencil and an inline image carry no object to key on, so identical
-    // bytes reach us as separate elements
+        crypto::util::hex_encode(crypto::util::sha256(data)).substr(0, 16) +
+        extension(mime);
     const auto [it, fresh] = m_url_by_name.try_emplace(name);
     if (fresh) {
       odr::HtmlResource resource = HtmlResource::create(
-          HtmlResourceType::image, image.mime, name, name,
-          File(std::make_shared<MemoryFile>(image.data)), false, false, true);
+          HtmlResourceType::image, mime, name, name,
+          File(std::make_shared<MemoryFile>(data)), false, false, true);
       HtmlResourceLocation location =
           m_config->resource_locator(resource, *m_config);
-      it->second = location.value_or(file_to_url(image.data, image.mime));
+      it->second = location.value_or(file_to_url(data, mime));
       m_resources->emplace_back(std::move(resource), std::move(location));
-    }
-
-    if (image.source != nullptr) {
-      m_url_by_source.emplace(image.source, it->second);
     }
     return it->second;
   }
@@ -673,9 +675,11 @@ private:
 
 /// Emits an image in the flipped unit square (ISO 32000-1 8.10.5), or empty.
 /// Apply clip_id to a wrapper so clipping stays in page coordinates.
+/// @p mask_id names the `<mask>` holding a JPEG's alpha; empty for none.
 std::string svg_image_fragment(const pdf::ImageElement &image,
                                const util::math::Transform2D &to_box,
                                const std::string &clip_id,
+                               const std::string &mask_id,
                                ImageRegistry &images) {
   if (image.data.empty()) {
     return {};
@@ -692,6 +696,9 @@ std::string svg_image_fragment(const pdf::ImageElement &image,
     << svg_matrix(m) << '"';
   if (image.alpha < 1) {
     f << " opacity=\"" << round2(image.alpha) << '"';
+  }
+  if (!mask_id.empty()) {
+    f << " mask=\"url(#" << mask_id << ")\"";
   }
   if (const std::string blend = blend_mode_to_css(image.blend_mode);
       !blend.empty()) {
@@ -936,7 +943,7 @@ public:
         }
         tile << svg_path_fragment(painted, util::math::Transform2D(), "", "");
       } else if (const auto *image = std::get_if<pdf::ImageElement>(&element)) {
-        tile << svg_image_fragment(*image, util::math::Transform2D(), "",
+        tile << svg_image_fragment(*image, util::math::Transform2D(), "", "",
                                    images);
       }
     }
@@ -1027,6 +1034,19 @@ public:
     m_defs << std::move(body).str() << "</mask>";
     return id;
   }
+
+  /// The alpha of a JPEG image as a `<mask>` in the image's own unit square.
+  std::string register_image_mask(const std::string &url) {
+    const auto [id, inserted] = intern("I;" + url, "m");
+    if (inserted) {
+      m_defs
+          << "<mask id=\"" << id
+          << R"(" mask-type="alpha" maskContentUnits="userSpaceOnUse">)"
+          << R"(<image width="1" height="1" preserveAspectRatio="none" href=")"
+          << xml::escape_attribute(url) << "\"/></mask>";
+    }
+    return id;
+  }
 };
 
 /// Wrap an SVG fragment in a `<g>` carrying an opacity, a soft mask and/or a
@@ -1106,8 +1126,13 @@ std::string render_graphic_fragment(
   }
   if (const auto *image = std::get_if<pdf::ImageElement>(&element)) {
     const std::string clip_id = clips.register_clip(image->clip, to_box);
-    return wrap_mask(svg_image_fragment(*image, to_box, clip_id, images),
-                     image->soft_mask);
+    const std::string mask_id = image->alpha_mask.empty()
+                                    ? ""
+                                    : masks.register_image_mask(images.url(
+                                          image->alpha_mask, "image/png"));
+    return wrap_mask(
+        svg_image_fragment(*image, to_box, clip_id, mask_id, images),
+        image->soft_mask);
   }
   if (const auto *group = std::get_if<pdf::GroupElement>(&element)) {
     if (group->children == nullptr) {

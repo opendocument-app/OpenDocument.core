@@ -592,6 +592,41 @@ TEST(PdfFile, uniform_run_at_the_floor_keeps_its_own_font_size) {
   EXPECT_FALSE(contains(html, "transform:scale("));
 }
 
+// A JPEG cannot hold an alpha, and the browser decodes it, so its `/SMask`
+// travels apart as a png the image is masked with. Without it the transparent
+// pixels show the colour the JPEG holds there, often black.
+TEST(PdfFile, a_jpeg_keeps_its_soft_mask) {
+  const std::string jpeg("\xff\xd8\xff\xd9", 4);
+  PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>")
+      .object("<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] "
+              "/Resources << /XObject << /Im1 5 0 R /Im2 7 0 R >> >> "
+              "/Contents 4 0 R >>")
+      .stream_object("", "q 50 0 0 50 10 10 cm /Im1 Do Q "
+                         "q 50 0 0 50 100 10 cm /Im2 Do Q")
+      .stream_object("/Type /XObject /Subtype /Image /Width 2 /Height 2 "
+                     "/ColorSpace /DeviceRGB /BitsPerComponent 8 "
+                     "/Filter /DCTDecode /SMask 6 0 R",
+                     jpeg)
+      .stream_object("/Type /XObject /Subtype /Image /Width 2 /Height 2 "
+                     "/ColorSpace /DeviceGray /BitsPerComponent 8",
+                     std::string("\x00\xff\xff\x00", 4))
+      .stream_object("/Type /XObject /Subtype /Image /Width 2 /Height 2 "
+                     "/ColorSpace /DeviceRGB /BitsPerComponent 8 "
+                     "/Filter /DCTDecode",
+                     jpeg);
+  const std::string bytes = builder.trailer("/Root 1 0 R").build_classic();
+
+  for (const PdfTextMode mode :
+       {PdfTextMode::dual_layer, PdfTextMode::single_layer}) {
+    const std::string html = render_html(bytes, mode);
+    EXPECT_EQ(count(html, R"(mask-type="alpha" maskContentUnits)"), 1);
+    EXPECT_EQ(count(html, R"( mask="url(#)"), 1);
+    EXPECT_EQ(count(html, "data:image/jpeg"), 2);
+  }
+}
+
 TEST(PdfFile, each_page_prints_on_a_sheet_of_its_own_size) {
   PdfFileBuilder builder;
   builder.object("<< /Type /Catalog /Pages 2 0 R >>")

@@ -108,6 +108,8 @@ struct ImageElement {
   std::vector<ClipPath> clip;
   std::string data;
   std::string mime; // e.g. "image/jpeg"
+  /// An RGBA png whose alpha masks a JPEG `data`; empty for none.
+  std::string alpha_mask;
   /// Null for an inline (`BI`) image and for a stencil.
   const XObject *source{nullptr};
   /// `/ExtGState` `ca` (the nonstroking alpha applies to images) and `/BM`.

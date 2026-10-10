@@ -39,6 +39,8 @@ The release run heads these entries with the version and opens a fresh
   it.
 - pdf text in Adobe small capitals and old-style figures (`Asmall`,
   `oneoldstyle`) is found by a search and copies as letters and digits.
+- A pdf JPEG image with a soft mask shows its transparency instead of the
+  colour the JPEG holds there, which is often black.
 
 ## v7.5.0 - 2026-10-06
 
