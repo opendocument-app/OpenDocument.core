@@ -143,6 +143,16 @@ bool formula::is_volatile(const Node &node) {
   return std::ranges::any_of(node.children, is_volatile);
 }
 
+bool formula::has_dynamic_references(const Node &node) {
+  if (const auto *call = std::get_if<FunctionCall>(&node.content)) {
+    const std::string name = canonical_name(call->name);
+    if (name == "OFFSET" || name == "INDIRECT") {
+      return true;
+    }
+  }
+  return std::ranges::any_of(node.children, has_dynamic_references);
+}
+
 formula::Function formula::find_function(const std::string_view name) {
   const auto found = functions().find(canonical_name(name));
   return found == functions().end() ? nullptr : found->second;

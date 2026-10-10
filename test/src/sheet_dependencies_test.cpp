@@ -140,6 +140,19 @@ TEST(SheetDependencies, a_formula_naming_a_named_expression_is_unresolved) {
             (std::vector<std::string>{"0!A1"}));
 }
 
+TEST(SheetDependencies, dynamic_references_are_unresolved) {
+  for (const std::string expression :
+       {"INDIRECT(&quot;A1&quot;)", "SUM(OFFSET(A1,0,1))",
+        "_xlfn.indirect(&quot;A1&quot;)", "COM.MICROSOFT.OFFSET(A1,0,1)"}) {
+    const Document document = odr::test::ooxml::decode(
+        odr::test::ooxml::workbook(R"(<row r="1"><c r="C1"><f>)" + expression +
+                                   R"(</f><v>1</v></c></row>)"));
+    EXPECT_EQ(spelled(document.unresolved_formulas()),
+              (std::vector<std::string>{"0!C1"}))
+        << expression;
+  }
+}
+
 TEST(SheetDependencies, a_formula_that_does_not_parse_is_unresolved) {
   const Document document =
       decode(flat_document(sheet("s", row(computed("of:=[.A1] +")))));

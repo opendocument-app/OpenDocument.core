@@ -1525,6 +1525,20 @@ TEST(html, a_formula_reading_nothing_states_no_rectangle) {
   EXPECT_EQ(page.find(R"(data-odr-reads=")"), std::string::npos);
 }
 
+TEST(html, unresolved_formula_reads_cover_every_edited_position) {
+  for (const std::string expression :
+       {"of:=INDIRECT(&quot;B1&quot;)", "of:=OFFSET([.A1];0;1)",
+        "of:=SUM($$Sales)", "of:=[.A1]+", "of:=SUM([Missing.A1])"}) {
+    const std::string page = render_sheet(
+        fods_file(fods_row(R"(<table:table-cell table:formula=")" + expression +
+                           R"(" office:value-type="float" office:value="7">)"
+                           R"(<text:p>7</text:p></table:table-cell>)")),
+        editing_config());
+    EXPECT_NE(page.find(R"(data-odr-reads="0,0,*,0,*")"), std::string::npos)
+        << expression;
+  }
+}
+
 // Several runs of one paragraph are one line, which a write replaces.
 TEST(html, a_cell_of_several_runs_carries_no_lock) {
   const std::string page = render_sheet(

@@ -1,5 +1,6 @@
 #include <odr/internal/formula/formula_dependencies.hpp>
 
+#include <odr/internal/formula/formula_function.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
@@ -85,6 +86,7 @@ namespace odr::internal {
 
 formula::References formula::references(const Node &node) {
   References result;
+  result.complete = !has_dynamic_references(node);
   collect(node, result);
   return result;
 }
