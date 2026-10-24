@@ -265,6 +265,66 @@ twice, and each set made the browser compute the style and the layout of
 the whole document again. It now probes in an `iframe` of its own. Whether
 the limits can go up is the next measurement.
 
+### 7. A pdf page at level 3: proposal
+
+Measured on `Core_v5.1.pdf` (2985 pages), 2026-10-24:
+
+| step | time | memory |
+|---|---|---|
+| core: parse the pdf | 0.5 s | |
+| core: render the whole-document view | 4.9 s | 761 MB peak |
+| core: render one page view | 5 to 37 ms | |
+| browser: first frame at level 1 (#1248) | 1.8 s, nearly all of it parsing the html | 2.0 GB |
+| the page: `document.html` | 127 MB: 5.4 MB of head (2.3 MB of it 89 fonts), 122 MB of pages | |
+
+So for a server, the time is in core. The page is ready after 5.4 s, and
+one page would be ready after about 40 ms. For a file that `bring_offline`
+wrote, core works once, and the reader waits for the browser.
+
+The writer renders a set of pages in one pass
+(`write_pages_dual_layer`, `write_pages_single_layer`). The pass names its
+classes and fonts as it meets them (`c0`, `odr-f1`). In `single_layer`, it
+also re-encodes each font with the code points of the runs it meets. Then
+it writes the head and the pages. A page that loads later has to bring what
+the head lacks.
+
+**Option A, the page side.** As the sheets do (decision 6, order of work
+item 5): the pass renders every page as it does now, so the head has every
+class and font. The pages after the first become scripts. A script renders
+its page again with the registries the pass kept.
+
+- The page is about 5.5 MB, not 127 MB. The browser parses and holds about
+  one page in 25 of what it does now.
+- Core still renders everything before the page goes out: 4.9 s and
+  761 MB for this file. The service keeps the registries for as long as it
+  lives.
+- A small change to the writer: the pass and the render of one page share
+  the registries.
+
+**Option B, a page on its own.** The page renders the first page only. A
+script renders its page alone.
+
+- Core work is in proportion to what the reader sees. The page is ready
+  after about 40 ms, and a script after 5 to 40 ms.
+- Two names must stop clashing between pages that are rendered apart:
+  - **Classes:** a name made from a hash of the declaration (`c3f9a2c`), not
+    a count, is the same in every render. Two pages that state the same rule
+    state it twice, which does no harm.
+  - **Fonts:** a font becomes a file of its own, which every page links,
+    so the browser loads it once. Without that, each page carries its
+    fonts: a page of this file rendered alone is about 0.5 MB, most of it
+    fonts. In `dual_layer`, the default, a font is already the same for
+    every page, because it maps each glyph to a private-use code point
+    (`reencode_to_pua`). In `single_layer`, the writer must re-encode the
+    font with all the code points of its `ToUnicode` map, not only the ones
+    the pages met.
+- A large change to the writer: the class names and the font files, and
+  the cmap of a font in `single_layer`.
+
+**Recommendation:** B, because only B makes the server fast, and the server
+is where the time is. A is the smaller step if B is too large for now. The
+cost of the browser is the same for both.
+
 ## Order of work
 
 1. **Text files, level 1.** Chunks of lines that are `hidden` until
