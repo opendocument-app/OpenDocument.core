@@ -30,6 +30,8 @@ The release run heads these entries with the version and opens a fresh
 
 ### Spreadsheets
 
+- An ods cell right after a merge at the end of its row can be written. The
+  write refused, because the new cell landed one column too far.
 - An xlsx cell with the built-in date format 14 or 22 shows the date as Excel
   shows it for en-US, for example `1/1/2014` and not `01-01-14`.
 

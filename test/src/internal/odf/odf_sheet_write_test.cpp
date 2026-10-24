@@ -208,6 +208,22 @@ TEST(OdfSheetWrite, a_cell_past_the_row_grows_the_row) {
   EXPECT_EQ(sheet.dimensions().rows, 1);
 }
 
+/// [ODF 1.2] 9.1.5: a covered cell holds a position, so a row that ends in a
+/// merge is one cell longer than the cells it states.
+TEST(OdfSheetWrite, a_cell_past_a_merge_at_the_end_of_the_row_grows_the_row) {
+  const Document document = document_of(flat_sheet(
+      R"(<table:table-cell table:number-columns-spanned="2" )"
+      R"(office:value-type="string"><text:p>a</text:p></table:table-cell>)"
+      R"(<table:covered-table-cell/>)"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(2, 0, CellValue("y"));
+
+  EXPECT_EQ(sheet.cell(2, 0).value().text(), "y");
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "a");
+  EXPECT_EQ(sheet.dimensions().columns, 3);
+}
+
 TEST(OdfSheetWrite, a_cell_past_the_last_row_grows_the_sheet) {
   const Document document = document_of(flat_sheet(string_cell("a")));
   const Sheet sheet = first_sheet(document);
