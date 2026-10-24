@@ -501,7 +501,8 @@ StyleRegistry::number_format(const std::uint32_t i) const {
     return it->second;
   }
   // ECMA-376 18.8.30, in its en-US spelling; the ids it leaves to a locale
-  // show as `General`
+  // show as `General`. An xlsx states no locale, and 14 and 22 follow the
+  // regional short date, so they take the one Excel shows for en-US
   static const std::unordered_map<std::uint32_t, number_format::Format>
       built_in = [] {
         std::unordered_map<std::uint32_t, number_format::Format> result;
@@ -515,7 +516,7 @@ StyleRegistry::number_format(const std::uint32_t i) const {
             {11, "0.00E+00"},
             {12, "# ?/?"},
             {13, "# ?\?/??"},
-            {14, "mm-dd-yy"},
+            {14, "m/d/yyyy"},
             {15, "d-mmm-yy"},
             {16, "d-mmm"},
             {17, "mmm-yy"},
@@ -523,7 +524,7 @@ StyleRegistry::number_format(const std::uint32_t i) const {
             {19, "h:mm:ss AM/PM"},
             {20, "h:mm"},
             {21, "h:mm:ss"},
-            {22, "m/d/yy h:mm"},
+            {22, "m/d/yyyy h:mm"},
             {37, "#,##0 ;(#,##0)"},
             {38, "#,##0 ;[Red](#,##0)"},
             {39, "#,##0.00;(#,##0.00)"},
