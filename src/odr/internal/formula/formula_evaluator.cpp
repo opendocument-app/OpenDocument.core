@@ -1059,7 +1059,7 @@ formula::evaluate_array(const Node &node, const SheetPosition &cell,
     Evaluator evaluator(&source, &settings, cell, &node);
     Matrix result = evaluator.array(node);
     for (Value &element : result.cells) {
-      // an element reading an empty cell shows 0
+      // an element reading an empty cell is 0, which LibreOffice shows blank
       if (element.holds<Empty>()) {
         element = Value{0.0};
       } else if (element.holds<double>() &&
