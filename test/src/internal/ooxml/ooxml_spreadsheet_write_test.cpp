@@ -192,12 +192,17 @@ TEST(OoxmlSpreadsheetWrite, the_master_of_a_shared_formula_is_refused) {
 
 /// ECMA-376 18.6.1: Excel repairs a workbook whose calc chain names a cell that
 /// holds no formula.
-TEST(OoxmlSpreadsheetWrite, a_value_over_a_formula_leaves_the_calc_chain) {
+namespace {
+
+/// A1 and B1 are formulas, and @p chain is the calc chain of the workbook.
+std::shared_ptr<internal::abstract::File>
+package_with_calc_chain(const std::string &chain) {
   internal::zip::ZipArchive zip;
   insert(
       zip, "[Content_Types].xml",
       R"(<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">)"
       R"(<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>)"
+      R"(<Override PartName="/xl/calcChain.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml"/>)"
       R"(</Types>)");
   insert(
       zip, "_rels/.rels",
@@ -223,14 +228,18 @@ TEST(OoxmlSpreadsheetWrite, a_value_over_a_formula_leaves_the_calc_chain) {
       R"(<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>)"
       R"(<row r="1"><c r="A1"><f>1+1</f><v>2</v></c><c r="B1"><f>A1+1</f><v>3</v></c></row>)"
       R"(</sheetData></worksheet>)");
-  insert(
-      zip, "xl/calcChain.xml",
-      R"(<calcChain xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">)"
-      R"(<c r="A1" i="3"/><c r="B1"/></calcChain>)");
+  insert(zip, "xl/calcChain.xml", chain);
   std::stringstream out;
   zip.save(out);
-  const Document document =
-      decode(std::make_shared<internal::MemoryFile>(out.str()));
+  return std::make_shared<internal::MemoryFile>(out.str());
+}
+
+} // namespace
+
+TEST(OoxmlSpreadsheetWrite, a_value_over_a_formula_leaves_the_calc_chain) {
+  const Document document = decode(package_with_calc_chain(
+      R"(<calcChain xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">)"
+      R"(<c r="A1" i="3"/><c r="B1"/></calcChain>)"));
 
   first_sheet(document).set_cell(0, 0, CellValue(5, "5"));
 
@@ -238,6 +247,40 @@ TEST(OoxmlSpreadsheetWrite, a_value_over_a_formula_leaves_the_calc_chain) {
   EXPECT_EQ(chain.find(R"(r="A1")"), std::string::npos) << chain;
   // the entry after it takes the sheet the removed one named
   EXPECT_NE(chain.find(R"(<c i="3" r="B1"/>)"), std::string::npos) << chain;
+}
+
+/// ECMA-376 18.6.1: a `calcChain` holds one `c` at least.
+TEST(OoxmlSpreadsheetWrite, a_calc_chain_without_a_cell_goes) {
+  const Document document = decode(package_with_calc_chain(
+      R"(<calcChain xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">)"
+      R"(<c r="A1" i="3"/></calcChain>)"));
+
+  first_sheet(document).set_cell(0, 0, CellValue(5, "5"));
+
+  const Document saved = saved_document(document);
+  EXPECT_FALSE(saved.as_filesystem().is_file("/xl/calcChain.xml"));
+  std::ostringstream relationships;
+  relationships << saved.as_filesystem()
+                       .open("/xl/_rels/workbook.xml.rels")
+                       .stream()
+                       ->rdbuf();
+  EXPECT_EQ(relationships.str().find("calcChain"), std::string::npos)
+      << relationships.str();
+  std::ostringstream types;
+  types << saved.as_filesystem().open("/[Content_Types].xml").stream()->rdbuf();
+  EXPECT_EQ(types.str().find("calcChain"), std::string::npos) << types.str();
+  EXPECT_DOUBLE_EQ(first_sheet(saved).cell(1, 0).value().number(), 6);
+}
+
+TEST(OoxmlSpreadsheetWrite, a_row_delete_that_empties_the_calc_chain_drops_it) {
+  const Document document = decode(package_with_calc_chain(
+      R"(<calcChain xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">)"
+      R"(<c r="A1" i="3"/><c r="B1"/></calcChain>)"));
+
+  first_sheet(document).delete_rows(0, 1);
+
+  EXPECT_FALSE(
+      saved_document(document).as_filesystem().is_file("/xl/calcChain.xml"));
 }
 
 /// The anchor of the merge is the cell that holds the value.

@@ -47,6 +47,11 @@ public:
   [[nodiscard]] std::vector<pugi::xml_node>
   related_parts(const AbsPath &origin, std::string_view type);
 
+  /// Drops the calc chain where an edit took its last cell, with its
+  /// relationship and its content type: ECMA-376 18.6.1 `calcChain` holds
+  /// one `c` at least.
+  void drop_empty_calc_chain();
+
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
 
@@ -58,6 +63,8 @@ private:
   SharedStrings m_shared_strings;
   /// The parts `save` writes back from their dom; the rest is byte-copied.
   std::vector<AbsPath> m_written_parts;
+  /// The parts of the package `save` leaves out.
+  std::vector<AbsPath> m_dropped_parts;
 
   ElementRegistry m_element_registry;
   StyleRegistry m_style_registry;

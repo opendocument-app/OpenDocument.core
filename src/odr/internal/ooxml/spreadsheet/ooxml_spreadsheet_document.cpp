@@ -167,7 +167,8 @@ pugi::xml_node Document::workbook() const {
 }
 
 pugi::xml_node Document::part(const AbsPath &path) {
-  if (!m_files->is_file(path)) {
+  if (!m_files->is_file(path) ||
+      std::ranges::find(m_dropped_parts, path) != m_dropped_parts.end()) {
     return {};
   }
   auto parsed = m_xml_documents_and_relations.find(path);
@@ -204,6 +205,47 @@ pugi::xml_node Document::related_part(const AbsPath &origin,
   return path.has_value() ? part(*path) : pugi::xml_node();
 }
 
+void Document::drop_empty_calc_chain() {
+  const AbsPath workbook_path("/xl/workbook.xml");
+  const std::optional<AbsPath> path =
+      parse_relationship_target(*m_files, workbook_path, "calcChain");
+  if (!path.has_value()) {
+    return;
+  }
+  if (const pugi::xml_node chain = part(*path); !chain || chain.child("c")) {
+    return;
+  }
+  std::erase(m_written_parts, *path);
+  m_xml_documents_and_relations.erase(*path);
+  m_dropped_parts.push_back(*path);
+
+  const auto leads_to_chain = [&](const pugi::xml_node relationship) {
+    if (std::string_view(relationship.attribute("TargetMode").value()) ==
+        "External") {
+      return false;
+    }
+    try {
+      return resolve_part_path(workbook_path,
+                               relationship.attribute("Target").value()) ==
+             *path;
+    } catch (const std::invalid_argument &) {
+      return false;
+    }
+  };
+  pugi::xml_node relationships = part(AbsPath("/xl/_rels/workbook.xml.rels"));
+  for (pugi::xml_node relationship = relationships.child("Relationship");
+       relationship;) {
+    const pugi::xml_node next = relationship.next_sibling("Relationship");
+    if (leads_to_chain(relationship)) {
+      relationships.remove_child(relationship);
+    }
+    relationship = next;
+  }
+  pugi::xml_node types = part(AbsPath("/[Content_Types].xml"));
+  types.remove_child(types.find_child_by_attribute("Override", "PartName",
+                                                   path->string().c_str()));
+}
+
 bool Document::is_editable() const noexcept { return true; }
 
 bool Document::is_savable(const bool encrypted) const noexcept {
@@ -235,7 +277,8 @@ void Document::save(std::ostream &out) const {
   for (auto walker = m_files->file_walker(AbsPath("/")); !walker->end();
        walker->next()) {
     const AbsPath &path = walker->path();
-    if (std::ranges::find(m_written_parts, path) != m_written_parts.end()) {
+    if (std::ranges::find(m_written_parts, path) != m_written_parts.end() ||
+        std::ranges::find(m_dropped_parts, path) != m_dropped_parts.end()) {
       continue;
     }
     const RelPath relative = path.rebase(AbsPath("/"));
@@ -550,6 +593,7 @@ public:
       drop_calc_chain_entry(
           m_document->related_part(AbsPath("/xl/workbook.xml"), "calcChain"),
           sheet_id_of(element_id), TablePosition(column, row));
+      m_document->drop_empty_calc_chain();
     }
     m_document->note_written(element_id, TablePosition(column, row));
     if (had_formula || value.has_formula()) {
@@ -949,6 +993,7 @@ public:
         m_document->workbook(), worksheets,
         m_document->related_part(AbsPath("/xl/workbook.xml"), "calcChain"),
         sheet_id_of(element_id), edit);
+    m_document->drop_empty_calc_chain();
 
     for (const auto &[position, cell] : sheet.cells) {
       if (!move_position(position, edit).has_value()) {
