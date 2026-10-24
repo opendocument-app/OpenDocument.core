@@ -118,6 +118,27 @@ TEST(html_document_style, font_family_quotes_a_name_and_adds_its_kind) {
   EXPECT_EQ(ihtml::translate_font_family("DejaVu Sans"),
             "'DejaVu Sans',sans-serif");
   EXPECT_EQ(ihtml::translate_font_family("8514oem"), "'8514oem',sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("RobotoMono-Regular"),
+            "'RobotoMono-Regular',monospace");
+}
+
+TEST(html_document_style, font_family_does_not_read_a_kind_into_a_longer_word) {
+  EXPECT_EQ(ihtml::translate_font_family("Monotype Corsiva"),
+            "'Monotype Corsiva',sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("Century Gothic"),
+            "'Century Gothic',sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("Century Schoolbook"),
+            "'Century Schoolbook',serif");
+  EXPECT_EQ(ihtml::translate_font_family("Microsoft Sans Serif"),
+            "'Microsoft Sans Serif',sans-serif");
+}
+
+TEST(html_document_style, font_family_escapes_what_ends_a_css_string) {
+  EXPECT_EQ(ihtml::translate_font_family("O'Reilly"),
+            "'O\\'Reilly',sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("a\\b"), "'a\\\\b',sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("a\nb"), "'a\\a b',sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("'open"), "'\\'open',sans-serif");
 }
 
 TEST(html_document_style, font_family_keeps_a_list_and_its_generic) {

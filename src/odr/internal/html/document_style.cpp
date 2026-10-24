@@ -10,9 +10,26 @@
 
 #include <array>
 
+#include <fmt/format.h>
+
 namespace odr::internal {
 
 namespace {
+
+/// Whether @p word is in @p family and no letter follows it: "Liberation Mono"
+/// and "RobotoMono-Regular", not "Monotype Corsiva".
+bool contains_word(const std::string_view family, const std::string_view word) {
+  for (std::size_t at = util::string::find_ignore_case(family, word);
+       at != std::string_view::npos;
+       at = util::string::find_ignore_case(family, word, at + 1)) {
+    const std::size_t after = at + word.size();
+    if (after == family.size() ||
+        !util::string::is_ascii_letter(family[after])) {
+      return true;
+    }
+  }
+  return false;
+}
 
 const char *generic_font_family(const std::string_view family) {
   static constexpr std::array monospace{
@@ -20,19 +37,17 @@ const char *generic_font_family(const std::string_view family) {
       "monaco", "cousine", "inconsolata", "source code"};
   static constexpr std::array serif{
       "times",        "georgia",     "cambria",   "garamond",
-      "book antiqua", "palatino",    "bookman",   "century",
+      "book antiqua", "palatino",    "bookman",   "century schoolbook",
       "constantia",   "baskerville", "thorndale", "tinos",
       "caladea",      "minion",      "didot",     "bodoni"};
   for (const char *name : monospace) {
-    if (util::string::find_ignore_case(family, name) !=
-        std::string_view::npos) {
+    if (contains_word(family, name)) {
       return "monospace";
     }
   }
   if (util::string::find_ignore_case(family, "sans") ==
           std::string_view::npos &&
-      util::string::find_ignore_case(family, "serif") !=
-          std::string_view::npos) {
+      contains_word(family, "serif")) {
     return "serif";
   }
   for (const char *name : serif) {
@@ -55,14 +70,54 @@ bool is_generic_font_family(const std::string_view family) {
   return false;
 }
 
+/// An ODF `svg:font-family` is a CSS list already: each entry a whole quoted
+/// string or a name of letters, digits, spaces, `-` and `_`.
+bool is_font_family_list(const std::string_view value) {
+  std::size_t begin = 0;
+  while (begin <= value.size()) {
+    const std::size_t comma = value.find(',', begin);
+    const std::string_view entry = util::string::trim_view(value.substr(
+        begin, comma == std::string_view::npos ? std::string_view::npos
+                                               : comma - begin));
+    if (entry.empty()) {
+      return false;
+    }
+    if (entry.front() == '\'' || entry.front() == '"') {
+      if (entry.size() < 2 || entry.back() != entry.front() ||
+          entry.substr(1, entry.size() - 2).find_first_of("'\"\\") !=
+              std::string_view::npos) {
+        return false;
+      }
+    } else {
+      for (const char c : entry) {
+        if (!util::string::is_ascii_letter_or_digit(c) && c != ' ' &&
+            c != '-' && c != '_' && static_cast<unsigned char>(c) < 0x80) {
+          return false;
+        }
+      }
+    }
+    if (comma == std::string_view::npos) {
+      return true;
+    }
+    begin = comma + 1;
+  }
+  return false;
+}
+
 } // namespace
 
 std::string html::translate_font_family(const std::string_view font_name) {
   const std::string_view value = util::string::trim_view(font_name);
-  if (value.find_first_of("'\",") == std::string_view::npos) {
+  if (value.find_first_of("'\",") == std::string_view::npos ||
+      !is_font_family_list(value)) {
     std::string result = "'";
     for (const char c : value) {
-      if (c == '\\') {
+      if (static_cast<unsigned char>(c) < 0x20) {
+        // a raw line break ends a CSS string
+        result += fmt::format("\\{:x} ", static_cast<unsigned char>(c));
+        continue;
+      }
+      if (c == '\\' || c == '\'') {
         result += '\\';
       }
       result += c;
