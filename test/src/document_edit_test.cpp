@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/logger.hpp>
+#include <odr/odr.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/abstract/file.hpp>
@@ -109,6 +110,42 @@ TEST(DocumentEdit, an_empty_op_clears_the_cell) {
                 R"("value":{"type":"empty"}}]})");
 
   EXPECT_EQ(first_sheet(document).cell(2, 0).value().text(), "");
+}
+
+/// The expression is in the syntax of the file, as `SheetCell::value` gives
+/// it, and a save computes it.
+TEST(DocumentEdit, a_formula_op_writes_the_formula) {
+  const Document document = three_cell_sheet();
+
+  document.edit(R"({"version":2,"ops":[)"
+                R"({"op":"setCell","sheet":0,"column":2,"row":0,)"
+                R"("value":{"type":"formula","formula":"of:=[.A1]&[.B1]"}}]})");
+
+  EXPECT_EQ(first_sheet(document).cell(2, 0).value().formula(),
+            "of:=[.A1]&[.B1]");
+  std::ostringstream out;
+  document.save(out);
+  const Document saved =
+      DecodedFile(
+          open_strategy::open_file(std::make_shared<MemoryFile>(out.str()), {},
+                                   Logger::null()))
+          .as_document_file()
+          .document();
+  EXPECT_EQ(first_sheet(saved).cell(2, 0).value().text(), "ab");
+}
+
+TEST(DocumentEdit, a_formula_op_into_a_csv_refuses) {
+  const Document document =
+      open(File::from_memory("old,next\n1,2\n"),
+           DecodeOptions::as(FileType::comma_separated_values))
+          .as_csv_file()
+          .document();
+
+  EXPECT_THROW(
+      document.edit(R"({"version":2,"ops":[)"
+                    R"({"op":"setCell","sheet":0,"column":0,"row":0,)"
+                    R"("value":{"type":"formula","formula":"1+1"}}]})"),
+      UnsupportedOperation);
 }
 
 TEST(DocumentEdit, a_text_op_names_its_element_by_id) {

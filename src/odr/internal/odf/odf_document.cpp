@@ -10,6 +10,7 @@
 #include <odr/internal/common/sheet_dependencies.hpp>
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/formula/formula_parser.hpp>
 #include <odr/internal/formula/formula_value.hpp>
 #include <odr/internal/number_format/number_format.hpp>
 #include <odr/internal/odf/odf_chart.hpp>
@@ -776,6 +777,12 @@ public:
     if (is_covered(element_id, column, row)) {
       throw UnsupportedOperation();
     }
+    // a formula a reader cannot parse would be one LibreOffice cannot either
+    if (value.has_formula() &&
+        !formula::parse(value.formula(), formula::Syntax::opendocument)
+             .has_value()) {
+      throw UnsupportedOperation();
+    }
     const ElementRegistry::Sheet::Cell *cell =
         m_registry->sheet_element_at(element_id).cell(column, row);
 
@@ -787,8 +794,8 @@ public:
       cell_id = cell->element_id;
 
       // both refusals are decided before the split writes anything
-      if (cell->node.attribute("table:formula")) {
-        throw UnsupportedOperation(); // its dependants would go stale
+      if (cell->node.attribute("table:number-matrix-columns-spanned")) {
+        throw UnsupportedOperation(); // the anchor of an array formula
       }
       if (cell_id != null_element_id && !holds_plain_lines(cell_id)) {
         throw UnsupportedOperation();
@@ -801,12 +808,17 @@ public:
     }
 
     pugi::xml_node node = get_node(cell_id);
+    const bool had_formula = bool(node.attribute("table:formula"));
     const std::string text =
         shown_value(element_id, cell_id, {column, row}, value)
             .value_or(value.has_text() ? value.text() : "");
     write_lines(cell_id, text);
 
     remove_value_attributes(node);
+    node.remove_attribute("table:formula");
+    if (value.has_formula()) {
+      node.append_attribute("table:formula").set_value(value.formula().c_str());
+    }
 
     switch (value.type()) {
     case ValueType::unknown:
@@ -839,8 +851,17 @@ public:
       throw UnsupportedOperation(); // `writable` refused it above
     }
 
+    // a formula without a result states none, not an empty one
+    if (value.has_formula() && value.type() == ValueType::unknown &&
+        !value.has_text()) {
+      drop_cell_result(
+          *m_registry->sheet_element_at(element_id).cell(column, row));
+    }
     drop_stale_results(element_id, column, row);
     m_document->note_written(element_id, TablePosition(column, row));
+    if (had_formula || value.has_formula()) {
+      m_document->drop_sheet_dependencies();
+    }
   }
 
   /// [ODF 1.2] 19.385: caches results as value attributes and `text:p`, using

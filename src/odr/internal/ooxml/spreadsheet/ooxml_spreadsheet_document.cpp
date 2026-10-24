@@ -450,12 +450,20 @@ public:
       if (m_registry->sheet_cell_element_at(cell_id).is_covered) {
         throw UnsupportedOperation(); // the anchor of the merge answers for it
       }
-      if (cell->node.child("f")) {
-        throw UnsupportedOperation(); // its dependants would go stale
+      // ECMA-376 18.3.1.40: the members of a shared group and the cells of an
+      // array read their expression from this one
+      if (const pugi::xml_node formula = cell->node.child("f");
+          formula && formula.attribute("ref")) {
+        throw UnsupportedOperation();
       }
+    }
+    if (value.has_formula() &&
+        !formula::parse(value.formula(), formula::Syntax::ooxml).has_value()) {
+      throw UnsupportedOperation();
     }
 
     pugi::xml_node node = get_node(cell_id);
+    const bool had_formula = bool(node.child("f"));
 
     m_registry->invalidate_children(cell_id);
     node.remove_children();
@@ -534,7 +542,33 @@ public:
     case ValueType::error:
       throw UnsupportedOperation(); // refused above
     }
+    if (value.has_formula()) {
+      // ahead of the result, which a recalculation writes
+      node.prepend_child("f").text().set(value.formula().c_str());
+    } else if (had_formula) {
+      drop_calc_chain_entry(
+          m_document->related_part(AbsPath("/xl/workbook.xml"), "calcChain"),
+          sheet_id_of(element_id), TablePosition(column, row));
+    }
     m_document->note_written(element_id, TablePosition(column, row));
+    if (had_formula || value.has_formula()) {
+      m_document->drop_sheet_dependencies();
+    }
+  }
+
+  /// The `sheetId` the workbook gives the sheet @p element_id.
+  [[nodiscard]] std::string
+  sheet_id_of(const ElementIdentifier element_id) const {
+    pugi::xml_node entry =
+        m_document->workbook().child("sheets").child("sheet");
+    for (ElementIdentifier id = element_first_child(m_document->root_element());
+         id != null_element_id && entry; id = element_next_sibling(id)) {
+      if (id == element_id) {
+        return entry.attribute("sheetId").value();
+      }
+      entry = entry.next_sibling("sheet");
+    }
+    return {};
   }
 
   /// ECMA-376 18.3.1.4: the result is `v` after the `f`, typed by `t`: `str`

@@ -127,11 +127,15 @@ template <typename T> T integer(const nlohmann::json &value) {
 
 /// `{"type": "number", "number": …, "text": …}`, `"date"` and `"time"` the
 /// same with days since 1899-12-30, or `"string"` with the text alone, or
-/// `"empty"` for a cell stating nothing.
+/// `"empty"` for a cell stating nothing, or `"formula"` with the expression
+/// in the syntax of the file.
 CellValue parse_cell_value(const nlohmann::json &json) {
   const auto type = json.at("type").get<std::string>();
   if (type == "empty") {
     return {};
+  }
+  if (type == "formula") {
+    return CellValue().with_formula(json.at("formula").get<std::string>());
   }
   if (type == "string") {
     return CellValue(json.at("text").get<std::string>());

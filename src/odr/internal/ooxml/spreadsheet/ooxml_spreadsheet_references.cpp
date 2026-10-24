@@ -545,6 +545,29 @@ void ooxml::spreadsheet::move_workbook_references(
   }
 }
 
+void ooxml::spreadsheet::drop_calc_chain_entry(pugi::xml_node calc_chain,
+                                               const std::string &sheet_id,
+                                               const TablePosition &position) {
+  std::string entry_sheet;
+  for (pugi::xml_node entry = calc_chain.first_child(); entry;
+       entry = entry.next_sibling()) {
+    if (const pugi::xml_attribute id = entry.attribute("i")) {
+      entry_sheet = id.value();
+    }
+    if (entry_sheet != sheet_id ||
+        TablePosition(entry.attribute("r").value()) != position) {
+      continue;
+    }
+    // ECMA-376 18.6.1: the next entry reads its sheet from this one
+    if (pugi::xml_node next = entry.next_sibling();
+        next && !next.attribute("i") && entry.attribute("i")) {
+      next.prepend_attribute("i").set_value(entry_sheet.c_str());
+    }
+    calc_chain.remove_child(entry);
+    return;
+  }
+}
+
 void ooxml::spreadsheet::move_sheet_ranges(const pugi::xml_node worksheet,
                                            const formula::SheetEdit &edit) {
   std::vector<pugi::xml_node> lost;

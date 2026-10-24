@@ -113,8 +113,8 @@ TEST(OdfSheetWrite, a_repeat_is_split_at_either_end_too) {
 TEST(OdfSheetWrite, a_refused_write_leaves_a_repeat_uncut) {
   const Document document = document_of(flat_sheet(
       R"(<table:table-cell table:number-columns-repeated="4")"
-      R"xml( table:formula="of:=SUM([.A2:.B2])" office:value-type="float")xml"
-      R"( office:value="7"><text:p>7</text:p></table:table-cell>)"));
+      R"( office:value-type="string"><text:p><text:a xlink:href="https://x.example">)"
+      R"(x</text:a></text:p></table:table-cell>)"));
   const Sheet sheet = first_sheet(document);
 
   EXPECT_THROW(sheet.set_cell(2, 0, CellValue("y")), UnsupportedOperation);
@@ -183,11 +183,69 @@ TEST(OdfSheetWrite, a_split_sheet_saves_and_reopens) {
   EXPECT_EQ(sheet.cell(3, 0).value().text(), "x");
 }
 
-TEST(OdfSheetWrite, a_formula_cell_refuses_to_be_written) {
+/// A value written over a formula takes the formula away, and what read the
+/// formula's result computes from the value.
+TEST(OdfSheetWrite, a_value_written_over_a_formula_takes_the_formula_away) {
   const Document document = document_of(
-      flat_sheet(R"xml(<table:table-cell table:formula="of:=SUM([.B1:.C1])")xml"
+      flat_sheet(R"xml(<table:table-cell table:formula="of:=SUM([.C1:.D1])")xml"
                  R"( office:value-type="float" office:value="7">)"
-                 R"(<text:p>7</text:p></table:table-cell>)"));
+                 R"(<text:p>7</text:p></table:table-cell>)"
+                 R"xml(<table:table-cell table:formula="of:=[.A1]*2")xml"
+                 R"( office:value-type="float" office:value="14">)"
+                 R"(<text:p>14</text:p></table:table-cell>)"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(0, 0, CellValue(5, "5"));
+
+  EXPECT_FALSE(sheet.cell(0, 0).value().has_formula());
+  EXPECT_DOUBLE_EQ(sheet.cell(0, 0).value().number(), 5);
+  (void)document.recalculate();
+  EXPECT_DOUBLE_EQ(sheet.cell(1, 0).value().number(), 10);
+}
+
+/// The formula goes in as the file spells one, without a result until a
+/// recalculation computes it, and a save writes both.
+TEST(OdfSheetWrite, a_formula_is_written_and_computed) {
+  const Document document = document_of(flat_sheet(
+      R"(<table:table-cell office:value-type="float" office:value="3">)"
+      R"(<text:p>3</text:p></table:table-cell>)"
+      R"xml(<table:table-cell table:formula="of:=[.C1]+1"/>)xml"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(2, 0, CellValue().with_formula("of:=[.A1]*2"));
+
+  EXPECT_EQ(sheet.cell(2, 0).value().formula(), "of:=[.A1]*2");
+  EXPECT_FALSE(sheet.cell(2, 0).value().has_number());
+  (void)document.recalculate();
+  ASSERT_TRUE(sheet.cell(2, 0).value().has_number());
+  EXPECT_DOUBLE_EQ(sheet.cell(2, 0).value().number(), 6);
+  // the graph knows the new formula, so what reads it computes too
+  ASSERT_TRUE(sheet.cell(1, 0).value().has_number());
+  EXPECT_DOUBLE_EQ(sheet.cell(1, 0).value().number(), 7);
+
+  std::ostringstream saved;
+  document.save(saved);
+  const Document reopened = document_of(saved.str());
+  EXPECT_EQ(first_sheet(reopened).cell(2, 0).value().formula(), "of:=[.A1]*2");
+  EXPECT_DOUBLE_EQ(first_sheet(reopened).cell(2, 0).value().number(), 6);
+}
+
+TEST(OdfSheetWrite, a_formula_that_does_not_parse_is_refused) {
+  const Document document = document_of(flat_sheet(string_cell("a")));
+  const Sheet sheet = first_sheet(document);
+
+  EXPECT_THROW(sheet.set_cell(0, 0, CellValue().with_formula("of:=SUM(")),
+               UnsupportedOperation);
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "a");
+}
+
+/// [ODF 1.2] 19.684: the cells of an array read their result from the anchor.
+TEST(OdfSheetWrite, the_anchor_of_an_array_formula_is_refused) {
+  const Document document = document_of(flat_sheet(
+      R"xml(<table:table-cell table:formula="of:={1;2}")xml"
+      R"( table:number-matrix-columns-spanned="2")"
+      R"( table:number-matrix-rows-spanned="1" office:value-type="float")"
+      R"( office:value="1"><text:p>1</text:p></table:table-cell>)"));
   const Sheet sheet = first_sheet(document);
 
   EXPECT_THROW(sheet.set_cell(0, 0, CellValue("y")), UnsupportedOperation);
@@ -462,14 +520,16 @@ TEST(OdfSheetWrite, an_empty_cell_of_a_repeated_row_is_written) {
   EXPECT_EQ(sheet.dimensions().rows, 3);
 }
 
-/// A formula cell can hold no cached value, and the formula refuses either
-/// way.
-TEST(OdfSheetWrite, an_empty_formula_cell_refuses_to_be_written) {
+/// A formula cell can hold no cached value, which a write replaces as well.
+TEST(OdfSheetWrite, an_empty_formula_cell_is_written) {
   const Document document = document_of(flat_sheet(
       R"xml(<table:table-cell table:formula="of:=SUM([.B1:.C1])"/>)xml"));
   const Sheet sheet = first_sheet(document);
 
-  EXPECT_THROW(sheet.set_cell(0, 0, CellValue("y")), UnsupportedOperation);
+  sheet.set_cell(0, 0, CellValue("y"));
+
+  EXPECT_EQ(sheet.cell(0, 0).value().text(), "y");
+  EXPECT_FALSE(sheet.cell(0, 0).value().has_formula());
 }
 
 /// A merged cell holds no paragraph until something is written into it.
@@ -630,15 +690,17 @@ TEST(OdfSheetWrite, a_value_read_out_of_a_cell_writes_into_another) {
   EXPECT_EQ(value.text(), "1 234,50");
 }
 
-/// Writing one waits for an evaluator, so a formula cell's value cannot be
-/// handed back either.
-TEST(OdfSheetWrite, a_value_holding_a_formula_refuses_to_be_written) {
+/// A formula cell's value goes back in with its result.
+TEST(OdfSheetWrite, a_value_holding_a_formula_is_written_with_its_result) {
   const Document document = document_of(flat_sheet(string_cell("a")));
   const Sheet sheet = first_sheet(document);
 
-  EXPECT_THROW(sheet.set_cell(
-                   0, 0, CellValue(7, "7").with_formula("of:=SUM([.B1:.C1])")),
-               UnsupportedOperation);
+  sheet.set_cell(0, 0, CellValue(7, "7").with_formula("of:=SUM([.B1:.C1])"));
+
+  const CellValue value = sheet.cell(0, 0).value();
+  EXPECT_EQ(value.formula(), "of:=SUM([.B1:.C1])");
+  EXPECT_DOUBLE_EQ(value.number(), 7);
+  EXPECT_EQ(value.text(), "7");
 }
 
 TEST(OdfSheetWrite, a_written_sheet_saves_and_reopens) {

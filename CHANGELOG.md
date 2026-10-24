@@ -33,6 +33,13 @@ The release run heads these entries with the version and opens a fresh
 
 ### Spreadsheets
 
+- `Sheet::set_cell` and the `setCell` op write a formula: `{"type":
+  "formula", "formula": "of:=[.A1]*2"}`, in the syntax of the file. A formula
+  cell can now be overwritten, except the anchor of an array or of a shared
+  xlsx formula. A save computes the new formula, and an xlsx drops the
+  `calcChain` entry of a formula that a value replaced. A csv refuses a
+  formula.
+
 - `SheetCell::number_format()` gives the format code a cell shows a number
   in, for example `0.00%`, and nothing for `General`. Python and Java have it
   too.
