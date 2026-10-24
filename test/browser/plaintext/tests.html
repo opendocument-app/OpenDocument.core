@@ -8,9 +8,8 @@
   <body data-odr-editable="true" data-odr-keyboard="navigation shortcuts">
     <!-- A `.txt` view as `translate` writes one: the lines in chunks, the
          first line of each stating the number it counts from, and no
-         `contenteditable` - the
-         mode puts that on. A chunk holds 256 lines; two lines here put the
-         chunk boundary inside the checks. -->
+         `contenteditable` - the mode puts that on. A chunk holds 256 lines;
+         two lines here put the chunk boundary inside the checks. -->
     <div class="odr-text" style="--odr-text-digits:1">
       <div class="odr-text-body odr-text-wrap">
         <div class="odr-chunk odr-chunk-near">
@@ -161,6 +160,14 @@
       check("Backspace at a line start is taken", input("deleteContentBackward") === "taken");
       check("and joins the two", lines() === "firstXY line|second line|third line");
       check("and counts from the old one again", starts() === "0|2");
+
+      function digits() {
+        return body.parentNode.style.getPropertyValue("--odr-text-digits");
+      }
+      input("insertText", "\n\n\n\n\n\n\n");
+      check("ten lines widen the gutter to two digits", digits() === "2");
+      odr.editing.undo();
+      check("and undo narrows it again", digits() === "1");
 
       // Deleting across the chunk boundary: the chunk left with no line goes,
       // because it would keep its height.

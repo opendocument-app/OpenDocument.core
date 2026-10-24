@@ -113,10 +113,9 @@
     return null;
   };
 
-  /// Where each chunk counts from, after an edit added or removed lines. The
-  /// containment of a chunk hides a counter on the chunk itself, so its first
-  /// line states it. A chunk with no line left goes, because it would keep
-  /// its height.
+  /// Where each chunk counts from, and the digits of the gutter, after an
+  /// edit added or removed lines. A chunk with no line left goes, because it
+  /// would keep its height.
   TextEditor.prototype.renumber = function () {
     var start = 0;
     for (var chunk = this.textBody.firstElementChild; chunk !== null; ) {
@@ -129,6 +128,10 @@
       }
       chunk = next;
     }
+    this.textBody.parentNode.style.setProperty(
+      "--odr-text-digits",
+      String(start).length
+    );
   };
 
   TextEditor.prototype.getLineText = function (line) {

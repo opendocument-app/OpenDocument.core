@@ -164,9 +164,8 @@ public:
         out.write_element_begin("div", chunk);
       }
 
-      // a line number is a counter, which the containment of a chunk hides
-      // from a counter on the chunk itself, so its first line states where
-      // it counts from
+      // a chunk has style containment, so the line counter does not count on
+      // past it, and its first line sets where it starts
       HtmlElementOptions line_options;
       line_options.set_inline(true);
       if (first) {
