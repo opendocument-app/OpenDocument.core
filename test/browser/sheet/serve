@@ -30,5 +30,6 @@ serve(
         "formula-chain.html",
         "formula-input.html",
         "formula-words.html",
+        "formula-arrays.html",
     ),
 )

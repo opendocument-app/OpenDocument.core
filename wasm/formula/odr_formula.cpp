@@ -209,6 +209,41 @@ val evaluate(const std::string &expression, const std::string &syntax,
   return result.has_value() ? to_js(*result) : val::null();
 }
 
+/// What @p expression computes as an array formula anchored at a cell:
+/// `{columns, rows, cells}`, the cells row by row. Null where the evaluator
+/// has no answer.
+val evaluate_array(const std::string &expression, const std::string &syntax,
+                   const std::uint32_t sheet, const std::uint32_t column,
+                   const std::uint32_t row, const val &settings,
+                   const val &source) {
+  const std::optional<formula::Syntax> parsed_syntax = syntax_of(syntax);
+  if (!parsed_syntax.has_value()) {
+    return val::null();
+  }
+  const std::optional<formula::Node> node =
+      formula::parse(expression, *parsed_syntax);
+  if (!node.has_value()) {
+    return val::null();
+  }
+  const JsCellSource cells(source, *parsed_syntax);
+  formula::Settings computing = settings_of(settings);
+  computing.random = page_random;
+  const std::optional<formula::Matrix> result = formula::evaluate_array(
+      *node, SheetPosition(sheet, column, row), cells, computing);
+  if (!result.has_value()) {
+    return val::null();
+  }
+  val values = val::array();
+  for (const formula::Value &value : result->cells) {
+    values.call<void>("push", to_js(value));
+  }
+  val out = val::object();
+  out.set("columns", result->columns);
+  out.set("rows", result->rows);
+  out.set("cells", values);
+  return out;
+}
+
 /// The text a cell with the format @p code shows for @p number, in the
 /// language of the BCP 47 tag @p locale. Null where @p code is no format code.
 val format(const double number, const std::string &code,
@@ -378,6 +413,7 @@ val boolean_words(const std::string &locale, const std::string &shown_true,
 
 EMSCRIPTEN_BINDINGS(odr_formula) {
   emscripten::function("evaluate", &evaluate);
+  emscripten::function("evaluateArray", &evaluate_array);
   emscripten::function("format", &format);
   emscripten::function("category", &category);
   emscripten::function("serial", &serial);

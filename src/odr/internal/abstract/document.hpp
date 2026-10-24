@@ -453,6 +453,11 @@ public:
       [[maybe_unused]] ElementIdentifier element_id) const {
     return std::nullopt;
   }
+  /// The columns and rows an array formula fills, where the cell states one.
+  [[nodiscard]] virtual std::optional<TableDimensions>
+  sheet_cell_array_span([[maybe_unused]] ElementIdentifier element_id) const {
+    return std::nullopt;
+  }
 };
 
 class MasterPageAdapter {

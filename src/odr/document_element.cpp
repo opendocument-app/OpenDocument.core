@@ -573,6 +573,11 @@ std::optional<std::string> SheetCell::number_format() const {
                    : std::nullopt;
 }
 
+std::optional<TableDimensions> SheetCell::array_span() const {
+  return exists_() ? m_adapter2->sheet_cell_array_span(m_identifier)
+                   : std::nullopt;
+}
+
 CellValue SheetCell::value() const {
   if (!exists_()) {
     return {};

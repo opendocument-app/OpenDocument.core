@@ -33,8 +33,10 @@ The release run heads these entries with the version and opens a fresh
 
 ### Spreadsheets
 
-- A recalculation and a save compute an array formula and every cell of the
-  range it fills, in an ods and an xlsx. A function maps over the elements
+- A recalculation, a save and the sheet page compute an array formula and
+  every cell of the range it fills, in an ods and an xlsx. The page locks
+  the range with the new code `array` (1013), and refuses a row or column
+  edit through it. `SheetCell::array_span()` gives the range. A function maps over the elements
   of an array, as `SUM(LEN(A1:A3))` reads three lengths, also in
   `SUMPRODUCT`.
 - The formula evaluator computes `NOW`, `TODAY`, `RAND`, `RANDBETWEEN` and

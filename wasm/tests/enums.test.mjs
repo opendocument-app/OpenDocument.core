@@ -103,5 +103,6 @@ describe('enums', () => {
     assert.equal(enums.ErrorCode.outOfScope, 1010);
     assert.equal(enums.ErrorCode.sheetCut, 1011);
     assert.equal(enums.ErrorCode.formulaInvalid, 1012);
+    assert.equal(enums.ErrorCode.array, 1013);
   });
 });

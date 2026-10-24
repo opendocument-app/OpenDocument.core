@@ -1729,6 +1729,23 @@ public:
         .table_cell_style;
   }
 
+  /// [ODF 1.2] 19.684 `table:number-matrix-columns-spanned`.
+  [[nodiscard]] std::optional<TableDimensions>
+  sheet_cell_array_span(const ElementIdentifier element_id) const override {
+    if (m_registry->sheet_cell_element(element_id) == nullptr) {
+      return std::nullopt;
+    }
+    const pugi::xml_node node = get_node(element_id);
+    const pugi::xml_attribute columns =
+        node.attribute("table:number-matrix-columns-spanned");
+    if (!columns || !node.attribute("table:formula")) {
+      return std::nullopt;
+    }
+    return TableDimensions(
+        node.attribute("table:number-matrix-rows-spanned").as_uint(1),
+        columns.as_uint(1));
+  }
+
   [[nodiscard]] std::optional<std::string>
   sheet_number_format(const ElementIdentifier element_id,
                       const std::uint32_t column,

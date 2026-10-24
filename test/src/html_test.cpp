@@ -1562,6 +1562,28 @@ TEST(html, an_editable_page_states_the_format_of_every_cell) {
             std::string::npos);
 }
 
+// The page computes an array formula's range, and edits no part of it.
+TEST(html, an_array_formula_states_its_range_and_locks_it) {
+  const DecodedFile file = fods_file(
+      fods_row(R"(<table:table-cell office:value-type="float")"
+               R"( office:value="1"><text:p>1</text:p></table:table-cell>)"
+               R"xml(<table:table-cell table:formula="of:=[.A1:.A2]*2")xml"
+               R"( table:number-matrix-columns-spanned="1")"
+               R"( table:number-matrix-rows-spanned="2")"
+               R"( office:value-type="float" office:value="2">)"
+               R"(<text:p>2</text:p></table:table-cell>)") +
+      fods_row(R"(<table:table-cell office:value-type="float")"
+               R"( office:value="2"><text:p>2</text:p></table:table-cell>)"
+               R"(<table:table-cell office:value-type="float")"
+               R"( office:value="4"><text:p>4</text:p></table:table-cell>)"));
+
+  const std::string page = render_sheet(file, editing_config());
+  EXPECT_NE(page.find(R"(data-odr-array="1,2")"), std::string::npos);
+  EXPECT_EQ(count(page, R"(data-odr-lock="array")"), 2u);
+  EXPECT_EQ(render_sheet(file, HtmlConfig()).find("data-odr-array"),
+            std::string::npos);
+}
+
 // A formula that reads a name computes in the page too.
 TEST(html, an_editable_page_states_the_names_of_the_document) {
   const DecodedFile file = fods_file(

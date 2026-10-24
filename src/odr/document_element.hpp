@@ -9,10 +9,10 @@
 
 #include <odr/definitions.hpp>
 #include <odr/quantity.hpp>
+#include <odr/table_dimension.hpp>
 
 namespace odr {
 struct TablePosition;
-struct TableDimensions;
 class File;
 struct TextStyle;
 struct ParagraphStyle;
@@ -444,6 +444,9 @@ public:
   /// The format code the cell shows a number in, as MS-XLS 2.4.126 spells
   /// it: `0.00%`. Nothing for `General`.
   [[nodiscard]] std::optional<std::string> number_format() const;
+  /// The columns and rows the cell's array formula fills, from the cell on.
+  /// Nothing for a cell that states no array formula.
+  [[nodiscard]] std::optional<TableDimensions> array_span() const;
 };
 
 /// Represents a page element in a document.
