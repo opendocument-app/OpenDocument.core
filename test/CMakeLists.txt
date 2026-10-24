@@ -40,6 +40,7 @@ add_executable(odr_test
         "src/odr_test.cpp"
         "src/pdf_annotate_test.cpp"
         "src/quantity_test.cpp"
+        "src/save_corpus_test.cpp"
         "src/formula_corpus_test.cpp"
         "src/sheet_dependencies_test.cpp"
         "src/sheet_recalculation_test.cpp"

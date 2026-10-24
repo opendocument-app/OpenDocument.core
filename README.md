@@ -74,6 +74,15 @@ brew install ghostscript
 python test/scripts/check_pdf_text.py test/data/input build/test/output
 ```
 
+`SaveCorpus` edits a few words in every editable corpus document, saves it,
+and keeps the file under `build/test/output/saved`. Our own reader accepts
+packages that LibreOffice refuses, so load the saved files in LibreOffice
+before a change to a save path lands.
+
+```bash
+python test/scripts/check_saved_files.py build/test/output/saved
+```
+
 To compare the rendered output against the reference output in a browser, run
 the [compare-html](https://github.com/opendocument-app/compare-html) server:
 
