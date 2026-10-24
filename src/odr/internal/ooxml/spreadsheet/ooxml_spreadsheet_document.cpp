@@ -175,6 +175,86 @@ std::vector<formula::Name> Document::formula_names() const {
   return result;
 }
 
+std::vector<formula::ExternalSheet> Document::formula_external_sheets() const {
+  std::vector<formula::ExternalSheet> result;
+  const AbsPath workbook_path("/xl/workbook.xml");
+  const Relations &relations = relations_of(workbook_path);
+  // ECMA-376 18.2.9: a formula names a book by its place among them, from 1
+  std::uint32_t index = 0;
+  for (const pugi::xml_node reference :
+       workbook().child("externalReferences").children("externalReference")) {
+    ++index;
+    const auto target = relations.find(reference.attribute("r:id").value());
+    if (target == relations.end()) {
+      continue;
+    }
+    const std::optional<AbsPath> path = [&]() -> std::optional<AbsPath> {
+      try {
+        return resolve_part_path(workbook_path, target->second);
+      } catch (const std::invalid_argument &) {
+        return std::nullopt;
+      }
+    }();
+    if (!path.has_value() || !m_files->is_file(*path)) {
+      continue;
+    }
+    // ECMA-376 18.14.7: the sheet names, and per sheet the cells it caches
+    const pugi::xml_document part = xml::parse(*m_files, *path);
+    const pugi::xml_node book =
+        part.child("externalLink").child("externalBook");
+    std::vector<std::string> names;
+    for (const pugi::xml_node name : book.child("sheetNames").children()) {
+      names.emplace_back(name.attribute("val").value());
+    }
+    for (const pugi::xml_node data :
+         book.child("sheetDataSet").children("sheetData")) {
+      const std::uint32_t sheet = data.attribute("sheetId").as_uint();
+      if (sheet >= names.size()) {
+        continue;
+      }
+      formula::ExternalSheet copy{std::to_string(index), names[sheet], {}};
+      // a cell this cannot read drops the copy, so nothing reads it as empty
+      bool readable = true;
+      for (const pugi::xml_node row : data.children("row")) {
+        for (const pugi::xml_node cell : row.children("cell")) {
+          if (!cell.attribute("r")) {
+            readable = false;
+            continue;
+          }
+          const pugi::xml_node v = cell.child("v");
+          if (!v) {
+            continue; // an empty cell
+          }
+          const std::string_view type = cell.attribute("t").value();
+          std::optional<formula::Value> read;
+          if (type == "str") {
+            read = formula::Value{std::string(v.text().get())};
+          } else if (type == "b") {
+            read = formula::Value{std::string_view(v.text().get()) == "1"};
+          } else if (type == "e") {
+            if (const std::optional<formula::ErrorType> error =
+                    formula::error_of_text(v.text().get())) {
+              read = formula::Value{*error};
+            }
+          } else if (type.empty() || type == "n") {
+            read = formula::Value{v.text().as_double()};
+          }
+          if (!read.has_value()) {
+            readable = false;
+            continue;
+          }
+          copy.cells.emplace_back(TablePosition(cell.attribute("r").value()),
+                                  std::move(*read));
+        }
+      }
+      if (readable) {
+        result.push_back(std::move(copy));
+      }
+    }
+  }
+  return result;
+}
+
 formula::Settings Document::formula_settings() const {
   return formula::Settings{.epoch = m_epoch};
 }

@@ -31,6 +31,8 @@ public:
   [[nodiscard]] formula::Settings formula_settings() const override;
   /// The `definedName` entries of the workbook.
   [[nodiscard]] std::vector<formula::Name> formula_names() const override;
+  [[nodiscard]] std::vector<formula::ExternalSheet>
+  formula_external_sheets() const override;
 
   /// The `workbook` element of `xl/workbook.xml`.
   [[nodiscard]] pugi::xml_node workbook() const;

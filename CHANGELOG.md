@@ -33,6 +33,9 @@ The release run heads these entries with the version and opens a fresh
 
 ### Spreadsheets
 
+- A recalculation and a save compute a reference into another document from
+  the copy the file caches: the hidden sheet of an ods, and the
+  `externalLink` part of an xlsx.
 - A recalculation, a save and the sheet page compute an array formula and
   every cell of the range it fills, in an ods and an xlsx. The page locks
   the range with the new code `array` (1013), and refuses a row or column

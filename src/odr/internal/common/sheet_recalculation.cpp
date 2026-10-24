@@ -129,6 +129,11 @@ public:
   name(const std::string_view name, const std::uint32_t sheet) const override {
     return m_base->name(name, sheet);
   }
+  [[nodiscard]] std::optional<std::uint32_t>
+  external_sheet(const std::string_view document,
+                 const std::string_view sheet) const override {
+    return m_base->external_sheet(document, sheet);
+  }
 
   [[nodiscard]] std::optional<formula::Value>
   cell(const SheetPosition &position) const override {

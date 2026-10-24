@@ -491,11 +491,12 @@ private:
   /// The rectangle two corners span, on the sheet the first names.
   [[nodiscard]] Area area(const CellReference &from,
                           const CellReference &to) const {
-    if (from.document.has_value() || to.document.has_value()) {
-      throw NoAnswer{};
-    }
-    const std::uint32_t sheet = sheet_of(from.sheet, m_cell.sheet);
-    if (to.sheet.has_value() && sheet_of(to.sheet, sheet) != sheet) {
+    const std::uint32_t sheet = from.document.has_value()
+                                    ? external_sheet_of(from, to)
+                                    : sheet_of(from.sheet, m_cell.sheet);
+    if (!from.document.has_value() &&
+        (to.document.has_value() ||
+         (to.sheet.has_value() && sheet_of(to.sheet, sheet) != sheet))) {
       throw NoAnswer{}; // over several sheets
     }
     const TableDimensions extent = m_source->extent(sheet);
@@ -517,6 +518,24 @@ private:
             {std::max(from_column, to_column), std::max(from_row, to_row)}),
         !from.row.has_value() || !to.row.has_value(),
         !from.column.has_value() || !to.column.has_value()};
+  }
+
+  /// The sheet holding the copy the file caches of the sheet of another
+  /// document that both corners name.
+  [[nodiscard]] std::uint32_t external_sheet_of(const CellReference &from,
+                                                const CellReference &to) const {
+    if (!from.sheet.has_value() ||
+        (to.document.has_value() && to.document != from.document) ||
+        (to.sheet.has_value() &&
+         !str::equals_ignore_case(*to.sheet, *from.sheet))) {
+      throw NoAnswer{};
+    }
+    const std::optional<std::uint32_t> sheet =
+        m_source->external_sheet(*from.document, *from.sheet);
+    if (!sheet.has_value()) {
+      throw NoAnswer{};
+    }
+    return *sheet;
   }
 
   [[nodiscard]] std::uint32_t sheet_of(const std::optional<std::string> &name,

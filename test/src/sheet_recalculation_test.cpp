@@ -16,6 +16,7 @@
 #include <cmath>
 #include <cstdint>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -315,6 +316,70 @@ TEST(SheetRecalculation, a_cell_an_array_formula_spans_computes_with_it) {
   EXPECT_EQ(value_at(document, 2, 1).number(), 21);
   const Document saved = reloaded(document);
   EXPECT_EQ(value_at(saved, 2, 1).number(), 21);
+}
+
+// ECMA-376 18.14: the copy of another workbook that Excel caches, as it reads
+// one while the workbook is closed.
+TEST(SheetRecalculation, a_reference_into_another_workbook_reads_its_copy) {
+  internal::zip::ZipArchive zip;
+  const std::string main =
+      R"(xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" )"
+      R"(xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships")";
+  const std::string relationships =
+      R"(xmlns="http://schemas.openxmlformats.org/package/2006/relationships")";
+  test::ooxml::insert(
+      zip, "_rels/.rels",
+      "<Relationships " + relationships +
+          R"(><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>)");
+  test::ooxml::insert(
+      zip, "xl/workbook.xml",
+      "<workbook " + main +
+          R"(><sheets><sheet name="s" sheetId="1" r:id="rId1"/></sheets>)"
+          R"(<externalReferences><externalReference r:id="rId2"/>)"
+          R"(</externalReferences></workbook>)");
+  test::ooxml::insert(
+      zip, "xl/_rels/workbook.xml.rels",
+      "<Relationships " + relationships +
+          R"(><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>)"
+          R"(<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLink" Target="externalLinks/externalLink1.xml"/></Relationships>)");
+  test::ooxml::insert(
+      zip, "xl/externalLinks/externalLink1.xml",
+      "<externalLink " + main +
+          R"(><externalBook r:id="rId1"><sheetNames><sheetName val="Data"/>)"
+          R"(<sheetName val="Dates"/></sheetNames><sheetDataSet>)"
+          R"(<sheetData sheetId="0"><row r="1"><cell r="A1"><v>5</v></cell>)"
+          R"(<cell r="B1"><v>7</v></cell><cell r="C1"/></row>)"
+          R"(<row r="2"><cell r="A2" t="str"><v>x</v></cell>)"
+          R"(<cell r="B2"><v>11</v></cell></row></sheetData>)"
+          R"(<sheetData sheetId="1"><row r="1"><cell r="A1" t="d">)"
+          R"(<v>2024-01-01</v></cell></row></sheetData>)"
+          R"(</sheetDataSet></externalBook></externalLink>)");
+  test::ooxml::insert(
+      zip, "xl/worksheets/sheet1.xml",
+      "<worksheet " + main +
+          R"(><sheetData><row r="1"><c r="A1"><f>[1]Data!A1*2</f></c>)"
+          R"(<c r="B1"><f>SUM([1]Data!A1:B2)</f></c>)"
+          R"(<c r="C1"><f>[1]data!A2</f></c>)"
+          R"(<c r="D1"><f>[2]Data!A1</f></c>)"
+          R"(<c r="E1"><f>[1]Other!A1</f></c>)"
+          R"(<c r="F1"><f>[1]Data!C1&amp;"y"</f></c>)"
+          R"(<c r="G1"><f>[1]Dates!A1</f></c></row></sheetData></worksheet>)");
+  std::stringstream out;
+  zip.save(out);
+  const Document document =
+      decode(std::make_shared<internal::MemoryFile>(out.str()));
+
+  const Recalculation result = document.recalculate();
+
+  EXPECT_EQ(value_at(document, 0, 0).number(), 10);
+  EXPECT_EQ(value_at(document, 1, 0).number(), 23);
+  EXPECT_EQ(value_at(document, 2, 0).text(), "x");
+  // a cell the copy states without a value is empty
+  EXPECT_EQ(value_at(document, 5, 0).text(), "y");
+  // a book the file names nothing for, a sheet its copy lacks, and a copy
+  // with a cell of a type this does not read
+  EXPECT_EQ(spelled(result.unevaluated()),
+            (std::vector<std::string>{"0!D1", "0!E1", "0!G1"}));
 }
 
 TEST(SheetRecalculation, an_unedited_document_keeps_its_results) {

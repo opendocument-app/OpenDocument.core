@@ -37,6 +37,14 @@ public:
       const Area &area,
       const std::function<void(const SheetPosition &,
                                const std::optional<Value> &)> &visit) const;
+  /// The sheet that holds the cached copy of @p sheet of another document,
+  /// which a formula names as @p document: `1` in `[1]Sheet1!A1`, the url
+  /// in `['file:///x.ods'#$Sheet1.A1]`. Nothing where the file caches none.
+  [[nodiscard]] virtual std::optional<std::uint32_t>
+  external_sheet([[maybe_unused]] std::string_view document,
+                 [[maybe_unused]] std::string_view sheet) const {
+    return std::nullopt;
+  }
   /// What @p name stands for in a formula on @p sheet: a name local to the
   /// sheet, else one of the whole document, read without case. Nothing where
   /// the document defines none, or one that does not parse.
