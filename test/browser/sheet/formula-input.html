@@ -22,6 +22,7 @@
       <col style="width: 80px" />
       <col style="width: 80px" />
       <col style="width: 80px" />
+      <col style="width: 80px" />
       <thead>
         <tr>
           <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
@@ -29,6 +30,7 @@
           <th class="odr-sheet-column-header">B</th>
           <th class="odr-sheet-column-header">C</th>
           <th class="odr-sheet-column-header">D</th>
+          <th class="odr-sheet-column-header">E</th>
         </tr>
       </thead>
       <tbody>
@@ -38,6 +40,7 @@
           <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">2</td>
           <td class="odr-value-type-float" data-odr-formula="of:=[.A1]+[.B1]" data-odr-reads="0,0,1,0,0" style="max-width:0;white-space:nowrap">3</td>
           <td style="max-width:0;white-space:nowrap"></td>
+          <td data-odr-format="0.00" style="max-width:0;white-space:nowrap"></td>
         </tr>
       </tbody>
     </table>
@@ -140,6 +143,9 @@
         odr.editing.editAt(3, 0);
         check("a function name keeps its dot", editor().value === "=STDEV.S(A1;B1;0,5)", editor().value);
         editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+
+        type(4, 0, "=A1/4");
+        check("a typed formula shows in the format of its cell", text(4, 0) === "0,25", text(4, 0));
       });
     </script>
   </body>

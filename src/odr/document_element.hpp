@@ -423,6 +423,10 @@ public:
   [[nodiscard]] TableRowStyle row_style(std::uint32_t row) const;
   [[nodiscard]] TableCellStyle cell_style(std::uint32_t column,
                                           std::uint32_t row) const;
+  /// @ref SheetCell::number_format by position, so an empty cell has one too:
+  /// the format of its row or its column.
+  [[nodiscard]] std::optional<std::string>
+  cell_number_format(std::uint32_t column, std::uint32_t row) const;
 };
 
 /// Represents a sheet cell element in a document.

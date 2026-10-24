@@ -427,6 +427,16 @@ void Sheet::clear_cell(const std::uint32_t column,
 
 namespace {
 
+/// Nothing for `General`, which some engines spell out.
+std::optional<std::string> without_general(std::optional<std::string> code) {
+  if (code.has_value() &&
+      (code->empty() ||
+       internal::util::string::equals_ignore_case(*code, "General"))) {
+    return std::nullopt;
+  }
+  return code;
+}
+
 /// What no engine writes into a cell style.
 void refuse_unwritable(const TableCellStyle &cell_style,
                        const TextStyle &text_style) {
@@ -530,6 +540,14 @@ TableCellStyle Sheet::cell_style(const std::uint32_t column,
                    : TableCellStyle();
 }
 
+std::optional<std::string>
+Sheet::cell_number_format(const std::uint32_t column,
+                          const std::uint32_t row) const {
+  return exists_() ? without_general(m_adapter2->sheet_number_format(
+                         m_identifier, column, row))
+                   : std::nullopt;
+}
+
 TablePosition SheetCell::position() const {
   return exists_() ? m_adapter2->sheet_cell_position(m_identifier)
                    : TablePosition(0, 0);
@@ -550,17 +568,9 @@ ValueType SheetCell::value_type() const {
 }
 
 std::optional<std::string> SheetCell::number_format() const {
-  if (!exists_()) {
-    return std::nullopt;
-  }
-  std::optional<std::string> result =
-      m_adapter2->sheet_cell_number_format(m_identifier);
-  if (result.has_value() &&
-      (result->empty() ||
-       internal::util::string::equals_ignore_case(*result, "General"))) {
-    return std::nullopt;
-  }
-  return result;
+  return exists_() ? without_general(
+                         m_adapter2->sheet_cell_number_format(m_identifier))
+                   : std::nullopt;
 }
 
 CellValue SheetCell::value() const {

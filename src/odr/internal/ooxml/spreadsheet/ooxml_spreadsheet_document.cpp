@@ -1311,6 +1311,20 @@ public:
     return m_document->style_registry().cell_style(*format).table_cell_style;
   }
 
+  [[nodiscard]] std::optional<std::string>
+  sheet_number_format(const ElementIdentifier element_id,
+                      const std::uint32_t column,
+                      const std::uint32_t row) const override {
+    const ElementRegistry::Sheet &sheet_element =
+        m_registry->sheet_element_at(element_id);
+    return m_document->style_registry()
+        .number_format(shown_format(sheet_element.cell_node(column, row),
+                                    sheet_element.row_node(row),
+                                    sheet_element.column_node(column))
+                           .value_or(0))
+        .code();
+  }
+
   [[nodiscard]] TablePosition
   sheet_cell_position(const ElementIdentifier element_id) const override {
     return m_registry->sheet_cell_element_at(element_id).position;

@@ -411,6 +411,14 @@ public:
   [[nodiscard]] virtual TableCellStyle
   sheet_cell_style(ElementIdentifier element_id, std::uint32_t column,
                    std::uint32_t row) const = 0;
+  /// The format code the cell at the position shows a number in, an empty
+  /// one too. Nothing for an engine that states none.
+  [[nodiscard]] virtual std::optional<std::string>
+  sheet_number_format([[maybe_unused]] ElementIdentifier element_id,
+                      [[maybe_unused]] std::uint32_t column,
+                      [[maybe_unused]] std::uint32_t row) const {
+    return std::nullopt;
+  }
 };
 
 class SheetCellAdapter {
