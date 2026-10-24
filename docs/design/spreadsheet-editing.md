@@ -2,9 +2,11 @@
 
 Status: cells edit and save in `.ods`, `.xlsx` and `.csv`, with their
 styles, number formats, dates, and inserted and deleted rows and columns.
-Formulas parse, track their dependents and evaluate. A recalculation and a
-save write the results the evaluator computes. An editable sheet page
-computes its formula cells as the user edits, and takes formula input.
+Formulas parse, track their dependents and evaluate, array formulas,
+iterated cycles and references into other documents included. A
+recalculation and a save write the results the evaluator computes. An
+editable sheet page computes its formula cells as the user edits, and takes
+formula input with function names in the language of the document.
 
 Related: [`editing.md`](editing.md) holds the mode frame every editor shares,
 [`document-editing.md`](document-editing.md) the document view and
@@ -341,8 +343,7 @@ and the commits name. Git holds the full text of each decision.
     with one reads anything and computes on every recalculation. `NOW`,
     `TODAY`, `RAND` and `RANDBETWEEN` read the clock and the random numbers
     in `formula::Settings`, which a recalculation and the page state, so
-    they compute every time too. `INFO` and a localized function name have
-    no answer.
+    they compute every time too. `INFO` has no answer.
   - A reference into another document reads the copy the file caches, as
     the applications do while that document is closed: an `.ods` holds it
     as a hidden sheet, `'file:///x.ods'#Sheet1`, and an `.xlsx` in an
@@ -420,9 +421,13 @@ and the commits name. Git holds the full text of each decision.
   without an answer `odr-sheet-stale` and raises `odr.onCellsStale`, so an
   undo takes its marks back.
 
-## Open work
+## Limits
 
-- **Out of the evaluator so far:** a dynamic array that the edit makes
-  larger or smaller than the range the file states, a cell another document
-  holds that its copy lacks, `INFO`, and localized function names. Each
-  cell that needs one stays without an answer (decision 29).
+These stay without an answer (decision 29), by choice:
+
+- **A dynamic array that an edit makes larger or smaller.** It fills the
+  range the file states. A spill also needs the writers to move the range.
+- **A cell that the cached copy of another document lacks.** No application
+  can compute it while that document is closed. The page holds no copy, so
+  a formula that reads another document stays stale there.
+- **`INFO`.** It reports the application and the system that compute it.
