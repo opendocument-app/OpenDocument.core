@@ -23,6 +23,9 @@ body{margin:0;background:var(--odr-sheet-canvas)}
 .odr-sheet-head{position:sticky;top:0;z-index:2}
 /* The border between two chunks is drawn once, as inside a table. */
 .odr-sheet-rows+.odr-sheet-rows{margin-top:-1px}
+/* A chunk that has not loaded its rows yet holds the height they will take,
+   so the page does not move when they come. */
+.odr-sheet-rows[data-odr-chunk-src]{height:var(--odr-chunk-height)}
 .odr-sheet col.odr-sheet-gutter{width:var(--odr-sheet-gutter)}
 /* The sheet's own cells, not a table the document itself drew inside one. The
    font is what anything in a cell falls back to, a string written straight

@@ -733,6 +733,49 @@ TEST(html, a_text_file_loads_its_later_chunks) {
   EXPECT_EQ(editable.str().find(R"(data-odr-chunk-src=")"), std::string::npos);
 }
 
+// The rows of a sheet after its first chunk load as scripts too, which the
+// document service serves.
+TEST(html, a_sheet_loads_its_later_chunks) {
+  std::string csv;
+  for (std::uint32_t row = 0; row < 300; ++row) {
+    for (std::uint32_t column = 0; column < 20; ++column) {
+      csv += (column == 0 ? "" : ",") + std::string("r") +
+             std::to_string(row + 1) + "c" + std::to_string(column + 1);
+    }
+    csv += "\n";
+  }
+  const DecodedFile file =
+      open(File::from_memory(csv), DecodeOptions::as_csv({}));
+  HtmlConfig config;
+  config.lazy_loading = true;
+  const HtmlService service = html::translate(file, config, Logger::null());
+  const std::string path = service.list_views().at(1).path();
+
+  std::ostringstream page;
+  const HtmlResources resources = service.write_html(path, page);
+  // 4096 cells over 20 columns make chunks of 204 rows
+  EXPECT_NE(page.str().find(">r204c1<"), std::string::npos);
+  EXPECT_EQ(page.str().find(">r205c1<"), std::string::npos);
+  EXPECT_NE(page.str().find(R"(data-odr-chunk="0-1")"), std::string::npos);
+  EXPECT_TRUE(std::ranges::any_of(resources, [](const auto &resource) {
+    return resource.second == "sheet0-chunks/1.js";
+  }));
+
+  ASSERT_TRUE(service.exists("sheet0-chunks/1.js"));
+  std::ostringstream chunk;
+  service.write("sheet0-chunks/1.js", chunk);
+  EXPECT_TRUE(chunk.str().starts_with(R"(odr.chunks.fill("0-1",)"));
+  EXPECT_NE(chunk.str().find(">205\\u003c/th>"), std::string::npos);
+  EXPECT_NE(chunk.str().find(">r300c20\\u003c/"), std::string::npos);
+
+  // an editable render writes every row into the page
+  config.editable = true;
+  std::ostringstream editable;
+  html::translate(file, config, Logger::null()).write_html(path, editable);
+  EXPECT_NE(editable.str().find(">r300c20<"), std::string::npos);
+  EXPECT_EQ(editable.str().find(R"(data-odr-chunk-src=")"), std::string::npos);
+}
+
 // Without lazy layout the browser lays out everything, so no view writes a
 // chunk, nor the style that hides one.
 TEST(html, lazy_layout_off_writes_no_chunk) {
@@ -1170,6 +1213,32 @@ std::string render_image_odt(const std::string &source,
       .at(0)
       .write_html(out);
   return std::move(out).str();
+}
+
+// The page still lists the resources of the rows that load later, so
+// `bring_offline` writes them.
+TEST(html, a_sheet_lists_the_images_of_a_chunk_that_loads_later) {
+  std::string rows;
+  for (std::uint32_t row = 0; row < 300; ++row) {
+    rows += fods_row(
+        row == 280 ? R"(<table:table-cell><text:p><draw:frame svg:width="1in")"
+                     R"( svg:height="1in"><draw:image)"
+                     R"( xlink:href="https://x.example/a.png"/></draw:frame>)"
+                     R"(</text:p></table:table-cell>)"
+                   : fods_cell("x"));
+  }
+  HtmlConfig config = external_content_config();
+  config.lazy_loading = true;
+  const HtmlService service =
+      html::translate(fods_file(rows), config, Logger::null());
+  std::ostringstream page;
+  const HtmlResources resources =
+      service.write_html(service.list_views().at(0).path(), page);
+
+  ASSERT_EQ(page.str().find("a.png"), std::string::npos);
+  EXPECT_TRUE(std::ranges::any_of(resources, [](const auto &resource) {
+    return resource.second == "https://x.example/a.png";
+  }));
 }
 
 TEST(html, an_external_image_loads_only_with_external_content) {
