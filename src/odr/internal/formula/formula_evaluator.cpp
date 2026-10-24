@@ -65,6 +65,48 @@ public:
     return value;
   }
 
+  /// @ref Call::reference.
+  [[nodiscard]] Value reference(const Node &node) {
+    const auto known = [&](const CellReference &cell) {
+      if (cell.document.has_value() ||
+          (cell.sheet.has_value() &&
+           cell.sheet->find(':') != std::string::npos)) {
+        throw NoAnswer{}; // another document, or several sheets
+      }
+      return !cell.sheet.has_value() ||
+             m_source->sheet(*cell.sheet).has_value();
+    };
+    bool found = false;
+    if (const auto *cell = std::get_if<CellReference>(&node.content)) {
+      found = known(*cell);
+    } else if (const auto *range = std::get_if<RangeReference>(&node.content)) {
+      found = known(range->from) && known(range->to);
+    } else if (const auto *name = std::get_if<NameReference>(&node.content)) {
+      if (name->document.has_value()) {
+        throw NoAnswer{};
+      }
+      const std::optional<std::uint32_t> scope =
+          name->sheet.has_value() ? m_source->sheet(*name->sheet)
+                                  : std::optional(m_cell.sheet);
+      found =
+          scope.has_value() && m_source->name(name->name, *scope).has_value();
+    } else if (const auto *binary = std::get_if<BinaryOperation>(&node.content);
+               binary != nullptr && binary->op == BinaryOperator::range &&
+               node.children.size() == 2) {
+      const auto *from = std::get_if<CellReference>(&node.children[0].content);
+      const auto *to = std::get_if<CellReference>(&node.children[1].content);
+      found = from != nullptr && to != nullptr && known(*from) && known(*to);
+    }
+    if (!found) {
+      return Value{ErrorType::reference};
+    }
+    Value result = value(node);
+    if (!result.holds<Reference>() && !result.holds<ErrorType>()) {
+      return Value{ErrorType::reference}; // a name that stands for a value
+    }
+    return result;
+  }
+
   /// Evaluates @p node as an array, expanding range operands as `SUMPRODUCT`
   /// does.
   [[nodiscard]] Matrix array(const Node &node) {
@@ -757,6 +799,10 @@ void Call::for_each(const Reference &reference,
 
 Value Call::cell_value(const SheetPosition &position) const {
   return m_evaluator->cell_value(position);
+}
+
+Value Call::reference(const Node &node) const {
+  return m_evaluator->reference(node);
 }
 
 Number Call::number(const Value &value) const {

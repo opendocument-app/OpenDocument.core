@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <optional>
 #include <string>
 
@@ -153,4 +154,107 @@ TEST(FormulaFunctionsLookup, a_whole_column_past_the_extent_has_no_answer) {
   // an exact match ends at the first hit, within the work limit of a lookup
   EXPECT_NE(xlsx(R"(=MATCH("abc",A:A,0))"), std::nullopt);
   EXPECT_EQ(xlsx(R"(=MATCH("abc",A:A,0))"), xlsx(R"(=MATCH("abc",A1:A14,0))"));
+}
+
+namespace {
+
+/// `s!A1:C3` holds 1, 2, 3 / 10, 20, 30 / 100, 200, 300, and `t!A1` holds 7.
+/// `Rate` names `s!C3`.
+Cells grid() {
+  Cells result;
+  for (std::uint32_t row = 0; row < 3; ++row) {
+    for (std::uint32_t column = 0; column < 3; ++column) {
+      result.values[odr::SheetPosition(0, column, row)] =
+          Value{(column + 1) * std::pow(10.0, row)};
+    }
+  }
+  result.values[odr::SheetPosition(1, 0, 0)] = Value{7.0};
+  result.names["rate"] = "[$s.$C$3]";
+  return result;
+}
+
+} // namespace
+
+TEST(FormulaFunctionsLookup, offset_moves_and_sizes_a_reference) {
+  const Cells source = grid();
+  EXPECT_EQ(ods("=SUM(OFFSET([.A1];1;1;2;2))", source), number(550));
+  EXPECT_EQ(ods("=OFFSET([.A1];2;0)", source), number(100));
+  EXPECT_EQ(ods("=OFFSET([.A1];1.9;0.9)", source), number(10));
+  EXPECT_EQ(ods("=SUM(OFFSET([.A1:.B2];1;1))", source), number(550));
+  EXPECT_EQ(ods("=SUM(OFFSET([.A1:.B2];0;0;1))", source), number(3));
+  EXPECT_EQ(ods(R"(=SUM(OFFSET([.A1];"1";1)))", source), number(20));
+  // a range the formula's row does not cross
+  EXPECT_EQ(ods("=OFFSET([.A1];0;0;2;2)", source), error(ErrorType::value));
+  EXPECT_EQ(xlsx("=SUM(OFFSET(A1,1,1,2,2))", source), number(550));
+}
+
+TEST(FormulaFunctionsLookup, offset_off_the_grid_is_refused) {
+  const Cells source = grid();
+  EXPECT_EQ(ods("=OFFSET([.A1];-1;0)", source), std::nullopt);
+  EXPECT_EQ(xlsx("=OFFSET(A1,-1,0)", source), error(ErrorType::reference));
+  EXPECT_EQ(xlsx("=OFFSET(A1,0,16384)", source), error(ErrorType::reference));
+  // LibreOffice refuses a size below 1, and Excel does not document it
+  EXPECT_EQ(ods("=SUM(OFFSET([.C3];0;0;-2;-2))", source), std::nullopt);
+  EXPECT_EQ(ods("=SUM(OFFSET([.A1];0;0;0;1))", source), std::nullopt);
+  EXPECT_EQ(xlsx("=SUM(OFFSET(A1,0,0,0,1))", source), std::nullopt);
+}
+
+TEST(FormulaFunctionsLookup, indirect_reads_a_reference_in_a_text) {
+  const Cells source = grid();
+  EXPECT_EQ(ods(R"(=INDIRECT("A2"))", source), number(10));
+  EXPECT_EQ(ods(R"(=INDIRECT("a2"))", source), number(10));
+  EXPECT_EQ(ods(R"(=INDIRECT("$A$2"))", source), number(10));
+  EXPECT_EQ(ods(R"(=INDIRECT("A2:A2"))", source), number(10));
+  EXPECT_EQ(ods(R"(=INDIRECT("A2";1))", source), number(10));
+  EXPECT_EQ(ods(R"(=SUM(INDIRECT("A1:B2")))", source), number(33));
+  EXPECT_EQ(ods(R"(=INDIRECT("Rate"))", source), number(300));
+  EXPECT_EQ(xlsx(R"(=INDIRECT("A2"))", source), number(10));
+  EXPECT_EQ(xlsx(R"(=INDIRECT("rate"))", source), number(300));
+}
+
+TEST(FormulaFunctionsLookup, indirect_reads_a_sheet_as_both_formats_spell_it) {
+  const Cells source = grid();
+  EXPECT_EQ(ods(R"(=INDIRECT("s!B2"))", source), number(20));
+  EXPECT_EQ(ods(R"(=INDIRECT("'t'!A1"))", source), number(7));
+  EXPECT_EQ(ods(R"(=SUM(INDIRECT("s!A1:B2")))", source), number(33));
+  // LibreOffice reads its own spelling too, and Excel reads it as a name
+  EXPECT_EQ(ods(R"(=INDIRECT("s.B2"))", source), number(20));
+  EXPECT_EQ(ods(R"(=INDIRECT("$s.$B$2"))", source), number(20));
+  EXPECT_EQ(ods(R"(=INDIRECT("$'t'.A1"))", source), number(7));
+  EXPECT_EQ(ods(R"(=SUM(INDIRECT("s.A1:B2")))", source), number(33));
+  EXPECT_EQ(ods(R"(=SUM(INDIRECT("s.A1:$B$2")))", source), number(33));
+  EXPECT_EQ(xlsx(R"(=INDIRECT("s.B2"))", source), error(ErrorType::reference));
+}
+
+TEST(FormulaFunctionsLookup,
+     indirect_reads_r1c1_where_its_second_argument_is_false) {
+  const Cells source = grid();
+  EXPECT_EQ(ods(R"(=INDIRECT("R2C2";0))", source), number(20));
+  EXPECT_EQ(ods(R"(=INDIRECT("s!R2C2";0))", source), number(20));
+  // relative to F30
+  EXPECT_EQ(ods(R"(=INDIRECT("R[-29]C[-5]";0))", source), number(1));
+  EXPECT_EQ(ods(R"(=INDIRECT("R2C[-4]";0))", source), number(20));
+  EXPECT_EQ(ods(R"(=SUM(INDIRECT("R1C1:R2C2";0)))", source), number(33));
+  EXPECT_EQ(xlsx(R"(=INDIRECT("R2C2",FALSE))", source), number(20));
+  EXPECT_EQ(ods(R"(=INDIRECT("B2";0))", source), std::nullopt);
+  // a whole row, which this does not read
+  EXPECT_EQ(xlsx(R"(=INDIRECT("R2",FALSE))", source), std::nullopt);
+}
+
+TEST(FormulaFunctionsLookup, indirect_of_no_reference_is_ref) {
+  const Cells source = grid();
+  EXPECT_EQ(ods(R"(=INDIRECT("R2C2"))", source), error(ErrorType::reference));
+  EXPECT_EQ(ods(R"(=INDIRECT("nonsense"))", source),
+            error(ErrorType::reference));
+  EXPECT_EQ(ods(R"(=INDIRECT(""))", source), error(ErrorType::reference));
+  EXPECT_EQ(ods(R"(=INDIRECT(" A2"))", source), error(ErrorType::reference));
+  EXPECT_EQ(ods(R"(=INDIRECT("x!A1"))", source), error(ErrorType::reference));
+  EXPECT_EQ(ods("=INDIRECT([.A1])", source), error(ErrorType::reference));
+  EXPECT_EQ(xlsx(R"(=INDIRECT("nonsense"))", source),
+            error(ErrorType::reference));
+  // whether Excel trims a space is not documented
+  EXPECT_EQ(xlsx(R"(=INDIRECT(" A2"))", source), std::nullopt);
+  // a space in a quoted sheet name is no space around the reference
+  EXPECT_EQ(xlsx(R"(=INDIRECT("'x y'!A1"))", source),
+            error(ErrorType::reference));
 }

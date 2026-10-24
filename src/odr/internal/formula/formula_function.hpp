@@ -74,6 +74,10 @@ public:
   /// What the cell at @p position holds. A cell past the extent of its
   /// sheet is empty.
   [[nodiscard]] Value cell_value(const SheetPosition &position) const;
+  /// The reference @p node, which a function built at runtime, refers to:
+  /// a cell, a range or a name. `#REF!` where it names a sheet or a name the
+  /// document does not know, or is no reference.
+  [[nodiscard]] Value reference(const Node &node) const;
 
   [[nodiscard]] Number number(const Value &value) const;
   [[nodiscard]] Text text(const Value &value) const;

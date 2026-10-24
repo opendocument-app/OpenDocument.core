@@ -159,6 +159,12 @@
         odr.editing.insertRows();
         type(0, 1, "5");
         check("a row edit moves the name too", text(3, 1) === "50", text(3, 1));
+
+        // B2 holds the text `=text`, which `SUM` skips
+        type(4, 1, '=INDIRECT("A2")*2+SUM(OFFSET(A2;0;0;1;2))');
+        check("a formula that decides what it reads computes", text(4, 1) === "15,00", text(4, 1));
+        type(0, 1, "6");
+        check("and computes again where a cell of its sheet changes", text(4, 1) === "18,00", text(4, 1));
       });
     </script>
   </body>

@@ -33,6 +33,11 @@ The release run heads these entries with the version and opens a fresh
 
 ### Spreadsheets
 
+- The formula evaluator computes `OFFSET` and `INDIRECT`, in a
+  recalculation, a save and the sheet page. `INDIRECT` reads A1, R1C1 where
+  its second argument is false, and a name; in an ods also LibreOffice's
+  `Sheet1.A1`. Where LibreOffice refuses with a code of its own, or Excel
+  does not document the result, the cell has no answer.
 - The sheet editor takes formula input where the page carries the formula
   module. A typed `=SUM(A1;B1)` computes at once and goes into the log in the
   syntax of the file, and a formula cell opens on its formula. A formula cell
