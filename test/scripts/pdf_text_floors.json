@@ -1,0 +1,25 @@
+{
+  "default": 0.93,
+  "files": {
+    "odr-private/pdf/fontfile3_opentype.pdf": {
+      "floor": 0.45,
+      "why": "gs reads the space glyph as 'x' and joins the words"
+    },
+    "odr-private/pdf/svg_background_with_page_rotation_issue402.pdf": {
+      "floor": 0.65,
+      "why": "gs joins the cells of a table into one word"
+    },
+    "odr-private/pdf/geneve_1564.pdf": {
+      "floor": 0.75,
+      "why": "gs drops the spaces of a 1564 print with long s and ligatures"
+    },
+    "odr-public/pdf/speisekarte_helmarts.pdf": {
+      "floor": 0.8,
+      "why": "the pdf draws each heading twice for a bold effect, and gs doubles each letter"
+    },
+    "odr-private/pdf/basic_text.pdf": {
+      "floor": 0.85,
+      "why": "12 words, and gs cuts 'horizontal' to 'horizon'"
+    }
+  }
+}
