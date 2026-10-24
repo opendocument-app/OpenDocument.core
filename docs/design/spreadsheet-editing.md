@@ -333,14 +333,35 @@ and the commits name. Git holds the full text of each decision.
     way.** The page has the cells already: `data-odr-formula` and
     `data-odr-value` state what the evaluator reads. So the module holds
     `internal/formula` and `internal/number_format` and nothing else: no
-    XML, no zip, no file format. Its only dependency outside core is `fmt`.
+    XML, no zip, no file format. Outside core it needs `fmt` and the
+    headers of utf8cpp.
     A JavaScript callback implements `formula::CellSource` over the DOM
     (decision 30). The page embeds the module as base64, as
     `HtmlConfig::embed_shipped_resources` does with the other resources,
     so a page with no host computes too: an export, a page opened from
     `file://`, a page sent as a mail attachment. There is still one
-    evaluator and one corpus test. The size of the module is not measured
-    yet.
+    evaluator and one corpus test.
+
+    Measured on 2026-10-24 with emscripten 3.1.73, a binding that exports
+    `evaluate` and `format` through embind, and a JavaScript `CellSource`:
+
+    | build | wasm | gzip | JavaScript |
+    |---|---|---|---|
+    | `-Oz -flto -fwasm-exceptions` | 331 KB | 141 KB | 39 KB |
+    | `-O2 -flto -fwasm-exceptions` | 475 KB | 175 KB | 40 KB |
+
+    The module compiles `internal/formula`, `internal/number_format`,
+    `util/string_util`, `util/number_util`, `common/table_range`,
+    `SheetPosition`, `TablePosition` and `TableDimensions`. The evaluator
+    throws `ErrorResult` and `NoAnswer` to unwind, so the module needs
+    exceptions, as `odr-core.wasm` does with `-fwasm-exceptions`. One
+    evaluation of `SUM(A1:A3)*2+IF(B2,1,0)` takes about 8 µs in node, the
+    JavaScript callbacks included. `-O2` takes 19% less time and is 44%
+    larger, so `-Oz` is the build.
+
+    As base64, the `-Oz` module adds about 480 KB to a page. Each sheet
+    view is a page of its own, so the proposal is that a page carries the
+    module only where it is editable and holds a formula cell.
   - The host computes them in process (decision 5) and sends them to the
     page. The apps and the npm host have core already. The host must keep a
     decoded document that matches the page, and an undo in the page needs a
