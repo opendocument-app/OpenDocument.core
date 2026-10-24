@@ -6,6 +6,11 @@ document element tree; `Document::edit` and `Document::save` do not apply.
 
 ## Operations
 
+The view writes the lines in chunks of 256, and the browser lays out only
+the chunks near the viewport ([`lazy-loading.md`](lazy-loading.md) decision
+1). A line number is a CSS counter, and the first line of each chunk states
+where it counts from. An edit that adds or removes lines states that again.
+
 The editor gates `beforeinput` and stores inverse changes for undo. It
 attaches to `odr.editing`, exposing the common mode, operation log, undo/redo
 and callbacks. The view emits `data-odr-editable` and `data-odr-keyboard`.

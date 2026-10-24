@@ -6,18 +6,20 @@
     <link rel="stylesheet" href="text.css" />
   </head>
   <body data-odr-editable="true" data-odr-keyboard="navigation shortcuts">
-    <!-- A `.txt` view as `translate` writes one: a gutter of line numbers
-         beside the lines, and no `contenteditable` - the mode puts that on. -->
-    <div class="odr-text">
-      <div class="odr-text-nr" aria-hidden="true">
-        <div>1</div>
-        <div>2</div>
-        <div>3</div>
-      </div>
+    <!-- A `.txt` view as `translate` writes one: the lines in chunks, the
+         first line of each stating the number it counts from, and no
+         `contenteditable` - the
+         mode puts that on. A chunk holds 256 lines; two lines here put the
+         chunk boundary inside the checks. -->
+    <div class="odr-text" style="--odr-text-digits:1">
       <div class="odr-text-body odr-text-wrap">
-        <div>first line</div>
-        <div>second line</div>
-        <div>third line</div>
+        <div class="odr-chunk odr-chunk-near">
+          <div style="counter-reset:odr-line 0">first line</div>
+          <div>second line</div>
+        </div>
+        <div class="odr-chunk" style="--odr-text-lines:1">
+          <div style="counter-reset:odr-line 2">third line</div>
+        </div>
       </div>
     </div>
 
@@ -40,12 +42,25 @@
       };
 
       var body = document.querySelector(".odr-text-body");
-      var gutter = document.querySelector(".odr-text-nr");
 
+      function lineNodes() {
+        return body.querySelectorAll(".odr-chunk > div");
+      }
       function lines() {
         return Array.prototype.map
-          .call(body.children, function (line) {
+          .call(lineNodes(), function (line) {
             return line.textContent;
+          })
+          .join("|");
+      }
+      /// The number each chunk counts from.
+      function starts() {
+        return Array.prototype.map
+          .call(body.children, function (chunk) {
+            return chunk.firstElementChild.style.counterReset.replace(
+              "odr-line ",
+              ""
+            );
           })
           .join("|");
       }
@@ -54,7 +69,7 @@
       }
       /// Puts the caret at an offset in one of the lines.
       function caretAt(lineNr, offset) {
-        var line = body.children[lineNr];
+        var line = lineNodes()[lineNr];
         var range = document.createRange();
         range.setStart(line.firstChild, offset);
         range.collapse(true);
@@ -136,7 +151,7 @@
         "and splits the line",
         lines() === "firstXY line|second| line|third line"
       );
-      check("the gutter follows", gutter.children.length === body.children.length);
+      check("the next chunk counts on from the new line", starts() === "0|3");
       check(
         "and the log carries the new line",
         ops()[0].text.split("\n").length === 4
@@ -145,20 +160,15 @@
       caretAt(2, 0);
       check("Backspace at a line start is taken", input("deleteContentBackward") === "taken");
       check("and joins the two", lines() === "firstXY line|second line|third line");
-      check("the gutter follows back", gutter.children.length === 3);
+      check("and counts from the old one again", starts() === "0|2");
 
-      check(
-        "the gutter is written with whitespace between the cells",
-        gutter.lastChild.nodeType !== 1
-      );
-
-      // Deleting across lines: the gutter has to lose one cell per line, and
-      // `lastChild` there is whitespace rather than a cell.
+      // Deleting across the chunk boundary: the chunk left with no line goes,
+      // because it would keep its height.
       caretAt(0, 1);
       (function () {
         var r = document.createRange();
-        r.setStart(body.children[0].firstChild, 1);
-        r.setEnd(body.children[2].firstChild, 1);
+        r.setStart(lineNodes()[0].firstChild, 1);
+        r.setEnd(lineNodes()[2].firstChild, 1);
         var s = window.getSelection();
         s.removeAllRanges();
         s.addRange(r);
@@ -167,12 +177,12 @@
         "deleting across three lines is taken",
         input("deleteContentBackward") === "taken"
       );
-      check("the lines go", body.children.length === 1);
-      check("and the numbers with them", gutter.children.length === 1);
-      check("undo brings both back", odr.editing.undo() === true);
+      check("the lines go", lineNodes().length === 1);
+      check("and the emptied chunk with them", starts() === "0");
+      check("undo brings the lines back", odr.editing.undo() === true);
       check(
-        "in step",
-        body.children.length === 3 && gutter.children.length === 3
+        "into the chunk that stayed",
+        lineNodes().length === 3 && starts() === "0"
       );
 
       // ---------------------------------------------------------- undo / redo
@@ -199,18 +209,18 @@
 
       note("Fallback deletes keep surrogate pairs whole");
       ["deleteContentBackward", "deleteContentForward"].forEach(function (type) {
-        body.children[0].textContent = "A😀B";
+        lineNodes()[0].textContent = "A😀B";
         odr.editing.committed();
         caretAt(0, type === "deleteContentBackward" ? 3 : 1);
         input(type);
-        check(type + " removes the whole emoji", body.children[0].textContent === "AB");
+        check(type + " removes the whole emoji", lineNodes()[0].textContent === "AB");
         check("the saved content carries the deletion", ops()[0].text.split("\n")[0] === "AB");
         odr.editing.undo();
-        check("undo restores both UTF-16 units", body.children[0].textContent === "A😀B");
+        check("undo restores both UTF-16 units", lineNodes()[0].textContent === "A😀B");
         odr.editing.redo();
-        check("redo removes both units", body.children[0].textContent === "AB");
+        check("redo removes both units", lineNodes()[0].textContent === "AB");
       });
-      body.children[0].textContent = "first line";
+      lineNodes()[0].textContent = "first line";
       odr.editing.committed();
 
       // ------------------------------------------------------------- the host

@@ -137,7 +137,7 @@ TEST(XmlHtml, opening_it_as_a_text_file_writes_the_line_list) {
 
   std::ostringstream out;
   service.write("text.html", out);
-  EXPECT_THAT(out.str(), HasSubstr("odr-text-nr"));
+  EXPECT_THAT(out.str(), HasSubstr("odr-chunk"));
 }
 
 /// The whole point of the view: the files anyone opens on purpose have no line

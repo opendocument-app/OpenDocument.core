@@ -7,15 +7,18 @@
 --odr-text-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
 body{margin:0;background:#fff}
-.odr-text{display:flex;align-items:stretch;min-height:100vh;color:var(--odr-text-fg);font:13px/20px var(--odr-text-mono);tab-size:4}
-/* The numbers are ours, not the file's, so the gutter stays out of a selection
-   of the page. */
-.odr-text-nr{display:flex;flex-direction:column;flex:none;padding:max(16px,var(--odr-min-margin-top,0px)) 12px max(16px,var(--odr-min-margin-bottom,0px)) max(16px,var(--odr-min-margin-left,0px));text-align:right;color:var(--odr-text-muted);background:var(--odr-text-gutter);border-right:1px solid var(--odr-text-line);font-variant-numeric:tabular-nums;user-select:none;-webkit-user-select:none}
-.odr-text-body{display:flex;flex-direction:column;flex:1;min-width:0;padding:max(16px,var(--odr-min-margin-top,0px)) max(16px,var(--odr-min-margin-right,0px)) max(16px,var(--odr-min-margin-bottom,0px)) 16px;white-space:pre}
+/* The gutter is as wide as the largest line number, which the view states in
+   digits. */
+.odr-text{--odr-text-gutter-left:max(16px,var(--odr-min-margin-left,0px));--odr-text-gutter-width:calc(var(--odr-text-gutter-left) + var(--odr-text-digits,1) * 1ch + 12px);display:flex;align-items:stretch;min-height:100vh;color:var(--odr-text-fg);font:13px/20px var(--odr-text-mono);tab-size:4;background:linear-gradient(to right,var(--odr-text-gutter) var(--odr-text-gutter-width),var(--odr-text-line) 0 calc(var(--odr-text-gutter-width) + 1px),transparent 0)}
+.odr-text-body{display:flex;flex-direction:column;flex:1;min-width:0;padding:max(16px,var(--odr-min-margin-top,0px)) max(16px,var(--odr-min-margin-right,0px)) max(16px,var(--odr-min-margin-bottom,0px)) 0;white-space:pre}
 .odr-text-wrap{white-space:break-spaces;word-break:break-word;overflow-wrap:anywhere}
-/* A hovered line reaches its number, which is in the other column, by beginning
-   a viewport to the left of it; the padding puts the text back where it was.
-   Overflow to the left of the page does not scroll. */
-.odr-text-body>div{margin-left:-100vw;padding-left:100vw}
-.odr-text-body>div:hover{background:var(--odr-text-wash)}
+/* The browser lays out only a chunk that `text.js` marks near the viewport. A
+   far chunk keeps the height it had when it was last shown. */
+.odr-chunk{display:flex;flex-direction:column;content-visibility:hidden;contain-intrinsic-height:auto calc(var(--odr-text-lines,256) * 20px)}
+.odr-chunk-near{content-visibility:visible}
+.odr-chunk>div{position:relative;padding-left:calc(var(--odr-text-gutter-width) + 17px);counter-increment:odr-line}
+.odr-chunk>div:hover{background:var(--odr-text-wash)}
+/* The numbers are ours, not the file's: generated content stays out of a
+   selection, and the empty alternative text keeps it from a screen reader. */
+.odr-chunk>div::before{position:absolute;left:var(--odr-text-gutter-left);width:calc(var(--odr-text-digits,1) * 1ch);text-align:right;color:var(--odr-text-muted);font-variant-numeric:tabular-nums;user-select:none;-webkit-user-select:none;content:counter(odr-line);content:counter(odr-line) / ""}
 [contenteditable]:focus{outline:none}

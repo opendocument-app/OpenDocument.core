@@ -1,36 +1,17 @@
-// The plain-text editor: a line-number gutter that runs whatever the mode
-// says, and editing that attaches to `odr.editing` like every other format's.
-// See `docs/design/txt-editing.md`.
+// The plain-text editor, which attaches to `odr.editing` like every other
+// format's. The lines sit in chunks, and the first line of each states the
+// number it counts from. See `docs/design/txt-editing.md`.
 (function () {
   "use strict";
 
   var odr = (window.odr = window.odr || {});
 
-  function TextEditor(textNr, textBody) {
-    this.textNr = textNr;
+  function TextEditor(textBody) {
     this.textBody = textBody;
     this.past = [];
     this.future = [];
 
     var self = this;
-
-    new ResizeObserver(function () {
-      self.updateLineNumberHeight();
-    }).observe(this.textBody);
-
-    this.textBody.addEventListener("input", function () {
-      var nrCount = self.textNr.querySelectorAll("div").length;
-      var lineCount = self.textBody.querySelectorAll("div").length;
-      for (var i = nrCount + 1; i <= lineCount; ++i) {
-        var nrCell = document.createElement("div");
-        nrCell.textContent = String(i);
-        self.textNr.appendChild(nrCell);
-      }
-      for (var j = nrCount; j > lineCount; --j) {
-        self.textNr.removeChild(self.textNr.lastElementChild);
-      }
-      self.updateLineNumberHeight();
-    });
 
     this.textBody.addEventListener("beforeinput", function (event) {
       event.preventDefault();
@@ -77,45 +58,77 @@
     });
   }
 
-  // The measured height is fractional; `offsetHeight` would round it per line
-  // and the numbers would walk away from the lines they belong to.
-  //
-  // Every height is read before any is written: interleaving them makes each
-  // read force the layout the write before it invalidated, one per line.
-  TextEditor.prototype.updateLineNumberHeight = function () {
-    var nrCells = this.textNr.querySelectorAll("div");
-    var textCells = this.textBody.querySelectorAll("div");
-    var count = Math.min(textCells.length, nrCells.length);
-    var heights = new Array(count);
-    for (var i = 0; i < count; ++i) {
-      heights[i] = textCells[i].getBoundingClientRect().height;
-    }
-    for (var j = 0; j < count; ++j) {
-      nrCells[j].style.height = heights[j] + "px";
-    }
+  TextEditor.prototype.isLine = function (node) {
+    return node.parentNode !== null && node.parentNode.parentNode === this.textBody;
   };
 
-  // Ignore formatting whitespace nodes when indexing lines and gutter cells.
+  TextEditor.prototype.nextLine = function (line) {
+    if (line.nextElementSibling !== null) {
+      return line.nextElementSibling;
+    }
+    var chunk = line.parentNode.nextElementSibling;
+    return chunk !== null ? chunk.firstElementChild : null;
+  };
+
+  TextEditor.prototype.previousLine = function (line) {
+    if (line.previousElementSibling !== null) {
+      return line.previousElementSibling;
+    }
+    var chunk = line.parentNode.previousElementSibling;
+    return chunk !== null ? chunk.lastElementChild : null;
+  };
+
+  // Ignore formatting whitespace nodes when indexing lines.
   // Measure offsets from the line ancestor, including nested search marks.
   TextEditor.prototype.getPosition = function (container, offset) {
     var line = container;
-    while (line !== null && line.parentNode !== this.textBody) {
+    while (line !== null && !this.isLine(line)) {
       line = line.parentNode;
     }
     if (line === null) {
       return { line: -1, offset: offset };
     }
+    var lineNr = Array.prototype.indexOf.call(line.parentNode.children, line);
+    for (
+      var chunk = line.parentNode.previousElementSibling;
+      chunk !== null;
+      chunk = chunk.previousElementSibling
+    ) {
+      lineNr += chunk.childElementCount;
+    }
     var range = document.createRange();
     range.selectNodeContents(line);
     range.setEnd(container, offset);
-    return {
-      line: Array.prototype.indexOf.call(this.textBody.children, line),
-      offset: range.toString().length,
-    };
+    return { line: lineNr, offset: range.toString().length };
   };
 
   TextEditor.prototype.getLine = function (lineNr) {
-    return this.textBody.children[lineNr];
+    var chunks = this.textBody.children;
+    for (var i = 0; i < chunks.length; ++i) {
+      if (lineNr < chunks[i].childElementCount) {
+        return chunks[i].children[lineNr];
+      }
+      lineNr -= chunks[i].childElementCount;
+    }
+    return null;
+  };
+
+  /// Where each chunk counts from, after an edit added or removed lines. The
+  /// containment of a chunk hides a counter on the chunk itself, so its first
+  /// line states it. A chunk with no line left goes, because it would keep
+  /// its height.
+  TextEditor.prototype.renumber = function () {
+    var start = 0;
+    for (var chunk = this.textBody.firstElementChild; chunk !== null; ) {
+      var next = chunk.nextElementSibling;
+      if (chunk.childElementCount === 0) {
+        this.textBody.removeChild(chunk);
+      } else {
+        chunk.firstElementChild.style.counterReset = "odr-line " + start;
+        start += chunk.childElementCount;
+      }
+      chunk = next;
+    }
   };
 
   TextEditor.prototype.getLineText = function (line) {
@@ -148,7 +161,7 @@
         break;
       }
 
-      line = sign > 0 ? line.nextElementSibling : line.previousElementSibling;
+      line = sign > 0 ? this.nextLine(line) : this.previousLine(line);
       if (line === null) {
         break;
       }
@@ -163,11 +176,13 @@
 
   TextEditor.prototype.getText = function (from, to) {
     var result = "";
+    var line = this.getLine(from.line);
     for (var lineNr = from.line; lineNr <= to.line; ++lineNr) {
       if (lineNr > from.line) {
         result += "\n";
+        line = this.nextLine(line);
       }
-      var lineText = this.getLineText(this.getLine(lineNr));
+      var lineText = this.getLineText(line);
       if (from.line === to.line) {
         result += lineText.slice(from.offset, to.offset);
       } else if (lineNr === from.line) {
@@ -202,15 +217,11 @@
 
     for (var i = 0; i < textLines.length; ++i) {
       if (i > 0) {
-        this.textBody.insertBefore(
+        line.parentNode.insertBefore(
           document.createElement("div"),
           line.nextElementSibling
         );
         line = line.nextElementSibling;
-
-        // the line is already in, so the count is the number the cell gets
-        this.textNr.appendChild(document.createElement("div")).textContent =
-          String(this.textBody.children.length);
       }
 
       if (i === 0) {
@@ -222,6 +233,7 @@
       }
     }
 
+    this.renumber();
     return {
       line: position.line + textLines.length - 1,
       offset: textLines[textLines.length - 1].length,
@@ -239,9 +251,10 @@
     );
 
     for (var lineNr = from.line + 1; lineNr <= to.line; ++lineNr) {
-      this.textBody.removeChild(firstLine.nextElementSibling);
-      this.textNr.removeChild(this.textNr.lastElementChild);
+      var removed = this.nextLine(firstLine);
+      removed.parentNode.removeChild(removed);
     }
+    this.renumber();
   };
 
   TextEditor.prototype.placeCursorAt = function (position) {
@@ -305,10 +318,13 @@
 
   /// The file's whole text, which for a plain file is its whole document.
   TextEditor.prototype.text = function () {
-    var lines = this.textBody.children;
     var result = [];
-    for (var i = 0; i < lines.length; ++i) {
-      result.push(this.getLineText(lines[i]));
+    for (
+      var line = this.getLine(0);
+      line !== null;
+      line = this.nextLine(line)
+    ) {
+      result.push(this.getLineText(line));
     }
     return result.join("\n");
   };
@@ -381,12 +397,31 @@
     this.placeCursorAt(from);
   };
 
-  var textNr = document.querySelector(".odr-text-nr");
   var textBody = document.querySelector(".odr-text-body");
-  if (!textNr || !textBody) {
+  if (!textBody) {
     return;
   }
-  var editor = new TextEditor(textNr, textBody);
+  var editor = new TextEditor(textBody);
+
+  // A chunk within a screen of the viewport is laid out, and one further away
+  // is not, so the browser holds the layout of a few chunks at a time.
+  var chunks = textBody.children;
+  var near = new IntersectionObserver(
+    function (entries) {
+      entries.forEach(function (entry) {
+        entry.target.classList.toggle("odr-chunk-near", entry.isIntersecting);
+      });
+    },
+    { rootMargin: "100% 0px" }
+  );
+  for (var i = 0; i < chunks.length; ++i) {
+    near.observe(chunks[i]);
+  }
+  window.addEventListener("beforeprint", function () {
+    for (var j = 0; j < chunks.length; ++j) {
+      chunks[j].classList.add("odr-chunk-near");
+    }
+  });
 
   odr.editing.attach({
     enable: function () {
