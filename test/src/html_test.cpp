@@ -5,6 +5,7 @@
 #include <fstream>
 #include <memory>
 #include <optional>
+#include <regex>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -655,17 +656,38 @@ TEST(html, a_text_file_writes_its_lines_in_chunks) {
 
   EXPECT_NE(page.find("--odr-text-digits:3"), std::string::npos);
   // the first chunk is shown before the script runs, and every one without it
-  EXPECT_NE(page.find(R"(class="odr-chunk odr-chunk-near")"),
+  EXPECT_NE(page.find(R"(class="odr-text-lines odr-chunk odr-chunk-near")"),
             std::string::npos);
   EXPECT_NE(page.find("<noscript>"), std::string::npos);
   EXPECT_NE(page.find(R"(<div style="counter-reset:odr-line 0">)"),
             std::string::npos);
   // 299 line breaks end 300 lines, the last one empty
-  EXPECT_NE(page.find(R"(class="odr-chunk" style="--odr-text-lines:44")"),
-            std::string::npos);
+  EXPECT_NE(
+      page.find(
+          R"(class="odr-text-lines odr-chunk" style="--odr-text-lines:44")"),
+      std::string::npos);
   EXPECT_NE(page.find(R"(<div style="counter-reset:odr-line 256">)"),
             std::string::npos);
   EXPECT_EQ(page.find("odr-line 512"), std::string::npos);
+}
+
+// Without lazy layout the browser lays out everything, so no view writes a
+// chunk, nor the style that hides one.
+TEST(html, lazy_layout_off_writes_no_chunk) {
+  HtmlConfig config;
+  config.lazy_layout = false;
+
+  for (const char *path :
+       {"odr-public/txt/lorem ipsum.txt", "odr-public/ods/span.ods",
+        "odr-public/pdf/style-various-1.pdf"}) {
+    const std::string page = render(path, config);
+    // the shipped scripts name the class, so only the markup counts
+    EXPECT_FALSE(
+        std::regex_search(page, std::regex(R"(class="[^"]*\bodr-chunk\b)")))
+        << path;
+    EXPECT_EQ(page.find("content-visibility:hidden"), std::string::npos)
+        << path;
+  }
 }
 
 // Every view but the pdf one turns over.

@@ -137,6 +137,8 @@ NS_SWIFT_NAME(HtmlConfig)
 /// The zoom the view opens at, 1 being actual size; `nil` follows the fit.
 @property(nonatomic, strong, nullable)
     NSNumber *initialZoom NS_REFINED_FOR_SWIFT;
+/// Lay out only the lines, rows and pages near the viewport.
+@property(nonatomic) BOOL lazyLayout;
 
 /// The least distance the generated content keeps from the view's border. A
 /// set side raises the inset the view already has, never lowers it.

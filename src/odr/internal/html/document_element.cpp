@@ -758,32 +758,40 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
     state.out().write_element_end("table");
   }
 
-  // a chunk ends where no merge is open, so no `rowspan` crosses two tables
-  const std::uint32_t chunk_rows = std::clamp<std::uint32_t>(
-      chunk_cells / std::max<std::uint32_t>(end_column, 1), 8, 256);
+  // a chunk ends where no merge is open, so no `rowspan` crosses two tables;
+  // without lazy layout, all the rows are one table
+  const bool lazy = state.config().lazy_layout;
+  const std::uint32_t chunk_rows =
+      lazy ? std::clamp<std::uint32_t>(
+                 chunk_cells / std::max<std::uint32_t>(end_column, 1), 8, 256)
+           : std::max<std::uint32_t>(end_row, 1);
   std::uint32_t rows_in_chunk = 0;
   bool chunk_open = false;
   const auto begin_chunk = [&](const std::uint32_t first_row) {
     double height = 0;
     for (std::uint32_t row_index = first_row;
-         row_index < std::min(end_row, first_row + chunk_rows); ++row_index) {
+         lazy && row_index < std::min(end_row, first_row + chunk_rows);
+         ++row_index) {
       height += css_pixels(sheet.row_style(row_index).height)
                     .value_or(estimated_row_pixels);
     }
     state.out().write_element_begin(
         "table",
         HtmlElementOptions()
-            .set_class(first_row == 0 ? "odr-sheet-rows odr-chunk "
-                                        "odr-chunk-near"
-                                      : "odr-sheet-rows odr-chunk")
+            .set_class("odr-sheet-rows" +
+                       chunk_classes(state.config(), first_row == 0))
             .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
               // a shape hangs from A1 and may reach past the first chunk
-              if (first_row == 0 && has_shapes) {
+              if (lazy && first_row == 0 && has_shapes) {
                 clb("data-odr-chunk-held", "");
               }
             })
-            .set_style("contain-intrinsic-height:auto " +
-                       util::number::to_string_significant(height, 7) + "px"));
+            .set_style(
+                lazy
+                    ? std::optional<HtmlWritable>(
+                          "contain-intrinsic-height:auto " +
+                          util::number::to_string_significant(height, 7) + "px")
+                    : std::nullopt));
     write_columns();
     state.out().write_element_begin("tbody");
     chunk_open = true;

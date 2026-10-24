@@ -278,6 +278,13 @@ final class HtmlTests: XCTestCase {
     XCTAssertNil(config.spreadsheetLimit)
   }
 
+  func testLazyLayoutRoundTrips() throws {
+    let config = HtmlConfig()
+    XCTAssertTrue(config.lazyLayout)
+    config.lazyLayout = false
+    XCTAssertFalse(config.lazyLayout)
+  }
+
   func testBoxedNumbersRoundTrip() throws {
     let config = HtmlConfig()
     config.spreadsheetCellLimit = 1234

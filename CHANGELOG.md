@@ -30,6 +30,13 @@ The release run heads these entries with the version and opens a fresh
 - An editable ods or xlsx sheet page carries the formula module, where the
   build has one: the npm package does, and another build names it with
   `ODR_FORMULA_MODULE`. The page is about 540 KB larger.
+- A text file, a pdf and a sheet page let the browser lay out only the
+  lines, pages and rows near the viewport. A text file of 1 M lines shows
+  its first frame after 0.85 s, not 154 s. The find of the browser does not
+  reach a far part, but `odr.search` does. `HtmlConfig::lazy_layout` (on by
+  default, also in the bindings) turns this off.
+- The line numbers of a text file are in each line, so a wrapped line keeps
+  its number beside it.
 
 ### Spreadsheets
 

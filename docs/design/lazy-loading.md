@@ -85,6 +85,11 @@ hidden chunk. Level 2 removes the DOM cost too, but takes more away
 a host. A view takes the lowest level that is enough
 for the size of its file.
 
+`HtmlConfig::lazy_layout` turns level 1 off. Then no view writes a chunk,
+and the find of the browser and a screen reader reach all of the content.
+The size of a chunk stays inside the views, because the measurements were
+flat around it.
+
 `content-visibility` is in Chrome from 85, Firefox from 125 and Safari from
 18. A browser without it ignores the property and lays out every chunk, as
 it lays out every line today.

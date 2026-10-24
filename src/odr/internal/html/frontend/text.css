@@ -14,10 +14,10 @@ body{margin:0;background:#fff}
 .odr-text-wrap{white-space:break-spaces;word-break:break-word;overflow-wrap:anywhere}
 /* A chunk far from the viewport keeps the height it had when it was last
    shown. */
-.odr-chunk{display:flex;flex-direction:column;contain-intrinsic-height:auto calc(var(--odr-text-lines,256) * 20px)}
-.odr-chunk>div{position:relative;padding-left:calc(var(--odr-text-gutter-width) + 17px);counter-increment:odr-line}
-.odr-chunk>div:hover{background:var(--odr-text-wash)}
+.odr-text-lines{display:flex;flex-direction:column;contain-intrinsic-height:auto calc(var(--odr-text-lines,256) * 20px)}
+.odr-text-lines>div{position:relative;padding-left:calc(var(--odr-text-gutter-width) + 17px);counter-increment:odr-line}
+.odr-text-lines>div:hover{background:var(--odr-text-wash)}
 /* The numbers are ours, not the file's: generated content stays out of a
    selection, and the empty alternative text keeps it from a screen reader. */
-.odr-chunk>div::before{position:absolute;left:var(--odr-text-gutter-left);width:calc(var(--odr-text-digits,1) * 1ch);text-align:right;color:var(--odr-text-muted);font-variant-numeric:tabular-nums;user-select:none;-webkit-user-select:none;content:counter(odr-line);content:counter(odr-line) / ""}
+.odr-text-lines>div::before{position:absolute;left:var(--odr-text-gutter-left);width:calc(var(--odr-text-digits,1) * 1ch);text-align:right;color:var(--odr-text-muted);font-variant-numeric:tabular-nums;user-select:none;-webkit-user-select:none;content:counter(odr-line);content:counter(odr-line) / ""}
 [contenteditable]:focus{outline:none}

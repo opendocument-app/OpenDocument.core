@@ -143,18 +143,21 @@ public:
     out.write_element_begin(
         "div", HtmlElementOptions().set_class("odr-text-body odr-text-wrap"));
     in = std::istringstream(text);
+    // the browser lays out only the chunks near the viewport; without that,
+    // all the lines are one block
+    const std::uint32_t lines_per_block =
+        config().lazy_layout ? chunk_lines : line_count;
     for (std::uint32_t line = 0; line < line_count; ++line) {
-      // the browser lays out only the chunks near the viewport
-      const bool first = line % chunk_lines == 0;
+      const bool first = line % lines_per_block == 0;
       if (first) {
         if (line > 0) {
           out.write_element_end("div");
         }
         // the first chunk is near the viewport before the script says so
         HtmlElementOptions chunk;
-        chunk.set_class(line == 0 ? "odr-chunk odr-chunk-near" : "odr-chunk");
+        chunk.set_class("odr-text-lines" + chunk_classes(config(), line == 0));
         if (const std::uint32_t lines = line_count - line;
-            lines < chunk_lines) {
+            config().lazy_layout && lines < chunk_lines) {
           chunk.set_style("--odr-text-lines:" + std::to_string(lines));
         }
         out.write_element_begin("div", chunk);
