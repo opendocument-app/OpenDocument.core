@@ -1662,3 +1662,51 @@ TEST(DocumentEdit,
         R"(<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>cell</t></is></c></row></sheetData></worksheet>)"}});
   EXPECT_EQ(first_sheet(reopened(workbook)).cell(0, 0).value().text(), "cell");
 }
+
+// The code a page formats a computed result with.
+TEST(DocumentEdit, a_sheet_cell_states_its_number_format) {
+  const std::string source =
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.spreadsheet">)"
+      R"(<office:automatic-styles>)"
+      R"(<number:percentage-style style:name="N1">)"
+      R"(<number:number number:decimal-places="1")"
+      R"( number:min-integer-digits="1"/><number:text>%</number:text>)"
+      R"(</number:percentage-style>)"
+      R"(<style:style style:name="ce1" style:family="table-cell")"
+      R"( style:data-style-name="N1"/>)"
+      R"(</office:automatic-styles>)"
+      R"(<office:body><office:spreadsheet><table:table table:name="s">)"
+      R"(<table:table-row>)"
+      R"(<table:table-cell table:style-name="ce1" office:value-type="percentage")"
+      R"( office:value="0.25"><text:p>25.0%</text:p></table:table-cell>)"
+      R"(<table:table-cell office:value-type="float" office:value="1">)"
+      R"(<text:p>1</text:p></table:table-cell>)"
+      R"(</table:table-row></table:table>)"
+      R"(</office:spreadsheet></office:body></office:document>)";
+  const Document sheet =
+      DecodedFile(open_strategy::open_file(std::make_shared<MemoryFile>(source),
+                                           {}, Logger::null()))
+          .as_document_file()
+          .document();
+  EXPECT_EQ(first_sheet(sheet).cell(0, 0).number_format(), "0.0%");
+  EXPECT_EQ(first_sheet(sheet).cell(1, 0).number_format(), std::nullopt);
+
+  const Document workbook = package_of(
+      {{"xl/workbook.xml",
+        R"(<workbook><sheets><sheet name="s" sheetId="1" r:id="rId1"/></sheets></workbook>)"},
+       {"xl/_rels/workbook.xml.rels",
+        R"(<Relationships><Relationship Id="rId1" Target="/xl/worksheets/sheet1.xml"/></Relationships>)"},
+       {"xl/styles.xml",
+        R"(<styleSheet><numFmts><numFmt numFmtId="164" formatCode="0.0%"/></numFmts>)"
+        R"(<cellXfs><xf numFmtId="0"/><xf numFmtId="164"/><xf numFmtId="10"/></cellXfs>)"
+        R"(</styleSheet>)"},
+       {"xl/worksheets/sheet1.xml",
+        R"(<worksheet><sheetData><row r="1">)"
+        R"(<c r="A1" s="1"><v>0.25</v></c><c r="B1" s="2"><v>0.25</v></c>)"
+        R"(<c r="C1" s="0"><v>1</v></c></row></sheetData></worksheet>)"}});
+  EXPECT_EQ(first_sheet(workbook).cell(0, 0).number_format(), "0.0%");
+  EXPECT_EQ(first_sheet(workbook).cell(1, 0).number_format(), "0.00%");
+  EXPECT_EQ(first_sheet(workbook).cell(2, 0).number_format(), std::nullopt);
+}

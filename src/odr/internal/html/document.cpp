@@ -7,9 +7,11 @@
 #include <odr/html.hpp>
 #include <odr/style.hpp>
 
+#include <odr/internal/abstract/document.hpp>
 #include <odr/internal/abstract/html_service.hpp>
 #include <odr/internal/common/null_stream.hpp>
 #include <odr/internal/formula/formula_parser.hpp>
+#include <odr/internal/formula/formula_value.hpp>
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/html/document_element.hpp>
 #include <odr/internal/html/document_style.hpp>
@@ -20,6 +22,8 @@
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
+
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <mutex>
@@ -257,6 +261,28 @@ void write_head(const Document &document, const WritingState &state,
   out.write_header_end();
 }
 
+/// `formula::Settings` as the page's evaluator reads them
+/// (`wasm/formula/odr_formula.cpp`).
+std::string formula_settings_json(const formula::Settings &settings) {
+  nlohmann::json result{
+      {"dialect", settings.dialect == formula::Dialect::libreoffice
+                      ? "libreoffice"
+                      : "excel"},
+      {"caseSensitive", settings.case_sensitive},
+      {"wildcards", settings.wildcards},
+      {"regularExpressions", settings.regular_expressions},
+      {"wholeCell", settings.whole_cell},
+      {"epoch",
+       settings.epoch == number_format::Epoch::from_1904 ? 1904 : 1900},
+      {"nullDate", settings.null_date},
+      {"nullYear", settings.null_year},
+  };
+  if (settings.boolean_word.has_value()) {
+    result["booleanWord"] = *settings.boolean_word;
+  }
+  return result.dump();
+}
+
 void write_body_begin(const Document &document, const WritingState &state) {
   HtmlWriter &out = state.out();
 
@@ -306,6 +332,18 @@ void write_body_begin(const Document &document, const WritingState &state) {
                   locale.has_value() &&
                   document.document_type() == DocumentType::spreadsheet) {
                 clb("data-odr-locale", xml::escape_attribute(*locale));
+              }
+              // what the page computes a formula cell with
+              if (const std::optional<formula::Syntax> syntax =
+                      state.formula_syntax();
+                  syntax.has_value() &&
+                  document.document_type() == DocumentType::spreadsheet) {
+                clb("data-odr-formula-syntax",
+                    *syntax == formula::Syntax::opendocument ? "opendocument"
+                                                             : "ooxml");
+                clb("data-odr-formula-settings",
+                    xml::escape_attribute(formula_settings_json(
+                        document.impl()->formula_settings())));
               }
             }
             // not an editing fact: a read-only sheet has a pin to clear

@@ -1528,6 +1528,43 @@ TEST(html, a_formula_cell_states_its_lock_expression_and_dependencies) {
             std::string::npos);
 }
 
+// The page computes a formula cell with what the body and the cell state.
+TEST(html, a_formula_page_states_what_its_evaluator_reads) {
+  const std::string page = render_sheet(
+      fods_file(fods_row(
+          R"xml(<table:table-cell table:formula="of:=[.B1]")xml"
+          R"( office:value-type="boolean" office:boolean-value="true">)"
+          R"(<text:p>TRUE</text:p></table:table-cell>)"
+          R"(<table:table-cell office:value-type="boolean")"
+          R"( office:boolean-value="false"><text:p>FALSE</text:p>)"
+          R"(</table:table-cell>)")),
+      editing_config());
+
+  EXPECT_NE(page.find(R"(data-odr-formula-syntax="opendocument")"),
+            std::string::npos);
+  EXPECT_NE(page.find(R"(data-odr-formula-settings="{&quot;)"),
+            std::string::npos);
+  EXPECT_NE(page.find(R"(&quot;dialect&quot;:&quot;libreoffice&quot;)"),
+            std::string::npos);
+  EXPECT_NE(page.find(R"(data-odr-sheet-name="Sheet1")"), std::string::npos);
+  EXPECT_NE(page.find(R"(data-odr-type="boolean" data-odr-value="1")"),
+            std::string::npos);
+  EXPECT_NE(page.find(R"(data-odr-type="boolean" data-odr-value="0")"),
+            std::string::npos);
+  // no data style: `General`
+  EXPECT_EQ(page.find(R"(data-odr-format=")"), std::string::npos);
+
+  const std::string read_only =
+      render_sheet(fods_file(fods_row(R"(<table:table-cell)"
+                                      R"( office:value-type="boolean")"
+                                      R"( office:boolean-value="false">)"
+                                      R"(<text:p>FALSE</text:p>)"
+                                      R"(</table:table-cell>)")),
+                   HtmlConfig());
+  EXPECT_EQ(read_only.find("data-odr-formula-syntax"), std::string::npos);
+  EXPECT_EQ(read_only.find("data-odr-type"), std::string::npos);
+}
+
 // A quote in an expression would close the attribute early.
 TEST(html, an_expression_is_escaped_into_its_attribute) {
   const std::string page = render_sheet(

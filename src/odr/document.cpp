@@ -653,6 +653,10 @@ const std::vector<SheetPosition> &Recalculation::unevaluated() const noexcept {
   return m_unevaluated;
 }
 
+std::shared_ptr<internal::abstract::Document> Document::impl() const {
+  return m_impl;
+}
+
 Filesystem Document::as_filesystem() const {
   if (std::shared_ptr<internal::abstract::ReadableFilesystem> files =
           m_impl->as_filesystem()) {

@@ -33,6 +33,13 @@ The release run heads these entries with the version and opens a fresh
 
 ### Spreadsheets
 
+- `SheetCell::number_format()` gives the format code a cell shows a number
+  in, for example `0.00%`, and nothing for `General`.
+- An editable sheet page states what a formula in the page reads: the syntax
+  and the calculation settings of the document on `<body>`, the name of the
+  sheet, the format code of a formula cell (`data-odr-format`), and the type
+  and the value of a boolean or an error cell (`data-odr-type`).
+
 - An ods cell right after a merge at the end of its row can be written. The
   write refused, because the new cell landed one column too far.
 - An xlsx cell with the built-in date format 14 or 22 shows the date as Excel

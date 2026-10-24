@@ -1704,6 +1704,24 @@ public:
   sheet_cell_value_type(const ElementIdentifier element_id) const override {
     return value_type_of(get_node(element_id));
   }
+  /// The code of the cell's data style. Nothing for a cell the file does not
+  /// state, which takes its style from its row or column.
+  [[nodiscard]] std::optional<std::string>
+  sheet_cell_number_format(const ElementIdentifier element_id) const override {
+    if (m_registry->sheet_cell_element(element_id) == nullptr) {
+      return std::nullopt;
+    }
+    const StyleRegistry &styles = m_document->style_registry();
+    const pugi::xml_node data_style = styles.cell_data_style(
+        cell_style_name(element_parent(element_id), element_id,
+                        sheet_cell_position(element_id)));
+    if (!data_style) {
+      return std::nullopt;
+    }
+    return format_code(data_style, [&styles](const std::string_view name) {
+      return styles.data_style_node(name);
+    });
+  }
   /// [ODF 1.2] 19.386 `office:value`, 19.642 `table:formula`. A date and a
   /// time state days since 1899-12-30; a boolean states 1 or 0.
   [[nodiscard]] CellValue

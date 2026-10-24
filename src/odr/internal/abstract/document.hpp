@@ -428,6 +428,12 @@ public:
   sheet_cell_value_type(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual CellValue
   sheet_cell_value(ElementIdentifier element_id) const = 0;
+  /// The format code the cell shows a number in, nothing for an engine that
+  /// states none.
+  [[nodiscard]] virtual std::optional<std::string> sheet_cell_number_format(
+      [[maybe_unused]] ElementIdentifier element_id) const {
+    return std::nullopt;
+  }
 };
 
 class MasterPageAdapter {
