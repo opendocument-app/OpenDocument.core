@@ -61,8 +61,8 @@ describe('formula module', { skip: path === '' && 'no odr-formula.js' }, () => {
   });
 
   it('reads OpenFormula', () => {
-    const at = sheetOf(module, cells, { dialect: 'libreoffice' },
-      'opendocument');
+    const at = sheetOf(module, cells,
+      { dialect: 'libreoffice', nullDate: 0, nullYear: 1930 }, 'opendocument');
     assert.deepEqual(at('of:=SUM([.A1:.A3])'), num(6));
     // a boolean is a number in LibreOffice
     assert.deepEqual(at('of:=[.B2]+1'), num(2));

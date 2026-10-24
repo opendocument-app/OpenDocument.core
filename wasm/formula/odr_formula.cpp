@@ -62,8 +62,14 @@ formula::Settings settings_of(const val &object) {
                        ? number_format::Epoch::from_1904
                        : number_format::Epoch::from_1900;
   }
-  read(object, "nullDate", result.null_date);
-  read(object, "nullYear", result.null_year);
+  // a JavaScript number, which embind reads as an `std::int64_t` only from a
+  // BigInt
+  double null_date = static_cast<double>(result.null_date);
+  double null_year = static_cast<double>(result.null_year);
+  read(object, "nullDate", null_date);
+  read(object, "nullYear", null_year);
+  result.null_date = static_cast<std::int64_t>(null_date);
+  result.null_year = static_cast<std::int64_t>(null_year);
   if (const val word = object["booleanWord"]; !is_absent(word)) {
     result.boolean_word = word.as<bool>();
   }
