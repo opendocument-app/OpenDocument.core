@@ -2333,11 +2333,11 @@ private:
       }
       row_node = insert_ordered(sheet_node, "table:table-row", after_rows);
     } else {
-      const std::span<const ElementRegistry::Sheet::Cell> cells =
-          sheet.row_cells(*row_entry);
-      cells_end = cells.empty() ? 0 : cells.back().end;
       // its cells stand for every position the row repeats over
       row_node = split_row_at(sheet, row);
+      // the index holds no covered cell, and a row may end in one
+      const std::vector<Run> cells = cell_runs(row_node);
+      cells_end = cells.empty() ? 0 : cells.back().end;
     }
 
     if (column > cells_end) {
