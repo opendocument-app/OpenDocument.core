@@ -213,30 +213,43 @@ std::vector<formula::ExternalSheet> Document::formula_external_sheets() const {
         continue;
       }
       formula::ExternalSheet copy{std::to_string(index), names[sheet], {}};
+      // a cell this cannot read drops the copy, so nothing reads it as empty
+      bool readable = true;
       for (const pugi::xml_node row : data.children("row")) {
         for (const pugi::xml_node cell : row.children("cell")) {
+          if (!cell.attribute("r")) {
+            readable = false;
+            continue;
+          }
+          const pugi::xml_node v = cell.child("v");
+          if (!v) {
+            continue; // an empty cell
+          }
           const std::string_view type = cell.attribute("t").value();
-          const char *value = cell.child("v").text().get();
-          formula::Value read;
-          if (type == "str" || type == "s" || type == "inlineStr") {
-            read = formula::Value{std::string(value)};
+          std::optional<formula::Value> read;
+          if (type == "str") {
+            read = formula::Value{std::string(v.text().get())};
           } else if (type == "b") {
-            read = formula::Value{std::string_view(value) == "1"};
+            read = formula::Value{std::string_view(v.text().get()) == "1"};
           } else if (type == "e") {
-            const std::optional<formula::ErrorType> error =
-                formula::error_of_text(value);
-            if (!error.has_value()) {
-              continue;
+            if (const std::optional<formula::ErrorType> error =
+                    formula::error_of_text(v.text().get())) {
+              read = formula::Value{*error};
             }
-            read = formula::Value{*error};
-          } else {
-            read = formula::Value{cell.child("v").text().as_double()};
+          } else if (type.empty() || type == "n") {
+            read = formula::Value{v.text().as_double()};
+          }
+          if (!read.has_value()) {
+            readable = false;
+            continue;
           }
           copy.cells.emplace_back(TablePosition(cell.attribute("r").value()),
-                                  std::move(read));
+                                  std::move(*read));
         }
       }
-      result.push_back(std::move(copy));
+      if (readable) {
+        result.push_back(std::move(copy));
+      }
     }
   }
   return result;

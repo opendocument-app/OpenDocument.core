@@ -342,8 +342,10 @@ and the commits name. Git holds the full text of each decision.
   - A reference into another document reads the copy the file caches, as
     the applications do while that document is closed: an `.ods` holds it
     as a hidden sheet, `'file:///x.ods'#Sheet1`, and an `.xlsx` in an
-    `externalLink` part (`formula_external_sheets`). The page does not hold
-    the copy, so such a formula stays stale there.
+    `externalLink` part (`formula_external_sheets`). A copy with a cell
+    whose type this does not read is dropped, so nothing reads that cell as
+    empty. The page does not hold the copy, so such a formula stays stale
+    there.
   - An array formula computes its range (`formula::evaluate_array`). An
     operator reads every cell of a range, and a function maps over the
     elements of an argument it takes as one value: `LEN(A1:A3)` gives three
@@ -411,5 +413,6 @@ and the commits name. Git holds the full text of each decision.
   localized LibreOffice shows them translated.
 - **Out of the evaluator so far:** a dynamic array that the edit makes
   larger or smaller than the range the file states, a cell another document
-  holds that its copy lacks, iterative calculation, `INFO`, and localized function
-  names. Each cell that needs one stays without an answer (decision 29).
+  holds that its copy lacks, iterative calculation, `INFO`, and localized
+  function names. Each cell that needs one stays without an answer
+  (decision 29).

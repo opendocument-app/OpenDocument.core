@@ -84,6 +84,7 @@ private:
   std::vector<formula::ExternalSheet> m_external;
   std::vector<std::unordered_map<std::uint64_t, formula::Value>>
       m_external_cells;
+  std::vector<TableDimensions> m_external_extents;
   mutable std::unordered_map<SheetPosition, std::optional<formula::Value>>
       m_cells;
   mutable std::unordered_map<std::uint32_t, TableDimensions> m_extents;

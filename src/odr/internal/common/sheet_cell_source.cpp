@@ -83,9 +83,12 @@ SheetCellSource::SheetCellSource(const abstract::Document &document)
   m_external = document.formula_external_sheets();
   for (formula::ExternalSheet &copy : m_external) {
     auto &cells = m_external_cells.emplace_back();
+    TableDimensions &extent = m_external_extents.emplace_back();
     for (auto &[position, value] : copy.cells) {
       cells.emplace(std::uint64_t{position.row} << 32 | position.column,
                     std::move(value));
+      extent.rows = std::max(extent.rows, position.row + 1);
+      extent.columns = std::max(extent.columns, position.column + 1);
     }
     copy.cells.clear();
   }
@@ -160,17 +163,9 @@ SheetCellSource::cell(const SheetPosition &position) const {
 
 TableDimensions SheetCellSource::extent(const std::uint32_t sheet) const {
   if (sheet >= m_sheets.size()) {
-    TableDimensions extent;
-    if (sheet - m_sheets.size() < m_external_cells.size()) {
-      for (const auto &[key, value] :
-           m_external_cells[sheet - m_sheets.size()]) {
-        extent.rows =
-            std::max(extent.rows, static_cast<std::uint32_t>(key >> 32) + 1);
-        extent.columns = std::max(
-            extent.columns, static_cast<std::uint32_t>(key & 0xFFFFFFFF) + 1);
-      }
-    }
-    return extent;
+    const std::size_t copy = sheet - m_sheets.size();
+    return copy < m_external_extents.size() ? m_external_extents[copy]
+                                            : TableDimensions();
   }
   if (const auto known = m_extents.find(sheet); known != m_extents.end()) {
     return known->second;
