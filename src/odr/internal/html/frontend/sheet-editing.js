@@ -470,6 +470,7 @@
     if (cell === null || before === null) {
       return false;
     }
+    // the log replays from the formulas the file states
     readersOf();
     var formulaBefore = formulaOf(cell);
     var formula =
@@ -574,6 +575,7 @@
     return {
       cell: cell,
       formula: cell.getAttribute("data-odr-formula"),
+      moves: [],
       at: at,
       reads: boxesOf(stated),
     };
@@ -598,21 +600,24 @@
   /// there, so the log can replay it.
   var written = new WeakMap();
 
-  /// @p formula after the row or column op @p op, null where the page cannot
-  /// move it.
   var movedFormulas = new Map();
-  function moved(formula, op) {
-    if (formula === null || formulas === null || formulas.module === null) {
-      return null;
-    }
-    var key = formula + "\n" + JSON.stringify(op);
-    if (!movedFormulas.has(key)) {
-      movedFormulas.set(
-        key,
-        formulas.module.move(formula, formulas.syntax, formulas.name, op)
-      );
-    }
-    return movedFormulas.get(key);
+
+  /// The formula of @p entry after its row and column ops, null where the
+  /// page cannot move it. The ops wait in the entry until the module loads.
+  function movedFormula(entry) {
+    return entry.moves.reduce(function (formula, op) {
+      if (formula === null || formulas === null || formulas.module === null) {
+        return null;
+      }
+      var key = formula + "\n" + JSON.stringify(op);
+      if (!movedFormulas.has(key)) {
+        movedFormulas.set(
+          key,
+          formulas.module.move(formula, formulas.syntax, formulas.name, op)
+        );
+      }
+      return movedFormulas.get(key);
+    }, entry.formula);
   }
 
   function readsAny(entry, positions) {
@@ -666,6 +671,7 @@
       return {
         cell: entry.cell,
         formula: entry.formula,
+        moves: entry.moves.slice(),
         at: { column: entry.at.column, row: entry.at.row },
         reads: entry.reads.map(function (box) {
           return box.slice();
@@ -685,6 +691,7 @@
           entries.push({
             cell: typed.cell,
             formula: op.value.formula,
+            moves: [],
             at: { column: op.column, row: op.row },
             reads: boxesOf(typed.reads || ""),
             marked: true,
@@ -709,7 +716,7 @@
               : box[low] < edge + op.count && box[low + 1] >= edge;
           });
         entry.at[axis] = movedIndex(op, entry.at[axis]);
-        entry.formula = moved(entry.formula, op);
+        entry.moves.push(op);
         entry.reads = entry.reads
           .map(function (box) {
             var span = movedSpan(op, box[low], box[low + 1]);
@@ -1103,6 +1110,7 @@
     }
     // the page opens and computes a formula as the edits moved it
     entries.forEach(function (entry) {
+      entry.formula = movedFormula(entry);
       if (
         entry.formula !== null &&
         entry.formula !== entry.cell.getAttribute("data-odr-formula")
