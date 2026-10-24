@@ -378,11 +378,12 @@ and the commits name. Git holds the full text of each decision.
   the sheet on its table, and the syntax, the `formula::Settings` and the
   names of the document on `<body>` (`data-odr-formula-names`). A row or
   column edit moves the names as it moves the formulas. `data-odr-reads`
-  puts in what a name stands for, so a formula with a name reads only that. The page formats a result with the document's
-  locale, not with the language of an ods data style. A commit computes the
-  dependents off the coalesced log (`repaintStale`, decision 5). It marks
-  the ones without an answer `odr-sheet-stale` and raises
-  `odr.onCellsStale`, so an undo takes its marks back.
+  puts in what a name stands for, so a formula with a name reads only that.
+  The page formats a result with the document's locale, not with the
+  language of an ods data style. A commit computes the dependents off the
+  coalesced log (`repaintStale`, decision 5). It marks the ones without an
+  answer `odr-sheet-stale` and raises `odr.onCellsStale`, so an undo takes
+  its marks back.
 
 ## Open work
 

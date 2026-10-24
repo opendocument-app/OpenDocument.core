@@ -1574,15 +1574,13 @@ TEST(html, an_editable_page_states_the_names_of_the_document) {
       R"( table:cell-range-address="$Sheet1.$B$1"/>)"
       R"(</table:named-expressions>)");
 
-  EXPECT_NE(render_sheet(file, editing_config())
-                .find(R"(data-odr-formula-names="[{&quot;expression&quot;:)"
+  const std::string page = render_sheet(file, editing_config());
+  EXPECT_NE(page.find(R"(data-odr-formula-names="[{&quot;expression&quot;:)"
                       R"(&quot;[$Sheet1.$B$1]&quot;,&quot;name&quot;:)"
                       R"(&quot;Total&quot;,&quot;sheet&quot;:null}]")"),
             std::string::npos);
   // the name is put in, so the formula reads B1 alone
-  EXPECT_NE(render_sheet(file, editing_config())
-                .find(R"(data-odr-reads="0,1,1,0,0")"),
-            std::string::npos);
+  EXPECT_NE(page.find(R"(data-odr-reads="0,1,1,0,0")"), std::string::npos);
   EXPECT_EQ(render_sheet(file, HtmlConfig()).find("data-odr-formula-names"),
             std::string::npos);
 }

@@ -601,16 +601,17 @@
   /// there, so the log can replay it.
   var written = new WeakMap();
 
+  var movedFormulas = new Map();
+
   /// @p formula after the row or column op @p op, null where the page cannot
   /// move it. A reference that names no sheet is on @p own, this sheet where
   /// it is left out, and on none where it is null.
-  var movedFormulas = new Map();
   function moved(formula, op, own) {
     if (formula === null || formulas === null || formulas.module === null) {
       return null;
     }
     var on = own === undefined ? formulas.name : own;
-    var key = formula + "\n" + on + "\n" + JSON.stringify(op);
+    var key = JSON.stringify([formula, on, op]);
     if (!movedFormulas.has(key)) {
       movedFormulas.set(
         key,
@@ -628,12 +629,13 @@
     }, entry.formula);
   }
 
-  /// The names a formula here reads, as the row and column ops of @p ops
-  /// moved them.
+  /// The names a formula here reads, as the row and column ops of the saves
+  /// and of @p ops moved them.
   function namesAfter(ops) {
+    var all = formulas.savedMoves.concat(ops);
     return formulas.names.map(function (name) {
       var expression = name.expression;
-      ops.forEach(function (op) {
+      all.forEach(function (op) {
         if (STRUCTURE_OPS[op.op] !== undefined && op.sheet === sheet) {
           expression = moved(
             expression,
@@ -813,6 +815,8 @@
             expression: name.expression,
           };
         }),
+      // the row and column ops of the saves, which wait for the module
+      savedMoves: [],
       locale: document.body.getAttribute("data-odr-locale") || "",
       booleanWords: null,
       name: (table.getAttribute("data-odr-sheet-name") || "").toLowerCase(),
@@ -2111,7 +2115,11 @@
       // what the formula cells and the names read, where the saved rows put it
       readers = walk(coalesced());
       if (formulas !== null) {
-        formulas.names = namesAfter(coalesced());
+        formulas.savedMoves = formulas.savedMoves.concat(
+          coalesced().filter(function (op) {
+            return STRUCTURE_OPS[op.op] !== undefined;
+          })
+        );
       }
       // the results shown are the ones the save wrote
       computed.clear();
