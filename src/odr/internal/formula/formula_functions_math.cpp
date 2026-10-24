@@ -626,6 +626,32 @@ Value factorial(const Call &call, const double x) {
   return Value{result};
 }
 
+/// A number in [0, 1) from the caller's source.
+double random_of(const Call &call) {
+  if (!call.settings().random) {
+    throw NoAnswer{};
+  }
+  return call.settings().random();
+}
+
+Value random(const Call &call) {
+  expect_arguments(call, 0, 0);
+  return Value{random_of(call)};
+}
+
+/// `RANDBETWEEN`: a whole number between two. A bound that is no whole
+/// number, or a bottom above the top, has no answer: LibreOffice refuses the
+/// second, and neither application documents what they do.
+Value random_between(const Call &call) {
+  expect_arguments(call, 2, 2);
+  const double bottom = number_argument(call, 0);
+  const double top = number_argument(call, 1);
+  if (bottom != std::trunc(bottom) || top != std::trunc(top) || bottom > top) {
+    throw NoAnswer{};
+  }
+  return Value{bottom + std::floor(random_of(call) * (top - bottom + 1))};
+}
+
 constexpr std::array entries{
     FunctionEntry{"ABS", unary<absolute>},
     FunctionEntry{"ACOS", unary<arc_cosine>},
@@ -657,6 +683,8 @@ constexpr std::array entries{
     FunctionEntry{"PRODUCT", product},
     FunctionEntry{"QUOTIENT", binary<quotient>},
     FunctionEntry{"RADIANS", unary<radians>},
+    FunctionEntry{"RAND", random},
+    FunctionEntry{"RANDBETWEEN", random_between},
     FunctionEntry{"ROUND", binary<round_function, 0, true>},
     FunctionEntry{"ROUNDDOWN", binary<round_down, 0, true>},
     FunctionEntry{"ROUNDUP", binary<round_up, 0, true>},

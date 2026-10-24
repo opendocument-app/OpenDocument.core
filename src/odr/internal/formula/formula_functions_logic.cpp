@@ -222,8 +222,62 @@ Value text_of(const Call &call) {
   return Value{std::string()};
 }
 
+/// `CELL`: what a cell is, as the first argument asks: `address`, `col`,
+/// `row`, `contents` or `type`. Without a reference LibreOffice reads the
+/// formula's own cell, and Excel the cell that changed last.
+Value cell_info(const Call &call) {
+  expect_arguments(call, 1, 2);
+  const Text asked = call.text(call.scalar(0));
+  if (const auto *error = std::get_if<ErrorType>(&asked)) {
+    return Value{*error};
+  }
+  SheetPosition at = call.cell();
+  if (call.size() < 2) {
+    if (!is_libreoffice(call)) {
+      throw NoAnswer{};
+    }
+  } else {
+    const Value value = call.value(1);
+    if (const auto *error = std::get_if<ErrorType>(&value.content)) {
+      return Value{*error};
+    }
+    const auto *reference = std::get_if<Reference>(&value.content);
+    if (reference == nullptr || reference->areas.size() != 1) {
+      throw NoAnswer{};
+    }
+    at = SheetPosition(reference->areas.front().sheet,
+                       reference->areas.front().range.from());
+  }
+  const std::string info = util::string::to_lower(std::get<std::string>(asked));
+  if (info == "address") {
+    if (at.sheet != call.cell().sheet) {
+      throw NoAnswer{}; // the name of the sheet, and in Excel of the file
+    }
+    return Value{"$" + TablePosition::to_column_string(at.cell.column) + "$" +
+                 std::to_string(at.cell.row + 1)};
+  }
+  if (info == "row" || info == "col") {
+    return Value{1.0 + (info == "row" ? at.cell.row : at.cell.column)};
+  }
+  const Value value = call.cell_value(at);
+  if (info == "contents") {
+    if (value.holds<Empty>() && !is_libreoffice(call)) {
+      throw NoAnswer{}; // LibreOffice gives 0, and Excel does not document it
+    }
+    return value.holds<Empty>() ? Value{0.0} : value;
+  }
+  if (info == "type") {
+    if (value.holds<std::string>()) {
+      throw NoAnswer{}; // `l` for a text, but in Excel `v` for a formula's
+    }
+    return Value{std::string(value.holds<Empty>() ? "b" : "v")};
+  }
+  return refused(call, ErrorType::value);
+}
+
 constexpr std::array entries{
     FunctionEntry{"AND", all},
+    FunctionEntry{"CELL", cell_info},
     FunctionEntry{"CHOOSE", choose},
     FunctionEntry{"IF", condition},
     FunctionEntry{"IFERROR", if_error<false>},

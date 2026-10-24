@@ -165,6 +165,9 @@
         check("a formula that decides what it reads computes", text(4, 1) === "15,00", text(4, 1));
         type(0, 1, "6");
         check("and computes again where a cell of its sheet changes", text(4, 1) === "18,00", text(4, 1));
+
+        type(3, 1, "=AND(YEAR(TODAY())>2020;RAND()<1)");
+        check("the page computes with its clock and random numbers", text(3, 1) === "WAHR", text(3, 1));
       });
     </script>
   </body>

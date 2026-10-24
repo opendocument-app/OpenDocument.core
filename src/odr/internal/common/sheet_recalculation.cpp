@@ -10,9 +10,14 @@
 #include <odr/internal/formula/formula_function.hpp>
 #include <odr/internal/formula/formula_parser.hpp>
 
+#include <odr/internal/number_format/number_format.hpp>
+
 #include <algorithm>
+#include <ctime>
 #include <limits>
+#include <memory>
 #include <optional>
+#include <random>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -57,6 +62,33 @@ constexpr std::size_t span_limit = 1 << 20;
 /// the far end.
 constexpr std::size_t depth_limit = 64;
 
+/// Days since 1899-12-30 of this moment in the local time of the machine, as
+/// a spreadsheet application computes `NOW()`.
+double local_now() {
+  const std::time_t now = std::time(nullptr);
+  std::tm local{};
+#ifdef _WIN32
+  localtime_s(&local, &now);
+#else
+  localtime_r(&now, &local);
+#endif
+  return static_cast<double>(number_format::days_from_civil(
+             local.tm_year + 1900, static_cast<std::uint32_t>(local.tm_mon + 1),
+             static_cast<std::uint32_t>(local.tm_mday))) +
+         (local.tm_hour * 3600 + local.tm_min * 60 + local.tm_sec) / 86400.0;
+}
+
+/// The settings of the document, with the clock and the random numbers a
+/// recalculation computes `NOW` and `RAND` with.
+formula::Settings recalculating(formula::Settings settings) {
+  settings.now = local_now();
+  settings.random =
+      [generator = std::make_shared<std::mt19937_64>(std::random_device{}())] {
+        return std::uniform_real_distribution<double>(0, 1)(*generator);
+      };
+  return settings;
+}
+
 /// The cells as a recalculation reads them: a stale formula cell computed on
 /// demand, every other one as the file caches it.
 class StaleCells final : public formula::CellSource {
@@ -64,7 +96,8 @@ public:
   StaleCells(const SheetCellSource *base,
              const std::unordered_map<SheetPosition, Formula> *formulas,
              std::unordered_set<SheetPosition> stale)
-      : m_base{base}, m_formulas{formulas}, m_stale{std::move(stale)},
+      : m_base{base}, m_settings{recalculating(base->settings())},
+        m_formulas{formulas}, m_stale{std::move(stale)},
         m_stale_ordered(m_stale.begin(), m_stale.end()) {
     std::ranges::sort(m_stale_ordered);
   }
@@ -129,7 +162,7 @@ public:
     }
     m_stack.push_back(position);
     const std::optional<formula::Value> result =
-        formula::evaluate(*entry.node, position, *this, m_base->settings());
+        formula::evaluate(*entry.node, position, *this, m_settings);
     m_stack.pop_back();
     // a result the depth limit cut short is computed again
     if (!m_frontier.has_value()) {
@@ -181,6 +214,7 @@ private:
   }
 
   const SheetCellSource *m_base{nullptr};
+  formula::Settings m_settings;
   const std::unordered_map<SheetPosition, Formula> *m_formulas{nullptr};
   std::unordered_set<SheetPosition> m_stale;
   /// The stale positions in reading order.

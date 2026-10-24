@@ -1003,6 +1003,13 @@
     var depth = 0;
     var extent = null;
 
+    // `NOW` reads the moment of the edit, in days since 1899-12-30 local time
+    var settings = Object.assign({}, formulas.settings, {
+      now:
+        (Date.now() - new Date().getTimezoneOffset() * 60000) / 86400000 +
+        25569,
+    });
+
     function evaluate(formula, column, row) {
       if (formula === null) {
         return null;
@@ -1013,7 +1020,7 @@
         sheet,
         column,
         row,
-        formulas.settings,
+        settings,
         source
       );
     }

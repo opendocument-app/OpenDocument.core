@@ -13,6 +13,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -150,6 +151,23 @@ TEST(SheetRecalculation, what_the_evaluator_does_not_know_stays_without_one) {
   EXPECT_EQ(spelled(result.unevaluated()),
             (std::vector<std::string>{"0!B1", "0!C1"}));
   EXPECT_EQ(value_at(document, 2, 0).type(), ValueType::unknown);
+}
+
+// The clock and the random numbers are the machine's, so the test reads only
+// what they cannot change.
+TEST(SheetRecalculation, now_and_rand_compute_every_time) {
+  const Document document =
+      ods(row(computed("of:=TODAY()", "1") + computed("of:=NOW()", "1") +
+              computed("of:=RAND()", "5")));
+  document.recalculate();
+
+  const double today = value_at(document, 0, 0).number();
+  EXPECT_GT(today, 45000); // after 2023
+  EXPECT_EQ(today, std::floor(today));
+  EXPECT_GE(value_at(document, 1, 0).number(), today);
+  EXPECT_LT(value_at(document, 1, 0).number(), today + 1);
+  EXPECT_GE(value_at(document, 2, 0).number(), 0);
+  EXPECT_LT(value_at(document, 2, 0).number(), 1);
 }
 
 TEST(SheetRecalculation, a_range_reads_the_stale_cells_it_holds) {
