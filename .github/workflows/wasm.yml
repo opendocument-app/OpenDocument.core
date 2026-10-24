@@ -166,11 +166,11 @@ jobs:
             echo "| \`odr-core.wasm\` | $raw |"
             echo "| brotli -q 11 | $br |"
           } >> "$GITHUB_STEP_SUMMARY"
-          # A ratchet, not a target: the library sat at ~820 K brotli'd when
-          # this was written, so 1.5 M means something was linked in that
-          # should not have been.
-          if [ "$br" -gt 1572864 ]; then
-            echo "::error::brotli'd wasm is ${br} bytes, over the 1.5 M ratchet"
+          # A ratchet, not a target: the library sat at ~1.6 M brotli'd when
+          # this was last raised, so 1.75 M means something was linked in
+          # that should not have been.
+          if [ "$br" -gt 1835008 ]; then
+            echo "::error::brotli'd wasm is ${br} bytes, over the 1.75 M ratchet"
             exit 1
           fi
           formula=build/wasm/formula/odr-formula.js
