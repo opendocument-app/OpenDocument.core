@@ -3,7 +3,8 @@
 Status: cells edit and save in `.ods`, `.xlsx` and `.csv`, with their
 styles, number formats, dates, and inserted and deleted rows and columns.
 Formulas parse, track their dependents and evaluate. A recalculation and a
-save write the results the evaluator computes.
+save write the results the evaluator computes. An editable sheet page
+computes its formula cells as the user edits, and takes formula input.
 
 Related: [`editing.md`](editing.md) holds the mode frame every editor shares,
 [`document-editing.md`](document-editing.md) the document view and
@@ -95,7 +96,8 @@ translate. The page carries only what the browser cannot work out itself:
 `data-odr-lock` on a cell that refuses a write, with its reason (`formula`
 where the build has no formula module, `rich` for a link or anything else
 past text and line breaks, `shapes` where the cell is nothing but its anchored
-drawings), and `data-odr-editable` on `<body>`. Every other cell is editable, an empty one included.
+drawings), and `data-odr-editable` on `<body>`. Every other cell is editable,
+an empty one included.
 
 The editor is an overlay the script places over the cell, so the sheet's DOM
 stays untouched until the commit patches the cell. The overlay is a
@@ -160,10 +162,20 @@ drift. **Why not the host:** it would need a decoded document that matches
 the page, and a fresh decode for each undo. **Why not all of core as wasm:**
 the page would need the file, and the module would be 4.6 MB, not 530 KB.
 
+The module is built with `-Oz`, which is about 30% smaller than `-O2` and
+about 20% slower: one evaluation takes about 8 µs, which an edit does not
+notice. As base64 it adds about 540 KB to a page, so a page carries it
+only where it edits an ods or xlsx sheet. Only the emscripten build makes
+it, and it must match the core that renders the page. So CI publishes it per
+core version, and another build names that file with `ODR_FORMULA_MODULE`.
+A build without it locks the formula cells and marks their results stale.
+
 The page computes in the order the marked cells read each other, so no
 evaluation nests in another one: a chain of several hundred cells would
 overflow the wasm stack. Where the module has no answer, the cell stays
-stale. A boolean result takes the words of the page's boolean cells, because
+stale. The page reads only what it shows, so a formula that reads past a
+sheet the limits cut, or a sheet that is not in the page, stays stale too.
+A boolean result takes the words of the page's boolean cells, because
 the file spelled them in the language of whoever saved it: a cell that shows
 `FALSCH` makes a true result `WAHR`. A page that shows no boolean takes the
 words of the document's language. `number_format::boolean_words` chooses
@@ -328,6 +340,21 @@ and the commits name. Git holds the full text of each decision.
   - A cell without an answer has no result in an `.ods`, and keeps its old
     one in an `.xlsx`, which keeps `fullCalcOnLoad`. Every binding has
     `recalculate`.
+- **Live formulas** (decision 5).
+  - `wasm/formula` builds `odr-formula.js`, the evaluator and the number
+    formats with the wasm inside. An editable ods or xlsx sheet page embeds
+    it and states what it reads: the syntax and the `Settings` of the
+    document, and the format code of each formula cell.
+  - A commit, an undo and a redo compute the formula cells that the edit
+    reaches, in the order they read each other, and show them in the format
+    of each cell. A boolean takes the words the page shows its booleans in.
+    Only a cell without an answer stays stale and reaches `odr.onCellsStale`.
+  - `setCell` takes a formula in the syntax of the file. A formula cell takes
+    a value or a formula, except the anchor of an array or a shared formula.
+    An xlsx drops the `calcChain` entry of a formula it removes, and the
+    whole chain where that empties it.
+  - The editor takes `=` input (decision 4) and opens a formula cell on its
+    formula.
 
 ## Formulas, read side
 
@@ -348,106 +375,17 @@ and the commits name. Git holds the full text of each decision.
   `data-odr-type` and the value of a boolean or an error cell, the name of
   the sheet on its table, and the syntax and the `formula::Settings` of the
   document on `<body>`. The page formats a result with the document's
-  locale, not with the language of an ods data style. A commit marks the
-  dependents `odr-sheet-stale` off the coalesced log (`repaintStale`) and
-  raises `odr.onCellsStale`, so an undo takes its marks back.
+  locale, not with the language of an ods data style. A commit computes the
+  dependents off the coalesced log (`repaintStale`, decision 5). It marks
+  the ones without an answer `odr-sheet-stale` and raises
+  `odr.onCellsStale`, so an undo takes its marks back.
 
 ## Open work
 
-- **Live formulas, as a stack of PRs.** The order follows what each step
-  needs from the one before it.
-  1. The module. `wasm/formula` builds `odr-formula.js`, the evaluator and
-     the number formats with the wasm inside. `formula.test.mjs` tests it,
-     and the wasm workflow attaches it to each release.
-  2. The page carries it. A build embeds the module where it has one: the
-     emscripten build makes it, and another build names the file of its
-     core version. A page carries it only where it edits an ods or xlsx
-     sheet (step 6). A build without it marks formulas stale, as now.
-  3. The page states what the evaluator reads: the syntax and the
-     `Settings` of the document, and the format code of each formula cell,
-     as the writer formats a result.
-  4. Live results (decision 5). A commit, an undo and a redo compute the
-     formula cells that the edit reaches, in the order they read each other,
-     and show them in the format of the cell. A cell without an answer stays
-     stale. `odr.onCellsStale` names only those.
-  5. A formula write. `setCell` takes `{"type": "formula", "formula": …}`
-     in the syntax of the file, as `SheetCell::value` gives it. A formula
-     cell takes a value or a formula too, except the anchor of an array or
-     a shared formula. The graph is built again, and a save computes the new
-     formula. An xlsx drops the `calcChain` entry of a formula it removes.
-  6. Formula input (decision 4). The editor opens a formula cell on its
-     formula and takes `=` input. The module turns it into the syntax of
-     the file and states what it reads, and the page computes it at once.
-     Every editable ods and xlsx sheet carries the module, because a sheet
-     without a formula takes one too.
-- **Live results in the page: the options that were weighed.** The stack
-  above takes the first one (decision 5). A page without the module marks
-  the formula cells stale until something computes them.
-  - **A small wasm module with the evaluator only. This is the preferred
-    way.** The page has the cells already: `data-odr-formula` and
-    `data-odr-value` state what the evaluator reads. So the module holds
-    `internal/formula` and `internal/number_format` and nothing else: no
-    XML, no zip, no file format. Outside core it needs `fmt` and the
-    headers of utf8cpp.
-    A JavaScript callback implements `formula::CellSource` over the DOM
-    (decision 30). The page embeds the module as base64, as
-    `HtmlConfig::embed_shipped_resources` does with the other resources,
-    so a page with no host computes too: an export, a page opened from
-    `file://`, a page sent as a mail attachment. There is still one
-    evaluator and one corpus test.
-
-    Measured on 2026-10-24 with emscripten 3.1.73, a binding that exports
-    `evaluate` and `format` through embind, and a JavaScript `CellSource`:
-
-    | build | wasm | gzip | JavaScript |
-    |---|---|---|---|
-    | `-Oz -flto -fwasm-exceptions` | 331 KB | 141 KB | 39 KB |
-    | `-O2 -flto -fwasm-exceptions` | 475 KB | 175 KB | 40 KB |
-
-    The module compiles `internal/formula`, `internal/number_format`,
-    `util/string_util`, `util/number_util`, `common/table_range`,
-    `SheetPosition`, `TablePosition` and `TableDimensions`. The evaluator
-    throws `ErrorResult` and `NoAnswer` to unwind, so the module needs
-    exceptions, as `odr-core.wasm` does with `-fwasm-exceptions`. One
-    evaluation of `SUM(A1:A3)*2+IF(B2,1,0)` takes about 8 µs in node, the
-    JavaScript callbacks included. `-O2` takes 19% less time and is 44%
-    larger, so `-Oz` is the build.
-
-    As base64, the `-Oz` module adds about 480 KB to a page. Each sheet
-    view is a page of its own, so a page carries the module only where it
-    edits a sheet whose format takes formulas.
-  - The host computes them in process (decision 5) and sends them to the
-    page. The apps and the npm host have core already. The host must keep a
-    decoded document that matches the page, and an undo in the page needs a
-    fresh decode and a replay of the log, because `Document::edit` cannot
-    take an op back. A page with no host does not compute.
-  - The page loads all of core as wasm. The page then needs the file, and
-    the module is 4.6 MB (`odr-core.wasm` today).
-  - The page has an evaluator in JavaScript. A page with no host computes,
-    but this is a second library of functions that drifts from the first,
-    which decision 5 rejects.
-
-  An evaluator in the page reads only what the page shows. A formula that
-  reads past a sheet the limits cut, or a sheet that is not in the page,
-  stays stale (decision 29). The page still needs a host to save.
-
-  The build cost of the small module: a page resource made with emscripten
-  makes every build that ships the resources need emscripten too, also the
-  android, ios and python builds. The emsdk in a conan cache takes 2.6 GB.
-  So CI, which has emscripten for the npm package already, builds the
-  module once and publishes it, and the other builds take that file, as
-  they take any shipped resource. A build without the module ships pages
-  that mark formulas stale, as now. This has two costs:
-  - The module must match the core that renders the page, for example in
-    how `data-odr-formula` spells a formula. So CI publishes the module per
-    core version, and a build takes the one of its version.
-  - A local change to `internal/formula` reaches the page only after CI
-    builds the module, or where the developer installs emscripten.
-- **Formula input, what is left.** A typed formula shows its result in
-  `General` until a new render, because the page states the format code of
-  formula cells only. A defined name reads nothing in the page. Function
-  names are the English ones, also where a localized LibreOffice shows them
-  translated.
+- **Formula input.** A typed formula shows its result in `General` until a
+  new render, because the page states the format code of formula cells only.
+  A defined name reads nothing in the page. Function names are the English
+  ones, also where a localized LibreOffice shows them translated.
 - **Out of the evaluator so far:** array formulas and dynamic arrays, a
   reference into another document, iterative calculation, the volatile
   functions, and localized function names. Each cell that needs one stays
