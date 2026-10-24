@@ -959,7 +959,7 @@ std::string fods_cell(const std::string &text, const bool wraps = false) {
 std::string fods_blank() { return "<table:table-cell/>"; }
 
 /// @p count columns of one inch, which is 96 css pixels. Without them a column
-/// is exactly its content's width and nothing can overflow it.
+/// takes the width of its longest text, and nothing overflows it.
 std::string fods_columns(const std::uint32_t count) {
   return R"(<table:table-column table:style-name="co1")"
          R"( table:number-columns-repeated=")" +
@@ -1826,6 +1826,31 @@ TEST(html, a_run_holds_its_spaces_and_tabs_as_is) {
 // #822: and it keeps the block it breaks into lines in, which is what holds the
 // row to the height the file states. The cell cuts what runs past its bottom
 // rather than letting it paint over the row below.
+// A chunk of one column holds 256 rows, but ends only where no merge is open.
+TEST(html, a_sheet_ends_a_chunk_only_where_no_merge_is_open) {
+  std::string rows;
+  for (std::uint32_t row = 0; row < 300; ++row) {
+    rows += fods_row(row == 250
+                         ? R"(<table:table-cell table:number-rows-spanned="10")"
+                           R"( office:value-type="string"><text:p>x</text:p>)"
+                           R"(</table:table-cell>)"
+                         : fods_cell("x"));
+  }
+  const std::string page = render_sheet(fods_file(rows), HtmlConfig());
+
+  // the first chunk takes the 10 rows of the merge, the second the 40 left
+  EXPECT_EQ(count(page, R"(<table class="odr-sheet-rows odr-chunk)"), 2);
+  EXPECT_NE(
+      page.find(R"(<table class="odr-sheet-rows odr-chunk odr-chunk-near")"
+                R"( style="contain-intrinsic-height:auto 5120px">)"),
+      std::string::npos);
+  const std::size_t second =
+      page.find(R"(<table class="odr-sheet-rows odr-chunk")"
+                R"( style="contain-intrinsic-height:auto 800px">)");
+  ASSERT_NE(second, std::string::npos);
+  EXPECT_EQ(count(page.substr(second), "<tr"), 40);
+}
+
 TEST(html, a_cell_the_file_says_to_wrap_wraps) {
   const std::string page =
       render_sheet(fods_file(fods_row(fods_cell("one", true))), HtmlConfig());

@@ -8,6 +8,8 @@
     return;
   }
 
+  var odr = (window.odr = window.odr || {});
+
   var merged = table.querySelector("td[colspan],td[rowspan]") !== null;
   var head = table.querySelector(".odr-sheet-head");
   var headerRow = head.tHead.rows[0];
@@ -61,8 +63,6 @@
       }
     }
   }
-
-  var odr = (window.odr = window.odr || {});
 
   var style = document.createElement("style");
   document.head.appendChild(style);
