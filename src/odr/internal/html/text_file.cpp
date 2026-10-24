@@ -193,7 +193,9 @@ public:
     HtmlResources resources;
     const WritingState state(out, config(), resources, logger());
 
-    const Lines &all = lines();
+    const bool loads = loads_chunks();
+    const Lines read = loads ? Lines{} : read_lines();
+    const Lines &all = loads ? lines() : read;
 
     out.write_begin();
 
@@ -224,7 +226,6 @@ public:
         }));
 
     const auto line_count = static_cast<std::uint32_t>(all.count);
-    const bool loads = loads_chunks();
 
     out.write_element_begin(
         "div",
@@ -316,21 +317,26 @@ protected:
     std::vector<std::size_t> offsets;
   };
 
-  /// Read once: a chunk the page asks for is found without reading the text
-  /// up to it again.
-  [[nodiscard]] const Lines &lines() const {
-    std::call_once(m_lines_once, [this] {
-      m_lines.text = m_text_file.text();
-      std::istringstream in(m_lines.text);
-      while (!in.eof()) {
-        if (m_lines.count % chunk_lines == 0) {
-          m_lines.offsets.push_back(static_cast<std::size_t>(in.tellg()));
-        }
-        NullStream null;
-        util::stream::pipe_line(in, null, false);
-        ++m_lines.count;
+  [[nodiscard]] Lines read_lines() const {
+    Lines result;
+    result.text = m_text_file.text();
+    std::istringstream in(result.text);
+    while (!in.eof()) {
+      if (result.count % chunk_lines == 0) {
+        result.offsets.push_back(static_cast<std::size_t>(in.tellg()));
       }
-    });
+      NullStream null;
+      util::stream::pipe_line(in, null, false);
+      ++result.count;
+    }
+    return result;
+  }
+
+  /// Read once: a chunk the page asks for is found without reading the text
+  /// up to it again. Only a page that loads its chunks reads it, because an
+  /// edit of the file changes the text under the service.
+  [[nodiscard]] const Lines &lines() const {
+    std::call_once(m_lines_once, [this] { m_lines = read_lines(); });
     return m_lines;
   }
 

@@ -673,6 +673,22 @@ TEST(html, a_text_file_writes_its_lines_in_chunks) {
 
 // `lazy-loading.md` decision 3: the chunks after the first are scripts of
 // their own, which the page loads, and the service serves.
+// The file changes under the service, so a render after an edit shows it.
+TEST(html, a_text_file_renders_the_text_of_an_edit) {
+  const DecodedFile file = open(File::from_memory("lorem ipsum"),
+                                DecodeOptions::as(FileType::text_file));
+  const HtmlService service =
+      html::translate(file, HtmlConfig(), Logger::null());
+  std::ostringstream before;
+  service.write_html("text.html", before);
+
+  file.as_text_file().edit(
+      R"({"version":2,"ops":[{"op":"setContent","text":"edited"}]})");
+  std::ostringstream after;
+  service.write_html("text.html", after);
+  EXPECT_NE(after.str().find(">edited<"), std::string::npos);
+}
+
 TEST(html, a_text_file_loads_its_later_chunks) {
   std::string text;
   for (std::uint32_t line = 0; line < 299; ++line) {
