@@ -190,8 +190,6 @@ TEST(OoxmlSpreadsheetWrite, the_master_of_a_shared_formula_is_refused) {
   EXPECT_EQ(sheet.cell(1, 0).value().text(), "y");
 }
 
-/// ECMA-376 18.6.1: Excel repairs a workbook whose calc chain names a cell that
-/// holds no formula.
 namespace {
 
 /// A1 and B1 are formulas, and @p chain is the calc chain of the workbook.
@@ -236,6 +234,8 @@ package_with_calc_chain(const std::string &chain) {
 
 } // namespace
 
+/// ECMA-376 18.6.1: Excel repairs a workbook whose calc chain names a cell that
+/// holds no formula.
 TEST(OoxmlSpreadsheetWrite, a_value_over_a_formula_leaves_the_calc_chain) {
   const Document document = decode(package_with_calc_chain(
       R"(<calcChain xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">)"
