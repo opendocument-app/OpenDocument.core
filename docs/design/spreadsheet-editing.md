@@ -97,8 +97,8 @@ translate. The page carries only what the browser cannot work out itself:
 where the build has no formula module, `rich` for a link or anything else
 past text and line breaks, `shapes` where the cell is nothing but its anchored
 drawings, `array` for every cell of an array formula's range, as Excel edits
-no part of one), and `data-odr-editable` on `<body>`. Every other cell is editable,
-an empty one included.
+no part of one), and `data-odr-editable` on `<body>`. Every other cell is
+editable, an empty one included.
 
 The editor is an overlay the script places over the cell, so the sheet's DOM
 stays untouched until the commit patches the cell. The overlay is a

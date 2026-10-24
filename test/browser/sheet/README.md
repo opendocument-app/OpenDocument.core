@@ -101,7 +101,8 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
   `INDIRECT`, and `TODAY` and `RAND`, which every edit computes again.
 - `formula-arrays.html`: an array formula computes every cell of its range,
   and a formula that reads one of them. The range is locked, a row edit
-  through it is refused, and one above it moves it.
+  through it is refused, also through an array that reads no cell, and one
+  above it moves it.
 - `formula-words.html`: a computed boolean takes the words the page shows
   its booleans in, and the pair of the one word it shows: `WAHR` for a page
   that shows `FALSCH`, also in a French document.

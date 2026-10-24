@@ -606,20 +606,22 @@
   }
 
   /// The formula of @p cell and what it reads in this sheet, null where it
-  /// states no reads.
+  /// states no reads. An array formula that reads none is kept, so a row or
+  /// column edit knows its range.
   function readerOf(cell) {
     var at = odr.sheet.positionOf(cell);
     var stated = cell.getAttribute("data-odr-reads");
-    if (at === null || stated === null) {
+    var array = arrayOf(cell);
+    if (at === null || (stated === null && array === null)) {
       return null;
     }
     return {
       cell: cell,
       formula: cell.getAttribute("data-odr-formula"),
       moves: [],
-      array: arrayOf(cell),
+      array: array,
       at: at,
-      reads: boxesOf(stated),
+      reads: boxesOf(stated || ""),
     };
   }
 
@@ -628,7 +630,7 @@
       return readers;
     }
     readers = [];
-    var cells = table.querySelectorAll("td[data-odr-reads]");
+    var cells = table.querySelectorAll("td[data-odr-reads], td[data-odr-array]");
     for (var i = 0; i < cells.length; ++i) {
       var entry = readerOf(cells[i]);
       if (entry !== null) {

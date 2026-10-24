@@ -54,6 +54,7 @@ std::optional<TableDimensions> array_span_of(const pugi::xml_node formula) {
       std::minmax(range.from().column, range.to().column);
   return TableDimensions(bottom - top + 1, right - left + 1);
 }
+
 std::unique_ptr<abstract::ElementAdapter>
 create_element_adapter(Document &document, ElementRegistry &registry);
 
