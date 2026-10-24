@@ -90,8 +90,14 @@
         );
         check("and shows its result at once", text(2, 0) === "4,5", text(2, 0));
         odr.editing.editAt(2, 0);
-        check("it opens again as typed", editor().value === "=SUM(A1;B1)*1,5", editor().value);
-        editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        check("it opens again in the words of the document", editor().value === "=SUMME(A1;B1)*1,5", editor().value);
+        editor().value = "=summe(A1;B1)*1,5";
+        editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        check(
+          "a name the document's language spells reads as the function",
+          lastOp().value.formula === "of:=SUM([.A1];[.B1])*1.5" && text(2, 0) === "4,5",
+          JSON.stringify(lastOp())
+        );
 
         type(0, 0, "3");
         check("an input the new formula reads computes it", text(2, 0) === "7,5", text(2, 0));
@@ -142,7 +148,7 @@
         check("an array constant keeps its spelling", text(3, 0) === "3", text(3, 0));
         type(3, 0, "=STDEV.S(A1;B1;0,5)");
         odr.editing.editAt(3, 0);
-        check("a function name keeps its dot", editor().value === "=STDEV.S(A1;B1;0,5)", editor().value);
+        check("a function name keeps its dot", editor().value === "=STABW.S(A1;B1;0,5)", editor().value);
         editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
 
         type(4, 0, "=A1/4");

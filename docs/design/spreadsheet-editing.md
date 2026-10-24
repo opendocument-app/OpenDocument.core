@@ -132,7 +132,12 @@ as the decimal sign where that is the decimal sign of the locale. An array
 constant keeps the spelling of an `<f>`, `{1,2;3,4}`, in every locale. The
 module turns it into the syntax of the file, and the op states that:
 `{"type": "formula", "formula": "of:=SUM([.A1];[.B1])"}`. A formula cell opens
-on its formula, spelled the same way. A formula that does not parse refuses
+on its formula, spelled the same way. A function name may be typed as
+LibreOffice shows it in the language of the document, `SUMME` for `SUM` in a
+German one, and a formula cell opens with those names
+(`formula::localized_functions`, from LibreOffice's translations by
+`tools/formula`). The match ignores the case of ASCII letters only. A
+formula that does not parse refuses
 with `formulaInvalid`. Without the module, a formula refuses with
 `formulaInput`.
 
@@ -418,8 +423,6 @@ and the commits name. Git holds the full text of each decision.
 
 ## Open work
 
-- **Formula input.** Function names are the English ones, also where a
-  localized LibreOffice shows them translated.
 - **Out of the evaluator so far:** a dynamic array that the edit makes
   larger or smaller than the range the file states, a cell another document
   holds that its copy lacks, `INFO`, and localized function names. Each

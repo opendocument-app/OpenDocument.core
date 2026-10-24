@@ -1,5 +1,6 @@
 #include <odr/internal/formula/formula_dependencies.hpp>
 #include <odr/internal/formula/formula_evaluator.hpp>
+#include <odr/internal/formula/formula_function_names.hpp>
 #include <odr/internal/formula/formula_parser.hpp>
 #include <odr/internal/formula/formula_value.hpp>
 #include <odr/internal/formula/formula_writer.hpp>
@@ -299,21 +300,24 @@ std::string spelled(const formula::Node &node, const formula::Syntax syntax) {
          formula::to_string(node, syntax);
 }
 
-/// What the user typed after the `=`, as an `<f>` spells it, in the syntax of
-/// the file. Null where it does not parse.
-val to_file(const std::string &input, const std::string &syntax) {
+/// What the user typed after the `=`, as an `<f>` spells it and with the
+/// function names of the BCP 47 tag @p locale, in the syntax of the file.
+/// Null where it does not parse.
+val to_file(const std::string &input, const std::string &syntax,
+            const std::string &locale) {
   const std::optional<formula::Syntax> file_syntax = syntax_of(syntax);
   if (!file_syntax.has_value()) {
     return val::null();
   }
-  const std::optional<formula::Node> node =
-      formula::parse(input, formula::Syntax::ooxml);
+  const std::optional<formula::Node> node = formula::parse(
+      formula::english_functions(input, locale), formula::Syntax::ooxml);
   return node.has_value() ? val(spelled(*node, *file_syntax)) : val::null();
 }
 
 /// A formula of the file as the user types it, without the `=`: the reverse
 /// of `to_file`. Null where it does not parse.
-val to_input(const std::string &expression, const std::string &syntax) {
+val to_input(const std::string &expression, const std::string &syntax,
+             const std::string &locale) {
   const std::optional<formula::Syntax> file_syntax = syntax_of(syntax);
   if (!file_syntax.has_value()) {
     return val::null();
@@ -321,7 +325,8 @@ val to_input(const std::string &expression, const std::string &syntax) {
   const std::optional<formula::Node> node =
       formula::parse(expression, *file_syntax);
   return node.has_value()
-             ? val(formula::to_string(*node, formula::Syntax::ooxml))
+             ? val(formula::localized_functions(
+                   formula::to_string(*node, formula::Syntax::ooxml), locale))
              : val::null();
 }
 

@@ -33,6 +33,11 @@ The release run heads these entries with the version and opens a fresh
 
 ### Spreadsheets
 
+- The sheet editor takes a function name as LibreOffice shows it in the
+  language of the document, for example `SUMME` for `SUM` in a German one,
+  and opens a formula cell with those names. The file keeps the English
+  ones. The names come from LibreOffice's translations, for the 16
+  languages of the boolean words.
 - A recalculation and a save compute a cycle where the document iterates
   (`table:iteration` in an ods, `calcPr iterate` in an xlsx), as LibreOffice
   and Excel do: each group of cells that read each other, from what they

@@ -1,4 +1,5 @@
 #include <odr/internal/formula/formula_ast.hpp>
+#include <odr/internal/formula/formula_function_names.hpp>
 #include <odr/internal/formula/formula_parser.hpp>
 #include <odr/internal/formula/formula_writer.hpp>
 
@@ -232,4 +233,20 @@ TEST(FormulaWriter, a_column_edit_moves_each_address_of_a_list) {
   const SheetEdit insert{
       .sheet = "s", .axis = Axis::column, .index = 1, .count = 1};
   EXPECT_EQ(move_addresses("A1:C3 E5", insert, "s", Syntax::ooxml), "A1:D3 F5");
+}
+
+// The names are the ones LibreOffice shows in each language.
+TEST(FormulaWriter, a_function_name_takes_the_language_of_the_document) {
+  EXPECT_EQ(localized_functions("SUM(A1;B1)*2", "de-DE"), "SUMME(A1;B1)*2");
+  EXPECT_EQ(localized_functions("IF(A1,1,2)", "fr"), "SI(A1,1,2)");
+  EXPECT_EQ(english_functions("SUMME(A1;B1)", "de-CH"), "SUM(A1;B1)");
+  EXPECT_EQ(english_functions("ZÄHLENWENN (A1:A3;1)", "de"),
+            "COUNTIF (A1:A3;1)");
+  // only a name ahead of `(`, and none in a text or a quoted sheet name
+  EXPECT_EQ(english_functions(R"(LEN("SUMME(")+'SUMME('!A1+SUMME)", "de"),
+            R"(LEN("SUMME(")+'SUMME('!A1+SUMME)");
+  // a language without a table keeps the English names
+  EXPECT_EQ(localized_functions("SUM(A1)", "ja-JP"), "SUM(A1)");
+  EXPECT_EQ(localized_functions("SUM(A1)", "no"),
+            localized_functions("SUM(A1)", "nb"));
 }
