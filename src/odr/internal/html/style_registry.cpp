@@ -38,7 +38,8 @@ const std::string &StyleRegistry::intern(const std::string_view prefix,
   const auto [it, inserted] = m_entries.try_emplace(std::move(declaration));
   if (inserted) {
     it->second = name(prefix, m_count_by_prefix[std::string(prefix)]++,
-                      m_digits == Digits::base36 ? 36 : 10);
+                      m_digits == Digits::base36 ? 36 : 10) +
+                 m_suffix;
     m_order.push_back(&*it);
   }
   return it->second;

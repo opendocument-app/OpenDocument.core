@@ -44,6 +44,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -449,6 +450,10 @@ std::string local_font_sources(const std::string_view css_family,
 /// whichever local font resolves would put it.
 class SubstituteFontFaces {
 public:
+  /// @p suffix ends every face name, as `StyleRegistry::set_suffix` does.
+  explicit SubstituteFontFaces(std::string suffix = {})
+      : m_suffix{std::move(suffix)} {}
+
   /// The `font-family:...` (plus weight/style) declaration for `substitute`,
   /// routed through a generated metric-overriding face `'odr-sN'`. Falls back
   /// to the plain family stack when the stack names no concrete font.
@@ -471,7 +476,8 @@ public:
         std::move(key).str(), static_cast<int>(m_faces.size()) + 1);
     if (inserted) {
       std::ostringstream face;
-      face << "@font-face{font-family:'odr-s" << it->second << "';src:" << src;
+      face << "@font-face{font-family:'odr-s" << it->second << m_suffix
+           << "';src:" << src;
       // Declared, so the browser does not synthesise them a second time.
       if (substitute.bold) {
         face << ";font-weight:bold";
@@ -485,7 +491,7 @@ public:
       m_faces.push_back(std::move(face).str());
     }
     std::string declaration = "font-family:'odr-s" +
-                              std::to_string(it->second) + "'," +
+                              std::to_string(it->second) + m_suffix + "'," +
                               substitute.css_family;
     if (substitute.bold) {
       declaration += ";font-weight:bold";
@@ -506,6 +512,7 @@ public:
 private:
   std::map<std::string, int> m_index_by_key;
   std::vector<std::string> m_faces;
+  std::string m_suffix;
 };
 
 /// An SVG `d` attribute for a path's subpaths, each point mapped through
@@ -1206,6 +1213,72 @@ std::vector<pdf::PageElement> page_elements(const pdf::Page &page,
   return elements;
 }
 
+class HtmlServiceImpl;
+
+/// Where page @p number loads from (`lazy-loading.md` decision 7).
+std::string page_script_path(const std::size_t number) {
+  return "pdf-pages/" + std::to_string(number) + ".js";
+}
+
+/// A resource the service renders when it is asked for.
+class RenderedResource : public abstract::HtmlResource {
+public:
+  RenderedResource(const HtmlServiceImpl &service, std::string path,
+                   std::string mime_type)
+      : m_service{&service}, m_path{std::move(path)},
+        m_mime_type{std::move(mime_type)} {}
+
+  [[nodiscard]] HtmlResourceType type() const override {
+    return m_mime_type == "font/ttf" ? HtmlResourceType::font
+                                     : HtmlResourceType::js;
+  }
+  [[nodiscard]] const std::string &mime_type() const override {
+    return m_mime_type;
+  }
+  [[nodiscard]] const std::string &name() const override { return m_path; }
+  [[nodiscard]] const std::string &path() const override { return m_path; }
+  [[nodiscard]] const std::optional<File> &file() const override {
+    static const std::optional<File> none;
+    return none;
+  }
+  [[nodiscard]] bool is_shipped() const override { return false; }
+  [[nodiscard]] bool is_external() const override { return false; }
+  [[nodiscard]] bool is_accessible() const override { return true; }
+
+protected:
+  const HtmlServiceImpl *m_service{nullptr};
+
+private:
+  std::string m_path;
+  std::string m_mime_type;
+};
+
+/// A page after the first as the script that puts it into its empty page.
+class PageScriptResource final : public RenderedResource {
+public:
+  PageScriptResource(const HtmlServiceImpl &service, const std::size_t number)
+      : RenderedResource(service, page_script_path(number), "text/javascript"),
+        m_number{number} {}
+
+  void write_resource(std::ostream &os) const override;
+
+private:
+  std::size_t m_number{0};
+};
+
+/// A font that every page links, rather than each page carrying it.
+class FontFileResource final : public RenderedResource {
+public:
+  FontFileResource(const HtmlServiceImpl &service, const pdf::Font &font,
+                   std::string path)
+      : RenderedResource(service, std::move(path), "font/ttf"), m_font{&font} {}
+
+  void write_resource(std::ostream &os) const override;
+
+private:
+  const pdf::Font *m_font{nullptr};
+};
+
 class HtmlServiceImpl final : public HtmlService {
 public:
   HtmlServiceImpl(PdfFile pdf_file, HtmlConfig config, const Logger &logger)
@@ -1333,11 +1406,108 @@ public:
   /// The combined document: every rendered page, internal links as `#pN`
   /// anchors (dropped when the target page is outside the page range).
   HtmlResources write_document(HtmlWriter &out) const {
-    const PageHref page_href = [this](const std::size_t index) {
+    if (loads_pages()) {
+      // before the first page, so its faces read the files too
+      const std::vector<const pdf::Font *> &fonts = document_fonts();
+      HtmlResources resources = write_pages_dual_layer(
+          out, std::span(m_pages).first(1), m_first_page + 1,
+          document_page_href(), std::span(m_pages).subspan(1));
+      for (const pdf::Font *font : fonts) {
+        if (const std::optional<std::string> file = shared_font_file(font);
+            file.has_value()) {
+          resources.emplace_back(
+              odr::HtmlResource(
+                  std::make_shared<FontFileResource>(*this, *font, *file)),
+              *file);
+        }
+      }
+      return resources;
+    }
+    return write_pages(out, m_pages, m_first_page + 1, document_page_href());
+  }
+
+  [[nodiscard]] PageHref document_page_href() const {
+    return [this](const std::size_t index) {
       return page_rendered(index) ? "#p" + std::to_string(index + 1)
                                   : std::string();
     };
-    return write_pages(out, m_pages, m_first_page + 1, page_href);
+  }
+
+  /// Whether the combined document loads its pages after the first as the
+  /// reader comes near, which it does where it is laid out lazily, in two
+  /// layers. The single layer re-encodes a font for the pages it meets, so a
+  /// page rendered alone would need a font of its own.
+  [[nodiscard]] bool loads_pages() const {
+    return config().lazy_loading && config().lazy_layout &&
+           config().pdf_text_mode == PdfTextMode::dual_layer &&
+           m_pages.size() > 1;
+  }
+
+  /// Page @p number rendered alone, as the script that puts it into the page.
+  void write_page_script(const std::size_t number, std::ostream &os) const {
+    std::lock_guard lock(m_mutex);
+    std::ostringstream html;
+    HtmlWriter out(html, false, "");
+    const std::size_t index = number - 1 - m_first_page;
+    write_pages_dual_layer(out, std::span(m_pages).subspan(index, 1), number,
+                           document_page_href(), {}, true);
+    os << "odr.chunks.fill(" << script_string("p" + std::to_string(number))
+       << "," << script_string(html.str()) << ");\n";
+  }
+
+  void write_font_file(const pdf::Font &font, std::ostream &os) const {
+    std::lock_guard lock(m_mutex);
+    os << reencoded_font(font, {});
+  }
+
+  /// The number a font has in every page rendered apart.
+  [[nodiscard]] std::uint32_t shared_font_id(const pdf::Font *font) const {
+    const auto [it, inserted] = m_font_ids.try_emplace(
+        font, static_cast<std::uint32_t>(m_font_ids.size() + 1));
+    return it->second;
+  }
+
+  /// The file a font's face reads, nothing where it has none: one that no
+  /// page states in its resources, which a page then carries itself.
+  [[nodiscard]] std::optional<std::string>
+  shared_font_file(const pdf::Font *font) const {
+    if (!m_font_files.contains(font)) {
+      return std::nullopt;
+    }
+    return "pdf-fonts/" + std::to_string(shared_font_id(font)) + ".ttf";
+  }
+
+  /// The usable fonts the rendered pages state in their resources and in the
+  /// resources of their forms, each with a file. Found once.
+  [[nodiscard]] const std::vector<const pdf::Font *> &document_fonts() const {
+    if (m_document_fonts.has_value()) {
+      return *m_document_fonts;
+    }
+    std::vector<const pdf::Font *> &result = m_document_fonts.emplace();
+    std::unordered_set<const pdf::Resources *> seen;
+    const auto visit = [&](const auto &self,
+                           const pdf::Resources *resources) -> void {
+      if (resources == nullptr || !seen.insert(resources).second) {
+        return;
+      }
+      for (const auto &[name, font] : resources->font) {
+        if (font != nullptr && !m_font_files.contains(font) &&
+            font_is_usable(*font, Logger::null())) {
+          m_font_files.insert(font);
+          static_cast<void>(shared_font_id(font));
+          result.push_back(font);
+        }
+      }
+      for (const auto &[name, x_object] : resources->x_object) {
+        if (x_object != nullptr) {
+          self(self, x_object->resources);
+        }
+      }
+    };
+    for (const pdf::Page *page : m_pages) {
+      visit(visit, page->resources);
+    }
+    return result;
   }
 
   /// One standalone page (the `page{index}.html` view). Internal links are
@@ -1412,18 +1582,41 @@ public:
     std::vector<LinkOut> links;
   };
 
-  HtmlResources write_pages_dual_layer(HtmlWriter &out,
-                                       const std::span<pdf::Page *const> pages,
-                                       const std::size_t first_page_number,
-                                       const PageHref &page_href) const {
+  /// @p pages rendered, and @p later as empty pages that load as scripts
+  /// (`lazy-loading.md` decision 7). A @p fragment is the one page of such a
+  /// script: the rules it needs and what its page box holds, which the script
+  /// puts into the empty page.
+  HtmlResources write_pages_dual_layer(
+      HtmlWriter &out, const std::span<pdf::Page *const> pages,
+      const std::size_t first_page_number, const PageHref &page_href,
+      const std::span<pdf::Page *const> later = {},
+      const bool fragment = false) const {
+    // pages rendered apart share one page, so their names must not clash: a
+    // fragment suffixes its classes with its page, and a font has one number
+    // and one file for the whole service
+    const bool loads = !later.empty() || fragment;
+    const std::string suffix =
+        fragment ? "_" + std::to_string(first_page_number) : std::string();
+    // a fragment's resources are written by nobody, so it carries its images
+    HtmlConfig fragment_config = config();
+    fragment_config.resource_locator = [](const odr::HtmlResource &,
+                                          const HtmlConfig &) {
+      return HtmlResourceLocation();
+    };
+
     HtmlResources resources;
-    ImageRegistry images(config(), resources);
+    ImageRegistry images(fragment ? fragment_config : config(), resources);
     const WritingState state(out, config(), resources, logger());
 
     pdf::DocumentParser &parser = *m_parser;
     LinkResolver &link_resolver = *m_link_resolver;
 
-    StyleRegistry styles(StyleRegistry::Rank::plain);
+    // every page that loads states the `.fvN` rule of its fonts again, which
+    // would beat the colour a page before it states, so its own rules rank
+    // above a single class
+    StyleRegistry styles(loads ? StyleRegistry::Rank::replaces_inline
+                               : StyleRegistry::Rank::plain);
+    styles.set_suffix(suffix);
     std::vector<DualPageOut> pages_out;
     pages_out.reserve(pages.size());
 
@@ -1431,18 +1624,33 @@ public:
     std::uint32_t family_count = 0;
     std::string font_faces;
     std::string font_styles; // per-font `.fvN` (visible) / `.fnN` (invisible)
-    SubstituteFontFaces substitute_faces; // metric-overriding `.odr-sN` faces
+    // metric-overriding `.odr-sN` faces
+    SubstituteFontFaces substitute_faces(suffix);
     std::vector<const pdf::Font *> accepted_fonts;
     // Which classes are used: [0]=fv (visible), [1]=fn (invisible).
     std::vector<std::array<bool, 2>> font_class_used;
     std::unordered_map<const pdf::Font *, std::uint32_t> family_index;
 
-    const auto font_family = [&](const pdf::Font *font) {
-      return intern_font(family_index, family_count, font, m_logger,
-                         [&](std::uint32_t) {
-                           accepted_fonts.push_back(font);
-                           font_class_used.push_back({false, false});
-                         });
+    const auto font_family = [&](const pdf::Font *font) -> std::uint32_t {
+      if (!loads) {
+        return intern_font(family_index, family_count, font, m_logger,
+                           [&](std::uint32_t) {
+                             accepted_fonts.push_back(font);
+                             font_class_used.push_back({false, false});
+                           });
+      }
+      const auto [it, inserted] = family_index.try_emplace(font, 0);
+      if (!inserted || !font_is_usable(*font, m_logger)) {
+        return it->second;
+      }
+      const std::uint32_t index = shared_font_id(font);
+      it->second = index;
+      if (accepted_fonts.size() < index) {
+        accepted_fonts.resize(index, nullptr);
+        font_class_used.resize(index, {false, false});
+      }
+      accepted_fonts[index - 1] = font;
+      return index;
     };
     const ClipRegistry::FontFamily clip_font_family =
         [&](const pdf::Font &font) { return face_name(font_family(&font)); };
@@ -1465,7 +1673,7 @@ public:
                                   classes.size() - pos - 1);
       if (tail.size() > 1 && tail.front() == 'w' &&
           std::ranges::all_of(tail.substr(1), [](const char c) {
-            return std::isdigit(static_cast<unsigned char>(c)) != 0;
+            return std::isdigit(static_cast<unsigned char>(c)) != 0 || c == '_';
           })) {
         classes.resize(pos);
       }
@@ -1494,11 +1702,14 @@ public:
         stream += '\n';
       }
 
-      ClipRegistry clips(static_cast<std::uint32_t>(pages_out.size()),
-                         clip_font_family);
-      GradientRegistry gradients(static_cast<std::uint32_t>(pages_out.size()));
-      PatternRegistry patterns(static_cast<std::uint32_t>(pages_out.size()));
-      MaskRegistry masks(static_cast<std::uint32_t>(pages_out.size()));
+      // the ids of a page's defs name it, by its place here or, where pages
+      // are rendered apart, by its number
+      const auto defs_page =
+          static_cast<std::uint32_t>(loads ? page_index + 1 : pages_out.size());
+      ClipRegistry clips(defs_page, clip_font_family);
+      GradientRegistry gradients(defs_page);
+      PatternRegistry patterns(defs_page);
+      MaskRegistry masks(defs_page);
 
       /// index of the open VisLineOut in vis_items, -1 = none
       std::int32_t vis_cur_line = -1;
@@ -1876,13 +2087,93 @@ public:
     }
 
     // Post-pass: re-encode accepted fonts PUA-only.
-    for (std::uint32_t i = 0; i < family_count; ++i) {
-      write_font_face(*accepted_fonts[i], i, {}, font_class_used[i], font_faces,
-                      font_styles);
+    for (std::uint32_t i = 0; i < accepted_fonts.size(); ++i) {
+      if (accepted_fonts[i] != nullptr) {
+        write_font_face(*accepted_fonts[i], i, {}, font_class_used[i],
+                        font_faces, font_styles,
+                        loads ? shared_font_file(accepted_fonts[i])
+                              : std::nullopt);
+      }
     }
     substitute_faces.append_faces(font_faces);
 
-    write_header_common(state, font_faces, font_styles, styles, pages_out, [&] {
+    const auto write_vis_line = [&](const VisLineOut &line) {
+      out.write_element_begin(
+          "div", HtmlElementOptions().set_inline(true).set_class(line.classes));
+      for (const VisRunOut &run : line.runs) {
+        out.write_element_begin(
+            "span",
+            HtmlElementOptions().set_inline(true).set_class(run.classes));
+        out.write_raw(run.text);
+        out.write_element_end("span");
+      }
+      out.write_element_end("div");
+    };
+
+    const auto write_sel_line = [&](const SelLineOut &line) {
+      out.write_element_begin(
+          "div", HtmlElementOptions().set_inline(true).set_class(line.classes));
+      for (const SelRunOut &run : line.runs) {
+        out.write_element_begin(
+            "span",
+            HtmlElementOptions().set_inline(true).set_class(run.classes));
+        if (!run.text.empty()) {
+          out.write_raw(run.text);
+        }
+        out.write_element_end("span");
+      }
+      out.write_element_end("div");
+    };
+
+    // What the page box holds: the visual layer, the selection layer, and the
+    // link overlays on top so they stay clickable.
+    const auto write_page_content = [&](const DualPageOut &page) {
+      // Visual layer: paint-order graphics and unselectable glyphs.
+      out.write_element_begin("div",
+                              HtmlElementOptions().set_class("vis").set_extra(
+                                  R"(aria-hidden="true")"));
+      write_page_items(out, page.clip_defs, page.vis_items, page.width,
+                       page.height, write_vis_line);
+      out.write_element_end("div"); // .vis
+
+      // Selection layer: transparent, selectable Unicode in reading order.
+      out.write_element_begin("div", HtmlElementOptions().set_class("sel"));
+      for (const SelLineOut &line : page.sel_lines) {
+        write_sel_line(line);
+      }
+      out.write_element_end("div"); // .sel
+
+      write_page_links(out, page.links);
+    };
+
+    if (fragment) {
+      out.out() << "<style>" << font_faces << font_styles;
+      styles.write_rules(out.out());
+      out.out() << "</style>";
+      for (const DualPageOut &page : pages_out) {
+        write_page_content(page);
+      }
+      return resources;
+    }
+
+    // a page that loads later states its size, so the column and the print
+    // know it before it is rendered
+    struct PageSize {
+      double width{0};
+      double height{0};
+    };
+    std::vector<PageSize> sizes;
+    std::vector<PageBox> later_boxes;
+    for (const DualPageOut &page : pages_out) {
+      sizes.push_back({page.width, page.height});
+    }
+    for (pdf::Page *page : later) {
+      later_boxes.push_back(begin_page(
+          *page, [](std::string &, const std::string &, std::string) {}));
+      sizes.push_back({later_boxes.back().width, later_boxes.back().height});
+    }
+
+    write_header_common(state, font_faces, font_styles, styles, sizes, [&] {
       // Visual layer glyph spans: not selectable (selection rides the `.sel`
       // layer).
       out.out() << ".g{user-select:none}";
@@ -1946,34 +2237,6 @@ public:
       out.out() << ".sw{letter-spacing:1000pt}";
     });
 
-    const auto write_vis_line = [&](const VisLineOut &line) {
-      out.write_element_begin(
-          "div", HtmlElementOptions().set_inline(true).set_class(line.classes));
-      for (const VisRunOut &run : line.runs) {
-        out.write_element_begin(
-            "span",
-            HtmlElementOptions().set_inline(true).set_class(run.classes));
-        out.write_raw(run.text);
-        out.write_element_end("span");
-      }
-      out.write_element_end("div");
-    };
-
-    const auto write_sel_line = [&](const SelLineOut &line) {
-      out.write_element_begin(
-          "div", HtmlElementOptions().set_inline(true).set_class(line.classes));
-      for (const SelRunOut &run : line.runs) {
-        out.write_element_begin(
-            "span",
-            HtmlElementOptions().set_inline(true).set_class(run.classes));
-        if (!run.text.empty()) {
-          out.write_raw(run.text);
-        }
-        out.write_element_end("span");
-      }
-      out.write_element_end("div");
-    };
-
     write_pdf_body_begin(out, config());
     out.write_element_begin("div", HtmlElementOptions().set_class("d"));
     std::size_t page_number = first_page_number;
@@ -1988,25 +2251,31 @@ public:
                      .set_extra(R"(id="p)" + std::to_string(page_number++) +
                                 R"(")" + page.attributes));
 
-      // Visual layer: paint-order graphics and unselectable glyphs.
-      out.write_element_begin("div",
-                              HtmlElementOptions().set_class("vis").set_extra(
-                                  R"(aria-hidden="true")"));
-      write_page_items(out, page.clip_defs, page.vis_items, page.width,
-                       page.height, write_vis_line);
-      out.write_element_end("div"); // .vis
-
-      // Selection layer: transparent, selectable Unicode in reading order.
-      out.write_element_begin("div", HtmlElementOptions().set_class("sel"));
-      for (const SelLineOut &line : page.sel_lines) {
-        write_sel_line(line);
-      }
-      out.write_element_end("div"); // .sel
-
-      // Link overlays on top so they stay clickable.
-      write_page_links(out, page.links);
-
+      write_page_content(page);
       out.write_element_end("div"); // .p
+    }
+    for (std::size_t i = 0; i < later.size(); ++i) {
+      const PageBox &box = later_boxes[i];
+      const std::size_t number = page_number++;
+      std::ostringstream size;
+      size << "width:" << box.width * pt_to_in
+           << "in;height:" << box.height * pt_to_in
+           << "in;page:" << print_page_name(box.width, box.height);
+      out.write_element_begin(
+          "div",
+          HtmlElementOptions()
+              .set_class("p" + chunk_classes(config(), false))
+              .set_style(std::move(size).str())
+              .set_extra(R"(id="p)" + std::to_string(number) +
+                         R"(" data-odr-chunk="p)" + std::to_string(number) +
+                         R"(" data-odr-chunk-src=")" +
+                         page_script_path(number) + '"' +
+                         page_attributes(number - 1, box.to_box)));
+      out.write_element_end("div");
+      resources.emplace_back(
+          odr::HtmlResource(
+              std::make_shared<PageScriptResource>(*this, number)),
+          page_script_path(number));
     }
     out.write_element_end("div"); // .d
     write_search_script(state);
@@ -2984,26 +3253,38 @@ public:
     return index == 0 ? std::string() : "odr-f" + std::to_string(index);
   }
 
-  /// Re-encodes `font`'s embedded program, folding `extra_unicode`'s cmap
-  /// entries in alongside the PUA range, and appends its `@font-face` plus the
-  /// `.fvN`/`.fnN` rules `class_used` says are needed.
-  static void write_font_face(const pdf::Font &font, const std::uint32_t index,
-                              std::map<char32_t, std::uint16_t> extra_unicode,
-                              const std::array<bool, 2> &class_used,
-                              std::string &font_faces,
-                              std::string &font_styles) {
+  /// `font`'s embedded program re-encoded, with `extra_unicode`'s cmap
+  /// entries folded in alongside the PUA range.
+  static std::string
+  reencoded_font(const pdf::Font &font,
+                 std::map<char32_t, std::uint16_t> extra_unicode) {
     if (const std::uint16_t space = space_glyph(font); space != 0) {
       extra_unicode.emplace(U' ', space);
     }
-    std::string reencoded;
     if (const auto sfnt = std::dynamic_pointer_cast<font::sfnt::SfntFont>(
             font.embedded_font)) {
-      reencoded = write_sfnt_pua(*sfnt, extra_unicode);
-    } else if (const auto cff = std::dynamic_pointer_cast<font::cff::CffFont>(
-                   font.embedded_font)) {
-      reencoded = font::cff::wrap_to_otf(*cff, extra_unicode);
+      return write_sfnt_pua(*sfnt, extra_unicode);
     }
-    const std::string url = file_to_url(reencoded, "font/ttf");
+    if (const auto cff =
+            std::dynamic_pointer_cast<font::cff::CffFont>(font.embedded_font)) {
+      return font::cff::wrap_to_otf(*cff, extra_unicode);
+    }
+    return {};
+  }
+
+  /// Appends `font`'s `@font-face` plus the `.fvN`/`.fnN` rules `class_used`
+  /// says are needed. The face reads its program from @p file where that is
+  /// given, and carries it inline else.
+  static void write_font_face(const pdf::Font &font, const std::uint32_t index,
+                              std::map<char32_t, std::uint16_t> extra_unicode,
+                              const std::array<bool, 2> &class_used,
+                              std::string &font_faces, std::string &font_styles,
+                              const std::optional<std::string> &file = {}) {
+    const std::string url =
+        file.has_value()
+            ? *file
+            : file_to_url(reencoded_font(font, std::move(extra_unicode)),
+                          "font/ttf");
     const std::string n = std::to_string(index + 1);
     // The overrides sum to one em, so `line-height:1` puts the baseline at
     // exactly the `ascent_em` a run's `top` is derived from.
@@ -3141,7 +3422,20 @@ protected:
   mutable std::vector<pdf::Page *> m_pages;
   mutable std::size_t m_first_page{0};
   mutable HtmlViews m_views;
+  /// What pages rendered apart share: the number of each font, and the fonts
+  /// that have a file of their own.
+  mutable std::unordered_map<const pdf::Font *, std::uint32_t> m_font_ids;
+  mutable std::unordered_set<const pdf::Font *> m_font_files;
+  mutable std::optional<std::vector<const pdf::Font *>> m_document_fonts;
 };
+
+void PageScriptResource::write_resource(std::ostream &os) const {
+  m_service->write_page_script(m_number, os);
+}
+
+void FontFileResource::write_resource(std::ostream &os) const {
+  m_service->write_font_file(*m_font, os);
+}
 
 } // namespace
 

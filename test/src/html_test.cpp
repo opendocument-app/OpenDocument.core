@@ -776,6 +776,53 @@ TEST(html, a_sheet_loads_its_later_chunks) {
   EXPECT_EQ(editable.str().find(R"(data-odr-chunk-src=")"), std::string::npos);
 }
 
+// `lazy-loading.md` decision 7: a pdf page after the first renders alone, and
+// the fonts are files that every page links.
+TEST(html, a_pdf_loads_its_later_pages) {
+  const DecodedFile file = open(
+      TestData::test_file_path("odr-public/pdf/opendocument-app-website.pdf"),
+      {}, Logger::null());
+  HtmlConfig config;
+  config.lazy_loading = true;
+  const HtmlService service = html::translate(file, config, Logger::null());
+
+  std::ostringstream page;
+  const HtmlResources resources = service.write_html("document.html", page);
+  EXPECT_NE(page.str().find(
+                R"(data-odr-chunk="p2" data-odr-chunk-src="pdf-pages/2.js")"),
+            std::string::npos);
+  EXPECT_NE(page.str().find("src:url(pdf-fonts/"), std::string::npos);
+  EXPECT_EQ(page.str().find("src:url(data:font"), std::string::npos);
+  EXPECT_TRUE(std::ranges::any_of(resources, [](const auto &resource) {
+    return resource.second == "pdf-pages/8.js";
+  }));
+  const auto font = std::ranges::find_if(resources, [](const auto &resource) {
+    return resource.second.has_value() &&
+           resource.second->starts_with("pdf-fonts/");
+  });
+  ASSERT_NE(font, resources.end());
+
+  ASSERT_TRUE(service.exists("pdf-pages/2.js"));
+  std::ostringstream script;
+  service.write("pdf-pages/2.js", script);
+  EXPECT_TRUE(script.str().starts_with(R"(odr.chunks.fill("p2",)"));
+  // its classes cannot clash with the first page's, nor its fonts repeat
+  EXPECT_NE(script.str().find("_2"), std::string::npos);
+  EXPECT_EQ(script.str().find("data:font"), std::string::npos);
+
+  ASSERT_TRUE(service.exists(*font->second));
+  std::ostringstream font_file;
+  service.write(*font->second, font_file);
+  EXPECT_FALSE(font_file.str().empty());
+
+  // without it, every page is in the page
+  std::ostringstream inline_page;
+  html::translate(file, HtmlConfig(), Logger::null())
+      .write_html("document.html", inline_page);
+  EXPECT_EQ(inline_page.str().find(R"(data-odr-chunk-src=")"),
+            std::string::npos);
+}
+
 // Without lazy layout the browser lays out everything, so no view writes a
 // chunk, nor the style that hides one.
 TEST(html, lazy_layout_off_writes_no_chunk) {

@@ -1,8 +1,8 @@
 # Lazy loading design
 
 Status: level 1 has landed for text files (#1247), pdf (#1248) and sheets
-(#1250), and level 3 for text files and sheets. The rest is a proposal.
-Issue #764.
+(#1250), and level 3 for text files, sheets and pdf. The rest is a
+proposal. Issue #764.
 
 Related: [`editing.md`](editing.md) holds the editing mode, which a page that
 drops content must keep working. [`txt-editing.md`](txt-editing.md) holds the
@@ -265,7 +265,7 @@ twice, and each set made the browser compute the style and the layout of
 the whole document again. It now probes in an `iframe` of its own. Whether
 the limits can go up is the next measurement.
 
-### 7. A pdf page at level 3: proposal
+### 7. A pdf page at level 3 renders on its own
 
 Measured on `Core_v5.1.pdf` (2985 pages), 2026-10-24:
 
@@ -301,29 +301,47 @@ its page again with the registries the pass kept.
 - A small change to the writer: the pass and the render of one page share
   the registries.
 
-**Option B, a page on its own.** The page renders the first page only. A
-script renders its page alone.
+**Option B, a page on its own,** is what was built. The page renders the
+first page only. A script renders its page alone.
 
-- Core work is in proportion to what the reader sees. The page is ready
-  after about 40 ms, and a script after 5 to 40 ms.
-- Two names must stop clashing between pages that are rendered apart:
-  - **Classes:** a name made from a hash of the declaration (`c3f9a2c`), not
-    a count, is the same in every render. Two pages that state the same rule
-    state it twice, which does no harm.
-  - **Fonts:** a font becomes a file of its own, which every page links,
-    so the browser loads it once. Without that, each page carries its
-    fonts: a page of this file rendered alone is about 0.5 MB, most of it
-    fonts. In `dual_layer`, the default, a font is already the same for
-    every page, because it maps each glyph to a private-use code point
-    (`reencode_to_pua`). In `single_layer`, the writer must re-encode the
-    font with all the code points of its `ToUnicode` map, not only the ones
-    the pages met.
-- A large change to the writer: the class names and the font files, and
-  the cmap of a font in `single_layer`.
+- Core work is in proportion to what the reader sees.
+- **What a script brings:** a `<style>` with the rules its page needs, and
+  what the page box holds. The empty page in the document is already the
+  page box: it states its size, its print page, its id and its
+  `data-odr-page`, so `odr.chunks.fill` puts the content in as it does for
+  a text file.
+- **Classes:** a page rendered alone suffixes its names with its number
+  (`x0_12`, `odr-s1_12`), so two pages cannot clash. The ids of its SVG defs
+  take its number too. Every script states the `.fvN` rule of its fonts
+  again, and the rules of a later script come later in the document. So a
+  page's own rules state their class three times (`.k0_12.k0_12.k0_12`) and
+  rank above that single class.
+- **Fonts:** the dual layer re-encodes a font to the PUA range only, so its
+  program is the same for every page. The document lists the fonts that the
+  pages and their forms state in their resources, numbers each one for the
+  whole service, and links it as `pdf-fonts/<n>.ttf`. A font that no
+  resources state, for example one an annotation draws with, stays inline
+  in the page that uses it.
+- **Images:** a script carries its images inline, because nobody writes
+  the resources of a script.
+- **Where it stays inline:** the single layer re-encodes a font with the
+  code points of the runs it meets, so the font of a page alone would
+  differ. That mode keeps every page in the document.
 
-**Recommendation:** B, because only B makes the server fast, and the server
-is where the time is. A is the smaller step if B is too large for now. The
-cost of the browser is the same for both.
+**Measured** on `Core_v5.1.pdf`:
+
+| | before | at level 3 |
+|---|---|---|
+| the document, over HTTP | 5.4 s to the first byte | 0.5 s |
+| a page script, over HTTP | | 3 to 6 ms |
+| a font file, over HTTP | | under 1 ms |
+| `document.html` | 127 MB | 1.4 MB, with 2984 scripts and 84 fonts (1.8 MB) beside it |
+| core memory to write the document | 761 MB | 138 MB |
+| first frame from `file://` | 1.8 s | 92 ms |
+
+At the start, in the middle and at nine tenths of the document, a
+screenshot is the same to the pixel as one of the page with every page in
+it.
 
 ## Order of work
 
@@ -348,7 +366,8 @@ cost of the browser is the same for both.
    styles, when the script is asked for. A sheet whose rows load has no
    sort control, because a sort needs every row. The sheet of 500 K cells
    in `efficiency-big-1.ods` is a page of 370 KB that paints after 107 ms.
-6. **Core per engine, level 3.** ods first (#781). The ods decode keeps
+6. **pdf, level 3** (decision 7, option B).
+7. **Core per engine, level 3.** ods first (#781). The ods decode keeps
    `content.xml` and its DOM resident for editing. A render on demand that
    does not hold them is a decision of its own. It waits for a measurement
    of the page side.
