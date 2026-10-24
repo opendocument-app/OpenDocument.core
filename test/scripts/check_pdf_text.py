@@ -29,6 +29,10 @@ import subprocess
 import sys
 
 WORD = re.compile(r"[^\W\d_]{4,}")
+# no end tag follows these, so they must not count as a level of the layer
+VOID_ELEMENTS = {"area", "br", "col", "embed", "hr", "img", "input", "wbr"}
+# gs reads the whole corpus in about a minute
+GS_TIMEOUT_SECONDS = 300
 FLOORS = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "pdf_text_floors.json"
 )
@@ -43,13 +47,17 @@ class TextLayer(html.parser.HTMLParser):
         self.parts = []
 
     def handle_starttag(self, tag, attrs):
+        if tag in VOID_ELEMENTS:
+            if tag == "br" and self.depth > 0:
+                self.parts.append(" ")
+            return
         if self.depth > 0:
             self.depth += 1
         elif "sel" in (dict(attrs).get("class") or "").split():
             self.depth = 1
 
     def handle_endtag(self, tag):
-        if self.depth > 0:
+        if tag not in VOID_ELEMENTS and self.depth > 0:
             self.depth -= 1
 
     def handle_data(self, data):
@@ -96,6 +104,7 @@ def gs_words(gs, path, page_count):
         ],
         capture_output=True,
         check=False,
+        timeout=GS_TIMEOUT_SECONDS,
     )
     if result.returncode != 0:
         return None
@@ -145,7 +154,11 @@ def main():
         page_count = len(pages(output))
         if page_count == 0:
             continue
-        expected = gs_words(gs, source, page_count)
+        try:
+            expected = gs_words(gs, source, page_count)
+        except subprocess.TimeoutExpired:
+            failed.append((name, f"gs gave no answer within {GS_TIMEOUT_SECONDS} s"))
+            continue
         if expected is None:
             if arguments.report:
                 print(f"skip  {name}: gs cannot read it")
@@ -160,13 +173,13 @@ def main():
         if arguments.report:
             print(f"{share:6.1%} {name} ({sum(expected.values())} words)")
         if share < floor:
-            failed.append((name, share, floor))
+            failed.append((name, f"recall {share:.1%}, floor {floor:.1%}"))
 
     if checked == 0:
         sys.exit("No pdf output found to check")
-    for name, share, floor in failed:
-        print(f"FAIL {name}: recall {share:.1%}, floor {floor:.1%}", file=sys.stderr)
-    print(f"{checked} pdf file(s) checked, {len(failed)} below their floor")
+    for name, reason in failed:
+        print(f"FAIL {name}: {reason}", file=sys.stderr)
+    print(f"{checked} pdf file(s) checked, {len(failed)} failed")
     return 1 if failed else 0
 
 
