@@ -12,8 +12,8 @@ It is built from `odr/error_code.{hpp,cpp}` here rather than copied.
 """
 
 import functools
-import os
 import http.server
+import os
 import pathlib
 import re
 import socketserver

@@ -684,7 +684,7 @@
         return null;
       }
       return {
-        type: category === "number" ? "number" : category,
+        type: category,
         number: category === "date" ? days : result.number,
         text: text,
       };
@@ -917,7 +917,7 @@
     var marked = entries.filter(function (entry) {
       return entry.marked;
     });
-    if (marked.length > 0 && formulas !== null && formulas.module === null) {
+    if (marked.length > 0) {
       loadFormulas();
     }
     var computes =
@@ -931,7 +931,6 @@
       } catch (e) {
         // a trap can leave the module's memory broken, so it computes no more
         formulas = null;
-        answers = new Map();
       }
     }
     var shown = new Set();
@@ -1196,11 +1195,11 @@
     );
   }
 
-  /// Merged into what is set; an unknown key throws.
   /// Loads the evaluator the page carries, which an edit or `enable` does
   /// too. Resolves to whether the page computes its formula cells.
   odr.editing.loadFormulas = loadFormulas;
 
+  /// Merged into what is set; an unknown key throws.
   odr.editing.setSheetOptions = function (value) {
     Object.keys(value || {}).forEach(function (key) {
       if (!Object.prototype.hasOwnProperty.call(options, key)) {

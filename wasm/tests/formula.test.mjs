@@ -108,7 +108,7 @@ describe('formula module', { skip: path === '' && 'no odr-formula.js' }, () => {
     assert.equal(module.days(43830, { epoch: 1904 }), 45292);
     assert.equal(module.serial(45292, { dialect: 'libreoffice', nullDate: 2 }),
       45290);
-    // the day Excel counts for 1900-02-29
+    // before 1900-03-01 Excel counts one day less, for its 1900-02-29
     assert.equal(module.serial(1, {}), 0);
   });
 
