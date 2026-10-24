@@ -20,6 +20,9 @@
   formatted by position, and formulas computed in the page.
 - [Plain-text editing design](txt-editing.md): the editor of the plain-text
   view. One `setContent` op.
+- [Lazy loading design](lazy-loading.md): a large file in three levels:
+  CSS containment, a window of chunks in the page, and chunks that core
+  renders on demand.
 - [Document creation design](document-creation.md): a new odt, ods, docx or
   xlsx, generated in code and opened through the read path.
 
