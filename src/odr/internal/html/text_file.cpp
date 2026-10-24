@@ -45,6 +45,10 @@ std::optional<std::size_t> chunk_of(const std::string_view path) {
     }
     index = index * 10 + static_cast<std::size_t>(c - '0');
   }
+  // one path for each chunk: no leading zero, and no index that wrapped
+  if (chunk_path(index) != path) {
+    return std::nullopt;
+  }
   return index;
 }
 

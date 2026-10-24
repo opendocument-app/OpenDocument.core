@@ -1,7 +1,7 @@
 # Lazy loading design
 
-Status: level 1 has landed for text files (#1247) and pdf (#1248). The
-rest is a proposal. Issue #764.
+Status: level 1 has landed for text files (#1247), pdf (#1248) and sheets
+(#1250), and level 3 for text files. The rest is a proposal. Issue #764.
 
 Related: [`editing.md`](editing.md) holds the editing mode, which a page that
 drops content must keep working. [`txt-editing.md`](txt-editing.md) holds the
@@ -82,8 +82,8 @@ whole DOM. So `odr.search`, the editor and a copy of a selection see all of
 the content. The find of the browser and a screen reader do not see a
 hidden chunk. Level 2 removes the DOM cost too, but takes more away
 (decision 5). Level 3 is the only level that makes core cheaper, where a
-server renders a chunk only when the page asks for it. A view takes the lowest level that is enough
-for the size of its file.
+server renders a chunk only when the page asks for it. A view takes the
+lowest level that is enough for the size of its file.
 
 `HtmlConfig::lazy_layout` turns level 1 off. Then no view writes a chunk,
 and the find of the browser and a screen reader reach all of the content.
@@ -286,6 +286,8 @@ the limits can go up is the next measurement.
 
 ## Open questions
 
+- **Print at level 3.** A chunk that has not loaded prints as empty space
+  of its height. `beforeprint` cannot wait for a script to load.
 - **The size of a chunk.** 256 lines is a guess. It trades the count of
   chunks against the cost of one.
 - **When a view takes level 2.** A threshold on the size of the content, or

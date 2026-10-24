@@ -37,6 +37,12 @@ The release run heads these entries with the version and opens a fresh
   default, also in the bindings) turns this off.
 - The line numbers of a text file are in each line, so a wrapped line keeps
   its number beside it.
+- `HtmlConfig::lazy_loading` (off by default, also in the bindings) writes
+  each chunk of a text file after the first as a script beside the page,
+  which the page loads when the reader comes near. `bring_offline` writes
+  the scripts, and the HTTP server serves them. A text file of 1 M lines is
+  then a page of 485 KB. `odr.search` finds only the loaded chunks, and a
+  print shows a chunk that has not loaded as empty space.
 
 ### Spreadsheets
 

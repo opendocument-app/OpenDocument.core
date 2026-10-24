@@ -698,6 +698,9 @@ TEST(html, a_text_file_loads_its_later_chunks) {
   ASSERT_TRUE(service.exists("text-chunks/1.js"));
   EXPECT_FALSE(service.exists("text-chunks/0.js"));
   EXPECT_FALSE(service.exists("text-chunks/2.js"));
+  // one path for each chunk
+  EXPECT_FALSE(service.exists("text-chunks/01.js"));
+  EXPECT_FALSE(service.exists("text-chunks/18446744073709551617.js"));
   EXPECT_EQ(service.mimetype("text-chunks/1.js"), "text/javascript");
   std::ostringstream chunk;
   service.write("text-chunks/1.js", chunk);
