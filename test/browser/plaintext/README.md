@@ -15,15 +15,15 @@ embeds. `editing.js` goes first, as the library writes it. `error-codes.js` is
 built from `src/odr/error_code.{hpp,cpp}` by `test/browser/serve.py`, because
 the library writes that table into the page.
 
-`tests.html` is three lines and the gutter beside them, without
+`tests.html` is three lines in two chunks, without
 `contenteditable`. The mode puts that on.
 
 Rules the checks follow:
 
 - The log is one `setContent` operation, however long the session runs. There
   are no ids, because there are no elements.
-- The gutter is checked with the lines. The line numbers track the lines
-  whether editing is on or off.
+- The chunks are checked with the lines. Each chunk counts on from the lines
+  before it, and a chunk with no line left goes.
 - Two identical refusals within two seconds are one event (`editing.js`). The
   second read-only check asserts that the edit did not land, not a second
   event.

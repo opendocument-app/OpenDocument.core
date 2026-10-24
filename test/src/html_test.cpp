@@ -639,6 +639,35 @@ TEST(html, a_cell_fill_turns_over_in_the_dark) {
       std::string::npos);
 }
 
+// The browser lays out only the chunks near the viewport. A chunk's first line
+// states the number it counts from, and a short chunk how many lines it holds.
+TEST(html, a_text_file_writes_its_lines_in_chunks) {
+  std::string text;
+  for (std::uint32_t line = 0; line < 299; ++line) {
+    text += "line\n";
+  }
+  const HtmlService service = html::translate(
+      open(File::from_memory(text), DecodeOptions::as(FileType::text_file)),
+      HtmlConfig(), Logger::null());
+  std::ostringstream out;
+  service.write("text.html", out);
+  const std::string page = out.str();
+
+  EXPECT_NE(page.find("--odr-text-digits:3"), std::string::npos);
+  // the first chunk is shown before the script runs, and every one without it
+  EXPECT_NE(page.find(R"(class="odr-chunk odr-chunk-near")"),
+            std::string::npos);
+  EXPECT_NE(page.find("<noscript>"), std::string::npos);
+  EXPECT_NE(page.find(R"(<div style="counter-reset:odr-line 0">)"),
+            std::string::npos);
+  // 299 line breaks end 300 lines, the last one empty
+  EXPECT_NE(page.find(R"(class="odr-chunk" style="--odr-text-lines:44")"),
+            std::string::npos);
+  EXPECT_NE(page.find(R"(<div style="counter-reset:odr-line 256">)"),
+            std::string::npos);
+  EXPECT_EQ(page.find("odr-line 512"), std::string::npos);
+}
+
 // Every view but the pdf one turns over.
 TEST(html, color_scheme_reaches_every_view) {
   HtmlConfig config;

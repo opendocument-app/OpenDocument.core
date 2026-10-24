@@ -12,10 +12,15 @@
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
+#include <cstdint>
 #include <sstream>
+#include <string>
 
 namespace odr::internal::html {
 namespace {
+
+/// 256 lines of 20px: a chunk the browser skips is a few screens tall.
+constexpr std::uint32_t chunk_lines = 256;
 
 class HtmlServiceImpl final : public HtmlService {
 public:
@@ -105,6 +110,10 @@ public:
     write_text_dark_style(state);
     write_search_style(state);
     write_search_dark_style(state);
+    // without the script that marks the chunks near the viewport, the
+    // browser decides that itself, at the cost of one layout of each
+    out.write_raw("<noscript><style>.odr-chunk{content-visibility:auto}</"
+                  "style></noscript>");
 
     out.write_header_end();
 
@@ -118,45 +127,66 @@ public:
           clb("data-odr-keyboard", keyboard_classes(config()));
         }));
 
-    out.write_element_begin("div", HtmlElementOptions().set_class("odr-text"));
-
-    // `aria-hidden`: the numbers are ours, not the file's - nothing reading the
-    // page as content takes them.
-    out.write_element_begin("div", HtmlElementOptions()
-                                       .set_class("odr-text-nr")
-                                       .set_extra(R"(aria-hidden="true")"));
     std::istringstream in(text);
-    for (std::uint32_t line = 1; !in.eof(); ++line) {
-      out.write_element_begin("div", HtmlElementOptions().set_inline(true));
-      out.out() << line;
-      out.write_element_end("div");
-
-      NullStream ss_out;
-      util::stream::pipe_line(in, ss_out, false);
+    std::uint32_t line_count = 0;
+    for (; !in.eof(); ++line_count) {
+      NullStream null;
+      util::stream::pipe_line(in, null, false);
     }
-    out.write_element_end("div");
+
+    out.write_element_begin(
+        "div",
+        HtmlElementOptions()
+            .set_class("odr-text")
+            .set_style("--odr-text-digits:" +
+                       std::to_string(std::to_string(line_count).size())));
 
     // `contenteditable` is not written: `odr.editing.enable()` puts it on
     // these lines, so one render serves both modes.
     out.write_element_begin(
         "div", HtmlElementOptions().set_class("odr-text-body odr-text-wrap"));
     in = std::istringstream(text);
-    while (!in.eof()) {
-      out.write_element_begin("div", HtmlElementOptions().set_inline(true));
+    for (std::uint32_t line = 0; line < line_count; ++line) {
+      // the browser lays out only the chunks near the viewport, which
+      // `text.js` marks
+      const bool first = line % chunk_lines == 0;
+      if (first) {
+        if (line > 0) {
+          out.write_element_end("div");
+        }
+        // the first chunk is near the viewport before the script says so
+        HtmlElementOptions chunk;
+        chunk.set_class(line == 0 ? "odr-chunk odr-chunk-near" : "odr-chunk");
+        if (const std::uint32_t lines = line_count - line;
+            lines < chunk_lines) {
+          chunk.set_style("--odr-text-lines:" + std::to_string(lines));
+        }
+        out.write_element_begin("div", chunk);
+      }
+
+      // a chunk has style containment, so the line counter does not count on
+      // past it, and its first line sets where it starts
+      HtmlElementOptions line_options;
+      line_options.set_inline(true);
+      if (first) {
+        line_options.set_style("counter-reset:odr-line " +
+                               std::to_string(line));
+      }
+      out.write_element_begin("div", line_options);
 
       std::ostringstream ss_out;
       util::stream::pipe_line(in, ss_out, false);
-      if (std::string line = ss_out.str(); line.empty()) {
+      if (std::string text_line = ss_out.str(); text_line.empty()) {
         out.write_element_begin(
             "br", HtmlElementOptions().set_close_type(HtmlCloseType::trailing));
       } else {
-        out.out() << escape_text(std::move(line));
+        out.out() << escape_text(std::move(text_line));
       }
 
       out.write_element_end("div");
     }
+    out.write_element_end("div"); // the last chunk
     out.write_element_end("div");
-
     out.write_element_end("div");
 
     write_search_script(state);
