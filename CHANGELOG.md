@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+### Spreadsheets
+
+- An xlsx cell with the built-in date format 14 or 22 shows the date as Excel
+  shows it for en-US, for example `1/1/2014` and not `01-01-14`.
+
 ## v7.5.2 - 2026-10-10
 
 ### Text documents and presentations

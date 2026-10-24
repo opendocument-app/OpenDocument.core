@@ -184,7 +184,7 @@ TEST(OoxmlSpreadsheetValue, a_number_shows_its_format) {
   const Sheet sheet = first_sheet(document);
 
   EXPECT_EQ(shown_at(sheet, 0), "1,234.50");
-  EXPECT_EQ(shown_at(sheet, 1), "01-01-25");
+  EXPECT_EQ(shown_at(sheet, 1), "1/1/2025");
   EXPECT_EQ(shown_at(sheet, 2), "25%");
   EXPECT_EQ(shown_at(sheet, 3), "18:00");
   EXPECT_EQ(shown_at(sheet, 4), "0.1");
@@ -204,7 +204,7 @@ TEST(OoxmlSpreadsheetValue, a_date_format_types_a_date) {
   const CellValue date = sheet.cell(1, 0).value();
   EXPECT_EQ(date.type(), ValueType::date);
   EXPECT_DOUBLE_EQ(date.number(), 45658);
-  EXPECT_EQ(date.text(), "01-01-25");
+  EXPECT_EQ(date.text(), "1/1/2025");
   EXPECT_EQ(sheet.cell(3, 0).value().type(), ValueType::time);
   EXPECT_DOUBLE_EQ(sheet.cell(3, 0).value().number(), 0.75);
   EXPECT_EQ(sheet.cell(2, 0).value().type(), ValueType::float_number);
@@ -214,7 +214,7 @@ TEST(OoxmlSpreadsheetValue, date1904_counts_from_1904) {
   const Document document = formatted(R"(<workbookPr date1904="1"/>)");
   const Sheet sheet = first_sheet(document);
 
-  EXPECT_EQ(shown_at(sheet, 1), "01-02-29");
+  EXPECT_EQ(shown_at(sheet, 1), "1/2/2029");
   // the value counts from 1899-12-30, whatever the workbook does
   EXPECT_DOUBLE_EQ(sheet.cell(1, 0).value().number(), 45658 + 1462);
 }
@@ -254,8 +254,8 @@ TEST(OoxmlSpreadsheetValue, a_written_date_gets_a_date_format) {
   const Sheet saved = first_sheet(reopened);
   EXPECT_EQ(saved.cell(6, 0).value().type(), ValueType::date);
   EXPECT_DOUBLE_EQ(saved.cell(6, 0).value().number(), 45658);
-  EXPECT_EQ(shown_at(saved, 6), "01-01-25");
-  EXPECT_EQ(shown_at(saved, 7), "1/1/25 18:00");
+  EXPECT_EQ(shown_at(saved, 6), "1/1/2025");
+  EXPECT_EQ(shown_at(saved, 7), "1/1/2025 18:00");
   EXPECT_EQ(saved.cell(8, 0).value().type(), ValueType::time);
   EXPECT_EQ(shown_at(saved, 8), "18:00");
   EXPECT_EQ(shown_at(saved, 9), "18:00:05");
@@ -272,7 +272,7 @@ TEST(OoxmlSpreadsheetValue, a_date_keeps_the_date_format_its_cell_has) {
 
   const Document reopened = saved_document(document);
   const Sheet saved = first_sheet(reopened);
-  EXPECT_EQ(shown_at(saved, 1), "01-02-25");
+  EXPECT_EQ(shown_at(saved, 1), "1/2/2025");
   EXPECT_DOUBLE_EQ(saved.cell(1, 0).value().number(), 45659);
   std::ostringstream xml;
   xml << reopened.as_filesystem()
