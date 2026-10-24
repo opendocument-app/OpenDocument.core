@@ -17,7 +17,7 @@
 - [Document editing design](document-editing.md): the editor of the document
   view. Runs, paragraphs and inline formatting.
 - [Spreadsheet editing design](spreadsheet-editing.md): cells edited and
-  formatted by position, and the formula plan.
+  formatted by position, and formulas computed in the page.
 - [Plain-text editing design](txt-editing.md): the editor of the plain-text
   view. One `setContent` op.
 - [Document creation design](document-creation.md): a new odt, ods, docx or
