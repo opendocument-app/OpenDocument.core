@@ -808,7 +808,7 @@ public:
     }
 
     pugi::xml_node node = get_node(cell_id);
-    const bool had_formula = bool(node.attribute("table:formula"));
+    const bool had_formula = !node.attribute("table:formula").empty();
     const std::string text =
         shown_value(element_id, cell_id, {column, row}, value)
             .value_or(value.has_text() ? value.text() : "");

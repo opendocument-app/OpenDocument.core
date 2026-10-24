@@ -463,7 +463,7 @@ public:
     }
 
     pugi::xml_node node = get_node(cell_id);
-    const bool had_formula = bool(node.child("f"));
+    const bool had_formula = !node.child("f").empty();
 
     m_registry->invalidate_children(cell_id);
     node.remove_children();
