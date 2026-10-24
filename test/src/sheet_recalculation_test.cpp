@@ -443,6 +443,29 @@ TEST(SheetRecalculation, a_cycle_computes_after_the_cycles_it_reads) {
   EXPECT_NEAR(value_at(document, 0, 0).number(), 3.997314453125, 0.001);
 }
 
+// LibreOffice: A1 and B1 converge, A2 and B2 read A1 and grow without end,
+// and A3 and B3 read A1 and converge from where A1 converged.
+TEST(SheetRecalculation, a_cycle_that_grows_leaves_the_cycle_it_reads) {
+  const Document document = decode(std::make_shared<MemoryFile>(
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.spreadsheet">)"
+      R"(<office:body><office:spreadsheet><table:calculation-settings>)"
+      R"(<table:iteration table:status="enable" table:steps="100")"
+      R"( table:maximum-difference="0.001"/></table:calculation-settings>)"
+      R"(<table:table table:name="s">)" +
+      row(uncomputed("of:=[.B1]/2+1") + uncomputed("of:=[.A1]")) +
+      row(uncomputed("of:=[.B2]+1+[.A1]") + uncomputed("of:=[.A2]")) +
+      row(uncomputed("of:=[.B3]/2+[.A1]") + uncomputed("of:=[.A3]")) +
+      R"(</table:table></office:spreadsheet></office:body></office:document>)"));
+  const Recalculation result = document.recalculate();
+
+  EXPECT_EQ(value_at(document, 0, 0).number(), 1.9990234375);
+  EXPECT_NEAR(value_at(document, 0, 2).number(), 3.99707078933716, 1e-12);
+  EXPECT_EQ(spelled(result.circular()),
+            (std::vector<std::string>{"0!A2", "0!B2"}));
+}
+
 TEST(SheetRecalculation, a_cycle_past_its_steps_has_no_result_in_libreoffice) {
   const Document document = iterating_ods("3");
   const Recalculation result = document.recalculate();
