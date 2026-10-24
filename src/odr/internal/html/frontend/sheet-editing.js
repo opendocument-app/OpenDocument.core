@@ -976,23 +976,15 @@
   /// another. Each level nests an evaluation in the wasm stack.
   var NESTING = 16;
 
-  /// The @p marked entries, each after the marked ones it reads, so no
-  /// evaluation nests in another. The ones this cannot order come last: a
-  /// cycle, and a read of all of the sheet that looks like one.
-  function inOrder(marked) {
+  /// For each of the @p marked entries, the ones it reads, itself too.
+  function readsOf(marked) {
     var byPosition = new Map();
     marked.forEach(function (entry, i) {
       positionsOf(entry).forEach(function (at) {
         byPosition.set(at.column + "," + at.row, i);
       });
     });
-    var dependents = marked.map(function () {
-      return [];
-    });
-    var waits = marked.map(function () {
-      return 0;
-    });
-    marked.forEach(function (entry, i) {
+    return marked.map(function (entry) {
       var seen = new Set();
       entry.reads.forEach(function (box) {
         var area = (box[1] - box[0] + 1) * (box[3] - box[2] + 1);
@@ -1013,12 +1005,28 @@
           }
         });
       });
+      return seen;
+    });
+  }
+
+  /// The @p marked entries, each after the marked ones it reads, so no
+  /// evaluation nests in another. The ones this cannot order come last: a
+  /// cycle, and a read of all of the sheet that looks like one.
+  function inOrder(marked) {
+    var dependents = marked.map(function () {
+      return [];
+    });
+    var waits = marked.map(function () {
+      return 0;
+    });
+    readsOf(marked).forEach(function (seen, i) {
       // a cell has no result while it computes, so reading itself gives
       // no answer, and a read of all its sheet still computes
-      seen.delete(i);
       seen.forEach(function (j) {
-        dependents[j].push(i);
-        ++waits[i];
+        if (j !== i) {
+          dependents[j].push(i);
+          ++waits[i];
+        }
       });
     });
     var result = [];
@@ -1045,6 +1053,90 @@
     return result;
   }
 
+  /// The groups of the @p marked entries that read each other, each after
+  /// the groups it reads (Kosaraju), as a recalculation iterates them.
+  function cyclesOf(marked) {
+    var reads = readsOf(marked);
+    var readers = marked.map(function () {
+      return [];
+    });
+    reads.forEach(function (seen, i) {
+      seen.forEach(function (j) {
+        readers[j].push(i);
+      });
+    });
+    var finished = [];
+    var seen = marked.map(function () {
+      return false;
+    });
+    marked.forEach(function (entry, start) {
+      if (seen[start]) {
+        return;
+      }
+      seen[start] = true;
+      var stack = [[start, Array.from(reads[start])]];
+      while (stack.length > 0) {
+        var top = stack[stack.length - 1];
+        if (top[1].length > 0) {
+          var j = top[1].pop();
+          if (!seen[j]) {
+            seen[j] = true;
+            stack.push([j, Array.from(reads[j])]);
+          }
+        } else {
+          finished.push(top[0]);
+          stack.pop();
+        }
+      }
+    });
+    // over who reads each, latest finished first, gives the groups that
+    // nothing reads first, so the list turns over at the end
+    var placed = marked.map(function () {
+      return false;
+    });
+    var result = [];
+    finished.reverse().forEach(function (start) {
+      if (placed[start]) {
+        return;
+      }
+      placed[start] = true;
+      var group = [];
+      var pending = [start];
+      while (pending.length > 0) {
+        var i = pending.pop();
+        group.push(i);
+        readers[i].forEach(function (j) {
+          if (!placed[j]) {
+            placed[j] = true;
+            pending.push(j);
+          }
+        });
+      }
+      if (group.length > 1 || reads[start].has(start)) {
+        group.sort(function (a, b) {
+          var one = marked[a].at;
+          var other = marked[b].at;
+          return one.row - other.row || one.column - other.column;
+        });
+        result.push(
+          group.map(function (i) {
+            return marked[i];
+          })
+        );
+      }
+    });
+    return result.reverse();
+  }
+
+  /// How far apart two steps of a cycle leave a cell: infinite where they
+  /// change what it is.
+  function difference(before, after) {
+    if (before.type === "number" && after.type === "number") {
+      return Math.abs(after.number - before.number);
+    }
+    return JSON.stringify(before) === JSON.stringify(after) ? 0 : Infinity;
+  }
+
   /// Computes the marked formula cells of @p entries. Returns each marked
   /// cell's result, null where the evaluator has none: also in a cycle.
   function compute(entries, names) {
@@ -1068,6 +1160,8 @@
     });
     var results = new Map();
     var computing = new Set();
+    // the cells a first pass met while they computed
+    var circular = new Set();
     var depth = 0;
     var extent = null;
 
@@ -1144,6 +1238,9 @@
         if (position.column !== column || position.row !== row) {
           return { type: "empty" };
         }
+        if (iterated.has(cell)) {
+          return iterated.get(cell);
+        }
         var entry = byCell.get(cell);
         var owner = owners.get(cell);
         if (
@@ -1203,7 +1300,11 @@
 
     // a cell has no result while it computes, so a cycle has no answer
     function computeEntry(entry) {
-      if (computing.has(entry.cell) || depth >= NESTING) {
+      if (computing.has(entry.cell)) {
+        circular.add(entry.cell);
+        return null;
+      }
+      if (depth >= NESTING) {
         return null;
       }
       computing.add(entry.cell);
@@ -1218,15 +1319,86 @@
       return result;
     }
 
-    inOrder(
-      entries.filter(function (entry) {
-        return entry.marked;
-      })
-    ).forEach(function (entry) {
-      if (!results.has(entry.cell)) {
-        computeEntry(entry);
+    // the cells of the cycle a step computes, and the value each holds now
+    var iterated = new Map();
+
+    // a cycle the document iterates, as a save does: in reading order, from
+    // what the file holds, until no cell changes by the difference. An ods
+    // write drops the result of what an edit reaches, so a save starts from 0
+    function iterate(group) {
+      var iteration = formulas.settings.iteration;
+      group.forEach(function (entry) {
+        var held =
+          formulas.syntax === "opendocument"
+            ? { type: "empty" }
+            : toFormula(
+                computed.has(entry.cell)
+                  ? computed.get(entry.cell)
+                  : shownValue(entry.cell, entry.at.column, entry.at.row)
+              );
+        iterated.set(
+          entry.cell,
+          held.type === "empty" ? { type: "number", number: 0 } : held
+        );
+      });
+      var converged = false;
+      var answered = true;
+      for (
+        var step = 0;
+        step < iteration.steps && !converged && answered;
+        ++step
+      ) {
+        var change = 0;
+        for (var i = 0; i < group.length && answered; ++i) {
+          var entry = group[i];
+          var value =
+            entry.array === null
+              ? evaluate(entry.formula, entry.at.column, entry.at.row)
+              : null;
+          if (value === null) {
+            answered = false;
+          } else {
+            change = Math.max(
+              change,
+              difference(iterated.get(entry.cell), value)
+            );
+            iterated.set(entry.cell, value);
+          }
+        }
+        converged = answered && change < iteration.difference;
       }
+      // LibreOffice states `Err:523` past the steps, and Excel keeps the last
+      var kept =
+        converged || (answered && formulas.settings.dialect !== "libreoffice");
+      group.forEach(function (entry) {
+        results.set(entry.cell, kept ? iterated.get(entry.cell) : null);
+        iterated.delete(entry.cell);
+      });
+    }
+
+    var marked = entries.filter(function (entry) {
+      return entry.marked;
     });
+    function computeAll() {
+      inOrder(marked).forEach(function (entry) {
+        if (!results.has(entry.cell)) {
+          computeEntry(entry);
+        }
+      });
+    }
+    computeAll();
+    // as a save does: only a group the first pass met a cycle in iterates,
+    // since a cell that reads all of its sheet reads itself only as stated
+    if (formulas.settings.iteration && circular.size > 0) {
+      var cycles = cyclesOf(marked).filter(function (group) {
+        return group.some(function (entry) {
+          return circular.has(entry.cell);
+        });
+      });
+      results.clear();
+      cycles.forEach(iterate);
+      computeAll();
+    }
     return results;
   }
 

@@ -188,16 +188,20 @@ private:
 };
 
 /// What @p expression computes at a cell, null where the evaluator has no
-/// answer, as `formula::evaluate` gives none.
-val evaluate(const std::string &expression, const std::string &syntax,
+/// answer, as `formula::evaluate` gives none. The texts come as `val`: a
+/// callback evaluates again inside, and the invoker embind builds without
+/// eval keeps one argument list per function, so it would free a
+/// `std::string` argument twice.
+val evaluate(const val &expression, const val &syntax,
              const std::uint32_t sheet, const std::uint32_t column,
              const std::uint32_t row, const val &settings, const val &source) {
-  const std::optional<formula::Syntax> parsed_syntax = syntax_of(syntax);
+  const std::optional<formula::Syntax> parsed_syntax =
+      syntax_of(syntax.as<std::string>());
   if (!parsed_syntax.has_value()) {
     return val::null();
   }
   const std::optional<formula::Node> node =
-      formula::parse(expression, *parsed_syntax);
+      formula::parse(expression.as<std::string>(), *parsed_syntax);
   if (!node.has_value()) {
     return val::null();
   }
@@ -211,17 +215,18 @@ val evaluate(const std::string &expression, const std::string &syntax,
 
 /// What @p expression computes as an array formula anchored at a cell:
 /// `{columns, rows, cells}`, the cells row by row. Null where the evaluator
-/// has no answer.
-val evaluate_array(const std::string &expression, const std::string &syntax,
+/// has no answer. The texts come as `val`, as for @ref evaluate.
+val evaluate_array(const val &expression, const val &syntax,
                    const std::uint32_t sheet, const std::uint32_t column,
                    const std::uint32_t row, const val &settings,
                    const val &source) {
-  const std::optional<formula::Syntax> parsed_syntax = syntax_of(syntax);
+  const std::optional<formula::Syntax> parsed_syntax =
+      syntax_of(syntax.as<std::string>());
   if (!parsed_syntax.has_value()) {
     return val::null();
   }
   const std::optional<formula::Node> node =
-      formula::parse(expression, *parsed_syntax);
+      formula::parse(expression.as<std::string>(), *parsed_syntax);
   if (!node.has_value()) {
     return val::null();
   }

@@ -363,7 +363,11 @@ and the commits name. Git holds the full text of each decision.
     again and again in reading order, from what its cells hold, until none
     changes by the difference, as LibreOffice does. Past the steps
     LibreOffice states `Err:523`, so the group has no result, and Excel
-    keeps the last values. A save recalculates after an edit.
+    keeps the last values. LibreOffice's own order can leave a cycle that
+    reads another one a little apart, within the difference. The page
+    iterates the same way, from 0 in an `.ods`, whose write drops the
+    results, and from the file's values in an `.xlsx`. A save recalculates
+    after an edit.
   - A cell without an answer has no result in an `.ods`, and keeps its old
     one in an `.xlsx`, which keeps `fullCalcOnLoad`. Every binding has
     `recalculate`.
@@ -418,6 +422,5 @@ and the commits name. Git holds the full text of each decision.
   localized LibreOffice shows them translated.
 - **Out of the evaluator so far:** a dynamic array that the edit makes
   larger or smaller than the range the file states, a cell another document
-  holds that its copy lacks, a cycle in the page, `INFO`, and localized
-  function names. Each cell that needs one stays without an answer
-  (decision 29).
+  holds that its copy lacks, `INFO`, and localized function names. Each
+  cell that needs one stays without an answer (decision 29).
