@@ -141,12 +141,35 @@
         odr.editing.undo();
         check("and its undo shows what the save left", shows("8|80.00|big|0.2|2023-03-17"));
 
+        function formulaAt(column, row) {
+          return odr.sheet.cellAt(column, row).getAttribute("data-odr-formula");
+        }
         odr.sheet.pin({ column: 0, row: 0 });
         odr.editing.insertRows();
         write(0, 1, "7");
         check(
-          "after a row edit the expressions are the file's, so nothing computes",
-          text(2, 1) === "8" && staleNow() === "2,1 0,2 1,2 2,2 0,3 1,3"
+          "after a row edit a formula computes as the edit moved it",
+          // the cycle and the volatile cell stay stale
+          text(2, 1) === "9" && text(0, 2) === "90.00" && staleNow() === "2,2 1,3",
+          text(2, 1) + " " + text(0, 2) + " " + staleNow()
+        );
+        check("and states the moved formula", formulaAt(2, 1) === "of:=[.A2]+[.B2]", formulaAt(2, 1));
+        write(2, 0, "=C2*2");
+        check("a formula goes into the new row", text(2, 0) === "18", text(2, 0));
+        odr.editing.committed();
+        write(0, 1, "1");
+        check("an edit after the save computes both", text(2, 1) === "3" && text(2, 0) === "6", text(2, 1) + " " + text(2, 0));
+        odr.editing.undo();
+        check("and an undo after the save", text(2, 1) === "9" && text(2, 0) === "18");
+
+        odr.sheet.pin({ column: 0, row: 1 });
+        odr.editing.deleteRows();
+        check("a row delete computes what read it as #REF!", text(2, 0) === "#REF!", text(2, 0));
+        odr.editing.undo();
+        check(
+          "and its undo puts the formula back",
+          text(2, 0) === "18" && formulaAt(2, 0) === "of:=[.C2]*2",
+          text(2, 0) + " " + formulaAt(2, 0)
         );
       });
     </script>

@@ -470,6 +470,8 @@
     if (cell === null || before === null) {
       return false;
     }
+    // the log replays from the formulas the file states
+    readersOf();
     var formulaBefore = formulaOf(cell);
     var formula =
       value.type === "formula"
@@ -500,7 +502,6 @@
       }
       setAttribute(cell, "data-odr-formula", state.formula);
       setAttribute(cell, "data-odr-reads", state.reads);
-      updateReader(cell);
       if (result === undefined) {
         computed.delete(cell);
       } else {
@@ -512,10 +513,18 @@
     if (!apply(formula, shown, undefined)) {
       return false;
     }
+    var op = {
+      op: "setCell",
+      sheet: sheet,
+      column: column,
+      row: row,
+      value: value,
+    };
+    if (formula.formula !== null) {
+      written.set(op, { cell: cell, reads: formula.reads });
+    }
     history.push({
-      ops: [
-        { op: "setCell", sheet: sheet, column: column, row: row, value: value },
-      ],
+      ops: [op],
       undo: function () {
         apply(formulaBefore, shownBefore, computedBefore);
       },
@@ -537,14 +546,8 @@
     return text === "*" ? Infinity : Number(text);
   }
 
-  /// What @p cell reads in this sheet, null where it states no reads. A
-  /// typed formula that reads no cell is kept, so its own write computes it.
-  function readerOf(cell) {
-    var at = odr.sheet.positionOf(cell);
-    var stated = cell.getAttribute("data-odr-reads");
-    if (at === null || stated === null) {
-      return null;
-    }
+  /// The boxes of `data-odr-reads` @p stated that lie in this sheet.
+  function boxesOf(stated) {
     var boxes = [];
     var groups = stated === "" ? [] : stated.split(" ");
     for (var j = 0; j < groups.length; ++j) {
@@ -558,7 +561,24 @@
         ]);
       }
     }
-    return { cell: cell, at: at, reads: boxes };
+    return boxes;
+  }
+
+  /// The formula of @p cell and what it reads in this sheet, null where it
+  /// states no reads.
+  function readerOf(cell) {
+    var at = odr.sheet.positionOf(cell);
+    var stated = cell.getAttribute("data-odr-reads");
+    if (at === null || stated === null) {
+      return null;
+    }
+    return {
+      cell: cell,
+      formula: cell.getAttribute("data-odr-formula"),
+      moves: [],
+      at: at,
+      reads: boxesOf(stated),
+    };
   }
 
   function readersOf() {
@@ -576,19 +596,28 @@
     return readers;
   }
 
-  /// Takes in what @p cell reads now. A write of a formula is refused after a
-  /// row or column edit, so its position is the one the log names.
-  function updateReader(cell) {
-    if (readers === null) {
-      return;
-    }
-    readers = readers.filter(function (entry) {
-      return entry.cell !== cell;
-    });
-    var entry = readerOf(cell);
-    if (entry !== null) {
-      readers.push(entry);
-    }
+  /// The cell a `setCell` op of a formula wrote, and what the formula reads
+  /// there, so the log can replay it.
+  var written = new WeakMap();
+
+  var movedFormulas = new Map();
+
+  /// The formula of @p entry after its row and column ops, null where the
+  /// page cannot move it. The ops wait in the entry until the module loads.
+  function movedFormula(entry) {
+    return entry.moves.reduce(function (formula, op) {
+      if (formula === null || formulas === null || formulas.module === null) {
+        return null;
+      }
+      var key = formula + "\n" + JSON.stringify(op);
+      if (!movedFormulas.has(key)) {
+        movedFormulas.set(
+          key,
+          formulas.module.move(formula, formulas.syntax, formulas.name, op)
+        );
+      }
+      return movedFormulas.get(key);
+    }, entry.formula);
   }
 
   function readsAny(entry, positions) {
@@ -641,6 +670,8 @@
     var entries = readersOf().map(function (entry) {
       return {
         cell: entry.cell,
+        formula: entry.formula,
+        moves: entry.moves.slice(),
         at: { column: entry.at.column, row: entry.at.row },
         reads: entry.reads.map(function (box) {
           return box.slice();
@@ -650,13 +681,22 @@
     });
     ops.forEach(function (op) {
       if (op.op === "setCell") {
-        entries.forEach(function (entry) {
-          // a formula written into the cell is new, so it computes too
-          entry.marked =
-            entry.marked ||
-            readsAny(entry, [op]) ||
-            (op.column === entry.at.column && op.row === entry.at.row);
+        entries = entries.filter(function (entry) {
+          entry.marked = entry.marked || readsAny(entry, [op]);
+          return entry.at.column !== op.column || entry.at.row !== op.row;
         });
+        // a formula written into the cell is new, so it computes too
+        var typed = written.get(op);
+        if (typed !== undefined) {
+          entries.push({
+            cell: typed.cell,
+            formula: op.value.formula,
+            moves: [],
+            at: { column: op.column, row: op.row },
+            reads: boxesOf(typed.reads || ""),
+            marked: true,
+          });
+        }
         return;
       }
       var axis = STRUCTURE_OPS[op.op];
@@ -676,6 +716,7 @@
               : box[low] < edge + op.count && box[low + 1] >= edge;
           });
         entry.at[axis] = movedIndex(op, entry.at[axis]);
+        entry.moves.push(op);
         entry.reads = entry.reads
           .map(function (box) {
             var span = movedSpan(op, box[low], box[low + 1]);
@@ -764,19 +805,6 @@
       );
     }
     return formulas.loading;
-  }
-
-  /// Whether a structural edit moved the cells under a formula. The page
-  /// keeps the expressions the file states, so it cannot compute them then.
-  var structureSaved = false;
-
-  function moves(ops) {
-    return (
-      structureSaved ||
-      ops.some(function (op) {
-        return STRUCTURE_OPS[op.op] !== undefined;
-      })
-    );
   }
 
   /// What a cell holds as the evaluator reads it, from what the page shows.
@@ -930,9 +958,12 @@
     var depth = 0;
     var extent = null;
 
-    function evaluate(cell, column, row) {
+    function evaluate(formula, column, row) {
+      if (formula === null) {
+        return null;
+      }
       return formulas.module.evaluate(
-        cell.getAttribute("data-odr-formula"),
+        formula,
         formulas.syntax,
         sheet,
         column,
@@ -971,7 +1002,13 @@
             return null;
           }
           ++depth;
-          var computed = evaluate(cell, column, row);
+          var computed = evaluate(
+            entry !== undefined
+              ? entry.formula
+              : cell.getAttribute("data-odr-formula"),
+            column,
+            row
+          );
           --depth;
           return computed;
         }
@@ -1002,7 +1039,7 @@
     ).forEach(function (entry) {
       results.set(
         entry.cell,
-        evaluate(entry.cell, entry.at.column, entry.at.row)
+        evaluate(entry.formula, entry.at.column, entry.at.row)
       );
     });
     return results;
@@ -1071,8 +1108,17 @@
     if (marked.length > 0) {
       loadFormulas();
     }
-    var computes =
-      formulas !== null && formulas.module !== null && !moves(ops);
+    // the page opens and computes a formula as the edits moved it
+    entries.forEach(function (entry) {
+      entry.formula = movedFormula(entry);
+      if (
+        entry.formula !== null &&
+        entry.formula !== entry.cell.getAttribute("data-odr-formula")
+      ) {
+        entry.cell.setAttribute("data-odr-formula", entry.formula);
+      }
+    });
+    var computes = formulas !== null && formulas.module !== null;
     // the results go in after every cell is computed, so none reads another
     // one's new text
     var answers = new Map();
@@ -1212,8 +1258,7 @@
 
   /// Commits what is typed and moves the pin by (@p columns, @p rows). A
   /// formula the page cannot take is refused rather than written, and leaves
-  /// the editor open: without the evaluator, after a row or column edit, and
-  /// where it does not parse.
+  /// the editor open: without the evaluator, and where it does not parse.
   function commit(columns, rows) {
     if (overlay === null) {
       return false;
@@ -1222,7 +1267,7 @@
     var at = editingAt;
     var value = null;
     if (text.charAt(0) === "=") {
-      if (formulas === null || formulas.module === null || moves(coalesced())) {
+      if (formulas === null || formulas.module === null) {
         refuse("formulaInput", at.column, at.row);
         return false;
       }
@@ -2005,10 +2050,8 @@
       }
     },
     committed: function () {
-      var ops = coalesced();
-      structureSaved = moves(ops);
       // what the formula cells read, where the saved rows put it
-      readers = walk(ops);
+      readers = walk(coalesced());
       // the results shown are the ones the save wrote
       computed.clear();
       history = [];
