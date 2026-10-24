@@ -209,9 +209,40 @@ val format(const double number, const std::string &code,
   }
 }
 
+/// What the first section of @p code shows a number as: `number`, `date` or
+/// `time`. Null where @p code is no format code.
+val category(const std::string &code) {
+  try {
+    switch (code.empty() ? number_format::Category::number
+                         : number_format::Format(code).category()) {
+    case number_format::Category::date:
+      return val("date");
+    case number_format::Category::time:
+      return val("time");
+    case number_format::Category::number:
+      return val("number");
+    }
+  } catch (const std::invalid_argument &) {
+  }
+  return val::null();
+}
+
+/// The serial a formula computes with for @p days since 1899-12-30.
+double serial(const double days, const val &settings) {
+  return settings_of(settings).serial(days);
+}
+
+/// The days since 1899-12-30 a formula's @p serial stands for.
+double days(const double serial, const val &settings) {
+  return settings_of(settings).days(serial);
+}
+
 } // namespace
 
 EMSCRIPTEN_BINDINGS(odr_formula) {
   emscripten::function("evaluate", &evaluate);
   emscripten::function("format", &format);
+  emscripten::function("category", &category);
+  emscripten::function("serial", &serial);
+  emscripten::function("days", &days);
 }

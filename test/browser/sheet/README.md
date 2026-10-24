@@ -19,6 +19,8 @@ open http://localhost:8732/locale.html
 open http://localhost:8732/dates.html
 open http://localhost:8732/rows.html
 open http://localhost:8732/columns.html
+open http://localhost:8732/formulas.html
+open http://localhost:8732/formula-chain.html
 ```
 
 `serve` serves `document.css`, `spreadsheet.css`, `editing.js`,
@@ -77,6 +79,18 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
 - `columns.html`: the same for inserted and deleted columns: the headers
   are lettered again, a new column states no width, and a `colspan` an edge
   falls inside refuses.
+- `formulas.html`: the live results of the evaluator in the page. An edit
+  computes the formula cells that read it, in the format of each cell. A
+  date, a boolean and an error take their type, and a formula without an
+  answer stays stale, a cycle too. An undo, a redo and a save, and nothing
+  computes after a row edit.
+- `formula-chain.html`: a chain of 600 formulas, whose end the first formula
+  reads. The editor computes them in the order they read each other, so no
+  evaluation nests in another.
+
+  Both pages load `odr-formula.js`, which the wasm build writes:
+  `ODR_FORMULA_WASM=build-wasm/wasm/formula/odr-formula.js
+  test/browser/sheet/serve`. Without it the first check fails.
 - `sorting.html`: the same questions after the sort control moved every row.
   Nothing is merged, because a merged sheet gets no sort control. A row is
   found by its label, not by its position.

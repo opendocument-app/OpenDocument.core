@@ -1,0 +1,154 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet formula checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body
+    class="odr-body odr-gridlines-soft"
+    data-odr-editable="true"
+    data-odr-keyboard="navigation shortcuts"
+    data-odr-formula-syntax="opendocument"
+    data-odr-formula-settings='{"dialect":"libreoffice","nullDate":0}'
+  >
+    <!-- An ods sheet as `translate_sheet` writes one, with what the evaluator
+         in the page reads. C1 adds A1 and B1, A2 reads C1 in a format of two
+         decimals, B2 compares A1, A3 divides by A1 - 1 and shows an error, B3
+         reads the clock and has no answer, C3 is a date of B1, and C2 reads
+         itself and A1. -->
+    <table class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="Sheet1">
+      <col class="odr-sheet-gutter" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <thead>
+        <tr>
+          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+          <th class="odr-sheet-column-header">A</th>
+          <th class="odr-sheet-column-header">B</th>
+          <th class="odr-sheet-column-header">C</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="odr-sheet-row-header">1</th>
+          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">1</td>
+          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">2</td>
+          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.A1]+[.B1]" data-odr-reads="0,0,1,0,0" style="max-width:0;white-space:nowrap">3</td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">2</th>
+          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.C1]*10" data-odr-reads="0,2,2,0,0" data-odr-value="30" data-odr-format="0.00" style="max-width:0;white-space:nowrap">30.00</td>
+          <td class="odr-locked" data-odr-lock="formula" data-odr-formula="of:=IF([.A1]&gt;5;&quot;big&quot;;&quot;small&quot;)" data-odr-reads="0,0,0,0,0" style="max-width:0;white-space:nowrap">small</td>
+          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.C2]+[.A1]" data-odr-reads="0,2,2,1,1 0,0,0,0,0" style="max-width:0;white-space:nowrap">0</td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">3</th>
+          <td class="odr-locked" data-odr-lock="formula" data-odr-formula="of:=1/([.A1]-1)" data-odr-reads="0,0,0,0,0" data-odr-type="error" style="max-width:0;white-space:nowrap">#DIV/0!</td>
+          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=NOW()+[.A1]" data-odr-reads="0,0,0,0,0" style="max-width:0;white-space:nowrap">45000</td>
+          <td class="odr-value-type-date odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.B1]+45000" data-odr-reads="0,1,1,0,0" data-odr-value="45002" data-odr-format="YYYY-MM-DD" style="max-width:0;white-space:nowrap">2023-03-17</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="report"></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <!-- `serve.py` serves the module `ODR_FORMULA_WASM` names -->
+    <script src="odr-formula.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var staleEvents = [];
+      odr.onCellsStale = function (event) {
+        staleEvents.push(event);
+      };
+      function staleNow() {
+        return Array.prototype.slice
+          .call(document.querySelectorAll(".odr-sheet-stale"))
+          .map(function (td) {
+            var at = odr.sheet.positionOf(td);
+            return at.column + "," + at.row;
+          })
+          .join(" ");
+      }
+      function text(column, row) {
+        return odr.sheet.cellAt(column, row).textContent;
+      }
+      function write(column, row, typed) {
+        odr.editing.editAt(column, row);
+        var editor = document.querySelector(".odr-sheet-editor");
+        editor.value = typed;
+        editor.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      }
+      function shows(expected) {
+        var actual = [
+          text(2, 0), text(0, 1), text(1, 1), text(0, 2), text(2, 2),
+        ].join("|");
+        return actual === expected || (console.log(actual), false);
+      }
+
+      check("the page carries the module", typeof createOdrFormula === "function");
+      odr.editing.enable();
+      odr.editing.loadFormulas().then(function (computes) {
+        check("and computes with it", computes === true);
+
+        write(0, 0, "6");
+        check(
+          "an edit computes the formulas that read it, in their formats",
+          shows("8|80.00|big|0.2|2023-03-17")
+        );
+        check(
+          "a result takes the type it is",
+          odr.sheet.cellAt(0, 2).getAttribute("data-odr-type") === null &&
+            odr.sheet.cellAt(0, 2).classList.contains("odr-value-type-float") &&
+            odr.sheet.valueAt(0, 1).number === 80
+        );
+        check("a formula without an answer stays stale, a cycle too", staleNow() === "2,1 1,2");
+        check(
+          "and only those are named to the host",
+          staleEvents.length === 1 &&
+            staleEvents[0].cells.length === 2 &&
+            staleEvents[0].cells[1].column === 1 &&
+            staleEvents[0].cells[1].row === 2
+        );
+
+        write(1, 0, "3");
+        check("a date shows in the format of its cell", shows("9|90.00|big|0.2|2023-03-18"));
+        check("and states its days", odr.sheet.valueAt(2, 2).number === 45003);
+
+        odr.editing.undo();
+        check("an undo computes again", shows("8|80.00|big|0.2|2023-03-17"));
+        odr.editing.undo();
+        check("and the last one shows what the file showed", shows("3|30.00|small|#DIV/0!|2023-03-17"));
+        check(
+          "an error is one again",
+          odr.sheet.cellAt(0, 2).getAttribute("data-odr-type") === "error" &&
+            !odr.sheet.cellAt(0, 2).classList.contains("odr-value-type-float")
+        );
+        check("with nothing stale", staleNow() === "");
+
+        odr.editing.redo();
+        check("a redo computes", shows("8|80.00|big|0.2|2023-03-17"));
+        odr.editing.committed();
+        check("a save keeps the results", shows("8|80.00|big|0.2|2023-03-17") && staleNow() === "");
+
+        write(0, 0, "2");
+        check("an edit after a save computes from the results", shows("4|40.00|small|1|2023-03-17"));
+        odr.editing.undo();
+        check("and its undo shows what the save left", shows("8|80.00|big|0.2|2023-03-17"));
+
+        odr.sheet.pin({ column: 0, row: 0 });
+        odr.editing.insertRows();
+        write(0, 1, "7");
+        check(
+          "after a row edit the expressions are the file's, so nothing computes",
+          text(2, 1) === "8" && staleNow() === "2,1 0,2 1,2 2,2 0,3 1,3"
+        );
+      });
+    </script>
+  </body>
+</html>

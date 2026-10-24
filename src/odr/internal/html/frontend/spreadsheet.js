@@ -575,6 +575,12 @@
     } else {
       cell.removeAttribute("data-odr-value");
     }
+    // a boolean and an error, which a formula reads as what they are
+    if (value.type === "boolean" || value.type === "error") {
+      cell.setAttribute("data-odr-type", value.type);
+    } else {
+      cell.removeAttribute("data-odr-type");
+    }
     reflow(row);
     return true;
   }
