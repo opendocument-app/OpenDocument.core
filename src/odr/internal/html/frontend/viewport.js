@@ -57,30 +57,42 @@
   // A run against a stated length, so no rect convention enters. True in webkit
   // and in the engines that ignore the property; false where it scales the text
   // a second time.
+  //
+  // In a document of its own: a zoom on the body and an adjustment on the root
+  // are inherited, so in the page they would restyle and lay out all of it,
+  // twice.
   function textAdjustHolds() {
-    var ruler = document.createElement("div");
+    var frame = document.createElement("iframe");
+    frame.style.cssText =
+      "position:absolute;top:0;left:0;width:400px;height:0;border:0;" +
+      "visibility:hidden";
+    body.appendChild(frame);
+    var probe = frame.contentDocument;
+    if (probe === null || probe.body === null) {
+      body.removeChild(frame);
+      return false;
+    }
+    probe.body.style.margin = "0";
+    var ruler = probe.createElement("div");
     ruler.style.cssText =
       "position:absolute;top:0;left:0;width:400px;height:0;overflow:hidden";
-    var run = document.createElement("span");
+    var run = probe.createElement("span");
     run.style.cssText = "font:100px/1 monospace;white-space:pre";
     run.textContent = "MMMMMMMMMM";
     ruler.appendChild(run);
-    body.appendChild(ruler);
+    probe.body.appendChild(ruler);
 
     function ratio() {
       var length = ruler.getBoundingClientRect().width;
       return length ? run.getBoundingClientRect().width / length : 0;
     }
 
-    var zoom = body.style.zoom;
-    body.style.zoom = "1";
     var unzoomed = ratio();
-    body.style.zoom = "0.5";
-    textAdjust("50%");
+    probe.body.style.zoom = "0.5";
+    probe.documentElement.style.setProperty("-webkit-text-size-adjust", "50%");
+    probe.documentElement.style.setProperty("text-size-adjust", "50%");
     var zoomed = ratio();
-    textAdjust("");
-    body.style.zoom = zoom;
-    body.removeChild(ruler);
+    body.removeChild(frame);
 
     return unzoomed > 0 && Math.abs(zoomed - unzoomed) < unzoomed / 50;
   }
