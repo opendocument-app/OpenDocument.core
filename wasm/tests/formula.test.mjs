@@ -75,6 +75,26 @@ describe('formula module', { skip: path === '' && 'no odr-formula.js' }, () => {
     assert.deepEqual(at('ISNA(B3)'), { type: 'boolean', boolean: true });
   });
 
+  it('evaluates again inside a callback, as the page nests a chain', () => {
+    // B1 is a formula that reads A1, so reading it evaluates inside the
+    // evaluation that reads it
+    const chain = { '0,0': { type: 'number', number: 4 }, '1,0': { formula: 'A1*2' } };
+    const at = sheetOf(module, chain);
+    assert.deepEqual(at('B1+1'), { type: 'number', number: 9 });
+    assert.deepEqual(at('B1+B1'), { type: 'number', number: 16 });
+    const source = {
+      sheet: () => 0,
+      cell: (sheet, column, row) => (column === 1
+        ? module.evaluate('A1*2', 'ooxml', 0, 1, 0, {}, source)
+        : { type: 'number', number: row + 1 }),
+      extent: () => ({ columns: 2, rows: 2 }),
+    };
+    assert.deepEqual(
+      module.evaluateArray('A1:A2+B1', 'ooxml', 0, 2, 0, {}, source),
+      { columns: 1, rows: 2, cells: [{ type: 'number', number: 3 },
+        { type: 'number', number: 4 }] });
+  });
+
   it('gives no answer where the evaluator has none', () => {
     const at = sheetOf(module, cells);
     assert.equal(at('NOW()'), null);
