@@ -92,6 +92,21 @@ struct Symbols final {
 /// one it does not name writes `.` and `,` and English names.
 [[nodiscard]] Symbols symbols_of(std::string_view locale);
 
+/// The words a boolean shows as.
+struct BooleanWords final {
+  std::string true_word;
+  std::string false_word;
+};
+
+/// The words a boolean shows as in a document of the BCP 47 tag @p locale,
+/// whose cells show @p shown_true and @p shown_false, empty where none does.
+/// A file spells its booleans in the language of whoever saved it, so the
+/// words it shows come first, then the pair of the one word it shows, then
+/// the words of @p locale, from a small table of languages, then English.
+[[nodiscard]] BooleanWords boolean_words(std::string_view locale,
+                                         std::string_view shown_true,
+                                         std::string_view shown_false);
+
 /// What the first section of a format shows a number as.
 enum class Category { number, date, time };
 

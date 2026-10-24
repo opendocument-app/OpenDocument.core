@@ -133,6 +133,13 @@ describe('formula module', { skip: path === '' && 'no odr-formula.js' }, () => {
     assert.equal(module.reads('NOW()', 'ooxml', 0, 'S'), '');
   });
 
+  it('names the words of a boolean', () => {
+    assert.deepEqual(module.booleanWords('fr-FR', '', 'FALSCH'),
+      ['WAHR', 'FALSCH']);
+    assert.deepEqual(module.booleanWords('ru-RU', '', ''), ['ИСТИНА', 'ЛОЖЬ']);
+    assert.deepEqual(module.booleanWords('', '', ''), ['TRUE', 'FALSE']);
+  });
+
   it('builds no code at run time', () => {
     const glue = readFileSync(path, 'utf8');
     assert.doesNotMatch(glue, /new Function\b/);

@@ -201,6 +201,25 @@ TEST(NumberFormat, a_locale_writes_its_own_point_and_grouping) {
   EXPECT_EQ(symbols_of("pt-BR").group, ".");
 }
 
+TEST(NumberFormat, a_boolean_takes_the_words_a_document_shows) {
+  const auto words = [](const std::string_view locale,
+                        const std::string_view shown_true,
+                        const std::string_view shown_false) {
+    const BooleanWords result = boolean_words(locale, shown_true, shown_false);
+    return result.true_word + "|" + result.false_word;
+  };
+  EXPECT_EQ(words("fr-FR", "Ja", "Nein"), "Ja|Nein");
+  // the pair of the one word shown, over the language of the document
+  EXPECT_EQ(words("fr-FR", "", "FALSCH"), "WAHR|FALSCH");
+  EXPECT_EQ(words("en-US", "vrai", ""), "vrai|FAUX");
+  // `FALSO` names no pair, so the language decides
+  EXPECT_EQ(words("it-IT", "", "FALSO"), "VERO|FALSO");
+  EXPECT_EQ(words("de-DE", "", ""), "WAHR|FALSCH");
+  EXPECT_EQ(words("no", "", ""), "SANN|USANN");
+  EXPECT_EQ(words("ja-JP", "", ""), "TRUE|FALSE");
+  EXPECT_EQ(words("", "", "Nein"), "TRUE|Nein");
+}
+
 /// The names are the ones LibreOffice shows for the same date style.
 TEST(NumberFormat, a_locale_writes_its_own_month_and_day_names) {
   const auto shown_in = [](const std::string_view code,

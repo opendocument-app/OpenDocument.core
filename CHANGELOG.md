@@ -51,7 +51,8 @@ The release run heads these entries with the version and opens a fresh
   cells as the user edits: a commit, an undo and a redo show the new results
   in the format of each cell. A cell the evaluator has no answer for stays
   stale, and only those reach `odr.onCellsStale`. After a row or column edit
-  the page computes nothing until a new render.
+  the page computes nothing until a new render. A boolean result takes the
+  words the page shows its booleans in, for example `WAHR` and `FALSCH`.
   `odr.editing.loadFormulas()` loads the module ahead of the first edit.
 - An editable sheet page states what a formula in the page reads: the syntax
   and the calculation settings of the document on `<body>`, the name of the

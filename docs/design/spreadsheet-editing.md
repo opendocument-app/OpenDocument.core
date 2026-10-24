@@ -163,8 +163,13 @@ the page would need the file, and the module would be 4.6 MB, not 530 KB.
 The page computes in the order the marked cells read each other, so no
 evaluation nests in another one: a chain of several hundred cells would
 overflow the wasm stack. Where the module has no answer, the cell stays
-stale. After a row or column edit the page computes nothing, because it holds
-the expressions as the file states them, not as the edit moved them.
+stale. A boolean result takes the words of the page's boolean cells, because
+the file spelled them in the language of whoever saved it: a cell that shows
+`FALSCH` makes a true result `WAHR`. A page that shows no boolean takes the
+words of the document's language. `number_format::boolean_words` chooses
+them, and the module exports it. After a row or column edit the page
+computes nothing, because it holds the expressions as the file states them,
+not as the edit moved them.
 
 Where the evaluator has no answer, the file still has to stay honest.
 `.xlsx` has a switch for this, `calcPr/@fullCalcOnLoad="1"` (ECMA-376
