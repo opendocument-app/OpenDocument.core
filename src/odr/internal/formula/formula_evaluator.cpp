@@ -107,6 +107,11 @@ public:
     return result;
   }
 
+  /// @ref Call::array of an argument evaluated ahead.
+  [[nodiscard]] Matrix array_of(Value value) const {
+    return matrix_of(std::move(value));
+  }
+
   /// Evaluates @p node as an array, expanding range operands as `SUMPRODUCT`
   /// does.
   [[nodiscard]] Matrix array(const Node &node) {
@@ -306,16 +311,130 @@ private:
 
   [[nodiscard]] Value value_of(const FunctionCall &call, const Node &node) {
     const Function function = find_function(call.name);
-    // a function in an array context maps over the array, which none here
-    // does yet
-    if (function == nullptr || m_array) {
+    if (function == nullptr) {
       throw NoAnswer{};
+    }
+    if (m_array) {
+      return mapped(function, find_array_rule(call.name), node);
     }
     try {
       return function(Call(this, &node));
     } catch (const ErrorResult &result) {
       return Value{result.error};
     }
+  }
+
+  /// A function in an array context. An argument @p takes_array names stays
+  /// for the function to read whole, and the function maps over the
+  /// elements of every other one: a range gives a one-cell reference each.
+  [[nodiscard]] Value mapped(const Function function,
+                             const ArrayRule takes_array, const Node &node) {
+    if (takes_array == nullptr) {
+      throw NoAnswer{};
+    }
+    std::vector<std::optional<Value>> given(node.children.size());
+    std::uint32_t columns = 1;
+    std::uint32_t rows = 1;
+    for (std::size_t i = 0; i < node.children.size(); ++i) {
+      if (takes_array(i) || node.children[i].holds<Missing>()) {
+        continue;
+      }
+      Value argument = value(node.children[i]);
+      const auto [argument_columns, argument_rows] = shape_of(argument);
+      columns = std::max(columns, argument_columns);
+      rows = std::max(rows, argument_rows);
+      given[i] = std::move(argument);
+    }
+    const auto call_with =
+        [&](const std::vector<std::optional<Value>> &arguments) -> Value {
+      try {
+        return function(Call(this, &node, &arguments));
+      } catch (const ErrorResult &result) {
+        return Value{result.error};
+      }
+    };
+    if (columns == 1 && rows == 1) {
+      return call_with(given);
+    }
+    Matrix result{columns, rows, {}};
+    result.cells.reserve(array_size(columns, rows));
+    std::vector<std::optional<Value>> element(given.size());
+    for (std::uint32_t row = 0; row < rows; ++row) {
+      for (std::uint32_t column = 0; column < columns; ++column) {
+        for (std::size_t i = 0; i < given.size(); ++i) {
+          if (given[i].has_value()) {
+            element[i] = element_of(*given[i], column, row);
+          }
+        }
+        result.cells.push_back(one_value(call_with(element)));
+      }
+    }
+    return Value{std::move(result)};
+  }
+
+  /// The columns and rows of an array or a range, 1 by 1 for a scalar.
+  [[nodiscard]] static std::pair<std::uint32_t, std::uint32_t>
+  shape_of(const Value &value) {
+    if (const auto *matrix = std::get_if<Matrix>(&value.content)) {
+      return {matrix->columns, matrix->rows};
+    }
+    const auto *reference = std::get_if<Reference>(&value.content);
+    if (reference == nullptr) {
+      return {1, 1};
+    }
+    if (reference->areas.size() != 1) {
+      throw NoAnswer{};
+    }
+    const Area &area = reference->areas.front();
+    if (area.whole_columns || area.whole_rows) {
+      throw NoAnswer{}; // as tall as the grid of the application
+    }
+    return {area.range.to().column - area.range.from().column + 1,
+            area.range.to().row - area.range.from().row + 1};
+  }
+
+  /// The element of @p value at (@p column, @p row), as @ref spread places
+  /// it: a range gives the reference of one cell.
+  [[nodiscard]] static Value element_of(const Value &value,
+                                        const std::uint32_t column,
+                                        const std::uint32_t row) {
+    if (const auto *matrix = std::get_if<Matrix>(&value.content)) {
+      return spread(*matrix, column, row);
+    }
+    const auto *reference = std::get_if<Reference>(&value.content);
+    if (reference == nullptr) {
+      return value;
+    }
+    const auto [columns, rows] = shape_of(value);
+    const std::uint32_t c = columns == 1 ? 0 : column;
+    const std::uint32_t r = rows == 1 ? 0 : row;
+    if (c >= columns || r >= rows) {
+      return Value{ErrorType::not_available};
+    }
+    const Area &area = reference->areas.front();
+    const TablePosition at(area.range.from().column + c,
+                           area.range.from().row + r);
+    return Value{Reference{{Area{area.sheet, TableRange(at, at)}}}};
+  }
+
+  /// One element of an array a mapped function gives.
+  [[nodiscard]] Value one_value(Value value) {
+    if (const auto *reference = std::get_if<Reference>(&value.content)) {
+      if (reference->areas.size() != 1 ||
+          reference->areas.front().range.from() !=
+              reference->areas.front().range.to()) {
+        return Value{ErrorType::value};
+      }
+      return read(SheetPosition(reference->areas.front().sheet,
+                                reference->areas.front().range.from()));
+    }
+    if (const auto *matrix = std::get_if<Matrix>(&value.content)) {
+      if (matrix->cells.size() != 1) {
+        throw NoAnswer{}; // an array in each element
+      }
+      return matrix->cells.front();
+    }
+    return value;
   }
 
   [[nodiscard]] Value value_of(const ArrayLiteral &array, const Node &node) {
@@ -524,15 +643,7 @@ private:
     const auto element = [&](const Value &value, const Matrix *matrix,
                              const std::uint32_t column,
                              const std::uint32_t row) -> Value {
-      if (matrix == nullptr) {
-        return scalar(value);
-      }
-      const std::uint32_t c = matrix->columns == 1 ? 0 : column;
-      const std::uint32_t r = matrix->rows == 1 ? 0 : row;
-      if (c >= matrix->columns || r >= matrix->rows) {
-        return Value{ErrorType::not_available};
-      }
-      return matrix->cells[std::size_t{r} * matrix->columns + c];
+      return matrix == nullptr ? scalar(value) : spread(*matrix, column, row);
     };
     Matrix result{std::max(columns_of(left), columns_of(right)),
                   std::max(rows_of(left), rows_of(right)),
@@ -743,8 +854,9 @@ private:
   }
 };
 
-Call::Call(Evaluator *evaluator, const Node *node)
-    : m_evaluator{evaluator}, m_node{node} {}
+Call::Call(Evaluator *evaluator, const Node *node,
+           const std::vector<std::optional<Value>> *given)
+    : m_evaluator{evaluator}, m_node{node}, m_given{given} {}
 
 std::size_t Call::size() const { return m_node->children.size(); }
 
@@ -755,6 +867,9 @@ bool Call::missing(const std::size_t index) const {
 Value Call::value(const std::size_t index) const {
   if (index >= size()) {
     return Value{Empty{}};
+  }
+  if (m_given != nullptr && (*m_given)[index].has_value()) {
+    return *(*m_given)[index];
   }
   return m_evaluator->value(m_node->children[index]);
 }
@@ -770,6 +885,9 @@ Value Call::scalar_of(Value value) const {
 Matrix Call::array(const std::size_t index) const {
   if (index >= size()) {
     return Matrix{1, 1, {Value{Empty{}}}};
+  }
+  if (m_given != nullptr && (*m_given)[index].has_value()) {
+    return m_evaluator->array_of(*(*m_given)[index]);
   }
   return m_evaluator->array(m_node->children[index]);
 }
@@ -932,6 +1050,37 @@ std::optional<formula::Value> formula::evaluate(const Node &node,
   } catch (const NoAnswer &) {
     return std::nullopt;
   }
+}
+
+std::optional<formula::Matrix>
+formula::evaluate_array(const Node &node, const SheetPosition &cell,
+                        const CellSource &source, const Settings &settings) {
+  try {
+    Evaluator evaluator(&source, &settings, cell, &node);
+    Matrix result = evaluator.array(node);
+    for (Value &element : result.cells) {
+      // an element reading an empty cell shows 0
+      if (element.holds<Empty>()) {
+        element = Value{0.0};
+      } else if (element.holds<double>() &&
+                 !std::isfinite(element.get<double>())) {
+        return std::nullopt;
+      }
+    }
+    return result;
+  } catch (const NoAnswer &) {
+    return std::nullopt;
+  }
+}
+
+formula::Value formula::spread(const Matrix &result, const std::uint32_t column,
+                               const std::uint32_t row) {
+  const std::uint32_t c = result.columns == 1 ? 0 : column;
+  const std::uint32_t r = result.rows == 1 ? 0 : row;
+  if (c >= result.columns || r >= result.rows) {
+    return Value{ErrorType::not_available};
+  }
+  return result.cells[std::size_t{r} * result.columns + c];
 }
 
 } // namespace odr::internal

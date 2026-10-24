@@ -93,30 +93,47 @@ void evaluate_file(const TestFile &file, Tally &tally) {
     }
     adapter->sheet_adapter(sheet)->sheet_visit_formulas(
         sheet, [&](const std::uint32_t column, const std::uint32_t row,
-                   const TableDimensions &, const bool array,
+                   const TableDimensions &span, const bool array,
                    const std::string &text) {
           ++tally.formulas;
-          // decision 29: an array formula has no answer
-          if (array) {
-            return;
-          }
           const SheetPosition position(index, column, row);
           const std::optional<formula::Node> node =
               formula::parse(text, *syntax);
-          const std::optional<Value> cached = source.cell(position);
-          if (!node.has_value() || !cached.has_value()) {
+          if (!node.has_value()) {
             return;
           }
-          const std::optional<Value> answer =
-              formula::evaluate(*node, position, source, source.settings());
+          const auto compare = [&](const SheetPosition &at,
+                                   const Value &answer) {
+            const std::optional<Value> cached = source.cell(at);
+            if (!cached.has_value()) {
+              return;
+            }
+            ++tally.answered;
+            if (!same(answer, *cached)) {
+              tally.differences.push_back(
+                  file.short_path + " " + at.to_string() + " " + text + ": " +
+                  spelled(answer) + ", cached " + spelled(*cached));
+            }
+          };
+          if (!array) {
+            if (const std::optional<Value> answer = formula::evaluate(
+                    *node, position, source, source.settings());
+                answer.has_value()) {
+              compare(position, *answer);
+            }
+            return;
+          }
+          // every cell of the range it fills
+          const std::optional<formula::Matrix> answer = formula::evaluate_array(
+              *node, position, source, source.settings());
           if (!answer.has_value()) {
             return;
           }
-          ++tally.answered;
-          if (!same(*answer, *cached)) {
-            tally.differences.push_back(
-                file.short_path + " " + position.to_string() + " " + text +
-                ": " + spelled(*answer) + ", cached " + spelled(*cached));
+          for (std::uint32_t r = 0; r < span.rows; ++r) {
+            for (std::uint32_t c = 0; c < span.columns; ++c) {
+              compare(SheetPosition(index, column + c, row + r),
+                      formula::spread(*answer, c, r));
+            }
           }
         });
     ++index;

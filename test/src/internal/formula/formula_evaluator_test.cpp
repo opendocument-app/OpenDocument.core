@@ -6,6 +6,8 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+#include <cstdint>
 #include <limits>
 #include <optional>
 #include <string>
@@ -314,4 +316,85 @@ TEST(FormulaEvaluator, cell_has_no_answer_where_the_applications_differ) {
   EXPECT_EQ(ods(R"(=CELL("type";[.A2]))", source), std::nullopt);
   EXPECT_EQ(ods(R"(=CELL("nonsense";[.A2]))", source), std::nullopt);
   EXPECT_EQ(xlsx(R"(=CELL("nonsense",A2))", source), error(ErrorType::value));
+}
+
+namespace {
+
+/// `s!A1:D3` holds 1, 10, `a`, -1 / 2, 20, `bb`, 2 / 3, 30, `ccc`, -3.
+Cells array_cells() {
+  Cells result;
+  const std::array<std::array<Value, 4>, 3> rows{{
+      {Value{1.0}, Value{10.0}, Value{std::string("a")}, Value{-1.0}},
+      {Value{2.0}, Value{20.0}, Value{std::string("bb")}, Value{2.0}},
+      {Value{3.0}, Value{30.0}, Value{std::string("ccc")}, Value{-3.0}},
+  }};
+  for (std::uint32_t row = 0; row < rows.size(); ++row) {
+    for (std::uint32_t column = 0; column < rows[row].size(); ++column) {
+      result.values[odr::SheetPosition(0, column, row)] = rows[row][column];
+    }
+  }
+  return result;
+}
+
+/// What an `.ods` array formula fills @p columns by @p rows with, row by
+/// row and `|` between rows, as LibreOffice computed it for the same cells.
+std::string filled(const std::string &formula, const std::uint32_t columns,
+                   const std::uint32_t rows) {
+  const std::optional<Node> node = parse(formula, Syntax::opendocument);
+  const std::optional<Matrix> result = evaluate_array(
+      *node, formula_cell, array_cells(),
+      Settings{.dialect = Dialect::libreoffice, .boolean_word = false});
+  if (!result.has_value()) {
+    return "no answer";
+  }
+  std::string spelled;
+  for (std::uint32_t row = 0; row < rows; ++row) {
+    for (std::uint32_t column = 0; column < columns; ++column) {
+      const Value value = spread(*result, column, row);
+      spelled += column == 0 ? (row == 0 ? "" : "|") : ",";
+      if (const auto *number = std::get_if<double>(&value.content)) {
+        spelled += std::to_string(static_cast<std::int64_t>(*number));
+      } else if (const auto *text = std::get_if<std::string>(&value.content)) {
+        spelled += *text;
+      } else if (const auto *boolean = std::get_if<bool>(&value.content)) {
+        spelled += *boolean ? "TRUE" : "FALSE";
+      } else if (const auto *error = std::get_if<ErrorType>(&value.content)) {
+        spelled += to_string(*error);
+      }
+    }
+  }
+  return spelled;
+}
+
+} // namespace
+
+TEST(FormulaEvaluator, an_array_formula_reads_every_cell_of_a_range) {
+  EXPECT_EQ(filled("=[.A1:.A3]*2", 1, 3), "2|4|6");
+  EXPECT_EQ(filled("=SUM([.A1:.A3]*[.B1:.B3])", 1, 1), "140");
+  EXPECT_EQ(filled(R"(=[.C1:.C3]&"x")", 1, 3), "ax|bbx|cccx");
+  EXPECT_EQ(filled("=1/([.A1:.A3]-2)", 1, 3), "-1|#DIV/0!|1");
+  EXPECT_EQ(filled("={1;2|3;4}*10", 2, 2), "10,20|30,40");
+}
+
+TEST(FormulaEvaluator, an_array_formula_maps_a_function_over_its_elements) {
+  EXPECT_EQ(filled("=IF([.A1:.A3]>1;[.A1:.A3];0)", 1, 3), "0|2|3");
+  EXPECT_EQ(filled("=ROW([.A1:.A3])", 1, 3), "1|2|3");
+  EXPECT_EQ(filled("=LEN([.C1:.C3])", 1, 3), "1|2|3");
+  EXPECT_EQ(filled("=SUM(IF([.A1:.A3]>1;1;0))", 1, 1), "2");
+  EXPECT_EQ(filled("=MAX(ABS([.D1:.D3]))", 1, 1), "3");
+  EXPECT_EQ(filled("=SUM(LEN([.C1:.C3]))", 1, 1), "6");
+  EXPECT_EQ(filled("=ISBLANK([.E1:.E3])", 1, 3), "TRUE|TRUE|TRUE");
+  // `{1;2;5}` is one row, so each row of one column takes its first element
+  EXPECT_EQ(filled("=COUNTIF([.A1:.A3];{1;2;5})", 1, 3), "1|1|1");
+  EXPECT_EQ(filled("=INDEX([.A1:.B3];{1|3};2)", 1, 2), "10|30");
+  EXPECT_EQ(filled("=SMALL([.A1:.A3];{1|2})", 1, 2), "1|2");
+}
+
+TEST(FormulaEvaluator, an_array_formula_spreads_over_the_range_it_fills) {
+  EXPECT_EQ(filled("=[.A1:.A3]*2", 1, 4), "2|4|6|#N/A");
+  EXPECT_EQ(filled("=[.A1:.A2]", 2, 2), "1,1|2,2");
+  EXPECT_EQ(filled("=5", 2, 2), "5,5|5,5");
+  EXPECT_EQ(filled("=[.A1:.A3]+[.B1:.B2]", 1, 3), "11|22|#N/A");
+  // a function that would give an array of references
+  EXPECT_EQ(filled("=OFFSET([.A1];[.A1:.A2];0)", 1, 2), "no answer");
 }

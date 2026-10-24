@@ -26,22 +26,24 @@ namespace odr::internal {
 
 namespace {
 
-/// A formula cell, and what it states.
-struct Formula final {
-  ElementIdentifier sheet_id{null_element_id};
-  std::optional<formula::Node> node{};
-  /// Whether a repeat or an array formula stands for the cell, which the
-  /// evaluator cannot compute apart from the rest of the span.
-  bool spanned{false};
-  /// Whether the cell is one an array formula fills, not the formula's own.
-  bool output{false};
-};
-
 /// The cells one formula stands for: a repeat, or an array formula's range.
 struct Span final {
   SheetPosition first{};
   TableDimensions size{};
   bool array{false};
+};
+
+/// A formula cell, and what it states.
+struct Formula final {
+  ElementIdentifier sheet_id{null_element_id};
+  std::optional<formula::Node> node{};
+  /// Whether a repeat stands for the cell, which the evaluator cannot
+  /// compute apart from the rest of the span.
+  bool spanned{false};
+  /// Whether the cell is one an array formula fills, not the formula's own.
+  bool output{false};
+  /// The range of the array formula that fills the cell.
+  std::optional<Span> array{};
 };
 
 /// Calls @p visit with every position of @p span.
@@ -149,6 +151,12 @@ public:
       return std::nullopt;
     }
     const Formula &entry = formula->second;
+    if (entry.output) {
+      // the formula's own cell computes the whole range
+      static_cast<void>(cell(entry.array->first));
+      const auto known = m_results.find(position);
+      return known != m_results.end() ? known->second : std::nullopt;
+    }
     if (!entry.node.has_value() || entry.spanned) {
       m_results.emplace(position, std::nullopt);
       return std::nullopt;
@@ -162,7 +170,10 @@ public:
     }
     m_stack.push_back(position);
     const std::optional<formula::Value> result =
-        formula::evaluate(*entry.node, position, *this, m_settings);
+        entry.array.has_value()
+            ? fill(*entry.array, formula::evaluate_array(*entry.node, position,
+                                                         *this, m_settings))
+            : formula::evaluate(*entry.node, position, *this, m_settings);
     m_stack.pop_back();
     // a result the depth limit cut short is computed again
     if (!m_frontier.has_value()) {
@@ -198,6 +209,28 @@ public:
   }
 
 private:
+  /// Notes what @p result puts in each cell of @p span past its first, and
+  /// gives what it puts in the first.
+  std::optional<formula::Value>
+  fill(const Span &span, const std::optional<formula::Matrix> &result) const {
+    if (m_frontier.has_value()) {
+      return std::nullopt; // cut short, so computed again
+    }
+    for_each_position(span, [&](const SheetPosition &position) {
+      if (position != span.first) {
+        m_results.emplace(
+            position,
+            result.has_value()
+                ? std::optional(formula::spread(
+                      *result, position.cell.column - span.first.cell.column,
+                      position.cell.row - span.first.cell.row))
+                : std::nullopt);
+      }
+    });
+    return result.has_value() ? std::optional(formula::spread(*result, 0, 0))
+                              : std::nullopt;
+  }
+
   [[nodiscard]] bool holds_stale(const formula::Area &area) const {
     const TablePosition &from = area.range.from();
     const TablePosition &to = area.range.to();
@@ -271,8 +304,8 @@ internal::recalculate(const abstract::Document &document) {
 
   std::unordered_map<ElementIdentifier, std::uint32_t> sheet_index;
   std::unordered_map<SheetPosition, Formula> formulas;
-  // the formulas that stand for more than their own cell, or that the
-  // evaluator does not compute (decision 29: an array formula)
+  // the formulas that stand for more than their own cell: a repeat, which
+  // the evaluator does not compute apart, and an array formula's range
   std::vector<Span> spans;
   std::size_t spanned_positions = 0;
   for (std::uint32_t index = 0; index < source.sheets().size(); ++index) {
@@ -302,9 +335,13 @@ internal::recalculate(const abstract::Document &document) {
   }
   for (const Span &span : spans) {
     const ElementIdentifier sheet_id = formulas.at(span.first).sheet_id;
+    std::optional<formula::Node> node = std::move(formulas.at(span.first).node);
     for_each_position(span, [&](const SheetPosition &position) {
-      formulas[position] = Formula{sheet_id, std::nullopt, true,
-                                   span.array && position != span.first};
+      formulas[position] =
+          span.array
+              ? Formula{sheet_id, position == span.first ? node : std::nullopt,
+                        false, position != span.first, span}
+              : Formula{sheet_id, std::nullopt, true, false, std::nullopt};
     });
   }
 
@@ -377,27 +414,46 @@ internal::recalculate(const abstract::Document &document) {
   for (const SheetPosition &position : ordered) {
     computed.push_back(
         Computed{position, source.cell(position), cells.compute(position)});
+    // the cells an array formula fills, which its own cell computed
+    if (const Formula &formula = formulas.at(position);
+        formula.array.has_value()) {
+      for_each_position(*formula.array, [&](const SheetPosition &output) {
+        if (output != position) {
+          computed.push_back(
+              Computed{output, source.cell(output), cells.cell(output)});
+        }
+      });
+    }
   }
 
   for (const auto &[position, before, value] : computed) {
-    const ElementIdentifier sheet_id = formulas.at(position).sheet_id;
+    const Formula &formula = formulas.at(position);
+    const ElementIdentifier sheet_id = formula.sheet_id;
     const abstract::SheetAdapter *sheet = adapter->sheet_adapter(sheet_id);
+    const auto set = [&](const CellValue &cell_value) {
+      if (formula.output) {
+        sheet->sheet_set_array_result(sheet_id, position.cell.column,
+                                      position.cell.row, cell_value);
+      } else {
+        sheet->sheet_set_result(sheet_id, position.cell.column,
+                                position.cell.row, cell_value);
+      }
+    };
     if (!value.has_value()) {
-      (cells.is_circular(position) ? result.circular : result.unevaluated)
+      const SheetPosition &owner =
+          formula.output ? formula.array->first : position;
+      (cells.is_circular(owner) ? result.circular : result.unevaluated)
           .push_back(position);
       // the result the file caches is stale, where the file can drop it
       try {
-        sheet->sheet_set_result(sheet_id, position.cell.column,
-                                position.cell.row,
-                                CellValue(ValueType::unknown));
+        set(CellValue(ValueType::unknown));
       } catch (const UnsupportedOperation &) {
         continue;
       }
       continue;
     }
     try {
-      sheet->sheet_set_result(sheet_id, position.cell.column, position.cell.row,
-                              cell_value_of(*value));
+      set(cell_value_of(*value));
     } catch (const UnsupportedOperation &) {
       result.unevaluated.push_back(position);
       continue;

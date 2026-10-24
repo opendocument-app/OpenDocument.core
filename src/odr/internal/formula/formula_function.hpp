@@ -8,9 +8,11 @@
 #include <compare>
 #include <cstddef>
 #include <functional>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace odr::internal::formula {
 
@@ -42,7 +44,10 @@ private:
 /// `IF` reads only the branch it takes.
 class Call final {
 public:
-  Call(Evaluator *evaluator, const Node *node);
+  /// @p given holds an argument evaluated ahead, as an array context maps a
+  /// function over the elements of one.
+  Call(Evaluator *evaluator, const Node *node,
+       const std::vector<std::optional<Value>> *given = nullptr);
 
   [[nodiscard]] std::size_t size() const;
   /// Whether argument @p index is left out: the second of `IF(A1;;B1)`.
@@ -89,6 +94,7 @@ public:
 private:
   Evaluator *m_evaluator{nullptr};
   const Node *m_node{nullptr};
+  const std::vector<std::optional<Value>> *m_given{nullptr};
 };
 
 using Function = Value (*)(const Call &call);
@@ -151,6 +157,16 @@ void expect_arguments(const Call &call, std::size_t least, std::size_t most);
 /// The functions of lookup and the conditional aggregates: `VLOOKUP`,
 /// `MATCH`, `COUNTIF`.
 [[nodiscard]] std::span<const FunctionEntry> lookup_functions();
+
+/// Whether argument @p index of a function takes a range or an array whole
+/// in an array context. Every other argument maps the function over its
+/// elements, as `LEN(A1:A3)` gives three lengths.
+using ArrayRule = bool (*)(std::size_t index);
+
+/// How the function a formula names as @p name reads an array context. Null
+/// for one that has no answer there: `OFFSET`, `INDIRECT` and `CELL`, which
+/// would give an array of references.
+[[nodiscard]] ArrayRule find_array_rule(std::string_view name);
 
 /// Whether @p node calls a function whose result changes without an input
 /// changing (`RAND`, `NOW`), or that decides what it reads only when it runs

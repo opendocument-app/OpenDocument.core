@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <initializer_list>
 #include <span>
 #include <string>
 #include <unordered_map>
@@ -127,6 +128,39 @@ void formula::expect_arguments(const Call &call, const std::size_t least,
       throw NoAnswer{};
     }
   }
+}
+
+formula::ArrayRule formula::find_array_rule(const std::string_view name) {
+  const std::string canonical = canonical_name(name);
+  const auto in = [&](const std::initializer_list<std::string_view> names) {
+    return std::ranges::find(names, canonical) != names.end();
+  };
+  if (in({"OFFSET", "INDIRECT", "CELL"})) {
+    return nullptr;
+  }
+  if (in({"SUM",    "PRODUCT", "AVERAGE", "COUNT",     "COUNTA",  "MAX",
+          "MIN",    "MEDIAN",  "SUMSQ",   "STDEV",     "STDEV.P", "STDEV.S",
+          "STDEVP", "VAR",     "VAR.P",   "VAR.S",     "VARP",    "AND",
+          "OR",     "XOR",     "CONCAT",  "SUMPRODUCT"})) {
+    return [](std::size_t) { return true; };
+  }
+  if (in({"INDEX", "LARGE", "SMALL", "ROWS", "COLUMNS", "COUNTIF",
+          "COUNTBLANK"})) {
+    return [](const std::size_t index) { return index == 0; };
+  }
+  if (in({"MATCH", "VLOOKUP", "HLOOKUP"})) {
+    return [](const std::size_t index) { return index == 1; };
+  }
+  if (in({"SUMIF", "AVERAGEIF"})) {
+    return [](const std::size_t index) { return index == 0 || index == 2; };
+  }
+  if (in({"COUNTIFS"})) {
+    return [](const std::size_t index) { return index % 2 == 0; };
+  }
+  if (in({"SUMIFS", "AVERAGEIFS"})) {
+    return [](const std::size_t index) { return index == 0 || index % 2 == 1; };
+  }
+  return [](std::size_t) { return false; };
 }
 
 bool formula::is_volatile(const Node &node) {

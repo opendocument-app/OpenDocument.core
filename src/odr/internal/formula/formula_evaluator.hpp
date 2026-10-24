@@ -55,4 +55,18 @@ public:
                                             const CellSource &source,
                                             const Settings &settings);
 
+/// Evaluates @p node as an array formula anchored at @p cell: an operator
+/// reads every cell of a range, and a function maps over the elements of an
+/// argument it takes as one value. Null where it has no answer.
+[[nodiscard]] std::optional<Matrix> evaluate_array(const Node &node,
+                                                   const SheetPosition &cell,
+                                                   const CellSource &source,
+                                                   const Settings &settings);
+
+/// What an array formula's @p result puts at (@p column, @p row) of the
+/// range it fills: a single row or column repeats, and a position past the
+/// result is `#N/A`.
+[[nodiscard]] Value spread(const Matrix &result, std::uint32_t column,
+                           std::uint32_t row);
+
 } // namespace odr::internal::formula

@@ -260,7 +260,7 @@ TEST(SheetRecalculation, an_xlsx_result_replaces_the_stale_one) {
   EXPECT_EQ(value_at(saved, 2, 0).text(), "x3");
 }
 
-TEST(SheetRecalculation, an_array_formula_gets_no_result) {
+TEST(SheetRecalculation, an_array_formula_reads_every_cell_of_its_ranges) {
   const Document document = decode(test::ooxml::workbook(
       R"(<row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>3</v></c>)"
       R"(<c r="C1"><f t="array" ref="C1">SUM(A1:A2*B1:B2)</f><v>11</v></c>)"
@@ -270,35 +270,51 @@ TEST(SheetRecalculation, an_array_formula_gets_no_result) {
   first_sheet(document).set_cell(0, 0, CellValue(2));
   const Recalculation result = document.recalculate();
 
-  // computed as a plain formula, it reads A1*B1: 6
-  EXPECT_TRUE(result.changed().empty());
-  EXPECT_EQ(spelled(result.unevaluated()),
+  // computed as a plain formula, it would read A1*B1: 6
+  EXPECT_EQ(spelled(result.changed()),
             (std::vector<std::string>{"0!C1", "0!D1"}));
-  // an xlsx keeps a stale result, as every save sets `fullCalcOnLoad`
-  EXPECT_EQ(value_at(document, 2, 0).number(), 11);
-  EXPECT_EQ(value_at(document, 3, 0).number(), 12);
+  EXPECT_EQ(value_at(document, 2, 0).number(), 14);
+  EXPECT_EQ(value_at(document, 3, 0).number(), 15);
 }
 
-TEST(SheetRecalculation, a_cell_an_array_formula_spans_is_stale_with_it) {
+TEST(SheetRecalculation, an_array_formula_fills_its_range) {
+  const Document document = decode(test::ooxml::workbook(
+      R"(<row r="1"><c r="A1"><v>1</v></c>)"
+      R"(<c r="B1"><f t="array" ref="B1:B3">A1:A2*2</f><v>2</v></c></row>)"
+      R"(<row r="2"><c r="A2"><v>2</v></c><c r="B2"><v>4</v></c></row>)"
+      R"(<row r="3"><c r="B3"><v>0</v></c></row>)"));
+
+  first_sheet(document).set_cell(0, 1, CellValue(5));
+  document.recalculate();
+
+  EXPECT_EQ(value_at(document, 1, 0).number(), 2);
+  EXPECT_EQ(value_at(document, 1, 1).number(), 10);
+  // past the result
+  EXPECT_EQ(value_at(document, 1, 2).text(), "#N/A");
+  const Document saved = reloaded(document);
+  EXPECT_EQ(value_at(saved, 1, 1).number(), 10);
+}
+
+TEST(SheetRecalculation, a_cell_an_array_formula_spans_computes_with_it) {
   const Document document = ods(
       row(number("1") +
           R"(<table:table-cell table:formula="of:=[.A1:.A2]*2")"
           R"( table:number-matrix-columns-spanned="1")"
           R"( table:number-matrix-rows-spanned="2" office:value-type="float")"
           R"( office:value="2"><text:p>2</text:p></table:table-cell>)") +
-      row(number("2") +
-          R"(<table:covered-table-cell office:value-type="float")"
-          R"( office:value="4"><text:p>4</text:p></table:covered-table-cell>)" +
-          computed("of:=[.B2]+1", "5")));
+      // a cell of the range as LibreOffice writes one
+      row(number("2") + number("4") + computed("of:=[.B2]+1", "5")));
 
   first_sheet(document).set_cell(0, 1, CellValue(10));
   const Recalculation result = document.recalculate();
 
-  EXPECT_TRUE(result.changed().empty());
-  EXPECT_EQ(spelled(result.unevaluated()),
-            (std::vector<std::string>{"0!B1", "0!C2"}));
-  // an ods drops the stale result of a cell without an answer
-  EXPECT_EQ(value_at(document, 2, 1).type(), ValueType::unknown);
+  // the write dropped the result of B1, as an ods does for each dependent
+  EXPECT_EQ(spelled(result.changed()),
+            (std::vector<std::string>{"0!B1", "0!B2", "0!C2"}));
+  EXPECT_EQ(value_at(document, 1, 1).number(), 20);
+  EXPECT_EQ(value_at(document, 2, 1).number(), 21);
+  const Document saved = reloaded(document);
+  EXPECT_EQ(value_at(saved, 2, 1).number(), 21);
 }
 
 TEST(SheetRecalculation, an_unedited_document_keeps_its_results) {
