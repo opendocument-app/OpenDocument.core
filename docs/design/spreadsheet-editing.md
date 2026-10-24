@@ -358,7 +358,12 @@ and the commits name. Git holds the full text of each decision.
   - `Document::recalculate` computes each stale cell on demand: a dependent
     of an edit, every formula after a structural edit, and a formula without
     a result, with a name or with a volatile function. A cycle gets no
-    result. A save recalculates after an edit.
+    result, except where the document iterates (`table:iteration`, `calcPr
+    iterate`): then each group of cells that read each other is computed
+    again and again in reading order, from what its cells hold, until none
+    changes by the difference, as LibreOffice does. Past the steps
+    LibreOffice states `Err:523`, so the group has no result, and Excel
+    keeps the last values. A save recalculates after an edit.
   - A cell without an answer has no result in an `.ods`, and keeps its old
     one in an `.xlsx`, which keeps `fullCalcOnLoad`. Every binding has
     `recalculate`.
@@ -413,6 +418,6 @@ and the commits name. Git holds the full text of each decision.
   localized LibreOffice shows them translated.
 - **Out of the evaluator so far:** a dynamic array that the edit makes
   larger or smaller than the range the file states, a cell another document
-  holds that its copy lacks, iterative calculation, `INFO`, and localized
+  holds that its copy lacks, a cycle in the page, `INFO`, and localized
   function names. Each cell that needs one stays without an answer
   (decision 29).

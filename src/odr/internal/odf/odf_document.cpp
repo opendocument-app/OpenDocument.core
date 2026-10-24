@@ -2918,6 +2918,14 @@ formula::Settings Document::formula_settings() const {
   }
   result.boolean_word =
       boolean_word_of(meta.child("meta:generator").text().get());
+  // [ODF 1.2] 19.636 `table:iteration`
+  if (const pugi::xml_node iteration = settings.child("table:iteration");
+      std::string_view(iteration.attribute("table:status").value()) ==
+      "enable") {
+    result.iteration = formula::Iteration{
+        iteration.attribute("table:steps").as_uint(100),
+        iteration.attribute("table:maximum-difference").as_double(0.001)};
+  }
   return result;
 }
 

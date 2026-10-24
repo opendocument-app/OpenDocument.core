@@ -382,6 +382,68 @@ TEST(SheetRecalculation, a_reference_into_another_workbook_reads_its_copy) {
             (std::vector<std::string>{"0!D1", "0!E1", "0!G1"}));
 }
 
+namespace {
+
+/// The cycles of the LibreOffice probe in a flat spreadsheet that computes a
+/// cycle in at most @p steps: A1 and B1 read each other, C1 reads A1, A2 grows
+/// without end, B2 reads itself and A3, and B3 divides by itself.
+Document iterating_ods(const std::string &steps) {
+  return decode(std::make_shared<MemoryFile>(
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.spreadsheet">)"
+      R"(<office:body><office:spreadsheet><table:calculation-settings>)"
+      R"(<table:iteration table:status="enable" table:steps=")" +
+      steps +
+      R"(" table:maximum-difference="0.001"/></table:calculation-settings>)"
+      R"(<table:table table:name="s">)" +
+      row(uncomputed("of:=[.B1]/2+1") + uncomputed("of:=[.A1]") +
+          uncomputed("of:=[.A1]*10")) +
+      row(uncomputed("of:=[.A2]+1") + uncomputed("of:=[.B2]/2+[.A3]")) +
+      row(number("4") + uncomputed("of:=([.B3]+9/[.B3])/2")) +
+      R"(</table:table></office:spreadsheet></office:body></office:document>)"));
+}
+
+} // namespace
+
+// The results are the ones LibreOffice computed for the same cells: each
+// step reads what the step before left, from 0, until no cell changes by the
+// difference.
+TEST(SheetRecalculation, a_cycle_computes_where_the_document_iterates) {
+  const Document document = iterating_ods("100");
+  const Recalculation result = document.recalculate();
+
+  EXPECT_EQ(value_at(document, 0, 0).number(), 1.9990234375);
+  EXPECT_EQ(value_at(document, 1, 0).number(), 1.9990234375);
+  EXPECT_EQ(value_at(document, 2, 0).number(), 19.990234375);
+  EXPECT_EQ(value_at(document, 1, 1).number(), 7.9990234375);
+  EXPECT_EQ(value_at(document, 1, 2).text(), "#DIV/0!");
+  // LibreOffice states `Err:523` for a cycle that does not converge
+  EXPECT_EQ(spelled(result.circular()), (std::vector<std::string>{"0!A2"}));
+}
+
+TEST(SheetRecalculation, a_cycle_past_its_steps_has_no_result_in_libreoffice) {
+  const Document document = iterating_ods("3");
+  const Recalculation result = document.recalculate();
+
+  EXPECT_EQ(spelled(result.circular()),
+            (std::vector<std::string>{"0!A1", "0!B1", "0!A2", "0!B2"}));
+  EXPECT_EQ(value_at(document, 2, 0).type(), ValueType::unknown);
+}
+
+TEST(SheetRecalculation,
+     a_cycle_past_its_steps_keeps_its_last_values_in_excel) {
+  const Document document = decode(test::ooxml::workbook(
+      R"(<row r="1"><c r="A1"><f>B1/2+1</f></c><c r="B1"><f>A1</f></c>)"
+      R"(<c r="C1"><f>A1*10</f></c></row>)",
+      "", "", R"(<calcPr iterate="1" iterateCount="3"/>)"));
+  document.recalculate();
+
+  // three steps from 0: 1, 1.5, 1.75
+  EXPECT_EQ(value_at(document, 0, 0).number(), 1.75);
+  EXPECT_EQ(value_at(document, 2, 0).number(), 17.5);
+}
+
 TEST(SheetRecalculation, an_unedited_document_keeps_its_results) {
   const Document document =
       ods(row(number("1") + computed("of:=[.A1]*2", "2")));

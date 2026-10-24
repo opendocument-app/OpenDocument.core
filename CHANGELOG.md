@@ -33,6 +33,10 @@ The release run heads these entries with the version and opens a fresh
 
 ### Spreadsheets
 
+- A recalculation and a save compute a cycle where the document iterates
+  (`table:iteration` in an ods, `calcPr iterate` in an xlsx), as LibreOffice
+  and Excel do: each group of cells that read each other, from what they
+  hold, until no cell changes by the difference.
 - A recalculation and a save compute a reference into another document from
   the copy the file caches: the hidden sheet of an ods, and the
   `externalLink` part of an xlsx.
