@@ -73,6 +73,8 @@ public final class HtmlConfig {
   public Double initialZoom;
   /** Lay out only the lines, rows and pages near the viewport. */
   public boolean lazyLayout = true;
+  /** Load the chunks of a text file after the first as the reader comes near. */
+  public boolean lazyLoading = false;
 
   /**
    * The least distance the generated content keeps from the view's border. A set side raises the

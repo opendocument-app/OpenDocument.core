@@ -370,6 +370,9 @@
   // that becomes near says so, because what is in it has no geometry before.
   // A held chunk stays near: something drawn in it reaches past it.
   function setNear(chunk, isNear) {
+    if (isNear) {
+      load(chunk);
+    }
     if (chunk.classList.contains("odr-chunk-near") === isNear) {
       return;
     }
@@ -377,6 +380,28 @@
     if (isNear) {
       chunk.dispatchEvent(new CustomEvent("odr-chunk-near", { bubbles: true }));
     }
+  }
+
+  // A chunk that names its source has its content in a script of its own,
+  // which puts it in through `odr.chunks.fill` (`lazy-loading.md` decision 3).
+  // A script loads over HTTP and from a file alike.
+  function load(chunk) {
+    var source = chunk.getAttribute("data-odr-chunk-src");
+    if (source === null || chunk.hasAttribute("data-odr-chunk-loading")) {
+      return;
+    }
+    chunk.setAttribute("data-odr-chunk-loading", "");
+    var script = document.createElement("script");
+    script.src = source;
+    // what it put in stays; its source need not
+    script.onload = function () {
+      script.remove();
+    };
+    script.onerror = function () {
+      chunk.removeAttribute("data-odr-chunk-loading");
+      script.remove();
+    };
+    document.head.appendChild(script);
   }
 
   var chunks = document.getElementsByClassName("odr-chunk");
@@ -407,6 +432,16 @@
       if (chunk !== null) {
         setNear(chunk, true);
       }
+    },
+    // Puts the content of chunk @p index in, which its script states.
+    fill: function (index, html) {
+      var chunk = document.querySelector('[data-odr-chunk="' + index + '"]');
+      if (chunk === null) {
+        return;
+      }
+      chunk.innerHTML = html;
+      chunk.removeAttribute("data-odr-chunk-src");
+      chunk.removeAttribute("data-odr-chunk-loading");
     },
     // Watches a chunk that a script added, as the view writes them.
     observe: function (chunk) {

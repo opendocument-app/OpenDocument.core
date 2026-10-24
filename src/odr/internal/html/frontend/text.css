@@ -15,6 +15,9 @@ body{margin:0;background:#fff}
 /* A chunk far from the viewport keeps the height it had when it was last
    shown. */
 .odr-text-lines{display:flex;flex-direction:column;contain-intrinsic-height:auto calc(var(--odr-text-lines,256) * 20px)}
+/* A chunk that has not loaded its lines yet holds the height they will take,
+   so the page does not move when they come. */
+.odr-text-lines[data-odr-chunk-src]{min-height:calc(var(--odr-text-lines,256) * 20px)}
 .odr-text-lines>div{position:relative;padding-left:calc(var(--odr-text-gutter-width) + 17px);counter-increment:odr-line}
 .odr-text-lines>div:hover{background:var(--odr-text-wash)}
 /* The numbers are ours, not the file's: generated content stays out of a

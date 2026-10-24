@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>chunk loading checks</title>
+    <!-- what `write_chunk_style` writes -->
+    <style>
+      .odr-chunk{content-visibility:hidden}
+      .odr-chunk-near{content-visibility:visible}
+    </style>
+  </head>
+  <body>
+    <!-- A text view as `lazy_loading` writes it (`lazy-loading.md` decision
+         3): the first chunk with its lines, the later ones empty, each naming
+         the script that puts its lines in. The third is far below. -->
+    <div class="odr-chunk odr-chunk-near"><div>line 1</div><div>line 2</div></div>
+    <div class="odr-chunk" id="near" data-odr-chunk="1" data-odr-chunk-src="chunk-1.js" style="min-height:40px"></div>
+    <div style="height:5000px"></div>
+    <div class="odr-chunk" id="far" data-odr-chunk="2" data-odr-chunk-src="chunk-2.js" style="min-height:20px"></div>
+
+    <div id="report"></div>
+    <script src="checks.js"></script>
+    <script src="viewport.js"></script>
+    <script>
+      var near = document.getElementById("near");
+      var far = document.getElementById("far");
+
+      function lines(chunk) {
+        return Array.prototype.map
+          .call(chunk.children, function (line) {
+            return line.textContent;
+          })
+          .join("|");
+      }
+      function once(condition, then) {
+        var tries = 0;
+        (function poll() {
+          if (condition() || ++tries > 100) {
+            then();
+          } else {
+            setTimeout(poll, 20);
+          }
+        })();
+      }
+
+      check("a chunk far from the viewport loads nothing", far.getAttribute("data-odr-chunk-src") === "chunk-2.js" && far.childElementCount === 0);
+
+      once(
+        function () {
+          return near.childElementCount > 0;
+        },
+        function () {
+          check("a chunk near the viewport loads its lines", lines(near) === "line 3|line 4", lines(near));
+          check("and no longer names its source", !near.hasAttribute("data-odr-chunk-src") && !near.hasAttribute("data-odr-chunk-loading"));
+          check("and its script is gone", document.querySelector('script[src="chunk-1.js"]') === null);
+          check("the far chunk still waits", far.childElementCount === 0);
+
+          odr.chunks.show(far);
+          once(
+            function () {
+              return far.childElementCount > 0;
+            },
+            function () {
+              check("a chunk the page shows loads too", lines(far) === "line 5", lines(far));
+            }
+          );
+        }
+      );
+    </script>
+  </body>
+</html>

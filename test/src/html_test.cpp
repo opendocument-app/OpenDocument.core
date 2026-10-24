@@ -671,6 +671,68 @@ TEST(html, a_text_file_writes_its_lines_in_chunks) {
   EXPECT_EQ(page.find("odr-line 512"), std::string::npos);
 }
 
+// `lazy-loading.md` decision 3: the chunks after the first are scripts of
+// their own, which the page loads, and the service serves.
+// The file changes under the service, so a render after an edit shows it.
+TEST(html, a_text_file_renders_the_text_of_an_edit) {
+  const DecodedFile file = open(File::from_memory("lorem ipsum"),
+                                DecodeOptions::as(FileType::text_file));
+  const HtmlService service =
+      html::translate(file, HtmlConfig(), Logger::null());
+  std::ostringstream before;
+  service.write_html("text.html", before);
+
+  file.as_text_file().edit(
+      R"({"version":2,"ops":[{"op":"setContent","text":"edited"}]})");
+  std::ostringstream after;
+  service.write_html("text.html", after);
+  EXPECT_NE(after.str().find(">edited<"), std::string::npos);
+}
+
+TEST(html, a_text_file_loads_its_later_chunks) {
+  std::string text;
+  for (std::uint32_t line = 0; line < 299; ++line) {
+    text += "line " + std::to_string(line + 1) + "\n";
+  }
+  const DecodedFile file =
+      open(File::from_memory(text), DecodeOptions::as(FileType::text_file));
+  HtmlConfig config;
+  config.lazy_loading = true;
+  const HtmlService service = html::translate(file, config, Logger::null());
+
+  std::ostringstream page;
+  const HtmlResources resources = service.write_html("text.html", page);
+  EXPECT_NE(page.str().find(">line 256<"), std::string::npos);
+  EXPECT_EQ(page.str().find(">line 257<"), std::string::npos);
+  EXPECT_NE(page.str().find(
+                R"(data-odr-chunk="1" data-odr-chunk-src="text-chunks/1.js")"),
+            std::string::npos);
+  EXPECT_TRUE(std::ranges::any_of(resources, [](const auto &resource) {
+    return resource.second == "text-chunks/1.js";
+  }));
+
+  ASSERT_TRUE(service.exists("text-chunks/1.js"));
+  EXPECT_FALSE(service.exists("text-chunks/0.js"));
+  EXPECT_FALSE(service.exists("text-chunks/2.js"));
+  // one path for each chunk
+  EXPECT_FALSE(service.exists("text-chunks/01.js"));
+  EXPECT_FALSE(service.exists("text-chunks/18446744073709551617.js"));
+  EXPECT_EQ(service.mimetype("text-chunks/1.js"), "text/javascript");
+  std::ostringstream chunk;
+  service.write("text-chunks/1.js", chunk);
+  EXPECT_TRUE(chunk.str().starts_with("odr.chunks.fill(1,"));
+  EXPECT_NE(chunk.str().find("counter-reset:odr-line 256"), std::string::npos);
+  EXPECT_NE(chunk.str().find(">line 299\\u003c/div>"), std::string::npos);
+
+  // an editable render writes every line into the page
+  config.editable = true;
+  std::ostringstream editable;
+  html::translate(file, config, Logger::null())
+      .write_html("text.html", editable);
+  EXPECT_NE(editable.str().find(">line 299<"), std::string::npos);
+  EXPECT_EQ(editable.str().find(R"(data-odr-chunk-src=")"), std::string::npos);
+}
+
 // Without lazy layout the browser lays out everything, so no view writes a
 // chunk, nor the style that hides one.
 TEST(html, lazy_layout_off_writes_no_chunk) {

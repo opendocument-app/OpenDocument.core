@@ -133,6 +133,7 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   _initialZoom =
       config.initial_zoom.has_value() ? @(*config.initial_zoom) : nil;
   _lazyLayout = config.lazy_layout ? YES : NO;
+  _lazyLoading = config.lazy_loading ? YES : NO;
   _formatHtml = config.format_html ? YES : NO;
   _htmlIndent = config.html_indent;
   _htmlIndentString = to_nsstring(config.html_indent_string);
@@ -225,6 +226,7 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
     config.initial_zoom.reset();
   }
   config.lazy_layout = _lazyLayout == YES;
+  config.lazy_loading = _lazyLoading == YES;
   if (_minContentMargin != nil) {
     config.min_content_margin = _minContentMargin.handle;
   } else {

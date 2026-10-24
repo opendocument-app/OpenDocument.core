@@ -38,6 +38,8 @@ void write_chunk_style(const WritingState &state);
 /// @p near where it is near the viewport before the script runs. Empty where
 /// `HtmlConfig::lazy_layout` is off.
 [[nodiscard]] std::string chunk_classes(const HtmlConfig &config, bool near);
+/// A json string that cannot end the `<script>` it sits in.
+[[nodiscard]] std::string script_string(const std::string &value);
 
 /// For a view writing its style inline: whether to write a dark one, and the
 /// `media` gating it. A print stays light, so the query names `screen`.
