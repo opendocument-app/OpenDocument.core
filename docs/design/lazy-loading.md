@@ -12,7 +12,8 @@ A large file fails in two places, and the browser fails first.
 
 - **The browser.** A page that states every line, row or page as DOM costs
   layout and memory for content the reader never sees. A text file of one
-  million lines takes 151 s to load in Chrome, and its renderer holds 6.3 GB.
+  million lines paints its first frame in Chrome after 154 s, and its
+  renderer holds 6.3 GB.
 - **Core.** A decode holds the whole document. `efficiency-big-1.ods` (1.4 MB
   zipped, 297 MB of `content.xml`) peaks at 697 MB in `translate`, before the
   page reaches a browser.
@@ -79,8 +80,8 @@ the registry and the styles about 230 MB. The cell children of #781 are about
 whole DOM. So `odr.search`, the editor and a copy of a selection see all of
 the content. The find of the browser and a screen reader do not see a
 hidden chunk. Level 2 removes the DOM cost too, but takes more away
-(decision 5). Level 3 is the only level that makes core
-cheaper, and it needs a host. A view takes the lowest level that is enough
+(decision 5). Level 3 is the only level that makes core cheaper, and it needs
+a host. A view takes the lowest level that is enough
 for the size of its file.
 
 `content-visibility` is in Chrome from 85, Firefox from 125 and Safari from
@@ -164,8 +165,8 @@ chunk and not to the document (#781 for ods, the issue #764 for the rest).
 1. **Text files, level 1.** Chunks of lines that are `hidden` until
    `text.js` marks them near the viewport. The line number moves into each
    line as a CSS counter, so the gutter needs no `ResizeObserver` and wraps
-   with its line. The containment of a chunk hides a counter on the chunk
-   itself, so the first line of each chunk states the number it starts at.
+   with its line. A chunk has style containment, so a counter does not count
+   on past it. The first line of each chunk sets the number it starts at.
 2. **Text files, levels 2 and 3.** The chunk source, the chunk write of core
    and the HTTP route. A text file needs no engine work, so it proves the
    API.
