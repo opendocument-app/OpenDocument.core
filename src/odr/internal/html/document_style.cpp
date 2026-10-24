@@ -5,9 +5,84 @@
 
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/util/number_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
+#include <array>
+
 namespace odr::internal {
+
+namespace {
+
+const char *generic_font_family(const std::string_view family) {
+  static constexpr std::array monospace{
+      "mono",   "courier", "consolas",    "lucida console", "menlo",
+      "monaco", "cousine", "inconsolata", "source code"};
+  static constexpr std::array serif{
+      "times",        "georgia",     "cambria",   "garamond",
+      "book antiqua", "palatino",    "bookman",   "century",
+      "constantia",   "baskerville", "thorndale", "tinos",
+      "caladea",      "minion",      "didot",     "bodoni"};
+  for (const char *name : monospace) {
+    if (util::string::find_ignore_case(family, name) !=
+        std::string_view::npos) {
+      return "monospace";
+    }
+  }
+  if (util::string::find_ignore_case(family, "sans") ==
+          std::string_view::npos &&
+      util::string::find_ignore_case(family, "serif") !=
+          std::string_view::npos) {
+    return "serif";
+  }
+  for (const char *name : serif) {
+    if (util::string::starts_with_ignore_case(family, name)) {
+      return "serif";
+    }
+  }
+  return "sans-serif";
+}
+
+bool is_generic_font_family(const std::string_view family) {
+  static constexpr std::array generic{"serif",   "sans-serif", "monospace",
+                                      "cursive", "fantasy",    "system-ui",
+                                      "math",    "emoji",      "fangsong"};
+  for (const char *name : generic) {
+    if (util::string::equals_ignore_case(family, name)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+} // namespace
+
+std::string html::translate_font_family(const std::string_view font_name) {
+  const std::string_view value = util::string::trim_view(font_name);
+  if (value.find_first_of("'\",") == std::string_view::npos) {
+    std::string result = "'";
+    for (const char c : value) {
+      if (c == '\\') {
+        result += '\\';
+      }
+      result += c;
+    }
+    return result.append("',").append(generic_font_family(value));
+  }
+
+  const std::size_t comma = value.find(',');
+  const std::string_view first =
+      util::string::trim_view(value.substr(0, comma), [](const char c) {
+        return util::string::is_ascii_whitespace(c) || c == '\'' || c == '"';
+      });
+  const std::string_view last = util::string::trim_view(
+      comma == std::string_view::npos ? value
+                                      : value.substr(value.rfind(',') + 1));
+  if (is_generic_font_family(last)) {
+    return std::string(value);
+  }
+  return std::string(value).append(",").append(generic_font_family(first));
+}
 
 const char *html::translate_text_align(const TextAlign text_align) {
   switch (text_align) {
@@ -178,9 +253,9 @@ std::string html::translate_inner_page_style(const PageLayout &page_layout) {
 std::string html::translate_text_style(const TextStyle &text_style) {
   std::string result;
   if (const std::optional<std::string> &font_name = text_style.font_name;
-      font_name.has_value()) {
+      font_name.has_value() && !font_name->empty()) {
     result.append("font-family:")
-        .append(xml::escape_attribute(*font_name))
+        .append(xml::escape_attribute(translate_font_family(*font_name)))
         .append(";");
   }
   if (const std::optional<Measure> font_size = text_style.font_size;
@@ -246,9 +321,9 @@ std::string html::translate_text_style(const TextStyle &text_style) {
 std::string html::translate_block_font_style(const TextStyle &text_style) {
   std::string result;
   if (const std::optional<std::string> &font_name = text_style.font_name;
-      font_name.has_value()) {
+      font_name.has_value() && !font_name->empty()) {
     result.append("font-family:")
-        .append(xml::escape_attribute(*font_name))
+        .append(xml::escape_attribute(translate_font_family(*font_name)))
         .append(";");
   }
   if (const std::optional<Measure> font_size = text_style.font_size;

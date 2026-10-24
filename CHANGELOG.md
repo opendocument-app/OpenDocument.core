@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+### HTML output
+
+- `font-family` ends with a generic family, so a font that is not installed
+  falls back to one of the same kind: a sans-serif font for Calibri, not the
+  browser's serif default. A bare font name is quoted.
+
 ### Spreadsheets
 
 - An xlsx cell with the built-in date format 14 or 22 shows the date as Excel

@@ -105,7 +105,28 @@ TEST(html_document_style, block_font_style_carries_the_font) {
   text_style.font_name = "Arial";
   text_style.font_size = Measure("14pt");
   EXPECT_EQ(ihtml::translate_block_font_style(text_style),
-            "font-family:Arial;font-size:14pt;");
+            "font-family:'Arial',sans-serif;font-size:14pt;");
+}
+
+TEST(html_document_style, font_family_quotes_a_name_and_adds_its_kind) {
+  EXPECT_EQ(ihtml::translate_font_family("Calibri"), "'Calibri',sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("Times New Roman"),
+            "'Times New Roman',serif");
+  EXPECT_EQ(ihtml::translate_font_family("Courier New"),
+            "'Courier New',monospace");
+  EXPECT_EQ(ihtml::translate_font_family("PT Serif"), "'PT Serif',serif");
+  EXPECT_EQ(ihtml::translate_font_family("DejaVu Sans"),
+            "'DejaVu Sans',sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("8514oem"), "'8514oem',sans-serif");
+}
+
+TEST(html_document_style, font_family_keeps_a_list_and_its_generic) {
+  EXPECT_EQ(ihtml::translate_font_family("'Liberation Serif'"),
+            "'Liberation Serif',serif");
+  EXPECT_EQ(ihtml::translate_font_family("'Open Sans', Arial"),
+            "'Open Sans', Arial,sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("'Liberation Mono', monospace"),
+            "'Liberation Mono', monospace");
 }
 
 TEST(html_document_style, block_font_style_leaves_what_paints_to_the_run) {
