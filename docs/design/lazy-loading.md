@@ -160,6 +160,82 @@ chunk and not to the document (#781 for ods, the issue #764 for the rest).
 | Selection and copy | A range over an evicted chunk loses its text. | Keep a margin of chunks around the viewport. |
 | A link to an anchor | Its target may be in an evicted chunk. | The view states which chunk holds each anchor. |
 
+### 6. A sheet is a table for each chunk of rows
+
+`content-visibility` has no effect on a `tr` or a `tbody`, because size
+containment does not apply to the inner boxes of a table. So a chunk of a
+sheet is a table of its own:
+
+```html
+<div class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="…">
+  <table class="odr-sheet-head">  <!-- colgroup, the ruler -->
+  <table class="odr-sheet-rows odr-chunk odr-chunk-near"
+         style="contain-intrinsic-height:auto 5120px">
+    <colgroup>…</colgroup>
+    <tbody><tr><th>1</th><td>…</td>…</tr>…</tbody>
+  </table>
+  <table class="odr-sheet-rows odr-chunk" …>…</table>
+</div>
+```
+
+**The wrapper.** The attributes that `table.odr-sheet` states today
+(`data-odr-sheet`, `data-odr-sheet-name`, `data-odr-cut`,
+`--odr-print-fit`) go onto a `div.odr-sheet`. A rule that reads
+`.odr-sheet td` stays as it is. A rule for the table itself moves to
+`.odr-sheet-head` and `.odr-sheet-rows`.
+
+**The ruler.** A sticky `thead` sticks only inside its own table, so the
+column letters go into a table of their own before the chunks. That table
+is sticky at the top of the wrapper. The row labels stay a `th` in each
+row, and they stay sticky at the left, because each chunk is as wide as
+the sheet.
+
+**Column widths.** All of the tables must have the same columns, so each
+table has `table-layout: fixed`, a `width`, and the same `colgroup`. A
+column that states a width keeps it. Today a column that states no width
+takes the width of its content, for example in a csv. Each chunk table
+would then size it apart. So the writer gives such a column a width: the
+longest text of its first 1000 rows, in `ch`, from 4 to 60. That is how
+LibreOffice finds an optimal width. The cut of a longer text, and the
+spill into the next cells, are the ones a stated width gets today.
+
+**Where a chunk ends.** A chunk holds at most 256 rows, or as many rows as
+hold 4096 cells, and at least 8 rows. A chunk ends only where no `rowspan`
+is open, so no merge crosses two tables. A merge over very many rows makes
+one large chunk.
+
+**The height of a chunk.** The writer buffers the rows of a chunk, adds
+their heights (the stated height of a row, else an estimate of 20px), and
+states the sum as `contain-intrinsic-height: auto`. The body of a sheet is
+already buffered (`spreadsheet_style_buffer`). A row that wraps its text is
+taller than its estimate. The browser keeps the real height after the
+first layout. Where a chunk above the viewport grows, scroll anchoring
+holds the reader's place in a browser that has it. Safari may not have it,
+so a reader there can see the page move by the error of the estimate.
+
+**Shapes.** A shape is drawn from the cell A1 and can reach far down. So
+the first chunk of a sheet with shapes is always near: the writer states
+`data-odr-chunk-held`, and `viewport.js` does not observe that chunk.
+
+**The scripts.**
+
+| what | today | with chunks |
+|---|---|---|
+| The rows (`spreadsheet.js`) | `table.tBodies[0].rows` | the rows of every chunk, in order. One accessor replaces each read of `body.rows`. |
+| The ruler | `table.tHead.rows[0]` | the row of `.odr-sheet-head` |
+| Sort | moves the `tr`s inside one `tbody` | puts the sorted rows back into the chunks, each with as many rows as it had. A merged sheet has no sort, so no `rowspan` moves. |
+| Insert and delete rows | inside one `tbody` | inside the chunk that holds the row. A chunk with no row left goes. |
+| Insert and delete columns | every `col` and every row | the same, in every table |
+| `reflow` (the spill) and the editor's overlay | read `offsetLeft` and `offsetTop` | A cell of a hidden chunk has no geometry. A `showValue` in a hidden chunk notes the row. `viewport.js` raises `odr-chunk-near` on a chunk when it becomes near, and `spreadsheet.js` then reflows the noted rows. |
+| A selection over far rows | an overlay from cell to cell | The edge in a hidden chunk takes the edge of that chunk. Only the part in the viewport is seen, and it is exact. |
+| The pin, and a move by keyboard | `scrollIntoView` of the cell | `odr.chunks.show(cell)` marks its chunk near first, as `odr.search` does. |
+| Formulas in the page | read the text of a cell | no change: the DOM of a hidden chunk is still there |
+
+**What stays.** The limits (`spreadsheet_limit`, `spreadsheet_cell_limit`)
+stay as they are in this step. A sheet of 500 K cells takes 7.3 s to its
+first frame today, and about 3 s of that is the scripts. Whether the
+limits can go up is a measurement after this step.
+
 ## Order of work
 
 1. **Text files, level 1.** Chunks of lines that are `hidden` until
@@ -167,16 +243,16 @@ chunk and not to the document (#781 for ods, the issue #764 for the rest).
    line as a CSS counter, so the gutter needs no `ResizeObserver` and wraps
    with its line. A chunk has style containment, so a counter does not count
    on past it. The first line of each chunk sets the number it starts at.
-2. **Text files, levels 2 and 3.** The chunk source, the chunk write of core
-   and the HTTP route. A text file needs no engine work, so it proves the
-   API.
+2. **Text files, level 3.** The chunk source, the chunk write of core and
+   the HTTP route. A text file needs no engine work, so it proves the API.
+   Level 2 gains little for a text file: a window of strings painted in
+   0.5 s with 1.2 GB, and the hidden chunks in 0.85 s with 0.9 GB.
 3. **pdf, level 1.** A page has its size, so each page is a chunk of
    exactly the right size. The observer moves into `viewport.js`, which
    every view loads.
-4. **Sheets, level 1.** `content-visibility` does not apply to a table row,
-   because layout containment does not apply to the inner boxes of a table.
-   A sheet needs a table for each chunk of rows, with the column widths
-   fixed, or another structure.
+4. **Sheets, level 1** (decision 6). First the markup and the column
+   widths in the writer, and the row accessor in `spreadsheet.js`. Then the
+   geometry: `reflow`, the overlay, and the pin.
 5. **Core per engine, level 3.** ods first (#781). The ods decode keeps
    `content.xml` and its DOM resident for editing. A render on demand that
    does not hold them is a decision of its own.
