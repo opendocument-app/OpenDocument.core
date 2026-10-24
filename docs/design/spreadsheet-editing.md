@@ -321,9 +321,14 @@ and the commits name. Git holds the full text of each decision.
 - A formula the graph can read no position out of is in
   `Document::unresolved_formulas` and keeps its cached result.
 - The view writes `data-odr-formula` and `data-odr-reads` on a formula cell,
-  as editing scaffolding only. A commit marks the dependents `odr-sheet-stale`
-  off the coalesced log (`repaintStale`) and raises `odr.onCellsStale`, so an
-  undo takes its marks back.
+  as editing scaffolding only. For the evaluator in the page it also writes
+  `data-odr-format`, the format code of the cell (`SheetCell::number_format`),
+  `data-odr-type` and the value of a boolean or an error cell, the name of
+  the sheet on its table, and the syntax and the `formula::Settings` of the
+  document on `<body>`. The page formats a result with the document's
+  locale, not with the language of an ods data style. A commit marks the
+  dependents `odr-sheet-stale` off the coalesced log (`repaintStale`) and
+  raises `odr.onCellsStale`, so an undo takes its marks back.
 
 ## Open work
 

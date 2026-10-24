@@ -1311,6 +1311,11 @@ public:
     return result;
   }
 
+  [[nodiscard]] std::optional<std::string>
+  sheet_cell_number_format(const ElementIdentifier element_id) const override {
+    return number_format_of(element_id).code();
+  }
+
   /// [ECMA-376] 18.3.1.40: a member of a shared group states its `si` alone,
   /// and reads the master's expression moved by the offset between the two.
   [[nodiscard]] std::string

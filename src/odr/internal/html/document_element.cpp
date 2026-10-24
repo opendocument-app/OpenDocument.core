@@ -632,6 +632,10 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
           .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
             // every op names its sheet, and a view holds only one
             clb("data-odr-sheet", std::to_string(ordinal));
+            // the name a formula reads this sheet by
+            if (syntax.has_value()) {
+              clb("data-odr-sheet-name", xml::escape_attribute(sheet.name()));
+            }
             if (cut.has_value()) {
               clb("data-odr-cut", std::to_string(cut->content.columns) + "," +
                                       std::to_string(cut->content.rows));
@@ -840,6 +844,14 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
       if (computes) {
         sheet_state.note_computed_formula();
       }
+      // what a formula in the page reads the cell as, where the text is not it
+      const char *read_type = !state.config().editable ? nullptr
+                              : cell_value_type == ValueType::boolean
+                                  ? "boolean"
+                              : cell_value_type == ValueType::error ? "error"
+                                                                    : nullptr;
+      const std::optional<std::string> number_format =
+          computes ? cell.number_format() : std::nullopt;
 
       state.out().write_element_begin(
           "td",
@@ -865,6 +877,16 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                 }
                 if (value_spelling.has_value()) {
                   clb("data-odr-value", *value_spelling);
+                }
+                if (read_type != nullptr) {
+                  clb("data-odr-type", read_type);
+                  if (cell_value_type == ValueType::boolean &&
+                      cell_value.has_number()) {
+                    clb("data-odr-value", cell_value.number() != 0 ? "1" : "0");
+                  }
+                }
+                if (number_format.has_value()) {
+                  clb("data-odr-format", xml::escape_attribute(*number_format));
                 }
               })
               .set_style(

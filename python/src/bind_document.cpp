@@ -236,7 +236,8 @@ void odr_python::bind_document(py::module_ &m) {
       .def("position", &odr::SheetCell::position)
       .def("is_covered", &odr::SheetCell::is_covered)
       .def("span", &odr::SheetCell::span)
-      .def("value_type", &odr::SheetCell::value_type);
+      .def("value_type", &odr::SheetCell::value_type)
+      .def("number_format", &odr::SheetCell::number_format);
 
   bind_element<odr::Page>(m, "Page")
       .def("name", &odr::Page::name)

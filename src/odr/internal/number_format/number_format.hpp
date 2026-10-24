@@ -113,9 +113,12 @@ public:
   [[nodiscard]] std::string format(std::string_view value) const;
 
   [[nodiscard]] Category category() const;
+  /// The code it was parsed from, empty for `Format()`.
+  [[nodiscard]] const std::string &code() const;
 
 private:
   std::vector<Section> m_sections;
+  std::string m_code;
 };
 
 /// `General`: up to 15 significant digits, in scientific notation outside

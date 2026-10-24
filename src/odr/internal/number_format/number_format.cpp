@@ -963,11 +963,14 @@ bool Condition::matches(const double value) const {
 
 Format::Format() : m_sections{Section{{{.kind = Kind::general}}, {}}} {}
 
-Format::Format(const std::string_view code) : m_sections{parse_code(code)} {
+Format::Format(const std::string_view code)
+    : m_sections{parse_code(code)}, m_code{code} {
   if (m_sections.size() > 4) {
     throw std::invalid_argument("a format code has four sections at most");
   }
 }
+
+const std::string &Format::code() const { return m_code; }
 
 Category Format::category() const {
   Category result = Category::number;

@@ -7,6 +7,7 @@
 #include <odr/table_position.hpp>
 
 #include <odr/internal/abstract/document.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <cmath>
 #include <utility>
@@ -549,6 +550,20 @@ TableDimensions SheetCell::span() const {
 ValueType SheetCell::value_type() const {
   return exists_() ? m_adapter2->sheet_cell_value_type(m_identifier)
                    : ValueType::unknown;
+}
+
+std::optional<std::string> SheetCell::number_format() const {
+  if (!exists_()) {
+    return std::nullopt;
+  }
+  std::optional<std::string> result =
+      m_adapter2->sheet_cell_number_format(m_identifier);
+  if (result.has_value() &&
+      (result->empty() ||
+       internal::util::string::equals_ignore_case(*result, "General"))) {
+    return std::nullopt;
+  }
+  return result;
 }
 
 CellValue SheetCell::value() const {

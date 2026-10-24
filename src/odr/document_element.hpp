@@ -434,6 +434,9 @@ public:
   [[nodiscard]] ValueType value_type() const;
   /// @ref value_type is the narrower and cheaper question the renderer asks.
   [[nodiscard]] CellValue value() const;
+  /// The format code the cell shows a number in, as MS-XLS 2.4.126 spells
+  /// it: `0.00%`. Nothing for `General`.
+  [[nodiscard]] std::optional<std::string> number_format() const;
 };
 
 /// Represents a page element in a document.

@@ -665,6 +665,15 @@ Java_app_opendocument_core_SheetCell_valueTypeNative(JNIEnv *env, jobject,
   });
 }
 
+extern "C" JNIEXPORT jstring JNICALL
+Java_app_opendocument_core_SheetCell_numberFormatNative(JNIEnv *env, jobject,
+                                                        jlong handle) {
+  return guarded(env, [&] {
+    return odr_jni::make_string_opt(
+        env, element(handle).as_sheet_cell().number_format());
+  });
+}
+
 // app.opendocument.core.Page
 
 extern "C" JNIEXPORT jstring JNICALL
