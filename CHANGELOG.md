@@ -44,6 +44,9 @@ The release run heads these entries with the version and opens a fresh
   xlsx formula. A save computes the new formula, and an xlsx drops the
   `calcChain` entry of a formula that a value replaced. A csv refuses a
   formula.
+- An xlsx whose `calcChain` an edit empties no longer keeps an empty one,
+  which the schema does not allow: the part, its relationship and its
+  content type go.
 - `SheetCell::number_format()` gives the format code a cell shows a number
   in, for example `0.00%`, and nothing for `General`. Python and Java have it
   too.
