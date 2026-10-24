@@ -8,6 +8,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <optional>
@@ -67,8 +68,9 @@ std::vector<std::string> edit(const Document &document) {
   std::vector<Text> runs;
   collect_runs(document.root_element(), runs);
   std::vector<std::string> result;
-  for (std::size_t i = 0; i < edited_runs && i < runs.size(); ++i) {
-    const Text &run = runs[i * runs.size() / edited_runs];
+  const std::size_t count = std::min(edited_runs, runs.size());
+  for (std::size_t i = 0; i < count; ++i) {
+    const Text &run = runs[i * runs.size() / count];
     const std::string content = run.content() + edit_mark;
     run.set_content(content);
     result.push_back(content);
@@ -117,6 +119,8 @@ void round_trip(const Document &document, const std::filesystem::path &path) {
   for (const std::string &content : expected) {
     EXPECT_NE(text.find(content), std::string::npos) << content;
   }
+  // a save that loses a part the edit did not touch reads back short
+  EXPECT_EQ(text, all_text(document.root_element()));
 }
 
 } // namespace

@@ -75,7 +75,8 @@ def loads(soffice, path, scratch):
     except subprocess.TimeoutExpired:
         return f"no answer within {TIMEOUT_SECONDS} s"
     output = (result.stdout + result.stderr).strip()
-    if result.returncode != 0 or "Error" in output or " -> " not in output:
+    refused = any(line.startswith("Error") for line in output.splitlines())
+    if result.returncode != 0 or refused or " -> " not in output:
         return output or f"soffice exited {result.returncode}"
     module = MODULES.get(os.path.splitext(path)[1].lower())
     if module is not None and f"as a {module} document" not in output:
