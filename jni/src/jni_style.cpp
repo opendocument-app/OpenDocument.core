@@ -714,6 +714,7 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
              box_integer(env, config.viewport_width));
   set_object("initialZoom", "Ljava/lang/Double;",
              box_double(env, config.initial_zoom));
+  set_boolean("lazyLayout", config.lazy_layout);
   set_object("minContentMargin", "Lapp/opendocument/core/DirectionalMeasure;",
              make_directional_measure(env, config.min_content_margin));
   set_boolean("formatHtml", config.format_html);
@@ -913,6 +914,7 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
     }
     env->DeleteLocalRef(zoom);
   }
+  result.lazy_layout = get_boolean("lazyLayout");
   {
     jobject margin = get_object("minContentMargin",
                                 "Lapp/opendocument/core/DirectionalMeasure;");

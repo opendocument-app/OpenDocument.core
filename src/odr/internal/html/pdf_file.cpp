@@ -1979,10 +1979,9 @@ public:
     std::size_t page_number = first_page_number;
     for (const DualPageOut &page : pages_out) {
       // the first page is near the viewport before the script says so
-      std::string classes = page.classes;
-      if (page_number == first_page_number) {
-        classes += " odr-chunk-near";
-      }
+      std::string classes =
+          page.classes +
+          chunk_classes(config(), page_number == first_page_number);
       out.write_element_begin(
           "div", HtmlElementOptions()
                      .set_class(std::move(classes))
@@ -2487,10 +2486,9 @@ public:
     std::size_t page_number = first_page_number;
     for (const SinglePageOut &page : pages_out) {
       // the first page is near the viewport before the script says so
-      std::string classes = page.classes;
-      if (page_number == first_page_number) {
-        classes += " odr-chunk-near";
-      }
+      std::string classes =
+          page.classes +
+          chunk_classes(config(), page_number == first_page_number);
       out.write_element_begin(
           "div", HtmlElementOptions()
                      .set_class(std::move(classes))
@@ -2675,7 +2673,7 @@ public:
     const double width = quarter_turn ? box_height : box_width;
     const double height = quarter_turn ? box_width : box_height;
 
-    std::string classes = "p odr-chunk";
+    std::string classes = "p";
     {
       std::ostringstream w;
       w << "width:" << width * pt_to_in << "in";

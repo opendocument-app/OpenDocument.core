@@ -194,6 +194,10 @@ struct HtmlConfig {
   std::optional<std::uint32_t> viewport_width;
   /// The zoom the view opens at, 1 being actual size; unset follows the fit.
   std::optional<double> initial_zoom;
+  /// Lay out only the lines, rows and pages near the viewport. Off, the
+  /// browser lays out all of them, which a large file may not survive, but its
+  /// own find and a screen reader reach every one.
+  bool lazy_layout{true};
 
   /// The least distance the generated content keeps from the view's border. A
   /// set side raises the inset the view already has, never lowers it; a unit

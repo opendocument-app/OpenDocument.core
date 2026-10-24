@@ -12,11 +12,11 @@
          two lines here put the chunk boundary inside the checks. -->
     <div class="odr-text" style="--odr-text-digits:1">
       <div class="odr-text-body odr-text-wrap">
-        <div class="odr-chunk odr-chunk-near">
+        <div class="odr-text-lines odr-chunk odr-chunk-near">
           <div style="counter-reset:odr-line 0">first line</div>
           <div>second line</div>
         </div>
-        <div class="odr-chunk" style="--odr-text-lines:1">
+        <div class="odr-text-lines odr-chunk" style="--odr-text-lines:1">
           <div style="counter-reset:odr-line 2">third line</div>
         </div>
       </div>
@@ -43,7 +43,7 @@
       var body = document.querySelector(".odr-text-body");
 
       function lineNodes() {
-        return body.querySelectorAll(".odr-chunk > div");
+        return body.querySelectorAll(".odr-text-lines > div");
       }
       function lines() {
         return Array.prototype.map

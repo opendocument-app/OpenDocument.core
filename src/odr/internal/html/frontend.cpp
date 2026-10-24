@@ -315,11 +315,21 @@ void html::write_search_style(const WritingState &state) {
   write_style(search_css_asset, state);
 }
 
+std::string html::chunk_classes(const HtmlConfig &config, const bool near) {
+  if (!config.lazy_layout) {
+    return {};
+  }
+  return near ? " odr-chunk odr-chunk-near" : " odr-chunk";
+}
+
 void html::write_search_dark_style(const WritingState &state) {
   write_dark_style(search_dark_css_asset, state);
 }
 
 void html::write_chunk_style(const WritingState &state) {
+  if (!state.config().lazy_layout) {
+    return;
+  }
   HtmlWriter &out = state.out();
   out.write_header_style_begin();
   // WebKit prints a chunk that it skips blank

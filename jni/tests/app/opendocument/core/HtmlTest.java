@@ -56,6 +56,7 @@ class HtmlTest {
     assertNull(config.viewportContent);
     assertNull(config.viewportWidth);
     assertNull(config.initialZoom);
+    assertTrue(config.lazyLayout);
   }
 
   @Test
@@ -97,6 +98,7 @@ class HtmlTest {
     config.viewportContent = "width=420";
     config.viewportWidth = 420;
     config.initialZoom = 1.5;
+    config.lazyLayout = false;
     config.sheetEditOnClick = false;
     config.pdfAnnotationMarkOnSelection = true;
     config.hostMessageHandler = "reader.postMessage";
@@ -109,6 +111,7 @@ class HtmlTest {
     assertEquals("width=420", readBack.viewportContent);
     assertEquals(Integer.valueOf(420), readBack.viewportWidth);
     assertEquals(Double.valueOf(1.5), readBack.initialZoom);
+    assertTrue(!readBack.lazyLayout);
     assertEquals(Boolean.FALSE, readBack.sheetEditOnClick);
     assertTrue(readBack.pdfAnnotationMarkOnSelection);
     assertEquals("reader.postMessage", readBack.hostMessageHandler);
