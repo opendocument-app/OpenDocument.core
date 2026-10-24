@@ -544,7 +544,8 @@ public:
     }
     if (value.has_formula()) {
       // ahead of the result, which a recalculation writes
-      node.prepend_child("f").text().set(value.formula().c_str());
+      node.prepend_child("f").text().set(
+          std::string(formula::strip_prefix(value.formula())).c_str());
     } else if (had_formula) {
       drop_calc_chain_entry(
           m_document->related_part(AbsPath("/xl/workbook.xml"), "calcChain"),
@@ -925,18 +926,11 @@ public:
 
     std::vector<ElementIdentifier> sheet_ids;
     std::vector<NamedWorksheet> worksheets;
-    std::string sheet_id;
-    pugi::xml_node sheet_entry =
-        m_document->workbook().child("sheets").child("sheet");
     for (ElementIdentifier id = element_first_child(m_document->root_element());
          id != null_element_id; id = element_next_sibling(id)) {
-      if (id == element_id) {
-        sheet_id = sheet_entry.attribute("sheetId").value();
-      }
       sheet_ids.push_back(id);
       worksheets.push_back({.name = m_registry->sheet_element_at(id).name,
                             .node = get_node(id)});
-      sheet_entry = sheet_entry.next_sibling("sheet");
     }
     check_formula_syntax(m_document->workbook());
     for (const NamedWorksheet &worksheet : worksheets) {
@@ -954,7 +948,7 @@ public:
     move_workbook_references(
         m_document->workbook(), worksheets,
         m_document->related_part(AbsPath("/xl/workbook.xml"), "calcChain"),
-        sheet_id, edit);
+        sheet_id_of(element_id), edit);
 
     for (const auto &[position, cell] : sheet.cells) {
       if (!move_position(position, edit).has_value()) {

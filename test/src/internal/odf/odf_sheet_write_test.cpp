@@ -230,6 +230,19 @@ TEST(OdfSheetWrite, a_formula_is_written_and_computed) {
   EXPECT_DOUBLE_EQ(first_sheet(reopened).cell(2, 0).value().number(), 6);
 }
 
+TEST(OdfSheetWrite, a_formula_is_written_with_the_prefix_of_opendocument) {
+  const Document document = document_of(flat_sheet(
+      R"(<table:table-cell office:value-type="float" office:value="3">)"
+      R"(<text:p>3</text:p></table:table-cell>)"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(1, 0, CellValue().with_formula("=[.A1]*2"));
+  sheet.set_cell(2, 0, CellValue().with_formula("[.A1]*3"));
+
+  EXPECT_EQ(sheet.cell(1, 0).value().formula(), "of:=[.A1]*2");
+  EXPECT_EQ(sheet.cell(2, 0).value().formula(), "of:=[.A1]*3");
+}
+
 TEST(OdfSheetWrite, a_formula_that_does_not_parse_is_refused) {
   const Document document = document_of(flat_sheet(string_cell("a")));
   const Sheet sheet = first_sheet(document);

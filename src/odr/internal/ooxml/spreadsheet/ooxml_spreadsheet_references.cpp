@@ -302,7 +302,17 @@ void move_worksheet(const NamedWorksheet &worksheet, const bool edited,
   move_extensions(worksheet, edited, edit);
 }
 
-/// ECMA-376 18.6.1: an entry without `i` is on the sheet of the one before.
+/// Removes @p entry, which is on the sheet @p sheet_id. ECMA-376 18.6.1: an
+/// entry without `i` is on the sheet of the one before.
+void remove_calc_chain_entry(pugi::xml_node calc_chain, pugi::xml_node entry,
+                             const std::string &sheet_id) {
+  if (pugi::xml_node next = entry.next_sibling();
+      next && !next.attribute("i") && entry.attribute("i")) {
+    next.prepend_attribute("i").set_value(sheet_id.c_str());
+  }
+  calc_chain.remove_child(entry);
+}
+
 void move_calc_chain(pugi::xml_node calc_chain,
                      const std::string &edited_sheet_id,
                      const formula::SheetEdit &edit) {
@@ -318,10 +328,7 @@ void move_calc_chain(pugi::xml_node calc_chain,
           at.has_value()) {
         entry.attribute("r").set_value(at->to_string().c_str());
       } else {
-        if (next && !next.attribute("i") && entry.attribute("i")) {
-          next.prepend_attribute("i").set_value(sheet_id.c_str());
-        }
-        calc_chain.remove_child(entry);
+        remove_calc_chain_entry(calc_chain, entry, sheet_id);
       }
     }
     entry = next;
@@ -554,17 +561,11 @@ void ooxml::spreadsheet::drop_calc_chain_entry(pugi::xml_node calc_chain,
     if (const pugi::xml_attribute id = entry.attribute("i")) {
       entry_sheet = id.value();
     }
-    if (entry_sheet != sheet_id ||
-        TablePosition(entry.attribute("r").value()) != position) {
-      continue;
+    if (entry_sheet == sheet_id &&
+        TablePosition(entry.attribute("r").value()) == position) {
+      remove_calc_chain_entry(calc_chain, entry, entry_sheet);
+      return;
     }
-    // ECMA-376 18.6.1: the next entry reads its sheet from this one
-    if (pugi::xml_node next = entry.next_sibling();
-        next && !next.attribute("i") && entry.attribute("i")) {
-      next.prepend_attribute("i").set_value(entry_sheet.c_str());
-    }
-    calc_chain.remove_child(entry);
-    return;
   }
 }
 

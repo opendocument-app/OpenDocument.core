@@ -156,6 +156,17 @@ TEST(OoxmlSpreadsheetWrite, a_formula_is_written_and_computed) {
       << worksheet_of(document);
 }
 
+TEST(OoxmlSpreadsheetWrite, a_formula_is_written_without_its_equals_sign) {
+  const Document document =
+      decode(workbook(R"(<row r="1"><c r="A1"><v>3</v></c></row>)"));
+
+  first_sheet(document).set_cell(1, 0, CellValue().with_formula("=A1*2"));
+
+  EXPECT_NE(worksheet_of(document).find(R"(<c r="B1"><f>A1*2</f><v>6</v></c>)"),
+            std::string::npos)
+      << worksheet_of(document);
+}
+
 TEST(OoxmlSpreadsheetWrite, a_formula_that_does_not_parse_is_refused) {
   const Document document =
       decode(workbook(R"(<row r="1"><c r="A1"><v>1</v></c></row>)"));

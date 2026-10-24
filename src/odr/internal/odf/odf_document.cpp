@@ -817,7 +817,10 @@ public:
     remove_value_attributes(node);
     node.remove_attribute("table:formula");
     if (value.has_formula()) {
-      node.append_attribute("table:formula").set_value(value.formula().c_str());
+      node.append_attribute("table:formula")
+          .set_value(
+              ("of:=" + std::string(formula::strip_prefix(value.formula())))
+                  .c_str());
     }
 
     switch (value.type()) {
