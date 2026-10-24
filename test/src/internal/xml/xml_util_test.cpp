@@ -98,6 +98,22 @@ TEST(xml_util, tokenize_text_single_space) {
   EXPECT_EQ("a b", tokens[0].string);
 }
 
+/// A `w:t` of one space is a space between two words, and Word writes one
+/// wherever the formatting changes at a space.
+TEST(xml_util, keeps_whitespace_that_is_the_only_child_on_every_input_path) {
+  const std::string content = "<p>\n  <t> </t>\n  <t>word</t>\n</p>";
+  const auto check = [](const pugi::xml_document &document) {
+    const pugi::xml_node p = document.child("p");
+    EXPECT_STREQ(p.first_child().name(), "t");
+    EXPECT_STREQ(p.first_child().child_value(), " ");
+  };
+  check(parse(content));
+  std::istringstream stream(content);
+  check(parse(stream));
+  const odr::internal::MemoryFile file(content);
+  check(parse(file));
+}
+
 TEST(xml_util, parses_utf16_streams_without_c_string_truncation) {
   std::istringstream in(std::string("\xff\xfe<\0a\0/\0>\0", 10));
   EXPECT_STREQ(parse(in).document_element().name(), "a");

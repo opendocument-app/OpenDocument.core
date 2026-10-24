@@ -72,6 +72,11 @@ std::string escape(const std::string_view text, const bool attribute) {
   return result;
 }
 
+// `parse_ws_pcdata_single` keeps whitespace that is the only child, as in a
+// `w:t` of one space, and drops the indentation between two siblings
+constexpr unsigned int parse_options =
+    pugi::parse_default | pugi::parse_ws_pcdata_single;
+
 } // namespace
 
 std::string xml::escape_text(const std::string_view text) {
@@ -93,7 +98,7 @@ void xml::check_depth(pugi::xml_document &document) {
 pugi::xml_document xml::parse(const std::string &in) {
   pugi::xml_document result;
   if (const auto success = result.load_buffer(
-          in.data(), in.size(), pugi::parse_default, pugi::encoding_utf8);
+          in.data(), in.size(), parse_options, pugi::encoding_utf8);
       !success) {
     throw NoXmlFile();
   }
@@ -104,7 +109,8 @@ pugi::xml_document xml::parse(const std::string &in) {
 pugi::xml_document xml::parse(std::istream &in) {
   const std::string bytes = util::stream::read(in);
   pugi::xml_document result;
-  if (const auto success = result.load_buffer(bytes.data(), bytes.size());
+  if (const auto success =
+          result.load_buffer(bytes.data(), bytes.size(), parse_options);
       !success) {
     throw NoXmlFile();
   }
@@ -203,7 +209,7 @@ pugi::xml_document xml::parse(const abstract::File &file) {
 
   pugi::xml_document result;
   if (const auto success =
-          result.load_buffer_inplace_own(buffer.release(), size);
+          result.load_buffer_inplace_own(buffer.release(), size, parse_options);
       !success) {
     throw NoXmlFile();
   }
