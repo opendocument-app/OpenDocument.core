@@ -565,20 +565,63 @@
     return boxes;
   }
 
+  /// The columns and rows an array formula fills from @p cell, null for a
+  /// cell that states none.
+  function arrayOf(cell) {
+    var stated = cell.getAttribute("data-odr-array");
+    if (stated === null) {
+      return null;
+    }
+    var parts = stated.split(",");
+    return { columns: Number(parts[0]), rows: Number(parts[1]) };
+  }
+
+  /// The positions @p entry fills: its own, and every other cell of its
+  /// array formula.
+  function positionsOf(entry) {
+    if (entry.array === null) {
+      return [entry.at];
+    }
+    var result = [];
+    for (var row = 0; row < entry.array.rows; ++row) {
+      for (var column = 0; column < entry.array.columns; ++column) {
+        result.push({
+          column: entry.at.column + column,
+          row: entry.at.row + row,
+        });
+      }
+    }
+    return result;
+  }
+
+  /// What an array formula's @p result puts at (@p column, @p row) of its
+  /// range: a single row or column repeats, and past the result is `#N/A`.
+  function spread(result, column, row) {
+    var c = result.columns === 1 ? 0 : column;
+    var r = result.rows === 1 ? 0 : row;
+    if (c >= result.columns || r >= result.rows) {
+      return { type: "error", text: "#N/A" };
+    }
+    return result.cells[r * result.columns + c];
+  }
+
   /// The formula of @p cell and what it reads in this sheet, null where it
-  /// states no reads.
+  /// states no reads. An array formula that reads none is kept, so a row or
+  /// column edit knows its range.
   function readerOf(cell) {
     var at = odr.sheet.positionOf(cell);
     var stated = cell.getAttribute("data-odr-reads");
-    if (at === null || stated === null) {
+    var array = arrayOf(cell);
+    if (at === null || (stated === null && array === null)) {
       return null;
     }
     return {
       cell: cell,
       formula: cell.getAttribute("data-odr-formula"),
       moves: [],
+      array: array,
       at: at,
-      reads: boxesOf(stated),
+      reads: boxesOf(stated || ""),
     };
   }
 
@@ -587,7 +630,7 @@
       return readers;
     }
     readers = [];
-    var cells = table.querySelectorAll("td[data-odr-reads]");
+    var cells = table.querySelectorAll("td[data-odr-reads], td[data-odr-array]");
     for (var i = 0; i < cells.length; ++i) {
       var entry = readerOf(cells[i]);
       if (entry !== null) {
@@ -700,6 +743,7 @@
         cell: entry.cell,
         formula: entry.formula,
         moves: entry.moves.slice(),
+        array: entry.array,
         at: { column: entry.at.column, row: entry.at.row },
         reads: entry.reads.map(function (box) {
           return box.slice();
@@ -720,6 +764,7 @@
             cell: typed.cell,
             formula: op.value.formula,
             moves: [],
+            array: null,
             at: { column: op.column, row: op.row },
             reads: boxesOf(typed.reads || ""),
             marked: true,
@@ -937,7 +982,9 @@
   function inOrder(marked) {
     var byPosition = new Map();
     marked.forEach(function (entry, i) {
-      byPosition.set(entry.at.column + "," + entry.at.row, i);
+      positionsOf(entry).forEach(function (at) {
+        byPosition.set(at.column + "," + at.row, i);
+      });
     });
     var dependents = marked.map(function () {
       return [];
@@ -961,7 +1008,7 @@
           return;
         }
         marked.forEach(function (other, j) {
-          if (readsAny({ reads: [box] }, [other.at])) {
+          if (readsAny({ reads: [box] }, positionsOf(other))) {
             seen.add(j);
           }
         });
@@ -1002,8 +1049,22 @@
   /// cell's result, null where the evaluator has none: also in a cycle.
   function compute(entries, names) {
     var byCell = new Map();
+    // each other cell of an array formula's range, with its place in it
+    var owners = new Map();
     entries.forEach(function (entry) {
       byCell.set(entry.cell, entry);
+      positionsOf(entry)
+        .slice(1)
+        .forEach(function (at) {
+          var cell = odr.sheet.cellAt(at.column, at.row);
+          if (cell !== null) {
+            owners.set(cell, {
+              entry: entry,
+              column: at.column - entry.at.column,
+              row: at.row - entry.at.row,
+            });
+          }
+        });
     });
     var results = new Map();
     var computing = new Set();
@@ -1023,6 +1084,22 @@
         return null;
       }
       return formulas.module.evaluate(
+        formula,
+        formulas.syntax,
+        sheet,
+        column,
+        row,
+        settings,
+        source
+      );
+    }
+
+    // `{columns, rows, cells}` for the range an array formula fills
+    function evaluateArray(formula, column, row) {
+      if (formula === null) {
+        return null;
+      }
+      return formulas.module.evaluateArray(
         formula,
         formulas.syntax,
         sheet,
@@ -1068,6 +1145,22 @@
           return { type: "empty" };
         }
         var entry = byCell.get(cell);
+        var owner = owners.get(cell);
+        if (
+          owner === undefined &&
+          entry !== undefined &&
+          entry.array !== null
+        ) {
+          owner = { entry: entry, column: 0, row: 0 };
+        }
+        if (owner !== undefined && owner.entry.marked) {
+          var array = results.has(owner.entry.cell)
+            ? results.get(owner.entry.cell)
+            : computeEntry(owner.entry);
+          return array === null
+            ? null
+            : spread(array, owner.column, owner.row);
+        }
         if (entry !== undefined && entry.marked) {
           return results.has(cell) ? results.get(cell) : computeEntry(entry);
         }
@@ -1115,7 +1208,10 @@
       }
       computing.add(entry.cell);
       ++depth;
-      var result = evaluate(entry.formula, entry.at.column, entry.at.row);
+      var result =
+        entry.array !== null
+          ? evaluateArray(entry.formula, entry.at.column, entry.at.row)
+          : evaluate(entry.formula, entry.at.column, entry.at.row);
       --depth;
       computing.delete(entry.cell);
       results.set(entry.cell, result);
@@ -1175,8 +1271,9 @@
       return entry.marked;
     });
     while (frontier.length > 0) {
-      var positions = frontier.map(function (entry) {
-        return entry.at;
+      var positions = [];
+      frontier.forEach(function (entry) {
+        positions.push.apply(positions, positionsOf(entry));
       });
       frontier = entries.filter(function (entry) {
         return !entry.marked && readsAny(entry, positions);
@@ -1223,18 +1320,31 @@
     var cells = [];
     marked.forEach(function (entry) {
       var result = answers.get(entry.cell);
-      var value =
-        result === undefined || result === null
-          ? null
-          : toShown(entry.cell, result);
-      if (value !== null) {
-        showResult(entry, value);
-        shown.add(entry.cell);
-        return;
-      }
-      entry.cell.classList.add("odr-sheet-stale");
-      stale.push(entry.cell);
-      cells.push({ column: entry.at.column, row: entry.at.row });
+      positionsOf(entry).forEach(function (at) {
+        var cell = odr.sheet.cellAt(at.column, at.row);
+        if (cell === null) {
+          return;
+        }
+        var element =
+          result === undefined || result === null
+            ? null
+            : entry.array === null
+              ? result
+              : spread(
+                  result,
+                  at.column - entry.at.column,
+                  at.row - entry.at.row
+                );
+        var value = element === null ? null : toShown(cell, element);
+        if (value !== null) {
+          showResult({ cell: cell, at: at }, value);
+          shown.add(cell);
+          return;
+        }
+        cell.classList.add("odr-sheet-stale");
+        stale.push(cell);
+        cells.push({ column: at.column, row: at.row });
+      });
     });
     restoreComputed(shown);
 
@@ -1982,6 +2092,24 @@
     return format(style);
   }
 
+  /// Whether @p count rows or columns at @p index cut through the range of an
+  /// array formula, which the library refuses as it refuses a cut merge.
+  function cutsArray(axis, index, count, insert) {
+    return walk(coalesced()).some(function (entry) {
+      if (entry.array === null) {
+        return false;
+      }
+      var first = entry.at[axis];
+      var last =
+        first + (axis === "row" ? entry.array.rows : entry.array.columns) - 1;
+      if (insert) {
+        return first < index && index <= last;
+      }
+      var end = index + count - 1;
+      return !(end < first || index > last || (index <= first && end >= last));
+    });
+  }
+
   /// Edits the selected rows or columns as one undo step; @p after inserts
   /// after the selection. Captures formulas before the first structural edit.
   function editStructure(axis, insert, after) {
@@ -1999,6 +2127,12 @@
     var index = span === null ? null : after ? span[1] + 1 : span[0];
     var count = span === null ? 0 : span[1] - span[0] + 1;
     var plural = axis === "row" ? "Rows" : "Columns";
+    if (index !== null && cutsArray(axis, index, count, insert)) {
+      var refused = { sheet: sheet };
+      refused[axis] = index;
+      odr.editing.refuse("unsupportedEdit", refused);
+      return false;
+    }
     var taken =
       index === null ? null : odr.sheet[(insert ? "insert" : "delete") + plural](index, count);
     var detail = { sheet: sheet };

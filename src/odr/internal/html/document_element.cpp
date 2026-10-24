@@ -26,6 +26,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace odr::internal {
@@ -599,6 +600,9 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   const std::unordered_map<std::string, std::uint32_t> ordinals_by_name =
       syntax.has_value() ? sheet_ordinals_by_name(sheet)
                          : std::unordered_map<std::string, std::uint32_t>();
+  // the cells an array formula fills, as `row << 32 | column`, from its own
+  // cell on, which comes first
+  std::unordered_set<std::uint64_t> array_cells;
   const std::optional<HtmlSheetCut> cut =
       state.config().editable ? sheet_cut(sheet, state.config()) : std::nullopt;
 
@@ -808,9 +812,22 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                   cell_value_type == ValueType::float_number
               ? formatted_value(cell.value(), cell)
               : std::nullopt;
-      const char *lock = state.config().editable
-                             ? cell_lock(cell_value, cell, anchors_shapes)
-                             : nullptr;
+      const std::optional<TableDimensions> array =
+          state.config().editable ? cell.array_span() : std::nullopt;
+      if (array.has_value()) {
+        for (std::uint32_t r = 0; r < array->rows; ++r) {
+          for (std::uint32_t c = 0; c < array->columns; ++c) {
+            array_cells.insert(std::uint64_t{row_index + r} << 32 |
+                               (column_index + c));
+          }
+        }
+      }
+      // the page edits no part of an array formula, as Excel does not
+      const char *lock =
+          !state.config().editable ? nullptr
+          : array_cells.contains(std::uint64_t{row_index} << 32 | column_index)
+              ? "array"
+              : cell_lock(cell_value, cell, anchors_shapes);
       // what a formula bar shows, and the rectangles the page marks against
       const bool computes = cell_value.has_formula() &&
                             !cell_value.formula().empty() && syntax.has_value();
@@ -850,6 +867,10 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                 }
                 if (!reads.empty()) {
                   clb("data-odr-reads", reads);
+                }
+                if (array.has_value() && computes) {
+                  clb("data-odr-array", std::to_string(array->columns) + "," +
+                                            std::to_string(array->rows));
                 }
                 if (value_spelling.has_value()) {
                   clb("data-odr-value", *value_spelling);

@@ -23,6 +23,7 @@ open http://localhost:8732/formulas.html
 open http://localhost:8732/formula-chain.html
 open http://localhost:8732/formula-input.html
 open http://localhost:8732/formula-words.html
+open http://localhost:8732/formula-arrays.html
 ```
 
 `serve` serves `document.css`, `spreadsheet.css`, `editing.js`,
@@ -98,11 +99,15 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
   constant, a function name with a dot, a formula that takes the format of
   its cell, a name of the document, which a row edit moves, `OFFSET` and
   `INDIRECT`, and `TODAY` and `RAND`, which every edit computes again.
+- `formula-arrays.html`: an array formula computes every cell of its range,
+  and a formula that reads one of them. The range is locked, a row edit
+  through it is refused, also through an array that reads no cell, and one
+  above it moves it.
 - `formula-words.html`: a computed boolean takes the words the page shows
   its booleans in, and the pair of the one word it shows: `WAHR` for a page
   that shows `FALSCH`, also in a French document.
 
-  The four pages load `odr-formula.js`, which the wasm build writes:
+  The five pages load `odr-formula.js`, which the wasm build writes:
   `ODR_FORMULA_WASM=build-wasm/wasm/formula/odr-formula.js
   test/browser/sheet/serve`. Without it the first check fails.
 - `sorting.html`: the same questions after the sort control moved every row.

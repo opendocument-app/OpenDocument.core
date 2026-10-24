@@ -37,6 +37,24 @@
 namespace odr::internal::ooxml::spreadsheet {
 
 namespace {
+
+/// ECMA-376 18.3.1.40: the range an array formula states it fills, nothing
+/// for a formula that is no array.
+std::optional<TableDimensions> array_span_of(const pugi::xml_node formula) {
+  if (std::string_view(formula.attribute("t").value()) != "array") {
+    return std::nullopt;
+  }
+  const std::string ref = formula.attribute("ref").value();
+  if (ref.find(':') == std::string::npos) {
+    return TableDimensions(1, 1);
+  }
+  const TableRange range(ref);
+  const auto [top, bottom] = std::minmax(range.from().row, range.to().row);
+  const auto [left, right] =
+      std::minmax(range.from().column, range.to().column);
+  return TableDimensions(bottom - top + 1, right - left + 1);
+}
+
 std::unique_ptr<abstract::ElementAdapter>
 create_element_adapter(Document &document, ElementRegistry &registry);
 
@@ -441,20 +459,9 @@ public:
     for (const auto &[position, cell] :
          m_registry->sheet_element_at(element_id).cells) {
       if (const pugi::xml_node formula = cell.node.child("f")) {
-        // ECMA-376 18.3.1.40: an array formula states the range it fills
-        const bool array =
-            std::string_view(formula.attribute("t").value()) == "array";
-        TableDimensions span(1, 1);
-        if (const std::string ref = formula.attribute("ref").value();
-            array && ref.find(':') != std::string::npos) {
-          const TableRange range(ref);
-          const auto [top, bottom] =
-              std::minmax(range.from().row, range.to().row);
-          const auto [left, right] =
-              std::minmax(range.from().column, range.to().column);
-          span = TableDimensions(bottom - top + 1, right - left + 1);
-        }
-        visitor(position.column, position.row, span, array,
+        const std::optional<TableDimensions> span = array_span_of(formula);
+        visitor(position.column, position.row,
+                span.value_or(TableDimensions(1, 1)), span.has_value(),
                 formula_expression(cell.element_id, formula));
       }
     }
@@ -1416,6 +1423,11 @@ public:
       result = result.with_formula(formula_expression(element_id, formula));
     }
     return result;
+  }
+
+  [[nodiscard]] std::optional<TableDimensions>
+  sheet_cell_array_span(const ElementIdentifier element_id) const override {
+    return array_span_of(get_node(element_id).child("f"));
   }
 
   [[nodiscard]] std::optional<std::string>

@@ -96,8 +96,9 @@ translate. The page carries only what the browser cannot work out itself:
 `data-odr-lock` on a cell that refuses a write, with its reason (`formula`
 where the build has no formula module, `rich` for a link or anything else
 past text and line breaks, `shapes` where the cell is nothing but its anchored
-drawings), and `data-odr-editable` on `<body>`. Every other cell is editable,
-an empty one included.
+drawings, `array` for every cell of an array formula's range, as Excel edits
+no part of one), and `data-odr-editable` on `<body>`. Every other cell is
+editable, an empty one included.
 
 The editor is an overlay the script places over the cell, so the sheet's DOM
 stays untouched until the commit patches the cell. The overlay is a
@@ -344,7 +345,9 @@ and the commits name. Git holds the full text of each decision.
     lengths, and `SUM` reads its range whole (`find_array_rule`). `OFFSET`,
     `INDIRECT` and `CELL` have no answer there. A single row or column
     repeats over the range, and a position past the result is `#N/A`. A
-    dynamic array of an `.xlsx` fills the range the file states.
+    dynamic array of an `.xlsx` fills the range the file states. The page
+    computes the range too: its first cell states `data-odr-array`, and a
+    row or column edit through the range refuses, as the writers do.
   - `Document::recalculate` computes each stale cell on demand: a dependent
     of an edit, every formula after a structural edit, and a formula without
     a result, with a name or with a volatile function. A cycle gets no

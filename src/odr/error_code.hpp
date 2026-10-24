@@ -81,6 +81,8 @@ enum class ErrorCode : std::int32_t {
   edit_sheet_cut = 1011,
   /// A typed formula that does not parse.
   edit_formula_invalid = 1012,
+  /// The cell is part of an array formula, which the page does not edit.
+  edit_array = 1013,
 };
 
 /// @brief The code's name, as the bindings already spell it.
