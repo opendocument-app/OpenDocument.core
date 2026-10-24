@@ -121,9 +121,7 @@ std::optional<std::string> section_code(const pugi::xml_node style) {
             '?', digit_count(child, "number:min-denominator-digits", 1));
       }
     } else if (name == "number:text") {
-      // the parse drops a text of spaces alone, and LibreOffice writes no
-      // empty one, so an empty one held a space
-      const std::string text = child.first_child() ? child.text().get() : " ";
+      const std::string text = child.text().get();
       // a percentage style spells its `%` as text, and it scales the value
       std::size_t start = 0;
       for (std::size_t at = text.find('%');

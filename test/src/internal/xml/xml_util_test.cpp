@@ -114,6 +114,22 @@ TEST(xml_util, keeps_whitespace_that_is_the_only_child_on_every_input_path) {
   check(parse(file));
 }
 
+/// Pretty printed xml indents an element with no content, and a reader takes
+/// such a `table:table-cell` for empty.
+TEST(xml_util, drops_the_indentation_of_an_element_with_no_content) {
+  const std::string content = "<p>\n  <cell>\n  </cell>\n  <t>\t</t>\n</p>";
+  const auto check = [](const pugi::xml_document &document) {
+    const pugi::xml_node p = document.child("p");
+    EXPECT_FALSE(p.child("cell").first_child());
+    EXPECT_STREQ(p.child("t").child_value(), "\t");
+  };
+  check(parse(content));
+  std::istringstream stream(content);
+  check(parse(stream));
+  const odr::internal::MemoryFile file(content);
+  check(parse(file));
+}
+
 TEST(xml_util, parses_utf16_streams_without_c_string_truncation) {
   std::istringstream in(std::string("\xff\xfe<\0a\0/\0>\0", 10));
   EXPECT_STREQ(parse(in).document_element().name(), "a");

@@ -19,6 +19,7 @@
 #include <new>
 #include <string_view>
 #include <tuple>
+#include <vector>
 
 namespace odr::internal {
 
@@ -77,6 +78,35 @@ std::string escape(const std::string_view text, const bool attribute) {
 constexpr unsigned int parse_options =
     pugi::parse_default | pugi::parse_ws_pcdata_single;
 
+/// The whitespace `parse_ws_pcdata_single` keeps where it holds a line break:
+/// the indentation of an element with no content, such as
+/// `<table:table-cell>\n</table:table-cell>`, which a reader takes for empty.
+class LineIndentation final : public pugi::xml_tree_walker {
+public:
+  std::vector<pugi::xml_node> nodes;
+
+  bool for_each(pugi::xml_node &node) override {
+    if (node.type() == pugi::node_pcdata && !node.previous_sibling() &&
+        !node.next_sibling()) {
+      const std::string_view value = node.value();
+      if (value.find_first_of("\n\r") != std::string_view::npos &&
+          value.find_first_not_of(" \t\n\r") == std::string_view::npos) {
+        nodes.push_back(node);
+      }
+    }
+    return true;
+  }
+};
+
+/// A document parse keeps the whitespace of a `w:t` and drops indentation.
+void drop_line_indentation(pugi::xml_document &document) {
+  LineIndentation indentation;
+  document.traverse(indentation);
+  for (const pugi::xml_node node : indentation.nodes) {
+    node.parent().remove_child(node);
+  }
+}
+
 } // namespace
 
 std::string xml::escape_text(const std::string_view text) {
@@ -103,6 +133,7 @@ pugi::xml_document xml::parse(const std::string &in) {
     throw NoXmlFile();
   }
   check_depth(result);
+  drop_line_indentation(result);
   return result;
 }
 
@@ -115,6 +146,7 @@ pugi::xml_document xml::parse(std::istream &in) {
     throw NoXmlFile();
   }
   check_depth(result);
+  drop_line_indentation(result);
   return result;
 }
 
@@ -214,6 +246,7 @@ pugi::xml_document xml::parse(const abstract::File &file) {
     throw NoXmlFile();
   }
   check_depth(result);
+  drop_line_indentation(result);
   return result;
 }
 
