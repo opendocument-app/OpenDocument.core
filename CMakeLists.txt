@@ -151,35 +151,7 @@ add_custom_command(
         VERBATIM
 )
 
-# The evaluator and the number formats, with nothing of a file format: the
-# library compiles them, and `wasm/formula` compiles them alone for a page.
-set(ODR_FORMULA_SOURCE_FILES
-        "src/odr/sheet_position.cpp"
-        "src/odr/table_dimension.cpp"
-        "src/odr/table_position.cpp"
-        "src/odr/internal/common/table_range.cpp"
-        "src/odr/internal/formula/formula_ast.cpp"
-        "src/odr/internal/formula/formula_dependencies.cpp"
-        "src/odr/internal/formula/formula_evaluator.cpp"
-        "src/odr/internal/formula/formula_functions.cpp"
-        "src/odr/internal/formula/formula_functions_date.cpp"
-        "src/odr/internal/formula/formula_functions_logic.cpp"
-        "src/odr/internal/formula/formula_functions_lookup.cpp"
-        "src/odr/internal/formula/formula_functions_math.cpp"
-        "src/odr/internal/formula/formula_functions_text.cpp"
-        "src/odr/internal/formula/formula_text.cpp"
-        "src/odr/internal/formula/formula_parser.cpp"
-        "src/odr/internal/formula/formula_value.cpp"
-        "src/odr/internal/formula/formula_writer.cpp"
-        "src/odr/internal/number_format/calendar_names.cpp"
-        "src/odr/internal/number_format/number_format.cpp"
-        "src/odr/internal/util/number_util.cpp"
-        "src/odr/internal/util/string_util.cpp"
-)
-
 set(ODR_SOURCE_FILES
-        ${ODR_FORMULA_SOURCE_FILES}
-
         "src/odr/archive.cpp"
         "src/odr/document.cpp"
         "src/odr/document_element.cpp"
@@ -191,7 +163,10 @@ set(ODR_SOURCE_FILES
         "src/odr/logger.cpp"
         "src/odr/odr.cpp"
         "src/odr/quantity.cpp"
+        "src/odr/sheet_position.cpp"
         "src/odr/style.cpp"
+        "src/odr/table_dimension.cpp"
+        "src/odr/table_position.cpp"
 
         "src/odr/internal/encoding/detect.cpp"
         "src/odr/internal/encoding/encoding_data.cpp"
@@ -221,6 +196,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/common/sheet_recalculation.cpp"
         "src/odr/internal/common/style.cpp"
         "src/odr/internal/common/table_cursor.cpp"
+        "src/odr/internal/common/table_range.cpp"
         "src/odr/internal/common/temporary_file.cpp"
 
         "src/odr/internal/crypto/crypto_argon2.cpp"
@@ -229,6 +205,22 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/csv/csv_document.cpp"
         "src/odr/internal/csv/csv_file.cpp"
         "src/odr/internal/csv/csv_util.cpp"
+
+        "src/odr/internal/formula/formula_ast.cpp"
+        "src/odr/internal/formula/formula_dependencies.cpp"
+        "src/odr/internal/formula/formula_evaluator.cpp"
+        "src/odr/internal/formula/formula_functions.cpp"
+        "src/odr/internal/formula/formula_functions_date.cpp"
+        "src/odr/internal/formula/formula_functions_logic.cpp"
+        "src/odr/internal/formula/formula_functions_lookup.cpp"
+        "src/odr/internal/formula/formula_functions_math.cpp"
+        "src/odr/internal/formula/formula_functions_text.cpp"
+        "src/odr/internal/formula/formula_text.cpp"
+        "src/odr/internal/formula/formula_parser.cpp"
+        "src/odr/internal/formula/formula_value.cpp"
+        "src/odr/internal/formula/formula_writer.cpp"
+        "src/odr/internal/number_format/calendar_names.cpp"
+        "src/odr/internal/number_format/number_format.cpp"
 
         "src/odr/internal/html/common.cpp"
         "src/odr/internal/html/document.cpp"
@@ -387,8 +379,10 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/util/byte_string.cpp"
         "src/odr/internal/util/file_util.cpp"
         "src/odr/internal/util/hash_util.cpp"
+        "src/odr/internal/util/number_util.cpp"
         "src/odr/internal/util/odr_meta_util.cpp"
         "src/odr/internal/util/stream_util.cpp"
+        "src/odr/internal/util/string_util.cpp"
 
         "src/odr/internal/xml/xml_file.cpp"
         "src/odr/internal/xml/xml_util.cpp"
@@ -399,31 +393,44 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/zip/zip_util.cpp"
 )
 
+function(odr_configure_library target)
+    target_include_directories(${target}
+            PUBLIC
+            src
+            ${CMAKE_CURRENT_BINARY_DIR}/src
+            PRIVATE
+            "${CMAKE_CURRENT_BINARY_DIR}/generated"
+    )
+    target_link_libraries(${target}
+            PRIVATE
+            pugixml::pugixml
+            md4c::md4c
+            miniz::miniz
+            cryptopp::cryptopp
+            fmt::fmt
+            nlohmann_json::nlohmann_json
+            openjp2
+            uchardet::uchardet
+            utf8::cpp
+    )
+    # pugixml is linked PRIVATE, but the installed internal headers expose its
+    # types - so a consumer of those needs the same layout. `cpp_info.defines`
+    # in conanfile.py is the same thing for the conan package.
+    target_compile_definitions(${target} INTERFACE PUGIXML_COMPACT)
+endfunction()
+
 add_library(odr ${ODR_SOURCE_FILES} "${ODR_FRONTEND_ASSETS_HEADER}")
 set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
-target_include_directories(odr
-        PUBLIC
-        src
-        ${CMAKE_CURRENT_BINARY_DIR}/src
-        PRIVATE
-        "${CMAKE_CURRENT_BINARY_DIR}/generated"
-)
-target_link_libraries(odr
-        PRIVATE
-        pugixml::pugixml
-        md4c::md4c
-        miniz::miniz
-        cryptopp::cryptopp
-        fmt::fmt
-        nlohmann_json::nlohmann_json
-        openjp2
-        uchardet::uchardet
-        utf8::cpp
-)
-# pugixml is linked PRIVATE, but the installed internal headers expose its
-# types - so a consumer of those needs the same layout. `cpp_info.defines` in
-# conanfile.py is the same thing for the conan package.
-target_compile_definitions(odr INTERFACE PUGIXML_COMPACT)
+odr_configure_library(odr)
+
+# The library again at `-Oz`, for `wasm/formula`. The linker keeps only what
+# the formula module calls. `-Oz` is 30% smaller than `-O2` and about 20%
+# slower, which an edit does not notice (`docs/design/spreadsheet-editing.md`).
+if (ODR_WASM)
+    add_library(odr_oz STATIC ${ODR_SOURCE_FILES} "${ODR_FRONTEND_ASSETS_HEADER}")
+    odr_configure_library(odr_oz)
+    target_compile_options(odr_oz PRIVATE -Oz -flto)
+endif ()
 
 if (ODR_WITH_HTTP_SERVER)
     find_package(httplib REQUIRED)

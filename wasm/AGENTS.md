@@ -48,7 +48,7 @@ structured-cloned. Three rules follow.
 - Bind the public API only. Never include `odr/internal/...`, except
   `odr_meta_util.hpp`, so the meta blob matches `cli/src/meta.cpp` byte for
   byte. `formula/` is the exception: it has no public API to bind, and it
-  compiles `ODR_FORMULA_SOURCE_FILES` instead of linking the library.
+  links `odr_oz`, the library at `-Oz`.
 - An embind `std::string` parameter is binary-safe, a `std::string` return is
   not: it goes through `UTF8ToString`. Binary results go through
   `to_uint8_array`.

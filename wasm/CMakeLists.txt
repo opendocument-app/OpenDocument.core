@@ -80,18 +80,10 @@ target_link_options(odr_wasm PRIVATE
 )
 
 # The evaluator alone, for a page that computes its formula cells as the user
-# edits. It compiles the library's own sources, so it needs the source tree.
-if (DEFINED ODR_FORMULA_SOURCE_FILES)
-    list(TRANSFORM ODR_FORMULA_SOURCE_FILES PREPEND "${PROJECT_SOURCE_DIR}/"
-            OUTPUT_VARIABLE ODR_FORMULA_WASM_SOURCES)
-    add_executable(odr_formula_wasm
-            "formula/odr_formula.cpp"
-            ${ODR_FORMULA_WASM_SOURCES}
-    )
-    target_include_directories(odr_formula_wasm PRIVATE "${PROJECT_SOURCE_DIR}/src")
-    target_link_libraries(odr_formula_wasm PRIVATE fmt::fmt utf8::cpp embind)
-    # `-Oz` is 30% smaller than `-O2` and about 20% slower, which an edit does
-    # not notice (`docs/design/spreadsheet-editing.md`).
+# edits. It links `odr_oz`, so it needs the source tree.
+if (TARGET odr_oz)
+    add_executable(odr_formula_wasm "formula/odr_formula.cpp")
+    target_link_libraries(odr_formula_wasm PRIVATE odr_oz embind)
     target_compile_options(odr_formula_wasm PRIVATE -Oz -flto)
     # One script with the wasm inside, because a page opened from `file://`
     # cannot fetch a second file.
