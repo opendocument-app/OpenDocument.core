@@ -54,6 +54,8 @@ public:
   [[nodiscard]] const SheetDependencies &sheet_dependencies() const final;
   [[nodiscard]] formula::Settings formula_settings() const override;
   [[nodiscard]] std::vector<formula::Name> formula_names() const override;
+  [[nodiscard]] std::vector<formula::ExternalSheet>
+  formula_external_sheets() const override;
   /// Invalidates the dependency graph after formulas move.
   void drop_sheet_dependencies() const noexcept;
 

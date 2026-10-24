@@ -337,8 +337,13 @@ and the commits name. Git holds the full text of each decision.
     with one reads anything and computes on every recalculation. `NOW`,
     `TODAY`, `RAND` and `RANDBETWEEN` read the clock and the random numbers
     in `formula::Settings`, which a recalculation and the page state, so
-    they compute every time too. `INFO`, a reference into another document
-    and a localized function name have no answer.
+    they compute every time too. `INFO` and a localized function name have
+    no answer.
+  - A reference into another document reads the copy the file caches, as
+    the applications do while that document is closed: an `.ods` holds it
+    as a hidden sheet, `'file:///x.ods'#Sheet1`, and an `.xlsx` in an
+    `externalLink` part (`formula_external_sheets`). The page does not hold
+    the copy, so such a formula stays stale there.
   - An array formula computes its range (`formula::evaluate_array`). An
     operator reads every cell of a range, and a function maps over the
     elements of an argument it takes as one value: `LEN(A1:A3)` gives three
@@ -405,6 +410,6 @@ and the commits name. Git holds the full text of each decision.
 - **Formula input.** Function names are the English ones, also where a
   localized LibreOffice shows them translated.
 - **Out of the evaluator so far:** a dynamic array that the edit makes
-  larger or smaller than the range the file states, a reference into
-  another document, iterative calculation, `INFO`, and localized function
+  larger or smaller than the range the file states, a cell another document
+  holds that its copy lacks, iterative calculation, `INFO`, and localized function
   names. Each cell that needs one stays without an answer (decision 29).

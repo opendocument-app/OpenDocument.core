@@ -175,6 +175,73 @@ std::vector<formula::Name> Document::formula_names() const {
   return result;
 }
 
+std::vector<formula::ExternalSheet> Document::formula_external_sheets() const {
+  std::vector<formula::ExternalSheet> result;
+  const AbsPath workbook_path("/xl/workbook.xml");
+  const Relations &relations = relations_of(workbook_path);
+  // ECMA-376 18.2.9: a formula names a book by its place among them, from 1
+  std::uint32_t index = 0;
+  for (const pugi::xml_node reference :
+       workbook().child("externalReferences").children("externalReference")) {
+    ++index;
+    const auto target = relations.find(reference.attribute("r:id").value());
+    if (target == relations.end()) {
+      continue;
+    }
+    const std::optional<AbsPath> path = [&]() -> std::optional<AbsPath> {
+      try {
+        return resolve_part_path(workbook_path, target->second);
+      } catch (const std::invalid_argument &) {
+        return std::nullopt;
+      }
+    }();
+    if (!path.has_value() || !m_files->is_file(*path)) {
+      continue;
+    }
+    // ECMA-376 18.14.7: the sheet names, and per sheet the cells it caches
+    const pugi::xml_document part = xml::parse(*m_files, *path);
+    const pugi::xml_node book =
+        part.child("externalLink").child("externalBook");
+    std::vector<std::string> names;
+    for (const pugi::xml_node name : book.child("sheetNames").children()) {
+      names.emplace_back(name.attribute("val").value());
+    }
+    for (const pugi::xml_node data :
+         book.child("sheetDataSet").children("sheetData")) {
+      const std::uint32_t sheet = data.attribute("sheetId").as_uint();
+      if (sheet >= names.size()) {
+        continue;
+      }
+      formula::ExternalSheet copy{std::to_string(index), names[sheet], {}};
+      for (const pugi::xml_node row : data.children("row")) {
+        for (const pugi::xml_node cell : row.children("cell")) {
+          const std::string_view type = cell.attribute("t").value();
+          const char *value = cell.child("v").text().get();
+          formula::Value read;
+          if (type == "str" || type == "s" || type == "inlineStr") {
+            read = formula::Value{std::string(value)};
+          } else if (type == "b") {
+            read = formula::Value{std::string_view(value) == "1"};
+          } else if (type == "e") {
+            const std::optional<formula::ErrorType> error =
+                formula::error_of_text(value);
+            if (!error.has_value()) {
+              continue;
+            }
+            read = formula::Value{*error};
+          } else {
+            read = formula::Value{cell.child("v").text().as_double()};
+          }
+          copy.cells.emplace_back(TablePosition(cell.attribute("r").value()),
+                                  std::move(read));
+        }
+      }
+      result.push_back(std::move(copy));
+    }
+  }
+  return result;
+}
+
 formula::Settings Document::formula_settings() const {
   return formula::Settings{.epoch = m_epoch};
 }

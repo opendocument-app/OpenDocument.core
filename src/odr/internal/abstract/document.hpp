@@ -38,6 +38,7 @@ class SheetDependencies;
 
 namespace odr::internal::formula {
 struct Settings;
+struct ExternalSheet;
 struct Name;
 } // namespace odr::internal::formula
 
@@ -103,6 +104,10 @@ public:
   /// The names the document defines for its formulas. None for a format
   /// that states none.
   [[nodiscard]] virtual std::vector<formula::Name> formula_names() const = 0;
+  /// The copies of other documents' sheets that the file caches apart from
+  /// its own sheets (ECMA-376 18.14). An `.ods` holds them as sheets.
+  [[nodiscard]] virtual std::vector<formula::ExternalSheet>
+  formula_external_sheets() const = 0;
 };
 
 class ElementAdapter {

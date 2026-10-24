@@ -40,6 +40,11 @@ public:
                     &visit) const override;
   [[nodiscard]] std::optional<formula::Node>
   name(std::string_view name, std::uint32_t sheet) const override;
+  /// An `.ods` holds the copy as a sheet of its own, `'file:///x.ods'#Sheet1`,
+  /// and an `.xlsx` apart, after the sheets of the document.
+  [[nodiscard]] std::optional<std::uint32_t>
+  external_sheet(std::string_view document,
+                 std::string_view sheet) const override;
 
   /// The settings the document states, which a cell's date is read with.
   [[nodiscard]] const formula::Settings &settings() const noexcept;
@@ -74,6 +79,11 @@ private:
   std::optional<formula::Syntax> m_syntax;
   /// The names of the document by their name in lower case.
   std::unordered_map<std::string, std::vector<formula::Name>> m_names;
+  /// The copies of other documents' sheets an `.xlsx` caches, and their cells
+  /// by `row << 32 | column`.
+  std::vector<formula::ExternalSheet> m_external;
+  std::vector<std::unordered_map<std::uint64_t, formula::Value>>
+      m_external_cells;
   mutable std::unordered_map<SheetPosition, std::optional<formula::Value>>
       m_cells;
   mutable std::unordered_map<std::uint32_t, TableDimensions> m_extents;

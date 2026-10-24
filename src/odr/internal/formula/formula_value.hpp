@@ -11,6 +11,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -131,6 +132,16 @@ struct Value final {
 inline bool operator==(const Matrix &a, const Matrix &b) {
   return a.columns == b.columns && a.rows == b.rows && a.cells == b.cells;
 }
+
+/// The copy of a sheet of another document that a file caches for its
+/// formulas to read, as the application last saw it.
+struct ExternalSheet final {
+  /// As a formula names the document: `1` in `[1]Sheet1!A1`.
+  std::string document{};
+  std::string sheet{};
+  /// The cells the copy states, each once.
+  std::vector<std::pair<TablePosition, Value>> cells{};
+};
 
 /// A number, or the error that stands in for one.
 using Number = std::variant<double, ErrorType>;

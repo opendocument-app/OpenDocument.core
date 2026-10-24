@@ -80,6 +80,15 @@ SheetCellSource::SheetCellSource(const abstract::Document &document)
   for (formula::Name &name : document.formula_names()) {
     m_names[util::string::to_lower(name.name)].push_back(std::move(name));
   }
+  m_external = document.formula_external_sheets();
+  for (formula::ExternalSheet &copy : m_external) {
+    auto &cells = m_external_cells.emplace_back();
+    for (auto &[position, value] : copy.cells) {
+      cells.emplace(std::uint64_t{position.row} << 32 | position.column,
+                    std::move(value));
+    }
+    copy.cells.clear();
+  }
   if (m_adapter == nullptr) {
     return;
   }
@@ -106,8 +115,35 @@ SheetCellSource::sheet(const std::string_view name) const {
   return found->second;
 }
 
+std::optional<std::uint32_t>
+SheetCellSource::external_sheet(const std::string_view document,
+                                const std::string_view sheet) const {
+  if (const auto found = m_by_name.find(util::string::to_lower(
+          "'" + std::string(document) + "'#" + std::string(sheet)));
+      found != m_by_name.end()) {
+    return found->second;
+  }
+  for (std::size_t i = 0; i < m_external.size(); ++i) {
+    if (m_external[i].document == document &&
+        util::string::equals_ignore_case(m_external[i].sheet, sheet)) {
+      return static_cast<std::uint32_t>(m_sheets.size() + i);
+    }
+  }
+  return std::nullopt;
+}
+
 std::optional<formula::Value>
 SheetCellSource::cell(const SheetPosition &position) const {
+  if (position.sheet >= m_sheets.size()) {
+    const std::size_t copy = position.sheet - m_sheets.size();
+    if (copy >= m_external_cells.size()) {
+      return std::nullopt;
+    }
+    const auto found = m_external_cells[copy].find(
+        std::uint64_t{position.cell.row} << 32 | position.cell.column);
+    return found != m_external_cells[copy].end() ? found->second
+                                                 : formula::Value{};
+  }
   if (const auto known = m_cells.find(position); known != m_cells.end()) {
     return known->second;
   }
@@ -124,7 +160,17 @@ SheetCellSource::cell(const SheetPosition &position) const {
 
 TableDimensions SheetCellSource::extent(const std::uint32_t sheet) const {
   if (sheet >= m_sheets.size()) {
-    return {};
+    TableDimensions extent;
+    if (sheet - m_sheets.size() < m_external_cells.size()) {
+      for (const auto &[key, value] :
+           m_external_cells[sheet - m_sheets.size()]) {
+        extent.rows =
+            std::max(extent.rows, static_cast<std::uint32_t>(key >> 32) + 1);
+        extent.columns = std::max(
+            extent.columns, static_cast<std::uint32_t>(key & 0xFFFFFFFF) + 1);
+      }
+    }
+    return extent;
   }
   if (const auto known = m_extents.find(sheet); known != m_extents.end()) {
     return known->second;
@@ -193,6 +239,8 @@ void SheetCellSource::for_each_cell(
                              const std::optional<formula::Value> &)> &visit)
     const {
   if (area.sheet >= m_sheets.size()) {
+    // the copy of another document's sheet
+    CellSource::for_each_cell(area, visit);
     return;
   }
   const std::optional<std::vector<RowBand>> &sheet_bands = bands(area.sheet);
