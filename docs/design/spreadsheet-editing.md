@@ -136,10 +136,9 @@ on its formula, spelled the same way. A function name may be typed as
 LibreOffice shows it in the language of the document, `SUMME` for `SUM` in a
 German one, and a formula cell opens with those names
 (`formula::localized_functions`, from LibreOffice's translations by
-`tools/formula`). The match ignores the case of ASCII letters only. A
-formula that does not parse refuses
-with `formulaInvalid`. Without the module, a formula refuses with
-`formulaInput`.
+`tools/formula`). The match ignores the case of ASCII letters only. A formula
+that does not parse refuses with `formulaInvalid`. Without the module, a
+formula refuses with `formulaInput`.
 
 **Why:** the file states the type per cell (`office:value-type`, `c/@t`) and
 changes it freely, so a cell has no fixed type. A number cell writes

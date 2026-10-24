@@ -70,8 +70,12 @@ std::string replaced(const std::string_view formula, const Replace &replace) {
 
 } // namespace
 
-std::string localized_functions(const std::string_view formula,
-                                const std::string_view locale) {
+} // namespace odr::internal::formula
+
+namespace odr::internal {
+
+std::string formula::localized_functions(const std::string_view formula,
+                                         const std::string_view locale) {
   const std::string language = language_of(locale);
   return replaced(
       formula,
@@ -86,8 +90,8 @@ std::string localized_functions(const std::string_view formula,
       });
 }
 
-std::string english_functions(const std::string_view formula,
-                              const std::string_view locale) {
+std::string formula::english_functions(const std::string_view formula,
+                                       const std::string_view locale) {
   const std::string language = language_of(locale);
   return replaced(
       formula,
@@ -102,4 +106,4 @@ std::string english_functions(const std::string_view formula,
       });
 }
 
-} // namespace odr::internal::formula
+} // namespace odr::internal
