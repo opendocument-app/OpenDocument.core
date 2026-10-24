@@ -150,7 +150,7 @@ describe('render', () => {
     const carries = (bytes, editable) => {
       const doc = odr.open(bytes, { editable });
       try {
-        // the module's own definition: the editor names the factory too
+        // the module's definition, not a script that names the factory
         return doc.render(0).html.includes('var createOdrFormula = ');
       } finally {
         doc.close();
