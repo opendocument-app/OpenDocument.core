@@ -731,7 +731,6 @@
       syntax: syntax,
       settings: settings,
       locale: document.body.getAttribute("data-odr-locale") || "",
-      shownBooleanWords: shownBooleanWords(),
       booleanWords: null,
       name: (table.getAttribute("data-odr-sheet-name") || "").toLowerCase(),
       module: null,
@@ -748,10 +747,12 @@
       formulas.loading = window.createOdrFormula().then(
         function (module) {
           formulas.module = module;
+          // nothing is computed yet, so the cells show what the file wrote
+          var shown = shownBooleanWords();
           formulas.booleanWords = module.booleanWords(
             formulas.locale,
-            formulas.shownBooleanWords[0],
-            formulas.shownBooleanWords[1]
+            shown[0],
+            shown[1]
           );
           repaintStale();
           return true;

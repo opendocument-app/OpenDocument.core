@@ -97,7 +97,7 @@ struct BooleanEntry final {
   std::string_view false_word;
 };
 
-/// English first.
+/// English first, which a document of another language falls back to.
 constexpr std::array<BooleanEntry, 16> boolean_entries{{
     {"en", "TRUE", "FALSE"},
     {"cs", "PRAVDA", "NEPRAVDA"},
