@@ -306,6 +306,17 @@ Value date_difference(const Call &call) {
   throw NoAnswer{};
 }
 
+/// `NOW` and `TODAY`: the moment the caller states, without the time for
+/// `TODAY`.
+template <bool with_time> Value now(const Call &call) {
+  expect_arguments(call, 0, 0);
+  const std::optional<double> days = call.settings().now;
+  if (!days.has_value()) {
+    throw NoAnswer{};
+  }
+  return Value{call.settings().serial(with_time ? *days : std::floor(*days))};
+}
+
 constexpr std::array entries{
     FunctionEntry{"DATE", date},
     FunctionEntry{"DATEDIF", date_difference},
@@ -316,8 +327,10 @@ constexpr std::array entries{
     FunctionEntry{"HOUR", time_part<3600, 24>},
     FunctionEntry{"MINUTE", time_part<60, 60>},
     FunctionEntry{"MONTH", date_part<Part::month>},
+    FunctionEntry{"NOW", now<true>},
     FunctionEntry{"SECOND", time_part<1, 60>},
     FunctionEntry{"TIME", time},
+    FunctionEntry{"TODAY", now<false>},
     FunctionEntry{"WEEKDAY", weekday},
     FunctionEntry{"YEAR", date_part<Part::year>},
 };

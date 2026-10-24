@@ -931,8 +931,9 @@
   /// another. Each level nests an evaluation in the wasm stack.
   var NESTING = 16;
 
-  /// The @p marked entries, each after the marked ones it reads,
-  /// so no evaluation nests in another. A cycle is left out.
+  /// The @p marked entries, each after the marked ones it reads, so no
+  /// evaluation nests in another. The ones this cannot order come last: a
+  /// cycle, and a read of all of the sheet that looks like one.
   function inOrder(marked) {
     var byPosition = new Map();
     marked.forEach(function (entry, i) {
@@ -989,6 +990,11 @@
         }
       });
     }
+    marked.forEach(function (entry, i) {
+      if (waits[i] > 0) {
+        result.push(entry);
+      }
+    });
     return result;
   }
 
@@ -1000,8 +1006,17 @@
       byCell.set(entry.cell, entry);
     });
     var results = new Map();
+    var computing = new Set();
     var depth = 0;
     var extent = null;
+
+    // `NOW` reads the moment of the edit, in days since 1899-12-30 local time
+    var moment = new Date();
+    var settings = Object.assign({}, formulas.settings, {
+      now:
+        (moment.getTime() - moment.getTimezoneOffset() * 60000) / 86400000 +
+        25569,
+    });
 
     function evaluate(formula, column, row) {
       if (formula === null) {
@@ -1013,7 +1028,7 @@
         sheet,
         column,
         row,
-        formulas.settings,
+        settings,
         source
       );
     }
@@ -1054,8 +1069,7 @@
         }
         var entry = byCell.get(cell);
         if (entry !== undefined && entry.marked) {
-          var result = results.get(cell);
-          return result === undefined ? null : result;
+          return results.has(cell) ? results.get(cell) : computeEntry(entry);
         }
         var shown = shownValue(cell, column, row);
         if (cell.hasAttribute("data-odr-formula") && shown.type === "empty") {
@@ -1094,15 +1108,28 @@
       },
     };
 
+    // a cell has no result while it computes, so a cycle has no answer
+    function computeEntry(entry) {
+      if (computing.has(entry.cell) || depth >= NESTING) {
+        return null;
+      }
+      computing.add(entry.cell);
+      ++depth;
+      var result = evaluate(entry.formula, entry.at.column, entry.at.row);
+      --depth;
+      computing.delete(entry.cell);
+      results.set(entry.cell, result);
+      return result;
+    }
+
     inOrder(
       entries.filter(function (entry) {
         return entry.marked;
       })
     ).forEach(function (entry) {
-      results.set(
-        entry.cell,
-        evaluate(entry.formula, entry.at.column, entry.at.row)
-      );
+      if (!results.has(entry.cell)) {
+        computeEntry(entry);
+      }
     });
     return results;
   }

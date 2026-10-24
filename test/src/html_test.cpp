@@ -1658,14 +1658,13 @@ TEST(html, a_formula_reading_another_sheet_states_its_ordinal) {
 
 // A formula naming no position states no rectangle, not an empty one.
 TEST(html, a_formula_reading_nothing_states_no_rectangle) {
-  const std::string page =
-      render_sheet(fods_file(fods_row(
-                       R"xml(<table:table-cell table:formula="of:=TODAY()")xml"
-                       R"( office:value-type="float" office:value="7">)"
-                       R"(<text:p>7</text:p></table:table-cell>)")),
-                   editing_config());
+  const std::string page = render_sheet(
+      fods_file(fods_row(R"xml(<table:table-cell table:formula="of:=PI()")xml"
+                         R"( office:value-type="float" office:value="7">)"
+                         R"(<text:p>7</text:p></table:table-cell>)")),
+      editing_config());
 
-  const std::string expected = R"xml(data-odr-formula="of:=TODAY()")xml";
+  const std::string expected = R"xml(data-odr-formula="of:=PI()")xml";
   EXPECT_NE(page.find(expected), std::string::npos);
   EXPECT_EQ(page.find(R"(data-odr-reads=")"), std::string::npos);
 }
@@ -1673,7 +1672,8 @@ TEST(html, a_formula_reading_nothing_states_no_rectangle) {
 TEST(html, unresolved_formula_reads_cover_every_edited_position) {
   for (const std::string expression :
        {"of:=INDIRECT(&quot;B1&quot;)", "of:=OFFSET([.A1];0;1)",
-        "of:=SUM($$Sales)", "of:=[.A1]+", "of:=SUM([Missing.A1])"}) {
+        "of:=SUM($$Sales)", "of:=[.A1]+", "of:=SUM([Missing.A1])",
+        "of:=TODAY()", "of:=RAND()*[.A1]"}) {
     const std::string page = render_sheet(
         fods_file(fods_row(R"(<table:table-cell table:formula=")" + expression +
                            R"(" office:value-type="float" office:value="7">)"

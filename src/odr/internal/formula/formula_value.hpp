@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <span>
 #include <string>
@@ -42,6 +43,12 @@ struct Settings final {
   /// LibreOffice that computed the file decides: 27.2 spells it `TRUE`.
   /// Nothing where the file does not say which LibreOffice that was.
   std::optional<bool> boolean_word{};
+  /// The moment `NOW` gives, as days since 1899-12-30 in local time. Nothing
+  /// where the caller states none: then `NOW` and `TODAY` have no answer.
+  std::optional<double> now{};
+  /// A number in [0, 1) for each call of `RAND`. None where the caller states
+  /// none: then `RAND` and `RANDBETWEEN` have no answer.
+  std::function<double()> random{};
 
   /// The serial a formula computes with for @p days since 1899-12-30.
   [[nodiscard]] double serial(double days) const;

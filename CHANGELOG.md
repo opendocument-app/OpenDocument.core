@@ -33,6 +33,11 @@ The release run heads these entries with the version and opens a fresh
 
 ### Spreadsheets
 
+- The formula evaluator computes `NOW`, `TODAY`, `RAND`, `RANDBETWEEN` and
+  `CELL`. A recalculation, a save and the sheet page compute them with the
+  local clock and random numbers, the page on every edit of the sheet.
+  `CELL` answers `address`, `col`, `row`, `contents` and `type`, where
+  LibreOffice and Excel agree.
 - The formula evaluator computes `OFFSET` and `INDIRECT`, in a
   recalculation, a save and the sheet page. `INDIRECT` reads A1, R1C1 where
   its second argument is false, and a name; in an ods also LibreOffice's

@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <random>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -77,7 +78,16 @@ formula::Settings settings_of(const val &object) {
   if (const val word = object["booleanWord"]; !is_absent(word)) {
     result.boolean_word = word.as<bool>();
   }
+  if (const val now = object["now"]; !is_absent(now)) {
+    result.now = now.as<double>();
+  }
   return result;
+}
+
+/// `RAND` in the page: the numbers of a generator seeded once.
+double page_random() {
+  static std::mt19937_64 generator{std::random_device{}()};
+  return std::uniform_real_distribution<double>(0, 1)(generator);
 }
 
 /// `{type, number | text | boolean}` as a cell holds it, nothing for no answer.
@@ -192,8 +202,10 @@ val evaluate(const std::string &expression, const std::string &syntax,
     return val::null();
   }
   const JsCellSource cells(source, *parsed_syntax);
+  formula::Settings computing = settings_of(settings);
+  computing.random = page_random;
   const std::optional<formula::Value> result = formula::evaluate(
-      *node, SheetPosition(sheet, column, row), cells, settings_of(settings));
+      *node, SheetPosition(sheet, column, row), cells, computing);
   return result.has_value() ? to_js(*result) : val::null();
 }
 

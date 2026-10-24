@@ -258,3 +258,60 @@ TEST(FormulaEvaluator, nonfinite_function_arguments_have_no_answer) {
     EXPECT_EQ(xlsx(R"(=LEFT("abc",A1))", source), std::nullopt);
   }
 }
+
+TEST(FormulaEvaluator, now_and_today_read_the_clock_of_the_caller) {
+  // 2024-03-01 18:00, local time
+  const Settings clocked{.now = 45352.75};
+  EXPECT_EQ(evaluated("=NOW()", Syntax::ooxml, clocked), number(45352.75));
+  EXPECT_EQ(evaluated("=TODAY()", Syntax::ooxml, clocked), number(45352));
+  // a 1904 workbook counts 1462 days fewer
+  const Settings from_1904{.epoch = number_format::Epoch::from_1904,
+                           .now = 45352.75};
+  EXPECT_EQ(evaluated("=TODAY()", Syntax::ooxml, from_1904), number(43890));
+  EXPECT_EQ(xlsx("=NOW()"), std::nullopt);
+}
+
+TEST(FormulaEvaluator, rand_reads_the_numbers_of_the_caller) {
+  const Settings random{.random = [] { return 0.25; }};
+  EXPECT_EQ(evaluated("=RAND()", Syntax::ooxml, random), number(0.25));
+  EXPECT_EQ(evaluated("=RANDBETWEEN(1,10)", Syntax::ooxml, random), number(3));
+  EXPECT_EQ(evaluated("=RANDBETWEEN(-2,-2)", Syntax::ooxml, random),
+            number(-2));
+  // LibreOffice refuses a bottom above the top, and neither documents a
+  // bound that is no whole number
+  EXPECT_EQ(evaluated("=RANDBETWEEN(5,1)", Syntax::ooxml, random),
+            std::nullopt);
+  EXPECT_EQ(evaluated("=RANDBETWEEN(1.5,3)", Syntax::ooxml, random),
+            std::nullopt);
+  EXPECT_EQ(xlsx("=RAND()"), std::nullopt);
+}
+
+// The `ods` results are the ones LibreOffice computed for the same cells.
+TEST(FormulaEvaluator, cell_states_what_a_cell_is) {
+  Cells source = cells();
+  source.values[SheetPosition(0, 1, 1)] = Value{5.0};
+  EXPECT_EQ(ods(R"(=CELL("address";[.B2]))", source), text("$B$2"));
+  EXPECT_EQ(ods(R"(=CELL("ADDRESS";[.B2:.C3]))", source), text("$B$2"));
+  EXPECT_EQ(xlsx(R"(=CELL("address",B2))", source), text("$B$2"));
+  EXPECT_EQ(ods(R"(=CELL("row";[.B2]))", source), number(2));
+  EXPECT_EQ(ods(R"(=CELL("col";[.B2]))", source), number(2));
+  EXPECT_EQ(ods(R"(=CELL("contents";[.B2]))", source), number(5));
+  EXPECT_EQ(ods(R"(=CELL("contents";[.C9]))", source), number(0));
+  EXPECT_EQ(ods(R"(=CELL("type";[.B2]))", source), text("v"));
+  EXPECT_EQ(ods(R"(=CELL("type";[.C9]))", source), text("b"));
+  // the formula's own cell, F30
+  EXPECT_EQ(ods(R"(=CELL("row"))", source), number(30));
+}
+
+TEST(FormulaEvaluator, cell_has_no_answer_where_the_applications_differ) {
+  Cells source = cells();
+  // the name of the sheet, and in Excel of the file
+  EXPECT_EQ(ods(R"(=CELL("address";[$t.A1]))", source), std::nullopt);
+  // Excel reads the cell that changed last
+  EXPECT_EQ(xlsx(R"(=CELL("row"))", source), std::nullopt);
+  EXPECT_EQ(xlsx(R"(=CELL("contents",C9))", source), std::nullopt);
+  // a text, which is `v` where a formula gives it in Excel
+  EXPECT_EQ(ods(R"(=CELL("type";[.A2]))", source), std::nullopt);
+  EXPECT_EQ(ods(R"(=CELL("nonsense";[.A2]))", source), std::nullopt);
+  EXPECT_EQ(xlsx(R"(=CELL("nonsense",A2))", source), error(ErrorType::value));
+}
