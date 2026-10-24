@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 
-import { Odr, OdrError, fixture, minimalOdt } from './helper.mjs';
+import { Odr, OdrError, fixture, minimalOds, minimalOdt } from './helper.mjs';
 
 describe('render', () => {
   let odr;
@@ -132,5 +132,32 @@ describe('render', () => {
       plain.close();
       editable.close();
     }
+  });
+
+  it('carries the formula module where an editable sheet computes', () => {
+    const withFormula = new TextEncoder().encode(
+      '<?xml version="1.0" encoding="UTF-8"?>' +
+        '<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"' +
+        ' xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0"' +
+        ' xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"' +
+        ' office:version="1.3" office:mimetype="application/vnd.oasis.opendocument.spreadsheet">' +
+        '<office:body><office:spreadsheet><table:table table:name="s"><table:table-row>' +
+        '<table:table-cell office:value-type="float" office:value="1"><text:p>1</text:p></table:table-cell>' +
+        '<table:table-cell table:formula="of:=[.A1]*2" office:value-type="float" office:value="2">' +
+        '<text:p>2</text:p></table:table-cell>' +
+        '</table:table-row></table:table></office:spreadsheet></office:body></office:document>',
+    );
+    const carries = (bytes, editable) => {
+      const doc = odr.open(bytes, { editable });
+      try {
+        // the module's definition, not a script that names the factory
+        return doc.render(0).html.includes('var createOdrFormula = ');
+      } finally {
+        doc.close();
+      }
+    };
+    assert.equal(carries(withFormula, true), true);
+    assert.equal(carries(withFormula, false), false);
+    assert.equal(carries(minimalOds(), true), false);
   });
 });

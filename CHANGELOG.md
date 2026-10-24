@@ -27,6 +27,9 @@ The release run heads these entries with the version and opens a fresh
 - `font-family` ends with a generic family, so a font that is not installed
   falls back to one of the same kind: a sans-serif font for Calibri, not the
   browser's serif default. A bare font name is quoted.
+- An editable sheet page with a formula cell carries the formula module, where
+  the build has one: the npm package does, and another build names it with
+  `ODR_FORMULA_MODULE`. The page is about 530 KB larger.
 
 ### Spreadsheets
 

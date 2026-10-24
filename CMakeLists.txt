@@ -20,6 +20,8 @@ option(ODR_PYTHON "Build Python bindings" OFF)
 option(ODR_JNI "Build JNI bindings" OFF)
 option(ODR_APPLE "Build Objective-C bindings as a framework" OFF)
 option(ODR_WASM "Build WebAssembly bindings" OFF)
+set(ODR_FORMULA_MODULE "" CACHE FILEPATH
+        "The odr-formula.js an editable sheet page computes its formulas with")
 
 if (ODR_CLANG_TIDY)
     find_program(CLANG_TIDY_COMMAND NAMES clang-tidy)
@@ -136,20 +138,40 @@ set(ODR_FRONTEND_ASSET_PATHS "")
 foreach (ODR_FRONTEND_ASSET IN LISTS ODR_FRONTEND_ASSETS)
     list(APPEND ODR_FRONTEND_ASSET_PATHS "${ODR_FRONTEND_ASSET_DIRECTORY}/${ODR_FRONTEND_ASSET}")
 endforeach ()
+# The formula module needs emscripten, so only the wasm build makes it. Another
+# build takes the file the release of its version carries, or goes without:
+# its pages then mark a formula stale rather than compute it.
+set(ODR_FORMULA_MODULE_PATH "${ODR_FORMULA_MODULE}")
+set(ODR_FORMULA_MODULE_DEPENDS "")
+if (ODR_FORMULA_MODULE_PATH STREQUAL "" AND ODR_WASM)
+    set(ODR_FORMULA_MODULE_PATH "${CMAKE_CURRENT_BINARY_DIR}/wasm/formula/odr-formula.js")
+    set(ODR_FORMULA_MODULE_DEPENDS odr_formula_wasm)
+endif ()
+if (NOT ODR_FORMULA_MODULE_PATH STREQUAL "")
+    list(APPEND ODR_FORMULA_MODULE_DEPENDS "${ODR_FORMULA_MODULE_PATH}")
+endif ()
 # A `;` in a `-D` argument would split it into several, so the list travels
 # joined.
 string(JOIN "|" ODR_FRONTEND_ASSETS_ARGUMENT ${ODR_FRONTEND_ASSETS})
-add_custom_command(
-        OUTPUT "${ODR_FRONTEND_ASSETS_HEADER}"
-        COMMAND "${CMAKE_COMMAND}"
-        "-DASSET_DIR=${ODR_FRONTEND_ASSET_DIRECTORY}"
-        "-DASSETS=${ODR_FRONTEND_ASSETS_ARGUMENT}"
-        "-DOUTPUT=${ODR_FRONTEND_ASSETS_HEADER}"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/frontend_assets.cmake"
-        DEPENDS ${ODR_FRONTEND_ASSET_PATHS} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/frontend_assets.cmake"
-        COMMENT "Embedding the html frontend assets"
-        VERBATIM
-)
+# Writes @p header with @p formula_module, which may be empty. The rest of the
+# arguments are what the header depends on beside the assets.
+function(odr_frontend_assets_header header formula_module)
+    add_custom_command(
+            OUTPUT "${header}"
+            COMMAND "${CMAKE_COMMAND}"
+            "-DASSET_DIR=${ODR_FRONTEND_ASSET_DIRECTORY}"
+            "-DASSETS=${ODR_FRONTEND_ASSETS_ARGUMENT}"
+            "-DOUTPUT=${header}"
+            "-DFORMULA_MODULE=${formula_module}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/frontend_assets.cmake"
+            DEPENDS ${ODR_FRONTEND_ASSET_PATHS} ${ARGN}
+            "${CMAKE_CURRENT_SOURCE_DIR}/cmake/frontend_assets.cmake"
+            COMMENT "Embedding the html frontend assets"
+            VERBATIM
+    )
+endfunction()
+odr_frontend_assets_header("${ODR_FRONTEND_ASSETS_HEADER}"
+        "${ODR_FORMULA_MODULE_PATH}" ${ODR_FORMULA_MODULE_DEPENDS})
 
 set(ODR_SOURCE_FILES
         "src/odr/archive.cpp"
@@ -393,13 +415,13 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/zip/zip_util.cpp"
 )
 
-function(odr_configure_library target)
+function(odr_configure_library target generated)
     target_include_directories(${target}
             PUBLIC
             src
             ${CMAKE_CURRENT_BINARY_DIR}/src
             PRIVATE
-            "${CMAKE_CURRENT_BINARY_DIR}/generated"
+            "${generated}"
     )
     target_link_libraries(${target}
             PRIVATE
@@ -421,14 +443,19 @@ endfunction()
 
 add_library(odr ${ODR_SOURCE_FILES} "${ODR_FRONTEND_ASSETS_HEADER}")
 set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
-odr_configure_library(odr)
+odr_configure_library(odr "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
 # The library again at `-Oz`, for `wasm/formula`. The linker keeps only what
 # the formula module calls. `-Oz` is 30% smaller than `-O2` and about 20%
 # slower, which an edit does not notice (`docs/design/spreadsheet-editing.md`).
+# It embeds no formula module, because the module links it.
 if (ODR_WASM)
-    add_library(odr_oz STATIC ${ODR_SOURCE_FILES} "${ODR_FRONTEND_ASSETS_HEADER}")
-    odr_configure_library(odr_oz)
+    set(ODR_OZ_GENERATED "${CMAKE_CURRENT_BINARY_DIR}/generated-oz")
+    set(ODR_OZ_FRONTEND_ASSETS_HEADER
+            "${ODR_OZ_GENERATED}/odr/internal/html/frontend_assets.hpp")
+    odr_frontend_assets_header("${ODR_OZ_FRONTEND_ASSETS_HEADER}" "")
+    add_library(odr_oz STATIC ${ODR_SOURCE_FILES} "${ODR_OZ_FRONTEND_ASSETS_HEADER}")
+    odr_configure_library(odr_oz "${ODR_OZ_GENERATED}")
     target_compile_options(odr_oz PRIVATE -Oz -flto)
 endif ()
 

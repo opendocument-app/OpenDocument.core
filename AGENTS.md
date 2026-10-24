@@ -121,6 +121,9 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file to HTML
 - CMake options: `ODR_TEST`, `ODR_TEST_FETCH_DATA`, `ODR_CLI`,
   `ODR_WITH_HTTP_SERVER`, `ODR_CLANG_TIDY`, `ODR_PYTHON`, `ODR_JNI`,
   `ODR_APPLE`, `ODR_WASM`. Add a new `.cpp` to `ODR_SOURCE_FILES`.
+- `ODR_FORMULA_MODULE` names an `odr-formula.js` (`wasm/formula`) to embed,
+  so an editable sheet computes its formulas in the page. The wasm build
+  embeds the one it builds. Without one, the page marks a formula stale.
 - Test data is fetched, not vendored. `-DODR_TEST_FETCH_DATA=ON` makes
   `cmake/test_data.cmake` clone the repositories pinned in `test/data.cmake`
   into `test/data/`. It is off by default because the data is several

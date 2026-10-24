@@ -109,6 +109,11 @@ constexpr Asset spreadsheet_js_asset{HtmlResourceType::js, "text/javascript",
 constexpr Asset sheet_editing_js_asset{HtmlResourceType::js, "text/javascript",
                                        "sheet-editing.js",
                                        frontend_assets::sheet_editing_js};
+/// One script with the wasm inside, about 530 KB, so a sheet carries it only
+/// where it edits and computes.
+constexpr Asset formula_js_asset{HtmlResourceType::js, "text/javascript",
+                                 "odr-formula.js",
+                                 frontend_assets::odr_formula_js};
 /// Every input is applied to the line `<div>`s by hand, so the line numbers
 /// stay in step and undo/redo replay changes instead of the browser's history.
 constexpr Asset text_js_asset{HtmlResourceType::js, "text/javascript",
@@ -335,6 +340,12 @@ void html::write_sheet_editing_script(const WritingState &state) {
   write_script(sheet_editing_js_asset, state);
 }
 
+void html::write_formula_script(const WritingState &state) {
+  if (!formula_js_asset.content.empty()) {
+    write_script(formula_js_asset, state);
+  }
+}
+
 void html::write_text_script(const WritingState &state) {
   write_script(text_js_asset, state);
 }
@@ -385,6 +396,9 @@ HtmlResources html::locate_document_resources(const HtmlConfig &config,
     }
     locate(spreadsheet_js_asset, config, resources);
     if (config.editable) {
+      if (!formula_js_asset.content.empty()) {
+        locate(formula_js_asset, config, resources);
+      }
       locate(sheet_editing_js_asset, config, resources);
     }
   }

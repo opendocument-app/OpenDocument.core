@@ -332,6 +332,9 @@ void write_body_end(const Document &document, const WritingState &state) {
   if (document.document_type() == DocumentType::spreadsheet) {
     write_spreadsheet_script(state);
     if (state.config().editable) {
+      if (state.computes_formulas()) {
+        write_formula_script(state);
+      }
       write_sheet_editing_script(state);
     }
   }
@@ -389,6 +392,8 @@ render(const Document &document, const HtmlConfig &config, const Logger &logger,
     state.set_direction(head_state.direction());
     state.set_document_editable(head_state.document_editable());
     state.set_formula_syntax(head_state.formula_syntax());
+    bool computes_formulas = false;
+    state.set_computes_formulas(&computes_formulas);
     body(state);
   }
   buffer.release();
