@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet boolean word checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body
+    class="odr-body odr-gridlines-soft"
+    data-odr-editable="true"
+    data-odr-keyboard="navigation shortcuts"
+    data-odr-locale="fr-FR"
+    data-odr-formula-syntax="opendocument"
+    data-odr-formula-settings='{"dialect":"libreoffice","nullDate":0}'
+  >
+    <!-- A French document that a German LibreOffice saved: B1 compares A1
+         and shows its result as `FALSCH`, not as `FAUX`. -->
+    <table class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="Sheet1">
+      <col class="odr-sheet-gutter" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <thead>
+        <tr>
+          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+          <th class="odr-sheet-column-header">A</th>
+          <th class="odr-sheet-column-header">B</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="odr-sheet-row-header">1</th>
+          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">1</td>
+          <td class="odr-value-type-boolean odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.A1]&gt;5" data-odr-reads="0,0,0,0,0" data-odr-type="boolean" data-odr-value="0" style="max-width:0;white-space:nowrap">FALSCH</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="report"></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <!-- `serve.py` serves the module `ODR_FORMULA_WASM` names -->
+    <script src="odr-formula.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      function write(column, row, typed) {
+        odr.editing.editAt(column, row);
+        var editor = document.querySelector(".odr-sheet-editor");
+        editor.value = typed;
+        editor.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      }
+      function text(column, row) {
+        return odr.sheet.cellAt(column, row).textContent;
+      }
+
+      odr.editing.enable();
+      odr.editing.loadFormulas().then(function (computes) {
+        check("the page computes", computes === true);
+
+        write(0, 0, "6");
+        check("a true result takes the pair of the word the page shows", text(1, 0) === "WAHR");
+        check(
+          "and is a boolean",
+          odr.sheet.cellAt(1, 0).getAttribute("data-odr-type") === "boolean" &&
+            odr.sheet.cellAt(1, 0).getAttribute("data-odr-value") === "1"
+        );
+
+        write(0, 0, "2");
+        check("a false result takes the word the page shows", text(1, 0) === "FALSCH");
+      });
+    </script>
+  </body>
+</html>

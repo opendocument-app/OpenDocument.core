@@ -90,6 +90,33 @@ const CalendarNames *names_of(const std::string_view language) {
   return found != std::end(calendar_names) ? &*found : nullptr;
 }
 
+/// What LibreOffice and Excel call true and false in a language.
+struct BooleanEntry final {
+  std::string_view language;
+  std::string_view true_word;
+  std::string_view false_word;
+};
+
+/// English first.
+constexpr std::array<BooleanEntry, 16> boolean_entries{{
+    {"en", "TRUE", "FALSE"},
+    {"cs", "PRAVDA", "NEPRAVDA"},
+    {"da", "SAND", "FALSK"},
+    {"de", "WAHR", "FALSCH"},
+    {"es", "VERDADERO", "FALSO"},
+    {"fi", "TOSI", "EPÄTOSI"},
+    {"fr", "VRAI", "FAUX"},
+    {"hu", "IGAZ", "HAMIS"},
+    {"it", "VERO", "FALSO"},
+    {"nb", "SANN", "USANN"},
+    {"nl", "WAAR", "ONWAAR"},
+    {"pl", "PRAWDA", "FAŁSZ"},
+    {"pt", "VERDADEIRO", "FALSO"},
+    {"ru", "ИСТИНА", "ЛОЖЬ"},
+    {"sv", "SANT", "FALSKT"},
+    {"tr", "DOĞRU", "YANLIŞ"},
+}};
+
 /// The language of the Windows locale id @p lcid (MS-LCID), where the table
 /// of names has it; empty otherwise.
 std::string_view language_of(const std::uint32_t lcid) {
@@ -1175,6 +1202,36 @@ number_format::symbols_of(const std::string_view locale) {
   }
   result.names = names_of(language);
   return result;
+}
+
+number_format::BooleanWords
+number_format::boolean_words(const std::string_view locale,
+                             const std::string_view shown_true,
+                             const std::string_view shown_false) {
+  const auto pairs_shown = [&](const BooleanEntry &entry) {
+    return (!shown_true.empty() &&
+            util::string::equals_ignore_case(entry.true_word, shown_true)) ||
+           (!shown_false.empty() &&
+            util::string::equals_ignore_case(entry.false_word, shown_false));
+  };
+  const std::string_view language = locale.substr(0, locale.find('-'));
+  // `no` is Norwegian, which is written as Bokmål
+  const std::string_view key = language == "no" ? "nb" : language;
+  const BooleanEntry *entry = &boolean_entries.front();
+  // `FALSO` is Spanish, Italian and Portuguese, so it names no pair
+  if (std::ranges::count_if(boolean_entries, pairs_shown) == 1) {
+    entry = &*std::ranges::find_if(boolean_entries, pairs_shown);
+  } else if (const auto found = std::ranges::find(boolean_entries, key,
+                                                  &BooleanEntry::language);
+             found != std::end(boolean_entries)) {
+    entry = &*found;
+  }
+  return {
+      .true_word =
+          std::string(shown_true.empty() ? entry->true_word : shown_true),
+      .false_word =
+          std::string(shown_false.empty() ? entry->false_word : shown_false),
+  };
 }
 
 } // namespace odr::internal

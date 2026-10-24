@@ -295,6 +295,19 @@ val reads(const std::string &expression, const std::string &syntax,
       }));
 }
 
+/// `[true, false]`: the words a boolean result shows as in a document of
+/// @p locale, whose cells show @p shown_true and @p shown_false, empty where
+/// none does.
+val boolean_words(const std::string &locale, const std::string &shown_true,
+                  const std::string &shown_false) {
+  const number_format::BooleanWords words =
+      number_format::boolean_words(locale, shown_true, shown_false);
+  val result = val::array();
+  result.call<void>("push", words.true_word);
+  result.call<void>("push", words.false_word);
+  return result;
+}
+
 } // namespace
 
 EMSCRIPTEN_BINDINGS(odr_formula) {
@@ -306,4 +319,5 @@ EMSCRIPTEN_BINDINGS(odr_formula) {
   emscripten::function("toFile", &to_file);
   emscripten::function("toInput", &to_input);
   emscripten::function("reads", &reads);
+  emscripten::function("booleanWords", &boolean_words);
 }

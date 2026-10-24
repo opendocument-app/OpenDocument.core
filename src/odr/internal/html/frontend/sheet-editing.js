@@ -696,6 +696,21 @@
     return entries;
   }
 
+  /// What the boolean cells of the page show, true first, empty where none
+  /// does: the file spelled them in the language of whoever saved it.
+  function shownBooleanWords() {
+    var shown = ["", ""];
+    table
+      .querySelectorAll('td[data-odr-type="boolean"]')
+      .forEach(function (cell) {
+        var i = cell.getAttribute("data-odr-value") === "1" ? 0 : 1;
+        if (shown[i] === "") {
+          shown[i] = cell.textContent.trim();
+        }
+      });
+    return shown;
+  }
+
   /// The evaluator of `wasm/formula`, where the page carries one: `<body>`
   /// states the syntax and the settings it computes with. `module` is null
   /// until it has loaded.
@@ -716,6 +731,8 @@
       syntax: syntax,
       settings: settings,
       locale: document.body.getAttribute("data-odr-locale") || "",
+      shownBooleanWords: shownBooleanWords(),
+      booleanWords: null,
       name: (table.getAttribute("data-odr-sheet-name") || "").toLowerCase(),
       module: null,
       loading: null,
@@ -731,6 +748,11 @@
       formulas.loading = window.createOdrFormula().then(
         function (module) {
           formulas.module = module;
+          formulas.booleanWords = module.booleanWords(
+            formulas.locale,
+            formulas.shownBooleanWords[0],
+            formulas.shownBooleanWords[1]
+          );
           repaintStale();
           return true;
         },
@@ -821,7 +843,7 @@
       return {
         type: "boolean",
         number: result.boolean ? 1 : 0,
-        text: result.boolean ? "TRUE" : "FALSE",
+        text: formulas.booleanWords[result.boolean ? 0 : 1],
       };
     }
     if (result.type === "empty") {
