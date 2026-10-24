@@ -95,8 +95,8 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
   the op states the syntax of the file, and the result shows at once. A new
   formula in an empty cell, one that does not parse, a value over a formula,
   and the undos of all of them. A formula that reads no cell, an array
-  constant, a function name with a dot, and a formula that takes the format
-  of its cell.
+  constant, a function name with a dot, a formula that takes the format of
+  its cell, and a name of the document, which a row edit moves.
 - `formula-words.html`: a computed boolean takes the words the page shows
   its booleans in, and the pair of the one word it shows: `WAHR` for a page
   that shows `FALSCH`, also in a French document.

@@ -192,4 +192,22 @@ formula::error_of_text(const std::string_view text) {
   return std::nullopt;
 }
 
+const formula::Name *formula::find_name(const std::span<const Name> names,
+                                        const std::string_view name,
+                                        const std::uint32_t sheet) {
+  const Name *global = nullptr;
+  for (const Name &candidate : names) {
+    if (!util::string::equals_ignore_case(candidate.name, name)) {
+      continue;
+    }
+    if (candidate.sheet == sheet) {
+      return &candidate;
+    }
+    if (!candidate.sheet.has_value() && global == nullptr) {
+      global = &candidate;
+    }
+  }
+  return global;
+}
+
 } // namespace odr::internal

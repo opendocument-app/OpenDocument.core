@@ -414,7 +414,8 @@ sheet_ordinals_by_name(const Sheet &sheet) {
 std::string
 cell_reads(const std::string &formula, const formula::Syntax syntax,
            const std::uint32_t own_sheet,
-           const std::unordered_map<std::string, std::uint32_t> &by_name) {
+           const std::unordered_map<std::string, std::uint32_t> &by_name,
+           const std::vector<formula::Name> *names) {
   const std::optional<formula::Node> node = formula::parse(formula, syntax);
   if (!node.has_value()) {
     return std::to_string(own_sheet) + ",0,*,0,*";
@@ -425,6 +426,13 @@ cell_reads(const std::string &formula, const formula::Syntax syntax,
         const auto named = by_name.find(util::string::to_lower(name));
         return named == by_name.end() ? std::nullopt
                                       : std::optional(named->second);
+      },
+      [&](const std::string_view name) -> std::optional<formula::Node> {
+        const formula::Name *named =
+            names != nullptr ? formula::find_name(*names, name, own_sheet)
+                             : nullptr;
+        return named != nullptr ? formula::parse(named->expression, syntax)
+                                : std::nullopt;
       });
 }
 
@@ -806,10 +814,10 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
       // what a formula bar shows, and the rectangles the page marks against
       const bool computes = cell_value.has_formula() &&
                             !cell_value.formula().empty() && syntax.has_value();
-      const std::string reads = computes
-                                    ? cell_reads(cell_value.formula(), *syntax,
-                                                 ordinal, ordinals_by_name)
-                                    : std::string();
+      const std::string reads =
+          computes ? cell_reads(cell_value.formula(), *syntax, ordinal,
+                                ordinals_by_name, state.formula_names())
+                   : std::string();
       // what a formula in the page reads the cell as, where the text is not it
       const char *read_type = !state.config().editable ? nullptr
                               : cell_value_type == ValueType::boolean

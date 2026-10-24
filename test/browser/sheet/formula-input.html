@@ -13,6 +13,7 @@
     data-odr-locale="de-DE"
     data-odr-formula-syntax="opendocument"
     data-odr-formula-settings='{"dialect":"libreoffice","nullDate":0}'
+    data-odr-formula-names='[{"name":"Basis","sheet":null,"expression":"[$Tabelle1.$A$1]"},{"name":"Fremd","sheet":1,"expression":"[$Tabelle1.$B$1]"}]'
   >
     <!-- An ods sheet of a German document, as a build with the formula module
          writes it: a formula cell carries no lock. C1 adds A1 and B1. -->
@@ -146,6 +147,18 @@
 
         type(4, 0, "=A1/4");
         check("a typed formula shows in the format of its cell", text(4, 0) === "0,25", text(4, 0));
+
+        type(3, 0, "=basis*10");
+        check("a formula reads a name of the document", text(3, 0) === "10", text(3, 0));
+        type(0, 0, "4");
+        check("and computes again where the name's cell changes", text(3, 0) === "40", text(3, 0));
+        type(3, 0, "=Fremd");
+        check("a name local to another sheet reads nothing here", text(3, 0) === "", text(3, 0));
+        type(3, 0, "=Basis*10");
+        odr.sheet.pin({ column: 0, row: 0 });
+        odr.editing.insertRows();
+        type(0, 1, "5");
+        check("a row edit moves the name too", text(3, 1) === "50", text(3, 1));
       });
     </script>
   </body>

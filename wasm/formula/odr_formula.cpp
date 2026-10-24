@@ -17,6 +17,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -272,10 +273,12 @@ val to_input(const std::string &expression, const std::string &syntax) {
              : val::null();
 }
 
-/// What @p expression reads, as `data-odr-reads` states it. A sheet other
-/// than the one named @p sheet_name reads all of @p sheet.
+/// What @p expression reads, as `data-odr-reads` states it, with each name
+/// of @p names, as `data-odr-formula-names` states them, put in. A sheet
+/// other than the one named @p sheet_name reads all of @p sheet.
 val reads(const std::string &expression, const std::string &syntax,
-          const std::uint32_t sheet, const std::string &sheet_name) {
+          const std::uint32_t sheet, const std::string &sheet_name,
+          const val &names) {
   const std::optional<formula::Syntax> file_syntax = syntax_of(syntax);
   if (!file_syntax.has_value()) {
     return val::null();
@@ -285,6 +288,19 @@ val reads(const std::string &expression, const std::string &syntax,
   if (!node.has_value()) {
     return val::null();
   }
+  std::vector<formula::Name> known;
+  const std::uint32_t count =
+      is_absent(names) ? 0 : names["length"].as<std::uint32_t>();
+  for (std::uint32_t i = 0; i < count; ++i) {
+    const val name = names[i];
+    known.push_back(formula::Name{
+        name["name"].as<std::string>(),
+        is_absent(name["sheet"])
+            ? std::nullopt
+            : std::optional<std::uint32_t>(name["sheet"].as<std::uint32_t>()),
+        is_absent(name["expression"]) ? std::string()
+                                      : name["expression"].as<std::string>()});
+  }
   const std::string own = util::string::to_lower(sheet_name);
   return val(formula::spell_reads(
       *node, sheet,
@@ -292,13 +308,21 @@ val reads(const std::string &expression, const std::string &syntax,
         return util::string::to_lower(name) == own
                    ? std::optional<std::uint32_t>(sheet)
                    : std::nullopt;
+      },
+      [&](const std::string_view name) -> std::optional<formula::Node> {
+        const formula::Name *named = formula::find_name(known, name, sheet);
+        return named != nullptr
+                   ? formula::parse(named->expression, *file_syntax)
+                   : std::nullopt;
       }));
 }
 
 /// @p expression after the row or column op @p op of the log, on the sheet
-/// named @p sheet_name. Null where it does not parse.
+/// named @p sheet_name. A reference that names no sheet is on @p own, or on
+/// none where @p own is null, as in a name of the whole document. Null where
+/// it does not parse.
 val move(const std::string &expression, const std::string &syntax,
-         const std::string &sheet_name, const val &op) {
+         const std::string &sheet_name, const val &op, const val &own) {
   const std::optional<formula::Syntax> file_syntax = syntax_of(syntax);
   if (!file_syntax.has_value()) {
     return val::null();
@@ -317,7 +341,10 @@ val move(const std::string &expression, const std::string &syntax,
       .insert = name.starts_with("insert"),
   };
   // an unmoved formula keeps the spelling of the file
-  return formula::move_references(*node, edit, sheet_name)
+  const std::optional<std::string> own_sheet =
+      is_absent(own) ? std::nullopt
+                     : std::optional<std::string>(own.as<std::string>());
+  return formula::move_references(*node, edit, own_sheet)
              ? val(spelled(*node, *file_syntax))
              : val(expression);
 }

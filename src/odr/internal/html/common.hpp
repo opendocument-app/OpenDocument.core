@@ -5,10 +5,12 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <odr/html.hpp>
 #include <odr/internal/abstract/html_service.hpp>
 #include <odr/internal/formula/formula_parser.hpp>
+#include <odr/internal/formula/formula_value.hpp>
 #include <odr/quantity.hpp>
 #include <odr/style.hpp>
 
@@ -67,6 +69,13 @@ struct WritingState {
   void set_formula_syntax(const std::optional<formula::Syntax> syntax) {
     m_formula_syntax = syntax;
   }
+  /// The names a formula of this document reads, null where none is known.
+  [[nodiscard]] const std::vector<formula::Name> *formula_names() const {
+    return m_formula_names;
+  }
+  void set_formula_names(const std::vector<formula::Name> *names) {
+    m_formula_names = names;
+  }
 
 private:
   HtmlWriter *m_out;
@@ -78,6 +87,7 @@ private:
   bool m_editable_markup{true};
   bool m_document_editable{false};
   std::optional<formula::Syntax> m_formula_syntax;
+  const std::vector<formula::Name> *m_formula_names{nullptr};
 };
 
 /// Writes viewport metadata: explicit content, then mode override, then config.

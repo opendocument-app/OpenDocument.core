@@ -37,11 +37,13 @@ struct References final {
 /// What @p node reads, as an editable sheet page states it in
 /// `data-odr-reads`: space-separated `sheet,first column,last column,first
 /// row,last row` boxes, `*` for an open end. @p sheet_of gives the ordinal of
-/// a sheet by its name, read without case. A formula that may read any cell,
-/// or that names a sheet @p sheet_of does not know, reads all of @p own_sheet.
-[[nodiscard]] std::string
-spell_reads(const Node &node, std::uint32_t own_sheet,
-            const std::function<std::optional<std::uint32_t>(std::string_view)>
-                &sheet_of);
+/// a sheet by its name, read without case, and @p name_of what a name stands
+/// for. A formula that may read any cell, or that names a sheet or a name
+/// they do not know, reads all of @p own_sheet.
+[[nodiscard]] std::string spell_reads(
+    const Node &node, std::uint32_t own_sheet,
+    const std::function<std::optional<std::uint32_t>(std::string_view)>
+        &sheet_of,
+    const std::function<std::optional<Node>(std::string_view)> &name_of);
 
 } // namespace odr::internal::formula

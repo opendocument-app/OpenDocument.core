@@ -27,6 +27,8 @@
 
 #include <algorithm>
 #include <mutex>
+#include <span>
+#include <vector>
 
 namespace odr::internal::html {
 namespace {
@@ -283,6 +285,21 @@ std::string formula_settings_json(const formula::Settings &settings) {
   return result.dump();
 }
 
+/// The names a formula in the page reads, as the evaluator's `name` callback
+/// gives them: `sheet` is null for a name of the whole document.
+std::string formula_names_json(const std::span<const formula::Name> names) {
+  nlohmann::json result = nlohmann::json::array();
+  for (const formula::Name &name : names) {
+    result.push_back({
+        {"name", name.name},
+        {"sheet", name.sheet.has_value() ? nlohmann::json(*name.sheet)
+                                         : nlohmann::json()},
+        {"expression", name.expression},
+    });
+  }
+  return result.dump();
+}
+
 void write_body_begin(const Document &document, const WritingState &state) {
   HtmlWriter &out = state.out();
 
@@ -344,6 +361,12 @@ void write_body_begin(const Document &document, const WritingState &state) {
                 clb("data-odr-formula-settings",
                     xml::escape_attribute(formula_settings_json(
                         document.impl()->formula_settings())));
+                if (const std::vector<formula::Name> *names =
+                        state.formula_names();
+                    names != nullptr && !names->empty()) {
+                  clb("data-odr-formula-names",
+                      xml::escape_attribute(formula_names_json(*names)));
+                }
               }
             }
             // not an editing fact: a read-only sheet has a pin to clear
@@ -424,6 +447,9 @@ render(const Document &document, const HtmlConfig &config, const Logger &logger,
         styles.close();
         write_head(document, head_state, name, content_pixels);
       });
+  const std::vector<formula::Name> names =
+      config.editable ? document.impl()->formula_names()
+                      : std::vector<formula::Name>();
   {
     std::ostream deferred(&buffer);
     HtmlWriter body_out(deferred, config);
@@ -431,6 +457,7 @@ render(const Document &document, const HtmlConfig &config, const Logger &logger,
     state.set_direction(head_state.direction());
     state.set_document_editable(head_state.document_editable());
     state.set_formula_syntax(head_state.formula_syntax());
+    state.set_formula_names(&names);
     body(state);
   }
   buffer.release();
