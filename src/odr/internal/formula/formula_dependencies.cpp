@@ -122,7 +122,7 @@ std::string formula::spell_reads(
     const std::function<std::optional<std::uint32_t>(std::string_view)>
         &sheet_of,
     const std::function<std::optional<Node>(std::string_view)> &name_of) {
-  const std::string unresolved = std::to_string(own_sheet) + ",0,*,0,*";
+  std::string unresolved = std::to_string(own_sheet) + ",0,*,0,*";
   Node named = node;
   put_in_names(named, name_of, 0);
   const References read = references(named);

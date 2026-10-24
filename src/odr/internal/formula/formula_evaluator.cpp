@@ -524,7 +524,7 @@ private:
   /// document that both corners name.
   [[nodiscard]] std::uint32_t external_sheet_of(const CellReference &from,
                                                 const CellReference &to) const {
-    if (!from.sheet.has_value() ||
+    if (!from.document.has_value() || !from.sheet.has_value() ||
         (to.document.has_value() && to.document != from.document) ||
         (to.sheet.has_value() &&
          !str::equals_ignore_case(*to.sheet, *from.sheet))) {
@@ -887,8 +887,11 @@ Value Call::value(const std::size_t index) const {
   if (index >= size()) {
     return Value{Empty{}};
   }
-  if (m_given != nullptr && (*m_given)[index].has_value()) {
-    return *(*m_given)[index];
+  if (m_given != nullptr) {
+    if (const std::optional<Value> &given = (*m_given)[index];
+        given.has_value()) {
+      return *given;
+    }
   }
   return m_evaluator->value(m_node->children[index]);
 }
@@ -905,8 +908,11 @@ Matrix Call::array(const std::size_t index) const {
   if (index >= size()) {
     return Matrix{1, 1, {Value{Empty{}}}};
   }
-  if (m_given != nullptr && (*m_given)[index].has_value()) {
-    return m_evaluator->array_of(*(*m_given)[index]);
+  if (m_given != nullptr) {
+    if (const std::optional<Value> &given = (*m_given)[index];
+        given.has_value()) {
+      return m_evaluator->array_of(*given);
+    }
   }
   return m_evaluator->array(m_node->children[index]);
 }
