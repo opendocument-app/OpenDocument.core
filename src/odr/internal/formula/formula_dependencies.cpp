@@ -126,7 +126,8 @@ std::string formula::spell_reads(
   Node named = node;
   put_in_names(named, name_of, 0);
   const References read = references(named);
-  if (!read.complete) {
+  // a volatile function computes on every edit, so it reads every position
+  if (!read.complete || is_volatile(named)) {
     return unresolved;
   }
 

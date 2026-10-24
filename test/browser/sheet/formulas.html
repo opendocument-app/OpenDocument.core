@@ -16,7 +16,7 @@
     <!-- An ods sheet as `translate_sheet` writes one, with what the evaluator
          in the page reads. C1 adds A1 and B1, A2 reads C1 in a format of two
          decimals, B2 compares A1, A3 divides by A1 - 1 and shows an error, B3
-         reads the clock and has no answer, C3 is a date of B1, and C2 reads
+         asks for the system and has no answer, C3 is a date of B1, and C2 reads
          itself and A1. -->
     <table class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="Sheet1">
       <col class="odr-sheet-gutter" />
@@ -47,7 +47,7 @@
         <tr>
           <th class="odr-sheet-row-header">3</th>
           <td class="odr-locked" data-odr-lock="formula" data-odr-formula="of:=1/([.A1]-1)" data-odr-reads="0,0,0,0,0" data-odr-type="error" style="max-width:0;white-space:nowrap">#DIV/0!</td>
-          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=INFO(&quot;system&quot;)&amp;[.A1]" data-odr-reads="0,0,0,0,0" style="max-width:0;white-space:nowrap">45000</td>
+          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=INFO(&quot;system&quot;)&amp;[.A1]" data-odr-reads="0,0,*,0,*" style="max-width:0;white-space:nowrap">45000</td>
           <td class="odr-value-type-date odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.B1]+45000" data-odr-reads="0,1,1,0,0" data-odr-value="45002" data-odr-format="YYYY-MM-DD" style="max-width:0;white-space:nowrap">2023-03-17</td>
         </tr>
       </tbody>

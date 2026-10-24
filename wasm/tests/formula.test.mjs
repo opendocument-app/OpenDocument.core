@@ -130,7 +130,8 @@ describe('formula module', { skip: path === '' && 'no odr-formula.js' }, () => {
     assert.equal(module.reads('s!A1', 'ooxml', 2, 'S'), '2,0,0,0,0');
     assert.equal(module.reads('Other!A1', 'ooxml', 2, 'S'), '2,0,*,0,*');
     assert.equal(module.reads('SUM(A:A)', 'ooxml', 0, 'S'), '0,0,0,0,*');
-    assert.equal(module.reads('NOW()', 'ooxml', 0, 'S'), '');
+    assert.equal(module.reads('PI()', 'ooxml', 0, 'S'), '');
+    assert.equal(module.reads('NOW()', 'ooxml', 0, 'S'), '0,0,*,0,*');
     const names = [{ name: 'Total', sheet: null, expression: 'S!$B$2:$B$3' },
       { name: 'Here', sheet: 1, expression: 'S!A1' }];
     assert.equal(module.reads('total*2', 'ooxml', 0, 'S', names), '0,1,1,1,2');

@@ -38,8 +38,8 @@ struct References final {
 /// `data-odr-reads`: space-separated `sheet,first column,last column,first
 /// row,last row` boxes, `*` for an open end. @p sheet_of gives the ordinal of
 /// a sheet by its name, read without case, and @p name_of what a name stands
-/// for. A formula that may read any cell, or that names a sheet or a name
-/// they do not know, reads all of @p own_sheet.
+/// for. A formula that may read any cell, that calls a volatile function, or
+/// that names a sheet or a name they do not know, reads all of @p own_sheet.
 [[nodiscard]] std::string spell_reads(
     const Node &node, std::uint32_t own_sheet,
     const std::function<std::optional<std::uint32_t>(std::string_view)>

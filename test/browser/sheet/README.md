@@ -97,7 +97,7 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
   and the undos of all of them. A formula that reads no cell, an array
   constant, a function name with a dot, a formula that takes the format of
   its cell, a name of the document, which a row edit moves, `OFFSET` and
-  `INDIRECT`, and `TODAY` and `RAND`.
+  `INDIRECT`, and `TODAY` and `RAND`, which every edit computes again.
 - `formula-words.html`: a computed boolean takes the words the page shows
   its booleans in, and the pair of the one word it shows: `WAHR` for a page
   that shows `FALSCH`, also in a French document.

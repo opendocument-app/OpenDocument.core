@@ -168,6 +168,12 @@
 
         type(3, 1, "=AND(YEAR(TODAY())>2020;RAND()<1)");
         check("the page computes with its clock and random numbers", text(3, 1) === "WAHR", text(3, 1));
+        type(3, 1, "=RAND()");
+        var drawn = text(3, 1);
+        type(0, 1, "7");
+        check("and computes a volatile cell again on every edit", text(3, 1) !== drawn, drawn + " " + text(3, 1));
+        // both read all of the sheet, which looks like a cycle
+        check("beside another one that reads all of its sheet", text(4, 1) === "21,00", text(4, 1));
       });
     </script>
   </body>
