@@ -13,7 +13,7 @@ struct Row final {
 
 using odr::ErrorCode;
 
-constexpr std::array<Row, 63> rows{{
+constexpr std::array<Row, 64> rows{{
     {ErrorCode::unknown, "Unknown"},
     {ErrorCode::unsupported_operation, "UnsupportedOperation"},
     {ErrorCode::file_not_found, "FileNotFound"},
@@ -79,6 +79,7 @@ constexpr std::array<Row, 63> rows{{
     {ErrorCode::edit_unnameable, "unnameableEdit"},
     {ErrorCode::edit_out_of_scope, "outOfScope"},
     {ErrorCode::edit_sheet_cut, "sheetCut"},
+    {ErrorCode::edit_formula_invalid, "formulaInvalid"},
 }};
 
 } // namespace

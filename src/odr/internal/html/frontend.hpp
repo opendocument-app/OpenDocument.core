@@ -46,9 +46,12 @@ void write_document_script(const WritingState &state);
 void write_spreadsheet_script(const WritingState &state);
 /// The sheet's editor, attached to the mode. Written where the config edits.
 void write_sheet_editing_script(const WritingState &state);
+/// Whether the build embeds the evaluator of `wasm/formula`, so a sheet's
+/// editor takes formula input.
+bool carries_formula_module();
 /// `createOdrFormula`, the evaluator of `wasm/formula`, for a sheet's editor to
-/// compute its formula cells with. Written ahead of the editor, and nothing
-/// where the build has no module.
+/// compute its formula cells and take formula input with. Written ahead of
+/// the editor, and nothing where the build has no module.
 void write_formula_script(const WritingState &state);
 void write_text_script(const WritingState &state);
 /// `odr.search()`, `searchNext()`, `searchPrevious()`, `resetSearch()` — the

@@ -382,6 +382,50 @@
     return text;
   }
 
+  /// Replaces the characters @p swaps names outside a quoted string, a quoted
+  /// sheet name and an array constant, which keeps the spelling of an `<f>`.
+  /// The decimal sign @p decimal is one only ahead of a digit, so `STDEV.S`
+  /// keeps its dot.
+  function swapped(text, swaps, decimal) {
+    var result = "";
+    var quote = null;
+    var braces = 0;
+    for (var i = 0; i < text.length; ++i) {
+      var c = text.charAt(i);
+      if (quote !== null) {
+        quote = c === quote ? null : quote;
+      } else if (c === '"' || c === "'") {
+        quote = c;
+      } else if (c === "{" || c === "}") {
+        braces += c === "{" ? 1 : -1;
+      } else if (
+        braces === 0 &&
+        swaps[c] !== undefined &&
+        (c !== decimal || /[0-9]/.test(text.charAt(i + 1)))
+      ) {
+        c = swaps[c];
+      }
+      result += c;
+    }
+    return result;
+  }
+
+  /// A formula as an `<f>` spells it, the way the locale types it: where the
+  /// decimal sign is `,`, a `;` goes between the arguments.
+  function localized(input) {
+    return DECIMAL === ","
+      ? swapped(input, { ",": ";", ".": "," }, ".")
+      : input;
+  }
+
+  /// What @p typed spells as an `<f>` does. `;` between arguments is taken in
+  /// every locale.
+  function delocalized(typed) {
+    return DECIMAL === ","
+      ? swapped(typed, { ";": ",", ",": "." }, ",")
+      : swapped(typed, { ";": "," }, null);
+  }
+
   /// Two numbers are the same where their values are, whatever the text, and
   /// two dates or times within half a second, the precision `spell` writes.
   function same(one, other) {
@@ -401,14 +445,71 @@
     }
   }
 
+  /// The formula a cell states, and what it reads, both null for none.
+  function formulaOf(cell) {
+    return {
+      formula: cell.getAttribute("data-odr-formula"),
+      reads: cell.getAttribute("data-odr-reads"),
+    };
+  }
+
+  function setAttribute(cell, name, value) {
+    if (value === null) {
+      cell.removeAttribute(name);
+    } else {
+      cell.setAttribute(name, value);
+    }
+  }
+
   /// Writes @p value at a position: the cell shows it, and the op joins the
-  /// log beside the value it replaced.
+  /// log beside the value it replaced. A formula value states its expression
+  /// in the syntax of the file, and shows nothing until it is computed.
   function write(column, row, value) {
+    var cell = odr.sheet.cellAt(column, row);
     var before = odr.sheet.valueAt(column, row);
-    if (before === null || same(before, value)) {
+    if (cell === null || before === null) {
       return false;
     }
-    if (!odr.sheet.showValue(column, row, value)) {
+    var formulaBefore = formulaOf(cell);
+    var formula =
+      value.type === "formula"
+        ? {
+            formula: value.formula,
+            reads: formulas.module.reads(
+              value.formula,
+              formulas.syntax,
+              sheet,
+              formulas.name
+            ),
+          }
+        : { formula: null, reads: null };
+    if (
+      formula.formula === formulaBefore.formula &&
+      (formula.formula !== null || same(before, value))
+    ) {
+      return false;
+    }
+    var shownBefore = shownValue(cell, column, row);
+    var shown = value.type === "formula" ? { type: "empty" } : value;
+    var computedBefore = computed.get(cell);
+
+    // what a repaint computes for the cell, and what an undo puts back
+    function apply(state, show, result) {
+      if (!odr.sheet.showValue(column, row, show)) {
+        return false;
+      }
+      setAttribute(cell, "data-odr-formula", state.formula);
+      setAttribute(cell, "data-odr-reads", state.reads);
+      updateReader(cell);
+      if (result === undefined) {
+        computed.delete(cell);
+      } else {
+        computed.set(cell, result);
+      }
+      return true;
+    }
+
+    if (!apply(formula, shown, undefined)) {
       return false;
     }
     history.push({
@@ -416,10 +517,10 @@
         { op: "setCell", sheet: sheet, column: column, row: row, value: value },
       ],
       undo: function () {
-        odr.sheet.showValue(column, row, before);
+        apply(formulaBefore, shownBefore, computedBefore);
       },
       redo: function () {
-        odr.sheet.showValue(column, row, value);
+        apply(formula, shown, undefined);
       },
     });
     undone = [];
@@ -436,6 +537,30 @@
     return text === "*" ? Infinity : Number(text);
   }
 
+  /// What @p cell reads in this sheet, null where it states no reads. A
+  /// typed formula that reads no cell is kept, so its own write computes it.
+  function readerOf(cell) {
+    var at = odr.sheet.positionOf(cell);
+    var stated = cell.getAttribute("data-odr-reads");
+    if (at === null || stated === null) {
+      return null;
+    }
+    var boxes = [];
+    var groups = stated === "" ? [] : stated.split(" ");
+    for (var j = 0; j < groups.length; ++j) {
+      var parts = groups[j].split(",");
+      if (parts.length === 5 && Number(parts[0]) === sheet) {
+        boxes.push([
+          bound(parts[1]),
+          bound(parts[2]),
+          bound(parts[3]),
+          bound(parts[4]),
+        ]);
+      }
+    }
+    return { cell: cell, at: at, reads: boxes };
+  }
+
   function readersOf() {
     if (readers !== null) {
       return readers;
@@ -443,28 +568,27 @@
     readers = [];
     var cells = table.querySelectorAll("td[data-odr-reads]");
     for (var i = 0; i < cells.length; ++i) {
-      var at = odr.sheet.positionOf(cells[i]);
-      if (at === null) {
-        continue;
-      }
-      var boxes = [];
-      var groups = cells[i].getAttribute("data-odr-reads").split(" ");
-      for (var j = 0; j < groups.length; ++j) {
-        var parts = groups[j].split(",");
-        if (parts.length === 5 && Number(parts[0]) === sheet) {
-          boxes.push([
-            bound(parts[1]),
-            bound(parts[2]),
-            bound(parts[3]),
-            bound(parts[4]),
-          ]);
-        }
-      }
-      if (boxes.length > 0) {
-        readers.push({ cell: cells[i], at: at, reads: boxes });
+      var entry = readerOf(cells[i]);
+      if (entry !== null) {
+        readers.push(entry);
       }
     }
     return readers;
+  }
+
+  /// Takes in what @p cell reads now. A write of a formula is refused after a
+  /// row or column edit, so its position is the one the log names.
+  function updateReader(cell) {
+    if (readers === null) {
+      return;
+    }
+    readers = readers.filter(function (entry) {
+      return entry.cell !== cell;
+    });
+    var entry = readerOf(cell);
+    if (entry !== null) {
+      readers.push(entry);
+    }
   }
 
   function readsAny(entry, positions) {
@@ -527,7 +651,11 @@
     ops.forEach(function (op) {
       if (op.op === "setCell") {
         entries.forEach(function (entry) {
-          entry.marked = entry.marked || readsAny(entry, [op]);
+          // a formula written into the cell is new, so it computes too
+          entry.marked =
+            entry.marked ||
+            readsAny(entry, [op]) ||
+            (op.column === entry.at.column && op.row === entry.at.row);
         });
         return;
       }
@@ -1009,11 +1137,26 @@
     odr.sheet.pin({ column: column, row: row });
     odr.sheet.lower();
 
+    // typed input replaces the formula, so only an opened one needs the module
+    var stated = typed === null ? cell.getAttribute("data-odr-formula") : null;
+    var input =
+      stated !== null && formulas !== null && formulas.module !== null
+        ? formulas.module.toInput(stated, formulas.syntax)
+        : null;
+    if (stated !== null && input === null) {
+      refuse("formulaInput", column, row);
+      return false;
+    }
     var value = odr.sheet.valueAt(column, row);
     editingAt = { column: column, row: row };
     overlay = document.createElement("textarea");
     overlay.className = "odr-sheet-editor";
-    overlay.value = typed !== null ? typed : spell(value);
+    overlay.value =
+      typed !== null
+        ? typed
+        : stated !== null
+          ? "=" + localized(input)
+          : spell(value);
     // in the page first, so `place` can measure the lines it holds
     document.body.appendChild(overlay);
     place(cell);
@@ -1045,19 +1188,33 @@
   }
 
   /// Commits what is typed and moves the pin by (@p columns, @p rows). A
-  /// formula is refused rather than written, and leaves the editor open.
+  /// formula the page cannot take is refused rather than written, and leaves
+  /// the editor open: without the evaluator, after a row or column edit, and
+  /// where it does not parse.
   function commit(columns, rows) {
     if (overlay === null) {
       return false;
     }
     var text = overlay.value;
     var at = editingAt;
+    var value = null;
     if (text.charAt(0) === "=") {
-      refuse("formulaInput", at.column, at.row);
-      return false;
+      if (formulas === null || formulas.module === null || moves(coalesced())) {
+        refuse("formulaInput", at.column, at.row);
+        return false;
+      }
+      var expression = formulas.module.toFile(
+        delocalized(text.slice(1)),
+        formulas.syntax
+      );
+      if (expression === null) {
+        refuse("formulaInvalid", at.column, at.row);
+        return false;
+      }
+      value = { type: "formula", formula: expression };
     }
     close();
-    write(at.column, at.row, parse(text));
+    write(at.column, at.row, value !== null ? value : parse(text));
     if (!odr.sheet.pin({ column: at.column + columns, row: at.row + rows })) {
       odr.sheet.pin({ column: at.column, row: at.row });
       refuseCut(at.column + columns, at.row + rows);

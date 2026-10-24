@@ -134,7 +134,7 @@ describe('render', () => {
     }
   });
 
-  it('carries the formula module where an editable sheet computes', () => {
+  it('carries the formula module where a sheet edits', () => {
     const withFormula = new TextEncoder().encode(
       '<?xml version="1.0" encoding="UTF-8"?>' +
         '<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"' +
@@ -157,7 +157,15 @@ describe('render', () => {
       }
     };
     assert.equal(carries(withFormula, true), true);
+    // the page opens a formula on what the module turns it into
+    const doc = odr.open(withFormula, { editable: true });
+    try {
+      assert.doesNotMatch(doc.render(0).html, /data-odr-lock="formula"/);
+    } finally {
+      doc.close();
+    }
     assert.equal(carries(withFormula, false), false);
-    assert.equal(carries(minimalOds(), true), false);
+    // a formula can be typed into a sheet that holds none
+    assert.equal(carries(minimalOds(), true), true);
   });
 });

@@ -28,5 +28,6 @@ serve(
         "columns.html",
         "formulas.html",
         "formula-chain.html",
+        "formula-input.html",
     ),
 )

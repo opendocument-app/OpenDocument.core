@@ -109,8 +109,8 @@ constexpr Asset spreadsheet_js_asset{HtmlResourceType::js, "text/javascript",
 constexpr Asset sheet_editing_js_asset{HtmlResourceType::js, "text/javascript",
                                        "sheet-editing.js",
                                        frontend_assets::sheet_editing_js};
-/// One script with the wasm inside, about 530 KB, so a sheet carries it only
-/// where it edits and computes.
+/// One script with the wasm inside, about 540 KB, so a sheet carries it only
+/// where it edits a format that takes formulas.
 constexpr Asset formula_js_asset{HtmlResourceType::js, "text/javascript",
                                  "odr-formula.js",
                                  frontend_assets::odr_formula_js};
@@ -340,8 +340,12 @@ void html::write_sheet_editing_script(const WritingState &state) {
   write_script(sheet_editing_js_asset, state);
 }
 
+bool html::carries_formula_module() {
+  return !formula_js_asset.content.empty();
+}
+
 void html::write_formula_script(const WritingState &state) {
-  if (!formula_js_asset.content.empty()) {
+  if (carries_formula_module()) {
     write_script(formula_js_asset, state);
   }
 }

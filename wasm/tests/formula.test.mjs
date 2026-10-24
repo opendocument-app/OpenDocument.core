@@ -112,6 +112,27 @@ describe('formula module', { skip: path === '' && 'no odr-formula.js' }, () => {
     assert.equal(module.serial(1, {}), 0);
   });
 
+  it('turns typed input into the syntax of the file and back', () => {
+    assert.equal(module.toFile('SUM(A1:B2)*2', 'opendocument'),
+      'of:=SUM([.A1:.B2])*2');
+    assert.equal(module.toFile('Sheet2!$A$1+1', 'opendocument'),
+      'of:=[Sheet2.$A$1]+1');
+    assert.equal(module.toFile('SUM(A1:B2)', 'ooxml'), 'SUM(A1:B2)');
+    assert.equal(module.toFile('SUM(', 'ooxml'), null);
+    assert.equal(module.toInput('of:=SUM([.A1:.B2])*2', 'opendocument'),
+      'SUM(A1:B2)*2');
+    assert.equal(module.toInput('of:=SUM(', 'opendocument'), null);
+  });
+
+  it('states what a formula reads', () => {
+    assert.equal(module.reads('SUM(A1:B2)+C3', 'ooxml', 2, 'S'),
+      '2,0,1,0,1 2,2,2,2,2');
+    assert.equal(module.reads('s!A1', 'ooxml', 2, 'S'), '2,0,0,0,0');
+    assert.equal(module.reads('Other!A1', 'ooxml', 2, 'S'), '2,0,*,0,*');
+    assert.equal(module.reads('SUM(A:A)', 'ooxml', 0, 'S'), '0,0,0,0,*');
+    assert.equal(module.reads('NOW()', 'ooxml', 0, 'S'), '');
+  });
+
   it('builds no code at run time', () => {
     const glue = readFileSync(path, 'utf8');
     assert.doesNotMatch(glue, /new Function\b/);
