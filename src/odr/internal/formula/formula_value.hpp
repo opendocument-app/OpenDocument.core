@@ -7,6 +7,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -57,6 +58,11 @@ struct Name final {
   /// What the name stands for, in the syntax of the document.
   std::string expression{};
 };
+
+/// What @p name means in a formula on @p sheet: one local to the sheet, else
+/// one of the whole document, read without case. Null where none is.
+[[nodiscard]] const Name *find_name(std::span<const Name> names,
+                                    std::string_view name, std::uint32_t sheet);
 
 /// A cell that states nothing.
 struct Empty final {

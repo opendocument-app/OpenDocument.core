@@ -62,8 +62,10 @@ The release run heads these entries with the version and opens a fresh
 - An editable sheet page states what a formula in the page reads: the syntax
   and the calculation settings of the document on `<body>`, the name of the
   sheet, the format code of every cell (`data-odr-format`), so a typed
-  formula shows its result in the format of its cell, and the type and the
-  value of a boolean or an error cell (`data-odr-type`).
+  formula shows its result in the format of its cell, the type and the
+  value of a boolean or an error cell (`data-odr-type`), and the names the
+  document defines (`data-odr-formula-names`), so a formula with a name
+  computes in the page too.
 - An ods cell right after a merge at the end of its row can be written. The
   write refused, because the new cell landed one column too far.
 - An xlsx cell with the built-in date format 14 or 22 shows the date as Excel

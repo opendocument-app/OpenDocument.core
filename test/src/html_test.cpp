@@ -1562,6 +1562,31 @@ TEST(html, an_editable_page_states_the_format_of_every_cell) {
             std::string::npos);
 }
 
+// A formula that reads a name computes in the page too.
+TEST(html, an_editable_page_states_the_names_of_the_document) {
+  const DecodedFile file = fods_file(
+      fods_row(R"xml(<table:table-cell table:formula="of:=Total*2")xml"
+               R"( office:value-type="float" office:value="2">)"
+               R"(<text:p>2</text:p></table:table-cell>)"),
+      "",
+      R"(<table:named-expressions><table:named-range)"
+      R"( table:name="Total" table:base-cell-address="$Sheet1.$A$1")"
+      R"( table:cell-range-address="$Sheet1.$B$1"/>)"
+      R"(</table:named-expressions>)");
+
+  EXPECT_NE(render_sheet(file, editing_config())
+                .find(R"(data-odr-formula-names="[{&quot;expression&quot;:)"
+                      R"(&quot;[$Sheet1.$B$1]&quot;,&quot;name&quot;:)"
+                      R"(&quot;Total&quot;,&quot;sheet&quot;:null}]")"),
+            std::string::npos);
+  // the name is put in, so the formula reads B1 alone
+  EXPECT_NE(render_sheet(file, editing_config())
+                .find(R"(data-odr-reads="0,1,1,0,0")"),
+            std::string::npos);
+  EXPECT_EQ(render_sheet(file, HtmlConfig()).find("data-odr-formula-names"),
+            std::string::npos);
+}
+
 // The page computes a formula cell with what the body and the cell state.
 TEST(html, a_formula_page_states_what_its_evaluator_reads) {
   const std::string page = render_sheet(

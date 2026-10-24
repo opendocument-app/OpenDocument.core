@@ -375,8 +375,10 @@ and the commits name. Git holds the full text of each decision.
   `data-odr-format` on every cell, the format code of the cell, its row or
   its column (`Sheet::cell_number_format`), so a typed formula takes it too,
   `data-odr-type` and the value of a boolean or an error cell, the name of
-  the sheet on its table, and the syntax and the `formula::Settings` of the
-  document on `<body>`. The page formats a result with the document's
+  the sheet on its table, and the syntax, the `formula::Settings` and the
+  names of the document on `<body>` (`data-odr-formula-names`). A row or
+  column edit moves the names as it moves the formulas. `data-odr-reads`
+  puts in what a name stands for, so a formula with a name reads only that. The page formats a result with the document's
   locale, not with the language of an ods data style. A commit computes the
   dependents off the coalesced log (`repaintStale`, decision 5). It marks
   the ones without an answer `odr-sheet-stale` and raises
@@ -384,9 +386,8 @@ and the commits name. Git holds the full text of each decision.
 
 ## Open work
 
-- **Formula input.** A defined name reads nothing in the page. Function names
-  are the English ones, also where a localized LibreOffice shows them
-  translated.
+- **Formula input.** Function names are the English ones, also where a
+  localized LibreOffice shows them translated.
 - **Out of the evaluator so far:** array formulas and dynamic arrays, a
   reference into another document, iterative calculation, the volatile
   functions, and localized function names. Each cell that needs one stays

@@ -153,19 +153,11 @@ SheetCellSource::name(const std::string_view name,
   if (found == m_names.end() || !m_syntax.has_value()) {
     return std::nullopt;
   }
-  const formula::Name *global = nullptr;
-  for (const formula::Name &candidate : found->second) {
-    if (candidate.sheet == sheet) {
-      return formula::parse(candidate.expression, *m_syntax);
-    }
-    if (!candidate.sheet.has_value() && global == nullptr) {
-      global = &candidate;
-    }
-  }
-  if (global == nullptr) {
+  const formula::Name *named = formula::find_name(found->second, name, sheet);
+  if (named == nullptr) {
     return std::nullopt;
   }
-  return formula::parse(global->expression, *m_syntax);
+  return formula::parse(named->expression, *m_syntax);
 }
 
 const std::optional<std::vector<SheetCellSource::RowBand>> &

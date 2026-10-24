@@ -481,7 +481,8 @@
               value.formula,
               formulas.syntax,
               sheet,
-              formulas.name
+              formulas.name,
+              namesAfter(coalesced())
             ),
           }
         : { formula: null, reads: null };
@@ -600,24 +601,49 @@
   /// there, so the log can replay it.
   var written = new WeakMap();
 
+  /// @p formula after the row or column op @p op, null where the page cannot
+  /// move it. A reference that names no sheet is on @p own, this sheet where
+  /// it is left out, and on none where it is null.
   var movedFormulas = new Map();
+  function moved(formula, op, own) {
+    if (formula === null || formulas === null || formulas.module === null) {
+      return null;
+    }
+    var on = own === undefined ? formulas.name : own;
+    var key = formula + "\n" + on + "\n" + JSON.stringify(op);
+    if (!movedFormulas.has(key)) {
+      movedFormulas.set(
+        key,
+        formulas.module.move(formula, formulas.syntax, formulas.name, op, on)
+      );
+    }
+    return movedFormulas.get(key);
+  }
 
   /// The formula of @p entry after its row and column ops, null where the
   /// page cannot move it. The ops wait in the entry until the module loads.
   function movedFormula(entry) {
     return entry.moves.reduce(function (formula, op) {
-      if (formula === null || formulas === null || formulas.module === null) {
-        return null;
-      }
-      var key = formula + "\n" + JSON.stringify(op);
-      if (!movedFormulas.has(key)) {
-        movedFormulas.set(
-          key,
-          formulas.module.move(formula, formulas.syntax, formulas.name, op)
-        );
-      }
-      return movedFormulas.get(key);
+      return moved(formula, op);
     }, entry.formula);
+  }
+
+  /// The names a formula here reads, as the row and column ops of @p ops
+  /// moved them.
+  function namesAfter(ops) {
+    return formulas.names.map(function (name) {
+      var expression = name.expression;
+      ops.forEach(function (op) {
+        if (STRUCTURE_OPS[op.op] !== undefined && op.sheet === sheet) {
+          expression = moved(
+            expression,
+            op,
+            name.sheet === null ? null : undefined
+          );
+        }
+      });
+      return { name: name.name, sheet: name.sheet, expression: expression };
+    });
   }
 
   function readsAny(entry, positions) {
@@ -761,9 +787,13 @@
       return null;
     }
     var settings = {};
+    var names = [];
     try {
       settings = JSON.parse(
         document.body.getAttribute("data-odr-formula-settings") || "{}"
+      );
+      names = JSON.parse(
+        document.body.getAttribute("data-odr-formula-names") || "[]"
       );
     } catch (e) {
       return null;
@@ -771,6 +801,18 @@
     return {
       syntax: syntax,
       settings: settings,
+      // the names of the whole document, and the ones local to this sheet
+      names: names
+        .filter(function (name) {
+          return name.sheet === null || name.sheet === sheet;
+        })
+        .map(function (name) {
+          return {
+            name: name.name.toLowerCase(),
+            sheet: name.sheet,
+            expression: name.expression,
+          };
+        }),
       locale: document.body.getAttribute("data-odr-locale") || "",
       booleanWords: null,
       name: (table.getAttribute("data-odr-sheet-name") || "").toLowerCase(),
@@ -919,13 +961,12 @@
           }
         });
       });
+      // a cell has no result while it computes, so reading itself gives
+      // no answer, and a read of all its sheet still computes
+      seen.delete(i);
       seen.forEach(function (j) {
-        if (j !== i) {
-          dependents[j].push(i);
-          ++waits[i];
-        } else {
-          waits[i] = Infinity;
-        }
+        dependents[j].push(i);
+        ++waits[i];
       });
     });
     var result = [];
@@ -949,7 +990,7 @@
 
   /// Computes the marked formula cells of @p entries. Returns each marked
   /// cell's result, null where the evaluator has none: also in a cycle.
-  function compute(entries) {
+  function compute(entries, names) {
     var byCell = new Map();
     entries.forEach(function (entry) {
       byCell.set(entry.cell, entry);
@@ -974,6 +1015,23 @@
     }
 
     var source = {
+      // a name local to the sheet before one of the whole document
+      name: function (name, at) {
+        var key = name.toLowerCase();
+        var global = null;
+        for (var i = 0; i < names.length; ++i) {
+          if (names[i].name !== key) {
+            continue;
+          }
+          if (names[i].sheet === at) {
+            return names[i].expression;
+          }
+          if (names[i].sheet === null && global === null) {
+            global = names[i].expression;
+          }
+        }
+        return global;
+      },
       sheet: function (name) {
         return name.toLowerCase() === formulas.name ? sheet : null;
       },
@@ -1124,7 +1182,7 @@
     var answers = new Map();
     if (computes) {
       try {
-        answers = compute(entries);
+        answers = compute(entries, namesAfter(ops));
       } catch (e) {
         // a trap can leave the module's memory broken, so it computes no more
         formulas = null;
@@ -2050,8 +2108,11 @@
       }
     },
     committed: function () {
-      // what the formula cells read, where the saved rows put it
+      // what the formula cells and the names read, where the saved rows put it
       readers = walk(coalesced());
+      if (formulas !== null) {
+        formulas.names = namesAfter(coalesced());
+      }
       // the results shown are the ones the save wrote
       computed.clear();
       history = [];

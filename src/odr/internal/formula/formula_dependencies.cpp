@@ -78,6 +78,27 @@ void collect(const Node &node, References &into) {
   }
 }
 
+/// Puts in what each name stands for. A name that names itself stays one
+/// past a few levels, so the formula reads anything.
+void put_in_names(
+    Node &node,
+    const std::function<std::optional<Node>(std::string_view)> &name_of,
+    const std::uint32_t depth) {
+  if (const auto *name = std::get_if<NameReference>(&node.content)) {
+    if (depth < 16 && !name->document.has_value() && !name->sheet.has_value()) {
+      if (std::optional<Node> stands_for = name_of(name->name);
+          stands_for.has_value()) {
+        node = std::move(*stands_for);
+        put_in_names(node, name_of, depth + 1);
+      }
+    }
+    return;
+  }
+  for (Node &child : node.children) {
+    put_in_names(child, name_of, depth);
+  }
+}
+
 /// The open end of an axis a reference leaves out.
 std::string spell_bound(const std::uint32_t index) {
   return index == index_limit ? "*" : std::to_string(index);
@@ -99,9 +120,12 @@ formula::References formula::references(const Node &node) {
 std::string formula::spell_reads(
     const Node &node, const std::uint32_t own_sheet,
     const std::function<std::optional<std::uint32_t>(std::string_view)>
-        &sheet_of) {
+        &sheet_of,
+    const std::function<std::optional<Node>(std::string_view)> &name_of) {
   const std::string unresolved = std::to_string(own_sheet) + ",0,*,0,*";
-  const References read = references(node);
+  Node named = node;
+  put_in_names(named, name_of, 0);
+  const References read = references(named);
   if (!read.complete) {
     return unresolved;
   }

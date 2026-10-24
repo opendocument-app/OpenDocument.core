@@ -131,22 +131,30 @@ describe('formula module', { skip: path === '' && 'no odr-formula.js' }, () => {
     assert.equal(module.reads('Other!A1', 'ooxml', 2, 'S'), '2,0,*,0,*');
     assert.equal(module.reads('SUM(A:A)', 'ooxml', 0, 'S'), '0,0,0,0,*');
     assert.equal(module.reads('NOW()', 'ooxml', 0, 'S'), '');
+    const names = [{ name: 'Total', sheet: null, expression: 'S!$B$2:$B$3' },
+      { name: 'Here', sheet: 1, expression: 'S!A1' }];
+    assert.equal(module.reads('total*2', 'ooxml', 0, 'S', names), '0,1,1,1,2');
+    assert.equal(module.reads('Here', 'ooxml', 0, 'S', names), '0,0,*,0,*');
+    assert.equal(module.reads('Missing', 'ooxml', 0, 'S', names), '0,0,*,0,*');
   });
 
   it('moves a formula through a row or column edit', () => {
     const rows = (op, row, count) => ({ op, sheet: 0, row, count });
     assert.equal(module.move('of:=[.A1]+[.B2]', 'opendocument', 'S',
-      rows('insertRows', 1, 2)), 'of:=[.A1]+[.B4]');
+      rows('insertRows', 1, 2), 'S'), 'of:=[.A1]+[.B4]');
     assert.equal(module.move('SUM(A1:A3)', 'ooxml', 'S',
-      rows('deleteRows', 0, 1)), 'SUM(A1:A2)');
+      rows('deleteRows', 0, 1), 'S'), 'SUM(A1:A2)');
     assert.equal(module.move('Other!A5+s!A5', 'ooxml', 'S',
-      rows('insertRows', 0, 1)), 'Other!A5+s!A6');
-    assert.equal(module.move('A1*2', 'ooxml', 'S', rows('deleteRows', 0, 1)),
-      '#REF!*2');
+      rows('insertRows', 0, 1), 'S'), 'Other!A5+s!A6');
+    assert.equal(module.move('A1*2', 'ooxml', 'S', rows('deleteRows', 0, 1),
+      'S'), '#REF!*2');
     assert.equal(module.move('B1+$C$1', 'ooxml', 'S',
-      { op: 'insertColumns', sheet: 0, column: 1, count: 1 }), 'C1+$D$1');
-    assert.equal(module.move('SUM(', 'ooxml', 'S', rows('insertRows', 0, 1)),
-      null);
+      { op: 'insertColumns', sheet: 0, column: 1, count: 1 }, 'S'), 'C1+$D$1');
+    assert.equal(module.move('SUM(', 'ooxml', 'S', rows('insertRows', 0, 1),
+      'S'), null);
+    // a name of the whole document: a reference without a sheet stays
+    assert.equal(module.move('S!$A$2+A2', 'ooxml', 'S',
+      rows('insertRows', 0, 1), null), 'S!$A$3+A2');
   });
 
   it('names the words of a boolean', () => {
