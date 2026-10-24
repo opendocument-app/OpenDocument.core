@@ -288,6 +288,11 @@ the limits can go up is the next measurement.
 
 - **Print at level 3.** A chunk that has not loaded prints as empty space
   of its height. `beforeprint` cannot wait for a script to load.
+- **Fragments over HTTP.** A chunk is a script, because only a script loads
+  from `file://`. Over HTTP, the server could also serve a chunk as a plain
+  HTML fragment (`text-chunks/12.html`), and `viewport.js` could `fetch` it
+  when the page is not on `file://`. The script stays the fallback. Only
+  `write_chunk` and `load()` know the format.
 - **The size of a chunk.** 256 lines is a guess. It trades the count of
   chunks against the cost of one.
 - **When a view takes level 2.** A threshold on the size of the content, or
