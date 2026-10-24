@@ -32,11 +32,11 @@
           formula + '" data-odr-reads="' + reads + '">' + text + "</td>"
         );
       }
-      var html = '<table class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="Sheet1"><thead><tr><th class="odr-sheet-corner"></th>';
+      var html = '<div class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="Sheet1"><table class="odr-sheet-head"><thead><tr><th class="odr-sheet-corner"></th>';
       for (var c = 0; c < LENGTH; ++c) {
         html += '<th class="odr-sheet-column-header">' + columnName(c) + "</th>";
       }
-      html += '</tr></thead><tbody><tr><th class="odr-sheet-row-header">1</th>';
+      html += '</tr></thead></table><table class="odr-sheet-rows odr-chunk odr-chunk-near"><tbody><tr><th class="odr-sheet-row-header">1</th>';
       html += formulaCell(columnName(LENGTH - 1) + "2*2", "0," + (LENGTH - 1) + "," + (LENGTH - 1) + ",1,1", String(LENGTH * 2));
       for (var c = 1; c < LENGTH; ++c) {
         html += "<td></td>";
@@ -45,7 +45,7 @@
       for (var c = 1; c < LENGTH; ++c) {
         html += formulaCell(columnName(c - 1) + "2+1", "0," + (c - 1) + "," + (c - 1) + ",1,1", String(c + 1));
       }
-      html += "</tr></tbody></table>";
+      html += "</tr></tbody></table></div>";
       document.body.insertAdjacentHTML("afterbegin", html);
     </script>
     <script src="error-codes.js"></script>

@@ -1535,6 +1535,10 @@
   // Offsets, not rects: blink scales a rect by the body zoom `viewport_js`
   // applies, and the overlay is laid out under that zoom.
   function place(cell) {
+    // a cell in a far chunk has no geometry until the chunk is laid out
+    if (odr.chunks !== undefined) {
+      odr.chunks.show(cell);
+    }
     var left = 0;
     var top = 0;
     for (var node = cell; node !== null; node = node.offsetParent) {

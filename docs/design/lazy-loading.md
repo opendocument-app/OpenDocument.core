@@ -191,14 +191,18 @@ is sticky at the top of the wrapper. The row labels stay a `th` in each
 row, and they stay sticky at the left, because each chunk is as wide as
 the sheet.
 
-**Column widths.** All of the tables must have the same columns, so each
-table has `table-layout: fixed`, a `width`, and the same `colgroup`. A
-column that states a width keeps it. Today a column that states no width
-takes the width of its content, for example in a csv. Each chunk table
-would then size it apart. So the writer gives such a column a width: the
-longest text of its first 1000 rows, in `ch`, from 4 to 60. That is how
-LibreOffice finds an optimal width. The cut of a longer text, and the
-spill into the next cells, are the ones a stated width gets today.
+**Column widths.** All of the tables must have the same columns. So each
+table has `table-layout: fixed` and the same `col`s, and states the width
+of the whole sheet (`--odr-sheet-width`, in px). Without that width, a
+table wider than the viewport shrinks each column to what its own cells
+hold, and the chunks do not line up. A column that states a width keeps
+it. A column that states no width, for example in a csv, took the width of
+its content before. Now the writer estimates it from the longest text of
+its first 1000 rows, from 4 to 60 characters, at 7.5px for each character
+and 14px of padding. A cell that wraps its text counts only its longest
+word. The row labels get 7.5px for each digit and 14px. The estimate does
+not know the font of the file, so a wide font can spill a long number past
+its column.
 
 **Where a chunk ends.** A chunk holds at most 256 rows, or as many rows as
 hold 4096 cells, and at least 8 rows. A chunk ends only where no `rowspan`
@@ -233,9 +237,13 @@ the first chunk of a sheet with shapes is always near: the writer states
 | Formulas in the page | read the text of a cell | no change: the DOM of a hidden chunk is still there |
 
 **What stays.** The limits (`spreadsheet_limit`, `spreadsheet_cell_limit`)
-stay as they are in this step. A sheet of 500 K cells takes 7.3 s to its
-first frame today, and about 3 s of that is the scripts. Whether the
-limits can go up is a measurement after this step.
+stay as they are in this step. A sheet of 500 K cells
+(`efficiency-big-1.ods`) took 7.0 s to its first frame, and takes 4.0 s
+with chunks. About 2 s of the rest is `viewport.js`: to find whether the
+browser adjusts the text size, it sets the zoom of the body twice. Each
+set makes the browser compute the style and the layout of the whole
+document again. Whether the limits can go up is a measurement after that
+is fixed.
 
 ## Order of work
 

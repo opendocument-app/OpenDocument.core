@@ -10,54 +10,65 @@
     <!-- C2 sums A1:C1 and D2 doubles C2, so a column inserted inside A1:C1 or
          deleted out of it reaches both. D3 spans two columns, so an edge at
          column E would cut it. -->
-    <table class="odr-sheet" data-odr-sheet="2">
-      <col class="odr-sheet-gutter" />
-      <col style="width: 60px" />
-      <col style="width: 60px" />
-      <col style="width: 60px" />
-      <col style="width: 60px" />
-      <col style="width: 60px" />
-      <col style="width: 60px" />
-      <thead>
-        <tr>
-          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
-          <th class="odr-sheet-column-header">A</th>
-          <th class="odr-sheet-column-header">B</th>
-          <th class="odr-sheet-column-header">C</th>
-          <th class="odr-sheet-column-header">D</th>
-          <th class="odr-sheet-column-header">E</th>
-          <th class="odr-sheet-column-header">F</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th class="odr-sheet-row-header">1</th>
-          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">1</td>
-          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">2</td>
-          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">3</td>
-          <td style="max-width:0;white-space:nowrap">x</td>
-          <td style="max-width:0;white-space:nowrap">y</td>
-          <td style="max-width:0;white-space:nowrap">z</td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">2</th>
-          <td style="max-width:0;white-space:nowrap"></td>
-          <td style="max-width:0;white-space:nowrap"></td>
-          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=SUM([.A1:.C1])" data-odr-reads="2,0,2,0,0" style="max-width:0;white-space:nowrap">6</td>
-          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.C2]*2" data-odr-reads="2,2,2,1,1" style="max-width:0;white-space:nowrap">12</td>
-          <td style="max-width:0;white-space:nowrap"></td>
-          <td style="max-width:0;white-space:nowrap"></td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">3</th>
-          <td style="max-width:0;white-space:nowrap"></td>
-          <td style="max-width:0;white-space:nowrap"></td>
-          <td style="max-width:0;white-space:nowrap"></td>
-          <td colspan="2" style="max-width:0;white-space:nowrap">m</td>
-          <td style="max-width:0;white-space:nowrap"></td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="odr-sheet" data-odr-sheet="2">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 60px" />
+        <col style="width: 60px" />
+        <col style="width: 60px" />
+        <col style="width: 60px" />
+        <col style="width: 60px" />
+        <col style="width: 60px" />
+        <thead>
+          <tr>
+            <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+            <th class="odr-sheet-column-header">A</th>
+            <th class="odr-sheet-column-header">B</th>
+            <th class="odr-sheet-column-header">C</th>
+            <th class="odr-sheet-column-header">D</th>
+            <th class="odr-sheet-column-header">E</th>
+            <th class="odr-sheet-column-header">F</th>
+          </tr>
+        </thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 60px" />
+        <col style="width: 60px" />
+        <col style="width: 60px" />
+        <col style="width: 60px" />
+        <col style="width: 60px" />
+        <col style="width: 60px" />
+        <tbody>
+          <tr>
+            <th class="odr-sheet-row-header">1</th>
+            <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">1</td>
+            <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">2</td>
+            <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">3</td>
+            <td style="max-width:0;white-space:nowrap">x</td>
+            <td style="max-width:0;white-space:nowrap">y</td>
+            <td style="max-width:0;white-space:nowrap">z</td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">2</th>
+            <td style="max-width:0;white-space:nowrap"></td>
+            <td style="max-width:0;white-space:nowrap"></td>
+            <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=SUM([.A1:.C1])" data-odr-reads="2,0,2,0,0" style="max-width:0;white-space:nowrap">6</td>
+            <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.C2]*2" data-odr-reads="2,2,2,1,1" style="max-width:0;white-space:nowrap">12</td>
+            <td style="max-width:0;white-space:nowrap"></td>
+            <td style="max-width:0;white-space:nowrap"></td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">3</th>
+            <td style="max-width:0;white-space:nowrap"></td>
+            <td style="max-width:0;white-space:nowrap"></td>
+            <td style="max-width:0;white-space:nowrap"></td>
+            <td colspan="2" style="max-width:0;white-space:nowrap">m</td>
+            <td style="max-width:0;white-space:nowrap"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <div id="report"></div>
     <script src="error-codes.js"></script>
@@ -144,9 +155,11 @@
       );
       check("a range the insert grew is marked, and what reads it", staleNow() === "3,1 4,1", staleNow());
       check(
-        "a new cell is plain, in a column of no width",
-        odr.sheet.cellAt(1, 0).style.cssText === "white-space: nowrap;" &&
-          document.querySelectorAll(".odr-sheet col")[2].style.width === "",
+        "a new cell is plain, in a column of Excel's default width in every table",
+        odr.sheet.cellAt(1, 0).style.cssText === "max-width: 0px; white-space: nowrap;" &&
+          Array.prototype.every.call(document.querySelectorAll(".odr-sheet table"), function (part) {
+            return part.querySelectorAll("col")[2].style.width === "64px";
+          }),
         odr.sheet.cellAt(1, 0).style.cssText
       );
 

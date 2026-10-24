@@ -13,30 +13,37 @@
     data-odr-editable="true"
     data-odr-keyboard="navigation shortcuts"
   >
-    <table class="odr-sheet" data-odr-sheet="0">
-      <col class="odr-sheet-gutter" />
-      <col style="width: 80px" />
-      <col style="width: 80px" />
-      <thead>
-        <tr>
-          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
-          <th class="odr-sheet-column-header">A</th>
-          <th class="odr-sheet-column-header">B</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th class="odr-sheet-row-header">1</th>
-          <td><x-p style="display:block"><x-s>one</x-s></x-p><x-p style="display:block"><x-s>two</x-s></x-p></td>
-          <td><x-p style="display:block"><x-s>three</x-s><br><x-s></x-s><x-s>four</x-s></x-p></td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">2</th>
-          <td></td>
-          <td></td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="odr-sheet" data-odr-sheet="0">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <thead>
+          <tr>
+            <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+            <th class="odr-sheet-column-header">A</th>
+            <th class="odr-sheet-column-header">B</th>
+          </tr>
+        </thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <tbody>
+          <tr>
+            <th class="odr-sheet-row-header">1</th>
+            <td><x-p style="display:block"><x-s>one</x-s></x-p><x-p style="display:block"><x-s>two</x-s></x-p></td>
+            <td><x-p style="display:block"><x-s>three</x-s><br><x-s></x-s><x-s>four</x-s></x-p></td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">2</th>
+            <td></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <div id="report"></div>
     <script src="error-codes.js"></script>

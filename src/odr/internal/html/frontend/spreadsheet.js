@@ -1,15 +1,68 @@
 (function () {
   "use strict";
 
+  // The sheet: the ruler, and a table for each chunk of rows
+  // (`lazy-loading.md` decision 6).
   var table = document.querySelector(".odr-sheet");
   if (table === null) {
     return;
   }
 
-  var merged = table.querySelector("td[colspan],td[rowspan]") !== null;
-  var body = table.tBodies[0];
-
   var odr = (window.odr = window.odr || {});
+
+  var merged = table.querySelector("td[colspan],td[rowspan]") !== null;
+  var head = table.querySelector(".odr-sheet-head");
+  var headerRow = head.tHead.rows[0];
+  var chunks = table.getElementsByClassName("odr-sheet-rows");
+
+  // Every row of every chunk, in the order the page shows them.
+  function bodyRows() {
+    return table.querySelectorAll(".odr-sheet-rows>tbody>tr");
+  }
+
+  // The `tbody` a row goes into past the last one, a new chunk where every
+  // chunk went with the rows it held.
+  function lastBody() {
+    if (chunks.length > 0) {
+      return chunks[chunks.length - 1].tBodies[0];
+    }
+    var chunk = document.createElement("table");
+    chunk.className = "odr-sheet-rows odr-chunk odr-chunk-near";
+    chunk.appendChild(cloneColumns());
+    chunk.appendChild(document.createElement("tbody"));
+    table.appendChild(chunk);
+    if (odr.chunks !== undefined) {
+      odr.chunks.observe(chunk);
+    }
+    return chunk.tBodies[0];
+  }
+
+  // The `col`s of the ruler, for a table that has none.
+  function cloneColumns() {
+    var fragment = document.createDocumentFragment();
+    head.querySelectorAll("col").forEach(function (col) {
+      fragment.appendChild(col.cloneNode(false));
+    });
+    return fragment;
+  }
+
+  // Every table states the sheet's width, so a column that goes in or out
+  // changes it by @p pixels.
+  function widen(pixels) {
+    var width = parseFloat(table.style.getPropertyValue("--odr-sheet-width"));
+    if (!isNaN(width)) {
+      table.style.setProperty("--odr-sheet-width", width + pixels + "px");
+    }
+  }
+
+  // Takes a chunk with no row left away, because it would keep its height.
+  function dropEmptyChunks() {
+    for (var i = chunks.length - 1; i >= 0; --i) {
+      if (chunks[i].tBodies[0].rows.length === 0) {
+        chunks[i].remove();
+      }
+    }
+  }
 
   var style = document.createElement("style");
   document.head.appendChild(style);
@@ -71,8 +124,9 @@
   function build() {
     var index = { rows: new Map(), positions: new Map() };
     var covered = [];
-    for (var i = 0; i < body.rows.length; ++i) {
-      var tr = body.rows[i];
+    var rows = bodyRows();
+    for (var i = 0; i < rows.length; ++i) {
+      var tr = rows[i];
       var row = rowOf(tr);
       var line = [];
       index.rows.set(row, { tr: tr, cells: line });
@@ -260,7 +314,7 @@
   }
 
   function lastColumn() {
-    return table.tHead.rows[0].children.length - 2;
+    return headerRow.children.length - 2;
   }
 
   // The rectangle the pin and the focus span, a header's row or column across
@@ -432,11 +486,35 @@
     return line;
   }
 
+  // The rows a `reflow` waits on, by label.
+  var waiting = new Set();
+
+  table.addEventListener("odr-chunk-near", function (event) {
+    waiting.forEach(function (row) {
+      var entry = indexed().rows.get(row);
+      if (entry === undefined || event.target.contains(entry.tr)) {
+        waiting.delete(row);
+        if (entry !== undefined) {
+          reflow(row);
+        }
+      }
+    });
+  });
+
   // The spill `translate_sheet` measured goes stale the moment a cell fills or
   // empties: its rule again, off the geometry the browser has. Offsets, not
   // rects: blink scales a rect by the body zoom, a `clip-path` is stated under
   // it.
   function reflow(row) {
+    // a far chunk has no geometry: its rows wait until it is near
+    var at = indexed().rows.get(row);
+    if (
+      at !== undefined &&
+      !at.tr.closest(".odr-chunk").classList.contains("odr-chunk-near")
+    ) {
+      waiting.add(row);
+      return true;
+    }
     var line = rowState(row);
     if (line === null) {
       return false;
@@ -600,7 +678,7 @@
 
   // Labels every row from @p row on again, @p by further down.
   function relabel(row, by) {
-    var rows = body.rows;
+    var rows = bodyRows();
     for (var i = 0; i < rows.length; ++i) {
       var label = rowOf(rows[i]);
       if (label >= row) {
@@ -611,7 +689,7 @@
 
   function changed() {
     index = null;
-    if (pinnedRow !== null && !body.contains(pinnedRow)) {
+    if (pinnedRow !== null && !table.contains(pinnedRow)) {
       pin(-1, null, null);
     } else {
       paintSelection();
@@ -628,12 +706,12 @@
     for (var i = 0; i < rows.length; ++i) {
       rows[i].cells[0].textContent = String(row + i + 1);
       if (at !== undefined) {
-        body.insertBefore(rows[i], at.tr);
+        at.tr.parentNode.insertBefore(rows[i], at.tr);
       } else if (before !== undefined) {
-        body.insertBefore(rows[i], before.tr.nextSibling);
+        before.tr.parentNode.insertBefore(rows[i], before.tr.nextSibling);
         before = { tr: rows[i] };
       } else {
-        body.appendChild(rows[i]);
+        lastBody().appendChild(rows[i]);
       }
     }
     changed();
@@ -645,7 +723,7 @@
     if (row > lastRow() + 1 || spanReaches(row)) {
       return null;
     }
-    var cols = table.querySelectorAll("col");
+    var cols = head.querySelectorAll("col");
     var rows = [];
     for (var i = 0; i < count; ++i) {
       var tr = document.createElement("tr");
@@ -684,6 +762,7 @@
     rows.forEach(function (tr) {
       tr.remove();
     });
+    dropEmptyChunks();
     relabel(row + count, -count);
     changed();
     return rows;
@@ -700,7 +779,7 @@
 
   // The headers of the columns, the corner left out.
   function columnHeaders() {
-    return Array.prototype.slice.call(table.tHead.rows[0].cells, 1);
+    return Array.prototype.slice.call(headerRow.cells, 1);
   }
 
   function addSortControl(header) {
@@ -757,14 +836,26 @@
     paintSelection();
   }
 
-  // Puts the `<col>`s, the headers and the cells of @p slice in at
-  // @p column: a cell goes before the first one of its row at or right of the
-  // column.
+  // Puts a `<col>` of each of the widths of @p slice into every table, and
+  // its headers and cells in at @p column: a cell goes before the first one
+  // of its row at or right of the column.
   function restoreColumns(column, slice) {
     lower();
-    var cols = table.querySelectorAll("col");
-    var nextCol = cols[column + 1] || null;
-    var headerRow = table.tHead.rows[0];
+    [head].concat(Array.prototype.slice.call(chunks)).forEach(function (part) {
+      var cols = part.querySelectorAll("col");
+      var nextCol = cols[column + 1] || null;
+      slice.widths.forEach(function (width) {
+        var col = document.createElement("col");
+        col.style.width = width;
+        cols[0].parentNode.insertBefore(
+          col,
+          nextCol === null ? cols[cols.length - 1].nextSibling : nextCol
+        );
+      });
+    });
+    slice.widths.forEach(function (width) {
+      widen(parseFloat(width));
+    });
     var nextHeader = columnHeaders()[column] || null;
     var places = slice.cells.map(function (entry) {
       var next = null;
@@ -775,9 +866,6 @@
         }
       }
       return next;
-    });
-    slice.cols.forEach(function (col) {
-      cols[0].parentNode.insertBefore(col, nextCol === null ? cols[cols.length - 1].nextSibling : nextCol);
     });
     slice.headers.forEach(function (header) {
       headerRow.insertBefore(header, nextHeader);
@@ -791,15 +879,16 @@
   }
 
   // @p count empty columns from @p column on, the columns right of it moved
-  // on. A new column states no width and its cells no style. Null where the
+  // on. A new column is as wide as Excel's default one, because every table
+  // of the sheet has to state it, and its cells have no style. Null where the
   // edge would cut a merge, or lies past the rendered columns.
   function insertColumns(column, count) {
     if (column > lastColumn() + 1 || colspanReaches(column)) {
       return null;
     }
-    var slice = { cols: [], headers: [], cells: [] };
+    var slice = { widths: [], headers: [], cells: [] };
     for (var i = 0; i < count; ++i) {
-      slice.cols.push(document.createElement("col"));
+      slice.widths.push("64px");
       var header = document.createElement("th");
       header.className = "odr-sheet-column-header";
       if (!merged) {
@@ -807,14 +896,15 @@
       }
       slice.headers.push(header);
     }
-    for (var r = 0; r < body.rows.length; ++r) {
+    var rows = bodyRows();
+    for (var r = 0; r < rows.length; ++r) {
       var tds = [];
       for (var j = 0; j < count; ++j) {
         var td = document.createElement("td");
-        td.style.cssText = "white-space:nowrap";
+        td.style.cssText = "max-width:0;white-space:nowrap";
         tds.push(td);
       }
-      slice.cells.push({ tr: body.rows[r], tds: tds });
+      slice.cells.push({ tr: rows[r], tds: tds });
     }
     restoreColumns(column, slice);
     return slice;
@@ -829,15 +919,25 @@
     }
     lower();
     var end = Math.min(column + count, lastColumn() + 1);
-    var cols = table.querySelectorAll("col");
     var headers = columnHeaders();
-    var slice = { cols: [], headers: [], cells: [] };
+    var slice = { widths: [], headers: [], cells: [] };
+    var headCols = head.querySelectorAll("col");
     for (var at = column; at < end; ++at) {
-      slice.cols.push(cols[at + 1]);
+      slice.widths.push(getComputedStyle(headCols[at + 1]).width);
       slice.headers.push(headers[at]);
     }
-    for (var r = 0; r < body.rows.length; ++r) {
-      var tr = body.rows[r];
+    [head].concat(Array.prototype.slice.call(chunks)).forEach(function (part) {
+      var cols = part.querySelectorAll("col");
+      for (var c = end; c > column; --c) {
+        cols[c].remove();
+      }
+    });
+    slice.widths.forEach(function (width) {
+      widen(-parseFloat(width));
+    });
+    var rows = bodyRows();
+    for (var r = 0; r < rows.length; ++r) {
+      var tr = rows[r];
       var tds = [];
       for (var i = 1; i < tr.cells.length; ++i) {
         var position = positionOf(tr.cells[i]);
@@ -847,7 +947,7 @@
       }
       slice.cells.push({ tr: tr, tds: tds });
     }
-    slice.cols.concat(slice.headers).forEach(function (node) {
+    slice.headers.forEach(function (node) {
       node.remove();
     });
     slice.cells.forEach(function (entry) {
@@ -1034,16 +1134,24 @@
       : { rank: text === "" ? BLANK : TEXT, value: text };
   }
 
+  // Puts @p rows back into the chunks in their order, each chunk holding as
+  // many as it did. A merged sheet has no sort, so no `rowspan` moves.
   function reorder(rows) {
-    var fragment = document.createDocumentFragment();
-    for (var i = 0; i < rows.length; ++i) {
-      fragment.appendChild(rows[i]);
+    var counts = Array.prototype.map.call(chunks, function (chunk) {
+      return chunk.tBodies[0].rows.length;
+    });
+    var at = 0;
+    for (var c = 0; c < chunks.length; ++c) {
+      var fragment = document.createDocumentFragment();
+      for (var i = 0; i < counts[c]; ++i) {
+        fragment.appendChild(rows[at++]);
+      }
+      chunks[c].tBodies[0].appendChild(fragment);
     }
-    body.appendChild(fragment);
   }
 
   function sortBy(index, direction) {
-    var rows = Array.prototype.slice.call(body.rows);
+    var rows = Array.prototype.slice.call(bodyRows());
     // the labels state the file's order, whatever an edit added or took
     if (direction === 0) {
       reorder(
@@ -1082,7 +1190,6 @@
   // A `rowspan` would reach into a row no longer beneath it and a `colspan`
   // breaks the column index, so a merged sheet gets no sort control.
   if (!merged) {
-    var headers = table.tHead.rows[0].children;
     columnHeaders().forEach(function (header) {
       var letters = header.textContent;
       addSortControl(header);
@@ -1112,7 +1219,7 @@
           control.classList.add("odr-sheet-sort-desc");
         }
         if (sortedColumn !== index && sortedColumn >= 0) {
-          headers[sortedColumn]
+          headerRow.children[sortedColumn]
             .querySelector(".odr-sheet-sort")
             .classList.remove("odr-sheet-sort-asc", "odr-sheet-sort-desc");
         }

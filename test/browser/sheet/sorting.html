@@ -10,59 +10,68 @@
     <!-- A sheet with no merge, which is the only kind offered a sort control.
          Column B is ordered so that sorting it moves every row, and column D
          holds dates whose text sorts in another order than their value. -->
-    <table class="odr-sheet" data-odr-sheet="0">
-      <col class="odr-sheet-gutter" />
-      <col />
-      <col />
-      <col />
-      <col />
-      <thead>
-        <tr>
-          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
-          <th class="odr-sheet-column-header">A</th>
-          <th class="odr-sheet-column-header">B</th>
-          <th class="odr-sheet-column-header">C</th>
-          <th class="odr-sheet-column-header">D</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th class="odr-sheet-row-header">1</th>
-          <td>r0</td>
-          <td class="odr-value-type-float" data-odr-value="0"></td>
-          <td>x0</td>
-          <td class="odr-value-type-date" data-odr-value="45659">02.01.2025</td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">2</th>
-          <td>r1</td>
-          <td class="odr-value-type-float">2</td>
-          <td>x1</td>
-          <td class="odr-value-type-date" data-odr-value="45636">10.12.2024</td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">3</th>
-          <td>r2</td>
-          <td class="odr-value-type-float">4</td>
-          <td>x2</td>
-          <td class="odr-value-type-date" data-odr-value="45731">15.03.2025</td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">4</th>
-          <td>r3</td>
-          <td class="odr-value-type-float">1</td>
-          <td>x3</td>
-          <td class="odr-value-type-date" data-odr-value="46023">01.01.2026</td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">5</th>
-          <td>r4</td>
-          <td class="odr-value-type-float">3</td>
-          <td>x4</td>
-          <td class="odr-value-type-date" data-odr-value="45716">28.02.2025</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="odr-sheet" data-odr-sheet="0">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" />
+        <col />
+        <col />
+        <col />
+        <col />
+        <thead>
+          <tr>
+            <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+            <th class="odr-sheet-column-header">A</th>
+            <th class="odr-sheet-column-header">B</th>
+            <th class="odr-sheet-column-header">C</th>
+            <th class="odr-sheet-column-header">D</th>
+          </tr>
+        </thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" />
+        <col />
+        <col />
+        <col />
+        <col />
+        <tbody>
+          <tr>
+            <th class="odr-sheet-row-header">1</th>
+            <td>r0</td>
+            <td class="odr-value-type-float" data-odr-value="0"></td>
+            <td>x0</td>
+            <td class="odr-value-type-date" data-odr-value="45659">02.01.2025</td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">2</th>
+            <td>r1</td>
+            <td class="odr-value-type-float">2</td>
+            <td>x1</td>
+            <td class="odr-value-type-date" data-odr-value="45636">10.12.2024</td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">3</th>
+            <td>r2</td>
+            <td class="odr-value-type-float">4</td>
+            <td>x2</td>
+            <td class="odr-value-type-date" data-odr-value="45731">15.03.2025</td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">4</th>
+            <td>r3</td>
+            <td class="odr-value-type-float">1</td>
+            <td>x3</td>
+            <td class="odr-value-type-date" data-odr-value="46023">01.01.2026</td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">5</th>
+            <td>r4</td>
+            <td class="odr-value-type-float">3</td>
+            <td>x4</td>
+            <td class="odr-value-type-date" data-odr-value="45716">28.02.2025</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <div id="report"></div>
     <!-- the table the library writes into a page, ahead of the script

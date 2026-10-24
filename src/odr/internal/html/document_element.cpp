@@ -180,6 +180,20 @@ TableDimensions html::sheet_rendered_extent(const Sheet &sheet,
 
 namespace {
 
+/// What a sheet reads to give a column that states no width one.
+constexpr std::uint32_t estimated_rows = 1000;
+/// About the width of a character of the sheet's font, and the padding of a
+/// cell, which a column stating no width is estimated with.
+constexpr double character_pixels = 7.5;
+constexpr double cell_padding_pixels = 14;
+/// About the width of a digit of a row label, and the padding around one.
+constexpr double digit_pixels = 7.5;
+constexpr double gutter_padding_pixels = 14;
+/// What a row that states no height is estimated at, before it is laid out.
+constexpr double estimated_row_pixels = 20;
+/// A chunk of a sheet holds about as many cells (`lazy-loading.md` decision 6).
+constexpr std::uint32_t chunk_cells = 4096;
+
 /// Whether a reader sees anything. A bookmark marks a place rather than filling
 /// one, and a span or a link is a style around what it holds, so a paragraph
 /// holding only those is still an empty line.
@@ -606,8 +620,74 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   const std::optional<HtmlSheetCut> cut =
       state.config().editable ? sheet_cut(sheet, state.config()) : std::nullopt;
 
+  const ElementRange shapes = sheet.shapes();
+  const bool has_shapes = shapes.begin() != shapes.end();
+
+  // `table-layout:fixed` still sizes the table from its content, so an unbroken
+  // line would widen its column; `max-width:0` takes the cell out of that sum.
+  // Every chunk is a table of its own, so every column needs a width: one that
+  // states none takes its longest text, as LibreOffice's optimal width does.
+  std::vector<std::optional<double>> column_pixels(end_column);
+  std::vector<std::string> column_styles(end_column);
+  for (std::uint32_t column_index = 0; column_index < end_column;
+       ++column_index) {
+    const TableColumnStyle table_column_style =
+        sheet.column_style(column_index);
+    column_pixels[column_index] = css_pixels(table_column_style.width);
+    column_styles[column_index] =
+        translate_table_column_style(table_column_style);
+  }
+  for (std::uint32_t column_index = 0; column_index < end_column;
+       ++column_index) {
+    if (column_pixels[column_index].has_value()) {
+      continue;
+    }
+    std::size_t characters = 0;
+    for (std::uint32_t row_index = 0;
+         row_index < std::min(end_row, estimated_rows); ++row_index) {
+      const SheetCell cell = sheet.cell(column_index, row_index);
+      if (cell.is_covered()) {
+        continue;
+      }
+      const std::string text = shown_text(cell);
+      // a cell that wraps its text needs only its longest word
+      const char *breaks =
+          sheet.cell_style(column_index, row_index).wrap_text.value_or(false)
+              ? "\n "
+              : "\n";
+      for (std::size_t begin = 0; begin <= text.size();) {
+        const std::size_t end =
+            std::min(text.find_first_of(breaks, begin), text.size());
+        characters = std::max(characters, util::string::utf8_length(
+                                              text.substr(begin, end - begin)));
+        begin = end + 1;
+      }
+    }
+    const double pixels =
+        static_cast<double>(std::clamp<std::size_t>(characters, 4, 60)) *
+            character_pixels +
+        cell_padding_pixels;
+    column_pixels[column_index] = pixels;
+    column_styles[column_index] +=
+        "width:" + util::number::to_string_significant(pixels, 7) + "px;";
+  }
+
+  const auto write_columns = [&] {
+    state.out().write_element_begin("col",
+                                    HtmlElementOptions()
+                                        .set_close_type(HtmlCloseType::none)
+                                        .set_class("odr-sheet-gutter"));
+    for (std::uint32_t column_index = 0; column_index < end_column;
+         ++column_index) {
+      state.out().write_element_begin(
+          "col", HtmlElementOptions()
+                     .set_close_type(HtmlCloseType::none)
+                     .set_style(column_styles[column_index], state.styles()));
+    }
+  };
+
   state.out().write_element_begin(
-      "table",
+      "div",
       HtmlElementOptions()
           .set_class("odr-sheet")
           .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
@@ -622,56 +702,46 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                                       std::to_string(cut->content.rows));
             }
           })
-          .set_style([&]() -> std::optional<HtmlWritable> {
-            if (!print_fit.has_value()) {
-              return std::nullopt;
+          .set_style([&]() -> std::string {
+            // Every table states the same width, so `table-layout:fixed`
+            // takes the columns from the `col`s alone. A table wider than the
+            // viewport would else shrink a column to what its cells hold.
+            const double gutter =
+                static_cast<double>(
+                    TablePosition::to_row_string(end_row == 0 ? 0 : end_row - 1)
+                        .size()) *
+                    digit_pixels +
+                gutter_padding_pixels;
+            double width = gutter;
+            for (const std::optional<double> &pixels : column_pixels) {
+              width += pixels.value_or(0);
             }
-            // `Measure` renders no exponent form
-            return "--odr-print-fit:" +
-                   Measure(*print_fit, DynamicUnit()).to_string() + ";";
+            std::string style = "--odr-sheet-gutter:" +
+                                util::number::to_string_significant(gutter, 7) +
+                                "px;--odr-sheet-width:" +
+                                util::number::to_string_significant(width, 7) +
+                                "px;";
+            if (print_fit.has_value()) {
+              // `Measure` renders no exponent form
+              style += "--odr-print-fit:" +
+                       Measure(*print_fit, DynamicUnit()).to_string() + ";";
+            }
+            return style;
           }()));
 
-  state.out().write_element_begin("col",
-                                  HtmlElementOptions()
-                                      .set_close_type(HtmlCloseType::none)
-                                      .set_class("odr-sheet-gutter"));
-
-  // `table-layout:fixed` still sizes the table from its content, so an unbroken
-  // line would widen its column; `max-width:0` takes the cell out of that sum.
-  // Only where a width is stated: a column that states none is its content's.
-  std::vector<std::optional<double>> column_pixels(end_column);
-
-  for (std::uint32_t column_index = 0; column_index < end_column;
-       ++column_index) {
-    const TableColumnStyle table_column_style =
-        sheet.column_style(column_index);
-    column_pixels[column_index] = css_pixels(table_column_style.width);
-
-    state.out().write_element_begin(
-        "col", HtmlElementOptions()
-                   .set_close_type(HtmlCloseType::none)
-                   .set_style(translate_table_column_style(table_column_style),
-                              state.styles()));
-  }
-
   // No `scope`: the letters and numbers are a ruler, not headers of what they
-  // label.
+  // label. A table of its own, because a sticky `thead` sticks only inside
+  // its table, and the rows are in many.
   {
+    state.out().write_element_begin(
+        "table", HtmlElementOptions().set_class("odr-sheet-head"));
+    write_columns();
     state.out().write_element_begin("thead");
     state.out().write_element_begin("tr");
 
-    // Under `table-layout:fixed` the first row sizes the columns, and `ch`
-    // resolves against the ruler's font — so the gutter width sits here rather
-    // than on the `<col>`.
     state.out().write_element_begin(
         "th",
-        HtmlElementOptions()
-            .set_inline(true)
-            .set_class("odr-sheet-corner")
-            .set_style("width:calc(" +
-                       std::to_string(
-                           TablePosition::to_row_string(end_row - 1).size()) +
-                       "ch + 14px);"));
+        HtmlElementOptions().set_inline(true).set_class("odr-sheet-corner"));
     state.out().write_element_end("th");
 
     for (std::uint32_t column_index = 0; column_index < end_column;
@@ -685,12 +755,45 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
 
     state.out().write_element_end("tr");
     state.out().write_element_end("thead");
+    state.out().write_element_end("table");
   }
 
-  state.out().write_element_begin("tbody");
-
-  const ElementRange shapes = sheet.shapes();
-  const bool has_shapes = shapes.begin() != shapes.end();
+  // a chunk ends where no merge is open, so no `rowspan` crosses two tables
+  const std::uint32_t chunk_rows = std::clamp<std::uint32_t>(
+      chunk_cells / std::max<std::uint32_t>(end_column, 1), 8, 256);
+  std::uint32_t rows_in_chunk = 0;
+  bool chunk_open = false;
+  const auto begin_chunk = [&](const std::uint32_t first_row) {
+    double height = 0;
+    for (std::uint32_t row_index = first_row;
+         row_index < std::min(end_row, first_row + chunk_rows); ++row_index) {
+      height += css_pixels(sheet.row_style(row_index).height)
+                    .value_or(estimated_row_pixels);
+    }
+    state.out().write_element_begin(
+        "table",
+        HtmlElementOptions()
+            .set_class(first_row == 0 ? "odr-sheet-rows odr-chunk "
+                                        "odr-chunk-near"
+                                      : "odr-sheet-rows odr-chunk")
+            .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
+              // a shape hangs from A1 and may reach past the first chunk
+              if (first_row == 0 && has_shapes) {
+                clb("data-odr-chunk-held", "");
+              }
+            })
+            .set_style("contain-intrinsic-height:auto " +
+                       util::number::to_string_significant(height, 7) + "px"));
+    write_columns();
+    state.out().write_element_begin("tbody");
+    chunk_open = true;
+    rows_in_chunk = 0;
+  };
+  const auto end_chunk = [&] {
+    state.out().write_element_end("tbody");
+    state.out().write_element_end("table");
+    chunk_open = false;
+  };
 
   // per column, the row where a cell spanning down from above ends
   std::vector<std::uint32_t> span_end_row(end_column, 0);
@@ -698,6 +801,9 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   TableCursor cursor;
   for (std::uint32_t row_index = cursor.row(); row_index < end_row;
        row_index = cursor.row()) {
+    if (!chunk_open) {
+      begin_chunk(row_index);
+    }
     const TableRowStyle table_row_style = sheet.row_style(row_index);
 
     state.out().write_element_begin(
@@ -932,10 +1038,18 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
     state.out().write_element_end("tr");
 
     cursor.add_row();
+    if (++rows_in_chunk >= chunk_rows &&
+        std::ranges::none_of(span_end_row, [&](const std::uint32_t span_end) {
+          return span_end > cursor.row();
+        })) {
+      end_chunk();
+    }
+  }
+  if (chunk_open) {
+    end_chunk();
   }
 
-  state.out().write_element_end("tbody");
-  state.out().write_element_end("table");
+  state.out().write_element_end("div");
 }
 
 namespace {

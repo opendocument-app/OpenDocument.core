@@ -16,25 +16,32 @@
   >
     <!-- A French document that a German LibreOffice saved: B1 compares A1
          and shows its result as `FALSCH`, not as `FAUX`. -->
-    <table class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="Sheet1">
-      <col class="odr-sheet-gutter" />
-      <col style="width: 80px" />
-      <col style="width: 80px" />
-      <thead>
-        <tr>
-          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
-          <th class="odr-sheet-column-header">A</th>
-          <th class="odr-sheet-column-header">B</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th class="odr-sheet-row-header">1</th>
-          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">1</td>
-          <td class="odr-value-type-boolean odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.A1]&gt;5" data-odr-reads="0,0,0,0,0" data-odr-type="boolean" data-odr-value="0" style="max-width:0;white-space:nowrap">FALSCH</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="Sheet1">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <thead>
+          <tr>
+            <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+            <th class="odr-sheet-column-header">A</th>
+            <th class="odr-sheet-column-header">B</th>
+          </tr>
+        </thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <tbody>
+          <tr>
+            <th class="odr-sheet-row-header">1</th>
+            <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">1</td>
+            <td class="odr-value-type-boolean odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.A1]&gt;5" data-odr-reads="0,0,0,0,0" data-odr-type="boolean" data-odr-value="0" style="max-width:0;white-space:nowrap">FALSCH</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <div id="report"></div>
     <script src="error-codes.js"></script>

@@ -251,6 +251,7 @@ void write_head(const Document &document, const WritingState &state,
   if (document.document_type() == DocumentType::spreadsheet) {
     write_spreadsheet_style(state);
     write_spreadsheet_dark_style(state);
+    write_chunk_style(state);
   }
   // Last, after the sheets whose rules they stand in for.
   if (StyleRegistry *styles = state.styles();

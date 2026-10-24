@@ -18,40 +18,48 @@
          decimals, B2 compares A1, A3 divides by A1 - 1 and shows an error, B3
          asks for the system and has no answer, C3 is a date of B1, and C2 reads
          itself and A1. -->
-    <table class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="Sheet1">
-      <col class="odr-sheet-gutter" />
-      <col style="width: 80px" />
-      <col style="width: 80px" />
-      <col style="width: 80px" />
-      <thead>
-        <tr>
-          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
-          <th class="odr-sheet-column-header">A</th>
-          <th class="odr-sheet-column-header">B</th>
-          <th class="odr-sheet-column-header">C</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th class="odr-sheet-row-header">1</th>
-          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">1</td>
-          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">2</td>
-          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.A1]+[.B1]" data-odr-reads="0,0,1,0,0" style="max-width:0;white-space:nowrap">3</td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">2</th>
-          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.C1]*10" data-odr-reads="0,2,2,0,0" data-odr-value="30" data-odr-format="0.00" style="max-width:0;white-space:nowrap">30.00</td>
-          <td class="odr-locked" data-odr-lock="formula" data-odr-formula="of:=IF([.A1]&gt;5;&quot;big&quot;;&quot;small&quot;)" data-odr-reads="0,0,0,0,0" style="max-width:0;white-space:nowrap">small</td>
-          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.C2]+[.A1]" data-odr-reads="0,2,2,1,1 0,0,0,0,0" style="max-width:0;white-space:nowrap">0</td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">3</th>
-          <td class="odr-locked" data-odr-lock="formula" data-odr-formula="of:=1/([.A1]-1)" data-odr-reads="0,0,0,0,0" data-odr-type="error" style="max-width:0;white-space:nowrap">#DIV/0!</td>
-          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=INFO(&quot;system&quot;)&amp;[.A1]" data-odr-reads="0,0,*,0,*" style="max-width:0;white-space:nowrap">45000</td>
-          <td class="odr-value-type-date odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.B1]+45000" data-odr-reads="0,1,1,0,0" data-odr-value="45002" data-odr-format="YYYY-MM-DD" style="max-width:0;white-space:nowrap">2023-03-17</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="Sheet1">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <thead>
+          <tr>
+            <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+            <th class="odr-sheet-column-header">A</th>
+            <th class="odr-sheet-column-header">B</th>
+            <th class="odr-sheet-column-header">C</th>
+          </tr>
+        </thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <tbody>
+          <tr>
+            <th class="odr-sheet-row-header">1</th>
+            <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">1</td>
+            <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">2</td>
+            <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.A1]+[.B1]" data-odr-reads="0,0,1,0,0" style="max-width:0;white-space:nowrap">3</td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">2</th>
+            <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.C1]*10" data-odr-reads="0,2,2,0,0" data-odr-value="30" data-odr-format="0.00" style="max-width:0;white-space:nowrap">30.00</td>
+            <td class="odr-locked" data-odr-lock="formula" data-odr-formula="of:=IF([.A1]&gt;5;&quot;big&quot;;&quot;small&quot;)" data-odr-reads="0,0,0,0,0" style="max-width:0;white-space:nowrap">small</td>
+            <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.C2]+[.A1]" data-odr-reads="0,2,2,1,1 0,0,0,0,0" style="max-width:0;white-space:nowrap">0</td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">3</th>
+            <td class="odr-locked" data-odr-lock="formula" data-odr-formula="of:=1/([.A1]-1)" data-odr-reads="0,0,0,0,0" data-odr-type="error" style="max-width:0;white-space:nowrap">#DIV/0!</td>
+            <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=INFO(&quot;system&quot;)&amp;[.A1]" data-odr-reads="0,0,*,0,*" style="max-width:0;white-space:nowrap">45000</td>
+            <td class="odr-value-type-date odr-locked" data-odr-lock="formula" data-odr-formula="of:=[.B1]+45000" data-odr-reads="0,1,1,0,0" data-odr-value="45002" data-odr-format="YYYY-MM-DD" style="max-width:0;white-space:nowrap">2023-03-17</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <div id="report"></div>
     <script src="error-codes.js"></script>

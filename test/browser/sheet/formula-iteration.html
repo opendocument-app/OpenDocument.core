@@ -16,38 +16,47 @@
     <!-- An ods that iterates: A1 and B1 read each other and D1, C1 reads A1,
          A2 grows without end, and B2 draws a number, which reads all of the
          sheet as a volatile cell does. -->
-    <table class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="S">
-      <col class="odr-sheet-gutter" />
-      <col style="width: 100px" />
-      <col style="width: 100px" />
-      <col style="width: 100px" />
-      <col style="width: 100px" />
-      <thead>
-        <tr>
-          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
-          <th class="odr-sheet-column-header">A</th>
-          <th class="odr-sheet-column-header">B</th>
-          <th class="odr-sheet-column-header">C</th>
-          <th class="odr-sheet-column-header">D</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th class="odr-sheet-row-header">1</th>
-          <td data-odr-formula="of:=[.B1]/2+[.D1]" data-odr-reads="0,1,1,0,0 0,3,3,0,0" style="max-width:0;white-space:nowrap"></td>
-          <td data-odr-formula="of:=[.A1]" data-odr-reads="0,0,0,0,0" style="max-width:0;white-space:nowrap"></td>
-          <td data-odr-formula="of:=[.A1]*10" data-odr-reads="0,0,0,0,0" style="max-width:0;white-space:nowrap"></td>
-          <td style="max-width:0;white-space:nowrap"></td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">2</th>
-          <td data-odr-formula="of:=[.A2]+[.D1]" data-odr-reads="0,0,0,1,1 0,3,3,0,0" style="max-width:0;white-space:nowrap"></td>
-          <td data-odr-formula="of:=RAND()" data-odr-reads="0,0,*,0,*" style="max-width:0;white-space:nowrap"></td>
-          <td style="max-width:0;white-space:nowrap"></td>
-          <td style="max-width:0;white-space:nowrap"></td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="S">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 100px" />
+        <col style="width: 100px" />
+        <col style="width: 100px" />
+        <col style="width: 100px" />
+        <thead>
+          <tr>
+            <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+            <th class="odr-sheet-column-header">A</th>
+            <th class="odr-sheet-column-header">B</th>
+            <th class="odr-sheet-column-header">C</th>
+            <th class="odr-sheet-column-header">D</th>
+          </tr>
+        </thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 100px" />
+        <col style="width: 100px" />
+        <col style="width: 100px" />
+        <col style="width: 100px" />
+        <tbody>
+          <tr>
+            <th class="odr-sheet-row-header">1</th>
+            <td data-odr-formula="of:=[.B1]/2+[.D1]" data-odr-reads="0,1,1,0,0 0,3,3,0,0" style="max-width:0;white-space:nowrap"></td>
+            <td data-odr-formula="of:=[.A1]" data-odr-reads="0,0,0,0,0" style="max-width:0;white-space:nowrap"></td>
+            <td data-odr-formula="of:=[.A1]*10" data-odr-reads="0,0,0,0,0" style="max-width:0;white-space:nowrap"></td>
+            <td style="max-width:0;white-space:nowrap"></td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">2</th>
+            <td data-odr-formula="of:=[.A2]+[.D1]" data-odr-reads="0,0,0,1,1 0,3,3,0,0" style="max-width:0;white-space:nowrap"></td>
+            <td data-odr-formula="of:=RAND()" data-odr-reads="0,0,*,0,*" style="max-width:0;white-space:nowrap"></td>
+            <td style="max-width:0;white-space:nowrap"></td>
+            <td style="max-width:0;white-space:nowrap"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <div id="report"></div>
     <script src="error-codes.js"></script>

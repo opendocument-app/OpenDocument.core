@@ -354,27 +354,55 @@
   window.addEventListener("keydown", taken);
 
   // The browser lays out a chunk within a screen of the viewport, and not one
-  // further away, so it holds the layout of a few chunks at a time.
+  // further away, so it holds the layout of a few chunks at a time. A chunk
+  // that becomes near says so, because what is in it has no geometry before.
+  // A held chunk stays near: something drawn in it reaches past it.
+  function setNear(chunk, isNear) {
+    if (chunk.classList.contains("odr-chunk-near") === isNear) {
+      return;
+    }
+    chunk.classList.toggle("odr-chunk-near", isNear);
+    if (isNear) {
+      chunk.dispatchEvent(new CustomEvent("odr-chunk-near", { bubbles: true }));
+    }
+  }
+
   var chunks = document.getElementsByClassName("odr-chunk");
   var near =
     typeof IntersectionObserver === "function"
       ? new IntersectionObserver(
           function (entries) {
             entries.forEach(function (entry) {
-              entry.target.classList.toggle(
-                "odr-chunk-near",
-                entry.isIntersecting
-              );
+              setNear(entry.target, entry.isIntersecting);
             });
           },
           { rootMargin: "100% 0px" }
         )
       : null;
   for (var i = 0; i < chunks.length; ++i) {
-    if (near !== null) {
+    if (near !== null && !chunks[i].hasAttribute("data-odr-chunk-held")) {
       near.observe(chunks[i]);
     } else {
       chunks[i].classList.add("odr-chunk-near");
     }
   }
+
+  odr.chunks = {
+    // Lays out the chunk that holds @p element, so it can be measured and
+    // scrolled to. The observer takes it back once it is far again.
+    show: function (element) {
+      var chunk = element.closest(".odr-chunk");
+      if (chunk !== null) {
+        setNear(chunk, true);
+      }
+    },
+    // Watches a chunk that a script added, as the view writes them.
+    observe: function (chunk) {
+      if (near !== null) {
+        near.observe(chunk);
+      } else {
+        chunk.classList.add("odr-chunk-near");
+      }
+    },
+  };
 })();
