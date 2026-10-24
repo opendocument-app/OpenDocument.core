@@ -1,5 +1,7 @@
 #include <odr/internal/formula/formula_function.hpp>
+#include <odr/internal/formula/formula_parser.hpp>
 #include <odr/internal/formula/formula_text.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <array>
@@ -589,6 +591,231 @@ Value index(const Call &call) {
                             static_cast<std::uint32_t>(row) - 1);
 }
 
+/// The grid of Excel. LibreOffice refuses a reference past its own grid with
+/// a code a file cannot hold, so the size of its grid decides nothing here.
+constexpr double grid_columns = 16384;
+constexpr double grid_rows = 1048576;
+
+/// `OFFSET`: a reference moved by rows and columns, and sized anew where a
+/// height or a width is given.
+Value offset(const Call &call) {
+  expect_arguments(call, 3, 5);
+  const Value value = call.value(0);
+  if (const auto *error = std::get_if<ErrorType>(&value.content)) {
+    return Value{*error};
+  }
+  const auto *reference = std::get_if<Reference>(&value.content);
+  if (reference == nullptr || reference->areas.size() != 1) {
+    throw NoAnswer{};
+  }
+  const Area &area = reference->areas.front();
+  if ((area.whole_columns &&
+       (call.size() > 3 || number_argument(call, 1) != 0)) ||
+      (area.whole_rows && (call.size() > 4 || number_argument(call, 2) != 0))) {
+    throw NoAnswer{}; // a whole row or column moved or sized
+  }
+  const auto read = [&](const std::size_t i) {
+    return std::trunc(number_argument(call, i));
+  };
+  const TablePosition &from = area.range.from();
+  const TablePosition &to = area.range.to();
+  const double top = from.row + read(1);
+  const double left = from.column + read(2);
+  const double height = call.size() > 3 ? read(3) : to.row - from.row + 1.0;
+  const double width =
+      call.size() > 4 ? read(4) : to.column - from.column + 1.0;
+  if (height < 1 || width < 1) {
+    throw NoAnswer{}; // Excel does not document it, LibreOffice refuses it
+  }
+  if (top < 0 || left < 0 || top + height > grid_rows ||
+      left + width > grid_columns) {
+    return refused(call, ErrorType::reference);
+  }
+  return Value{Reference{
+      {Area{area.sheet,
+            TableRange({static_cast<std::uint32_t>(left),
+                        static_cast<std::uint32_t>(top)},
+                       {static_cast<std::uint32_t>(left + width - 1),
+                        static_cast<std::uint32_t>(top + height - 1)}),
+            area.whole_columns, area.whole_rows}}}};
+}
+
+/// One axis of an R1C1 cell: `R2` is row 2, `R[-1]` the row above @p at, and
+/// a bare `R` the row of @p at. Advances @p text past it.
+std::optional<Coordinate> r1c1_axis(std::string_view &text, const char letter,
+                                    const std::uint32_t at,
+                                    const double limit) {
+  if (text.empty() || util::string::to_upper(text.front()) != letter) {
+    return std::nullopt;
+  }
+  text.remove_prefix(1);
+  const bool relative = !text.empty() && text.front() == '[';
+  if (relative) {
+    text.remove_prefix(1);
+  }
+  const std::size_t sign = !text.empty() && text.front() == '-' ? 1 : 0;
+  std::size_t digits = sign;
+  while (digits < text.size() && text[digits] >= '0' && text[digits] <= '9') {
+    ++digits;
+  }
+  double number = 0;
+  for (std::size_t i = sign; i < digits; ++i) {
+    number = number * 10 + (text[i] - '0');
+  }
+  if (sign != 0) {
+    number = -number;
+  }
+  const bool stated = digits > sign;
+  text.remove_prefix(digits);
+  if (relative) {
+    if (!stated || text.empty() || text.front() != ']') {
+      return std::nullopt;
+    }
+    text.remove_prefix(1);
+  } else if (sign != 0) {
+    return std::nullopt;
+  }
+  const double index = relative || !stated ? at + number : number - 1;
+  if (index < 0 || index >= limit) {
+    return std::nullopt;
+  }
+  return Coordinate{static_cast<std::uint32_t>(index), !relative && stated};
+}
+
+/// A cell or a range in R1C1, as `INDIRECT` reads one with its second
+/// argument false: `Sheet1!R2C3`, `R[-1]C:R[1]C`. Null for anything else,
+/// such as a whole row (`R2`), which this does not read.
+std::optional<Node> r1c1_reference(std::string_view text,
+                                   const TablePosition &at) {
+  std::optional<std::string> sheet;
+  if (const std::size_t bang = text.rfind('!');
+      bang != std::string_view::npos) {
+    std::string_view name = text.substr(0, bang);
+    if (name.size() >= 2 && name.front() == '\'' && name.back() == '\'') {
+      name = name.substr(1, name.size() - 2);
+    }
+    std::string unquoted(name);
+    util::string::replace_all(unquoted, "''", "'");
+    sheet = std::move(unquoted);
+    text.remove_prefix(bang + 1);
+  }
+  const auto cell = [&]() -> std::optional<CellReference> {
+    const std::optional<Coordinate> row =
+        r1c1_axis(text, 'R', at.row, grid_rows);
+    const std::optional<Coordinate> column =
+        row.has_value() ? r1c1_axis(text, 'C', at.column, grid_columns)
+                        : std::nullopt;
+    if (!column.has_value()) {
+      return std::nullopt;
+    }
+    return CellReference{std::nullopt, sheet, false, column, row};
+  };
+  const std::optional<CellReference> from = cell();
+  if (!from.has_value()) {
+    return std::nullopt;
+  }
+  if (text.empty()) {
+    return Node{*from, {}};
+  }
+  if (text.front() != ':') {
+    return std::nullopt;
+  }
+  text.remove_prefix(1);
+  std::optional<CellReference> to = cell();
+  if (!to.has_value() || !text.empty()) {
+    return std::nullopt;
+  }
+  to->sheet = std::nullopt;
+  return Node{RangeReference{*from, *to}, {}};
+}
+
+/// A reference in A1 as `INDIRECT` reads one: Excel's `Sheet1!A1:B2` and a
+/// name, and in LibreOffice its own `$Sheet1.$A$1:B2` too.
+std::optional<Node> a1_reference(const std::string_view text,
+                                 const bool libreoffice) {
+  const auto is_reference = [](const std::optional<Node> &node) {
+    return node.has_value() &&
+           (node->holds<CellReference>() || node->holds<RangeReference>() ||
+            node->holds<NameReference>() ||
+            (node->holds<BinaryOperation>() &&
+             std::get<BinaryOperation>(node->content).op ==
+                 BinaryOperator::range));
+  };
+  if (text.empty() || text.front() == '=') {
+    return std::nullopt;
+  }
+  // a `.` without a `!` is LibreOffice's sheet separator, and in Excel a name
+  const bool calc = libreoffice && text.find('.') != std::string_view::npos &&
+                    text.find('!') == std::string_view::npos;
+  std::optional<Node> node;
+  if (!calc) {
+    node = parse(text, Syntax::ooxml);
+    if (is_reference(node)) {
+      return node;
+    }
+  }
+  if (!libreoffice) {
+    return std::nullopt;
+  }
+  // `Sheet1.A1:B2` is `[Sheet1.A1:.B2]` in a formula
+  std::string bracketed = "[" + std::string(text) + "]";
+  if (const std::size_t colon = bracketed.find(':');
+      colon != std::string::npos && bracketed[colon + 1] != '.' &&
+      bracketed[colon + 1] != '$' &&
+      bracketed.find('.', colon) == std::string::npos) {
+    bracketed.insert(colon + 1, ".");
+  }
+  if (bracketed[1] != '.' && bracketed.find('.') == std::string::npos) {
+    bracketed.insert(1, ".");
+  }
+  node = parse(bracketed, Syntax::opendocument);
+  return is_reference(node) ? node : std::nullopt;
+}
+
+/// `INDIRECT`: the reference a text spells, in A1, or in R1C1 where the
+/// second argument is false. A text that spells none is `#REF!`.
+Value indirect(const Call &call) {
+  expect_arguments(call, 1, 2);
+  const Value argument = call.scalar(0);
+  if (const auto *error = std::get_if<ErrorType>(&argument.content)) {
+    return Value{*error};
+  }
+  const auto *text = std::get_if<std::string>(&argument.content);
+  if (text == nullptr) {
+    return Value{ErrorType::reference};
+  }
+  if (text->find_first_of(" \t\n") != std::string::npos) {
+    if (is_libreoffice(call)) {
+      return Value{ErrorType::reference};
+    }
+    throw NoAnswer{}; // whether Excel trims is not documented
+  }
+  bool a1 = true;
+  if (call.size() > 1) {
+    const Value flag = call.scalar(1);
+    if (const auto *error = std::get_if<ErrorType>(&flag.content)) {
+      return Value{*error};
+    }
+    if (const auto *boolean = std::get_if<bool>(&flag.content)) {
+      a1 = *boolean;
+    } else if (const auto *number = std::get_if<double>(&flag.content)) {
+      a1 = *number != 0;
+    } else {
+      throw NoAnswer{};
+    }
+  }
+  if (a1) {
+    const std::optional<Node> node = a1_reference(*text, is_libreoffice(call));
+    return node.has_value() ? call.reference(*node)
+                            : Value{ErrorType::reference};
+  }
+  const std::optional<Node> node = r1c1_reference(*text, call.cell().cell);
+  if (!node.has_value()) {
+    throw NoAnswer{}; // a whole row or column, which this does not read
+  }
+  return call.reference(*node);
+}
+
 /// `ROW` and `COLUMN`: of the first cell of a reference, or of the formula's
 /// own cell.
 template <bool of_row> Value position(const Call &call) {
@@ -638,7 +865,9 @@ constexpr std::array entries{
     FunctionEntry{"COUNTIFS", count_if<254>},
     FunctionEntry{"HLOOKUP", lookup<false>},
     FunctionEntry{"INDEX", index},
+    FunctionEntry{"INDIRECT", indirect},
     FunctionEntry{"MATCH", match},
+    FunctionEntry{"OFFSET", offset},
     FunctionEntry{"ROW", position<true>},
     FunctionEntry{"ROWS", size<true>},
     FunctionEntry{"SUMIF", sum_if<false>},
