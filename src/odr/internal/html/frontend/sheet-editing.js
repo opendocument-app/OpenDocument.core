@@ -1581,7 +1581,11 @@
     var stated = typed === null ? cell.getAttribute("data-odr-formula") : null;
     var input =
       stated !== null && formulas !== null && formulas.module !== null
-        ? formulas.module.toInput(stated, formulas.syntax)
+        ? formulas.module.toInput(
+            stated,
+            formulas.syntax,
+            formulas.locale
+          )
         : null;
     if (stated !== null && input === null) {
       refuse("formulaInput", column, row);
@@ -1644,7 +1648,8 @@
       }
       var expression = formulas.module.toFile(
         delocalized(text.slice(1)),
-        formulas.syntax
+        formulas.syntax,
+        formulas.locale
       );
       if (expression === null) {
         refuse("formulaInvalid", at.column, at.row);

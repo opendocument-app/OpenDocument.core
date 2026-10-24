@@ -133,15 +133,32 @@ describe('formula module', { skip: path === '' && 'no odr-formula.js' }, () => {
   });
 
   it('turns typed input into the syntax of the file and back', () => {
-    assert.equal(module.toFile('SUM(A1:B2)*2', 'opendocument'),
+    assert.equal(module.toFile('SUM(A1:B2)*2', 'opendocument', ''),
       'of:=SUM([.A1:.B2])*2');
-    assert.equal(module.toFile('Sheet2!$A$1+1', 'opendocument'),
+    assert.equal(module.toFile('Sheet2!$A$1+1', 'opendocument', ''),
       'of:=[Sheet2.$A$1]+1');
-    assert.equal(module.toFile('SUM(A1:B2)', 'ooxml'), 'SUM(A1:B2)');
-    assert.equal(module.toFile('SUM(', 'ooxml'), null);
-    assert.equal(module.toInput('of:=SUM([.A1:.B2])*2', 'opendocument'),
+    assert.equal(module.toFile('SUM(A1:B2)', 'ooxml', ''), 'SUM(A1:B2)');
+    assert.equal(module.toFile('SUM(', 'ooxml', ''), null);
+    assert.equal(module.toInput('of:=SUM([.A1:.B2])*2', 'opendocument', ''),
       'SUM(A1:B2)*2');
-    assert.equal(module.toInput('of:=SUM(', 'opendocument'), null);
+    assert.equal(module.toInput('of:=SUM(', 'opendocument', ''), null);
+  });
+
+  it('spells a function name as LibreOffice shows it in a language', () => {
+    assert.equal(module.toFile('SUMME(A1:B2)*2', 'opendocument', 'de-DE'),
+      'of:=SUM([.A1:.B2])*2');
+    assert.equal(module.toFile('summe(A1)', 'ooxml', 'de-AT'), 'SUM(A1)');
+    assert.equal(module.toFile('ZÄHLENWENN(A1:A3,1)', 'ooxml', 'de-DE'),
+      'COUNTIF(A1:A3,1)');
+    // an English name and a name in a text stay
+    assert.equal(module.toFile('SUM(A1)', 'ooxml', 'de-DE'), 'SUM(A1)');
+    assert.equal(module.toFile('LEN("SUMME(")', 'ooxml', 'de-DE'),
+      'LEN("SUMME(")');
+    assert.equal(module.toInput('of:=SUM([.A1:.B2])', 'opendocument', 'de-DE'),
+      'SUMME(A1:B2)');
+    assert.equal(module.toInput('IF(A1,1,2)', 'ooxml', 'fr-FR'),
+      'SI(A1,1,2)');
+    assert.equal(module.toInput('SUM(A1)', 'ooxml', 'ja-JP'), 'SUM(A1)');
   });
 
   it('states what a formula reads', () => {
