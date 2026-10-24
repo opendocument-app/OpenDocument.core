@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+### Text documents and presentations
+
+- A run whose text is only spaces keeps its spaces. Word writes one wherever
+  the formatting changes at a space, so words ran together in docx, also in a
+  file that odr saved after an edit.
+
 ### HTML output
 
 - `font-family` ends with a generic family, so a font that is not installed

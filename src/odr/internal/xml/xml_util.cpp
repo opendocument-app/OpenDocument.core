@@ -19,6 +19,7 @@
 #include <new>
 #include <string_view>
 #include <tuple>
+#include <vector>
 
 namespace odr::internal {
 
@@ -72,6 +73,40 @@ std::string escape(const std::string_view text, const bool attribute) {
   return result;
 }
 
+// `parse_ws_pcdata_single` keeps whitespace that is the only child, as in a
+// `w:t` of one space, and drops the indentation between two siblings
+constexpr unsigned int parse_options =
+    pugi::parse_default | pugi::parse_ws_pcdata_single;
+
+/// The whitespace `parse_ws_pcdata_single` keeps where it holds a line break:
+/// the indentation of an element with no content, such as
+/// `<table:table-cell>\n</table:table-cell>`, which a reader takes for empty.
+class LineIndentation final : public pugi::xml_tree_walker {
+public:
+  std::vector<pugi::xml_node> nodes;
+
+  bool for_each(pugi::xml_node &node) override {
+    if (node.type() == pugi::node_pcdata && !node.previous_sibling() &&
+        !node.next_sibling()) {
+      const std::string_view value = node.value();
+      if (value.find_first_of("\n\r") != std::string_view::npos &&
+          value.find_first_not_of(" \t\n\r") == std::string_view::npos) {
+        nodes.push_back(node);
+      }
+    }
+    return true;
+  }
+};
+
+/// A document parse keeps the whitespace of a `w:t` and drops indentation.
+void drop_line_indentation(pugi::xml_document &document) {
+  LineIndentation indentation;
+  document.traverse(indentation);
+  for (const pugi::xml_node node : indentation.nodes) {
+    node.parent().remove_child(node);
+  }
+}
+
 } // namespace
 
 std::string xml::escape_text(const std::string_view text) {
@@ -93,22 +128,25 @@ void xml::check_depth(pugi::xml_document &document) {
 pugi::xml_document xml::parse(const std::string &in) {
   pugi::xml_document result;
   if (const auto success = result.load_buffer(
-          in.data(), in.size(), pugi::parse_default, pugi::encoding_utf8);
+          in.data(), in.size(), parse_options, pugi::encoding_utf8);
       !success) {
     throw NoXmlFile();
   }
   check_depth(result);
+  drop_line_indentation(result);
   return result;
 }
 
 pugi::xml_document xml::parse(std::istream &in) {
   const std::string bytes = util::stream::read(in);
   pugi::xml_document result;
-  if (const auto success = result.load_buffer(bytes.data(), bytes.size());
+  if (const auto success =
+          result.load_buffer(bytes.data(), bytes.size(), parse_options);
       !success) {
     throw NoXmlFile();
   }
   check_depth(result);
+  drop_line_indentation(result);
   return result;
 }
 
@@ -203,11 +241,12 @@ pugi::xml_document xml::parse(const abstract::File &file) {
 
   pugi::xml_document result;
   if (const auto success =
-          result.load_buffer_inplace_own(buffer.release(), size);
+          result.load_buffer_inplace_own(buffer.release(), size, parse_options);
       !success) {
     throw NoXmlFile();
   }
   check_depth(result);
+  drop_line_indentation(result);
   return result;
 }
 

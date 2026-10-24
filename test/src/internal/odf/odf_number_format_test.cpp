@@ -1,4 +1,5 @@
 #include <odr/internal/odf/odf_number_format.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <gtest/gtest.h>
 
@@ -17,9 +18,9 @@ namespace {
 /// The format code of the first data style of @p styles, the others found
 /// by name.
 std::optional<std::string> code_of(const std::string &styles) {
-  pugi::xml_document document;
-  document.load_string(
-      ("<office:styles>" + styles + "</office:styles>").c_str());
+  // the readers parse this way, which keeps a `number:text` of spaces
+  const pugi::xml_document document = odr::internal::xml::parse(
+      "<office:styles>" + styles + "</office:styles>");
   const pugi::xml_node root = document.document_element();
   return format_code(root.first_child(), [&root](const std::string_view name) {
     return root.find_child_by_attribute("style:name",
@@ -86,6 +87,15 @@ TEST(OdfNumberFormat, a_sign_map_is_two_sections) {
           R"(<number:number number:decimal-places="2" number:min-integer-digits="1"/>)"
           R"(</number:currency-style>)"),
       "0.00;\"-\"0.00");
+}
+
+TEST(OdfNumberFormat, a_text_of_spaces_keeps_each_of_them) {
+  EXPECT_EQ(code_of(R"(<number:number-style style:name="N">)"
+                    R"(<number:number number:decimal-places="2")"
+                    R"( number:min-integer-digits="1"/>)"
+                    R"(<number:text>  </number:text>)"
+                    R"(</number:number-style>)"),
+            "0.00\"  \"");
 }
 
 TEST(OdfNumberFormat, dates_times_and_what_has_no_code) {
