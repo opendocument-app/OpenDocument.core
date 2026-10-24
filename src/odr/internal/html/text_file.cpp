@@ -133,7 +133,7 @@ public:
     if (path == "text.html") {
       return "text/html";
     }
-    if (exists(path) && chunk_of(path).has_value()) {
+    if (chunk_of(path).has_value() && exists(path)) {
       return "text/javascript";
     }
     if (const odr::HtmlResource *resource = resource_at(m_resources, path);
@@ -150,8 +150,9 @@ public:
       write_text(writer);
       return;
     }
-    if (exists(path) && chunk_of(path).has_value()) {
-      write_chunk(*chunk_of(path), out);
+    if (const std::optional<std::size_t> chunk = chunk_of(path);
+        chunk.has_value() && exists(path)) {
+      write_chunk(*chunk, out);
       return;
     }
     if (const odr::HtmlResource *resource = resource_at(m_resources, path);
