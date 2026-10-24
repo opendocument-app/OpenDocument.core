@@ -1215,6 +1215,32 @@ std::string render_image_odt(const std::string &source,
   return std::move(out).str();
 }
 
+// The page still lists the resources of the rows that load later, so
+// `bring_offline` writes them.
+TEST(html, a_sheet_lists_the_images_of_a_chunk_that_loads_later) {
+  std::string rows;
+  for (std::uint32_t row = 0; row < 300; ++row) {
+    rows += fods_row(
+        row == 280 ? R"(<table:table-cell><text:p><draw:frame svg:width="1in")"
+                     R"( svg:height="1in"><draw:image)"
+                     R"( xlink:href="https://x.example/a.png"/></draw:frame>)"
+                     R"(</text:p></table:table-cell>)"
+                   : fods_cell("x"));
+  }
+  HtmlConfig config = external_content_config();
+  config.lazy_loading = true;
+  const HtmlService service =
+      html::translate(fods_file(rows), config, Logger::null());
+  std::ostringstream page;
+  const HtmlResources resources =
+      service.write_html(service.list_views().at(0).path(), page);
+
+  ASSERT_EQ(page.str().find("a.png"), std::string::npos);
+  EXPECT_TRUE(std::ranges::any_of(resources, [](const auto &resource) {
+    return resource.second == "https://x.example/a.png";
+  }));
+}
+
 TEST(html, an_external_image_loads_only_with_external_content) {
   for (const std::string source :
        {"https://x.example/a.png", "a.png", "file:///etc/passwd"}) {

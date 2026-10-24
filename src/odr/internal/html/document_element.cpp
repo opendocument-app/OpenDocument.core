@@ -608,13 +608,13 @@ struct SheetRows final {
   Sheet sheet;
   std::uint32_t end_column{0};
   std::uint32_t end_row{0};
-  std::vector<std::optional<double>> column_pixels;
-  std::vector<std::string> column_styles;
+  std::vector<std::optional<double>> column_pixels{};
+  std::vector<std::string> column_styles{};
   bool has_shapes{false};
   /// scaffolding: a read-only render states neither a lock nor a dependency
-  std::optional<formula::Syntax> syntax;
+  std::optional<formula::Syntax> syntax{};
   std::uint32_t ordinal{0};
-  std::unordered_map<std::string, std::uint32_t> ordinals_by_name;
+  std::unordered_map<std::string, std::uint32_t> ordinals_by_name{};
 };
 
 SheetRows sheet_rows(const Sheet &sheet, const WritingState &state) {
@@ -983,9 +983,10 @@ std::string sheet_chunk(const SheetRows &rows, const HtmlConfig &config,
 /// (`lazy-loading.md` decision 3), rendered when it is asked for.
 class SheetChunkResource final : public abstract::HtmlResource {
 public:
-  SheetChunkResource(std::shared_ptr<const SheetRows> rows, HtmlConfig config,
-                     std::string key, std::string path,
-                     const std::uint32_t first_row, const std::uint32_t end_row)
+  SheetChunkResource(std::shared_ptr<const SheetRows> rows,
+                     std::shared_ptr<const HtmlConfig> config, std::string key,
+                     std::string path, const std::uint32_t first_row,
+                     const std::uint32_t end_row)
       : m_rows{std::move(rows)}, m_config{std::move(config)},
         m_key{std::move(key)}, m_path{std::move(path)}, m_first_row{first_row},
         m_end_row{end_row} {}
@@ -1009,13 +1010,13 @@ public:
 
   void write_resource(std::ostream &os) const override {
     os << "odr.chunks.fill(" << script_string(m_key) << ","
-       << script_string(sheet_chunk(*m_rows, m_config, m_first_row, m_end_row))
+       << script_string(sheet_chunk(*m_rows, *m_config, m_first_row, m_end_row))
        << ");\n";
   }
 
 private:
   std::shared_ptr<const SheetRows> m_rows;
-  HtmlConfig m_config;
+  std::shared_ptr<const HtmlConfig> m_config;
   std::string m_key;
   std::string m_path;
   std::uint32_t m_first_row{0};
@@ -1115,13 +1116,16 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   // without lazy layout, all the rows are one table
   const bool lazy = state.config().lazy_layout;
   // a chunk after the first loads its rows once it is near; they are written
-  // here too, to nothing, because that is where the chunk is found to end
+  // here too, to nothing, because that is where the chunk is found to end,
+  // and the page still lists their resources, which `bring_offline` writes
   const bool loads =
       lazy && state.config().lazy_loading && !state.config().editable;
+  // one copy for all the chunks of the sheet
+  const std::shared_ptr<const HtmlConfig> chunk_config =
+      loads ? std::make_shared<const HtmlConfig>(state.config()) : nullptr;
   NullStream null;
   HtmlWriter null_out(null, false, "");
-  HtmlResources null_resources;
-  WritingState null_state(null_out, state.config(), null_resources,
+  WritingState null_state(null_out, state.config(), state.resources(),
                           state.logger());
   null_state.set_editable_markup(false);
 
@@ -1184,7 +1188,7 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
     if (placeholder) {
       state.resources().emplace_back(
           odr::HtmlResource(std::make_shared<SheetChunkResource>(
-              rows, state.config(), chunk_key(), chunk_path(), chunk_first_row,
+              rows, chunk_config, chunk_key(), chunk_path(), chunk_first_row,
               end)),
           chunk_path());
     }
