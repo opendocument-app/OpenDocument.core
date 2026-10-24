@@ -42,6 +42,7 @@ describe('formula module', { skip: path === '' && 'no odr-formula.js' }, () => {
   const cells = {
     '0,0': num(1), '0,1': num(2), '0,2': num(3),
     '1,0': str('x'), '1,1': { type: 'boolean', boolean: true },
+    '1,2': { type: 'error', text: '#N/A' },
     '2,0': { formula: 'A1+A2' }, '2,1': { formula: 'C1*10' },
   };
 
@@ -69,8 +70,9 @@ describe('formula module', { skip: path === '' && 'no odr-formula.js' }, () => {
   });
 
   it('spells an error as a cell does', () => {
-    assert.deepEqual(sheetOf(module, cells)('1/0'),
-      { type: 'error', text: '#DIV/0!' });
+    const at = sheetOf(module, cells);
+    assert.deepEqual(at('1/0'), { type: 'error', text: '#DIV/0!' });
+    assert.deepEqual(at('ISNA(B3)'), { type: 'boolean', boolean: true });
   });
 
   it('gives no answer where the evaluator has none', () => {

@@ -76,15 +76,6 @@ formula::Settings settings_of(const val &object) {
   return result;
 }
 
-std::optional<formula::ErrorType> error_of(const std::string_view spelling) {
-  for (const formula::ErrorType error : formula::error_types) {
-    if (formula::to_string(error) == spelling) {
-      return error;
-    }
-  }
-  return std::nullopt;
-}
-
 /// `{type, number | text | boolean}` as a cell holds it, nothing for no answer.
 std::optional<formula::Value> value_of(const val &object) {
   if (is_absent(object)) {
@@ -105,7 +96,7 @@ std::optional<formula::Value> value_of(const val &object) {
   }
   if (type == "error") {
     if (const std::optional<formula::ErrorType> error =
-            error_of(object["text"].as<std::string>());
+            formula::error_of_text(object["text"].as<std::string>());
         error.has_value()) {
       return formula::Value{*error};
     }
@@ -113,7 +104,6 @@ std::optional<formula::Value> value_of(const val &object) {
   return std::nullopt;
 }
 
-/// A reference or an array is not what a cell shows, so it is no answer.
 val to_js(const formula::Value &value) {
   val result = val::object();
   if (value.holds<formula::Empty>()) {
@@ -168,7 +158,7 @@ public:
 
   [[nodiscard]] std::optional<formula::Node>
   name(const std::string_view name, const std::uint32_t sheet) const override {
-    if (m_source["name"].isUndefined()) {
+    if (is_absent(m_source["name"])) {
       return std::nullopt;
     }
     const val expression = m_source.call<val>("name", std::string(name), sheet);
