@@ -113,7 +113,7 @@ public:
   [[nodiscard]] std::string format(std::string_view value) const;
 
   [[nodiscard]] Category category() const;
-  /// The code it was parsed from, empty for `General`.
+  /// The code it was parsed from, empty for `Format()`.
   [[nodiscard]] const std::string &code() const;
 
 private:

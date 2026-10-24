@@ -1561,7 +1561,7 @@ TEST(html, a_formula_page_states_what_its_evaluator_reads) {
                                       R"(<text:p>FALSE</text:p>)"
                                       R"(</table:table-cell>)")),
                    HtmlConfig());
-  // as attributes: the scripts a page embeds name them too
+  // as attributes, not a script that names them
   EXPECT_EQ(read_only.find(R"(data-odr-formula-syntax=")"), std::string::npos);
   EXPECT_EQ(read_only.find(R"(data-odr-type=")"), std::string::npos);
 }

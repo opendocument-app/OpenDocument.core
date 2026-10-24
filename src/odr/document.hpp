@@ -157,6 +157,7 @@ public:
   /// one file.
   [[nodiscard]] Filesystem as_filesystem() const;
 
+  /// The internal document this wraps.
   [[nodiscard]] std::shared_ptr<internal::abstract::Document> impl() const;
 
 private:

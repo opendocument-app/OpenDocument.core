@@ -301,6 +301,37 @@ class DocumentTest {
   }
 
   @Test
+  void aSheetCellStatesItsNumberFormat() throws IOException {
+    Path fods = tempDir.resolve("percent.fods");
+    Files.writeString(
+        fods,
+        "<office:document"
+            + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+            + " xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\""
+            + " xmlns:number=\"urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0\""
+            + " xmlns:table=\"urn:oasis:names:tc:opendocument:xmlns:table:1.0\""
+            + " xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\""
+            + " office:mimetype=\"application/vnd.oasis.opendocument.spreadsheet\">"
+            + "<office:automatic-styles><number:percentage-style style:name=\"N1\">"
+            + "<number:number number:decimal-places=\"1\" number:min-integer-digits=\"1\"/>"
+            + "<number:text>%</number:text></number:percentage-style>"
+            + "<style:style style:name=\"ce1\" style:family=\"table-cell\""
+            + " style:data-style-name=\"N1\"/></office:automatic-styles>"
+            + "<office:body><office:spreadsheet><table:table table:name=\"s\"><table:table-row>"
+            + "<table:table-cell table:style-name=\"ce1\" office:value-type=\"percentage\""
+            + " office:value=\"0.25\"><text:p>25.0%</text:p></table:table-cell>"
+            + "<table:table-cell office:value-type=\"float\" office:value=\"1\">"
+            + "<text:p>1</text:p></table:table-cell>"
+            + "</table:table-row></table:table></office:spreadsheet></office:body>"
+            + "</office:document>");
+    Sheet sheet =
+        Odr.open(fods.toString()).asDocumentFile().document().rootElement().firstChild().asSheet();
+
+    assertEquals("0.0%", sheet.cell(0, 0).numberFormat());
+    assertNull(sheet.cell(1, 0).numberFormat());
+  }
+
+  @Test
   void localeIsTheLanguageOfTheDefaultStyle() throws IOException {
     Path ods = TestFiles.odsFile(tempDir);
     assertEquals("en-US", Odr.open(ods.toString()).asDocumentFile().document().locale());

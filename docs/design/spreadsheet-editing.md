@@ -326,9 +326,9 @@ and the commits name. Git holds the full text of each decision.
   `data-odr-type` and the value of a boolean or an error cell, the name of
   the sheet on its table, and the syntax and the `formula::Settings` of the
   document on `<body>`. The page formats a result with the document's
-  locale, not with the language of an ods data style. A commit marks the dependents `odr-sheet-stale`
-  off the coalesced log (`repaintStale`) and raises `odr.onCellsStale`, so an
-  undo takes its marks back.
+  locale, not with the language of an ods data style. A commit marks the
+  dependents `odr-sheet-stale` off the coalesced log (`repaintStale`) and
+  raises `odr.onCellsStale`, so an undo takes its marks back.
 
 ## Open work
 
