@@ -68,6 +68,18 @@ struct WritingState {
     m_formula_syntax = syntax;
   }
 
+  /// Whether the view writes a formula cell its page can compute. A copy of
+  /// the state notes it for the view, through @p computes.
+  void set_formula_cells(bool *computes) { m_formula_cells = computes; }
+  void note_formula_cell() const {
+    if (m_formula_cells != nullptr) {
+      *m_formula_cells = true;
+    }
+  }
+  [[nodiscard]] bool has_formula_cells() const {
+    return m_formula_cells != nullptr && *m_formula_cells;
+  }
+
 private:
   HtmlWriter *m_out;
   const HtmlConfig *m_config;
@@ -78,6 +90,7 @@ private:
   bool m_editable_markup{true};
   bool m_document_editable{false};
   std::optional<formula::Syntax> m_formula_syntax;
+  bool *m_formula_cells{nullptr};
 };
 
 /// Writes viewport metadata: explicit content, then mode override, then config.

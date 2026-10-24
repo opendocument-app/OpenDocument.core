@@ -20,6 +20,8 @@ option(ODR_PYTHON "Build Python bindings" OFF)
 option(ODR_JNI "Build JNI bindings" OFF)
 option(ODR_APPLE "Build Objective-C bindings as a framework" OFF)
 option(ODR_WASM "Build WebAssembly bindings" OFF)
+set(ODR_FORMULA_MODULE "" CACHE FILEPATH
+        "The odr-formula.js an editable sheet page computes its formulas with")
 
 if (ODR_CLANG_TIDY)
     find_program(CLANG_TIDY_COMMAND NAMES clang-tidy)
@@ -136,6 +138,18 @@ set(ODR_FRONTEND_ASSET_PATHS "")
 foreach (ODR_FRONTEND_ASSET IN LISTS ODR_FRONTEND_ASSETS)
     list(APPEND ODR_FRONTEND_ASSET_PATHS "${ODR_FRONTEND_ASSET_DIRECTORY}/${ODR_FRONTEND_ASSET}")
 endforeach ()
+# The formula module needs emscripten, so only the wasm build makes it. Another
+# build takes the file the release of its version carries, or goes without:
+# its pages then mark a formula stale rather than compute it.
+set(ODR_FORMULA_MODULE_PATH "${ODR_FORMULA_MODULE}")
+set(ODR_FORMULA_MODULE_DEPENDS "")
+if (ODR_FORMULA_MODULE_PATH STREQUAL "" AND EMSCRIPTEN AND ODR_WASM)
+    set(ODR_FORMULA_MODULE_PATH "${CMAKE_CURRENT_BINARY_DIR}/wasm/formula/odr-formula.js")
+    set(ODR_FORMULA_MODULE_DEPENDS odr_formula_wasm)
+endif ()
+if (NOT ODR_FORMULA_MODULE_PATH STREQUAL "")
+    list(APPEND ODR_FORMULA_MODULE_DEPENDS "${ODR_FORMULA_MODULE_PATH}")
+endif ()
 # A `;` in a `-D` argument would split it into several, so the list travels
 # joined.
 string(JOIN "|" ODR_FRONTEND_ASSETS_ARGUMENT ${ODR_FRONTEND_ASSETS})
@@ -145,8 +159,10 @@ add_custom_command(
         "-DASSET_DIR=${ODR_FRONTEND_ASSET_DIRECTORY}"
         "-DASSETS=${ODR_FRONTEND_ASSETS_ARGUMENT}"
         "-DOUTPUT=${ODR_FRONTEND_ASSETS_HEADER}"
+        "-DFORMULA_MODULE=${ODR_FORMULA_MODULE_PATH}"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/frontend_assets.cmake"
-        DEPENDS ${ODR_FRONTEND_ASSET_PATHS} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/frontend_assets.cmake"
+        DEPENDS ${ODR_FRONTEND_ASSET_PATHS} ${ODR_FORMULA_MODULE_DEPENDS}
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/frontend_assets.cmake"
         COMMENT "Embedding the html frontend assets"
         VERBATIM
 )
