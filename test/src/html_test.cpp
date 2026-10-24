@@ -1528,6 +1528,40 @@ TEST(html, a_formula_cell_states_its_lock_expression_and_dependencies) {
             std::string::npos);
 }
 
+// A formula typed into a formatted cell shows its result in the format.
+TEST(html, an_editable_page_states_the_format_of_every_cell) {
+  const DecodedFile file = open(
+      File::from_memory(
+          R"(<?xml version="1.0" encoding="UTF-8"?>)"
+          R"(<office:document)"
+          R"( xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0")"
+          R"( xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0")"
+          R"( xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0")"
+          R"( xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0")"
+          R"( xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0")"
+          R"( office:version="1.3")"
+          R"( office:mimetype="application/vnd.oasis.opendocument.spreadsheet">)"
+          R"(<office:automatic-styles>)"
+          R"(<number:number-style style:name="N1">)"
+          R"(<number:number number:decimal-places="2")"
+          R"( number:min-integer-digits="1"/></number:number-style>)"
+          R"(<style:style style:name="ce1" style:family="table-cell")"
+          R"( style:data-style-name="N1"/>)"
+          R"(</office:automatic-styles>)"
+          R"(<office:body><office:spreadsheet><table:table table:name="S">)"
+          R"(<table:table-row><table:table-cell table:style-name="ce1"/>)"
+          R"(</table:table-row>)"
+          R"(</table:table></office:spreadsheet></office:body>)"
+          R"(</office:document>)"),
+      DecodeOptions::as(FileType::opendocument_spreadsheet));
+
+  EXPECT_NE(
+      render_sheet(file, editing_config()).find(R"(data-odr-format="0.00")"),
+      std::string::npos);
+  EXPECT_EQ(render_sheet(file, HtmlConfig()).find("data-odr-format"),
+            std::string::npos);
+}
+
 // The page computes a formula cell with what the body and the cell state.
 TEST(html, a_formula_page_states_what_its_evaluator_reads) {
   const std::string page = render_sheet(

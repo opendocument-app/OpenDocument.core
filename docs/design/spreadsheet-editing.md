@@ -372,7 +372,8 @@ and the commits name. Git holds the full text of each decision.
   `Document::unresolved_formulas` and keeps its cached result.
 - The view writes `data-odr-formula` and `data-odr-reads` on a formula cell,
   as editing scaffolding only. For the evaluator in the page it also writes
-  `data-odr-format`, the format code of the cell (`SheetCell::number_format`),
+  `data-odr-format` on every cell, the format code of the cell, its row or
+  its column (`Sheet::cell_number_format`), so a typed formula takes it too,
   `data-odr-type` and the value of a boolean or an error cell, the name of
   the sheet on its table, and the syntax and the `formula::Settings` of the
   document on `<body>`. The page formats a result with the document's
@@ -383,10 +384,9 @@ and the commits name. Git holds the full text of each decision.
 
 ## Open work
 
-- **Formula input.** A typed formula shows its result in `General` until a
-  new render, because the page states the format code of formula cells only.
-  A defined name reads nothing in the page. Function names are the English
-  ones, also where a localized LibreOffice shows them translated.
+- **Formula input.** A defined name reads nothing in the page. Function names
+  are the English ones, also where a localized LibreOffice shows them
+  translated.
 - **Out of the evaluator so far:** array formulas and dynamic arrays, a
   reference into another document, iterative calculation, the volatile
   functions, and localized function names. Each cell that needs one stays

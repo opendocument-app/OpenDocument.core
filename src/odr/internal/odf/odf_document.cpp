@@ -1705,6 +1705,21 @@ public:
         .table_cell_style;
   }
 
+  [[nodiscard]] std::optional<std::string>
+  sheet_number_format(const ElementIdentifier element_id,
+                      const std::uint32_t column,
+                      const std::uint32_t row) const override {
+    const StyleRegistry &styles = m_document->style_registry();
+    const pugi::xml_node data_style = styles.cell_data_style(cell_style_name(
+        element_id, sheet_cell(element_id, column, row), {column, row}));
+    if (!data_style) {
+      return std::nullopt;
+    }
+    return format_code(data_style, [&styles](const std::string_view name) {
+      return styles.data_style_node(name);
+    });
+  }
+
   [[nodiscard]] TablePosition
   sheet_cell_position(const ElementIdentifier element_id) const override {
     if (positional_id::holds(element_id)) {
@@ -1735,16 +1750,8 @@ public:
     if (m_registry->sheet_cell_element(element_id) == nullptr) {
       return std::nullopt;
     }
-    const StyleRegistry &styles = m_document->style_registry();
-    const pugi::xml_node data_style = styles.cell_data_style(
-        cell_style_name(element_parent(element_id), element_id,
-                        sheet_cell_position(element_id)));
-    if (!data_style) {
-      return std::nullopt;
-    }
-    return format_code(data_style, [&styles](const std::string_view name) {
-      return styles.data_style_node(name);
-    });
+    const auto [column, row] = sheet_cell_position(element_id);
+    return sheet_number_format(element_parent(element_id), column, row);
   }
   /// [ODF 1.2] 19.386 `office:value`, 19.642 `table:formula`. A date and a
   /// time state days since 1899-12-30; a boolean states 1 or 0.

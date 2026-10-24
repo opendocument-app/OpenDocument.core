@@ -1747,3 +1747,50 @@ TEST(DocumentEdit, a_sheet_cell_states_its_number_format) {
   EXPECT_EQ(first_sheet(workbook).cell(1, 0).number_format(), "0.00%");
   EXPECT_EQ(first_sheet(workbook).cell(2, 0).number_format(), std::nullopt);
 }
+
+// A formula typed into an empty cell shows its result in the format of the
+// row or the column.
+TEST(DocumentEdit, an_empty_cell_states_the_number_format_of_its_column) {
+  const std::string source =
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.spreadsheet">)"
+      R"(<office:automatic-styles>)"
+      R"(<number:percentage-style style:name="N1">)"
+      R"(<number:number number:decimal-places="1")"
+      R"( number:min-integer-digits="1"/><number:text>%</number:text>)"
+      R"(</number:percentage-style>)"
+      R"(<style:style style:name="ce1" style:family="table-cell")"
+      R"( style:data-style-name="N1"/>)"
+      R"(</office:automatic-styles>)"
+      R"(<office:body><office:spreadsheet><table:table table:name="s">)"
+      R"(<table:table-column table:default-cell-style-name="ce1"/>)"
+      R"(<table:table-column/>)"
+      R"(<table:table-row><table:table-cell/><table:table-cell/>)"
+      R"(</table:table-row></table:table>)"
+      R"(</office:spreadsheet></office:body></office:document>)";
+  const Document sheet =
+      DecodedFile(open_strategy::open_file(std::make_shared<MemoryFile>(source),
+                                           {}, Logger::null()))
+          .as_document_file()
+          .document();
+  EXPECT_EQ(first_sheet(sheet).cell_number_format(0, 0), "0.0%");
+  EXPECT_EQ(first_sheet(sheet).cell_number_format(1, 0), std::nullopt);
+
+  const Document workbook = package_of(
+      {{"xl/workbook.xml",
+        R"(<workbook><sheets><sheet name="s" sheetId="1" r:id="rId1"/></sheets></workbook>)"},
+       {"xl/_rels/workbook.xml.rels",
+        R"(<Relationships><Relationship Id="rId1" Target="/xl/worksheets/sheet1.xml"/></Relationships>)"},
+       {"xl/styles.xml",
+        R"(<styleSheet><numFmts><numFmt numFmtId="164" formatCode="0.0%"/></numFmts>)"
+        R"(<cellXfs><xf numFmtId="0"/><xf numFmtId="164"/><xf numFmtId="10"/></cellXfs>)"
+        R"(</styleSheet>)"},
+       {"xl/worksheets/sheet1.xml",
+        R"(<worksheet><cols><col min="1" max="1" style="1"/></cols>)"
+        R"(<sheetData><row r="2" s="2" customFormat="1"/></sheetData>)"
+        R"(</worksheet>)"}});
+  EXPECT_EQ(first_sheet(workbook).cell_number_format(0, 0), "0.0%");
+  EXPECT_EQ(first_sheet(workbook).cell_number_format(1, 1), "0.00%");
+  EXPECT_EQ(first_sheet(workbook).cell_number_format(1, 0), std::nullopt);
+}

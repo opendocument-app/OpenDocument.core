@@ -49,7 +49,8 @@ The release run heads these entries with the version and opens a fresh
   content type go.
 - `SheetCell::number_format()` gives the format code a cell shows a number
   in, for example `0.00%`, and nothing for `General`. Python and Java have it
-  too.
+  too. `Sheet::cell_number_format(column, row)` gives it by position, so an
+  empty cell has the format of its row or its column.
 - An editable sheet page that carries the formula module computes its formula
   cells as the user edits: a commit, an undo and a redo show the new results
   in the format of each cell. A cell the evaluator has no answer for stays
@@ -60,8 +61,9 @@ The release run heads these entries with the version and opens a fresh
   `odr.editing.loadFormulas()` loads the module ahead of the first edit.
 - An editable sheet page states what a formula in the page reads: the syntax
   and the calculation settings of the document on `<body>`, the name of the
-  sheet, the format code of a formula cell (`data-odr-format`), and the type
-  and the value of a boolean or an error cell (`data-odr-type`).
+  sheet, the format code of every cell (`data-odr-format`), so a typed
+  formula shows its result in the format of its cell, and the type and the
+  value of a boolean or an error cell (`data-odr-type`).
 - An ods cell right after a merge at the end of its row can be written. The
   write refused, because the new cell landed one column too far.
 - An xlsx cell with the built-in date format 14 or 22 shows the date as Excel
