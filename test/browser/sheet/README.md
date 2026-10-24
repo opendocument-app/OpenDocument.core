@@ -84,8 +84,9 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
 - `formulas.html`: the live results of the evaluator in the page. An edit
   computes the formula cells that read it, in the format of each cell. A
   date, a boolean and an error take their type, and a formula without an
-  answer stays stale, a cycle too. An undo, a redo and a save, and nothing
-  computes after a row edit.
+  answer stays stale, a cycle too. An undo, a redo and a save. After a row
+  edit a formula computes as the edit moved it, a formula goes into the new
+  row, and a row delete computes `#REF!`.
 - `formula-chain.html`: a chain of 600 formulas, whose end the first formula
   reads. The editor computes them in the order they read each other, so no
   evaluation nests in another.

@@ -295,6 +295,33 @@ val reads(const std::string &expression, const std::string &syntax,
       }));
 }
 
+/// @p expression after the row or column op @p op of the log, on the sheet
+/// named @p sheet_name. Null where it does not parse.
+val move(const std::string &expression, const std::string &syntax,
+         const std::string &sheet_name, const val &op) {
+  const std::optional<formula::Syntax> file_syntax = syntax_of(syntax);
+  if (!file_syntax.has_value()) {
+    return val::null();
+  }
+  std::optional<formula::Node> node = formula::parse(expression, *file_syntax);
+  if (!node.has_value()) {
+    return val::null();
+  }
+  const std::string name = op["op"].as<std::string>();
+  const bool rows = name.ends_with("Rows");
+  const formula::SheetEdit edit{
+      .sheet = sheet_name,
+      .axis = rows ? formula::Axis::row : formula::Axis::column,
+      .index = op[rows ? "row" : "column"].as<std::uint32_t>(),
+      .count = op["count"].as<std::uint32_t>(),
+      .insert = name.starts_with("insert"),
+  };
+  // an unmoved formula keeps the spelling of the file
+  return formula::move_references(*node, edit, sheet_name)
+             ? val(spelled(*node, *file_syntax))
+             : val(expression);
+}
+
 /// `[true, false]`: the words a boolean result shows as in a document of
 /// @p locale, whose cells show @p shown_true and @p shown_false, empty where
 /// none does.
@@ -319,5 +346,6 @@ EMSCRIPTEN_BINDINGS(odr_formula) {
   emscripten::function("toFile", &to_file);
   emscripten::function("toInput", &to_input);
   emscripten::function("reads", &reads);
+  emscripten::function("move", &move);
   emscripten::function("booleanWords", &boolean_words);
 }

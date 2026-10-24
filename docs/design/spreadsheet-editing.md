@@ -132,8 +132,8 @@ constant keeps the spelling of an `<f>`, `{1,2;3,4}`, in every locale. The
 module turns it into the syntax of the file, and the op states that:
 `{"type": "formula", "formula": "of:=SUM([.A1];[.B1])"}`. A formula cell opens
 on its formula, spelled the same way. A formula that does not parse refuses
-with `formulaInvalid`. Without the module, and after a row or column edit in
-the log, a formula refuses with `formulaInput`.
+with `formulaInvalid`. Without the module, a formula refuses with
+`formulaInput`.
 
 **Why:** the file states the type per cell (`office:value-type`, `c/@t`) and
 changes it freely, so a cell has no fixed type. A number cell writes
@@ -179,9 +179,10 @@ A boolean result takes the words of the page's boolean cells, because
 the file spelled them in the language of whoever saved it: a cell that shows
 `FALSCH` makes a true result `WAHR`. A page that shows no boolean takes the
 words of the document's language. `number_format::boolean_words` chooses
-them, and the module exports it. After a row or column edit the page
-computes nothing, because it holds the expressions as the file states them,
-not as the edit moved them.
+them, and the module exports it. The log carries the formulas: a row or
+column op moves each one as the writers move it (`move` in the module), and
+a `setCell` of a formula replaces the one at its position. So the page
+computes after a row or column edit, and a cell opens on its moved formula.
 
 Where the evaluator has no answer, the file still has to stay honest.
 `.xlsx` has a switch for this, `calcPr/@fullCalcOnLoad="1"` (ECMA-376

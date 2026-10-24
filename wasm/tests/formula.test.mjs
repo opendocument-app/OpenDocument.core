@@ -133,6 +133,22 @@ describe('formula module', { skip: path === '' && 'no odr-formula.js' }, () => {
     assert.equal(module.reads('NOW()', 'ooxml', 0, 'S'), '');
   });
 
+  it('moves a formula through a row or column edit', () => {
+    const rows = (op, row, count) => ({ op, sheet: 0, row, count });
+    assert.equal(module.move('of:=[.A1]+[.B2]', 'opendocument', 'S',
+      rows('insertRows', 1, 2)), 'of:=[.A1]+[.B4]');
+    assert.equal(module.move('SUM(A1:A3)', 'ooxml', 'S',
+      rows('deleteRows', 0, 1)), 'SUM(A1:A2)');
+    assert.equal(module.move('Other!A5+s!A5', 'ooxml', 'S',
+      rows('insertRows', 0, 1)), 'Other!A5+s!A6');
+    assert.equal(module.move('A1*2', 'ooxml', 'S', rows('deleteRows', 0, 1)),
+      '#REF!*2');
+    assert.equal(module.move('B1+$C$1', 'ooxml', 'S',
+      { op: 'insertColumns', sheet: 0, column: 1, count: 1 }), 'C1+$D$1');
+    assert.equal(module.move('SUM(', 'ooxml', 'S', rows('insertRows', 0, 1)),
+      null);
+  });
+
   it('names the words of a boolean', () => {
     assert.deepEqual(module.booleanWords('fr-FR', '', 'FALSCH'),
       ['WAHR', 'FALSCH']);
