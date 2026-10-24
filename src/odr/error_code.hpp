@@ -79,6 +79,8 @@ enum class ErrorCode : std::int32_t {
   edit_out_of_scope = 1010,
   /// The edit reaches past the extent of the sheet that the page renders.
   edit_sheet_cut = 1011,
+  /// A typed formula that does not parse.
+  edit_formula_invalid = 1012,
 };
 
 /// @brief The code's name, as the bindings already spell it.

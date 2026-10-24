@@ -1,0 +1,137 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet formula input checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body
+    class="odr-body odr-gridlines-soft"
+    data-odr-editable="true"
+    data-odr-keyboard="navigation shortcuts"
+    data-odr-locale="de-DE"
+    data-odr-formula-syntax="opendocument"
+    data-odr-formula-settings='{"dialect":"libreoffice","nullDate":0}'
+  >
+    <!-- An ods sheet of a German document, as a build with the formula module
+         writes it: a formula cell carries no lock. C1 adds A1 and B1. -->
+    <table class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="Tabelle1">
+      <col class="odr-sheet-gutter" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <col style="width: 80px" />
+      <thead>
+        <tr>
+          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+          <th class="odr-sheet-column-header">A</th>
+          <th class="odr-sheet-column-header">B</th>
+          <th class="odr-sheet-column-header">C</th>
+          <th class="odr-sheet-column-header">D</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="odr-sheet-row-header">1</th>
+          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">1</td>
+          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">2</td>
+          <td class="odr-value-type-float" data-odr-formula="of:=[.A1]+[.B1]" data-odr-reads="0,0,1,0,0" style="max-width:0;white-space:nowrap">3</td>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="report"></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="odr-formula.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var refusals = [];
+      odr.onEditRefused = function (event) {
+        refusals.push(event.reason);
+      };
+      function editor() {
+        return document.querySelector(".odr-sheet-editor");
+      }
+      function text(column, row) {
+        return odr.sheet.cellAt(column, row).textContent;
+      }
+      function type(column, row, typed) {
+        odr.editing.editAt(column, row);
+        editor().value = typed;
+        editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      }
+      function lastOp() {
+        var ops = JSON.parse(odr.editing.getOperations()).ops;
+        return ops[ops.length - 1];
+      }
+
+      odr.editing.enable();
+      odr.editing.loadFormulas().then(function (computes) {
+        check("the page computes", computes === true);
+
+        odr.editing.editAt(2, 0);
+        check("a formula cell opens on its formula, as the user types it", editor().value === "=A1+B1");
+        editor().value = "=SUM(A1;B1)*1,5";
+        editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        check("a typed formula commits", editor() === null);
+        check(
+          "in the syntax of the file, with `;` and the decimal sign of the locale read",
+          lastOp().value.type === "formula" && lastOp().value.formula === "of:=SUM([.A1];[.B1])*1.5",
+          JSON.stringify(lastOp())
+        );
+        check("and shows its result at once", text(2, 0) === "4,5", text(2, 0));
+        odr.editing.editAt(2, 0);
+        check("it opens again as typed", editor().value === "=SUM(A1;B1)*1,5", editor().value);
+        editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+
+        type(0, 0, "3");
+        check("an input the new formula reads computes it", text(2, 0) === "7,5", text(2, 0));
+
+        type(3, 0, "=C1*2");
+        check("a formula goes into an empty cell", text(3, 0) === "15");
+        check(
+          "and states what it reads",
+          odr.sheet.cellAt(3, 0).getAttribute("data-odr-reads") === "0,2,2,0,0"
+        );
+        type(2, 0, "=A1");
+        check("a formula reading the new one computes again", text(3, 0) === "6", text(3, 0));
+
+        refusals = [];
+        type(0, 0, "=SUM(");
+        check("a formula that does not parse is refused", refusals.join() === "formulaInvalid");
+        check("and leaves the editor open", editor() !== null);
+        editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+
+        odr.editing.undo();
+        check("an undo puts the formula back", text(2, 0) === "7,5" && text(3, 0) === "15", text(2, 0) + " " + text(3, 0));
+        odr.editing.undo();
+        check(
+          "and takes a new one away",
+          text(3, 0) === "" && odr.sheet.cellAt(3, 0).getAttribute("data-odr-formula") === null
+        );
+        odr.editing.undo();
+        odr.editing.undo();
+        check(
+          "the file's formula comes back with what the file showed",
+          text(2, 0) === "3" && odr.sheet.formulaAt(2, 0) === "of:=[.A1]+[.B1]" && text(0, 0) === "1"
+        );
+
+        type(2, 0, "9");
+        check(
+          "a value over a formula takes the formula away",
+          text(2, 0) === "9" && odr.sheet.formulaAt(2, 0) === null && lastOp().value.type === "number"
+        );
+        odr.editing.undo();
+        check("and an undo puts it back", odr.sheet.formulaAt(2, 0) === "of:=[.A1]+[.B1]" && text(2, 0) === "3");
+
+        type(1, 0, "'=text");
+        check("a leading apostrophe keeps a string", text(1, 0) === "=text" && lastOp().value.type === "string");
+      });
+    </script>
+  </body>
+</html>

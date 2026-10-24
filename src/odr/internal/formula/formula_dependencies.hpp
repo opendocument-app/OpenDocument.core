@@ -3,8 +3,11 @@
 #include <odr/internal/common/table_range.hpp>
 #include <odr/internal/formula/formula_ast.hpp>
 
+#include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace odr::internal::formula {
@@ -30,5 +33,15 @@ struct References final {
 /// The cells @p node reads. A reference into another document is stated with
 /// its document, and nothing here opens one.
 [[nodiscard]] References references(const Node &node);
+
+/// What @p node reads, as an editable sheet page states it in
+/// `data-odr-reads`: space-separated `sheet,first column,last column,first
+/// row,last row` boxes, `*` for an open end. @p sheet_of gives the ordinal of
+/// a sheet by its name, read without case. A formula that may read any cell,
+/// or that names a sheet @p sheet_of does not know, reads all of @p own_sheet.
+[[nodiscard]] std::string
+spell_reads(const Node &node, std::uint32_t own_sheet,
+            const std::function<std::optional<std::uint32_t>(std::string_view)>
+                &sheet_of);
 
 } // namespace odr::internal::formula

@@ -92,8 +92,8 @@ decode of the same file.
 
 `odr.editing.enable()` and `disable()` switch the mode without a second
 translate. The page carries only what the browser cannot work out itself:
-`data-odr-lock` on a cell that refuses a write, with its reason (`formula`,
-`rich` for a link or anything else past text and line breaks, `shapes` where
+`data-odr-lock` on a cell that refuses a write, with its reason (`formula`
+where the build has no formula module, `rich` for a link or anything else past text and line breaks, `shapes` where
 the cell is nothing but its anchored drawings), and `data-odr-editable` on
 `<body>`. Every other cell is editable, an empty one included.
 
@@ -121,8 +121,16 @@ position map and the `setCell` op.
 A strict grammar parses the typed string: optional sign, digits, one `.`,
 optional exponent is a number. Anything else is a string. A leading `'` forces
 a string, and the editor opens a string cell with one where the grammar would
-read it otherwise. Formula input remains unsupported and refuses with
-`formulaInput`.
+read it otherwise.
+
+A leading `=` is a formula, where the page carries the formula module. The
+user types it as Excel spells it, and with `;` between the arguments and `,`
+as the decimal sign where that is the decimal sign of the locale. The module
+turns it into the syntax of the file, and the op states that:
+`{"type": "formula", "formula": "of:=SUM([.A1];[.B1])"}`. A formula cell opens
+on its formula, spelled the same way. A formula that does not parse refuses
+with `formulaInvalid`. Without the module, and after a row or column edit in
+the log, a formula refuses with `formulaInput`.
 
 **Why:** the file states the type per cell (`office:value-type`, `c/@t`) and
 changes it freely, so a cell has no fixed type. A number cell writes
@@ -347,8 +355,8 @@ and the commits name. Git holds the full text of each decision.
      and the wasm workflow attaches it to each release.
   2. The page carries it. A build embeds the module where it has one: the
      emscripten build makes it, and another build names the file of its
-     core version. A page carries it only where it is editable and holds a
-     formula cell. A build without it marks formulas stale, as now.
+     core version. A page carries it only where it edits an ods or xlsx
+     sheet (step 6). A build without it marks formulas stale, as now.
   3. The page states what the evaluator reads: the syntax and the
      `Settings` of the document, and the format code of each formula cell,
      as the writer formats a result.
@@ -361,9 +369,11 @@ and the commits name. Git holds the full text of each decision.
      cell takes a value or a formula too, except the anchor of an array or
      a shared formula. The graph is built again, and a save computes the new
      formula. An xlsx drops the `calcChain` entry of a formula it removes.
-  6. Formula input. The editor opens a formula cell on its formula and
-     takes `=` input. The module checks it and states what it reads, and
-     the page computes it at once.
+  6. Formula input (decision 4). The editor opens a formula cell on its
+     formula and takes `=` input. The module turns it into the syntax of
+     the file and states what it reads, and the page computes it at once.
+     Every editable ods and xlsx sheet carries the module, because a sheet
+     without a formula takes one too.
 - **Live results in the page: the options that were weighed.** The stack
   above takes the first one (decision 5). A page without the module marks
   the formula cells stale until something computes them.
@@ -398,8 +408,8 @@ and the commits name. Git holds the full text of each decision.
     larger, so `-Oz` is the build.
 
     As base64, the `-Oz` module adds about 480 KB to a page. Each sheet
-    view is a page of its own, so the proposal is that a page carries the
-    module only where it is editable and holds a formula cell.
+    view is a page of its own, so a page carries the module only where it
+    edits a sheet whose format takes formulas.
   - The host computes them in process (decision 5) and sends them to the
     page. The apps and the npm host have core already. The host must keep a
     decoded document that matches the page, and an undo in the page needs a
@@ -427,11 +437,11 @@ and the commits name. Git holds the full text of each decision.
     core version, and a build takes the one of its version.
   - A local change to `internal/formula` reaches the page only after CI
     builds the module, or where the developer installs emscripten.
-- **Formula input in the editor.** The user types `=SUM(A1:B2)`, with `;`
-  between arguments where the decimal sign of the locale is `,`. The writer
-  parses that spelling with the locale of the document, and writes the
-  formula in the syntax of the file. It comes with live results, because a
-  typed formula has no result until something computes it.
+- **Formula input, what is left.** A typed formula shows its result in
+  `General` until a new render, because the page states the format code of
+  formula cells only. A defined name reads nothing in the page. Function
+  names are the English ones, also where a localized LibreOffice shows them
+  translated.
 - **Out of the evaluator so far:** array formulas and dynamic arrays, a
   reference into another document, iterative calculation, the volatile
   functions, and localized function names. Each cell that needs one stays

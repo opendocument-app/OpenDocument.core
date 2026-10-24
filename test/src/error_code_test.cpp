@@ -108,6 +108,7 @@ TEST(ErrorCode, edit_band_is_pinned) {
   EXPECT_EQ(static_cast<std::int32_t>(ErrorCode::edit_unnameable), 1009);
   EXPECT_EQ(static_cast<std::int32_t>(ErrorCode::edit_out_of_scope), 1010);
   EXPECT_EQ(static_cast<std::int32_t>(ErrorCode::edit_sheet_cut), 1011);
+  EXPECT_EQ(static_cast<std::int32_t>(ErrorCode::edit_formula_invalid), 1012);
 }
 
 TEST(ErrorCode, every_code_is_named_once) {

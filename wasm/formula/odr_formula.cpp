@@ -1,7 +1,10 @@
+#include <odr/internal/formula/formula_dependencies.hpp>
 #include <odr/internal/formula/formula_evaluator.hpp>
 #include <odr/internal/formula/formula_parser.hpp>
 #include <odr/internal/formula/formula_value.hpp>
+#include <odr/internal/formula/formula_writer.hpp>
 #include <odr/internal/number_format/number_format.hpp>
+#include <odr/internal/util/string_util.hpp>
 #include <odr/sheet_position.hpp>
 #include <odr/table_dimension.hpp>
 
@@ -237,6 +240,61 @@ double days(const double serial, const val &settings) {
   return settings_of(settings).days(serial);
 }
 
+/// @p node as a cell of @p syntax states it: `of:=` ahead of OpenFormula.
+std::string spelled(const formula::Node &node, const formula::Syntax syntax) {
+  return (syntax == formula::Syntax::opendocument ? "of:=" : "") +
+         formula::to_string(node, syntax);
+}
+
+/// What the user typed after the `=`, as an `<f>` spells it, in the syntax of
+/// the file. Null where it does not parse.
+val to_file(const std::string &input, const std::string &syntax) {
+  const std::optional<formula::Syntax> file_syntax = syntax_of(syntax);
+  if (!file_syntax.has_value()) {
+    return val::null();
+  }
+  const std::optional<formula::Node> node =
+      formula::parse(input, formula::Syntax::ooxml);
+  return node.has_value() ? val(spelled(*node, *file_syntax)) : val::null();
+}
+
+/// A formula of the file as the user types it, without the `=`: the reverse
+/// of `to_file`. Null where it does not parse.
+val to_input(const std::string &expression, const std::string &syntax) {
+  const std::optional<formula::Syntax> file_syntax = syntax_of(syntax);
+  if (!file_syntax.has_value()) {
+    return val::null();
+  }
+  const std::optional<formula::Node> node =
+      formula::parse(expression, *file_syntax);
+  return node.has_value()
+             ? val(formula::to_string(*node, formula::Syntax::ooxml))
+             : val::null();
+}
+
+/// What @p expression reads, as `data-odr-reads` states it. A sheet other
+/// than the one named @p sheet_name reads all of @p sheet.
+val reads(const std::string &expression, const std::string &syntax,
+          const std::uint32_t sheet, const std::string &sheet_name) {
+  const std::optional<formula::Syntax> file_syntax = syntax_of(syntax);
+  if (!file_syntax.has_value()) {
+    return val::null();
+  }
+  const std::optional<formula::Node> node =
+      formula::parse(expression, *file_syntax);
+  if (!node.has_value()) {
+    return val::null();
+  }
+  const std::string own = util::string::to_lower(sheet_name);
+  return val(formula::spell_reads(
+      *node, sheet,
+      [&](const std::string_view name) -> std::optional<std::uint32_t> {
+        return util::string::to_lower(name) == own
+                   ? std::optional<std::uint32_t>(sheet)
+                   : std::nullopt;
+      }));
+}
+
 } // namespace
 
 EMSCRIPTEN_BINDINGS(odr_formula) {
@@ -245,4 +303,7 @@ EMSCRIPTEN_BINDINGS(odr_formula) {
   emscripten::function("category", &category);
   emscripten::function("serial", &serial);
   emscripten::function("days", &days);
+  emscripten::function("toFile", &to_file);
+  emscripten::function("toInput", &to_input);
+  emscripten::function("reads", &reads);
 }

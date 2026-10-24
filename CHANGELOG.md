@@ -27,12 +27,17 @@ The release run heads these entries with the version and opens a fresh
 - `font-family` ends with a generic family, so a font that is not installed
   falls back to one of the same kind: a sans-serif font for Calibri, not the
   browser's serif default. A bare font name is quoted.
-- An editable sheet page with a formula cell carries the formula module, where
-  the build has one: the npm package does, and another build names it with
-  `ODR_FORMULA_MODULE`. The page is about 530 KB larger.
+- An editable ods or xlsx sheet page carries the formula module, where the
+  build has one: the npm package does, and another build names it with
+  `ODR_FORMULA_MODULE`. The page is about 540 KB larger.
 
 ### Spreadsheets
 
+- The sheet editor takes formula input where the page carries the formula
+  module. A typed `=SUM(A1;B1)` computes at once and goes into the log in the
+  syntax of the file, and a formula cell opens on its formula. A formula cell
+  is locked only where the build has no module. A formula that does not
+  parse refuses with the new code `formulaInvalid` (1012).
 - `Sheet::set_cell` and the `setCell` op write a formula: `{"type":
   "formula", "formula": "of:=[.A1]*2"}`, in the syntax of the file. A formula
   cell can now be overwritten, except the anchor of an array or of a shared

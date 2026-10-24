@@ -78,6 +78,13 @@ void collect(const Node &node, References &into) {
   }
 }
 
+/// The open end of an axis a reference leaves out.
+std::string spell_bound(const std::uint32_t index) {
+  return index == std::numeric_limits<std::uint32_t>::max()
+             ? "*"
+             : std::to_string(index);
+}
+
 } // namespace
 
 } // namespace odr::internal::formula
@@ -88,6 +95,41 @@ formula::References formula::references(const Node &node) {
   References result;
   result.complete = !has_dynamic_references(node);
   collect(node, result);
+  return result;
+}
+
+std::string formula::spell_reads(
+    const Node &node, const std::uint32_t own_sheet,
+    const std::function<std::optional<std::uint32_t>(std::string_view)>
+        &sheet_of) {
+  std::string unresolved = std::to_string(own_sheet) + ",0,*,0,*";
+  const References read = references(node);
+  if (!read.complete) {
+    return unresolved;
+  }
+
+  std::string result;
+  for (const Extent &extent : read.extents) {
+    if (extent.document.has_value()) {
+      continue; // another file, which no edit here reaches
+    }
+    std::uint32_t sheet = own_sheet;
+    if (extent.sheet.has_value()) {
+      const std::optional<std::uint32_t> named = sheet_of(*extent.sheet);
+      if (!named.has_value()) {
+        return unresolved;
+      }
+      sheet = *named;
+    }
+    if (!result.empty()) {
+      result += " ";
+    }
+    result += std::to_string(sheet) + "," +
+              spell_bound(extent.range.from().column) + "," +
+              spell_bound(extent.range.to().column) + "," +
+              spell_bound(extent.range.from().row) + "," +
+              spell_bound(extent.range.to().row);
+  }
   return result;
 }
 

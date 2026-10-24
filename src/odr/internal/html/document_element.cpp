@@ -410,13 +410,6 @@ sheet_ordinals_by_name(const Sheet &sheet) {
   return result;
 }
 
-/// The open end of an axis a reference leaves out.
-std::string spell_bound(const std::uint32_t index) {
-  return index == std::numeric_limits<std::uint32_t>::max()
-             ? "*"
-             : std::to_string(index);
-}
-
 /// Space-separated `sheet,first column,last column,first row,last row` boxes.
 /// `*` is unbounded; unresolved reads cover every edit on this sheet.
 std::string
@@ -424,47 +417,24 @@ cell_reads(const std::string &formula, const formula::Syntax syntax,
            const std::uint32_t own_sheet,
            const std::unordered_map<std::string, std::uint32_t> &by_name) {
   const std::optional<formula::Node> node = formula::parse(formula, syntax);
-  const auto unresolved = [own_sheet] {
-    return std::to_string(own_sheet) + ",0,*,0,*";
-  };
   if (!node.has_value()) {
-    return unresolved();
+    return std::to_string(own_sheet) + ",0,*,0,*";
   }
-  const formula::References references = formula::references(*node);
-  if (!references.complete) {
-    return unresolved();
-  }
-
-  std::string result;
-  for (const formula::Extent &extent : references.extents) {
-    if (extent.document.has_value()) {
-      continue; // another file, which no edit here reaches
-    }
-    std::uint32_t sheet = own_sheet;
-    if (extent.sheet.has_value()) {
-      const auto named = by_name.find(util::string::to_lower(*extent.sheet));
-      if (named == by_name.end()) {
-        return unresolved();
-      }
-      sheet = named->second;
-    }
-    if (!result.empty()) {
-      result += " ";
-    }
-    result += std::to_string(sheet) + "," +
-              spell_bound(extent.range.from().column) + "," +
-              spell_bound(extent.range.to().column) + "," +
-              spell_bound(extent.range.from().row) + "," +
-              spell_bound(extent.range.to().row);
-  }
-  return result;
+  return formula::spell_reads(
+      *node, own_sheet,
+      [&by_name](const std::string_view name) -> std::optional<std::uint32_t> {
+        const auto named = by_name.find(util::string::to_lower(name));
+        return named == by_name.end() ? std::nullopt
+                                      : std::optional(named->second);
+      });
 }
 
 /// Why a cell cannot be edited, or null where it can be. The names the page
-/// reports to its host; `spreadsheet-editing.md` decision 3 lists them.
+/// reports to its host; `spreadsheet-editing.md` decision 3 lists them. A
+/// formula is locked where the page has no evaluator to open it with.
 const char *cell_lock(const CellValue &value, const SheetCell &cell,
                       const bool anchors_shapes) {
-  if (value.has_formula()) {
+  if (value.has_formula() && !html::carries_formula_module()) {
     return "formula";
   }
   // its drawings are what the cell is, and an overlay would cover them
@@ -841,9 +811,6 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                                     ? cell_reads(cell_value.formula(), *syntax,
                                                  ordinal, ordinals_by_name)
                                     : std::string();
-      if (computes) {
-        sheet_state.note_computed_formula();
-      }
       // what a formula in the page reads the cell as, where the text is not it
       const char *read_type = !state.config().editable ? nullptr
                               : cell_value_type == ValueType::boolean
