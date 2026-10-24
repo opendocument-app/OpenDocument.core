@@ -10,44 +10,53 @@
     <!-- A1 writes its string into the `td`, B1 into a run the file made
          bold, C1 is filled red, D1 holds a formula. A2:B2 is one merged
          cell. -->
-    <table class="odr-sheet" data-odr-sheet="1">
-      <col class="odr-sheet-gutter" />
-      <col style="width: 80px" />
-      <col style="width: 80px" />
-      <col style="width: 80px" />
-      <col style="width: 80px" />
-      <thead>
-        <tr>
-          <th class="odr-sheet-corner"></th>
-          <th class="odr-sheet-column-header">A</th>
-          <th class="odr-sheet-column-header">B</th>
-          <th class="odr-sheet-column-header">C</th>
-          <th class="odr-sheet-column-header">D</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th class="odr-sheet-row-header">1</th>
-          <td>plain</td>
-          <td><x-p style="display:block"><x-s style="font-weight:bold;text-decoration:underline">run</x-s></x-p></td>
-          <td style="background-color:#ff0000">red</td>
-          <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=1+1">2</td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">2</th>
-          <td colspan="2">merged</td>
-          <td>x</td>
-          <td></td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">3</th>
-          <td class="odr-value-type-float">12</td>
-          <td></td>
-          <td></td>
-          <td></td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="odr-sheet" data-odr-sheet="1">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <thead>
+          <tr>
+            <th class="odr-sheet-corner"></th>
+            <th class="odr-sheet-column-header">A</th>
+            <th class="odr-sheet-column-header">B</th>
+            <th class="odr-sheet-column-header">C</th>
+            <th class="odr-sheet-column-header">D</th>
+          </tr>
+        </thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <tbody>
+          <tr>
+            <th class="odr-sheet-row-header">1</th>
+            <td>plain</td>
+            <td><x-p style="display:block"><x-s style="font-weight:bold;text-decoration:underline">run</x-s></x-p></td>
+            <td style="background-color:#ff0000">red</td>
+            <td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="of:=1+1">2</td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">2</th>
+            <td colspan="2">merged</td>
+            <td>x</td>
+            <td></td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">3</th>
+            <td class="odr-value-type-float">12</td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <div id="report"></div>
     <script src="error-codes.js"></script>

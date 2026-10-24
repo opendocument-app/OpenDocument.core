@@ -16,14 +16,21 @@
 }
 /* A sheet is not a page: past the last row and column is canvas. */
 body{margin:0;background:var(--odr-sheet-canvas)}
-.odr-sheet{background:#fff;border-collapse:collapse;table-layout:fixed}
+/* A sheet is the ruler and a table for each chunk of rows (`lazy-loading.md`
+   decision 6). Every column states its width, so the tables line up. The
+   ruler sticks to the top of the whole sheet, not of one table. */
+.odr-sheet-head,.odr-sheet-rows{background:#fff;border-collapse:collapse;table-layout:fixed;width:var(--odr-sheet-width)}
+.odr-sheet-head{position:sticky;top:0;z-index:2}
+/* The border between two chunks is drawn once, as inside a table. */
+.odr-sheet-rows+.odr-sheet-rows{margin-top:-1px}
+.odr-sheet col.odr-sheet-gutter{width:var(--odr-sheet-gutter)}
 /* The sheet's own cells, not a table the document itself drew inside one. The
    font is what anything in a cell falls back to, a string written straight
    into it included. */
-.odr-sheet>tbody>tr>td{vertical-align:bottom;height:inherit;padding:1px 6px;font-family:var(--odr-sheet-font);font-size:10pt}
+.odr-sheet-rows>tbody>tr>td{vertical-align:bottom;height:inherit;padding:1px 6px;font-family:var(--odr-sheet-font);font-size:10pt}
 /* Exactly the cell's height, which is what holds a row to the height the file
    states. `translate_sheet` says per cell what a line too long for it does. */
-.odr-sheet>tbody>tr>td>x-p{height:inherit}
+.odr-sheet-rows>tbody>tr>td>x-p{height:inherit}
 /* Sticky cells in a collapsed border model do not repaint their borders in
    Chrome or WebKit, so the ruler uses inset shadows. */
 .odr-sheet th{position:sticky;background:var(--odr-sheet-ruler);color:var(--odr-sheet-ruler-text);font:500 12px/1.6 var(--odr-sheet-font);text-align:center;vertical-align:middle;padding:0 4px;white-space:nowrap;user-select:none}
@@ -72,8 +79,9 @@ body{margin:0;background:var(--odr-sheet-canvas)}
    width. The ruler collapses rather than `display:none`, which would take the
    cells out of their rows and shift every column left. */
 @media print{
-.odr-sheet thead{display:none}
-.odr-sheet-gutter{visibility:collapse;width:0}
+.odr-sheet-head{display:none}
+.odr-sheet col.odr-sheet-gutter{visibility:collapse;width:0}
+.odr-sheet-head,.odr-sheet-rows{width:calc(var(--odr-sheet-width) - var(--odr-sheet-gutter))}
 .odr-sheet-row-header{visibility:collapse;padding:0;box-shadow:none}
 .odr-sheet{zoom:var(--odr-print-fit,1);max-width:100%}
 .odr-sheet col{min-width:0!important}

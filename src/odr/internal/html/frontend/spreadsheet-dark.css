@@ -13,4 +13,4 @@
 --odr-sheet-stale:#e3b341;
 --odr-sheet-raised:#1c2128;
 }
-.odr-sheet{background-color:#161b22!important}
+.odr-sheet-head,.odr-sheet-rows{background-color:#161b22!important}

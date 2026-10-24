@@ -1,0 +1,149 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet checks over chunks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body class="odr-body odr-gridlines-soft" data-odr-editable="true" data-odr-keyboard="navigation shortcuts">
+    <!-- A sheet in three chunks, as `translate_sheet` writes a long one
+         (`lazy-loading.md` decision 6): two rows, two rows and one. The last
+         chunk is far from the viewport. -->
+    <div class="odr-sheet" data-odr-sheet="0" style="--odr-sheet-gutter:calc(1ch + 14px)">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" />
+        <col style="width:80px" />
+        <col style="width:80px" />
+        <col style="width:80px" />
+        <thead>
+          <tr>
+            <th class="odr-sheet-corner"></th>
+            <th class="odr-sheet-column-header">A</th>
+            <th class="odr-sheet-column-header">B</th>
+            <th class="odr-sheet-column-header">C</th>
+          </tr>
+        </thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" />
+        <col style="width:80px" />
+        <col style="width:80px" />
+        <col style="width:80px" />
+        <tbody>
+          <tr><th class="odr-sheet-row-header">1</th><td class="odr-value-type-float" style="max-width:0">5</td><td style="max-width:0">r1</td><td style="max-width:0"></td></tr>
+          <tr><th class="odr-sheet-row-header">2</th><td class="odr-value-type-float" style="max-width:0">3</td><td style="max-width:0">r2</td><td style="max-width:0"></td></tr>
+        </tbody>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" />
+        <col style="width:80px" />
+        <col style="width:80px" />
+        <col style="width:80px" />
+        <tbody>
+          <tr><th class="odr-sheet-row-header">3</th><td class="odr-value-type-float" style="max-width:0">4</td><td style="max-width:0">r3</td><td style="max-width:0"></td></tr>
+          <tr><th class="odr-sheet-row-header">4</th><td class="odr-value-type-float" style="max-width:0">1</td><td style="max-width:0">r4</td><td style="max-width:0"></td></tr>
+        </tbody>
+      </table>
+      <table class="odr-sheet-rows odr-chunk" id="far">
+        <col class="odr-sheet-gutter" />
+        <col style="width:80px" />
+        <col style="width:80px" />
+        <col style="width:80px" />
+        <tbody>
+          <tr><th class="odr-sheet-row-header">5</th><td class="odr-value-type-float" style="max-width:0">2</td><td style="max-width:0;white-space:nowrap;overflow:hidden">r5</td><td style="max-width:0"></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="out"><div id="report"></div></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var chunks = document.getElementsByClassName("odr-sheet-rows");
+
+      function counts() {
+        return Array.prototype.map
+          .call(chunks, function (chunk) {
+            return chunk.tBodies[0].rows.length;
+          })
+          .join(" ");
+      }
+      function labels() {
+        return Array.prototype.map
+          .call(document.querySelectorAll(".odr-sheet-rows tr"), function (tr) {
+            return tr.cells[0].textContent;
+          })
+          .join("");
+      }
+      function column(index) {
+        var texts = [];
+        for (var row = 0; odr.sheet.cellAt(index, row) !== null; ++row) {
+          texts.push(odr.sheet.cellAt(index, row).textContent);
+        }
+        return texts.join(",");
+      }
+      function click(element) {
+        element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      }
+
+      note("positions");
+      check("a position answers across the chunks", column(1) === "r1,r2,r3,r4,r5", column(1));
+      check(
+        "and a cell of the last chunk names its position",
+        odr.sheet.positionOf(odr.sheet.cellAt(1, 4)).row === 4
+      );
+
+      note("rows");
+      var inserted = odr.sheet.insertRows(2, 1);
+      check("a row goes into the chunk of the row it moves", counts() === "2 3 1", counts());
+      check("and every row is labelled again", labels() === "123456", labels());
+      odr.sheet.deleteRows(2, 1);
+      check("a delete takes it out of that chunk", counts() === "2 2 1" && column(1) === "r1,r2,r3,r4,r5");
+
+      var taken = odr.sheet.deleteRows(4, 1);
+      check("a chunk with no row left goes", chunks.length === 2, counts());
+      odr.sheet.restoreRows(4, taken);
+      check("and a row past the last chunk goes into the last one", counts() === "2 3", counts());
+      check("in its place", column(1) === "r1,r2,r3,r4,r5", column(1));
+
+      note("columns");
+      var slice = odr.sheet.insertColumns(1, 1);
+      check(
+        "a column goes into every table",
+        Array.prototype.every.call(document.querySelectorAll(".odr-sheet table"), function (part) {
+          return part.querySelectorAll("col").length === 5;
+        })
+      );
+      check("and its cells into every row", column(2) === "r1,r2,r3,r4,r5", column(2));
+      odr.sheet.deleteColumns(1, 1);
+      check(
+        "a delete takes it out of every table",
+        Array.prototype.every.call(document.querySelectorAll(".odr-sheet table"), function (part) {
+          return part.querySelectorAll("col").length === 4;
+        }) && column(1) === "r1,r2,r3,r4,r5"
+      );
+
+      note("a far chunk");
+      var last = chunks[chunks.length - 1];
+      last.classList.remove("odr-chunk-near");
+      var far = odr.sheet.cellAt(1, 4);
+      odr.sheet.showValue(1, 4, "a string far too long for its cell");
+      check("a write into a far chunk waits with its spill", far.style.clipPath === "");
+      last.classList.add("odr-chunk-near");
+      last.dispatchEvent(new CustomEvent("odr-chunk-near", { bubbles: true }));
+      check(
+        "and spills once the chunk is near",
+        far.style.overflow === "visible" && far.style.clipPath !== "",
+        far.style.overflow + " " + far.style.clipPath
+      );
+
+      note("sort");
+      click(document.querySelectorAll(".odr-sheet-sort")[0]);
+      check("a sort orders the rows over every chunk", column(0) === "5,3,4,1,2" && labels() === "45231", labels());
+      check("and every chunk keeps its count", counts() === "2 3", counts());
+    </script>
+  </body>
+</html>

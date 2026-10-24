@@ -16,55 +16,66 @@
     <!-- B1:B3 is one array formula, `{=A1:A3*2}`, and D1 another one in its
          own cell. C1 reads B2, a cell of the range. E1:F1 is an array of
          constants, which reads no cell. -->
-    <table class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="S">
-      <col class="odr-sheet-gutter" />
-      <col style="width: 80px" />
-      <col style="width: 80px" />
-      <col style="width: 80px" />
-      <col style="width: 80px" />
-      <col style="width: 80px" />
-      <col style="width: 80px" />
-      <thead>
-        <tr>
-          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
-          <th class="odr-sheet-column-header">A</th>
-          <th class="odr-sheet-column-header">B</th>
-          <th class="odr-sheet-column-header">C</th>
-          <th class="odr-sheet-column-header">D</th>
-          <th class="odr-sheet-column-header">E</th>
-          <th class="odr-sheet-column-header">F</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th class="odr-sheet-row-header">1</th>
-          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">1</td>
-          <td class="odr-value-type-float odr-locked" data-odr-lock="array" data-odr-formula="of:=[.A1:.A3]*2" data-odr-reads="0,0,0,0,2" data-odr-array="1,3" style="max-width:0;white-space:nowrap">2</td>
-          <td class="odr-value-type-float" data-odr-formula="of:=[.B2]+1" data-odr-reads="0,1,1,1,1" style="max-width:0;white-space:nowrap">5</td>
-          <td class="odr-value-type-float odr-locked" data-odr-lock="array" data-odr-formula="of:=SUM([.A1:.A3]*[.A1:.A3])" data-odr-reads="0,0,0,0,2" data-odr-array="1,1" style="max-width:0;white-space:nowrap">14</td>
-          <td class="odr-value-type-float odr-locked" data-odr-lock="array" data-odr-formula="of:={1;2}" data-odr-array="2,1" style="max-width:0;white-space:nowrap">1</td>
-          <td class="odr-value-type-float odr-locked" data-odr-lock="array" style="max-width:0;white-space:nowrap">2</td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">2</th>
-          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">2</td>
-          <td class="odr-value-type-float odr-locked" data-odr-lock="array" style="max-width:0;white-space:nowrap">4</td>
-          <td style="max-width:0;white-space:nowrap"></td>
-          <td style="max-width:0;white-space:nowrap"></td>
-          <td style="max-width:0;white-space:nowrap"></td>
-          <td style="max-width:0;white-space:nowrap"></td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">3</th>
-          <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">3</td>
-          <td class="odr-value-type-float odr-locked" data-odr-lock="array" style="max-width:0;white-space:nowrap">6</td>
-          <td style="max-width:0;white-space:nowrap"></td>
-          <td style="max-width:0;white-space:nowrap"></td>
-          <td style="max-width:0;white-space:nowrap"></td>
-          <td style="max-width:0;white-space:nowrap"></td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="S">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <thead>
+          <tr>
+            <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+            <th class="odr-sheet-column-header">A</th>
+            <th class="odr-sheet-column-header">B</th>
+            <th class="odr-sheet-column-header">C</th>
+            <th class="odr-sheet-column-header">D</th>
+            <th class="odr-sheet-column-header">E</th>
+            <th class="odr-sheet-column-header">F</th>
+          </tr>
+        </thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <tbody>
+          <tr>
+            <th class="odr-sheet-row-header">1</th>
+            <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">1</td>
+            <td class="odr-value-type-float odr-locked" data-odr-lock="array" data-odr-formula="of:=[.A1:.A3]*2" data-odr-reads="0,0,0,0,2" data-odr-array="1,3" style="max-width:0;white-space:nowrap">2</td>
+            <td class="odr-value-type-float" data-odr-formula="of:=[.B2]+1" data-odr-reads="0,1,1,1,1" style="max-width:0;white-space:nowrap">5</td>
+            <td class="odr-value-type-float odr-locked" data-odr-lock="array" data-odr-formula="of:=SUM([.A1:.A3]*[.A1:.A3])" data-odr-reads="0,0,0,0,2" data-odr-array="1,1" style="max-width:0;white-space:nowrap">14</td>
+            <td class="odr-value-type-float odr-locked" data-odr-lock="array" data-odr-formula="of:={1;2}" data-odr-array="2,1" style="max-width:0;white-space:nowrap">1</td>
+            <td class="odr-value-type-float odr-locked" data-odr-lock="array" style="max-width:0;white-space:nowrap">2</td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">2</th>
+            <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">2</td>
+            <td class="odr-value-type-float odr-locked" data-odr-lock="array" style="max-width:0;white-space:nowrap">4</td>
+            <td style="max-width:0;white-space:nowrap"></td>
+            <td style="max-width:0;white-space:nowrap"></td>
+            <td style="max-width:0;white-space:nowrap"></td>
+            <td style="max-width:0;white-space:nowrap"></td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">3</th>
+            <td class="odr-value-type-float" style="max-width:0;white-space:nowrap">3</td>
+            <td class="odr-value-type-float odr-locked" data-odr-lock="array" style="max-width:0;white-space:nowrap">6</td>
+            <td style="max-width:0;white-space:nowrap"></td>
+            <td style="max-width:0;white-space:nowrap"></td>
+            <td style="max-width:0;white-space:nowrap"></td>
+            <td style="max-width:0;white-space:nowrap"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <div id="report"></div>
     <script src="error-codes.js"></script>

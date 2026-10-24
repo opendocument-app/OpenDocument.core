@@ -1307,10 +1307,14 @@ TEST(html, a_sheet_defines_a_repeated_style_once_and_names_it) {
                    HtmlConfig());
 
   // Named three times: the class stands in for an inline style, which outranks
-  // every rule the sheet stylesheets carry.
-  EXPECT_NE(page.find(".c0.c0.c0{vertical-align:top;white-space:nowrap}"),
-            std::string::npos);
-  EXPECT_EQ(count(page, R"(<td class="c0">)"), 3);
+  // every rule the sheet stylesheets carry. `c0` and `c1` are the widths the
+  // columns get from their text, and the last cell spills where the two before
+  // it are cut.
+  EXPECT_NE(
+      page.find(".c2.c2.c2{vertical-align:top;max-width:0;white-space:nowrap;"
+                "overflow:hidden}"),
+      std::string::npos);
+  EXPECT_EQ(count(page, R"(<td class="c2">)"), 2);
 }
 
 // #822: a block is named the first time it is written, because the view is
@@ -1319,8 +1323,9 @@ TEST(html, a_sheet_names_a_style_it_writes_only_once_too) {
   const std::string page =
       render_sheet(fods_file(fods_row(fods_cell("one"))), HtmlConfig());
 
-  EXPECT_NE(page.find(".c0.c0.c0{vertical-align:top;white-space:nowrap}"),
-            std::string::npos);
+  EXPECT_NE(
+      page.find(".c1.c1.c1{vertical-align:top;max-width:0;white-space:nowrap}"),
+      std::string::npos);
   EXPECT_EQ(page.find(R"(<td style=")"), std::string::npos);
 }
 
@@ -1825,9 +1830,10 @@ TEST(html, a_cell_the_file_says_to_wrap_wraps) {
   const std::string page =
       render_sheet(fods_file(fods_row(fods_cell("one", true))), HtmlConfig());
 
-  EXPECT_NE(page.find(".c0.c0.c0{vertical-align:top;overflow:hidden}"),
-            std::string::npos);
-  EXPECT_NE(page.find(R"(<td class="c0"><x-p )"), std::string::npos);
+  EXPECT_NE(
+      page.find(".c1.c1.c1{vertical-align:top;max-width:0;overflow:hidden}"),
+      std::string::npos);
+  EXPECT_NE(page.find(R"(<td class="c1"><x-p )"), std::string::npos);
 }
 
 // #822: what a spreadsheet does with a line too long for its cell — over the
@@ -1898,7 +1904,7 @@ TEST(html, a_printed_sheet_drops_the_ruler_and_fits_the_page) {
   EXPECT_NE(sheet.find("table-layout:fixed"), std::string::npos);
   EXPECT_NE(sheet.find("class=\"odr-sheet-column-header\""), std::string::npos);
 
-  EXPECT_NE(sheet.find(".odr-sheet thead{display:none}"), std::string::npos);
+  EXPECT_NE(sheet.find(".odr-sheet-head{display:none}"), std::string::npos);
   EXPECT_NE(sheet.find(".odr-sheet-gutter{visibility:collapse"),
             std::string::npos);
   EXPECT_NE(

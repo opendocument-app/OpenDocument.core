@@ -10,56 +10,65 @@
     <!-- A merged sheet as `translate_sheet` writes one: no `td` stands where a
          span covers a position. B1 spans two columns, A2 two rows, and D4 two
          rows past the last cell row 5 writes. C2 carries a lock. -->
-    <table class="odr-sheet" data-odr-sheet="0">
-      <col class="odr-sheet-gutter" />
-      <col />
-      <col />
-      <col />
-      <col />
-      <thead>
-        <tr>
-          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
-          <th class="odr-sheet-column-header">A</th>
-          <th class="odr-sheet-column-header">B</th>
-          <th class="odr-sheet-column-header">C</th>
-          <th class="odr-sheet-column-header">D</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th class="odr-sheet-row-header">1</th>
-          <td>a0</td>
-          <td colspan="2">b0</td>
-          <td>d0</td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">2</th>
-          <td rowspan="2">a1</td>
-          <td>b1</td>
-          <td class="odr-locked" data-odr-lock="formula">c1</td>
-          <td>d1</td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">3</th>
-          <td>b2</td>
-          <td>c2</td>
-          <td>d2</td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">4</th>
-          <td>a3</td>
-          <td>b3</td>
-          <td>c3</td>
-          <td rowspan="2">d3</td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">5</th>
-          <td>a4</td>
-          <td>b4</td>
-          <td>c4</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="odr-sheet" data-odr-sheet="0">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" />
+        <col />
+        <col />
+        <col />
+        <col />
+        <thead>
+          <tr>
+            <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+            <th class="odr-sheet-column-header">A</th>
+            <th class="odr-sheet-column-header">B</th>
+            <th class="odr-sheet-column-header">C</th>
+            <th class="odr-sheet-column-header">D</th>
+          </tr>
+        </thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" />
+        <col />
+        <col />
+        <col />
+        <col />
+        <tbody>
+          <tr>
+            <th class="odr-sheet-row-header">1</th>
+            <td>a0</td>
+            <td colspan="2">b0</td>
+            <td>d0</td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">2</th>
+            <td rowspan="2">a1</td>
+            <td>b1</td>
+            <td class="odr-locked" data-odr-lock="formula">c1</td>
+            <td>d1</td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">3</th>
+            <td>b2</td>
+            <td>c2</td>
+            <td>d2</td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">4</th>
+            <td>a3</td>
+            <td>b3</td>
+            <td>c3</td>
+            <td rowspan="2">d3</td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">5</th>
+            <td>a4</td>
+            <td>b4</td>
+            <td>c4</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <div id="report"></div>
     <!-- the table the library writes into a page, ahead of the script

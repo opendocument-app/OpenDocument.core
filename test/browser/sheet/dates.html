@@ -14,38 +14,44 @@
     data-odr-keyboard="navigation shortcuts"
     data-odr-locale="en-US"
   >
-    <table class="odr-sheet" data-odr-sheet="0">
-      <col class="odr-sheet-gutter" />
-      <col style="width: 120px" />
-      <thead>
-        <tr>
-          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
-          <th class="odr-sheet-column-header">A</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th class="odr-sheet-row-header">1</th>
-          <td style="max-width:0;white-space:nowrap"></td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">2</th>
-          <td class="odr-value-type-date" data-odr-value="45659" style="max-width:0;white-space:nowrap">2-Jan-25</td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">3</th>
-          <td class="odr-value-type-time" data-odr-value="0.770833333333333" style="max-width:0;white-space:nowrap">6:30 PM</td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">4</th>
-          <td class="odr-value-type-date" data-odr-value="45659.999995" style="max-width:0;white-space:nowrap">2-Jan-25</td>
-        </tr>
-        <tr>
-          <th class="odr-sheet-row-header">5</th>
-          <td class="odr-value-type-time" data-odr-value="-0.104166666666667" style="max-width:0;white-space:nowrap">(2:30)</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="odr-sheet" data-odr-sheet="0">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 120px" />
+        <thead>
+          <tr>
+            <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+            <th class="odr-sheet-column-header">A</th>
+          </tr>
+        </thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 120px" />
+        <tbody>
+          <tr>
+            <th class="odr-sheet-row-header">1</th>
+            <td style="max-width:0;white-space:nowrap"></td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">2</th>
+            <td class="odr-value-type-date" data-odr-value="45659" style="max-width:0;white-space:nowrap">2-Jan-25</td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">3</th>
+            <td class="odr-value-type-time" data-odr-value="0.770833333333333" style="max-width:0;white-space:nowrap">6:30 PM</td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">4</th>
+            <td class="odr-value-type-date" data-odr-value="45659.999995" style="max-width:0;white-space:nowrap">2-Jan-25</td>
+          </tr>
+          <tr>
+            <th class="odr-sheet-row-header">5</th>
+            <td class="odr-value-type-time" data-odr-value="-0.104166666666667" style="max-width:0;white-space:nowrap">(2:30)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <div id="report"></div>
     <script src="error-codes.js"></script>

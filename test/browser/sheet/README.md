@@ -7,6 +7,7 @@ checks run by hand and not in `odr_test`.
 ```bash
 test/browser/sheet/serve         # serves on :8732
 open http://localhost:8732/tests.html
+open http://localhost:8732/chunks.html
 open http://localhost:8732/positions.html
 open http://localhost:8732/sorting.html
 open http://localhost:8732/editing.html
@@ -46,6 +47,11 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
   into the `td`. Raising shows all of a cell without moving anything: the box
   goes out of flow, no row changes height, and a click inside it is for the
   text.
+- `chunks.html`: a sheet in three tables, one for each chunk of rows
+  (`lazy-loading.md` decision 6). A position answers across the chunks. A
+  row goes into the chunk of the row it moves, and a chunk with no row left
+  goes. A column goes into every table. A write into a far chunk spills only
+  once the chunk is near, and a sort keeps the count of each chunk.
 - `positions.html`: `odr.sheet` over a merged sheet. `translate_sheet` writes
   no `td` for a position a span covers, so the fixture has a `colspan`, a
   `rowspan`, and a `rowspan` that reaches past the last cell of the row below.
