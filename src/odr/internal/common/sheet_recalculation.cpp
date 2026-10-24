@@ -163,7 +163,7 @@ public:
       return std::nullopt;
     }
     const Formula &entry = formula->second;
-    if (entry.output) {
+    if (entry.output && entry.array.has_value()) {
       // the formula's own cell computes the whole range
       static_cast<void>(cell(entry.array->first));
       const auto known = m_results.find(position);
@@ -237,7 +237,7 @@ public:
                                  : formula::Value{0.0};
     }
     for (const std::vector<SheetPosition> &cycle : cycles(cells)) {
-      iterate(cycle);
+      iterate(cycle, *m_settings.iteration);
     }
     forget();
     return true;
@@ -326,12 +326,13 @@ private:
     return result;
   }
 
-  /// One group of @p cycle cells, swept as the document's settings state.
-  void iterate(const std::vector<SheetPosition> &cycle) const {
+  /// One group of @p cycle cells, swept as @p iteration states.
+  void iterate(const std::vector<SheetPosition> &cycle,
+               const formula::Iteration &iteration) const {
     bool converged = false;
     bool answered = true;
     for (std::uint32_t step = 0;
-         step < m_settings.iteration->steps && !converged && answered; ++step) {
+         step < iteration.steps && !converged && answered; ++step) {
       double change = 0;
       for (const SheetPosition &position : cycle) {
         // what reads a cell of the cycle reads this step's value
@@ -345,10 +346,11 @@ private:
           answered = false;
           break;
         }
-        change = std::max(change, difference(*m_iterated[position], *value));
+        change =
+            std::max(change, difference(m_iterated[position].value(), *value));
         m_iterated[position] = std::move(value);
       }
-      converged = answered && change < m_settings.iteration->difference;
+      converged = answered && change < iteration.difference;
     }
     // LibreOffice states `Err:523` for a cycle that does not converge, which
     // a file cannot hold, and Excel keeps what the last step computed
@@ -625,8 +627,9 @@ internal::recalculate(const abstract::Document &document) {
       }
     };
     if (!value.has_value()) {
-      const SheetPosition &owner =
-          formula.output ? formula.array->first : position;
+      const SheetPosition &owner = formula.output && formula.array.has_value()
+                                       ? formula.array->first
+                                       : position;
       (cells.is_circular(owner) ? result.circular : result.unevaluated)
           .push_back(position);
       // the result the file caches is stale, where the file can drop it
