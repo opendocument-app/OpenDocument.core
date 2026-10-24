@@ -315,6 +315,10 @@ void html::write_search_style(const WritingState &state) {
   write_style(search_css_asset, state);
 }
 
+void html::write_search_dark_style(const WritingState &state) {
+  write_dark_style(search_dark_css_asset, state);
+}
+
 void html::write_chunk_style(const WritingState &state) {
   HtmlWriter &out = state.out();
   out.write_header_style_begin();
@@ -327,10 +331,6 @@ void html::write_chunk_style(const WritingState &state) {
   // one layout of each chunk on the first frame
   out.write_raw("<noscript><style>@media screen{.odr-chunk{content-visibility:"
                 "auto}}</style></noscript>");
-}
-
-void html::write_search_dark_style(const WritingState &state) {
-  write_dark_style(search_dark_css_asset, state);
 }
 
 void html::write_editing_script(const WritingState &state) {
