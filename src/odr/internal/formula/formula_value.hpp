@@ -23,6 +23,14 @@ enum class Dialect {
   excel,       ///< a boolean is a type of its own, and `0^0` is `#NUM!`
 };
 
+/// How a document computes a cycle: again and again, from what its cells
+/// hold, until no cell changes by @ref difference or more, at most @ref steps
+/// times.
+struct Iteration final {
+  std::uint32_t steps{100};
+  double difference{0.001};
+};
+
 /// How a document's formulas compute. An `.ods` states it in
 /// `table:calculation-settings`, and an `.xlsx` takes Excel's, as
 /// LibreOffice does on import.
@@ -50,6 +58,8 @@ struct Settings final {
   /// A number in [0, 1) for each call of `RAND`. None where the caller states
   /// none: then `RAND` and `RANDBETWEEN` have no answer.
   std::function<double()> random{};
+  /// How a cycle computes, nothing where the document computes none.
+  std::optional<Iteration> iteration{};
 
   /// The serial a formula computes with for @p days since 1899-12-30.
   [[nodiscard]] double serial(double days) const;

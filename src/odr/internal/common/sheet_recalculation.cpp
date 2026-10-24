@@ -6,6 +6,7 @@
 #include <odr/internal/common/document.hpp>
 #include <odr/internal/common/sheet_cell_source.hpp>
 #include <odr/internal/common/sheet_dependencies.hpp>
+#include <odr/internal/formula/formula_dependencies.hpp>
 #include <odr/internal/formula/formula_evaluator.hpp>
 #include <odr/internal/formula/formula_function.hpp>
 #include <odr/internal/formula/formula_parser.hpp>
@@ -13,11 +14,13 @@
 #include <odr/internal/number_format/number_format.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <ctime>
 #include <limits>
 #include <memory>
 #include <optional>
 #include <random>
+#include <ranges>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -141,6 +144,10 @@ public:
     if (!m_stale.contains(position) || formula == m_formulas->end()) {
       return m_base->cell(position);
     }
+    if (const auto iterated = m_iterated.find(position);
+        iterated != m_iterated.end()) {
+      return iterated->second;
+    }
     if (const auto known = m_results.find(position); known != m_results.end()) {
       return known->second;
     }
@@ -213,7 +220,168 @@ public:
     }
   }
 
+  /// Computes the cycles the first pass met as the document's settings state:
+  /// each of their cells in reading order, from what it holds, until none
+  /// changes by the difference. Each result is computed again after it. False
+  /// where the document computes no cycle, or meets none.
+  bool iterate() const {
+    if (!m_settings.iteration.has_value() || m_circular.empty()) {
+      return false;
+    }
+    std::vector<SheetPosition> cells(m_circular.begin(), m_circular.end());
+    std::ranges::sort(cells);
+    for (const SheetPosition &position : cells) {
+      const std::optional<formula::Value> held = m_base->cell(position);
+      m_iterated[position] = held.has_value() && !held->holds<formula::Empty>()
+                                 ? *held
+                                 : formula::Value{0.0};
+    }
+    for (const std::vector<SheetPosition> &cycle : cycles(cells)) {
+      iterate(cycle);
+    }
+    forget();
+    return true;
+  }
+
 private:
+  /// The cells of @p cells that read each other, each group after the groups
+  /// it reads (Kosaraju). A cell that may read any cell reads all of them.
+  [[nodiscard]] std::vector<std::vector<SheetPosition>>
+  cycles(const std::vector<SheetPosition> &cells) const {
+    const std::size_t count = cells.size();
+    std::vector<std::vector<std::size_t>> reads(count);
+    std::vector<std::vector<std::size_t>> readers(count);
+    for (std::size_t i = 0; i < count; ++i) {
+      const std::optional<formula::Node> &node = m_formulas->at(cells[i]).node;
+      const formula::References read = node.has_value()
+                                           ? formula::references(*node)
+                                           : formula::References{{}, false};
+      for (std::size_t j = 0; j < count; ++j) {
+        const bool reached =
+            !read.complete ||
+            std::ranges::any_of(read.extents, [&](const formula::Extent &x) {
+              if (x.document.has_value()) {
+                return false;
+              }
+              const std::optional<std::uint32_t> sheet =
+                  x.sheet.has_value() ? m_base->sheet(*x.sheet)
+                                      : std::optional(cells[i].sheet);
+              return sheet == cells[j].sheet && x.range.contains(cells[j].cell);
+            });
+        if (reached) {
+          reads[i].push_back(j);
+          readers[j].push_back(i);
+        }
+      }
+    }
+    // the finishing order over what each cell reads, then groups over who
+    // reads it, latest finished first: that gives the groups nothing reads
+    // first, so the list turns over at the end
+    std::vector<std::size_t> finished;
+    std::vector<bool> seen(count, false);
+    for (std::size_t start = 0; start < count; ++start) {
+      if (seen[start]) {
+        continue;
+      }
+      std::vector<std::pair<std::size_t, std::size_t>> stack{{start, 0}};
+      seen[start] = true;
+      while (!stack.empty()) {
+        auto &[i, next] = stack.back();
+        if (next < reads[i].size()) {
+          const std::size_t j = reads[i][next++];
+          if (!seen[j]) {
+            seen[j] = true;
+            stack.emplace_back(j, 0);
+          }
+        } else {
+          finished.push_back(i);
+          stack.pop_back();
+        }
+      }
+    }
+    std::vector<std::vector<SheetPosition>> result;
+    std::vector<bool> placed(count, false);
+    for (const std::size_t start : std::views::reverse(finished)) {
+      if (placed[start]) {
+        continue;
+      }
+      std::vector<SheetPosition> group;
+      std::vector<std::size_t> stack{start};
+      placed[start] = true;
+      while (!stack.empty()) {
+        const std::size_t i = stack.back();
+        stack.pop_back();
+        group.push_back(cells[i]);
+        for (const std::size_t j : readers[i]) {
+          if (!placed[j]) {
+            placed[j] = true;
+            stack.push_back(j);
+          }
+        }
+      }
+      std::ranges::sort(group);
+      result.push_back(std::move(group));
+    }
+    std::ranges::reverse(result);
+    return result;
+  }
+
+  /// One group of @p cycle cells, swept as the document's settings state.
+  void iterate(const std::vector<SheetPosition> &cycle) const {
+    bool converged = false;
+    bool answered = true;
+    for (std::uint32_t step = 0;
+         step < m_settings.iteration->steps && !converged && answered; ++step) {
+      double change = 0;
+      for (const SheetPosition &position : cycle) {
+        // what reads a cell of the cycle reads this step's value
+        forget();
+        const Formula &entry = m_formulas->at(position);
+        std::optional<formula::Value> value =
+            entry.node.has_value() && !entry.spanned && !entry.array.has_value()
+                ? formula::evaluate(*entry.node, position, *this, m_settings)
+                : std::nullopt;
+        if (!value.has_value()) {
+          answered = false;
+          break;
+        }
+        change = std::max(change, difference(*m_iterated[position], *value));
+        m_iterated[position] = std::move(value);
+      }
+      converged = answered && change < m_settings.iteration->difference;
+    }
+    // LibreOffice states `Err:523` for a cycle that does not converge, which
+    // a file cannot hold, and Excel keeps what the last step computed
+    const bool kept = converged || (answered && m_settings.dialect ==
+                                                    formula::Dialect::excel);
+    for (const SheetPosition &position : cycle) {
+      if (kept) {
+        m_circular.erase(position);
+      } else {
+        m_iterated[position] = std::nullopt;
+      }
+    }
+  }
+
+  /// How far apart two steps of a cycle leave a cell: infinite where they
+  /// change what it is.
+  [[nodiscard]] static double difference(const formula::Value &before,
+                                         const formula::Value &after) {
+    if (before.holds<double>() && after.holds<double>()) {
+      return std::abs(after.get<double>() - before.get<double>());
+    }
+    return before == after ? 0 : std::numeric_limits<double>::infinity();
+  }
+
+  /// Drops every result computed so far, so each is computed again.
+  void forget() const {
+    m_results.clear();
+    m_stack.clear();
+    m_ancestors.clear();
+    m_frontier_path.clear();
+    m_frontier.reset();
+  }
+
   /// Notes what @p result puts in each cell of @p span past its first, and
   /// gives what it puts in the first.
   std::optional<formula::Value>
@@ -263,6 +431,9 @@ private:
   mutable std::vector<SheetPosition> m_ancestors;
   mutable std::vector<SheetPosition> m_frontier_path;
   mutable std::unordered_set<SheetPosition> m_circular;
+  /// The values a cycle's cells took, which the document's settings computed.
+  mutable std::unordered_map<SheetPosition, std::optional<formula::Value>>
+      m_iterated;
   mutable std::optional<SheetPosition> m_frontier;
 };
 
@@ -415,20 +586,29 @@ internal::recalculate(const abstract::Document &document) {
     std::optional<formula::Value> value{};
   };
   std::vector<Computed> computed;
-  computed.reserve(ordered.size());
-  for (const SheetPosition &position : ordered) {
-    computed.push_back(
-        Computed{position, source.cell(position), cells.compute(position)});
-    // the cells an array formula fills, which its own cell computed
-    if (const Formula &formula = formulas.at(position);
-        formula.array.has_value()) {
-      for_each_position(*formula.array, [&](const SheetPosition &output) {
-        if (output != position) {
-          computed.push_back(
-              Computed{output, source.cell(output), cells.cell(output)});
-        }
-      });
+  const auto compute_all = [&] {
+    computed.clear();
+    computed.reserve(ordered.size());
+    for (const SheetPosition &position : ordered) {
+      computed.push_back(
+          Computed{position, source.cell(position), cells.compute(position)});
+      // the cells an array formula fills, which its own cell computed
+      if (const Formula &formula = formulas.at(position);
+          formula.array.has_value()) {
+        for_each_position(*formula.array, [&](const SheetPosition &output) {
+          if (output != position) {
+            computed.push_back(
+                Computed{output, source.cell(output), cells.cell(output)});
+          }
+        });
+      }
     }
+  };
+  compute_all();
+  // a cycle computes where the document's settings say so, and then what
+  // reads it
+  if (cells.iterate()) {
+    compute_all();
   }
 
   for (const auto &[position, before, value] : computed) {

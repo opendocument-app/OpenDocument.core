@@ -256,7 +256,15 @@ std::vector<formula::ExternalSheet> Document::formula_external_sheets() const {
 }
 
 formula::Settings Document::formula_settings() const {
-  return formula::Settings{.epoch = m_epoch};
+  formula::Settings result{.epoch = m_epoch};
+  // ECMA-376 18.2.2 `calcPr`
+  if (const pugi::xml_node calculation = workbook().child("calcPr");
+      calculation.attribute("iterate").as_bool()) {
+    result.iteration = formula::Iteration{
+        calculation.attribute("iterateCount").as_uint(100),
+        calculation.attribute("iterateDelta").as_double(0.001)};
+  }
+  return result;
 }
 
 pugi::xml_node Document::workbook() const {
