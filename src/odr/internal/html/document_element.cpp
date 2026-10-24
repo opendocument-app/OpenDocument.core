@@ -838,7 +838,7 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                                                  ordinal, ordinals_by_name)
                                     : std::string();
       if (computes) {
-        sheet_state.note_formula_cell();
+        sheet_state.note_computed_formula();
       }
 
       state.out().write_element_begin(
