@@ -26,28 +26,30 @@ want (#740, #757).
 ### The browser
 
 Headless Chrome, `file://`, one page for each run, 2026-10-24. The text is a
-generated log of 3 to 14 words on each line. "Load" is the time to the load
-event. "Layout" and "style" are the totals of `Performance.getMetrics`. "RSS"
-is the sum of the renderer processes, so only the ratios count.
+generated log of one million lines (71 MB), 3 to 14 words on each line.
+"First frame" is the time until the page first paints. "Layout" and "style"
+are the totals of `Performance.getMetrics`. "RSS" is the sum of the renderer
+processes, so only the ratios count.
 
-| page | lines | load | layout | style | DOM nodes | RSS |
-|---|---|---|---|---|---|---|
-| `text.html` as `translate` writes it | 100 K | 3.8 s | 2.6 s | 0.5 s | 600 K | 1.5 GB |
-| the same, without its scripts | 100 K | 1.6 s | 1.0 s | 0.1 s | 600 K | 1.7 GB |
-| chunks of 256 lines, `content-visibility: auto` | 100 K | 0.13 s | 0.01 s | 0.01 s | 600 K | 0.9 GB |
-| lines as JS strings, a window of 256 in the DOM | 100 K | 0.07 s | 0.01 s | 0 s | 539 | 1.0 GB |
-| `text.html` as `translate` writes it | 1 M | 151 s | 91 s | 7.6 s | 6.0 M | 6.3 GB |
-| the same, without its scripts | 1 M | 90 s | 45 s | 2.8 s | 6.0 M | 5.1 GB |
-| chunks of 256 lines, `content-visibility: auto` | 1 M | 1.5 s | 0.2 s | 0.1 s | 6.0 M | 1.9 GB |
-| lines as JS strings, a window of 256 in the DOM | 1 M | 0.5 s | 0.01 s | 0 s | 539 | 1.2 GB |
+| page | first frame | layout | style | DOM nodes | RSS |
+|---|---|---|---|---|---|
+| `text.html` as `translate` writes it today | 154 s | 91 s | 7.6 s | 6.0 M | 6.3 GB |
+| the same, without its scripts | 91 s | 45 s | 2.8 s | 6.0 M | 5.1 GB |
+| one div for each line, in one column | 59 s | 26 s | 3.9 s | 3.0 M | 3.3 GB |
+| chunks of 256 lines, `content-visibility: auto` | 13.5 s | 6.3 s | 2.6 s | 4.0 M | 5.0 GB |
+| chunks of 256 lines, `hidden` until a script marks them near | 0.85 s | 0.1 s | 0.16 s | 3.0 M | 0.9 GB |
+| lines as JS strings, a window of 256 in the DOM | 0.5 s | 0.01 s | 0 s | 539 | 1.2 GB |
 
-- Layout is the cost, not the DOM alone. The chunked page keeps every node
-  and still loads 100 times faster, because the browser lays out only the
+- Layout is the cost, not the DOM alone. The `hidden` chunks keep every node
+  and still paint 180 times sooner, because the browser lays out only the
   chunks near the viewport.
-- `text.js` doubles the load. Its `ResizeObserver` measures the line-number
-  gutter against every line.
-- `translate` sets `format_html`, so each line costs 6 nodes, where 4 would
-  do. The ratios between the rows stay.
+- `content-visibility: auto` is not enough. On the first frame, Chrome lays
+  out each `auto` chunk once to find out whether it is near the viewport.
+  A chunk that starts `hidden` costs nothing until the script marks it.
+- `text.js` doubles the load today. Its `ResizeObserver` measures the
+  line-number gutter against every line.
+- `translate` sets `format_html`, so whitespace nodes come between the
+  lines. The ratios between the rows stay.
 
 ### Core
 
@@ -69,15 +71,15 @@ the registry and the styles about 230 MB. The cell children of #781 are about
 
 | level | what it does | where it works |
 |---|---|---|
-| **1. Containment** | The view writes its content in chunks, each with `content-visibility: auto`. The browser skips layout and paint of a chunk far from the viewport. | every page, offline too, with no script |
+| **1. Containment** | The view writes its content in chunks. A chunk has `content-visibility: hidden` until a script marks it near the viewport, so the browser lays out only those. Without the script, a chunk has `auto`. | every page, offline too |
 | **2. A window** | The page keeps a chunk far from the viewport as a string, not as DOM, and puts it back as the reader comes near. | every page, offline too |
 | **3. On demand** | The page asks the host for a chunk, and core renders only that chunk. | a host that answers the request: the HTTP server, or a binding with a callback |
 
-**Why levels:** level 1 is CSS, costs nearly nothing, and keeps everything
-that a full DOM gives: Ctrl+F, selection, copy, print and accessibility.
-`content-visibility: auto` keeps skipped content in the find-in-page index
-and in the accessibility tree. Level 2 removes the DOM cost too, but takes
-some of those away (decision 5). Level 3 is the only level that makes core
+**Why levels:** level 1 is CSS and a few lines of script, and it keeps the
+whole DOM. So `odr.search`, the editor and a copy of a selection see all of
+the content. The find of the browser and a screen reader do not see a
+hidden chunk. Level 2 removes the DOM cost too, but takes more away
+(decision 5). Level 3 is the only level that makes core
 cheaper, and it needs a host. A view takes the lowest level that is enough
 for the size of its file.
 
@@ -150,7 +152,7 @@ chunk and not to the document (#781 for ods, the issue #764 for the rest).
 | feature | level 2 changes | answer |
 |---|---|---|
 | `odr.search` | It searches the DOM. | It searches the chunk strings, and splices the chunk of a hit before it marks it. |
-| Ctrl+F of the browser | It finds only what is in the DOM. | Keep level 1 where it is enough. |
+| Ctrl+F of the browser | It finds only what the browser lays out, at level 1 too. | `odr.search`, which a host shows as its find. |
 | Editing a text file | An edit in a chunk that is then evicted is lost. | Eviction writes the chunk's DOM back to its string. `setContent` reads the strings. |
 | Editing a sheet | A shown value lives in the DOM. | The ops are by position (`spreadsheet-editing.md` decision 1). A splice shows the values of the log again. |
 | Print | It prints only what is in the DOM. | `beforeprint` puts every chunk back. Past a size, print refuses. |
@@ -159,11 +161,11 @@ chunk and not to the document (#781 for ods, the issue #764 for the rest).
 
 ## Order of work
 
-1. **Text files, level 1.** Chunks of lines with `content-visibility: auto`.
-   The line number moves into each line as a CSS counter, so the gutter
-   needs no `ResizeObserver` and wraps with its line. A counter does not
-   cross the style containment of a chunk, so each chunk states the number
-   it starts at.
+1. **Text files, level 1.** Chunks of lines that are `hidden` until
+   `text.js` marks them near the viewport. The line number moves into each
+   line as a CSS counter, so the gutter needs no `ResizeObserver` and wraps
+   with its line. The containment of a chunk hides a counter on the chunk
+   itself, so the first line of each chunk states the number it starts at.
 2. **Text files, levels 2 and 3.** The chunk source, the chunk write of core
    and the HTTP route. A text file needs no engine work, so it proves the
    API.
@@ -185,5 +187,8 @@ chunk and not to the document (#781 for ods, the issue #764 for the rest).
   a switch in `HtmlConfig`.
 - **Search at level 3.** The page holds no strings for content it never
   received. Search then needs the host.
+- **The find of the browser.** `hidden="until-found"` lets it reach a hidden
+  chunk and show it. But a browser without that value hides the chunk for
+  good, where a browser without `content-visibility` shows it.
 - **Eviction at level 3.** Whether the page drops a far chunk entirely and
   asks for it again, or keeps its string.
