@@ -225,19 +225,6 @@ void write_error_codes(const WritingState &state) {
   state.out().write_script_end();
 }
 
-/// A json string that cannot end the `<script>` it sits in.
-std::string script_string(const std::string &value) {
-  std::string result;
-  for (const char c : nlohmann::json(value).dump()) {
-    if (c == '<') {
-      result += "\\u003c";
-    } else {
-      result += c;
-    }
-  }
-  return result;
-}
-
 void write_script(const Asset &asset, const WritingState &state) {
   if (const HtmlResourceLocation location =
           locate(asset, state.config(), state.resources());
@@ -313,6 +300,20 @@ void html::write_media_style(const WritingState &state) {
 
 void html::write_search_style(const WritingState &state) {
   write_style(search_css_asset, state);
+}
+
+std::string html::script_string(const std::string &value) {
+  std::string result;
+  // a byte that is no UTF-8 shows as U+FFFD, as the browser shows it in a page
+  for (const char c : nlohmann::json(value).dump(
+           -1, ' ', false, nlohmann::json::error_handler_t::replace)) {
+    if (c == '<') {
+      result += "\\u003c";
+    } else {
+      result += c;
+    }
+  }
+  return result;
 }
 
 std::string html::chunk_classes(const HtmlConfig &config, const bool near) {

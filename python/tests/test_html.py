@@ -77,6 +77,7 @@ def test_html_config_viewport_defaults():
     assert config.viewport_width is None
     assert config.initial_zoom is None
     assert config.lazy_layout is True
+    assert config.lazy_loading is False
 
     config.viewport_mode = pyodr.HtmlViewportMode.fit_width
     config.spreadsheet_viewport_mode = pyodr.HtmlViewportMode.actual_size
@@ -84,12 +85,14 @@ def test_html_config_viewport_defaults():
     config.viewport_width = 420
     config.initial_zoom = 1.5
     config.lazy_layout = False
+    config.lazy_loading = True
     assert config.viewport_mode == pyodr.HtmlViewportMode.fit_width
     assert config.spreadsheet_viewport_mode == pyodr.HtmlViewportMode.actual_size
     assert config.viewport_content == "width=420"
     assert config.viewport_width == 420
     assert config.initial_zoom == 1.5
     assert config.lazy_layout is False
+    assert config.lazy_loading is True
 
 
 def test_viewport_mode_reaches_the_html(odt_path):

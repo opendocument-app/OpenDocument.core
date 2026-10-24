@@ -6,6 +6,7 @@ checks run by hand and not in `odr_test`.
 ```bash
 test/browser/viewport/serve      # serves on :8731
 open http://localhost:8731/tests.html
+open http://localhost:8731/chunks.html
 ```
 
 `serve` serves `viewport.js` out of `src/odr/internal/html/frontend/`, so the
@@ -39,3 +40,8 @@ Two webkit rules stay uncovered, both about type under an applied `zoom`
 (#761): webkit holds the text at its unscaled size unless the zoom is stated
 back as `text-size-adjust`, by a factor its cluster heuristics decide, and it
 draws no text below 9px. The oracle is a document served to a real webkit.
+
+`chunks.html` checks that `viewport.js` loads a chunk that names its source
+once the chunk is near, and one that `odr.chunks.show` shows, as
+`HtmlConfig::lazy_loading` writes them (`lazy-loading.md` decision 3).
+`chunk-1.js` and `chunk-2.js` are those chunks.

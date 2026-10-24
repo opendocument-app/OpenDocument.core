@@ -75,14 +75,14 @@ the registry and the styles about 230 MB. The cell children of #781 are about
 |---|---|---|
 | **1. Containment** | The view writes its content in chunks. A chunk has `content-visibility: hidden` until a script marks it near the viewport, so the browser lays out only those. Without the script, a chunk has `auto`. | every page, offline too |
 | **2. A window** | The page keeps a chunk far from the viewport as a string, not as DOM, and puts it back as the reader comes near. | every page, offline too |
-| **3. On demand** | The page asks the host for a chunk, and core renders only that chunk. | a host that answers the request: the HTTP server, or a binding with a callback |
+| **3. On demand** | The page loads a chunk as a script when the reader comes near, and core renders only that chunk. | the HTTP server, which renders a chunk when it is asked, and a file that `bring_offline` writes, with every chunk beside it |
 
 **Why levels:** level 1 is CSS and a few lines of script, and it keeps the
 whole DOM. So `odr.search`, the editor and a copy of a selection see all of
 the content. The find of the browser and a screen reader do not see a
 hidden chunk. Level 2 removes the DOM cost too, but takes more away
-(decision 5). Level 3 is the only level that makes core cheaper, and it needs
-a host. A view takes the lowest level that is enough
+(decision 5). Level 3 is the only level that makes core cheaper, where a
+server renders a chunk only when the page asks for it. A view takes the lowest level that is enough
 for the size of its file.
 
 `HtmlConfig::lazy_layout` turns level 1 off. Then no view writes a chunk,
@@ -94,11 +94,11 @@ flat around it.
 18. A browser without it ignores the property and lays out every chunk, as
 it lays out every line today.
 
-**Offline and server mode:** levels 1 and 2 work in a file that
-`bring_offline` writes, because the file carries all the content. Only
-level 3 needs a server or a host callback. So most of the work helps an
-offline file too. What only a server adds is that core does not render,
-hold or send the whole document at the start.
+**Offline and server mode:** every level works in a file that
+`bring_offline` writes. At level 3 the file has its chunks beside it, so
+the page stays small and loads only what the reader comes near. What only
+a server adds is that core does not render or send the whole document at
+the start.
 
 ### 2. A chunk is the unit, with a stable index and a size
 
@@ -119,40 +119,53 @@ position stays where it is when the chunk arrives:
 - A block of a text document has no size before layout. Text documents come
   last, and may take only the page shape of `text_document_margin`.
 
-### 3. The page reads chunks through one source
+### 3. A chunk that loads is a script of its own
 
-```js
-// what level 2 and level 3 splice from
-odr.chunks.source = {
-  count: 3907,
-  get: function (index) {}, // a Promise of the chunk's html
-};
+```html
+<div class="odr-text-lines odr-chunk" data-odr-chunk="12"
+     data-odr-chunk-src="text-chunks/12.js"></div>
 ```
 
-- **In the page (level 2):** each chunk is the text of a
-  `<script type="text/x-odr-chunk">`. The parser keeps a text node and builds
-  no DOM for it. A `<template>` would build an inert DOM, which costs the
-  memory that level 2 saves.
-- **From a host (level 3):** `get` asks the HTTP server for a chunk path, or
-  calls a function that the binding installs.
+```js
+// text-chunks/12.js
+odr.chunks.fill(12, "<div style=\"counter-reset:odr-line 3072\">…</div>…");
+```
 
-The splice and the eviction are one script, whatever the source is.
+When `viewport.js` marks such a chunk near, it adds a `<script>` with the
+source, and the script puts the lines in through `odr.chunks.fill`. Until
+then the chunk holds the height of its lines (`min-height`), so the page
+does not move when they come.
 
-**Why one source:** the bindings render into a web view and only some run a
-server. So the chunk API of core is the primitive, and HTTP is one way to
-carry it.
+**Why a script, not `fetch`:** a script loads over HTTP and from a file
+alike, where `fetch` of a `file://` URL is blocked. So one page works in
+both places, and a binding that renders into a web view from files needs
+no callback of its own. The web view must let the page read the files
+beside it, as it already must for the linked css and js.
 
-### 4. Core writes a chunk of a view
+**What stays in the page:** the first chunk, so the first frame needs no
+request. An editable render keeps every line in the page, because its log
+states the whole text. A page that the browser does not read as UTF-8
+keeps them too, because a script is UTF-8.
 
-`HtmlView` gets the number of chunks and a write of one chunk. The view
-writes the skeleton with a placeholder of the right size for each chunk.
-`HttpServer` serves a chunk under a path of its view. `bring_offline` still
-writes all of the content.
+### 4. Core writes a chunk as a resource of its view
 
-At level 3 the service keeps the decoded document between requests. It does
-so already: an `HtmlService` holds its document for its whole life. What
-level 3 adds is the engine work, so that a chunk costs in proportion to the
-chunk and not to the document (#781 for ods, the issue #764 for the rest).
+The view returns each chunk as an `HtmlResource` whose `write_resource`
+renders that chunk on demand. `bring_offline` writes them beside the page,
+and `HttpServer` serves them through `HtmlService::exists` and `write`,
+with no route of its own. `HtmlConfig::lazy_loading` turns it on, and it
+needs `lazy_layout`.
+
+The service keeps the decoded document between requests. It does so
+already: an `HtmlService` holds its document for its whole life. The text
+service also keeps the text and where each chunk starts in it, so a chunk
+costs in proportion to the chunk. For the other engines, level 3 needs the
+engine work that makes a chunk cost in proportion to the chunk and not to
+the document (#781 for ods, the issue #764 for the rest).
+
+**Measured:** the text file of one million lines is a page of 485 KB and
+3906 scripts of about 24 KB. Over `file://` it paints its first frame
+after 67 ms (level 1: 0.85 s). The HTTP server answers the page in 4 ms
+and a chunk in 2 ms.
 
 ### 5. What level 2 changes for the reader, and the answer
 
@@ -258,10 +271,9 @@ the limits can go up is the next measurement.
    line as a CSS counter, so the gutter needs no `ResizeObserver` and wraps
    with its line. A chunk has style containment, so a counter does not count
    on past it. The first line of each chunk sets the number it starts at.
-2. **Text files, level 3.** The chunk source, the chunk write of core and
-   the HTTP route. A text file needs no engine work, so it proves the API.
-   Level 2 gains little for a text file: a window of strings painted in
-   0.5 s with 1.2 GB, and the hidden chunks in 0.85 s with 0.9 GB.
+2. **Text files, level 3** (decisions 3 and 4). Level 2 gains little for
+   a text file: a window of strings painted in 0.5 s with 1.2 GB, and the
+   hidden chunks in 0.85 s with 0.9 GB.
 3. **pdf, level 1.** A page has its size, so each page is a chunk of
    exactly the right size. The observer moves into `viewport.js`, which
    every view loads.
@@ -278,8 +290,9 @@ the limits can go up is the next measurement.
   chunks against the cost of one.
 - **When a view takes level 2.** A threshold on the size of the content, or
   a switch in `HtmlConfig`.
-- **Search at level 3.** The page holds no strings for content it never
-  received. Search then needs the host.
+- **Search at level 3.** `odr.search` searches the DOM, so it finds only
+  the chunks that have loaded. It needs the text of the others, from the
+  host or from the scripts.
 - **The find of the browser.** `hidden="until-found"` lets it reach a hidden
   chunk and show it. But a browser without that value hides the chunk for
   good, where a browser without `content-visibility` shows it.

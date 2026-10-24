@@ -283,6 +283,9 @@ final class HtmlTests: XCTestCase {
     XCTAssertTrue(config.lazyLayout)
     config.lazyLayout = false
     XCTAssertFalse(config.lazyLayout)
+    XCTAssertFalse(config.lazyLoading)
+    config.lazyLoading = true
+    XCTAssertTrue(config.lazyLoading)
   }
 
   func testBoxedNumbersRoundTrip() throws {
