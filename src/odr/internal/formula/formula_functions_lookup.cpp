@@ -761,7 +761,6 @@ std::optional<Node> a1_reference(const std::string_view text,
   std::string bracketed = "[" + std::string(text) + "]";
   if (const std::size_t colon = bracketed.find(':');
       colon != std::string::npos && bracketed[colon + 1] != '.' &&
-      bracketed[colon + 1] != '$' &&
       bracketed.find('.', colon) == std::string::npos) {
     bracketed.insert(colon + 1, ".");
   }
@@ -770,6 +769,19 @@ std::optional<Node> a1_reference(const std::string_view text,
   }
   node = parse(bracketed, Syntax::opendocument);
   return is_reference(node) ? node : std::nullopt;
+}
+
+/// Whether @p text has white space outside a quoted sheet name.
+bool spaced(const std::string_view text) {
+  bool quoted = false;
+  for (const char c : text) {
+    if (c == '\'') {
+      quoted = !quoted;
+    } else if (!quoted && (c == ' ' || c == '\t' || c == '\n')) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /// `INDIRECT`: the reference a text spells, in A1, or in R1C1 where the
@@ -784,7 +796,7 @@ Value indirect(const Call &call) {
   if (text == nullptr) {
     return Value{ErrorType::reference};
   }
-  if (text->find_first_of(" \t\n") != std::string::npos) {
+  if (spaced(*text)) {
     if (is_libreoffice(call)) {
       return Value{ErrorType::reference};
     }

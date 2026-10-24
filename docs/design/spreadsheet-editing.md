@@ -393,5 +393,5 @@ and the commits name. Git holds the full text of each decision.
   localized LibreOffice shows them translated.
 - **Out of the evaluator so far:** array formulas and dynamic arrays, a
   reference into another document, iterative calculation, `NOW`, `TODAY`,
-  `RAND`, `RANDBETWEEN`, `CELL` and `INFO`, and localized function names. Each cell that needs one stays
-  without an answer (decision 29).
+  `RAND`, `RANDBETWEEN`, `CELL` and `INFO`, and localized function names.
+  Each cell that needs one stays without an answer (decision 29).

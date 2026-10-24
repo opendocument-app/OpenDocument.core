@@ -222,6 +222,7 @@ TEST(FormulaFunctionsLookup, indirect_reads_a_sheet_as_both_formats_spell_it) {
   EXPECT_EQ(ods(R"(=INDIRECT("$s.$B$2"))", source), number(20));
   EXPECT_EQ(ods(R"(=INDIRECT("$'t'.A1"))", source), number(7));
   EXPECT_EQ(ods(R"(=SUM(INDIRECT("s.A1:B2")))", source), number(33));
+  EXPECT_EQ(ods(R"(=SUM(INDIRECT("s.A1:$B$2")))", source), number(33));
   EXPECT_EQ(xlsx(R"(=INDIRECT("s.B2"))", source), error(ErrorType::reference));
 }
 
@@ -253,4 +254,7 @@ TEST(FormulaFunctionsLookup, indirect_of_no_reference_is_ref) {
             error(ErrorType::reference));
   // whether Excel trims a space is not documented
   EXPECT_EQ(xlsx(R"(=INDIRECT(" A2"))", source), std::nullopt);
+  // a space in a quoted sheet name is no space around the reference
+  EXPECT_EQ(xlsx(R"(=INDIRECT("'x y'!A1"))", source),
+            error(ErrorType::reference));
 }
