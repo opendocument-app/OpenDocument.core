@@ -2,8 +2,8 @@
   "default": 0.93,
   "files": {
     "odr-private/pdf/fontfile3_opentype.pdf": {
-      "floor": 0.45,
-      "why": "gs reads the space glyph as 'x' and joins the words"
+      "floor": 0.12,
+      "why": "gs reads the space glyph as 'x' and joins the words: 10.03 reads 52% of them, 10.08 16%"
     },
     "odr-private/pdf/svg_background_with_page_rotation_issue402.pdf": {
       "floor": 0.65,
