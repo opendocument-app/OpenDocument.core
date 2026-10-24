@@ -12,6 +12,7 @@
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
+#include <charconv>
 #include <cstdint>
 #include <mutex>
 #include <sstream>
@@ -32,21 +33,15 @@ std::string chunk_path(const std::size_t index) {
 /// The chunk a path names, nothing where it names none.
 std::optional<std::size_t> chunk_of(const std::string_view path) {
   constexpr std::string_view prefix = "text-chunks/";
-  constexpr std::string_view suffix = ".js";
-  if (!path.starts_with(prefix) || !path.ends_with(suffix) ||
-      path.size() <= prefix.size() + suffix.size()) {
+  if (!path.starts_with(prefix)) {
     return std::nullopt;
   }
+  const std::string_view digits = path.substr(prefix.size());
   std::size_t index = 0;
-  for (const char c : path.substr(prefix.size(), path.size() - prefix.size() -
-                                                     suffix.size())) {
-    if (c < '0' || c > '9') {
-      return std::nullopt;
-    }
-    index = index * 10 + static_cast<std::size_t>(c - '0');
-  }
-  // one path for each chunk: no leading zero, and no index that wrapped
-  if (chunk_path(index) != path) {
+  // one path for each chunk, the one `chunk_path` writes: no leading zero
+  if (std::from_chars(digits.data(), digits.data() + digits.size(), index).ec !=
+          std::errc{} ||
+      chunk_path(index) != path) {
     return std::nullopt;
   }
   return index;
