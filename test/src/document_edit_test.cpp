@@ -1748,9 +1748,8 @@ TEST(DocumentEdit, a_sheet_cell_states_its_number_format) {
   EXPECT_EQ(first_sheet(workbook).cell(2, 0).number_format(), std::nullopt);
 }
 
-// A formula typed into an empty cell shows its result in the format of the
-// row or the column.
-TEST(DocumentEdit, an_empty_cell_states_the_number_format_of_its_column) {
+TEST(DocumentEdit,
+     an_empty_cell_states_the_number_format_of_its_row_or_column) {
   const std::string source =
       R"(<?xml version="1.0" encoding="UTF-8"?>)"
       R"(<office:document office:mimetype=")"

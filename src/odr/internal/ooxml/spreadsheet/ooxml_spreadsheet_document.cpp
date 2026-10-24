@@ -1310,6 +1310,7 @@ public:
     }
     return m_document->style_registry().cell_style(*format).table_cell_style;
   }
+
   [[nodiscard]] std::optional<std::string>
   sheet_number_format(const ElementIdentifier element_id,
                       const std::uint32_t column,

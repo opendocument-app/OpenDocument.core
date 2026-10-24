@@ -816,11 +816,10 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                                   ? "boolean"
                               : cell_value_type == ValueType::error ? "error"
                                                                     : nullptr;
-      // a formula typed into the cell shows its result in it too
+      // the format a formula typed into the cell shows its result in
       const std::optional<std::string> number_format =
-          state.config().editable
-              ? sheet.cell_number_format(column_index, row_index)
-              : std::nullopt;
+          syntax.has_value() ? sheet.cell_number_format(column_index, row_index)
+                             : std::nullopt;
 
       state.out().write_element_begin(
           "td",
