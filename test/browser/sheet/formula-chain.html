@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet formula chain checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body
+    class="odr-body"
+    data-odr-editable="true"
+    data-odr-keyboard="navigation shortcuts"
+    data-odr-formula-syntax="ooxml"
+    data-odr-formula-settings='{"dialect":"excel"}'
+  >
+    <div id="report"></div>
+    <script>
+      // An xlsx sheet of one long chain: row 2 holds A2 = 1 and each cell to
+      // its right adds 1 to the one before. A1 reads the last of them, so it
+      // is the first formula the editor meets and the last one it can compute.
+      var LENGTH = 600;
+      function columnName(index) {
+        var name = "";
+        for (var n = index + 1; n > 0; n = Math.floor((n - 1) / 26)) {
+          name = String.fromCharCode(65 + ((n - 1) % 26)) + name;
+        }
+        return name;
+      }
+      function formulaCell(formula, reads, text) {
+        return (
+          '<td class="odr-value-type-float odr-locked" data-odr-lock="formula" data-odr-formula="' +
+          formula + '" data-odr-reads="' + reads + '">' + text + "</td>"
+        );
+      }
+      var html = '<table class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="Sheet1"><thead><tr><th class="odr-sheet-corner"></th>';
+      for (var c = 0; c < LENGTH; ++c) {
+        html += '<th class="odr-sheet-column-header">' + columnName(c) + "</th>";
+      }
+      html += '</tr></thead><tbody><tr><th class="odr-sheet-row-header">1</th>';
+      html += formulaCell(columnName(LENGTH - 1) + "2*2", "0," + (LENGTH - 1) + "," + (LENGTH - 1) + ",1,1", String(LENGTH * 2));
+      for (var c = 1; c < LENGTH; ++c) {
+        html += "<td></td>";
+      }
+      html += '</tr><tr><th class="odr-sheet-row-header">2</th><td class="odr-value-type-float">1</td>';
+      for (var c = 1; c < LENGTH; ++c) {
+        html += formulaCell(columnName(c - 1) + "2+1", "0," + (c - 1) + "," + (c - 1) + ",1,1", String(c + 1));
+      }
+      html += "</tr></tbody></table>";
+      document.body.insertAdjacentHTML("afterbegin", html);
+    </script>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="odr-formula.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      odr.editing.enable();
+      odr.editing.loadFormulas().then(function (computes) {
+        check("the page computes", computes === true);
+        odr.editing.editAt(0, 1);
+        var editor = document.querySelector(".odr-sheet-editor");
+        editor.value = "11";
+        editor.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        check(
+          "every cell of the chain computes, in the order it reads",
+          odr.sheet.cellAt(LENGTH - 1, 1).textContent === String(LENGTH + 10)
+        );
+        check(
+          "and the formula reading its end, though the editor meets it first",
+          odr.sheet.cellAt(0, 0).textContent === String((LENGTH + 10) * 2)
+        );
+        check("nothing is stale", document.querySelectorAll(".odr-sheet-stale").length === 0);
+      });
+    </script>
+  </body>
+</html>

@@ -13,6 +13,7 @@ It is built from `odr/error_code.{hpp,cpp}` here rather than copied.
 
 import functools
 import http.server
+import os
 import pathlib
 import re
 import socketserver
@@ -50,6 +51,10 @@ def _error_codes_js() -> bytes:
     ).encode()
 
 
+#: The formula module is built, not checked in: `wasm/formula` writes it.
+_FORMULA_MODULE = os.environ.get("ODR_FORMULA_WASM", "")
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802 - the base class spells it this way
         if self.path.split("?")[0].endswith("/error-codes.js"):
@@ -64,6 +69,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def translate_path(self, path: str) -> str:
         translated = pathlib.Path(super().translate_path(path))
+        if translated.name == "odr-formula.js" and _FORMULA_MODULE:
+            return _FORMULA_MODULE
         if not translated.is_file():
             for directory in (ASSETS, SHARED):
                 candidate = directory / translated.name

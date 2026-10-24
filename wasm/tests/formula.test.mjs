@@ -93,6 +93,25 @@ describe('formula module', { skip: path === '' && 'no odr-formula.js' }, () => {
     assert.equal(module.format(1, '0.0"', '', false), null);
   });
 
+  it('names the category of a format code', () => {
+    assert.equal(module.category('0.00%'), 'number');
+    assert.equal(module.category(''), 'number');
+    assert.equal(module.category('yyyy-mm-dd'), 'date');
+    assert.equal(module.category('h:mm'), 'time');
+    assert.equal(module.category('0.0"'), null);
+  });
+
+  it('counts a date as the settings do', () => {
+    // 2024-01-01 is 45292 days after 1899-12-30
+    assert.equal(module.serial(45292, {}), 45292);
+    assert.equal(module.serial(45292, { epoch: 1904 }), 43830);
+    assert.equal(module.days(43830, { epoch: 1904 }), 45292);
+    assert.equal(module.serial(45292, { dialect: 'libreoffice', nullDate: 2 }),
+      45290);
+    // before 1900-03-01 Excel counts one day less, for its 1900-02-29
+    assert.equal(module.serial(1, {}), 0);
+  });
+
   it('builds no code at run time', () => {
     const glue = readFileSync(path, 'utf8');
     assert.doesNotMatch(glue, /new Function\b/);

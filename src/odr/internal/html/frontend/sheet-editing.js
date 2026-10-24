@@ -568,14 +568,332 @@
     return entries;
   }
 
+  /// The evaluator of `wasm/formula`, where the page carries one: `<body>`
+  /// states the syntax and the settings it computes with. `module` is null
+  /// until it has loaded.
+  var formulas = (function () {
+    var syntax = document.body.getAttribute("data-odr-formula-syntax");
+    if (syntax === null || typeof window.createOdrFormula !== "function") {
+      return null;
+    }
+    var settings = {};
+    try {
+      settings = JSON.parse(
+        document.body.getAttribute("data-odr-formula-settings") || "{}"
+      );
+    } catch (e) {
+      return null;
+    }
+    return {
+      syntax: syntax,
+      settings: settings,
+      locale: document.body.getAttribute("data-odr-locale") || "",
+      name: (table.getAttribute("data-odr-sheet-name") || "").toLowerCase(),
+      module: null,
+      loading: null,
+    };
+  })();
+
+  /// Loads the evaluator once. Resolves to whether the page computes.
+  function loadFormulas() {
+    if (formulas === null) {
+      return Promise.resolve(false);
+    }
+    if (formulas.loading === null) {
+      formulas.loading = window.createOdrFormula().then(
+        function (module) {
+          formulas.module = module;
+          repaintStale();
+          return true;
+        },
+        function () {
+          formulas = null;
+          return false;
+        }
+      );
+    }
+    return formulas.loading;
+  }
+
+  /// Whether a structural edit moved the cells under a formula. The page
+  /// keeps the expressions the file states, so it cannot compute them then.
+  var structureSaved = false;
+
+  function moves(ops) {
+    return (
+      structureSaved ||
+      ops.some(function (op) {
+        return STRUCTURE_OPS[op.op] !== undefined;
+      })
+    );
+  }
+
+  /// What a cell holds as the evaluator reads it, from what the page shows.
+  function shownValue(cell, column, row) {
+    var type = cell.getAttribute("data-odr-type");
+    var value = odr.sheet.valueAt(column, row);
+    if (type === "boolean") {
+      return {
+        type: "boolean",
+        number: cell.getAttribute("data-odr-value") === "1" ? 1 : 0,
+        text: value.text,
+      };
+    }
+    if (type === "error") {
+      return { type: "error", text: value.text };
+    }
+    return value;
+  }
+
+  function toFormula(value) {
+    switch (value.type) {
+      case "number":
+      case "time":
+        return { type: "number", number: value.number };
+      case "date":
+        return {
+          type: "number",
+          number: formulas.module.serial(value.number, formulas.settings),
+        };
+      case "boolean":
+        return { type: "boolean", boolean: value.number !== 0 };
+      case "error":
+      case "string":
+        return { type: value.type, text: value.text };
+      default:
+        return { type: "empty" };
+    }
+  }
+
+  /// A result as `showValue` takes it, in the format the cell states.
+  function toShown(cell, result) {
+    if (result.type === "number") {
+      var code = cell.getAttribute("data-odr-format") || "";
+      var category = formulas.module.category(code);
+      if (category === null) {
+        return null;
+      }
+      var days = formulas.module.days(result.number, formulas.settings);
+      var text = formulas.module.format(
+        category === "date" ? formulas.module.serial(days, {}) : result.number,
+        code,
+        formulas.locale,
+        false
+      );
+      if (text === null) {
+        return null;
+      }
+      return {
+        type: category,
+        number: category === "date" ? days : result.number,
+        text: text,
+      };
+    }
+    if (result.type === "boolean") {
+      return {
+        type: "boolean",
+        number: result.boolean ? 1 : 0,
+        text: result.boolean ? "TRUE" : "FALSE",
+      };
+    }
+    if (result.type === "empty") {
+      return { type: "empty" };
+    }
+    return { type: result.type, text: result.text };
+  }
+
+  /// The deepest a formula cell the page has no result for computes inside
+  /// another. Each level nests an evaluation in the wasm stack.
+  var NESTING = 16;
+
+  /// The @p marked entries, each after the marked ones it reads,
+  /// so no evaluation nests in another. A cycle is left out.
+  function inOrder(marked) {
+    var byPosition = new Map();
+    marked.forEach(function (entry, i) {
+      byPosition.set(entry.at.column + "," + entry.at.row, i);
+    });
+    var dependents = marked.map(function () {
+      return [];
+    });
+    var waits = marked.map(function () {
+      return 0;
+    });
+    marked.forEach(function (entry, i) {
+      var seen = new Set();
+      entry.reads.forEach(function (box) {
+        var area = (box[1] - box[0] + 1) * (box[3] - box[2] + 1);
+        if (area <= marked.length) {
+          for (var row = box[2]; row <= box[3]; ++row) {
+            for (var column = box[0]; column <= box[1]; ++column) {
+              var j = byPosition.get(column + "," + row);
+              if (j !== undefined) {
+                seen.add(j);
+              }
+            }
+          }
+          return;
+        }
+        marked.forEach(function (other, j) {
+          if (readsAny({ reads: [box] }, [other.at])) {
+            seen.add(j);
+          }
+        });
+      });
+      seen.forEach(function (j) {
+        if (j !== i) {
+          dependents[j].push(i);
+          ++waits[i];
+        } else {
+          waits[i] = Infinity;
+        }
+      });
+    });
+    var result = [];
+    var ready = [];
+    waits.forEach(function (count, i) {
+      if (count === 0) {
+        ready.push(i);
+      }
+    });
+    while (ready.length > 0) {
+      var next = ready.pop();
+      result.push(marked[next]);
+      dependents[next].forEach(function (i) {
+        if (--waits[i] === 0) {
+          ready.push(i);
+        }
+      });
+    }
+    return result;
+  }
+
+  /// Computes the marked formula cells of @p entries. Returns each marked
+  /// cell's result, null where the evaluator has none: also in a cycle.
+  function compute(entries) {
+    var byCell = new Map();
+    entries.forEach(function (entry) {
+      byCell.set(entry.cell, entry);
+    });
+    var results = new Map();
+    var depth = 0;
+    var extent = null;
+
+    function evaluate(cell, column, row) {
+      return formulas.module.evaluate(
+        cell.getAttribute("data-odr-formula"),
+        formulas.syntax,
+        sheet,
+        column,
+        row,
+        formulas.settings,
+        source
+      );
+    }
+
+    var source = {
+      sheet: function (name) {
+        return name.toLowerCase() === formulas.name ? sheet : null;
+      },
+      cell: function (at, column, row) {
+        if (at !== sheet) {
+          return null;
+        }
+        var cell = odr.sheet.cellAt(column, row);
+        if (cell === null) {
+          // the page shows all of the sheet, or not what lies past the cut
+          return cut === null ? { type: "empty" } : null;
+        }
+        var position = odr.sheet.positionOf(cell);
+        if (position.column !== column || position.row !== row) {
+          return { type: "empty" };
+        }
+        var entry = byCell.get(cell);
+        if (entry !== undefined && entry.marked) {
+          var result = results.get(cell);
+          return result === undefined ? null : result;
+        }
+        var shown = shownValue(cell, column, row);
+        if (cell.hasAttribute("data-odr-formula") && shown.type === "empty") {
+          // a formula without a result, which the file left to a reader
+          if (depth >= NESTING) {
+            return null;
+          }
+          ++depth;
+          var computed = evaluate(cell, column, row);
+          --depth;
+          return computed;
+        }
+        return toFormula(shown);
+      },
+      extent: function () {
+        if (cut !== null) {
+          return { columns: cut.columns, rows: cut.rows };
+        }
+        if (extent === null) {
+          extent = { columns: 0, rows: 0 };
+          table.querySelectorAll("td").forEach(function (cell) {
+            var at = odr.sheet.positionOf(cell);
+            if (at !== null) {
+              extent.rows = Math.max(extent.rows, at.row + 1);
+              extent.columns = Math.max(extent.columns, at.column + 1);
+            }
+          });
+        }
+        return extent;
+      },
+    };
+
+    inOrder(
+      entries.filter(function (entry) {
+        return entry.marked;
+      })
+    ).forEach(function (entry) {
+      results.set(
+        entry.cell,
+        evaluate(entry.cell, entry.at.column, entry.at.row)
+      );
+    });
+    return results;
+  }
+
+  /// The formula cells a result went into, with what they showed before.
+  var computed = new Map();
+
+  function showResult(entry, value) {
+    if (!computed.has(entry.cell)) {
+      computed.set(
+        entry.cell,
+        shownValue(entry.cell, entry.at.column, entry.at.row)
+      );
+    }
+    odr.sheet.showValue(entry.at.column, entry.at.row, value);
+  }
+
+  /// Puts back what the cells showed, where no result stands in for it now.
+  function restoreComputed(kept) {
+    computed.forEach(function (before, cell) {
+      if (kept.has(cell)) {
+        return;
+      }
+      var at = odr.sheet.positionOf(cell);
+      if (at !== null) {
+        odr.sheet.showValue(at.column, at.row, before);
+      }
+      computed.delete(cell);
+    });
+  }
+
   var stale = [];
   var staleKey = "";
 
   /// The marks follow the log, not the last write, so an undo takes back what
   /// it made stale and a save clears them with the log. A formula cell
-  /// reading a marked one is marked too.
+  /// reading a marked one is marked too. Where the page computes, a marked
+  /// cell shows its result instead, and only one without an answer is stale.
   function repaintStale() {
-    var entries = walk(coalesced());
+    var ops = coalesced();
+    var entries = walk(ops);
     var frontier = entries.filter(function (entry) {
       return entry.marked;
     });
@@ -596,14 +914,43 @@
     }
     stale = [];
 
-    var cells = [];
-    entries.forEach(function (entry) {
-      if (entry.marked) {
-        entry.cell.classList.add("odr-sheet-stale");
-        stale.push(entry.cell);
-        cells.push({ column: entry.at.column, row: entry.at.row });
-      }
+    var marked = entries.filter(function (entry) {
+      return entry.marked;
     });
+    if (marked.length > 0) {
+      loadFormulas();
+    }
+    var computes =
+      formulas !== null && formulas.module !== null && !moves(ops);
+    // the results go in after every cell is computed, so none reads another
+    // one's new text
+    var answers = new Map();
+    if (computes) {
+      try {
+        answers = compute(entries);
+      } catch (e) {
+        // a trap can leave the module's memory broken, so it computes no more
+        formulas = null;
+      }
+    }
+    var shown = new Set();
+    var cells = [];
+    marked.forEach(function (entry) {
+      var result = answers.get(entry.cell);
+      var value =
+        result === undefined || result === null
+          ? null
+          : toShown(entry.cell, result);
+      if (value !== null) {
+        showResult(entry, value);
+        shown.add(entry.cell);
+        return;
+      }
+      entry.cell.classList.add("odr-sheet-stale");
+      stale.push(entry.cell);
+      cells.push({ column: entry.at.column, row: entry.at.row });
+    });
+    restoreComputed(shown);
 
     // A host hears when the set moved, not on every keystroke.
     var key = cells
@@ -847,6 +1194,10 @@
       window.matchMedia("(pointer: coarse)").matches
     );
   }
+
+  /// Loads the evaluator the page carries, which an edit or `enable` does
+  /// too. Resolves to whether the page computes its formula cells.
+  odr.editing.loadFormulas = loadFormulas;
 
   /// Merged into what is set; an unknown key throws.
   odr.editing.setSheetOptions = function (value) {
@@ -1463,6 +1814,7 @@
       return editStructure("column", false, false);
     },
     enable: function () {
+      loadFormulas();
       reportSelection(true);
       if (cut !== null) {
         odr.editing.refuse("sheetCut", {
@@ -1473,8 +1825,12 @@
       }
     },
     committed: function () {
+      var ops = coalesced();
+      structureSaved = moves(ops);
       // what the formula cells read, where the saved rows put it
-      readers = walk(coalesced());
+      readers = walk(ops);
+      // the results shown are the ones the save wrote
+      computed.clear();
       history = [];
       undone = [];
       repaintStale();

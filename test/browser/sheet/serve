@@ -26,5 +26,7 @@ serve(
         "dates.html",
         "rows.html",
         "columns.html",
+        "formulas.html",
+        "formula-chain.html",
     ),
 )

@@ -36,6 +36,12 @@ The release run heads these entries with the version and opens a fresh
 - `SheetCell::number_format()` gives the format code a cell shows a number
   in, for example `0.00%`, and nothing for `General`. Python and Java have it
   too.
+- An editable sheet page that carries the formula module computes its formula
+  cells as the user edits: a commit, an undo and a redo show the new results
+  in the format of each cell. A cell the evaluator has no answer for stays
+  stale, and only those reach `odr.onCellsStale`. After a row or column edit
+  the page computes nothing until a new render.
+  `odr.editing.loadFormulas()` loads the module ahead of the first edit.
 - An editable sheet page states what a formula in the page reads: the syntax
   and the calculation settings of the document on `<body>`, the name of the
   sheet, the format code of a formula cell (`data-odr-format`), and the type

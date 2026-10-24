@@ -139,15 +139,23 @@ sheet makes a string, as a comma in an English one does. An `.xlsx` states
 no document locale; its editor uses `.`. Number formats control the displayed
 value.
 
-### 5. Formulas are recomputed in C++, once, and reached through the host
+### 5. One evaluator, in C++, which the page runs as wasm
 
-The evaluator runs in C++ only. The browser hands the host the op log per
-commit, and gets back the cells whose display changed.
+The C++ evaluator computes every result. A save recomputes in process. The
+page computes the cells an edit reaches with the same evaluator, built as
+`odr-formula.js` (`wasm/formula`). It reads the cells off the page, so a page
+with no host computes too.
 
 **Why not JavaScript generated from the tree:** two function libraries that
-drift. **Why not the engine as wasm inside the HTML:** every current host has
-the engine in process. `HtmlConfig::embed_shipped_resources` is where such a
-blob would go if a host without a bridge appears.
+drift. **Why not the host:** it would need a decoded document that matches
+the page, and a fresh decode for each undo. **Why not all of core as wasm:**
+the page would need the file, and the module would be 4.6 MB, not 530 KB.
+
+The page computes in the order the marked cells read each other, so no
+evaluation nests in another one: a chain of several hundred cells would
+overflow the wasm stack. Where the module has no answer, the cell stays
+stale. After a row or column edit the page computes nothing, because it holds
+the expressions as the file states them, not as the edit moved them.
 
 Where the evaluator has no answer, the file still has to stay honest.
 `.xlsx` has a switch for this, `calcPr/@fullCalcOnLoad="1"` (ECMA-376
@@ -344,18 +352,18 @@ and the commits name. Git holds the full text of each decision.
   3. The page states what the evaluator reads: the syntax and the
      `Settings` of the document, and the format code of each formula cell,
      as the writer formats a result.
-  4. Live results. A commit, an undo and a redo compute the formula cells
-     that the edit reaches, in the order they read each other, and show
-     them in the format of the cell. A cell without an answer stays stale.
-     `odr.onCellsStale` names only those.
+  4. Live results (decision 5). A commit, an undo and a redo compute the
+     formula cells that the edit reaches, in the order they read each other,
+     and show them in the format of the cell. A cell without an answer stays
+     stale. `odr.onCellsStale` names only those.
   5. A formula write. `setCell` takes a formula, and the ods and xlsx
      writers write it in the syntax of the file. A save recalculates it.
   6. Formula input. The editor opens a formula cell on its formula and
      takes `=` input. The module checks it and states what it reads, and
      the page computes it at once.
-- **Live results in the page.** The page has no evaluator, so it marks the
-  formula cells stale until something computes them. There are four ways to
-  compute them while the user edits:
+- **Live results in the page: the options that were weighed.** The stack
+  above takes the first one (decision 5). A page without the module marks
+  the formula cells stale until something computes them.
   - **A small wasm module with the evaluator only. This is the preferred
     way.** The page has the cells already: `data-odr-formula` and
     `data-odr-value` state what the evaluator reads. So the module holds
