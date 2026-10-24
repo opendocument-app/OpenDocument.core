@@ -1,6 +1,7 @@
 # Lazy loading design
 
-Status: proposal. Nothing of it has landed. Issue #764.
+Status: level 1 has landed for text files (#1247) and pdf (#1248). The
+rest is a proposal. Issue #764.
 
 Related: [`editing.md`](editing.md) holds the editing mode, which a page that
 drops content must keep working. [`txt-editing.md`](txt-editing.md) holds the
@@ -226,7 +227,7 @@ the first chunk of a sheet with shapes is always near: the writer states
 | Sort | moves the `tr`s inside one `tbody` | puts the sorted rows back into the chunks, each with as many rows as it had. A merged sheet has no sort, so no `rowspan` moves. |
 | Insert and delete rows | inside one `tbody` | inside the chunk that holds the row. A chunk with no row left goes. |
 | Insert and delete columns | every `col` and every row | the same, in every table |
-| `reflow` (the spill) and the editor's overlay | read `offsetLeft` and `offsetTop` | A cell of a hidden chunk has no geometry. A `showValue` in a hidden chunk notes the row. `viewport.js` raises `odr-chunk-near` on a chunk when it becomes near, and `spreadsheet.js` then reflows the noted rows. |
+| `reflow` (the spill) and the editor's overlay | read `offsetLeft` and `offsetTop` | A cell of a hidden chunk has no geometry. A `showValue` in a hidden chunk notes the row. `viewport.js` dispatches an event on a chunk when it becomes near, and `spreadsheet.js` then reflows the noted rows. |
 | A selection over far rows | an overlay from cell to cell | The edge in a hidden chunk takes the edge of that chunk. Only the part in the viewport is seen, and it is exact. |
 | The pin, and a move by keyboard | `scrollIntoView` of the cell | `odr.chunks.show(cell)` marks its chunk near first, as `odr.search` does. |
 | Formulas in the page | read the text of a cell | no change: the DOM of a hidden chunk is still there |
