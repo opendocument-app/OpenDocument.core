@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace odr {
 enum class TextAlign;
@@ -41,6 +42,9 @@ const char *translate_font_position(FontPosition font_position);
 std::string translate_outer_page_style(const PageLayout &page_layout);
 std::string translate_outer_flowing_page_style(const PageLayout &page_layout);
 std::string translate_inner_page_style(const PageLayout &page_layout);
+/// A bare name is quoted. A generic family follows, unless the value is a
+/// list that ends with one already.
+std::string translate_font_family(std::string_view font_name);
 std::string translate_text_style(const TextStyle &text_style);
 /// The part of a text style a block may carry: what paints belongs on the run.
 std::string translate_block_font_style(const TextStyle &text_style);

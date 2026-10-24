@@ -105,7 +105,49 @@ TEST(html_document_style, block_font_style_carries_the_font) {
   text_style.font_name = "Arial";
   text_style.font_size = Measure("14pt");
   EXPECT_EQ(ihtml::translate_block_font_style(text_style),
-            "font-family:Arial;font-size:14pt;");
+            "font-family:'Arial',sans-serif;font-size:14pt;");
+}
+
+TEST(html_document_style, font_family_quotes_a_name_and_adds_its_kind) {
+  EXPECT_EQ(ihtml::translate_font_family("Calibri"), "'Calibri',sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("Times New Roman"),
+            "'Times New Roman',serif");
+  EXPECT_EQ(ihtml::translate_font_family("Courier New"),
+            "'Courier New',monospace");
+  EXPECT_EQ(ihtml::translate_font_family("PT Serif"), "'PT Serif',serif");
+  EXPECT_EQ(ihtml::translate_font_family("DejaVu Sans"),
+            "'DejaVu Sans',sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("8514oem"), "'8514oem',sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("RobotoMono-Regular"),
+            "'RobotoMono-Regular',monospace");
+}
+
+TEST(html_document_style, font_family_does_not_read_a_kind_into_a_longer_word) {
+  EXPECT_EQ(ihtml::translate_font_family("Monotype Corsiva"),
+            "'Monotype Corsiva',sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("Century Gothic"),
+            "'Century Gothic',sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("Century Schoolbook"),
+            "'Century Schoolbook',serif");
+  EXPECT_EQ(ihtml::translate_font_family("Microsoft Sans Serif"),
+            "'Microsoft Sans Serif',sans-serif");
+}
+
+TEST(html_document_style, font_family_escapes_what_ends_a_css_string) {
+  EXPECT_EQ(ihtml::translate_font_family("O'Reilly"),
+            "'O\\'Reilly',sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("a\\b"), "'a\\\\b',sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("a\nb"), "'a\\a b',sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("'open"), "'\\'open',sans-serif");
+}
+
+TEST(html_document_style, font_family_keeps_a_list_and_its_generic) {
+  EXPECT_EQ(ihtml::translate_font_family("'Liberation Serif'"),
+            "'Liberation Serif',serif");
+  EXPECT_EQ(ihtml::translate_font_family("'Open Sans', Arial"),
+            "'Open Sans', Arial,sans-serif");
+  EXPECT_EQ(ihtml::translate_font_family("'Liberation Mono', monospace"),
+            "'Liberation Mono', monospace");
 }
 
 TEST(html_document_style, block_font_style_leaves_what_paints_to_the_run) {
