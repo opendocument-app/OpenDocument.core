@@ -10,6 +10,11 @@
 
   var odr = (window.odr = window.odr || {});
 
+  // the position map is built off the rows the page has
+  table.addEventListener("odr-chunk-filled", function () {
+    index = null;
+  });
+
   var merged = table.querySelector("td[colspan],td[rowspan]") !== null;
   var head = table.querySelector(".odr-sheet-head");
   var headerRow = head.tHead.rows[0];
@@ -56,9 +61,13 @@
   }
 
   // Takes a chunk with no row left away, because it would keep its height.
+  // One that has not loaded its rows yet keeps them to come.
   function dropEmptyChunks() {
     for (var i = chunks.length - 1; i >= 0; --i) {
-      if (chunks[i].tBodies[0].rows.length === 0) {
+      if (
+        chunks[i].tBodies[0].rows.length === 0 &&
+        !chunks[i].hasAttribute("data-odr-chunk-src")
+      ) {
         chunks[i].remove();
       }
     }
@@ -1188,8 +1197,9 @@
   }
 
   // A `rowspan` would reach into a row no longer beneath it and a `colspan`
-  // breaks the column index, so a merged sheet gets no sort control.
-  if (!merged) {
+  // breaks the column index, so a merged sheet gets no sort control. Nor does
+  // one whose rows load as the reader comes near: a sort needs them all.
+  if (!merged && table.querySelector("[data-odr-chunk-src]") === null) {
     columnHeaders().forEach(function (header) {
       var letters = header.textContent;
       addSortControl(header);

@@ -43,6 +43,9 @@ The release run heads these entries with the version and opens a fresh
   the scripts, and the HTTP server serves them. A text file of 1 M lines is
   then a page of 485 KB. `odr.search` finds only the loaded chunks, and a
   print shows a chunk that has not loaded as empty space.
+- `HtmlConfig::lazy_loading` loads the rows of a sheet the same way. The
+  sheet of 500 K cells in `efficiency-big-1.ods` is then a page of 370 KB.
+  Such a sheet has no sort control, because a sort needs every row.
 
 ### Spreadsheets
 

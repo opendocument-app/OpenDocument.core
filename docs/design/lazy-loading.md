@@ -1,7 +1,8 @@
 # Lazy loading design
 
 Status: level 1 has landed for text files (#1247), pdf (#1248) and sheets
-(#1250), and level 3 for text files. The rest is a proposal. Issue #764.
+(#1250), and level 3 for text files and sheets. The rest is a proposal.
+Issue #764.
 
 Related: [`editing.md`](editing.md) holds the editing mode, which a page that
 drops content must keep working. [`txt-editing.md`](txt-editing.md) holds the
@@ -280,9 +281,17 @@ the limits can go up is the next measurement.
 4. **Sheets, level 1** (decision 6). First the markup and the column
    widths in the writer, and the row accessor in `spreadsheet.js`. Then the
    geometry: `reflow`, the overlay, and the pin.
-5. **Core per engine, level 3.** ods first (#781). The ods decode keeps
+5. **Sheets, level 3, the page.** A chunk of rows after the first is an
+   empty table that names `sheet<n>-chunks/<m>.js`, on the decode as it is.
+   The view writes the rows of such a chunk to nothing, because that is
+   where it finds the chunk to end, and renders them again, with inline
+   styles, when the script is asked for. A sheet whose rows load has no
+   sort control, because a sort needs every row. The sheet of 500 K cells
+   in `efficiency-big-1.ods` is a page of 370 KB that paints after 107 ms.
+6. **Core per engine, level 3.** ods first (#781). The ods decode keeps
    `content.xml` and its DOM resident for editing. A render on demand that
-   does not hold them is a decision of its own.
+   does not hold them is a decision of its own. It waits for a measurement
+   of the page side.
 
 ## Open questions
 

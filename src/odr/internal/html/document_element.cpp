@@ -5,6 +5,7 @@
 #include <odr/logger.hpp>
 #include <odr/style.hpp>
 
+#include <odr/internal/common/null_stream.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/formula/formula_dependencies.hpp>
@@ -23,7 +24,9 @@
 #include <fmt/format.h>
 
 #include <algorithm>
+#include <memory>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -596,55 +599,60 @@ std::optional<HtmlSheetCut> html::sheet_cut(const Sheet &sheet,
   return HtmlSheetCut{content, rendered};
 }
 
-void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
-  // a sheet's editing is an overlay, so its content carries none
-  WritingState sheet_state = state;
-  sheet_state.set_editable_markup(false);
+namespace html {
+namespace {
 
+/// What every row of a sheet is written with, the same for the page and for
+/// a chunk the page loads.
+struct SheetRows final {
+  Sheet sheet;
+  std::uint32_t end_column{0};
+  std::uint32_t end_row{0};
+  std::vector<std::optional<double>> column_pixels;
+  std::vector<std::string> column_styles;
+  bool has_shapes{false};
+  /// scaffolding: a read-only render states neither a lock nor a dependency
+  std::optional<formula::Syntax> syntax;
+  std::uint32_t ordinal{0};
+  std::unordered_map<std::string, std::uint32_t> ordinals_by_name;
+};
+
+SheetRows sheet_rows(const Sheet &sheet, const WritingState &state) {
+  SheetRows rows{.sheet = sheet};
   const TableDimensions rendered = sheet_rendered_extent(sheet, state.config());
-  const std::uint32_t end_column = rendered.columns;
-  const std::uint32_t end_row = rendered.rows;
-
-  const std::optional<double> print_fit = sheet_print_fit(sheet, end_column);
-
-  // scaffolding: a read-only render states neither a lock nor a dependency
-  const std::optional<formula::Syntax> syntax =
-      state.config().editable ? state.formula_syntax() : std::nullopt;
-  const std::uint32_t ordinal = sheet_ordinal(sheet);
-  const std::unordered_map<std::string, std::uint32_t> ordinals_by_name =
-      syntax.has_value() ? sheet_ordinals_by_name(sheet)
-                         : std::unordered_map<std::string, std::uint32_t>();
-  // the cells an array formula fills, as `row << 32 | column`, from its own
-  // cell on, which comes first
-  std::unordered_set<std::uint64_t> array_cells;
-  const std::optional<HtmlSheetCut> cut =
-      state.config().editable ? sheet_cut(sheet, state.config()) : std::nullopt;
-
+  rows.end_column = rendered.columns;
+  rows.end_row = rendered.rows;
+  rows.syntax = state.config().editable ? state.formula_syntax() : std::nullopt;
+  rows.ordinal = sheet_ordinal(sheet);
+  if (rows.syntax.has_value()) {
+    rows.ordinals_by_name = sheet_ordinals_by_name(sheet);
+  }
   const ElementRange shapes = sheet.shapes();
-  const bool has_shapes = shapes.begin() != shapes.end();
+  rows.has_shapes = shapes.begin() != shapes.end();
 
-  // `table-layout:fixed` still sizes the table from its content, so an unbroken
-  // line would widen its column; `max-width:0` takes the cell out of that sum.
-  // Every chunk is a table of its own, so every column needs a width: one that
-  // states none takes its longest text, as LibreOffice's optimal width does.
-  std::vector<std::optional<double>> column_pixels(end_column);
-  std::vector<std::string> column_styles(end_column);
-  for (std::uint32_t column_index = 0; column_index < end_column;
+  // `table-layout:fixed` still sizes the table from its content, so an
+  // unbroken line would widen its column; `max-width:0` takes the cell out of
+  // that sum. Every chunk is a table of its own, so every column needs a
+  // width: one that states none takes its longest text, as LibreOffice's
+  // optimal width does.
+  rows.column_pixels.resize(rows.end_column);
+  rows.column_styles.resize(rows.end_column);
+  for (std::uint32_t column_index = 0; column_index < rows.end_column;
        ++column_index) {
     const TableColumnStyle table_column_style =
         sheet.column_style(column_index);
-    column_pixels[column_index] = css_pixels(table_column_style.width);
-    column_styles[column_index] =
+    rows.column_pixels[column_index] = css_pixels(table_column_style.width);
+    rows.column_styles[column_index] =
         translate_table_column_style(table_column_style);
   }
-  for (std::uint32_t column_index = 0; column_index < end_column;
+  for (std::uint32_t column_index = 0; column_index < rows.end_column;
        ++column_index) {
-    if (column_pixels[column_index].has_value()) {
+    if (rows.column_pixels[column_index].has_value()) {
       continue;
     }
     std::size_t characters = 0;
     for (std::uint32_t row_index = 0;
-         row_index < std::min(end_row, estimated_rows); ++row_index) {
+         row_index < std::min(rows.end_row, estimated_rows); ++row_index) {
       const SheetCell cell = sheet.cell(column_index, row_index);
       if (cell.is_covered()) {
         continue;
@@ -667,24 +675,369 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
         static_cast<double>(std::clamp<std::size_t>(characters, 4, 60)) *
             character_pixels +
         cell_padding_pixels;
-    column_pixels[column_index] = pixels;
-    column_styles[column_index] +=
+    rows.column_pixels[column_index] = pixels;
+    rows.column_styles[column_index] +=
         "width:" + util::number::to_string_significant(pixels, 7) + "px;";
   }
+  return rows;
+}
 
-  const auto write_columns = [&] {
+void write_columns(const SheetRows &rows, const WritingState &state) {
+  state.out().write_element_begin("col",
+                                  HtmlElementOptions()
+                                      .set_close_type(HtmlCloseType::none)
+                                      .set_class("odr-sheet-gutter"));
+  for (const std::string &style : rows.column_styles) {
     state.out().write_element_begin("col",
                                     HtmlElementOptions()
                                         .set_close_type(HtmlCloseType::none)
-                                        .set_class("odr-sheet-gutter"));
-    for (std::uint32_t column_index = 0; column_index < end_column;
-         ++column_index) {
-      state.out().write_element_begin(
-          "col", HtmlElementOptions()
-                     .set_close_type(HtmlCloseType::none)
-                     .set_style(column_styles[column_index], state.styles()));
+                                        .set_style(style, state.styles()));
+  }
+}
+
+/// Where the rows have got to: the cursor, the row per column where a cell
+/// spanning down from above ends, and the cells an array formula fills, as
+/// `row << 32 | column`, from its own cell on, which comes first.
+struct RowCursor final {
+  explicit RowCursor(const std::uint32_t end_column)
+      : span_end_row(end_column, 0) {}
+
+  TableCursor cursor;
+  std::vector<std::uint32_t> span_end_row;
+  std::unordered_set<std::uint64_t> array_cells;
+
+  /// Whether a merge from above reaches into the row the cursor is at.
+  [[nodiscard]] bool merge_open() const {
+    return std::ranges::any_of(span_end_row, [&](const std::uint32_t end) {
+      return end > cursor.row();
+    });
+  }
+};
+
+/// Row @p row_index of @p rows, and @p at moved past it.
+void write_row(const SheetRows &rows, RowCursor &at, const WritingState &state,
+               const std::uint32_t row_index) {
+  const Sheet &sheet = rows.sheet;
+  const std::uint32_t end_column = rows.end_column;
+  const TableRowStyle table_row_style = sheet.row_style(row_index);
+
+  state.out().write_element_begin(
+      "tr", HtmlElementOptions().set_style(
+                translate_table_row_style(table_row_style), state.styles()));
+
+  state.out().write_element_begin(
+      "th", HtmlElementOptions()
+                .set_inline(true)
+                .set_class("odr-sheet-row-header")
+                .set_style(
+                    [&]() -> std::string {
+                      const std::optional<Measure> height =
+                          table_row_style.height;
+                      if (!height.has_value()) {
+                        return {};
+                      }
+                      return "height:" + css_length(*height) +
+                             ";max-height:" + css_length(*height) + ";";
+                    }(),
+                    state.styles()));
+  state.out().write_raw(TablePosition::to_row_string(row_index));
+  state.out().write_element_end("th");
+
+  // Carried forward, so no position is read twice.
+  std::optional<SheetCell> pending;
+  for (std::uint32_t column_index = at.cursor.column();
+       column_index < end_column; column_index = at.cursor.column()) {
+    const SheetCell cell =
+        pending.has_value() ? *pending : sheet.cell(column_index, row_index);
+    pending.reset();
+
+    if (cell.is_covered()) {
+      // normally unreachable: the cursor skips positions covered by an
+      // anchor's span; advance one column so inconsistent spans cannot
+      // starve the loop
+      at.cursor.add_cell();
+      continue;
     }
-  };
+
+    // TODO looks a bit odd to query the same (col, row) all the time. maybe
+    // there could be a struct to get all the info?
+    const TableCellStyle cell_style = sheet.cell_style(column_index, row_index);
+    const TableDimensions cell_span = cell.span();
+    const ValueType cell_value_type = cell.value_type();
+
+    // `style:wrap-option` is `no-wrap` by default, and `wrapText` is off.
+    const bool wraps = cell_style.wrap_text.value_or(false);
+    const std::uint32_t next_column = column_index + cell_span.columns;
+    std::optional<SheetCell> next;
+    if (next_column < end_column) {
+      next = sheet.cell(next_column, row_index);
+    }
+
+    const bool anchors_shapes =
+        rows.has_shapes && column_index == 0 && row_index == 0;
+    const bool cuts_its_text = !anchors_shapes && holds_only_text(cell);
+
+    std::string cell_css;
+    if (!wraps && cuts_its_text) {
+      cell_css += "white-space:nowrap;";
+    }
+    if (wraps && cuts_its_text) {
+      // Its block is held at the row's height, so a broken line runs past
+      // the bottom and would paint over the row below.
+      cell_css += "overflow:hidden;";
+    }
+    // Only nonblank cells spill, so each blank span is scanned once.
+    if (!wraps && cuts_its_text &&
+        rows.column_pixels[column_index].has_value() && !is_blank(cell)) {
+      std::optional<double> spill(0);
+      bool bounded = false;
+      for (std::uint32_t ahead = next_column; ahead < end_column; ++ahead) {
+        const SheetCell cell_ahead = ahead == next_column && next.has_value()
+                                         ? *next
+                                         : sheet.cell(ahead, row_index);
+        // The merged cell from a row above paints over a covered position,
+        // which a reader may give as a blank cell.
+        if (at.span_end_row[ahead] > row_index || !is_blank(cell_ahead)) {
+          bounded = true;
+          break;
+        }
+        if (!rows.column_pixels[ahead].has_value()) {
+          spill.reset();
+          bounded = true;
+          break;
+        }
+        *spill += *rows.column_pixels[ahead];
+      }
+      if (bounded) {
+        if (!spill.has_value() || *spill == 0) {
+          cell_css += "overflow:hidden;";
+        } else {
+          cell_css += "clip-path:inset(0 " +
+                      util::number::to_string_significant(-*spill, 7) +
+                      "px 0 0);";
+        }
+      }
+    }
+
+    const std::optional<FoldedCell> folded =
+        fold_cell(cell, state, wraps, anchors_shapes, table_row_style.height);
+
+    const CellValue cell_value =
+        state.config().editable ? cell.value() : CellValue();
+    // a formatted cell's text need not state the number a sort needs
+    const std::optional<std::string> value_spelling =
+        state.config().editable ? formatted_value(cell_value, cell)
+        : cell_value_type == ValueType::date ||
+                cell_value_type == ValueType::time ||
+                cell_value_type == ValueType::float_number
+            ? formatted_value(cell.value(), cell)
+            : std::nullopt;
+    const std::optional<TableDimensions> array =
+        state.config().editable ? cell.array_span() : std::nullopt;
+    if (array.has_value()) {
+      for (std::uint32_t r = 0; r < array->rows; ++r) {
+        for (std::uint32_t c = 0; c < array->columns; ++c) {
+          at.array_cells.insert(std::uint64_t{row_index + r} << 32 |
+                                (column_index + c));
+        }
+      }
+    }
+    // the page edits no part of an array formula, as Excel does not
+    const char *lock =
+        !state.config().editable ? nullptr
+        : at.array_cells.contains(std::uint64_t{row_index} << 32 | column_index)
+            ? "array"
+            : cell_lock(cell_value, cell, anchors_shapes);
+    // what a formula bar shows, and the rectangles the page marks against
+    const bool computes = cell_value.has_formula() &&
+                          !cell_value.formula().empty() &&
+                          rows.syntax.has_value();
+    const std::string reads =
+        computes ? cell_reads(cell_value.formula(), *rows.syntax, rows.ordinal,
+                              rows.ordinals_by_name, state.formula_names())
+                 : std::string();
+    // what a formula in the page reads the cell as, where the text is not it
+    const char *read_type = !state.config().editable                ? nullptr
+                            : cell_value_type == ValueType::boolean ? "boolean"
+                            : cell_value_type == ValueType::error   ? "error"
+                                                                    : nullptr;
+    // the format a formula typed into the cell shows its result in
+    const std::optional<std::string> number_format =
+        rows.syntax.has_value()
+            ? sheet.cell_number_format(column_index, row_index)
+            : std::nullopt;
+
+    state.out().write_element_begin(
+        "td",
+        HtmlElementOptions()
+            // a cell preserves its white space, so nothing is indented in it
+            .set_inline(true)
+            .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
+              if (cell_span.columns > 1) {
+                clb("colspan", std::to_string(cell_span.columns));
+              }
+              if (cell_span.rows > 1) {
+                clb("rowspan", std::to_string(cell_span.rows));
+              }
+              if (lock != nullptr) {
+                clb("data-odr-lock", lock);
+              }
+              if (computes) {
+                clb("data-odr-formula",
+                    xml::escape_attribute(cell_value.formula()));
+              }
+              if (!reads.empty()) {
+                clb("data-odr-reads", reads);
+              }
+              if (array.has_value() && computes) {
+                clb("data-odr-array", std::to_string(array->columns) + "," +
+                                          std::to_string(array->rows));
+              }
+              if (value_spelling.has_value()) {
+                clb("data-odr-value", *value_spelling);
+              }
+              if (read_type != nullptr) {
+                clb("data-odr-type", read_type);
+                if (cell_value_type == ValueType::boolean &&
+                    cell_value.has_number()) {
+                  clb("data-odr-value", cell_value.number() != 0 ? "1" : "0");
+                }
+              }
+              if (number_format.has_value()) {
+                clb("data-odr-format", xml::escape_attribute(*number_format));
+              }
+            })
+            .set_style(translate_table_cell_style(
+                           cell_style, writes_dark_style(state.config())) +
+                           (rows.column_pixels[column_index].has_value()
+                                ? "max-width:0;"
+                                : "") +
+                           cell_css +
+                           (folded.has_value() ? folded->style : std::string()),
+                       state.styles())
+            .set_class([&]() -> std::optional<HtmlWritable> {
+              std::string clazz =
+                  cell_value_type == ValueType::float_number
+                      ? "odr-value-type-float"
+                  : cell_value_type == ValueType::date ? "odr-value-type-date"
+                  : cell_value_type == ValueType::time ? "odr-value-type-time"
+                                                       : "";
+              if (lock != nullptr) {
+                clazz += clazz.empty() ? "odr-locked" : " odr-locked";
+              }
+              return clazz.empty() ? std::nullopt
+                                   : std::optional<HtmlWritable>(clazz);
+            }()));
+    if (column_index == 0 && row_index == 0) {
+      for (const Element shape : sheet.shapes()) {
+        translate_element(shape, state);
+      }
+    }
+    if (folded.has_value()) {
+      state.out().out() << folded->text;
+    } else {
+      translate_cell_children(cell, state);
+    }
+    state.out().write_element_end("td");
+
+    for (std::uint32_t column = column_index;
+         column < std::min(next_column, end_column); ++column) {
+      at.span_end_row[column] = row_index + cell_span.rows;
+    }
+    at.cursor.add_cell(cell_span.columns, cell_span.rows);
+    if (at.cursor.column() == next_column) {
+      pending = next;
+    }
+  }
+
+  state.out().write_element_end("tr");
+
+  at.cursor.add_row();
+}
+
+/// The `col`s and the `tbody` of rows [@p first_row, @p end_row), which no
+/// merge from above reaches into, with their styles inline.
+std::string sheet_chunk(const SheetRows &rows, const HtmlConfig &config,
+                        const std::uint32_t first_row,
+                        const std::uint32_t end_row) {
+  std::ostringstream html;
+  HtmlWriter out(html, false, "");
+  HtmlResources resources;
+  const Logger logger = Logger::null();
+  WritingState state(out, config, resources, logger);
+  state.set_editable_markup(false);
+
+  write_columns(rows, state);
+  out.write_element_begin("tbody");
+  RowCursor at(rows.end_column);
+  at.cursor.add_row(first_row);
+  for (std::uint32_t row_index = first_row; row_index < end_row;
+       row_index = at.cursor.row()) {
+    write_row(rows, at, state, row_index);
+  }
+  out.write_element_end("tbody");
+  return html.str();
+}
+
+/// A chunk of a sheet as the script that puts its rows into the page
+/// (`lazy-loading.md` decision 3), rendered when it is asked for.
+class SheetChunkResource final : public abstract::HtmlResource {
+public:
+  SheetChunkResource(std::shared_ptr<const SheetRows> rows, HtmlConfig config,
+                     std::string key, std::string path,
+                     const std::uint32_t first_row, const std::uint32_t end_row)
+      : m_rows{std::move(rows)}, m_config{std::move(config)},
+        m_key{std::move(key)}, m_path{std::move(path)}, m_first_row{first_row},
+        m_end_row{end_row} {}
+
+  [[nodiscard]] HtmlResourceType type() const override {
+    return HtmlResourceType::js;
+  }
+  [[nodiscard]] const std::string &mime_type() const override {
+    static const std::string mime_type = "text/javascript";
+    return mime_type;
+  }
+  [[nodiscard]] const std::string &name() const override { return m_path; }
+  [[nodiscard]] const std::string &path() const override { return m_path; }
+  [[nodiscard]] const std::optional<File> &file() const override {
+    static const std::optional<File> none;
+    return none;
+  }
+  [[nodiscard]] bool is_shipped() const override { return false; }
+  [[nodiscard]] bool is_external() const override { return false; }
+  [[nodiscard]] bool is_accessible() const override { return true; }
+
+  void write_resource(std::ostream &os) const override {
+    os << "odr.chunks.fill(" << script_string(m_key) << ","
+       << script_string(sheet_chunk(*m_rows, m_config, m_first_row, m_end_row))
+       << ");\n";
+  }
+
+private:
+  std::shared_ptr<const SheetRows> m_rows;
+  HtmlConfig m_config;
+  std::string m_key;
+  std::string m_path;
+  std::uint32_t m_first_row{0};
+  std::uint32_t m_end_row{0};
+};
+
+} // namespace
+} // namespace html
+
+void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
+  // a sheet's editing is an overlay, so its content carries none
+  WritingState sheet_state = state;
+  sheet_state.set_editable_markup(false);
+
+  const auto rows =
+      std::make_shared<const SheetRows>(sheet_rows(sheet, sheet_state));
+  const std::uint32_t end_column = rows->end_column;
+  const std::uint32_t end_row = rows->end_row;
+
+  const std::optional<double> print_fit = sheet_print_fit(sheet, end_column);
+  const std::optional<HtmlSheetCut> cut =
+      state.config().editable ? sheet_cut(sheet, state.config()) : std::nullopt;
 
   state.out().write_element_begin(
       "div",
@@ -692,9 +1045,9 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
           .set_class("odr-sheet")
           .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
             // every op names its sheet, and a view holds only one
-            clb("data-odr-sheet", std::to_string(ordinal));
+            clb("data-odr-sheet", std::to_string(rows->ordinal));
             // the name a formula reads this sheet by
-            if (syntax.has_value()) {
+            if (rows->syntax.has_value()) {
               clb("data-odr-sheet-name", xml::escape_attribute(sheet.name()));
             }
             if (cut.has_value()) {
@@ -713,7 +1066,7 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                     digit_pixels +
                 gutter_padding_pixels;
             double width = gutter;
-            for (const std::optional<double> &pixels : column_pixels) {
+            for (const std::optional<double> &pixels : rows->column_pixels) {
               width += pixels.value_or(0);
             }
             std::string style = "--odr-sheet-gutter:" +
@@ -735,7 +1088,7 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   {
     state.out().write_element_begin(
         "table", HtmlElementOptions().set_class("odr-sheet-head"));
-    write_columns();
+    write_columns(*rows, state);
     state.out().write_element_begin("thead");
     state.out().write_element_begin("tr");
 
@@ -761,13 +1114,35 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   // a chunk ends where no merge is open, so no `rowspan` crosses two tables;
   // without lazy layout, all the rows are one table
   const bool lazy = state.config().lazy_layout;
+  // a chunk after the first loads its rows once it is near; they are written
+  // here too, to nothing, because that is where the chunk is found to end
+  const bool loads =
+      lazy && state.config().lazy_loading && !state.config().editable;
+  NullStream null;
+  HtmlWriter null_out(null, false, "");
+  HtmlResources null_resources;
+  WritingState null_state(null_out, state.config(), null_resources,
+                          state.logger());
+  null_state.set_editable_markup(false);
+
   const std::uint32_t chunk_rows =
       lazy ? std::clamp<std::uint32_t>(
                  chunk_cells / std::max<std::uint32_t>(end_column, 1), 8, 256)
            : std::max<std::uint32_t>(end_row, 1);
+  std::uint32_t chunk_index = 0;
+  std::uint32_t chunk_first_row = 0;
   std::uint32_t rows_in_chunk = 0;
   bool chunk_open = false;
+  bool placeholder = false;
+  const auto chunk_key = [&] {
+    return std::to_string(rows->ordinal) + "-" + std::to_string(chunk_index);
+  };
+  const auto chunk_path = [&] {
+    return "sheet" + std::to_string(rows->ordinal) + "-chunks/" +
+           std::to_string(chunk_index) + ".js";
+  };
   const auto begin_chunk = [&](const std::uint32_t first_row) {
+    placeholder = loads && first_row > 0;
     double height = 0;
     for (std::uint32_t row_index = first_row;
          lazy && row_index < std::min(end_row, first_row + chunk_rows);
@@ -775,6 +1150,7 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
       height += css_pixels(sheet.row_style(row_index).height)
                     .value_or(estimated_row_pixels);
     }
+    const std::string pixels = util::number::to_string_significant(height, 7);
     state.out().write_element_begin(
         "table",
         HtmlElementOptions()
@@ -782,279 +1158,53 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                        chunk_classes(state.config(), first_row == 0))
             .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
               // a shape hangs from A1 and may reach past the first chunk
-              if (lazy && first_row == 0 && has_shapes) {
+              if (lazy && first_row == 0 && rows->has_shapes) {
                 clb("data-odr-chunk-held", "");
+              }
+              if (placeholder) {
+                clb("data-odr-chunk", chunk_key());
+                clb("data-odr-chunk-src", chunk_path());
               }
             })
             .set_style(
-                lazy
-                    ? std::optional<HtmlWritable>(
-                          "contain-intrinsic-height:auto " +
-                          util::number::to_string_significant(height, 7) + "px")
-                    : std::nullopt));
-    write_columns();
+                lazy ? std::optional<HtmlWritable>(
+                           "contain-intrinsic-height:auto " + pixels + "px" +
+                           (placeholder ? ";--odr-chunk-height:" + pixels + "px"
+                                        : ""))
+                     : std::nullopt));
+    write_columns(*rows, state);
     state.out().write_element_begin("tbody");
     chunk_open = true;
+    chunk_first_row = first_row;
     rows_in_chunk = 0;
   };
-  const auto end_chunk = [&] {
+  const auto end_chunk = [&](const std::uint32_t end) {
     state.out().write_element_end("tbody");
     state.out().write_element_end("table");
+    if (placeholder) {
+      state.resources().emplace_back(
+          odr::HtmlResource(std::make_shared<SheetChunkResource>(
+              rows, state.config(), chunk_key(), chunk_path(), chunk_first_row,
+              end)),
+          chunk_path());
+    }
     chunk_open = false;
+    ++chunk_index;
   };
 
-  // per column, the row where a cell spanning down from above ends
-  std::vector<std::uint32_t> span_end_row(end_column, 0);
-
-  TableCursor cursor;
-  for (std::uint32_t row_index = cursor.row(); row_index < end_row;
-       row_index = cursor.row()) {
+  RowCursor at(end_column);
+  for (std::uint32_t row_index = at.cursor.row(); row_index < end_row;
+       row_index = at.cursor.row()) {
     if (!chunk_open) {
       begin_chunk(row_index);
     }
-    const TableRowStyle table_row_style = sheet.row_style(row_index);
-
-    state.out().write_element_begin(
-        "tr", HtmlElementOptions().set_style(
-                  translate_table_row_style(table_row_style), state.styles()));
-
-    state.out().write_element_begin(
-        "th", HtmlElementOptions()
-                  .set_inline(true)
-                  .set_class("odr-sheet-row-header")
-                  .set_style(
-                      [&]() -> std::string {
-                        const std::optional<Measure> height =
-                            table_row_style.height;
-                        if (!height.has_value()) {
-                          return {};
-                        }
-                        return "height:" + css_length(*height) +
-                               ";max-height:" + css_length(*height) + ";";
-                      }(),
-                      state.styles()));
-    state.out().write_raw(TablePosition::to_row_string(row_index));
-    state.out().write_element_end("th");
-
-    // Carried forward, so no position is read twice.
-    std::optional<SheetCell> pending;
-    for (std::uint32_t column_index = cursor.column();
-         column_index < end_column; column_index = cursor.column()) {
-      const SheetCell cell =
-          pending.has_value() ? *pending : sheet.cell(column_index, row_index);
-      pending.reset();
-
-      if (cell.is_covered()) {
-        // normally unreachable: the cursor skips positions covered by an
-        // anchor's span; advance one column so inconsistent spans cannot
-        // starve the loop
-        cursor.add_cell();
-        continue;
-      }
-
-      // TODO looks a bit odd to query the same (col, row) all the time. maybe
-      // there could be a struct to get all the info?
-      const TableCellStyle cell_style =
-          sheet.cell_style(column_index, row_index);
-      const TableDimensions cell_span = cell.span();
-      const ValueType cell_value_type = cell.value_type();
-
-      // `style:wrap-option` is `no-wrap` by default, and `wrapText` is off.
-      const bool wraps = cell_style.wrap_text.value_or(false);
-      const std::uint32_t next_column = column_index + cell_span.columns;
-      std::optional<SheetCell> next;
-      if (next_column < end_column) {
-        next = sheet.cell(next_column, row_index);
-      }
-
-      const bool anchors_shapes =
-          has_shapes && column_index == 0 && row_index == 0;
-      const bool cuts_its_text = !anchors_shapes && holds_only_text(cell);
-
-      std::string cell_css;
-      if (!wraps && cuts_its_text) {
-        cell_css += "white-space:nowrap;";
-      }
-      if (wraps && cuts_its_text) {
-        // Its block is held at the row's height, so a broken line runs past
-        // the bottom and would paint over the row below.
-        cell_css += "overflow:hidden;";
-      }
-      // Only nonblank cells spill, so each blank span is scanned once.
-      if (!wraps && cuts_its_text && column_pixels[column_index].has_value() &&
-          !is_blank(cell)) {
-        std::optional<double> spill(0);
-        bool bounded = false;
-        for (std::uint32_t ahead = next_column; ahead < end_column; ++ahead) {
-          const SheetCell cell_ahead = ahead == next_column && next.has_value()
-                                           ? *next
-                                           : sheet.cell(ahead, row_index);
-          // The merged cell from a row above paints over a covered position,
-          // which a reader may give as a blank cell.
-          if (span_end_row[ahead] > row_index || !is_blank(cell_ahead)) {
-            bounded = true;
-            break;
-          }
-          if (!column_pixels[ahead].has_value()) {
-            spill.reset();
-            bounded = true;
-            break;
-          }
-          *spill += *column_pixels[ahead];
-        }
-        if (bounded) {
-          if (!spill.has_value() || *spill == 0) {
-            cell_css += "overflow:hidden;";
-          } else {
-            cell_css += "clip-path:inset(0 " +
-                        util::number::to_string_significant(-*spill, 7) +
-                        "px 0 0);";
-          }
-        }
-      }
-
-      const std::optional<FoldedCell> folded = fold_cell(
-          cell, sheet_state, wraps, anchors_shapes, table_row_style.height);
-
-      const CellValue cell_value =
-          state.config().editable ? cell.value() : CellValue();
-      // a formatted cell's text need not state the number a sort needs
-      const std::optional<std::string> value_spelling =
-          state.config().editable ? formatted_value(cell_value, cell)
-          : cell_value_type == ValueType::date ||
-                  cell_value_type == ValueType::time ||
-                  cell_value_type == ValueType::float_number
-              ? formatted_value(cell.value(), cell)
-              : std::nullopt;
-      const std::optional<TableDimensions> array =
-          state.config().editable ? cell.array_span() : std::nullopt;
-      if (array.has_value()) {
-        for (std::uint32_t r = 0; r < array->rows; ++r) {
-          for (std::uint32_t c = 0; c < array->columns; ++c) {
-            array_cells.insert(std::uint64_t{row_index + r} << 32 |
-                               (column_index + c));
-          }
-        }
-      }
-      // the page edits no part of an array formula, as Excel does not
-      const char *lock =
-          !state.config().editable ? nullptr
-          : array_cells.contains(std::uint64_t{row_index} << 32 | column_index)
-              ? "array"
-              : cell_lock(cell_value, cell, anchors_shapes);
-      // what a formula bar shows, and the rectangles the page marks against
-      const bool computes = cell_value.has_formula() &&
-                            !cell_value.formula().empty() && syntax.has_value();
-      const std::string reads =
-          computes ? cell_reads(cell_value.formula(), *syntax, ordinal,
-                                ordinals_by_name, state.formula_names())
-                   : std::string();
-      // what a formula in the page reads the cell as, where the text is not it
-      const char *read_type = !state.config().editable ? nullptr
-                              : cell_value_type == ValueType::boolean
-                                  ? "boolean"
-                              : cell_value_type == ValueType::error ? "error"
-                                                                    : nullptr;
-      // the format a formula typed into the cell shows its result in
-      const std::optional<std::string> number_format =
-          syntax.has_value() ? sheet.cell_number_format(column_index, row_index)
-                             : std::nullopt;
-
-      state.out().write_element_begin(
-          "td",
-          HtmlElementOptions()
-              // a cell preserves its white space, so nothing is indented in it
-              .set_inline(true)
-              .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
-                if (cell_span.columns > 1) {
-                  clb("colspan", std::to_string(cell_span.columns));
-                }
-                if (cell_span.rows > 1) {
-                  clb("rowspan", std::to_string(cell_span.rows));
-                }
-                if (lock != nullptr) {
-                  clb("data-odr-lock", lock);
-                }
-                if (computes) {
-                  clb("data-odr-formula",
-                      xml::escape_attribute(cell_value.formula()));
-                }
-                if (!reads.empty()) {
-                  clb("data-odr-reads", reads);
-                }
-                if (array.has_value() && computes) {
-                  clb("data-odr-array", std::to_string(array->columns) + "," +
-                                            std::to_string(array->rows));
-                }
-                if (value_spelling.has_value()) {
-                  clb("data-odr-value", *value_spelling);
-                }
-                if (read_type != nullptr) {
-                  clb("data-odr-type", read_type);
-                  if (cell_value_type == ValueType::boolean &&
-                      cell_value.has_number()) {
-                    clb("data-odr-value", cell_value.number() != 0 ? "1" : "0");
-                  }
-                }
-                if (number_format.has_value()) {
-                  clb("data-odr-format", xml::escape_attribute(*number_format));
-                }
-              })
-              .set_style(
-                  translate_table_cell_style(
-                      cell_style, writes_dark_style(state.config())) +
-                      (column_pixels[column_index].has_value() ? "max-width:0;"
-                                                               : "") +
-                      cell_css +
-                      (folded.has_value() ? folded->style : std::string()),
-                  state.styles())
-              .set_class([&]() -> std::optional<HtmlWritable> {
-                std::string clazz =
-                    cell_value_type == ValueType::float_number
-                        ? "odr-value-type-float"
-                    : cell_value_type == ValueType::date ? "odr-value-type-date"
-                    : cell_value_type == ValueType::time ? "odr-value-type-time"
-                                                         : "";
-                if (lock != nullptr) {
-                  clazz += clazz.empty() ? "odr-locked" : " odr-locked";
-                }
-                return clazz.empty() ? std::nullopt
-                                     : std::optional<HtmlWritable>(clazz);
-              }()));
-      if (column_index == 0 && row_index == 0) {
-        for (const Element shape : sheet.shapes()) {
-          translate_element(shape, sheet_state);
-        }
-      }
-      if (folded.has_value()) {
-        state.out().out() << folded->text;
-      } else {
-        translate_cell_children(cell, sheet_state);
-      }
-      state.out().write_element_end("td");
-
-      for (std::uint32_t column = column_index;
-           column < std::min(next_column, end_column); ++column) {
-        span_end_row[column] = row_index + cell_span.rows;
-      }
-      cursor.add_cell(cell_span.columns, cell_span.rows);
-      if (cursor.column() == next_column) {
-        pending = next;
-      }
-    }
-
-    state.out().write_element_end("tr");
-
-    cursor.add_row();
-    if (++rows_in_chunk >= chunk_rows &&
-        std::ranges::none_of(span_end_row, [&](const std::uint32_t span_end) {
-          return span_end > cursor.row();
-        })) {
-      end_chunk();
+    write_row(*rows, at, placeholder ? null_state : sheet_state, row_index);
+    if (++rows_in_chunk >= chunk_rows && !at.merge_open()) {
+      end_chunk(at.cursor.row());
     }
   }
   if (chunk_open) {
-    end_chunk();
+    end_chunk(at.cursor.row());
   }
 
   state.out().write_element_end("div");

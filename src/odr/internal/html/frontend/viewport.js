@@ -442,6 +442,7 @@
       chunk.innerHTML = html;
       chunk.removeAttribute("data-odr-chunk-src");
       chunk.removeAttribute("data-odr-chunk-loading");
+      chunk.dispatchEvent(new CustomEvent("odr-chunk-filled", { bubbles: true }));
     },
     // Watches a chunk that a script added, as the view writes them.
     observe: function (chunk) {
