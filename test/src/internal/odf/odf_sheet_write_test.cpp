@@ -224,6 +224,34 @@ TEST(OdfSheetWrite, a_cell_past_a_merge_at_the_end_of_the_row_grows_the_row) {
   EXPECT_EQ(sheet.dimensions().columns, 3);
 }
 
+/// The row is cut before its end is read, so the other repeats stay short.
+TEST(OdfSheetWrite, a_cell_past_a_merge_in_a_repeated_row_grows_one_row) {
+  const Document document = document_of(
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.spreadsheet">)"
+      R"(<office:body><office:spreadsheet>)"
+      R"(<table:table table:name="s">)"
+      R"(<table:table-row table:number-rows-repeated="3">)"
+      R"(<table:table-cell table:number-columns-spanned="2" )"
+      R"(office:value-type="string"><text:p>a</text:p></table:table-cell>)"
+      R"(<table:covered-table-cell/>)"
+      R"(</table:table-row></table:table>)"
+      R"(</office:spreadsheet></office:body></office:document>)");
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(2, 1, CellValue("y"));
+
+  EXPECT_EQ(sheet.cell(2, 1).value().text(), "y");
+  for (const std::uint32_t row : {0u, 1u, 2u}) {
+    EXPECT_EQ(sheet.cell(0, row).value().text(), "a") << row;
+  }
+  for (const std::uint32_t row : {0u, 2u}) {
+    EXPECT_FALSE(sheet.cell(2, row).value().has_text()) << row;
+  }
+  EXPECT_EQ(sheet.dimensions().rows, 3);
+}
+
 TEST(OdfSheetWrite, a_cell_past_the_last_row_grows_the_sheet) {
   const Document document = document_of(flat_sheet(string_cell("a")));
   const Sheet sheet = first_sheet(document);
