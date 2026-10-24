@@ -283,9 +283,10 @@ wrote, core works once, and the reader waits for the browser.
 
 The writer renders a set of pages in one pass
 (`write_pages_dual_layer`, `write_pages_single_layer`). The pass names its
-classes and fonts as it meets them (`x0`, `odr-f1`), and it re-encodes each
-font with the code points of the runs it meets. Then it writes the head and
-the pages. A page that loads later has to bring what the head lacks.
+classes and fonts as it meets them (`c0`, `odr-f1`). In `single_layer`, it
+also re-encodes each font with the code points of the runs it meets. Then
+it writes the head and the pages. A page that loads later has to bring what
+the head lacks.
 
 **Option A, the page side.** As the sheets do (decision 6, order of work
 item 5): the pass renders every page as it does now, so the head has every
@@ -306,17 +307,19 @@ script renders its page alone.
 - Core work is in proportion to what the reader sees. The page is ready
   after about 40 ms, and a script after 5 to 40 ms.
 - Two names must stop clashing between pages that are rendered apart:
-  - **Classes:** a name made from a hash of the declaration (`x3f9a2c`), not
+  - **Classes:** a name made from a hash of the declaration (`c3f9a2c`), not
     a count, is the same in every render. Two pages that state the same rule
     state it twice, which does no harm.
   - **Fonts:** a font becomes a file of its own, which every page links,
-    so the browser loads it once. The writer re-encodes the font with all
-    the code points of its `ToUnicode` map, not the ones the pages met, so
-    the file is the same for every page. Without that, each page carries
-    its fonts: a page of this file rendered alone is about 0.5 MB, most of
-    it fonts.
-- A large change to the writer: the class names, the font files, and the
-  cmap of a font.
+    so the browser loads it once. Without that, each page carries its
+    fonts: a page of this file rendered alone is about 0.5 MB, most of it
+    fonts. In `dual_layer`, the default, a font is already the same for
+    every page, because it maps each glyph to a private-use code point
+    (`reencode_to_pua`). In `single_layer`, the writer must re-encode the
+    font with all the code points of its `ToUnicode` map, not only the ones
+    the pages met.
+- A large change to the writer: the class names and the font files, and
+  the cmap of a font in `single_layer`.
 
 **Recommendation:** B, because only B makes the server fast, and the server
 is where the time is. A is the smaller step if B is too large for now. The
