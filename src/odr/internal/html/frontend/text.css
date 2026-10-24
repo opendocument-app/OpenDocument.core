@@ -12,10 +12,9 @@ body{margin:0;background:#fff}
 .odr-text{--odr-text-gutter-left:max(16px,var(--odr-min-margin-left,0px));--odr-text-gutter-width:calc(var(--odr-text-gutter-left) + var(--odr-text-digits,1) * 1ch + 12px);display:flex;align-items:stretch;min-height:100vh;color:var(--odr-text-fg);font:13px/20px var(--odr-text-mono);tab-size:4;background:linear-gradient(to right,var(--odr-text-gutter) var(--odr-text-gutter-width),var(--odr-text-line) 0 calc(var(--odr-text-gutter-width) + 1px),transparent 0)}
 .odr-text-body{display:flex;flex-direction:column;flex:1;min-width:0;padding:max(16px,var(--odr-min-margin-top,0px)) max(16px,var(--odr-min-margin-right,0px)) max(16px,var(--odr-min-margin-bottom,0px)) 0;white-space:pre}
 .odr-text-wrap{white-space:break-spaces;word-break:break-word;overflow-wrap:anywhere}
-/* The browser lays out only a chunk that `text.js` marks near the viewport. A
-   far chunk keeps the height it had when it was last shown. */
-.odr-chunk{display:flex;flex-direction:column;content-visibility:hidden;contain-intrinsic-height:auto calc(var(--odr-text-lines,256) * 20px)}
-.odr-chunk-near{content-visibility:visible}
+/* A chunk far from the viewport keeps the height it had when it was last
+   shown. */
+.odr-chunk{display:flex;flex-direction:column;contain-intrinsic-height:auto calc(var(--odr-text-lines,256) * 20px)}
 .odr-chunk>div{position:relative;padding-left:calc(var(--odr-text-gutter-width) + 17px);counter-increment:odr-line}
 .odr-chunk>div:hover{background:var(--odr-text-wash)}
 /* The numbers are ours, not the file's: generated content stays out of a

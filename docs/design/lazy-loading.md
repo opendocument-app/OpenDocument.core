@@ -171,7 +171,8 @@ chunk and not to the document (#781 for ods, the issue #764 for the rest).
    and the HTTP route. A text file needs no engine work, so it proves the
    API.
 3. **pdf, level 1.** A page has its size, so each page is a chunk of
-   exactly the right size.
+   exactly the right size. The observer moves into `viewport.js`, which
+   every view loads.
 4. **Sheets, level 1.** `content-visibility` does not apply to a table row,
    because layout containment does not apply to the inner boxes of a table.
    A sheet needs a table for each chunk of rows, with the column widths

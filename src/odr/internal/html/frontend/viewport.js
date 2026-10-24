@@ -352,4 +352,29 @@
   window.addEventListener("wheel", taken, { passive: true });
   window.addEventListener("touchstart", taken, { passive: true });
   window.addEventListener("keydown", taken);
+
+  // The browser lays out a chunk within a screen of the viewport, and not one
+  // further away, so it holds the layout of a few chunks at a time.
+  var chunks = document.getElementsByClassName("odr-chunk");
+  var near =
+    typeof IntersectionObserver === "function"
+      ? new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              entry.target.classList.toggle(
+                "odr-chunk-near",
+                entry.isIntersecting
+              );
+            });
+          },
+          { rootMargin: "100% 0px" }
+        )
+      : null;
+  for (var i = 0; i < chunks.length; ++i) {
+    if (near !== null) {
+      near.observe(chunks[i]);
+    } else {
+      chunks[i].classList.add("odr-chunk-near");
+    }
+  }
 })();

@@ -319,6 +319,20 @@ void html::write_search_dark_style(const WritingState &state) {
   write_dark_style(search_dark_css_asset, state);
 }
 
+void html::write_chunk_style(const WritingState &state) {
+  HtmlWriter &out = state.out();
+  out.write_header_style_begin();
+  // WebKit prints a chunk that it skips blank
+  out.out() << ".odr-chunk{content-visibility:hidden}"
+               ".odr-chunk-near{content-visibility:visible}"
+               "@media print{.odr-chunk{content-visibility:visible}}";
+  out.write_header_style_end();
+  // without the script, the browser decides what is near, at the cost of
+  // one layout of each chunk on the first frame
+  out.write_raw("<noscript><style>@media screen{.odr-chunk{content-visibility:"
+                "auto}}</style></noscript>");
+}
+
 void html::write_editing_script(const WritingState &state) {
   write_error_codes(state);
   write_script(editing_js_asset, state);

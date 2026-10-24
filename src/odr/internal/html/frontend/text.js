@@ -406,26 +406,6 @@
   }
   var editor = new TextEditor(textBody);
 
-  // A chunk within a screen of the viewport is laid out, and one further away
-  // is not, so the browser holds the layout of a few chunks at a time.
-  var chunks = textBody.children;
-  var near = new IntersectionObserver(
-    function (entries) {
-      entries.forEach(function (entry) {
-        entry.target.classList.toggle("odr-chunk-near", entry.isIntersecting);
-      });
-    },
-    { rootMargin: "100% 0px" }
-  );
-  for (var i = 0; i < chunks.length; ++i) {
-    near.observe(chunks[i]);
-  }
-  window.addEventListener("beforeprint", function () {
-    for (var j = 0; j < chunks.length; ++j) {
-      chunks[j].classList.add("odr-chunk-near");
-    }
-  });
-
   odr.editing.attach({
     enable: function () {
       textBody.setAttribute("contenteditable", "true");
