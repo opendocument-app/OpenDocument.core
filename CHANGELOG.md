@@ -35,6 +35,12 @@ The release run heads these entries with the version and opens a fresh
 - An xlsx cell with the built-in date format 14 or 22 shows the date as Excel
   shows it for en-US, for example `1/1/2014` and not `01-01-14`.
 
+### Build and packaging
+
+- Each release has `odr-formula-vX.Y.Z.js`: the formula evaluator as one
+  script with its WebAssembly inside, about 530 KB. A page that computes its
+  formula cells as the user edits will carry it.
+
 ## v7.5.2 - 2026-10-10
 
 ### Text documents and presentations

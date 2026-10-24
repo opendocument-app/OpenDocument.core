@@ -89,7 +89,8 @@ class FormatScriptTest(unittest.TestCase):
             (root / "scripts").mkdir()
             shutil.copy2(ROOT / "scripts/format", root / "scripts/format")
             for name in ("src", "cli", "test/src", "python/src", "jni/src",
-                         "apple/src", "apple/include", "wasm/src"):
+                         "apple/src", "apple/include", "wasm/src",
+                         "wasm/formula"):
                 (root / name).mkdir(parents=True)
             (root / "wasm/src/file with spaces.cpp").write_text("int x;\n")
             formatter = root / "fake formatter"

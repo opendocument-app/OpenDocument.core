@@ -44,6 +44,7 @@ text never had.
 | Browser: sheet script | `html/frontend/spreadsheet.js` owns pin, raise, sort and the position map, and publishes `odr.sheet` |
 | Browser: the mode | `html/frontend/editing.js` owns `odr.editing`, the refusals, the log and the `odr.on*` callbacks |
 | Browser: sheet editor | `html/frontend/sheet-editing.js` attaches the cell overlay and the stale marks to the mode |
+| Browser: formula module | `wasm/formula/odr_formula.cpp` binds `formula::evaluate` and the formatter through embind, over a `CellSource` of JavaScript callbacks. `odr-formula.js` carries the wasm inside |
 | Wire format | `document.cpp::Document::edit` dispatches the op envelope |
 | CSV write and save | `csv_document.cpp`: `set_cell` grows the rows, `save` writes UTF-8 with the line end and the `sep=` line the file had |
 | Capabilities | `file_type_table.cpp`: `ods`, `xlsx` and `csv` declare `edit` and `save` |
@@ -326,6 +327,27 @@ and the commits name. Git holds the full text of each decision.
 
 ## Open work
 
+- **Live formulas, as a stack of PRs.** The order follows what each step
+  needs from the one before it.
+  1. The module. `wasm/formula` builds `odr-formula.js`, the evaluator and
+     the number formats with the wasm inside. `formula.test.mjs` tests it,
+     and the wasm workflow attaches it to each release.
+  2. The page carries it. A build embeds the module where it has one: the
+     emscripten build makes it, and another build names the file of its
+     core version. A page carries it only where it is editable and holds a
+     formula cell. A build without it marks formulas stale, as now.
+  3. The page states what the evaluator reads: the syntax and the
+     `Settings` of the document, and the format code of each formula cell,
+     as the writer formats a result.
+  4. Live results. A commit, an undo and a redo compute the formula cells
+     that the edit reaches, in the order they read each other, and show
+     them in the format of the cell. A cell without an answer stays stale.
+     `odr.onCellsStale` names only those.
+  5. A formula write. `setCell` takes a formula, and the ods and xlsx
+     writers write it in the syntax of the file. A save recalculates it.
+  6. Formula input. The editor opens a formula cell on its formula and
+     takes `=` input. The module checks it and states what it reads, and
+     the page computes it at once.
 - **Live results in the page.** The page has no evaluator, so it marks the
   formula cells stale until something computes them. There are four ways to
   compute them while the user edits:
