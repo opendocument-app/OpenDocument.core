@@ -339,8 +339,28 @@ and the commits name. Git holds the full text of each decision.
     `HtmlConfig::embed_shipped_resources` does with the other resources,
     so a page with no host computes too: an export, a page opened from
     `file://`, a page sent as a mail attachment. There is still one
-    evaluator and one corpus test. The size of the module is not measured
-    yet.
+    evaluator and one corpus test.
+
+    Measured on 2026-10-24 with emscripten 3.1.73, a binding that exports
+    `evaluate` and `format` through embind, and a JavaScript `CellSource`:
+
+    | build | wasm | gzip | JavaScript |
+    |---|---|---|---|
+    | `-Oz -flto -fwasm-exceptions` | 331 KB | 141 KB | 39 KB |
+    | `-O2 -flto -fwasm-exceptions` | 414 KB | 152 KB | 40 KB |
+
+    The module compiles `internal/formula`, `internal/number_format`,
+    `util/string_util`, `util/number_util`, `common/table_range` and the
+    three position types. Besides `fmt` it needs the headers of utf8cpp.
+    The evaluator throws `ErrorResult` and `NoAnswer` to unwind, so the
+    module needs exceptions, as `odr-core.wasm` does with
+    `-fwasm-exceptions`. One evaluation of `SUM(A1:A3)*2+IF(B2,1,0)` takes
+    about 8 µs in node, the JavaScript callbacks included, and `-O2` is
+    only 17% faster than `-Oz`.
+
+    As base64, the `-Oz` module adds about 480 KB to a page. Each sheet
+    view is a page of its own, so the proposal is that a page carries the
+    module only where it is editable and holds a formula cell.
   - The host computes them in process (decision 5) and sends them to the
     page. The apps and the npm host have core already. The host must keep a
     decoded document that matches the page, and an undo in the page needs a
