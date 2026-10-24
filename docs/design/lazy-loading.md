@@ -243,12 +243,13 @@ the first chunk of a sheet with shapes is always near: the writer states
 
 **What stays.** The limits (`spreadsheet_limit`, `spreadsheet_cell_limit`)
 stay as they are in this step. A sheet of 500 K cells
-(`efficiency-big-1.ods`) took 7.0 s to its first frame, and takes 4.0 s
-with chunks. About 2 s of the rest is `viewport.js`: to find whether the
-browser adjusts the text size, it sets the zoom of the body twice. Each
-set makes the browser compute the style and the layout of the whole
-document again. Whether the limits can go up is a measurement after that
-is fixed.
+(`efficiency-big-1.ods`) took 7.0 s to its first frame, and takes 2.2 s
+with chunks. The same page without its scripts takes 2.0 s. The 1.8 s
+between them was `viewport.js`. To find whether the browser adjusts the
+text size, it set the zoom of the body twice, and each set made the
+browser compute the style and the layout of the whole document again. It
+now probes in an `iframe` of its own. Whether the limits can go up is the
+next measurement.
 
 ## Order of work
 
