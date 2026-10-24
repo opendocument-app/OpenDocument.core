@@ -336,6 +336,17 @@ public:
                    [[maybe_unused]] const CellValue &result) const {
     throw UnsupportedOperation();
   }
+  /// @ref sheet_set_result for a cell an array formula fills, other than the
+  /// one that states the formula. The caller knows the range it fills.
+  /// @throws UnsupportedOperation if writing is unsupported, or the file
+  /// states no such cell or a formula in it.
+  virtual void
+  sheet_set_array_result([[maybe_unused]] ElementIdentifier element_id,
+                         [[maybe_unused]] std::uint32_t column,
+                         [[maybe_unused]] std::uint32_t row,
+                         [[maybe_unused]] const CellValue &result) const {
+    throw UnsupportedOperation();
+  }
   /// States the set fields of @p cell_style and @p text_style on the cell at
   /// (@p column, @p row) and leaves the rest. The cell's content is untouched.
   virtual void

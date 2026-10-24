@@ -209,8 +209,8 @@ TEST(FormulaFunctionsMath, a_sum_product_reads_its_arguments_as_arrays) {
   EXPECT_EQ(ods("=SUMPRODUCT([.A1:.A2];[.A4:.A5])"), number(0));
   EXPECT_EQ(ods(R"(=SUMPRODUCT({1;2};{"a";3}))"), number(6));
   EXPECT_EQ(ods("=SUMPRODUCT({1;2};{3;4;5})"), error(ErrorType::value));
-  // LibreOffice maps ABS over the array: 3
-  EXPECT_EQ(ods("=SUMPRODUCT(ABS({-1;2}))"), std::nullopt);
+  // a function maps over the array, as in LibreOffice
+  EXPECT_EQ(ods("=SUMPRODUCT(ABS({-1;2}))"), number(3));
 }
 
 TEST(FormulaFunctionsMath, a_range_outside_an_array_context_reads_one_cell) {

@@ -626,11 +626,29 @@ public:
     if (cell == nullptr || !cell->node.child("f")) {
       throw UnsupportedOperation();
     }
-    // a stale result stays, as every save sets `fullCalcOnLoad`
+    write_result(cell->element_id, result);
+  }
+
+  void sheet_set_array_result(const ElementIdentifier element_id,
+                              const std::uint32_t column,
+                              const std::uint32_t row,
+                              const CellValue &result) const override {
+    const ElementRegistry::Sheet::Cell *cell =
+        m_registry->sheet_element_at(element_id).cell(column, row);
+    if (cell == nullptr || cell->element_id == null_element_id ||
+        cell->node.child("f")) {
+      throw UnsupportedOperation();
+    }
+    write_result(cell->element_id, result);
+  }
+
+  /// ECMA-376 18.3.1.96 `v`: what a formula computes for the cell. A stale
+  /// result stays, as every save sets `fullCalcOnLoad`.
+  void write_result(const ElementIdentifier cell_id,
+                    const CellValue &result) const {
     if (result.type() == ValueType::unknown) {
       return;
     }
-    const ElementIdentifier cell_id = cell->element_id;
     pugi::xml_node node = get_node(cell_id);
     m_registry->invalidate_children(cell_id);
     for (const char *stated : {"v", "is"}) {
@@ -662,8 +680,10 @@ public:
     case ValueType::unknown:
       break;
     }
+    // ECMA-376 18.3.1.4: `v` follows `f`, where the cell states one
     const pugi::xml_node value_node =
-        node.insert_child_after("v", node.child("f"));
+        node.child("f") ? node.insert_child_after("v", node.child("f"))
+                        : node.prepend_child("v");
     value_node.text().set(text.c_str());
     const auto &[text_id, unused1, unused2] =
         m_registry->create_text_element(value_node, value_node);

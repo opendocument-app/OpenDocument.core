@@ -336,8 +336,15 @@ and the commits name. Git holds the full text of each decision.
     with one reads anything and computes on every recalculation. `NOW`,
     `TODAY`, `RAND` and `RANDBETWEEN` read the clock and the random numbers
     in `formula::Settings`, which a recalculation and the page state, so
-    they compute every time too. `INFO`, an array formula, a reference into
-    another document and a localized function name have no answer.
+    they compute every time too. `INFO`, a reference into another document
+    and a localized function name have no answer.
+  - An array formula computes its range (`formula::evaluate_array`). An
+    operator reads every cell of a range, and a function maps over the
+    elements of an argument it takes as one value: `LEN(A1:A3)` gives three
+    lengths, and `SUM` reads its range whole (`find_array_rule`). `OFFSET`,
+    `INDIRECT` and `CELL` have no answer there. A single row or column
+    repeats over the range, and a position past the result is `#N/A`. A
+    dynamic array of an `.xlsx` fills the range the file states.
   - `Document::recalculate` computes each stale cell on demand: a dependent
     of an edit, every formula after a structural edit, and a formula without
     a result, with a name or with a volatile function. A cycle gets no
@@ -394,7 +401,7 @@ and the commits name. Git holds the full text of each decision.
 
 - **Formula input.** Function names are the English ones, also where a
   localized LibreOffice shows them translated.
-- **Out of the evaluator so far:** array formulas and dynamic arrays, a
-  reference into another document, iterative calculation, `INFO`, and
-  localized function names. Each cell that needs one stays without an
-  answer (decision 29).
+- **Out of the evaluator so far:** a dynamic array that the edit makes
+  larger or smaller than the range the file states, a reference into
+  another document, iterative calculation, `INFO`, and localized function
+  names. Each cell that needs one stays without an answer (decision 29).

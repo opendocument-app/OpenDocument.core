@@ -879,11 +879,35 @@ public:
         m_registry->sheet_cell_element_at(cell->element_id).is_repeated) {
       throw UnsupportedOperation();
     }
+    write_result(element_id, *cell, column, row, result);
+  }
+
+  void sheet_set_array_result(const ElementIdentifier element_id,
+                              const std::uint32_t column,
+                              const std::uint32_t row,
+                              const CellValue &result) const override {
+    const ElementRegistry::Sheet::Cell *cell =
+        m_registry->sheet_element_at(element_id).cell(column, row);
+    if (cell == nullptr || cell->element_id == null_element_id ||
+        cell->node.attribute("table:formula") ||
+        m_registry->sheet_cell_element_at(cell->element_id).is_repeated) {
+      throw UnsupportedOperation();
+    }
+    write_result(element_id, *cell, column, row, result);
+  }
+
+  /// [ODF 1.2] 19.386 `office:value`: what a formula computes for @p cell,
+  /// and its text in the cell's format. An unknown result drops the stale
+  /// one.
+  void write_result(const ElementIdentifier element_id,
+                    const ElementRegistry::Sheet::Cell &cell,
+                    const std::uint32_t column, const std::uint32_t row,
+                    const CellValue &result) const {
     if (result.type() == ValueType::unknown) {
-      drop_cell_result(*cell);
+      drop_cell_result(cell);
       return;
     }
-    const ElementIdentifier cell_id = cell->element_id;
+    const ElementIdentifier cell_id = cell.element_id;
     const TablePosition position(column, row);
 
     CellValue typed = result;
