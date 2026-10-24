@@ -110,10 +110,7 @@ public:
     write_text_dark_style(state);
     write_search_style(state);
     write_search_dark_style(state);
-    // without the script that marks the chunks near the viewport, the
-    // browser decides that itself, at the cost of one layout of each
-    out.write_raw("<noscript><style>.odr-chunk{content-visibility:auto}</"
-                  "style></noscript>");
+    write_chunk_style(state);
 
     out.write_header_end();
 
@@ -147,8 +144,7 @@ public:
         "div", HtmlElementOptions().set_class("odr-text-body odr-text-wrap"));
     in = std::istringstream(text);
     for (std::uint32_t line = 0; line < line_count; ++line) {
-      // the browser lays out only the chunks near the viewport, which
-      // `text.js` marks
+      // the browser lays out only the chunks near the viewport
       const bool first = line % chunk_lines == 0;
       if (first) {
         if (line > 0) {

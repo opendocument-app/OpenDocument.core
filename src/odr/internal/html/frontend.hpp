@@ -30,6 +30,9 @@ void write_media_style(const WritingState &state);
 /// Written by every view that writes the search script.
 void write_search_style(const WritingState &state);
 void write_search_dark_style(const WritingState &state);
+/// The browser lays out an `odr-chunk` only where `viewport.js` marks it near
+/// the viewport. Inline, because a chunk must start hidden on the first frame.
+void write_chunk_style(const WritingState &state);
 
 /// For a view writing its style inline: whether to write a dark one, and the
 /// `media` gating it. A print stays light, so the query names `screen`.

@@ -1978,9 +1978,14 @@ public:
     out.write_element_begin("div", HtmlElementOptions().set_class("d"));
     std::size_t page_number = first_page_number;
     for (const DualPageOut &page : pages_out) {
+      // the first page is near the viewport before the script says so
+      std::string classes = page.classes;
+      if (page_number == first_page_number) {
+        classes += " odr-chunk-near";
+      }
       out.write_element_begin(
           "div", HtmlElementOptions()
-                     .set_class(page.classes)
+                     .set_class(std::move(classes))
                      .set_extra(R"(id="p)" + std::to_string(page_number++) +
                                 R"(")" + page.attributes));
 
@@ -2481,9 +2486,14 @@ public:
     out.write_element_begin("div", HtmlElementOptions().set_class("d"));
     std::size_t page_number = first_page_number;
     for (const SinglePageOut &page : pages_out) {
+      // the first page is near the viewport before the script says so
+      std::string classes = page.classes;
+      if (page_number == first_page_number) {
+        classes += " odr-chunk-near";
+      }
       out.write_element_begin(
           "div", HtmlElementOptions()
-                     .set_class(page.classes)
+                     .set_class(std::move(classes))
                      .set_extra(R"(id="p)" + std::to_string(page_number++) +
                                 R"(")" + page.attributes));
       write_page_items(out, page.clip_defs, page.items, page.width, page.height,
@@ -2665,7 +2675,7 @@ public:
     const double width = quarter_turn ? box_height : box_width;
     const double height = quarter_turn ? box_width : box_height;
 
-    std::string classes = "p";
+    std::string classes = "p odr-chunk";
     {
       std::ostringstream w;
       w << "width:" << width * pt_to_in << "in";
@@ -2809,17 +2819,16 @@ public:
                  "width:max-content;min-width:100%}";
     // `overflow:hidden` clips to the crop box, as a viewer does: content may
     // sit outside it (a bleed, or an InDesign spread's other page).
-    // `content-visibility` skips an off-screen page; the box states its own
-    // size, so no `contain-intrinsic-size` and no scroll geometry change.
-    out.out() << ".p{content-visibility:auto;position:relative;"
+    // A page is a chunk (`write_chunk_style`). The box states its own size,
+    // so a page that is not laid out needs no `contain-intrinsic-size`.
+    out.out() << ".p{position:relative;"
                  "margin:0 max(16px,var(--odr-min-margin-right,0px)) 0 "
                  "max(16px,var(--odr-min-margin-left,0px));background:#fff;"
                  "overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.5)}";
-    // One page to a sheet. WebKit prints an off-screen `content-visibility`
-    // page blank.
+    // One page to a sheet.
     out.out() << "@media print{body{background:none}"
                  ".d{display:block;padding:0;width:auto;min-width:0}"
-                 ".p{content-visibility:visible;margin:0;box-shadow:none;"
+                 ".p{margin:0;box-shadow:none;"
                  "break-after:page}.p:last-child{break-after:auto}}"
                  "@page{margin:0}";
     std::set<std::string> print_pages;
@@ -2849,6 +2858,7 @@ public:
     out.out() << font_styles;
     styles.write_rules(out.out());
     out.write_header_style_end();
+    write_chunk_style(state);
     write_search_style(state);
     write_pdf_annotation_style(state);
     write_permissions(out);
