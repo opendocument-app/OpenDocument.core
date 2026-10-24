@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet iteration checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body
+    class="odr-body odr-gridlines-soft"
+    data-odr-editable="true"
+    data-odr-keyboard="navigation shortcuts"
+    data-odr-formula-syntax="opendocument"
+    data-odr-formula-settings='{"dialect":"libreoffice","nullDate":0,"iteration":{"steps":100,"difference":0.001}}'
+  >
+    <!-- An ods that iterates: A1 and B1 read each other and D1, C1 reads A1,
+         and A2 grows without end. -->
+    <table class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="S">
+      <col class="odr-sheet-gutter" />
+      <col style="width: 100px" />
+      <col style="width: 100px" />
+      <col style="width: 100px" />
+      <col style="width: 100px" />
+      <thead>
+        <tr>
+          <th class="odr-sheet-corner" style="width:calc(1ch + 14px)"></th>
+          <th class="odr-sheet-column-header">A</th>
+          <th class="odr-sheet-column-header">B</th>
+          <th class="odr-sheet-column-header">C</th>
+          <th class="odr-sheet-column-header">D</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="odr-sheet-row-header">1</th>
+          <td data-odr-formula="of:=[.B1]/2+[.D1]" data-odr-reads="0,1,1,0,0 0,3,3,0,0" style="max-width:0;white-space:nowrap"></td>
+          <td data-odr-formula="of:=[.A1]" data-odr-reads="0,0,0,0,0" style="max-width:0;white-space:nowrap"></td>
+          <td data-odr-formula="of:=[.A1]*10" data-odr-reads="0,0,0,0,0" style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+        <tr>
+          <th class="odr-sheet-row-header">2</th>
+          <td data-odr-formula="of:=[.A2]+[.D1]" data-odr-reads="0,0,0,1,1 0,3,3,0,0" style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+          <td style="max-width:0;white-space:nowrap"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="report"></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="odr-formula.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      function text(column, row) {
+        return odr.sheet.cellAt(column, row).textContent;
+      }
+      function stale(column, row) {
+        return odr.sheet.cellAt(column, row).classList.contains("odr-sheet-stale");
+      }
+      function type(column, row, typed) {
+        odr.editing.editAt(column, row);
+        var editor = document.querySelector(".odr-sheet-editor");
+        editor.value = typed;
+        editor.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      }
+
+      odr.editing.enable();
+      odr.editing.loadFormulas().then(function (computes) {
+        check("the page computes", computes === true);
+
+        // as LibreOffice computes the same cells: 2 - 2^-10
+        type(3, 0, "1");
+        check("a cycle computes until no cell changes by the difference", odr.sheet.valueAt(0, 0).number === 1.9990234375, JSON.stringify(odr.sheet.valueAt(0, 0)));
+        check("both of its cells", odr.sheet.valueAt(1, 0).number === 1.9990234375);
+        check("and what reads it", odr.sheet.valueAt(2, 0).number === 19.990234375, text(2, 0));
+        check("a cycle that does not converge stays stale", stale(0, 1) && !stale(0, 0));
+
+        odr.editing.undo();
+        check("an undo puts back what the cells showed", text(0, 0) === "" && text(2, 0) === "", text(0, 0));
+      });
+    </script>
+  </body>
+</html>

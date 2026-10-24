@@ -282,6 +282,10 @@ std::string formula_settings_json(const formula::Settings &settings) {
   if (settings.boolean_word.has_value()) {
     result["booleanWord"] = *settings.boolean_word;
   }
+  if (settings.iteration.has_value()) {
+    result["iteration"] = {{"steps", settings.iteration->steps},
+                           {"difference", settings.iteration->difference}};
+  }
   return result.dump();
 }
 
