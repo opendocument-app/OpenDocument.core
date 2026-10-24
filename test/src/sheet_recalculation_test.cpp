@@ -422,6 +422,27 @@ TEST(SheetRecalculation, a_cycle_computes_where_the_document_iterates) {
   EXPECT_EQ(spelled(result.circular()), (std::vector<std::string>{"0!A2"}));
 }
 
+// A1, B1, A2 and B2 read each other and A3, which reads B3 and is read back.
+// LibreOffice computes 1.9990234375 for A3 and 3.997314453125 for A1: its
+// own order puts A1 a little apart, within the difference.
+TEST(SheetRecalculation, a_cycle_computes_after_the_cycles_it_reads) {
+  const Document document = decode(std::make_shared<MemoryFile>(
+      R"(<?xml version="1.0" encoding="UTF-8"?>)"
+      R"(<office:document office:mimetype=")"
+      R"(application/vnd.oasis.opendocument.spreadsheet">)"
+      R"(<office:body><office:spreadsheet><table:calculation-settings>)"
+      R"(<table:iteration table:status="enable"/></table:calculation-settings>)"
+      R"(<table:table table:name="s">)" +
+      row(uncomputed("of:=[.B2]/2+[.A3]") + uncomputed("of:=[.A1]")) +
+      row(uncomputed("of:=[.B1]") + uncomputed("of:=[.A2]")) +
+      row(uncomputed("of:=[.B3]/2+1") + uncomputed("of:=[.A3]")) +
+      R"(</table:table></office:spreadsheet></office:body></office:document>)"));
+  document.recalculate();
+
+  EXPECT_EQ(value_at(document, 0, 2).number(), 1.9990234375);
+  EXPECT_NEAR(value_at(document, 0, 0).number(), 3.997314453125, 0.001);
+}
+
 TEST(SheetRecalculation, a_cycle_past_its_steps_has_no_result_in_libreoffice) {
   const Document document = iterating_ods("3");
   const Recalculation result = document.recalculate();

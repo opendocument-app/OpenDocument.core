@@ -20,6 +20,7 @@
 #include <memory>
 #include <optional>
 #include <random>
+#include <ranges>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -274,7 +275,8 @@ private:
       }
     }
     // the finishing order over what each cell reads, then groups over who
-    // reads it, in reverse: a group comes after every group it reads
+    // reads it, latest finished first: that gives the groups nothing reads
+    // first, so the list turns over at the end
     std::vector<std::size_t> finished;
     std::vector<bool> seen(count, false);
     for (std::size_t start = 0; start < count; ++start) {
@@ -299,7 +301,7 @@ private:
     }
     std::vector<std::vector<SheetPosition>> result;
     std::vector<bool> placed(count, false);
-    for (const std::size_t start : finished) {
+    for (const std::size_t start : std::views::reverse(finished)) {
       if (placed[start]) {
         continue;
       }
@@ -320,6 +322,7 @@ private:
       std::ranges::sort(group);
       result.push_back(std::move(group));
     }
+    std::ranges::reverse(result);
     return result;
   }
 
