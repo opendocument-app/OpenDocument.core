@@ -126,12 +126,118 @@ TEST(OoxmlSpreadsheetWrite, an_error_or_a_date_without_a_number_refuses) {
   EXPECT_DOUBLE_EQ(sheet.cell(0, 0).value().number(), 1);
 }
 
-TEST(OoxmlSpreadsheetWrite, a_formula_cell_refuses_to_be_written) {
-  const Document document = decode(
-      workbook(R"(<row r="1"><c r="A1"><f>SUM(B1:C1)</f><v>7</v></c></row>)"));
+TEST(OoxmlSpreadsheetWrite, a_value_written_over_a_formula_takes_it_away) {
+  const Document document =
+      decode(workbook(R"(<row r="1"><c r="A1"><f>SUM(C1:D1)</f><v>7</v></c>)"
+                      R"(<c r="B1"><f>A1*2</f><v>14</v></c></row>)"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(0, 0, CellValue(5, "5"));
+
+  EXPECT_FALSE(sheet.cell(0, 0).value().has_formula());
+  (void)document.recalculate();
+  EXPECT_DOUBLE_EQ(sheet.cell(1, 0).value().number(), 10);
+}
+
+/// ECMA-376 18.3.1.40: `f` comes ahead of `v`, which a recalculation writes.
+TEST(OoxmlSpreadsheetWrite, a_formula_is_written_and_computed) {
+  const Document document = decode(workbook(
+      R"(<row r="1"><c r="A1"><v>3</v></c><c r="B1"><f>C1+1</f></c></row>)"));
+  const Sheet sheet = first_sheet(document);
+
+  sheet.set_cell(2, 0, CellValue().with_formula("A1*2"));
+
+  EXPECT_EQ(sheet.cell(2, 0).value().formula(), "A1*2");
+  (void)document.recalculate();
+  EXPECT_DOUBLE_EQ(sheet.cell(2, 0).value().number(), 6);
+  EXPECT_DOUBLE_EQ(sheet.cell(1, 0).value().number(), 7);
+  EXPECT_NE(worksheet_of(document).find(R"(<c r="C1"><f>A1*2</f><v>6</v></c>)"),
+            std::string::npos)
+      << worksheet_of(document);
+}
+
+TEST(OoxmlSpreadsheetWrite, a_formula_is_written_without_its_equals_sign) {
+  const Document document =
+      decode(workbook(R"(<row r="1"><c r="A1"><v>3</v></c></row>)"));
+
+  first_sheet(document).set_cell(1, 0, CellValue().with_formula("=A1*2"));
+
+  EXPECT_NE(worksheet_of(document).find(R"(<c r="B1"><f>A1*2</f><v>6</v></c>)"),
+            std::string::npos)
+      << worksheet_of(document);
+}
+
+TEST(OoxmlSpreadsheetWrite, a_formula_that_does_not_parse_is_refused) {
+  const Document document =
+      decode(workbook(R"(<row r="1"><c r="A1"><v>1</v></c></row>)"));
+  const Sheet sheet = first_sheet(document);
+
+  EXPECT_THROW(sheet.set_cell(0, 0, CellValue().with_formula("SUM(")),
+               UnsupportedOperation);
+  EXPECT_DOUBLE_EQ(sheet.cell(0, 0).value().number(), 1);
+}
+
+/// ECMA-376 18.3.1.40: the other cells of a shared group and of an array read
+/// their expression from the cell that states `ref`.
+TEST(OoxmlSpreadsheetWrite, the_master_of_a_shared_formula_is_refused) {
+  const Document document = decode(workbook(
+      R"(<row r="1"><c r="A1"><f t="shared" ref="A1:B1" si="0">C1+1</f>)"
+      R"(<v>1</v></c><c r="B1"><f t="shared" si="0"/><v>1</v></c></row>)"));
   const Sheet sheet = first_sheet(document);
 
   EXPECT_THROW(sheet.set_cell(0, 0, CellValue("x")), UnsupportedOperation);
+  sheet.set_cell(1, 0, CellValue("y"));
+  EXPECT_EQ(sheet.cell(1, 0).value().text(), "y");
+}
+
+/// ECMA-376 18.6.1: Excel repairs a workbook whose calc chain names a cell that
+/// holds no formula.
+TEST(OoxmlSpreadsheetWrite, a_value_over_a_formula_leaves_the_calc_chain) {
+  internal::zip::ZipArchive zip;
+  insert(
+      zip, "[Content_Types].xml",
+      R"(<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">)"
+      R"(<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>)"
+      R"(</Types>)");
+  insert(
+      zip, "_rels/.rels",
+      R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
+      R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>)"
+      R"(</Relationships>)");
+  insert(
+      zip, "xl/workbook.xml",
+      R"(<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" )"
+      R"(xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">)"
+      R"(<sheets><sheet name="s" sheetId="3" r:id="rId1"/></sheets></workbook>)");
+  insert(
+      zip, "xl/_rels/workbook.xml.rels",
+      R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
+      R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>)"
+      R"(<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/calcChain" Target="calcChain.xml"/>)"
+      R"(</Relationships>)");
+  insert(
+      zip, "xl/styles.xml",
+      R"(<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"/>)");
+  insert(
+      zip, "xl/worksheets/sheet1.xml",
+      R"(<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>)"
+      R"(<row r="1"><c r="A1"><f>1+1</f><v>2</v></c><c r="B1"><f>A1+1</f><v>3</v></c></row>)"
+      R"(</sheetData></worksheet>)");
+  insert(
+      zip, "xl/calcChain.xml",
+      R"(<calcChain xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">)"
+      R"(<c r="A1" i="3"/><c r="B1"/></calcChain>)");
+  std::stringstream out;
+  zip.save(out);
+  const Document document =
+      decode(std::make_shared<internal::MemoryFile>(out.str()));
+
+  first_sheet(document).set_cell(0, 0, CellValue(5, "5"));
+
+  const std::string chain = saved_part(document, "/xl/calcChain.xml");
+  EXPECT_EQ(chain.find(R"(r="A1")"), std::string::npos) << chain;
+  // the entry after it takes the sheet the removed one named
+  EXPECT_NE(chain.find(R"(<c i="3" r="B1"/>)"), std::string::npos) << chain;
 }
 
 /// The anchor of the merge is the cell that holds the value.

@@ -409,9 +409,6 @@ void Sheet::set_cell(const std::uint32_t column, const std::uint32_t row,
   if (!exists_()) {
     return;
   }
-  if (value.has_formula()) {
-    throw UnsupportedOperation();
-  }
   // checked before the engine writes anything, so a refusal leaves the cell
   // as it was
   if (value.type() == ValueType::float_number && !value.has_number()) {

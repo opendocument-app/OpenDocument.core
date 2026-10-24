@@ -36,6 +36,12 @@ void move_workbook_references(pugi::xml_node workbook,
                               const std::string &edited_sheet_id,
                               const formula::SheetEdit &edit);
 
+/// Removes the entry of the cell at @p position of the sheet @p sheet_id: a
+/// cell the chain names and that holds no formula is one Excel repairs.
+void drop_calc_chain_entry(pugi::xml_node calc_chain,
+                           const std::string &sheet_id,
+                           const TablePosition &position);
+
 /// Moves worksheet ranges and filter columns; removes entries whose ranges
 /// are deleted. Views retain the first surviving cell.
 void move_sheet_ranges(pugi::xml_node worksheet,

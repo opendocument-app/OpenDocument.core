@@ -370,9 +370,12 @@ public:
   [[nodiscard]] ElementRange shapes() const;
 
   /// Sets a cell value. ODF clears dependent formula caches; OOXML keeps them
-  /// and requests recalculation on load.
-  /// @throws UnsupportedOperation for unwritable cells, formulas or nonfinite
-  /// numbers.
+  /// and requests recalculation on load. A formula is in the syntax
+  /// @ref CellValue::with_formula states, and has no result until
+  /// @ref Document::recalculate or a save computes one.
+  /// @throws UnsupportedOperation for unwritable cells, a formula that does
+  /// not parse, the anchor of an array or a shared formula, a formula in a
+  /// csv, or nonfinite numbers.
   /// @throws ValueNotStated for a numeric value without a number.
   void set_cell(std::uint32_t column, std::uint32_t row,
                 const CellValue &value) const;

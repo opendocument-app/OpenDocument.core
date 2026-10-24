@@ -356,8 +356,11 @@ and the commits name. Git holds the full text of each decision.
      formula cells that the edit reaches, in the order they read each other,
      and show them in the format of the cell. A cell without an answer stays
      stale. `odr.onCellsStale` names only those.
-  5. A formula write. `setCell` takes a formula, and the ods and xlsx
-     writers write it in the syntax of the file. A save recalculates it.
+  5. A formula write. `setCell` takes `{"type": "formula", "formula": …}`
+     in the syntax of the file, as `SheetCell::value` gives it. A formula
+     cell takes a value or a formula too, except the anchor of an array or
+     a shared formula. The graph is built again, and a save computes the new
+     formula. An xlsx drops the `calcChain` entry of a formula it removes.
   6. Formula input. The editor opens a formula cell on its formula and
      takes `=` input. The module checks it and states what it reads, and
      the page computes it at once.

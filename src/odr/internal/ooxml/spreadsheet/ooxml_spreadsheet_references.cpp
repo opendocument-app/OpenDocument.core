@@ -302,7 +302,17 @@ void move_worksheet(const NamedWorksheet &worksheet, const bool edited,
   move_extensions(worksheet, edited, edit);
 }
 
-/// ECMA-376 18.6.1: an entry without `i` is on the sheet of the one before.
+/// Removes @p entry, which is on the sheet @p sheet_id. ECMA-376 18.6.1: an
+/// entry without `i` is on the sheet of the one before.
+void remove_calc_chain_entry(pugi::xml_node calc_chain, pugi::xml_node entry,
+                             const std::string &sheet_id) {
+  if (pugi::xml_node next = entry.next_sibling();
+      next && !next.attribute("i") && entry.attribute("i")) {
+    next.prepend_attribute("i").set_value(sheet_id.c_str());
+  }
+  calc_chain.remove_child(entry);
+}
+
 void move_calc_chain(pugi::xml_node calc_chain,
                      const std::string &edited_sheet_id,
                      const formula::SheetEdit &edit) {
@@ -318,10 +328,7 @@ void move_calc_chain(pugi::xml_node calc_chain,
           at.has_value()) {
         entry.attribute("r").set_value(at->to_string().c_str());
       } else {
-        if (next && !next.attribute("i") && entry.attribute("i")) {
-          next.prepend_attribute("i").set_value(sheet_id.c_str());
-        }
-        calc_chain.remove_child(entry);
+        remove_calc_chain_entry(calc_chain, entry, sheet_id);
       }
     }
     entry = next;
@@ -542,6 +549,23 @@ void ooxml::spreadsheet::move_workbook_references(
 
   if (calc_chain) {
     move_calc_chain(calc_chain, edited_sheet_id, edit);
+  }
+}
+
+void ooxml::spreadsheet::drop_calc_chain_entry(pugi::xml_node calc_chain,
+                                               const std::string &sheet_id,
+                                               const TablePosition &position) {
+  std::string entry_sheet;
+  for (pugi::xml_node entry = calc_chain.first_child(); entry;
+       entry = entry.next_sibling()) {
+    if (const pugi::xml_attribute id = entry.attribute("i")) {
+      entry_sheet = id.value();
+    }
+    if (entry_sheet == sheet_id &&
+        TablePosition(entry.attribute("r").value()) == position) {
+      remove_calc_chain_entry(calc_chain, entry, entry_sheet);
+      return;
+    }
   }
 }
 

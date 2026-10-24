@@ -178,6 +178,9 @@ public:
   void sheet_set_cell([[maybe_unused]] const ElementIdentifier element_id,
                       const std::uint32_t column, const std::uint32_t row,
                       const CellValue &value) const override {
+    if (value.has_formula()) {
+      throw UnsupportedOperation(); // a csv field holds no formula
+    }
     m_document->set_cell(column, row, cell_text(value));
   }
   void sheet_insert_rows([[maybe_unused]] const ElementIdentifier element_id,
