@@ -131,6 +131,15 @@
 
         type(1, 0, "'=text");
         check("a leading apostrophe keeps a string", text(1, 0) === "=text" && lastOp().value.type === "string");
+
+        type(3, 0, "=1+2,5");
+        check("a formula that reads no cell computes too", text(3, 0) === "3,5", text(3, 0));
+        type(3, 0, "=INDEX({1,2;3,4};2;1)");
+        check("an array constant keeps its spelling", text(3, 0) === "3", text(3, 0));
+        type(3, 0, "=STDEV.S(A1;B1;0,5)");
+        odr.editing.editAt(3, 0);
+        check("a function name keeps its dot", editor().value === "=STDEV.S(A1;B1;0,5)", editor().value);
+        editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
       });
     </script>
   </body>

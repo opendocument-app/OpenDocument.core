@@ -382,18 +382,27 @@
     return text;
   }
 
-  /// Replaces the characters @p swaps names outside a quoted string or a
-  /// quoted sheet name.
-  function swapped(text, swaps) {
+  /// Replaces the characters @p swaps names outside a quoted string, a quoted
+  /// sheet name and an array constant, which keeps the spelling of an `<f>`.
+  /// The decimal sign @p decimal is one only ahead of a digit, so `STDEV.S`
+  /// keeps its dot.
+  function swapped(text, swaps, decimal) {
     var result = "";
     var quote = null;
+    var braces = 0;
     for (var i = 0; i < text.length; ++i) {
       var c = text.charAt(i);
       if (quote !== null) {
         quote = c === quote ? null : quote;
       } else if (c === '"' || c === "'") {
         quote = c;
-      } else if (swaps[c] !== undefined) {
+      } else if (c === "{" || c === "}") {
+        braces += c === "{" ? 1 : -1;
+      } else if (
+        braces === 0 &&
+        swaps[c] !== undefined &&
+        (c !== decimal || /[0-9]/.test(text.charAt(i + 1)))
+      ) {
         c = swaps[c];
       }
       result += c;
@@ -404,16 +413,17 @@
   /// A formula as an `<f>` spells it, the way the locale types it: where the
   /// decimal sign is `,`, a `;` goes between the arguments.
   function localized(input) {
-    return DECIMAL === "," ? swapped(input, { ",": ";", ".": "," }) : input;
+    return DECIMAL === ","
+      ? swapped(input, { ",": ";", ".": "," }, ".")
+      : input;
   }
 
   /// What @p typed spells as an `<f>` does. `;` between arguments is taken in
   /// every locale.
   function delocalized(typed) {
-    return swapped(
-      typed,
-      DECIMAL === "," ? { ";": ",", ",": "." } : { ";": "," }
-    );
+    return DECIMAL === ","
+      ? swapped(typed, { ";": ",", ",": "." }, ",")
+      : swapped(typed, { ";": "," }, null);
   }
 
   /// Two numbers are the same where their values are, whatever the text, and
@@ -485,6 +495,9 @@
 
     // what a repaint computes for the cell, and what an undo puts back
     function apply(state, show, result) {
+      if (!odr.sheet.showValue(column, row, show)) {
+        return false;
+      }
       setAttribute(cell, "data-odr-formula", state.formula);
       setAttribute(cell, "data-odr-reads", state.reads);
       updateReader(cell);
@@ -493,13 +506,12 @@
       } else {
         computed.set(cell, result);
       }
-      odr.sheet.showValue(column, row, show);
+      return true;
     }
 
-    if (!odr.sheet.showValue(column, row, shown)) {
+    if (!apply(formula, shown, undefined)) {
       return false;
     }
-    apply(formula, shown, undefined);
     history.push({
       ops: [
         { op: "setCell", sheet: sheet, column: column, row: row, value: value },
@@ -525,15 +537,16 @@
     return text === "*" ? Infinity : Number(text);
   }
 
-  /// What @p cell reads in this sheet, null where it reads nothing here.
+  /// What @p cell reads in this sheet, null where it states no reads. A
+  /// typed formula that reads no cell is kept, so its own write computes it.
   function readerOf(cell) {
     var at = odr.sheet.positionOf(cell);
     var stated = cell.getAttribute("data-odr-reads");
-    if (at === null || stated === null || stated === "") {
+    if (at === null || stated === null) {
       return null;
     }
     var boxes = [];
-    var groups = stated.split(" ");
+    var groups = stated === "" ? [] : stated.split(" ");
     for (var j = 0; j < groups.length; ++j) {
       var parts = groups[j].split(",");
       if (parts.length === 5 && Number(parts[0]) === sheet) {
@@ -545,7 +558,7 @@
         ]);
       }
     }
-    return boxes.length > 0 ? { cell: cell, at: at, reads: boxes } : null;
+    return { cell: cell, at: at, reads: boxes };
   }
 
   function readersOf() {
@@ -1124,8 +1137,13 @@
     odr.sheet.pin({ column: column, row: row });
     odr.sheet.lower();
 
-    var stated = cell.getAttribute("data-odr-formula");
-    if (stated !== null && (formulas === null || formulas.module === null)) {
+    // typed input replaces the formula, so only an opened one needs the module
+    var stated = typed === null ? cell.getAttribute("data-odr-formula") : null;
+    var input =
+      stated !== null && formulas !== null && formulas.module !== null
+        ? formulas.module.toInput(stated, formulas.syntax)
+        : null;
+    if (stated !== null && input === null) {
       refuse("formulaInput", column, row);
       return false;
     }
@@ -1137,7 +1155,7 @@
       typed !== null
         ? typed
         : stated !== null
-          ? "=" + localized(formulas.module.toInput(stated, formulas.syntax) || stated)
+          ? "=" + localized(input)
           : spell(value);
     // in the page first, so `place` can measure the lines it holds
     document.body.appendChild(overlay);

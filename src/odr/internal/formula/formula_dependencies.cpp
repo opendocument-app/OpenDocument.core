@@ -80,9 +80,7 @@ void collect(const Node &node, References &into) {
 
 /// The open end of an axis a reference leaves out.
 std::string spell_bound(const std::uint32_t index) {
-  return index == std::numeric_limits<std::uint32_t>::max()
-             ? "*"
-             : std::to_string(index);
+  return index == index_limit ? "*" : std::to_string(index);
 }
 
 } // namespace
@@ -102,7 +100,7 @@ std::string formula::spell_reads(
     const Node &node, const std::uint32_t own_sheet,
     const std::function<std::optional<std::uint32_t>(std::string_view)>
         &sheet_of) {
-  std::string unresolved = std::to_string(own_sheet) + ",0,*,0,*";
+  const std::string unresolved = std::to_string(own_sheet) + ",0,*,0,*";
   const References read = references(node);
   if (!read.complete) {
     return unresolved;

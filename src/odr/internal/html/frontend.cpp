@@ -345,7 +345,7 @@ bool html::carries_formula_module() {
 }
 
 void html::write_formula_script(const WritingState &state) {
-  if (!formula_js_asset.content.empty()) {
+  if (carries_formula_module()) {
     write_script(formula_js_asset, state);
   }
 }

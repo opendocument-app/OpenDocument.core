@@ -93,7 +93,8 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
   opens as the user types it, `;` and `,` read as the locale spells them,
   the op states the syntax of the file, and the result shows at once. A new
   formula in an empty cell, one that does not parse, a value over a formula,
-  and the undos of all of them.
+  and the undos of all of them. A formula that reads no cell, an array
+  constant, and a function name with a dot.
 
   The three pages load `odr-formula.js`, which the wasm build writes:
   `ODR_FORMULA_WASM=build-wasm/wasm/formula/odr-formula.js

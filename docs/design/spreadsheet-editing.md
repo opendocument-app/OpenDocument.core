@@ -93,9 +93,9 @@ decode of the same file.
 `odr.editing.enable()` and `disable()` switch the mode without a second
 translate. The page carries only what the browser cannot work out itself:
 `data-odr-lock` on a cell that refuses a write, with its reason (`formula`
-where the build has no formula module, `rich` for a link or anything else past text and line breaks, `shapes` where
-the cell is nothing but its anchored drawings), and `data-odr-editable` on
-`<body>`. Every other cell is editable, an empty one included.
+where the build has no formula module, `rich` for a link or anything else
+past text and line breaks, `shapes` where the cell is nothing but its anchored
+drawings), and `data-odr-editable` on `<body>`. Every other cell is editable, an empty one included.
 
 The editor is an overlay the script places over the cell, so the sheet's DOM
 stays untouched until the commit patches the cell. The overlay is a
@@ -125,8 +125,9 @@ read it otherwise.
 
 A leading `=` is a formula, where the page carries the formula module. The
 user types it as Excel spells it, and with `;` between the arguments and `,`
-as the decimal sign where that is the decimal sign of the locale. The module
-turns it into the syntax of the file, and the op states that:
+as the decimal sign where that is the decimal sign of the locale. An array
+constant keeps the spelling of an `<f>`, `{1,2;3,4}`, in every locale. The
+module turns it into the syntax of the file, and the op states that:
 `{"type": "formula", "formula": "of:=SUM([.A1];[.B1])"}`. A formula cell opens
 on its formula, spelled the same way. A formula that does not parse refuses
 with `formulaInvalid`. Without the module, and after a row or column edit in
