@@ -65,6 +65,15 @@ pip install opentype-sanitizer
 python test/scripts/check_fonts.py build/test/output
 ```
 
+Check that the text layer of each pdf page holds the words that
+[Ghostscript](https://www.ghostscript.com) reads from the source pdf. A file
+fails below its floor in `test/scripts/pdf_text_floors.json`.
+
+```bash
+brew install ghostscript
+python test/scripts/check_pdf_text.py test/data/input build/test/output
+```
+
 To compare the rendered output against the reference output in a browser, run
 the [compare-html](https://github.com/opendocument-app/compare-html) server:
 

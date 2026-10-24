@@ -276,6 +276,12 @@ jobs:
       - name: macos install tidy
         if: runner.os == 'macOS'
         run: brew install tidy-html5
+      - name: ubuntu install ghostscript
+        if: runner.os == 'Linux'
+        run: sudo apt install ghostscript
+      - name: macos install ghostscript
+        if: runner.os == 'macOS'
+        run: brew install ghostscript
 
       - name: set up python 3.14
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
@@ -312,6 +318,12 @@ jobs:
       # regression here. See #765.
       - name: check embedded fonts survive OTS
         run: python test/scripts/check_fonts.py build/test/output
+
+      # The text layer of a pdf page against the text ghostscript reads from
+      # the source. A wrong ToUnicode or glyph-name mapping keeps the layout,
+      # so the screenshot comparison misses it. See #765.
+      - name: check pdf text against ghostscript
+        run: python test/scripts/check_pdf_text.py test/data/input build/test/output
 
       - name: tidy public test outputs
         run: html-tidy --html-tidy-config test/scripts/html-tidy-config build/test/output/odr-public/output
