@@ -101,7 +101,7 @@ jobs:
           -DODR_TEST=ON
 
       - name: cmake build
-        run: cmake --build build --target odr_wasm
+        run: cmake --build build --target odr_wasm odr_formula_wasm
 
       - name: save ccache
         if: github.ref == 'refs/heads/main'
@@ -173,6 +173,15 @@ jobs:
             echo "::error::brotli'd wasm is ${br} bytes, over the 1.5 M ratchet"
             exit 1
           fi
+          formula=build/wasm/formula/odr-formula.js
+          formula_raw=$(stat -c%s "$formula")
+          echo "| \`odr-formula.js\` | $formula_raw |" >> "$GITHUB_STEP_SUMMARY"
+          # The same kind of ratchet: a page that computes carries the module,
+          # which sat at ~530 K when this was written.
+          if [ "$formula_raw" -gt 786432 ]; then
+            echo "::error::odr-formula.js is ${formula_raw} bytes, over the 768 K ratchet"
+            exit 1
+          fi
 
       - name: assemble package
         run: |
@@ -215,6 +224,24 @@ jobs:
           path: ${{ env.BUNDLE }}
           if-no-files-found: error
 
+      # The page resource of `wasm/formula`. A build that ships the pages takes
+      # the one of its core version (`docs/design/spreadsheet-editing.md`).
+      - name: name the formula module
+        run: |
+          formula="odr-formula.js"
+          if [ "${{ github.event_name }}" = "release" ]; then
+            formula="odr-formula-${GITHUB_REF_NAME}.js"
+          fi
+          cp build/wasm/formula/odr-formula.js "$formula"
+          echo "FORMULA=${formula}" >> "$GITHUB_ENV"
+
+      - name: upload the formula module
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: odr-formula
+          path: ${{ env.FORMULA }}
+          if-no-files-found: error
+
       # Uploaded here rather than collected by `release.yml` as a
       # `release-asset-*`: that only sweeps artifacts from the release run, and
       # this workflow is not part of it — it reacts to `release: published`.
@@ -222,7 +249,7 @@ jobs:
         if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$GITHUB_REF_NAME" "$BUNDLE" --clobber
+        run: gh release upload "$GITHUB_REF_NAME" "$BUNDLE" "$FORMULA" --clobber
 
   # npm trusted publishing (OIDC), as `python.yml` does with PyPI: the package
   # on npm must name this repository and workflow.

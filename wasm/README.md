@@ -183,8 +183,10 @@ The package lands in `build-wasm/wasm/dist` and is importable as it is.
 HTTP and visit it. Its `edit` and `save` buttons are the reference for wiring
 a host to `odr.editing`.
 
-Tests run under node, from ctest with `-DODR_TEST=ON`:
+Tests run under node, from ctest with `-DODR_TEST=ON`. They also test the
+formula module, so build it first:
 
 ```sh
+cmake --build build-wasm --target odr_formula_wasm
 ctest --test-dir build-wasm/wasm
 ```

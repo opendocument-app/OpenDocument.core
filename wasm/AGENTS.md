@@ -16,6 +16,7 @@ is a complete HTML document whose JS is pure DOM.
 | `CMakeLists.txt` | The `odr_wasm` target, behind `ODR_WASM`. Fails without Emscripten and with `BUILD_SHARED_LIBS`. |
 | `src/` | The bindings, one unit per public-API area. `odr_wasm.{hpp,cpp}` holds the session registry, the result envelope and the exception mapping. |
 | `js/` | The hand-written half of the package: `index.js`, `index.d.ts`, `package.json`. Copied next to the generated glue at build time. |
+| `formula/` | The `odr_formula_wasm` target: the formula evaluator alone, one script with the wasm inside, for a page that computes its formula cells (`docs/design/spreadsheet-editing.md`). Not part of the npm package. |
 | `tests/` | `node --test` suite, run by ctest as `odr_wasm_node`. |
 | `testfixtures/` | The two documents the suite cannot build in memory. |
 | `example/` | A no-bundler page. `wasm.yml` repoints its import and ships it in the release zip, so keep that import a plain relative path. |
@@ -46,7 +47,8 @@ structured-cloned. Three rules follow.
 
 - Bind the public API only. Never include `odr/internal/...`, except
   `odr_meta_util.hpp`, so the meta blob matches `cli/src/meta.cpp` byte for
-  byte.
+  byte. `formula/` is the exception: it has no public API to bind, and it
+  links `odr_oz`, the library at `-Oz`.
 - An embind `std::string` parameter is binary-safe, a `std::string` return is
   not: it goes through `UTF8ToString`. Binary results go through
   `to_uint8_array`.

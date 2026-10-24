@@ -393,31 +393,44 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/zip/zip_util.cpp"
 )
 
+function(odr_configure_library target)
+    target_include_directories(${target}
+            PUBLIC
+            src
+            ${CMAKE_CURRENT_BINARY_DIR}/src
+            PRIVATE
+            "${CMAKE_CURRENT_BINARY_DIR}/generated"
+    )
+    target_link_libraries(${target}
+            PRIVATE
+            pugixml::pugixml
+            md4c::md4c
+            miniz::miniz
+            cryptopp::cryptopp
+            fmt::fmt
+            nlohmann_json::nlohmann_json
+            openjp2
+            uchardet::uchardet
+            utf8::cpp
+    )
+    # pugixml is linked PRIVATE, but the installed internal headers expose its
+    # types - so a consumer of those needs the same layout. `cpp_info.defines`
+    # in conanfile.py is the same thing for the conan package.
+    target_compile_definitions(${target} INTERFACE PUGIXML_COMPACT)
+endfunction()
+
 add_library(odr ${ODR_SOURCE_FILES} "${ODR_FRONTEND_ASSETS_HEADER}")
 set_target_properties(odr PROPERTIES OUTPUT_NAME odr)
-target_include_directories(odr
-        PUBLIC
-        src
-        ${CMAKE_CURRENT_BINARY_DIR}/src
-        PRIVATE
-        "${CMAKE_CURRENT_BINARY_DIR}/generated"
-)
-target_link_libraries(odr
-        PRIVATE
-        pugixml::pugixml
-        md4c::md4c
-        miniz::miniz
-        cryptopp::cryptopp
-        fmt::fmt
-        nlohmann_json::nlohmann_json
-        openjp2
-        uchardet::uchardet
-        utf8::cpp
-)
-# pugixml is linked PRIVATE, but the installed internal headers expose its
-# types - so a consumer of those needs the same layout. `cpp_info.defines` in
-# conanfile.py is the same thing for the conan package.
-target_compile_definitions(odr INTERFACE PUGIXML_COMPACT)
+odr_configure_library(odr)
+
+# The library again at `-Oz`, for `wasm/formula`. The linker keeps only what
+# the formula module calls. `-Oz` is 30% smaller than `-O2` and about 20%
+# slower, which an edit does not notice (`docs/design/spreadsheet-editing.md`).
+if (ODR_WASM)
+    add_library(odr_oz STATIC ${ODR_SOURCE_FILES} "${ODR_FRONTEND_ASSETS_HEADER}")
+    odr_configure_library(odr_oz)
+    target_compile_options(odr_oz PRIVATE -Oz -flto)
+endif ()
 
 if (ODR_WITH_HTTP_SERVER)
     find_package(httplib REQUIRED)

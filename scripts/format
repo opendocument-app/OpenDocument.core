@@ -5,7 +5,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 CLANG_FORMAT=${CLANG_FORMAT:-clang-format}
 "$CLANG_FORMAT" --version
 
-find src cli test/src python/src jni/src apple/src apple/include wasm/src \
+find src cli test/src python/src jni/src apple/src apple/include wasm/src wasm/formula \
   -type f \( -iname '*.hpp' -o -iname '*.cpp' -o -iname '*.cc' \
              -o -iname '*.h' -o -iname '*.mm' \) -print0 |
   while IFS= read -r -d '' file; do

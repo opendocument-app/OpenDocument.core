@@ -79,6 +79,36 @@ target_link_options(odr_wasm PRIVATE
         -sDYNAMIC_EXECUTION=0
 )
 
+# The evaluator alone, for a page that computes its formula cells as the user
+# edits. It links `odr_oz`, so it needs the source tree.
+if (TARGET odr_oz)
+    add_executable(odr_formula_wasm "formula/odr_formula.cpp")
+    target_link_libraries(odr_formula_wasm PRIVATE odr_oz embind)
+    target_compile_options(odr_formula_wasm PRIVATE -Oz -flto)
+    # One script with the wasm inside, because a page opened from `file://`
+    # cannot fetch a second file.
+    set_target_properties(odr_formula_wasm PROPERTIES
+            OUTPUT_NAME "odr-formula"
+            SUFFIX ".js"
+            RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_CURRENT_BINARY_DIR}/formula>"
+    )
+    target_link_options(odr_formula_wasm PRIVATE
+            -Oz
+            -flto
+            --no-entry
+            -sMODULARIZE=1
+            -sEXPORT_NAME=createOdrFormula
+            -sSINGLE_FILE=1
+            -sENVIRONMENT=web,node
+            -sALLOW_MEMORY_GROWTH=1
+            -sFILESYSTEM=0
+            # a formula cell the page has not computed yet computes inside the
+            # callback that reads it, so a chain of them nests evaluations
+            -sSTACK_SIZE=1048576
+            -sDYNAMIC_EXECUTION=0
+    )
+endif ()
+
 # The hand-written half of the package sits beside the generated glue, so the
 # build directory is directly importable and `npm pack` has one source.
 add_custom_target(odr_wasm_package
@@ -119,7 +149,7 @@ if (ODR_TEST)
         add_test(NAME odr_wasm_node COMMAND "${ODR_WASM_NODE}" --test)
         set_tests_properties(odr_wasm_node PROPERTIES
                 WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests"
-                ENVIRONMENT "ODR_WASM_DIST=${CMAKE_CURRENT_BINARY_DIR}/dist")
+                ENVIRONMENT "ODR_WASM_DIST=${CMAKE_CURRENT_BINARY_DIR}/dist;ODR_FORMULA_WASM=$<$<TARGET_EXISTS:odr_formula_wasm>:${CMAKE_CURRENT_BINARY_DIR}/formula/odr-formula.js>")
     else ()
         # Left as a warning rather than an error so a contributor without node
         # can still build. CI passes `--no-tests=error` to ctest, so skipping
