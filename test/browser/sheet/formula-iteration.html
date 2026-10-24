@@ -14,7 +14,8 @@
     data-odr-formula-settings='{"dialect":"libreoffice","nullDate":0,"iteration":{"steps":100,"difference":0.001}}'
   >
     <!-- An ods that iterates: A1 and B1 read each other and D1, C1 reads A1,
-         and A2 grows without end. -->
+         A2 grows without end, and B2 draws a number, which reads all of the
+         sheet as a volatile cell does. -->
     <table class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="S">
       <col class="odr-sheet-gutter" />
       <col style="width: 100px" />
@@ -41,7 +42,7 @@
         <tr>
           <th class="odr-sheet-row-header">2</th>
           <td data-odr-formula="of:=[.A2]+[.D1]" data-odr-reads="0,0,0,1,1 0,3,3,0,0" style="max-width:0;white-space:nowrap"></td>
-          <td style="max-width:0;white-space:nowrap"></td>
+          <td data-odr-formula="of:=RAND()" data-odr-reads="0,0,*,0,*" style="max-width:0;white-space:nowrap"></td>
           <td style="max-width:0;white-space:nowrap"></td>
           <td style="max-width:0;white-space:nowrap"></td>
         </tr>
@@ -79,6 +80,8 @@
         check("both of its cells", odr.sheet.valueAt(1, 0).number === 1.9990234375);
         check("and what reads it", odr.sheet.valueAt(2, 0).number === 19.990234375, text(2, 0));
         check("a cycle that does not converge stays stale", stale(0, 1) && !stale(0, 0));
+        // it reads itself only as the page states it, so it is no cycle
+        check("a volatile cell computes once", !stale(1, 1) && odr.sheet.valueAt(1, 1).number < 1, text(1, 1));
 
         odr.editing.undo();
         check("an undo puts back what the cells showed", text(0, 0) === "" && text(2, 0) === "", text(0, 0));

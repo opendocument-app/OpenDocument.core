@@ -1160,6 +1160,8 @@
     });
     var results = new Map();
     var computing = new Set();
+    // the cells a first pass met while they computed
+    var circular = new Set();
     var depth = 0;
     var extent = null;
 
@@ -1298,7 +1300,11 @@
 
     // a cell has no result while it computes, so a cycle has no answer
     function computeEntry(entry) {
-      if (computing.has(entry.cell) || depth >= NESTING) {
+      if (computing.has(entry.cell)) {
+        circular.add(entry.cell);
+        return null;
+      }
+      if (depth >= NESTING) {
         return null;
       }
       computing.add(entry.cell);
@@ -1323,7 +1329,7 @@
       var iteration = formulas.settings.iteration;
       group.forEach(function (entry) {
         var held =
-          formulas.settings.dialect === "libreoffice"
+          formulas.syntax === "opendocument"
             ? { type: "empty" }
             : toFormula(
                 computed.has(entry.cell)
@@ -1373,14 +1379,26 @@
     var marked = entries.filter(function (entry) {
       return entry.marked;
     });
-    if (formulas.settings.iteration) {
-      cyclesOf(marked).forEach(iterate);
+    function computeAll() {
+      inOrder(marked).forEach(function (entry) {
+        if (!results.has(entry.cell)) {
+          computeEntry(entry);
+        }
+      });
     }
-    inOrder(marked).forEach(function (entry) {
-      if (!results.has(entry.cell)) {
-        computeEntry(entry);
-      }
-    });
+    computeAll();
+    // as a save does: only a group the first pass met a cycle in iterates,
+    // since a cell that reads all of its sheet reads itself only as stated
+    if (formulas.settings.iteration && circular.size > 0) {
+      var cycles = cyclesOf(marked).filter(function (group) {
+        return group.some(function (entry) {
+          return circular.has(entry.cell);
+        });
+      });
+      results.clear();
+      cycles.forEach(iterate);
+      computeAll();
+    }
     return results;
   }
 
