@@ -15,7 +15,9 @@ namespace odr::internal::formula {
 namespace {
 
 /// An argument outside the domain of a function.
-Value invalid(const Call &call) { return refused(call, ErrorType::number); }
+Value invalid(const Call &call) {
+  return require(refused(call, ErrorType::number));
+}
 
 Value checked(const double x) {
   return std::isfinite(x) ? Value{x} : Value{ErrorType::number};
@@ -72,16 +74,17 @@ using Binary = Value (*)(const Call &, double, double);
 
 /// A function of one number.
 template <Unary function> Value unary(const Call &call) {
-  expect_arguments(call, 1, 1);
-  return function(call, number_argument(call, 0));
+  require(expect_arguments(call, 1, 1));
+  return function(call, require(number_argument(call, 0)));
 }
 
 /// A function of two numbers, the second @p fallback where it is left out.
 template <Binary function, std::int32_t fallback = 0, bool optional = false>
 Value binary(const Call &call) {
-  expect_arguments(call, optional ? 1 : 2, 2);
-  const double x = number_argument(call, 0);
-  const double y = call.size() > 1 ? number_argument(call, 1) : fallback;
+  require(expect_arguments(call, optional ? 1 : 2, 2));
+  const double x = require(number_argument(call, 0));
+  const double y =
+      call.size() > 1 ? require(number_argument(call, 1)) : fallback;
   return function(call, x, y);
 }
 
@@ -101,38 +104,42 @@ Collected collect(const Call &call, const std::size_t count) {
       throw NoAnswer{};
     }
     Errors errors;
-    call.for_each_value(i, [&](const Value &value, const bool stated) {
-      if (const auto *number = std::get_if<double>(&value.content)) {
-        result.numbers.push_back(*number);
-      } else if (const auto *boolean = std::get_if<bool>(&value.content)) {
-        if (stated || is_libreoffice(call)) {
-          result.numbers.push_back(*boolean ? 1 : 0);
-        }
-      } else if (const auto *error = std::get_if<ErrorType>(&value.content)) {
-        errors.add(*error);
-      } else if (!stated) {
-        return;
-      } else if (const auto *text = std::get_if<std::string>(&value.content)) {
-        // LibreOffice refuses a text argument with `#VALUE!` or a code of
-        // its own, function by function
-        if (is_libreoffice(call)) {
-          throw NoAnswer{};
-        }
-        const std::optional<Number> read = number_of_text(*text);
-        if (!read.has_value()) {
-          throw NoAnswer{};
-        }
-        if (const auto *error = std::get_if<ErrorType>(&*read)) {
-          errors.add(*error);
-        } else {
-          result.numbers.push_back(std::get<double>(*read));
-        }
-      } else {
-        throw NoAnswer{};
-      }
-    });
+    require(call.for_each_value(
+        i, [&](const Value &value, const bool stated) -> Result<void> {
+          if (const auto *number = std::get_if<double>(&value.content)) {
+            result.numbers.push_back(*number);
+          } else if (const auto *boolean = std::get_if<bool>(&value.content)) {
+            if (stated || is_libreoffice(call)) {
+              result.numbers.push_back(*boolean ? 1 : 0);
+            }
+          } else if (const auto *error =
+                         std::get_if<ErrorType>(&value.content)) {
+            errors.add(*error);
+          } else if (!stated) {
+            return {};
+          } else if (const auto *text =
+                         std::get_if<std::string>(&value.content)) {
+            // LibreOffice refuses a text argument with `#VALUE!` or a code of
+            // its own, function by function
+            if (is_libreoffice(call)) {
+              throw NoAnswer{};
+            }
+            const std::optional<Number> read = number_of_text(*text);
+            if (!read.has_value()) {
+              throw NoAnswer{};
+            }
+            if (const auto *error = std::get_if<ErrorType>(&*read)) {
+              errors.add(*error);
+            } else {
+              result.numbers.push_back(std::get<double>(*read));
+            }
+          } else {
+            throw NoAnswer{};
+          }
+          return {};
+        }));
     if (!result.error.has_value()) {
-      result.error = errors.first();
+      result.error = require(errors.first());
     }
   }
   return result;
@@ -195,7 +202,7 @@ Value sum(const Call &call) {
   if (collected.error.has_value()) {
     return Value{*collected.error};
   }
-  return sum_of(call, collected.numbers);
+  return require(sum_of(call, collected.numbers));
 }
 
 Value average(const Call &call) {
@@ -206,7 +213,7 @@ Value average(const Call &call) {
   if (collected.numbers.empty()) {
     return Value{ErrorType::division};
   }
-  Value total = sum_of(call, collected.numbers);
+  Value total = require(sum_of(call, collected.numbers));
   if (!total.holds<double>()) {
     return total;
   }
@@ -251,7 +258,7 @@ Value sum_of_squares(const Call &call) {
   for (const double number : collected.numbers) {
     squares.push_back(number * number);
   }
-  return sum_of(call, squares);
+  return require(sum_of(call, squares));
 }
 
 /// The numbers of an aggregate that needs at least one, where none is
@@ -284,13 +291,13 @@ Value median(const Call &call) {
 /// The @p k th largest or smallest of the first argument. LibreOffice reads a
 /// fraction of k up, Excel's rule for one is not documented.
 template <bool largest> Value kth(const Call &call) {
-  expect_arguments(call, 2, 2);
+  require(expect_arguments(call, 2, 2));
   Collected collected = collect(call, 1);
   if (const std::optional<Value> refused = no_numbers(call, collected);
       refused.has_value()) {
     return *refused;
   }
-  double rank = number_argument(call, 1);
+  double rank = require(number_argument(call, 1));
   if (rank != std::trunc(rank)) {
     if (!is_libreoffice(call)) {
       throw NoAnswer{};
@@ -345,21 +352,23 @@ Value count(const Call &call) {
     if (call.missing(i)) {
       throw NoAnswer{};
     }
-    call.for_each_value(i, [&](const Value &value, const bool stated) {
-      if (const auto *text = std::get_if<std::string>(&value.content);
-          text != nullptr && stated) {
-        const std::optional<Number> read = number_of_text(*text);
-        if (!read.has_value()) {
-          throw NoAnswer{};
-        }
-        result += std::holds_alternative<double>(*read) ? 1 : 0;
-        return;
-      }
-      result += value.holds<double>() || (value.holds<bool>() &&
-                                          (stated || is_libreoffice(call)))
-                    ? 1
-                    : 0;
-    });
+    require(call.for_each_value(
+        i, [&](const Value &value, const bool stated) -> Result<void> {
+          if (const auto *text = std::get_if<std::string>(&value.content);
+              text != nullptr && stated) {
+            const std::optional<Number> read = number_of_text(*text);
+            if (!read.has_value()) {
+              throw NoAnswer{};
+            }
+            result += std::holds_alternative<double>(*read) ? 1 : 0;
+            return {};
+          }
+          result += value.holds<double>() || (value.holds<bool>() &&
+                                              (stated || is_libreoffice(call)))
+                        ? 1
+                        : 0;
+          return {};
+        }));
   }
   return Value{result};
 }
@@ -370,9 +379,11 @@ Value count_stated(const Call &call) {
     if (call.missing(i)) {
       throw NoAnswer{};
     }
-    call.for_each_value(i, [&](const Value &value, const bool stated) {
-      result += stated || !value.holds<Empty>() ? 1 : 0;
-    });
+    require(call.for_each_value(
+        i, [&](const Value &value, const bool stated) -> Result<void> {
+          result += stated || !value.holds<Empty>() ? 1 : 0;
+          return {};
+        }));
   }
   return Value{result};
 }
@@ -380,8 +391,8 @@ Value count_stated(const Call &call) {
 /// Empty cells, and in Excel the cells holding an empty text. Whether
 /// LibreOffice counts an empty text depends on whether a formula made it.
 Value count_blank(const Call &call) {
-  expect_arguments(call, 1, 1);
-  const Value value = call.value(0);
+  require(expect_arguments(call, 1, 1));
+  const Value value = require(call.value(0));
   const auto *reference = std::get_if<Reference>(&value.content);
   // a whole column counts the blank cells of the grid, which the extent of
   // its sheet cuts
@@ -396,26 +407,29 @@ Value count_blank(const Call &call) {
       (static_cast<double>(range.to().column) - range.from().column + 1) *
       (static_cast<double>(range.to().row) - range.from().row + 1);
   double stated = 0;
-  call.for_each(*reference, [&](const SheetPosition &, const Value &cell) {
-    const auto *text = std::get_if<std::string>(&cell.content);
-    if (text != nullptr && text->empty()) {
-      if (is_libreoffice(call)) {
-        throw NoAnswer{};
-      }
-      return;
-    }
-    stated += cell.holds<Empty>() ? 0 : 1;
-  });
+  require(call.for_each(
+      *reference,
+      [&](const SheetPosition &, const Value &cell) -> Result<void> {
+        const auto *text = std::get_if<std::string>(&cell.content);
+        if (text != nullptr && text->empty()) {
+          if (is_libreoffice(call)) {
+            throw NoAnswer{};
+          }
+          return {};
+        }
+        stated += cell.holds<Empty>() ? 0 : 1;
+        return {};
+      }));
   return Value{cells - stated};
 }
 
 /// `SUMPRODUCT`: the arrays element by element. A text and an empty cell are
 /// 0, and so is a boolean in Excel.
 Value sum_product(const Call &call) {
-  expect_arguments(call, 1, 255);
+  require(expect_arguments(call, 1, 255));
   std::vector<Matrix> arrays;
   for (std::size_t i = 0; i < call.size(); ++i) {
-    arrays.push_back(call.array(i));
+    arrays.push_back(require(call.array(i)));
     if (arrays.back().columns != arrays.front().columns ||
         arrays.back().rows != arrays.front().rows) {
       return Value{ErrorType::value};
@@ -437,11 +451,11 @@ Value sum_product(const Call &call) {
       products[i] *= factor;
     }
   }
-  if (const std::optional<ErrorType> error = errors.first();
+  if (const std::optional<ErrorType> error = require(errors.first());
       error.has_value()) {
     return Value{*error};
   }
-  return sum_of(call, products);
+  return require(sum_of(call, products));
 }
 
 Value absolute(const Call &, const double x) { return Value{std::abs(x)}; }
@@ -538,11 +552,11 @@ Value logarithm_10(const Call &call, const double x) {
 }
 
 Value power_function(const Call &call, const double x, const double y) {
-  return power(x, y, call.settings().dialect);
+  return require(power(x, y, call.settings().dialect));
 }
 
 Value pi(const Call &call) {
-  expect_arguments(call, 0, 0);
+  require(expect_arguments(call, 0, 0));
   return Value{std::numbers::pi};
 }
 
@@ -635,7 +649,7 @@ double random_of(const Call &call) {
 }
 
 Value random(const Call &call) {
-  expect_arguments(call, 0, 0);
+  require(expect_arguments(call, 0, 0));
   return Value{random_of(call)};
 }
 
@@ -643,9 +657,9 @@ Value random(const Call &call) {
 /// number, or a bottom above the top, has no answer: LibreOffice refuses the
 /// second, and neither application documents what they do.
 Value random_between(const Call &call) {
-  expect_arguments(call, 2, 2);
-  const double bottom = number_argument(call, 0);
-  const double top = number_argument(call, 1);
+  require(expect_arguments(call, 2, 2));
+  const double bottom = require(number_argument(call, 0));
+  const double top = require(number_argument(call, 1));
   if (bottom != std::trunc(bottom) || top != std::trunc(top) || bottom > top) {
     throw NoAnswer{};
   }
@@ -653,60 +667,60 @@ Value random_between(const Call &call) {
 }
 
 constexpr std::array entries{
-    FunctionEntry{"ABS", unary<absolute>},
-    FunctionEntry{"ACOS", unary<arc_cosine>},
-    FunctionEntry{"ASIN", unary<arc_sine>},
-    FunctionEntry{"ATAN", unary<arc_tangent>},
-    FunctionEntry{"ATAN2", binary<arc_tangent_2>},
-    FunctionEntry{"AVERAGE", average},
-    FunctionEntry{"COS", unary<cosine>},
-    FunctionEntry{"COSH", unary<hyperbolic_cosine>},
-    FunctionEntry{"COUNT", count},
-    FunctionEntry{"COUNTA", count_stated},
-    FunctionEntry{"COUNTBLANK", count_blank},
-    FunctionEntry{"DEGREES", unary<degrees>},
-    FunctionEntry{"EVEN", unary<parity<false>>},
-    FunctionEntry{"EXP", unary<exponential>},
-    FunctionEntry{"FACT", unary<factorial>},
-    FunctionEntry{"INT", unary<integer>},
-    FunctionEntry{"LARGE", kth<true>},
-    FunctionEntry{"LN", unary<natural_logarithm>},
-    FunctionEntry{"LOG", binary<logarithm, 10, true>},
-    FunctionEntry{"LOG10", unary<logarithm_10>},
-    FunctionEntry{"MAX", extreme<true>},
-    FunctionEntry{"MEDIAN", median},
-    FunctionEntry{"MIN", extreme<false>},
-    FunctionEntry{"MOD", binary<modulo>},
-    FunctionEntry{"ODD", unary<parity<true>>},
-    FunctionEntry{"PI", pi},
-    FunctionEntry{"POWER", binary<power_function>},
-    FunctionEntry{"PRODUCT", product},
-    FunctionEntry{"QUOTIENT", binary<quotient>},
-    FunctionEntry{"RADIANS", unary<radians>},
-    FunctionEntry{"RAND", random},
-    FunctionEntry{"RANDBETWEEN", random_between},
-    FunctionEntry{"ROUND", binary<round_function, 0, true>},
-    FunctionEntry{"ROUNDDOWN", binary<round_down, 0, true>},
-    FunctionEntry{"ROUNDUP", binary<round_up, 0, true>},
-    FunctionEntry{"SIGN", unary<sign>},
-    FunctionEntry{"SIN", unary<sine>},
-    FunctionEntry{"SINH", unary<hyperbolic_sine>},
-    FunctionEntry{"SMALL", kth<false>},
-    FunctionEntry{"SQRT", unary<square_root>},
-    FunctionEntry{"STDEV", variance_of<true, true>},
-    FunctionEntry{"STDEV.P", variance_of<false, true>},
-    FunctionEntry{"STDEV.S", variance_of<true, true>},
-    FunctionEntry{"STDEVP", variance_of<false, true>},
-    FunctionEntry{"SUM", sum},
-    FunctionEntry{"SUMPRODUCT", sum_product},
-    FunctionEntry{"SUMSQ", sum_of_squares},
-    FunctionEntry{"TAN", unary<tangent>},
-    FunctionEntry{"TANH", unary<hyperbolic_tangent>},
-    FunctionEntry{"TRUNC", binary<round_down, 0, true>},
-    FunctionEntry{"VAR", variance_of<true, false>},
-    FunctionEntry{"VAR.P", variance_of<false, false>},
-    FunctionEntry{"VAR.S", variance_of<true, false>},
-    FunctionEntry{"VARP", variance_of<false, false>},
+    FunctionEntry{"ABS", bridged<unary<absolute>>},
+    FunctionEntry{"ACOS", bridged<unary<arc_cosine>>},
+    FunctionEntry{"ASIN", bridged<unary<arc_sine>>},
+    FunctionEntry{"ATAN", bridged<unary<arc_tangent>>},
+    FunctionEntry{"ATAN2", bridged<binary<arc_tangent_2>>},
+    FunctionEntry{"AVERAGE", bridged<average>},
+    FunctionEntry{"COS", bridged<unary<cosine>>},
+    FunctionEntry{"COSH", bridged<unary<hyperbolic_cosine>>},
+    FunctionEntry{"COUNT", bridged<count>},
+    FunctionEntry{"COUNTA", bridged<count_stated>},
+    FunctionEntry{"COUNTBLANK", bridged<count_blank>},
+    FunctionEntry{"DEGREES", bridged<unary<degrees>>},
+    FunctionEntry{"EVEN", bridged<unary<parity<false>>>},
+    FunctionEntry{"EXP", bridged<unary<exponential>>},
+    FunctionEntry{"FACT", bridged<unary<factorial>>},
+    FunctionEntry{"INT", bridged<unary<integer>>},
+    FunctionEntry{"LARGE", bridged<kth<true>>},
+    FunctionEntry{"LN", bridged<unary<natural_logarithm>>},
+    FunctionEntry{"LOG", bridged<binary<logarithm, 10, true>>},
+    FunctionEntry{"LOG10", bridged<unary<logarithm_10>>},
+    FunctionEntry{"MAX", bridged<extreme<true>>},
+    FunctionEntry{"MEDIAN", bridged<median>},
+    FunctionEntry{"MIN", bridged<extreme<false>>},
+    FunctionEntry{"MOD", bridged<binary<modulo>>},
+    FunctionEntry{"ODD", bridged<unary<parity<true>>>},
+    FunctionEntry{"PI", bridged<pi>},
+    FunctionEntry{"POWER", bridged<binary<power_function>>},
+    FunctionEntry{"PRODUCT", bridged<product>},
+    FunctionEntry{"QUOTIENT", bridged<binary<quotient>>},
+    FunctionEntry{"RADIANS", bridged<unary<radians>>},
+    FunctionEntry{"RAND", bridged<random>},
+    FunctionEntry{"RANDBETWEEN", bridged<random_between>},
+    FunctionEntry{"ROUND", bridged<binary<round_function, 0, true>>},
+    FunctionEntry{"ROUNDDOWN", bridged<binary<round_down, 0, true>>},
+    FunctionEntry{"ROUNDUP", bridged<binary<round_up, 0, true>>},
+    FunctionEntry{"SIGN", bridged<unary<sign>>},
+    FunctionEntry{"SIN", bridged<unary<sine>>},
+    FunctionEntry{"SINH", bridged<unary<hyperbolic_sine>>},
+    FunctionEntry{"SMALL", bridged<kth<false>>},
+    FunctionEntry{"SQRT", bridged<unary<square_root>>},
+    FunctionEntry{"STDEV", bridged<variance_of<true, true>>},
+    FunctionEntry{"STDEV.P", bridged<variance_of<false, true>>},
+    FunctionEntry{"STDEV.S", bridged<variance_of<true, true>>},
+    FunctionEntry{"STDEVP", bridged<variance_of<false, true>>},
+    FunctionEntry{"SUM", bridged<sum>},
+    FunctionEntry{"SUMPRODUCT", bridged<sum_product>},
+    FunctionEntry{"SUMSQ", bridged<sum_of_squares>},
+    FunctionEntry{"TAN", bridged<unary<tangent>>},
+    FunctionEntry{"TANH", bridged<unary<hyperbolic_tangent>>},
+    FunctionEntry{"TRUNC", bridged<binary<round_down, 0, true>>},
+    FunctionEntry{"VAR", bridged<variance_of<true, false>>},
+    FunctionEntry{"VAR.P", bridged<variance_of<false, false>>},
+    FunctionEntry{"VAR.S", bridged<variance_of<true, false>>},
+    FunctionEntry{"VARP", bridged<variance_of<false, false>>},
 };
 
 } // namespace
@@ -715,8 +729,8 @@ constexpr std::array entries{
 
 namespace odr::internal {
 
-formula::Value formula::sum_of(const Call &call,
-                               const std::span<const double> numbers) {
+formula::Result<formula::Value>
+formula::sum_of(const Call &call, const std::span<const double> numbers) {
   if (is_libreoffice(call)) {
     return checked(kahan_sum(numbers));
   }
@@ -727,7 +741,7 @@ formula::Value formula::sum_of(const Call &call,
     largest = std::max(largest, std::abs(number));
   }
   if (nearly_cancels(total, largest)) {
-    throw NoAnswer{};
+    return no_answer();
   }
   return checked(total);
 }

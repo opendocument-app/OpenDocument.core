@@ -249,13 +249,16 @@ TEST(SheetCellSource, a_range_reads_what_its_cells_read) {
   const SheetCellSource source(*document);
 
   std::vector<std::string> visited;
-  source.for_each_cell(
+  const formula::Result<void> walked = source.for_each_cell(
       formula::Area{0, TableRange({0, 0}, {4, 2})},
-      [&](const SheetPosition &position, const std::optional<Value> &value) {
-        ASSERT_TRUE(value.has_value());
+      [&](const SheetPosition &position,
+          const std::optional<Value> &value) -> formula::Result<void> {
+        EXPECT_TRUE(value.has_value());
         EXPECT_EQ(source.cell(position), value) << position.to_string();
         visited.push_back(position.to_string());
+        return {};
       });
+  EXPECT_TRUE(walked.has_value());
   EXPECT_EQ(visited, (std::vector<std::string>{"0!A1", "0!B1", "0!C1", "0!E1",
                                                "0!B2", "0!B3"}));
 }

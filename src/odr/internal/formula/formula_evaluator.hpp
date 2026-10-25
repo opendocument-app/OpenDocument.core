@@ -4,6 +4,7 @@
 #include <odr/table_dimension.hpp>
 
 #include <odr/internal/formula/formula_ast.hpp>
+#include <odr/internal/formula/formula_result.hpp>
 #include <odr/internal/formula/formula_value.hpp>
 
 #include <cstdint>
@@ -32,11 +33,11 @@ public:
   [[nodiscard]] virtual TableDimensions extent(std::uint32_t sheet) const = 0;
   /// Visits cells of @p area in reading order; null values mean no answer.
   /// Empty and out-of-extent cells may be skipped; the default visits every
-  /// in-extent position.
-  virtual void for_each_cell(
+  /// in-extent position. A stop of @p visit ends the walk and is its result.
+  [[nodiscard]] virtual Result<void> for_each_cell(
       const Area &area,
-      const std::function<void(const SheetPosition &,
-                               const std::optional<Value> &)> &visit) const;
+      const std::function<Result<void>(
+          const SheetPosition &, const std::optional<Value> &)> &visit) const;
   /// The sheet that holds the cached copy of @p sheet of another document,
   /// which a formula names as @p document: `1` in `[1]Sheet1!A1`, the url
   /// in `['file:///x.ods'#$Sheet1.A1]`. Nothing where the file caches none.

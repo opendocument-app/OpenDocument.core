@@ -33,11 +33,11 @@ public:
   [[nodiscard]] std::optional<formula::Value>
   cell(const SheetPosition &position) const override;
   [[nodiscard]] TableDimensions extent(std::uint32_t sheet) const override;
-  void
-  for_each_cell(const formula::Area &area,
-                const std::function<void(const SheetPosition &,
-                                         const std::optional<formula::Value> &)>
-                    &visit) const override;
+  [[nodiscard]] formula::Result<void> for_each_cell(
+      const formula::Area &area,
+      const std::function<formula::Result<void>(
+          const SheetPosition &, const std::optional<formula::Value> &)> &visit)
+      const override;
   [[nodiscard]] std::optional<formula::Node>
   name(std::string_view name, std::uint32_t sheet) const override;
   /// An `.ods` holds the copy as a sheet of its own, `'file:///x.ods'#Sheet1`,

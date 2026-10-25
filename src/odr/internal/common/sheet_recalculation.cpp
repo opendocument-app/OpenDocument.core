@@ -113,16 +113,15 @@ public:
   }
   /// A stale cell is computed where its position is read, so an area holding
   /// one is read position by position.
-  void
-  for_each_cell(const formula::Area &area,
-                const std::function<void(const SheetPosition &,
-                                         const std::optional<formula::Value> &)>
-                    &visit) const override {
+  [[nodiscard]] formula::Result<void> for_each_cell(
+      const formula::Area &area,
+      const std::function<formula::Result<void>(
+          const SheetPosition &, const std::optional<formula::Value> &)> &visit)
+      const override {
     if (holds_stale(area)) {
-      CellSource::for_each_cell(area, visit);
-    } else {
-      m_base->for_each_cell(area, visit);
+      return CellSource::for_each_cell(area, visit);
     }
+    return m_base->for_each_cell(area, visit);
   }
   [[nodiscard]] TableDimensions
   extent(const std::uint32_t sheet) const override {

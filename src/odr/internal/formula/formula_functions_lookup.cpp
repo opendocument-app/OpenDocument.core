@@ -31,7 +31,7 @@ Value as_dialect(const Call &call, const Value &value) {
 /// Whether two texts are one without case, as a criterion and a lookup
 /// compare them in both applications, whatever the settings.
 bool same_text(const std::string_view a, const std::string_view b) {
-  return equal_texts(a, b, false);
+  return require(equal_texts(a, b, false));
 }
 
 /// A rectangle of cells by position, read row by row.
@@ -76,9 +76,9 @@ public:
   [[nodiscard]] Value at(const std::uint32_t column,
                          const std::uint32_t row) const {
     if (m_area.has_value()) {
-      return m_call->cell_value(
+      return require(m_call->cell_value(
           SheetPosition(m_area->sheet, m_area->range.from().column + column,
-                        m_area->range.from().row + row));
+                        m_area->range.from().row + row)));
     }
     return m_matrix.cells[std::size_t{row} * m_matrix.columns + column];
   }
@@ -225,7 +225,8 @@ private:
   order_with(const Value &value) const {
     if (m_number.has_value()) {
       if (const auto *number = std::get_if<double>(&value.content)) {
-        if (same_number(m_call->settings().dialect, *number, *m_number)) {
+        if (require(
+                same_number(m_call->settings().dialect, *number, *m_number))) {
           return std::strong_ordering::equal;
         }
         return *number < *m_number ? std::strong_ordering::less
@@ -254,8 +255,8 @@ private:
         return std::nullopt;
       }
       if (read.has_value() && std::holds_alternative<double>(*read) &&
-          same_number(m_call->settings().dialect, std::get<double>(*read),
-                      *m_number)) {
+          require(same_number(m_call->settings().dialect,
+                              std::get<double>(*read), *m_number))) {
         return std::strong_ordering::equal;
       }
       return std::nullopt;
@@ -268,7 +269,7 @@ private:
       return same_text(*text, m_text) ? std::strong_ordering::equal
                                       : std::strong_ordering::less;
     }
-    return order_of_texts(*text, m_text, false);
+    return require(order_of_texts(*text, m_text, false));
   }
 };
 
@@ -288,8 +289,8 @@ std::vector<Condition> conditions(const Call &call, const std::size_t first) {
     if (call.missing(i) || call.missing(i + 1)) {
       throw NoAnswer{};
     }
-    result.push_back(Condition{Cells(call, call.value(i)),
-                               Criterion(call, call.scalar(i + 1))});
+    result.push_back(Condition{Cells(call, require(call.value(i))),
+                               Criterion(call, require(call.scalar(i + 1)))});
     if (result.back().cells.columns != result.front().cells.columns ||
         result.back().cells.rows != result.front().cells.rows) {
       // whole columns of two sheets differ by the extents, not the grid
@@ -340,7 +341,7 @@ void each_match(const std::span<const Condition> conditions,
 
 /// `COUNTIF` and `COUNTIFS`, which take up to @p most arguments.
 template <std::size_t most> Value count_if(const Call &call) {
-  expect_arguments(call, 2, most);
+  require(expect_arguments(call, 2, most));
   double result = 0;
   each_match(conditions(call, 0),
              [&](std::uint32_t, std::uint32_t) { ++result; });
@@ -363,13 +364,13 @@ Value matched(const Call &call, const std::span<const Condition> conditions,
           errors.add(*error);
         }
       });
-  if (const auto error = errors.first(); error.has_value()) {
+  if (const auto error = require(errors.first()); error.has_value()) {
     throw ErrorResult{*error};
   }
   if (average && numbers.empty()) {
     return Value{ErrorType::division};
   }
-  Value sum = sum_of(call, numbers);
+  Value sum = require(sum_of(call, numbers));
   if (!average || !sum.holds<double>()) {
     return sum;
   }
@@ -386,7 +387,7 @@ Cells sum_range(const Call &call, const Cells &tested,
   if (call.missing(index)) {
     throw NoAnswer{};
   }
-  const Cells stated(call, call.value(index));
+  const Cells stated(call, require(call.value(index)));
   if (stated.columns != tested.columns || stated.rows != tested.rows) {
     throw NoAnswer{};
   }
@@ -394,23 +395,24 @@ Cells sum_range(const Call &call, const Cells &tested,
 }
 
 template <bool average> Value sum_if(const Call &call) {
-  expect_arguments(call, 2, 3);
+  require(expect_arguments(call, 2, 3));
   const std::vector<Condition> tested{
-      Condition{Cells(call, call.value(0)), Criterion(call, call.scalar(1))}};
+      Condition{Cells(call, require(call.value(0))),
+                Criterion(call, require(call.scalar(1)))}};
   const Cells values = sum_range(call, tested.front().cells, 2);
   return matched(call, tested, values, average);
 }
 
 template <bool average> Value sum_ifs(const Call &call) {
-  expect_arguments(call, 3, 255);
+  require(expect_arguments(call, 3, 255));
   const std::vector<Condition> tested = conditions(call, 1);
-  const Cells values(call, call.value(0));
+  const Cells values(call, require(call.value(0)));
   if (values.columns != tested.front().cells.columns ||
       values.rows != tested.front().cells.rows) {
     if (values.whole || tested.front().cells.whole) {
       throw NoAnswer{};
     }
-    return refused(call, ErrorType::value);
+    return require(refused(call, ErrorType::value));
   }
   return matched(call, tested, values, average);
 }
@@ -422,7 +424,8 @@ bool is_lookup_match(const Call &call, const Value &wanted,
   const Value value = as_dialect(call, stated);
   if (const auto *number = std::get_if<double>(&wanted.content)) {
     return value.holds<double>() &&
-           same_number(call.settings().dialect, value.get<double>(), *number);
+           require(same_number(call.settings().dialect, value.get<double>(),
+                               *number));
   }
   if (const auto *text = std::get_if<std::string>(&wanted.content)) {
     return value.holds<std::string>() &&
@@ -436,7 +439,7 @@ bool is_lookup_match(const Call &call, const Value &wanted,
 
 /// The value a lookup asks for, as a scalar.
 Value wanted_of(const Call &call, const std::size_t index) {
-  const Value wanted = as_dialect(call, call.scalar(index));
+  const Value wanted = as_dialect(call, require(call.scalar(index)));
   if (const auto *error = std::get_if<ErrorType>(&wanted.content)) {
     throw ErrorResult{*error};
   }
@@ -485,7 +488,7 @@ position_of(const Call &call, const Value &wanted, const std::uint32_t count,
       throw NoAnswer{};
     }
     if (*cell <= *number ||
-        same_number(call.settings().dialect, *cell, *number)) {
+        require(same_number(call.settings().dialect, *cell, *number))) {
       found = i;
     }
     previous = *cell;
@@ -498,22 +501,22 @@ bool exact_of(const Call &call, const std::size_t index, const bool unstated) {
   if (index >= call.size()) {
     return unstated;
   }
-  return number_argument(call, index) == 0;
+  return require(number_argument(call, index)) == 0;
 }
 
 /// `VLOOKUP` and `HLOOKUP`: the value in line @p index of the table, of the
 /// first column or row matching.
 template <bool vertical> Value lookup(const Call &call) {
-  expect_arguments(call, 3, 4);
+  require(expect_arguments(call, 3, 4));
   const Value wanted = wanted_of(call, 0);
-  const Cells table(call, call.value(1));
-  const double index = std::trunc(number_argument(call, 2));
+  const Cells table(call, require(call.value(1)));
+  const double index = std::trunc(require(number_argument(call, 2)));
   const std::uint32_t lines = vertical ? table.columns : table.rows;
   if (index < 1) {
-    return refused(call, ErrorType::value);
+    return require(refused(call, ErrorType::value));
   }
   if (index > lines) {
-    return refused(call, ErrorType::reference);
+    return require(refused(call, ErrorType::reference));
   }
   const std::uint32_t count = vertical ? table.rows : table.columns;
   const bool exact = exact_of(call, 3, false);
@@ -534,13 +537,13 @@ template <bool vertical> Value lookup(const Call &call) {
 
 /// `MATCH`: the position of a value in a row or a column, counted from 1.
 Value match(const Call &call) {
-  expect_arguments(call, 2, 3);
+  require(expect_arguments(call, 2, 3));
   const Value wanted = wanted_of(call, 0);
-  const Cells line(call, call.value(1));
+  const Cells line(call, require(call.value(1)));
   if (line.columns != 1 && line.rows != 1) {
     return Value{ErrorType::not_available};
   }
-  const double type = call.size() > 2 ? number_argument(call, 2) : 1;
+  const double type = call.size() > 2 ? require(number_argument(call, 2)) : 1;
   if (type < 0) {
     throw NoAnswer{}; // descending order
   }
@@ -562,10 +565,10 @@ Value match(const Call &call) {
 /// `INDEX`: the cell at a row and a column of a range, counted from 1. A
 /// single row or column takes one index.
 Value index(const Call &call) {
-  expect_arguments(call, 2, 3);
-  const Cells cells(call, call.value(0));
+  require(expect_arguments(call, 2, 3));
+  const Cells cells(call, require(call.value(0)));
   const auto read = [&](const std::size_t i) {
-    return std::trunc(number_argument(call, i));
+    return std::trunc(require(number_argument(call, i)));
   };
   double row = read(1);
   double column = call.size() > 2 ? read(2) : 1;
@@ -579,7 +582,7 @@ Value index(const Call &call) {
     throw NoAnswer{}; // a whole row or column
   }
   if (row < 0 || column < 0) {
-    return refused(call, ErrorType::value);
+    return require(refused(call, ErrorType::value));
   }
   if (row > cells.rows || column > cells.columns) {
     if (cells.whole) {
@@ -599,8 +602,8 @@ constexpr double grid_rows = 1048576;
 /// `OFFSET`: a reference moved by rows and columns, and sized anew where a
 /// height or a width is given.
 Value offset(const Call &call) {
-  expect_arguments(call, 3, 5);
-  const Value value = call.value(0);
+  require(expect_arguments(call, 3, 5));
+  const Value value = require(call.value(0));
   if (const auto *error = std::get_if<ErrorType>(&value.content)) {
     return Value{*error};
   }
@@ -610,12 +613,13 @@ Value offset(const Call &call) {
   }
   const Area &area = reference->areas.front();
   if ((area.whole_columns &&
-       (call.size() > 3 || number_argument(call, 1) != 0)) ||
-      (area.whole_rows && (call.size() > 4 || number_argument(call, 2) != 0))) {
+       (call.size() > 3 || require(number_argument(call, 1)) != 0)) ||
+      (area.whole_rows &&
+       (call.size() > 4 || require(number_argument(call, 2)) != 0))) {
     throw NoAnswer{}; // a whole row or column moved or sized
   }
   const auto read = [&](const std::size_t i) {
-    return std::trunc(number_argument(call, i));
+    return std::trunc(require(number_argument(call, i)));
   };
   const TablePosition &from = area.range.from();
   const TablePosition &to = area.range.to();
@@ -629,7 +633,7 @@ Value offset(const Call &call) {
   }
   if (top < 0 || left < 0 || top + height > grid_rows ||
       left + width > grid_columns) {
-    return refused(call, ErrorType::reference);
+    return require(refused(call, ErrorType::reference));
   }
   return Value{Reference{
       {Area{area.sheet,
@@ -787,8 +791,8 @@ bool spaced(const std::string_view text) {
 /// `INDIRECT`: the reference a text spells, in A1, or in R1C1 where the
 /// second argument is false. A text that spells none is `#REF!`.
 Value indirect(const Call &call) {
-  expect_arguments(call, 1, 2);
-  const Value argument = call.scalar(0);
+  require(expect_arguments(call, 1, 2));
+  const Value argument = require(call.scalar(0));
   if (const auto *error = std::get_if<ErrorType>(&argument.content)) {
     return Value{*error};
   }
@@ -804,7 +808,7 @@ Value indirect(const Call &call) {
   }
   bool a1 = true;
   if (call.size() > 1) {
-    const Value flag = call.scalar(1);
+    const Value flag = require(call.scalar(1));
     if (const auto *error = std::get_if<ErrorType>(&flag.content)) {
       return Value{*error};
     }
@@ -818,14 +822,14 @@ Value indirect(const Call &call) {
   }
   if (a1) {
     const std::optional<Node> node = a1_reference(*text, is_libreoffice(call));
-    return node.has_value() ? call.reference(*node)
+    return node.has_value() ? require(call.reference(*node))
                             : Value{ErrorType::reference};
   }
   const std::optional<Node> node = r1c1_reference(*text, call.cell().cell);
   if (!node.has_value()) {
     throw NoAnswer{}; // a whole row or column, which this does not read
   }
-  return call.reference(*node);
+  return require(call.reference(*node));
 }
 
 /// `ROW` and `COLUMN`: of the first cell of a reference, or of the formula's
@@ -838,7 +842,7 @@ template <bool of_row> Value position(const Call &call) {
     return Value{1.0 +
                  (of_row ? call.cell().cell.row : call.cell().cell.column)};
   }
-  const Value value = call.value(0);
+  const Value value = require(call.value(0));
   const auto *reference = std::get_if<Reference>(&value.content);
   if (reference == nullptr || reference->areas.size() != 1) {
     throw NoAnswer{};
@@ -850,8 +854,8 @@ template <bool of_row> Value position(const Call &call) {
 /// `ROWS` and `COLUMNS`: the size of a range or an array. A whole column is
 /// as tall as the grid of the application, which the two state apart.
 template <bool of_rows> Value size(const Call &call) {
-  expect_arguments(call, 1, 1);
-  const Value value = call.value(0);
+  require(expect_arguments(call, 1, 1));
+  const Value value = require(call.value(0));
   if (const auto *reference = std::get_if<Reference>(&value.content)) {
     if (reference->areas.size() != 1) {
       throw NoAnswer{};
@@ -869,22 +873,22 @@ template <bool of_rows> Value size(const Call &call) {
 }
 
 constexpr std::array entries{
-    FunctionEntry{"AVERAGEIF", sum_if<true>},
-    FunctionEntry{"AVERAGEIFS", sum_ifs<true>},
-    FunctionEntry{"COLUMN", position<false>},
-    FunctionEntry{"COLUMNS", size<false>},
-    FunctionEntry{"COUNTIF", count_if<2>},
-    FunctionEntry{"COUNTIFS", count_if<254>},
-    FunctionEntry{"HLOOKUP", lookup<false>},
-    FunctionEntry{"INDEX", index},
-    FunctionEntry{"INDIRECT", indirect},
-    FunctionEntry{"MATCH", match},
-    FunctionEntry{"OFFSET", offset},
-    FunctionEntry{"ROW", position<true>},
-    FunctionEntry{"ROWS", size<true>},
-    FunctionEntry{"SUMIF", sum_if<false>},
-    FunctionEntry{"SUMIFS", sum_ifs<false>},
-    FunctionEntry{"VLOOKUP", lookup<true>},
+    FunctionEntry{"AVERAGEIF", bridged<sum_if<true>>},
+    FunctionEntry{"AVERAGEIFS", bridged<sum_ifs<true>>},
+    FunctionEntry{"COLUMN", bridged<position<false>>},
+    FunctionEntry{"COLUMNS", bridged<size<false>>},
+    FunctionEntry{"COUNTIF", bridged<count_if<2>>},
+    FunctionEntry{"COUNTIFS", bridged<count_if<254>>},
+    FunctionEntry{"HLOOKUP", bridged<lookup<false>>},
+    FunctionEntry{"INDEX", bridged<index>},
+    FunctionEntry{"INDIRECT", bridged<indirect>},
+    FunctionEntry{"MATCH", bridged<match>},
+    FunctionEntry{"OFFSET", bridged<offset>},
+    FunctionEntry{"ROW", bridged<position<true>>},
+    FunctionEntry{"ROWS", bridged<size<true>>},
+    FunctionEntry{"SUMIF", bridged<sum_if<false>>},
+    FunctionEntry{"SUMIFS", bridged<sum_ifs<false>>},
+    FunctionEntry{"VLOOKUP", bridged<lookup<true>>},
 };
 
 } // namespace

@@ -17,14 +17,14 @@ namespace str = util::string;
 namespace {
 
 template <auto value> Value constant(const Call &call) {
-  expect_arguments(call, 0, 0);
+  require(expect_arguments(call, 0, 0));
   return Value{value};
 }
 
 constexpr std::array constant_functions{
-    FunctionEntry{"TRUE", constant<true>},
-    FunctionEntry{"FALSE", constant<false>},
-    FunctionEntry{"NA", constant<ErrorType::not_available>},
+    FunctionEntry{"TRUE", bridged<constant<true>>},
+    FunctionEntry{"FALSE", bridged<constant<false>>},
+    FunctionEntry{"NA", bridged<constant<ErrorType::not_available>>},
 };
 
 /// The function a name stands for once the prefix of its format is gone.
@@ -73,27 +73,33 @@ void formula::Errors::add(const ErrorType error) {
   }
 }
 
-std::optional<formula::ErrorType> formula::Errors::first() const {
+formula::Result<std::optional<formula::ErrorType>>
+formula::Errors::first() const {
   if (m_mixed) {
-    throw NoAnswer{};
+    return no_answer();
   }
   return m_first;
 }
 
-double formula::number_argument(const Call &call, const std::size_t index) {
-  const Number number = call.number(call.scalar(index));
-  if (const auto *error = std::get_if<ErrorType>(&number)) {
-    throw ErrorResult{*error};
+formula::Result<double> formula::number_argument(const Call &call,
+                                                 const std::size_t index) {
+  const Result<Number> number = call.scalar(index).and_then(
+      [&](const Value &value) { return call.number(value); });
+  if (!number.has_value()) {
+    return std::unexpected(number.error());
   }
-  const double value = std::get<double>(number);
+  if (const auto *error = std::get_if<ErrorType>(&*number)) {
+    return error_result(*error);
+  }
+  const double value = std::get<double>(*number);
   if (!std::isfinite(value)) {
-    throw NoAnswer{};
+    return no_answer();
   }
   return value;
 }
 
-bool formula::same_number(const Dialect dialect, const double a,
-                          const double b) {
+formula::Result<bool> formula::same_number(const Dialect dialect,
+                                           const double a, const double b) {
   const bool approximately = approximately_equal(a, b);
   // two numbers this far apart differ in 15 digits too
   if (dialect == Dialect::libreoffice || a == b ||
@@ -102,7 +108,7 @@ bool formula::same_number(const Dialect dialect, const double a,
     return approximately;
   }
   if (approximately != (snapped(a, 15) == snapped(b, 15))) {
-    throw NoAnswer{};
+    return no_answer();
   }
   return approximately;
 }
@@ -111,23 +117,26 @@ bool formula::is_libreoffice(const Call &call) {
   return call.settings().dialect == Dialect::libreoffice;
 }
 
-formula::Value formula::refused(const Call &call, const ErrorType excel) {
+formula::Result<formula::Value> formula::refused(const Call &call,
+                                                 const ErrorType excel) {
   if (is_libreoffice(call)) {
-    throw NoAnswer{};
+    return no_answer();
   }
   return Value{excel};
 }
 
-void formula::expect_arguments(const Call &call, const std::size_t least,
-                               const std::size_t most) {
+formula::Result<void> formula::expect_arguments(const Call &call,
+                                                const std::size_t least,
+                                                const std::size_t most) {
   if (call.size() < least || call.size() > most) {
-    throw NoAnswer{};
+    return no_answer();
   }
   for (std::size_t i = 0; i < call.size(); ++i) {
     if (call.missing(i)) {
-      throw NoAnswer{};
+      return no_answer();
     }
   }
+  return {};
 }
 
 formula::ArrayRule formula::find_array_rule(const std::string_view name) {
