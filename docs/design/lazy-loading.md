@@ -551,8 +551,14 @@ at level 1: `content-visibility: hidden` until `viewport.js` marks it near,
 with the size it already states, and the first one near in the markup. The
 DOM stays complete, so `odr.search` and the editor see every slide.
 
-A deck of 7.1 MB has 1.3 K elements, so level 3 gains little after
-decision 9. A slide is a chunk of its own, so level 3 can follow as it did
+**Measured** on a deck of 600 slides of text (426 K elements, made with
+python-pptx): the first frame comes after 150 ms, not 570 ms, from
+`file://`. A search finds the same 7200 hits, and a print has the same 600
+pages and the same size. A view of one slide writes no chunk, because it
+has nothing to skip.
+
+The decks of the corpus have 3.9 K elements at most, and a deck of 7.1 MB
+has 1.3 K, so level 3 gains little after decision 9. A slide is a chunk of its own, so level 3 can follow as it did
 for a pdf page (decision 7), and the search index can take the text from
 the elements, as for a sheet (decision 8).
 

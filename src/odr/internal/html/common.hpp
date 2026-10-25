@@ -77,6 +77,16 @@ struct WritingState {
     m_formula_names = names;
   }
 
+  /// Whether the page box of a slide or a drawing page is a chunk, and if so,
+  /// whether it is near the viewport in the markup; nothing in a view of one
+  /// page, which has nothing to skip (`lazy-loading.md` decision 10).
+  [[nodiscard]] std::optional<bool> page_chunk_near() const {
+    return m_page_chunk_near;
+  }
+  void set_page_chunk_near(const std::optional<bool> near) {
+    m_page_chunk_near = near;
+  }
+
 private:
   HtmlWriter *m_out;
   const HtmlConfig *m_config;
@@ -88,6 +98,7 @@ private:
   bool m_document_editable{false};
   std::optional<formula::Syntax> m_formula_syntax;
   const std::vector<formula::Name> *m_formula_names{nullptr};
+  std::optional<bool> m_page_chunk_near;
 };
 
 /// Writes viewport metadata: explicit content, then mode override, then config.

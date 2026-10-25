@@ -57,6 +57,10 @@ The release run heads these entries with the version and opens a fresh
   technical manual, whose index is 5.3 MB.
 - A pdf page that loads renders in about half the time, because the service
   tests once for each font whether it re-encodes, not once for each page.
+- The page of a presentation or a drawing lets the browser lay out only the
+  slides near the viewport, as a pdf does. A deck of 600 slides shows its
+  first frame after 150 ms, not 570 ms. `HtmlConfig::lazy_layout` turns
+  this off.
 - With `HtmlConfig::embed_images` off, an image loads once the reader comes
   near it (`loading="lazy"`), so a page fetches 3 of the 187 images of a
   long docx at the start. A print still shows every image.

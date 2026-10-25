@@ -1020,7 +1020,9 @@ TEST(html, lazy_layout_off_writes_no_chunk) {
 
   for (const char *path :
        {"odr-public/txt/lorem ipsum.txt", "odr-public/ods/span.ods",
-        "odr-public/pdf/style-various-1.pdf"}) {
+        "odr-public/pdf/style-various-1.pdf",
+        "odr-public/odp/presentation-yunation.odp",
+        "odr-public/odg/sample.odg"}) {
     const std::string page = render(path, config);
     // the shipped scripts name the class, so only the markup counts
     EXPECT_FALSE(
@@ -1028,6 +1030,35 @@ TEST(html, lazy_layout_off_writes_no_chunk) {
         << path;
     EXPECT_EQ(page.find("content-visibility:hidden"), std::string::npos)
         << path;
+  }
+}
+
+// A slide and a drawing page state their size, so each one is a chunk of the
+// whole document, and the first one is near the viewport in the markup
+// (`lazy-loading.md` decision 10).
+TEST(html, a_slide_is_a_chunk_of_the_document) {
+  for (const char *path : {"odr-public/odp/presentation-yunation.odp",
+                           "odr-public/odg/sample.odg"}) {
+    SCOPED_TRACE(path);
+    const HtmlService service = html::translate(
+        open(TestData::test_file_path(path), {}, Logger::null()), HtmlConfig());
+
+    std::ostringstream document;
+    service.list_views().at(0).write_html(document);
+    const std::string page = document.str();
+    EXPECT_EQ(page.find(R"(class="odr-page-outer odr-chunk odr-chunk-near")"),
+              page.find(R"(class="odr-page-outer)"));
+    EXPECT_NE(page.find(R"(class="odr-page-outer odr-chunk")"),
+              std::string::npos);
+    EXPECT_NE(page.find(".odr-chunk{content-visibility:hidden}"),
+              std::string::npos);
+
+    // a view of one slide has nothing to skip
+    std::ostringstream one;
+    service.list_views().at(2).write_html(one);
+    EXPECT_NE(one.str().find(R"(class="odr-page-outer")"), std::string::npos);
+    EXPECT_FALSE(std::regex_search(one.str(),
+                                   std::regex(R"(class="[^"]*\bodr-chunk\b)")));
   }
 }
 
