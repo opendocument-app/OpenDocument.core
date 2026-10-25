@@ -48,11 +48,18 @@
   // `viewport.js` keeps the index text folded, because only a search reads it.
   odr.foldSearchText = foldText;
 
+  var ascii = /^[\x00-\x7f]*$/;
+
   // The folded `text` plus a folded-index to source-index map (with an end
   // sentinel), so a match maps back onto the source string. Folding per
   // character is what keeps that map right when a character folds to none or
-  // to several.
+  // to several. ASCII folds to as many characters, so its map is null: the
+  // identity, which a page of a million lines would else hold an entry of
+  // for each character.
   function fold(text) {
+    if (ascii.test(text)) {
+      return { text: text.replace(/[\t\n]/g, " ").toLowerCase(), map: null };
+    }
     var folded = "";
     var map = [];
     for (var i = 0; i < text.length; ++i) {
@@ -72,16 +79,34 @@
     return { text: folded, map: map };
   }
 
-  var inlineElements = new WeakMap();
+  var inlineTags = {
+    A: true, ABBR: true, B: true, BDI: true, BDO: true, BIG: true, BR: true,
+    CITE: true, CODE: true, DATA: true, DEL: true, DFN: true, EM: true,
+    FONT: true, I: true, IMG: true, INS: true, KBD: true, LABEL: true,
+    MARK: true, Q: true, S: true, SAMP: true, SMALL: true, SPAN: true,
+    STRONG: true, SUB: true, SUP: true, TIME: true, U: true, VAR: true,
+    WBR: true, "X-S": true,
+  };
 
+  // Whether an element flows inline, from what states it: its own style, the
+  // one class the frontend css makes a block of, its tag. Not
+  // `getComputedStyle`, which computes the style of a whole chunk the browser
+  // does not lay out: on a text file of 200,000 lines, a search took a
+  // gigabyte and a minute. An element of another namespace, such as svg,
+  // flows inline, and an unknown element too, as the browser has it.
   function isInline(element) {
-    var inline = inlineElements.get(element);
-    if (inline === undefined) {
-      var display = getComputedStyle(element).display;
-      inline = display.indexOf("inline") === 0 || display === "contents";
-      inlineElements.set(element, inline);
+    var display = element.style.display;
+    if (display !== "") {
+      return display.indexOf("inline") === 0 || display === "contents";
     }
-    return inline;
+    if (element.namespaceURI !== "http://www.w3.org/1999/xhtml") {
+      return true;
+    }
+    if (element.classList.contains("odr-sheet-raised-box")) {
+      return false;
+    }
+    var name = element.nodeName;
+    return inlineTags[name] === true || (name.indexOf("-") !== -1 && name !== "X-P");
   }
 
   // The box a text node flows in. Text under one reads as a run; text under two
@@ -182,10 +207,12 @@
         if (piece.end <= at || piece.begin >= end) {
           continue;
         }
+        var from = Math.max(at, piece.begin) - piece.begin;
+        var to = Math.min(end, piece.end) - piece.begin;
         slices.push({
           node: piece.node,
-          from: piece.map[Math.max(at, piece.begin) - piece.begin],
-          to: piece.map[Math.min(end, piece.end) - piece.begin],
+          from: piece.map === null ? from : piece.map[from],
+          to: piece.map === null ? to : piece.map[to],
         });
       }
       if (slices.length > 0) {

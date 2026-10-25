@@ -13,8 +13,10 @@ body{margin:0;background:#fff}
 .odr-text-body{display:flex;flex-direction:column;flex:1;min-width:0;padding:max(16px,var(--odr-min-margin-top,0px)) max(16px,var(--odr-min-margin-right,0px)) max(16px,var(--odr-min-margin-bottom,0px)) 0;white-space:pre}
 .odr-text-wrap{white-space:break-spaces;word-break:break-word;overflow-wrap:anywhere}
 /* A chunk far from the viewport keeps the height it had when it was last
-   shown. */
-.odr-text-lines{display:flex;flex-direction:column;contain-intrinsic-height:auto calc(var(--odr-text-lines,256) * 20px)}
+   shown. The size comes first, because a browser before `auto` (Chrome 95)
+   drops the second declaration, and a chunk it does not lay out would else
+   have no height. */
+.odr-text-lines{display:flex;flex-direction:column;contain-intrinsic-size:0 calc(var(--odr-text-lines,256) * 20px);contain-intrinsic-height:auto calc(var(--odr-text-lines,256) * 20px)}
 /* A chunk that has not loaded its lines yet holds the height they will take,
    so the page does not move when they come. */
 .odr-text-lines[data-odr-chunk-src]{min-height:calc(var(--odr-text-lines,256) * 20px)}
