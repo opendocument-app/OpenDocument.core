@@ -759,7 +759,7 @@ TEST(html, a_text_file_writes_a_search_index) {
       page.str().find(
           R"(data-odr-chunk="64" data-odr-chunk-src="text-chunks/64.js" data-odr-chunk-text="text-search/1.js")"),
       std::string::npos);
-  // the first chunk of a group names the script of the group
+  // a chunk inside a group names no script
   EXPECT_NE(page.str().find(
                 R"(data-odr-chunk="2" data-odr-chunk-src="text-chunks/2.js">)"),
             std::string::npos);
