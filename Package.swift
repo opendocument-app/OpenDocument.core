@@ -24,8 +24,8 @@ let binary: Target = ProcessInfo.processInfo.environment["ODR_XCFRAMEWORK"]
     ?? Target.binaryTarget(
         name: "OdrCoreObjC",
         url:
-            "https://github.com/opendocument-app/OpenDocument.core/releases/download/v7.5.2/OdrCoreObjC.xcframework.zip",
-        checksum: "0aaa650872e66ddbffa969df3571186ed7f05b87487ac15c381f7f3b8a16cd5a"
+            "https://github.com/opendocument-app/OpenDocument.core/releases/download/v7.6.0/OdrCoreObjC.xcframework.zip",
+        checksum: "0c4d565933c8f649df423cfaecce5850b61d91ce77578b72ba78910ba0b2c380"
     )
 
 let package = Package(

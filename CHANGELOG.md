@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v7.6.0 - 2026-10-25
+
 ### Spreadsheets
 
 - Under `HtmlEditingScope::paragraph`, a sheet page refuses a typed formula
