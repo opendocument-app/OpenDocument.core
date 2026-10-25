@@ -122,6 +122,13 @@ TEST(html_document_style, font_family_quotes_a_name_and_adds_its_kind) {
             "'RobotoMono-Regular',monospace");
 }
 
+// Markdown names its code `monospace`: quoted, it is a font no one has.
+TEST(html_document_style, font_family_keeps_a_generic_family_a_keyword) {
+  EXPECT_EQ(ihtml::translate_font_family("monospace"), "monospace");
+  EXPECT_EQ(ihtml::translate_font_family(" serif "), "serif");
+  EXPECT_EQ(ihtml::translate_font_family("Sans-Serif"), "Sans-Serif");
+}
+
 TEST(html_document_style, font_family_does_not_read_a_kind_into_a_longer_word) {
   EXPECT_EQ(ihtml::translate_font_family("Monotype Corsiva"),
             "'Monotype Corsiva',sans-serif");
