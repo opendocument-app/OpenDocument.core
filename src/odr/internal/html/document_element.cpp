@@ -1043,7 +1043,7 @@ struct BlockText final {
         if (content.empty()) {
           break;
         }
-        // `search.js` folds it to a space; only a block boundary keeps one
+        // `search.js` folds it to a space; only a new block writes a `\n`
         std::ranges::replace(content, '\n', ' ');
         if (owner != 0 && owner != in) {
           text += '\n';
@@ -1085,7 +1085,7 @@ std::string sheet_chunk_text(const SheetRows &rows,
   return std::move(text.text);
 }
 
-/// The chunks that one script of the search index holds.
+/// A chunk whose text a script of the search index holds.
 struct IndexedChunk final {
   std::string key;
   std::uint32_t first_row{0};
@@ -1093,7 +1093,7 @@ struct IndexedChunk final {
 };
 
 /// A script of the search index of a sheet, rendered when it is asked for.
-/// The chunks are added as the page finds where each one ends.
+/// The writer adds each chunk once it knows where the chunk ends.
 class SheetIndexResource final : public abstract::HtmlResource {
 public:
   SheetIndexResource(std::shared_ptr<const SheetRows> rows, std::string path,
