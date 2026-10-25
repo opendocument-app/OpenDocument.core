@@ -504,6 +504,78 @@ callback to show the count. The droid app uses the find of the WebView
 droid app must move to `odr.search` and `searchChange`. A core PR names
 that issue with `Refs`.
 
+### 9. An image is a file that loads near the viewport
+
+The large outputs of the other formats are large because of their images,
+not because of their DOM:
+
+| document | size | in data URLs | elements |
+|---|---|---|---|
+| `physics.docx` | 22.9 MB | 91 % | 37 K |
+| `sample4.docx` | 19.6 MB | 96 % | 5 K |
+| `Vektoranalysis Zusammenfassung.odt` | 10.5 MB | 90 % | 17 K |
+| `Stundenplan Woelfe I 10-21.odt` | 10.6 MB | 100 % | 0.7 K |
+| `presentation-yunation.odp` | 7.1 MB | 99 % | 1.3 K |
+
+A chunk and a search index reduce a large DOM, which these files do not
+have. The browser must parse a data URL before the first frame. It fetches
+and decodes a linked image only when it needs the image.
+
+`HtmlConfig::embed_images` already links the images, and the droid and the
+ios app turn it off. What is missing:
+
+- **`loading="lazy"`** and **`decoding="async"`** on an `<img>` that links
+  its image, so the browser fetches only the images near the viewport. A
+  data URL keeps neither, because nothing is fetched.
+- **The format of a linked image.** The embedded path converts an SVM
+  metafile to SVG. The linked path writes the file as it is, as
+  `image/jpg`, so the browser shows a broken image. This is a bug in the
+  apps now (`ObjectReplacements/Object 1` in `XYZ-Rechnung.odt`). A linked
+  image writes what the data URL holds, with that media type, and a path
+  with that extension.
+
+`embed_images` stays on by default, so the default output does not change.
+`lazy_loading` does not change it either: two switches that each do one
+thing, and the apps set both.
+
+A print must show every image, also one far from the viewport. The PR
+checks that with a print to pdf of the files above, before it relies on the
+browser to load a lazy image for a print.
+
+### 10. A slide and a drawing page are chunks
+
+A slide and a page of a drawing have their size in the file, as a pdf page
+has. So each `.odr-page-outer` of a presentation and a drawing is a chunk
+at level 1: `content-visibility: hidden` until `viewport.js` marks it near,
+with the size it already states, and the first one near in the markup. The
+DOM stays complete, so `odr.search` and the editor see every slide.
+
+A deck of 7.1 MB has 1.3 K elements, so level 3 gains little after
+decision 9. A slide is a chunk of its own, so level 3 can follow as it did
+for a pdf page (decision 7), and the search index can take the text from
+the elements, as for a sheet (decision 8).
+
+### 11. A text document waits for a measurement
+
+A text document gets lazy loading only when a measured file asks for it:
+one whose DOM, not its images, makes the first frame slow. No file in the
+corpus does. The largest has 37 K elements.
+
+What it would take:
+
+- **Paged** (`text_document_margin`): each page box is a chunk, as a slide
+  is, because the page layout states its size.
+- **Reflowed:** a chunk is a run of top-level blocks. A block has no size
+  before layout, so the chunk states an estimate, and
+  `contain-intrinsic-size: auto` keeps the real size once it was laid out.
+  The scroll bar moves while the estimates turn real.
+- **Level 3:** a link to an anchor needs the chunk that holds the anchor
+  (decision 5). An editable render keeps every block, as an editable text
+  file keeps every line. The search index takes the text from the
+  elements, as for a sheet.
+- **Core:** the decode reads the whole XML, so level 3 makes only the
+  browser cheaper.
+
 ## Order of work
 
 1. **Text files, level 1.** Chunks of lines that are `hidden` until
@@ -535,11 +607,14 @@ that issue with `Refs`.
 8. **Search at level 3** (decision 8), in this order:
    1. Text files, the index scripts. This PR also brings the fast path of
       `fold`, `odr.onSearchChange` and `odr.searchDone`.
-   2. Text files, the search on the server. This PR brings the generated
-      fold table, its test, and the `hits/` path.
-   3. Sheets: no search of the headers, at every level, and then the index
-      and the `hits/` path.
-   4. pdf: the index and the `hits/` path.
+   2. Sheets: no search of the headers, at every level, and the index.
+   3. pdf: the index.
+   4. The search on the server: the generated fold table, its test, and
+      the `hits/` path for each view.
+9. **Images** (decision 9): `loading="lazy"` on a linked image, and a
+   linked image in the format and the media type of its data URL.
+10. **Slides and drawing pages, level 1** (decision 10).
+11. **Text documents** (decision 11), once a measured file asks for it.
 
 ## Open questions
 
