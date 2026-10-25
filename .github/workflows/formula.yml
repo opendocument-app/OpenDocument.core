@@ -4,6 +4,11 @@ name: formula
 # native release build embeds the one of its version
 # (`docs/design/spreadsheet-editing.md` decision 5), so `release.yml` builds
 # it before the draft and attaches it as `odr-formula-<tag>.js`.
+#
+# Built with exceptions in JavaScript (`emscripten-wasm-js-eh`): a page of an
+# app runs in whatever WebView the device has, and native wasm exceptions need
+# Chrome 95. The npm package keeps its own native build, because its core
+# needs native exceptions anyway.
 on:
   workflow_call:
     inputs:
@@ -23,8 +28,8 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     env:
-      CACHE_FLAVOR: wasm
-      HOST_PROFILE: emscripten-wasm
+      CACHE_FLAVOR: formula
+      HOST_PROFILE: emscripten-wasm-js-eh
       BUILD_PROFILE: ubuntu-24.04-clang-18
     steps:
       - name: checkout
@@ -47,9 +52,9 @@ jobs:
         shell: bash
         run: echo "CONAN_CACHE_KEY=${{ hashFiles('conanfile.py', '.github/config/conan/**') }}" >> "$GITHUB_ENV"
 
-      # the cache of `wasm.yml`, which has the same dependency set
+      # its own: the dependencies are built in another exception mode
       - name: cache conan
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: ${{ env.CONAN_HOME }}
           key: conan-${{ env.CACHE_FLAVOR }}-${{ env.HOST_PROFILE }}-${{ env.CONAN_KEY_SUFFIX }}-${{ env.CONAN_CACHE_KEY }}
@@ -67,7 +72,9 @@ jobs:
           restore-keys: |
             ccache-${{ env.CACHE_FLAVOR }}-${{ env.HOST_PROFILE }}-${{ env.CCACHE_KEY_SUFFIX }}-
 
-      # `--lockfile-partial`: the lockfile knows nothing of `emsdk`
+      # `--lockfile-partial`: the lockfile knows nothing of `emsdk`. The
+      # standard is stated again, because a profile that includes another one
+      # was read as C++20 locally.
       - name: conan install
         run: >
           conan install .
@@ -75,6 +82,7 @@ jobs:
           -o '&:with_wasm=True'
           --profile:host '${{ env.HOST_PROFILE }}'
           --profile:build '${{ env.BUILD_PROFILE }}'
+          -s:h compiler.cppstd=23
           --lockfile-partial
           --build missing
 
@@ -91,6 +99,9 @@ jobs:
 
       - name: cmake build
         run: cmake --build build --target odr_formula_wasm
+
+      - name: check the module has no native exceptions
+        run: scripts/wasm_has_no_native_eh.py build/wasm/formula/odr-formula.js
 
       - name: name the formula module
         env:
