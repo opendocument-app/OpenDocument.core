@@ -23,6 +23,7 @@ open http://localhost:8732/columns.html
 open http://localhost:8732/formulas.html
 open http://localhost:8732/formula-chain.html
 open http://localhost:8732/formula-input.html
+open http://localhost:8732/formula-scope.html
 open http://localhost:8732/formula-words.html
 open http://localhost:8732/formula-iteration.html
 open http://localhost:8732/formula-arrays.html
@@ -110,6 +111,9 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
   constant, a function name with a dot, a formula that takes the format of
   its cell, a name of the document, which a row edit moves, `OFFSET` and
   `INDIRECT`, and `TODAY` and `RAND`, which every edit computes again.
+- `formula-scope.html`: under the `paragraph` scope, a typed formula is
+  refused with `outOfScope`, and an input marks its formula stale rather than
+  computing it. A wider scope computes at the next edit.
 - `formula-arrays.html`: an array formula computes every cell of its range,
   and a formula that reads one of them. The range is locked, a row edit
   through it is refused, also through an array that reads no cell, and one

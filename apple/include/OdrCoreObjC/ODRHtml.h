@@ -54,7 +54,8 @@ typedef NS_ENUM(NSInteger, ODRHtmlViewportMode) {
 /// How far an edit in a document view may reach. Host policy, not an engine
 /// fact.
 typedef NS_ENUM(NSInteger, ODRHtmlEditingScope) {
-  /// Inside one paragraph: no split and no merge.
+  /// Inside one paragraph: no split and no merge; in a sheet, no formula input
+  /// and no results before a save.
   ODRHtmlEditingScopeParagraph = 0,
   /// Across paragraphs: every operation.
   ODRHtmlEditingScopeDocument,

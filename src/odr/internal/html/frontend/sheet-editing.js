@@ -1469,7 +1469,11 @@
         entry.cell.setAttribute("data-odr-formula", entry.formula);
       }
     });
-    var computes = formulas !== null && formulas.module !== null;
+    // the `paragraph` scope leaves the results to the save
+    var computes =
+      formulas !== null &&
+      formulas.module !== null &&
+      odr.editing.scope() !== "paragraph";
     // the results go in after every cell is computed, so none reads another
     // one's new text
     var answers = new Map();
@@ -1630,7 +1634,8 @@
 
   /// Commits what is typed and moves the pin by (@p columns, @p rows). A
   /// formula the page cannot take is refused rather than written, and leaves
-  /// the editor open: without the evaluator, and where it does not parse.
+  /// the editor open: past the scope, without the evaluator, and where it
+  /// does not parse.
   function commit(columns, rows) {
     if (overlay === null) {
       return false;
@@ -1639,6 +1644,10 @@
     var at = editingAt;
     var value = null;
     if (text.charAt(0) === "=") {
+      if (odr.editing.scope() === "paragraph") {
+        refuse("outOfScope", at.column, at.row);
+        return false;
+      }
       if (formulas === null || formulas.module === null) {
         refuse("formulaInput", at.column, at.row);
         return false;

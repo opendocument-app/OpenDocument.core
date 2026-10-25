@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+### Spreadsheets
+
+- Under `HtmlEditingScope::paragraph`, a sheet page refuses a typed formula
+  with `outOfScope` (1010) and computes no formula cell. An edit marks them
+  stale and raises `odr.onCellsStale`, and a save computes them.
+
 ### Text documents and presentations
 
 - A run whose text is only spaces keeps its spaces. Word writes one wherever

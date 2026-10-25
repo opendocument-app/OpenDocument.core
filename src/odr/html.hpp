@@ -103,7 +103,8 @@ enum class HtmlViewportMode {
 /// How far an edit in a document view may reach. Host policy, not an engine
 /// fact.
 enum class HtmlEditingScope {
-  paragraph, ///< inside one paragraph: no split and no merge
+  paragraph, ///< inside one paragraph: no split and no merge; in a sheet,
+             ///< no formula input and no results before a save
   document,  ///< across paragraphs: every operation
 };
 
