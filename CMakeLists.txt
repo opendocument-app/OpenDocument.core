@@ -258,6 +258,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/html/image_file.cpp"
         "src/odr/internal/html/media_file.cpp"
         "src/odr/internal/html/pdf_file.cpp"
+        "src/odr/internal/html/sheet.cpp"
         "src/odr/internal/html/style_registry.cpp"
         "src/odr/internal/html/text_file.cpp"
         "src/odr/internal/html/xml_file.cpp"

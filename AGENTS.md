@@ -80,7 +80,7 @@ Two model rules that every engine follows:
 | `src/odr/internal/file_type_table.*` | The one table per `FileType`: extensions, MIME types, category, document type, capabilities. Every lookup in `odr.hpp` forwards into it. Extend the table, not the lookups. |
 | `src/odr/internal/formula/` | Spreadsheet formulas. One AST, parsed from OpenFormula and OOXML, shared by odf and ooxml. |
 | `src/odr/internal/number_format/` | Number formats. One model, parsed from a format code (MS-XLS 2.4.126), and the formatter. |
-| `src/odr/internal/html/` | The generic HTML renderer. |
+| `src/odr/internal/html/` | The generic HTML renderer. `document.cpp` writes the views of a document, `document_element.cpp` its elements, and `sheet.cpp` a sheet, which `document.cpp` asks for its head, body and scripts. |
 | `src/odr/internal/html/frontend/` | The stylesheets and scripts the renderer embeds. `cmake/frontend_assets.cmake` embeds them. `frontend.cpp` decides which view writes which. |
 | `src/odr/internal/cfb/`, `zip/` | Containers. |
 | `src/odr/internal/odf/` | OpenDocument. See [`odf/AGENTS.md`](src/odr/internal/odf/AGENTS.md). |
