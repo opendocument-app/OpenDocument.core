@@ -16,6 +16,16 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+### HTML output
+
+- `odr.search` no longer computes the style of the parts of a page the
+  browser does not lay out. On a text file of 200,000 lines it took 31 s and
+  ran out of memory in an Android WebView; it now takes half a second.
+- A text file and a sheet state the height of a part far from the viewport
+  so that a browser before Chrome 95 keeps it too. Such a browser dropped it,
+  so the parts had no height, the scroll bar was short, and a step to a far
+  search hit did not reach it.
+
 ### Build and packaging
 
 - The Android AAR, the xcframework, the PyPI wheels and the conan package

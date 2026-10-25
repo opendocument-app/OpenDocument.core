@@ -1167,9 +1167,12 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                 clb("data-odr-chunk-text", index_path);
               }
             })
+            // a browser before Chrome 95 drops the `auto` declaration and
+            // keeps only the size
             .set_style(
                 lazy ? std::optional<HtmlWritable>(
-                           "contain-intrinsic-height:auto " + pixels + "px" +
+                           "contain-intrinsic-size:0 " + pixels +
+                           "px;contain-intrinsic-height:auto " + pixels + "px" +
                            (placeholder ? ";--odr-chunk-height:" + pixels + "px"
                                         : ""))
                      : std::nullopt));

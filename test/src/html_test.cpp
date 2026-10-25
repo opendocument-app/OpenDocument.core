@@ -2270,11 +2270,13 @@ TEST(html, a_sheet_ends_a_chunk_only_where_no_merge_is_open) {
   EXPECT_EQ(count(page, R"(<table class="odr-sheet-rows odr-chunk)"), 2);
   EXPECT_NE(
       page.find(R"(<table class="odr-sheet-rows odr-chunk odr-chunk-near")"
-                R"( style="contain-intrinsic-height:auto 5120px">)"),
+                R"( style="contain-intrinsic-size:0 5120px;)"
+                R"(contain-intrinsic-height:auto 5120px">)"),
       std::string::npos);
   const std::size_t second =
       page.find(R"(<table class="odr-sheet-rows odr-chunk")"
-                R"( style="contain-intrinsic-height:auto 800px">)");
+                R"( style="contain-intrinsic-size:0 800px;)"
+                R"(contain-intrinsic-height:auto 800px">)");
   ASSERT_NE(second, std::string::npos);
   EXPECT_EQ(count(page.substr(second), "<tr"), 40);
 }
