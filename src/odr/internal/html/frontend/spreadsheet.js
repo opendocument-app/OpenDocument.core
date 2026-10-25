@@ -10,12 +10,14 @@
 
   var odr = (window.odr = window.odr || {});
 
-  // the position map is built off the rows the page has
-  table.addEventListener("odr-chunk-filled", function () {
-    index = null;
-  });
-
   var merged = table.querySelector("td[colspan],td[rowspan]") !== null;
+
+  // the position map is built off the rows the page has, and a chunk that
+  // loads later may bring a merge
+  table.addEventListener("odr-chunk-filled", function (event) {
+    index = null;
+    merged = merged || event.target.querySelector("td[colspan],td[rowspan]") !== null;
+  });
   var head = table.querySelector(".odr-sheet-head");
   var headerRow = head.tHead.rows[0];
   var chunks = table.getElementsByClassName("odr-sheet-rows");
@@ -517,10 +519,9 @@
   function reflow(row) {
     // a far chunk has no geometry: its rows wait until it is near
     var at = indexed().rows.get(row);
-    if (
-      at !== undefined &&
-      !at.tr.closest(".odr-chunk").classList.contains("odr-chunk-near")
-    ) {
+    var chunk = at === undefined ? null : at.tr.closest(".odr-chunk");
+    // without lazy layout, the rows are in no chunk
+    if (chunk !== null && !chunk.classList.contains("odr-chunk-near")) {
       waiting.add(row);
       return true;
     }

@@ -36,6 +36,7 @@ The release run heads these entries with the version and opens a fresh
   and a deck of 600 slides after 150 ms, not 570 ms.
   `HtmlConfig::lazy_layout` (on by default, also in the bindings) turns
   this off.
+- The npm package takes `lazyLayout` in its html config too.
 - The find of the browser does not reach a part that is far from the
   viewport, but `odr.search` does. A host that offers the find of its web
   view needs `odr.search` instead, or `lazy_layout` off
@@ -68,6 +69,9 @@ The release run heads these entries with the version and opens a fresh
     give the final count.
 - `odr.search` no longer finds the row numbers and the column letters of a
   sheet, because they label the cells and are not their content.
+- The HTTP server looks up the linked files of a pdf under a lock of their
+  own. A render of another view of the same pdf added to that list while it
+  was read, which could crash the server.
 - With `HtmlConfig::embed_images` off, an image loads once the reader comes
   near it (`loading="lazy"`), so a page fetches 3 of the 187 images of a
   long docx at the start. A print still shows every image.

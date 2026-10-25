@@ -155,6 +155,13 @@
       click(document.querySelectorAll(".odr-sheet-sort")[0]);
       check("a sort orders the rows over every chunk", column(0) === "5,3,4,1,2" && labels() === "45231", labels());
       check("and every chunk keeps its count", counts() === "2 3", counts());
+
+      note("a chunk that fills with a merge");
+      var late = chunks[chunks.length - 1];
+      var row = late.tBodies[0].insertRow(-1);
+      row.innerHTML = '<th class="odr-sheet-row-header">6</th><td colspan="2" style="max-width:0">m</td><td style="max-width:0">c</td>';
+      late.dispatchEvent(new CustomEvent("odr-chunk-filled", { bubbles: true }));
+      check("a cell right of the merge keeps its column", odr.sheet.positionOf(row.cells[2]).column === 2, odr.sheet.positionOf(row.cells[2]));
     </script>
   </body>
 </html>

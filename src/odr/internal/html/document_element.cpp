@@ -196,9 +196,6 @@ constexpr double gutter_padding_pixels = 14;
 constexpr double estimated_row_pixels = 20;
 /// A chunk of a sheet holds about as many cells (`lazy-loading.md` decision 3).
 constexpr std::uint32_t chunk_cells = 4096;
-/// The chunks of a sheet that one script of its search index holds the text
-/// of (`lazy-loading.md` decision 4).
-constexpr std::uint32_t chunks_per_index = 64;
 
 /// Whether a reader sees anything. A bookmark marks a place rather than filling
 /// one, and a span or a link is a style around what it holds, so a paragraph

@@ -66,8 +66,10 @@ public:
   }
   [[nodiscard]] const std::string &name() const override { return m_path; }
   [[nodiscard]] const std::string &path() const override { return m_path; }
+  /// None: the file is the SVM, and what this writes is SVG.
   [[nodiscard]] const std::optional<File> &file() const override {
-    return m_file;
+    static const std::optional<File> none;
+    return none;
   }
   [[nodiscard]] bool is_shipped() const override { return false; }
   [[nodiscard]] bool is_external() const override { return false; }

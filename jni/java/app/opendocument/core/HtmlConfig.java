@@ -71,9 +71,12 @@ public final class HtmlConfig {
   public Integer viewportWidth;
   /** The zoom the view opens at, 1 being actual size; {@code null} follows the fit. */
   public Double initialZoom;
-  /** Lay out only the lines, rows and pages near the viewport. */
+  /** Lay out only the lines, rows, pages and slides near the viewport. */
   public boolean lazyLayout = true;
-  /** Load the chunks of a text file after the first as the reader comes near. */
+  /**
+   * Load the chunks of a text file, a sheet and a pdf after the first as the reader comes near,
+   * and write a search index of their text beside them.
+   */
   public boolean lazyLoading = false;
 
   /**

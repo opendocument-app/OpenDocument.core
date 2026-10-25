@@ -82,6 +82,11 @@
               odr.searchPrevious();
               check("a step back selects the hit before", current() !== first && current() !== null);
 
+              // a capital outside the BMP folds as one character, in the index
+              // as in the DOM
+              var astral = odr.search("\ud801\udc28");
+              check("the index folds a capital outside the BMP", astral === 1, astral);
+
               var accented = odr.search("CAFE AU");
               odr.searchDone().then(function (found) {
                 check("the index folds case, a diacritic and a tab", accented === 1 && found === 1, found);

@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet checks without chunks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body class="odr-body odr-gridlines-soft" data-odr-editable="true" data-odr-keyboard="navigation shortcuts">
+    <!-- A sheet as `translate_sheet` writes it with `lazy_layout` off: all
+         the rows in one table, which is no chunk. -->
+    <div class="odr-sheet" data-odr-sheet="0" style="--odr-sheet-gutter:calc(1ch + 14px)">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" />
+        <col style="width:80px" />
+        <col style="width:80px" />
+        <thead>
+          <tr>
+            <th class="odr-sheet-corner"></th>
+            <th class="odr-sheet-column-header">A</th>
+            <th class="odr-sheet-column-header">B</th>
+          </tr>
+        </thead>
+      </table>
+      <table class="odr-sheet-rows">
+        <col class="odr-sheet-gutter" />
+        <col style="width:80px" />
+        <col style="width:80px" />
+        <tbody>
+          <tr><th class="odr-sheet-row-header">1</th><td style="max-width:0;white-space:nowrap;overflow:hidden">r1</td><td style="max-width:0"></td></tr>
+          <tr><th class="odr-sheet-row-header">2</th><td style="max-width:0;white-space:nowrap;overflow:hidden">r2</td><td style="max-width:0"></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="out"><div id="report"></div></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var cell = odr.sheet.cellAt(0, 0);
+      odr.sheet.showValue(0, 0, "a string far too long for its cell");
+      check("a write into a sheet with no chunk spills at once", cell.style.overflow === "visible", cell.style.overflow);
+    </script>
+  </body>
+</html>

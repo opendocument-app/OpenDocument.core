@@ -31,9 +31,6 @@ std::string chunk_path(const std::size_t index) {
   return "text-chunks/" + std::to_string(index) + ".js";
 }
 
-/// The chunks that one script of the search index holds the text of.
-constexpr std::size_t chunks_per_index = 64;
-
 /// Where the page loads the text of index group @p group from
 /// (`lazy-loading.md` decision 4).
 std::string index_path(const std::size_t group) {
@@ -71,9 +68,7 @@ std::optional<std::size_t> index_of(const std::string_view path) {
 
 /// The next line of @p in, without its end.
 std::string read_line(std::istream &in) {
-  std::ostringstream line;
-  util::stream::pipe_line(in, line, false);
-  return std::move(line).str();
+  return util::stream::read_line(in, false);
 }
 
 /// The lines from @p in, @p count of them at most, the first of which is line
@@ -155,10 +150,11 @@ public:
     }
     if (const std::optional<std::size_t> group = index_of(path);
         group.has_value()) {
-      // the first chunk is in the page, so no group holds only that one
-      return loads_chunks() &&
-             std::max<std::size_t>(*group * chunks_per_index, 1) <
-                 lines().offsets.size();
+      // the first chunk is in the page, so no group holds only that one;
+      // divided, because a large group would overflow a product
+      const std::size_t chunks = lines().offsets.size();
+      return loads_chunks() && chunks > 1 &&
+             *group <= (chunks - 1) / chunks_per_index;
     }
     return path == "text.html" || resource_at(m_resources, path) != nullptr;
   }
@@ -336,8 +332,7 @@ public:
   /// Chunk @p index as the script that puts its lines into the page.
   void write_chunk(const std::size_t index, std::ostream &out) const {
     const Lines &all = lines();
-    std::istringstream in(all.text);
-    in.seekg(static_cast<std::streamoff>(all.offsets.at(index)));
+    std::istringstream in = all.chunks(index, index + 1);
     std::ostringstream html;
     HtmlWriter writer(html, false, "");
     const auto first = static_cast<std::uint32_t>(index * chunk_lines);
@@ -355,12 +350,11 @@ public:
   /// across.
   void write_index(const std::size_t group, std::ostream &out) const {
     const Lines &all = lines();
-    std::istringstream in(all.text);
     const std::size_t first =
         std::max<std::size_t>(group * chunks_per_index, 1);
-    const std::size_t end =
-        std::min(all.offsets.size(), (group + 1) * chunks_per_index);
-    in.seekg(static_cast<std::streamoff>(all.offsets.at(first)));
+    const std::size_t end = std::min<std::size_t>(
+        all.offsets.size(), (group + 1) * chunks_per_index);
+    std::istringstream in = all.chunks(first, end);
     out << "odr.chunks.text({";
     for (std::size_t index = first; index < end; ++index) {
       const std::size_t line_end =
@@ -391,6 +385,15 @@ protected:
     std::string text;
     std::size_t count{0};
     std::vector<std::size_t> offsets;
+
+    /// The text of chunks [@p first, @p end) alone, so a request copies what
+    /// it reads and not the whole text.
+    [[nodiscard]] std::istringstream chunks(const std::size_t first,
+                                            const std::size_t end) const {
+      const std::size_t begin = offsets.at(first);
+      return std::istringstream(text.substr(
+          begin, (end < offsets.size() ? offsets[end] : text.size()) - begin));
+    }
   };
 
   [[nodiscard]] Lines read_lines() const {

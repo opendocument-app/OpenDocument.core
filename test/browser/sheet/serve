@@ -15,6 +15,7 @@ serve(
     (
         "tests.html",
         "chunks.html",
+        "nochunks.html",
         "positions.html",
         "sorting.html",
         "editing.html",

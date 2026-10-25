@@ -137,9 +137,10 @@ NS_SWIFT_NAME(HtmlConfig)
 /// The zoom the view opens at, 1 being actual size; `nil` follows the fit.
 @property(nonatomic, strong, nullable)
     NSNumber *initialZoom NS_REFINED_FOR_SWIFT;
-/// Lay out only the lines, rows and pages near the viewport.
+/// Lay out only the lines, rows, pages and slides near the viewport.
 @property(nonatomic) BOOL lazyLayout;
-/// Load the chunks of a text file after the first as the reader comes near.
+/// Load the chunks of a text file, a sheet and a pdf after the first as the
+/// reader comes near, and write a search index of their text beside them.
 @property(nonatomic) BOOL lazyLoading;
 
 /// The least distance the generated content keeps from the view's border. A

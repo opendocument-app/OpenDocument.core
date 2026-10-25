@@ -3,11 +3,16 @@
 
   var odr = (window.odr = window.odr || {});
 
-  // Every hit in document order: the marks of a hit in the DOM, or the chunk
-  // and the ordinal in it of a hit in a chunk that has not loaded
-  // (`lazy-loading.md` decision 4).
+  // The hits in document order: `{marks}` for a hit in the DOM, and
+  // `{chunk, count}` for the hits of a chunk that has not loaded, which the
+  // index counted (`lazy-loading.md` decision 4). `total` is the number of
+  // hits, and `current` the place of the selected one among them, which is
+  // `currentEntry` and the hit `currentOrdinal` of it.
   var hits = [];
+  var total = 0;
   var current = -1;
+  var currentEntry = null;
+  var currentOrdinal = 0;
   var keyword = "";
   var complete = true;
   var generation = 0;
@@ -30,15 +35,18 @@
     return folded;
   }
 
+  // A character as `fold` takes it: a surrogate pair is one.
+  var characters = /[\ud800-\udbff][\udc00-\udfff]|[^\x00-\x7f]/g;
+
   // `fold` with no map, for the text of a chunk: an ASCII character folds by
   // `toLowerCase` of the whole text, which is far faster. A `\n` is where the
   // text of a block ends, so it stays.
   function foldText(text) {
-    return text
-      .replace(/[^\x00-\x7f]/g, foldCharacter)
-      .replace(/\t/g, " ")
-      .toLowerCase();
+    return text.replace(characters, foldCharacter).replace(/\t/g, " ").toLowerCase();
   }
+
+  // `viewport.js` keeps the index text folded, because only a search reads it.
+  odr.foldSearchText = foldText;
 
   // The folded `text` plus a folded-index to source-index map (with an end
   // sentinel), so a match maps back onto the source string. Folding per
@@ -48,11 +56,17 @@
     var folded = "";
     var map = [];
     for (var i = 0; i < text.length; ++i) {
-      var character = foldCharacter(text[i]);
+      var unit = text.charCodeAt(i);
+      var pair = unit >= 0xd800 && unit <= 0xdbff && i + 1 < text.length &&
+        text.charCodeAt(i + 1) >= 0xdc00 && text.charCodeAt(i + 1) <= 0xdfff;
+      var character = foldCharacter(pair ? text.substr(i, 2) : text[i]);
       for (var j = 0; j < character.length; ++j) {
         map.push(i);
       }
       folded += character;
+      if (pair) {
+        ++i;
+      }
     }
     map.push(text.length);
     return { text: folded, map: map };
@@ -225,20 +239,47 @@
     return (position & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
   }
 
+  function weight(hit) {
+    return hit.marks !== undefined ? 1 : hit.count;
+  }
+
+  // The place of the first hit of `entry` among all hits.
+  function placeOf(entry) {
+    var place = 0;
+    for (var i = 0; i < hits.length && hits[i] !== entry; ++i) {
+      place += weight(hits[i]);
+    }
+    return place;
+  }
+
+  // `total` and `current` again, after `hits` changed around the selected
+  // entry, which stays selected.
+  function recount() {
+    total = 0;
+    for (var i = 0; i < hits.length; ++i) {
+      total += weight(hits[i]);
+    }
+    current = currentEntry === null ? -1 : placeOf(currentEntry) + currentOrdinal;
+  }
+
+  function resolveDone(found) {
+    var waiting = done;
+    done = [];
+    waiting.forEach(function (resolve) {
+      resolve(found);
+    });
+  }
+
   function notify() {
     if (typeof odr.onSearchChange === "function") {
       odr.onSearchChange({
-        count: hits.length,
+        count: total,
         current: current,
         complete: complete,
       });
     }
     if (complete) {
-      var waiting = done;
-      done = [];
-      waiting.forEach(function (resolve) {
-        resolve(hits.length);
-      });
+      resolveDone(total);
     }
   }
 
@@ -247,13 +288,15 @@
   function finish(pending) {
     var counted = [];
     pending.forEach(function (chunk) {
-      var found =
-        chunk.text === null ? 0 : count(foldText(chunk.text), keyword);
-      for (var ordinal = 0; ordinal < found; ++ordinal) {
-        counted.push({ chunk: chunk.chunk, ordinal: ordinal });
+      if (chunk.text === null) {
+        return;
+      }
+      var text = chunk.folded ? chunk.text : foldText(chunk.text);
+      var found = count(text, keyword);
+      if (found > 0) {
+        counted.push({ chunk: chunk.chunk, count: found });
       }
     });
-    var selected = hits[current];
     var merged = [];
     var i = 0;
     var j = 0;
@@ -265,9 +308,8 @@
     }
     hits = merged;
     complete = true;
-    if (selected !== undefined) {
-      current = hits.indexOf(selected);
-    } else if (hits.length > 0) {
+    recount();
+    if (currentEntry === null && total > 0) {
       select(0);
     }
     notify();
@@ -281,61 +323,61 @@
     }
     var chunk = event.target;
     var found = markIn(chunk);
-    var kept = [];
     var at = -1;
+    for (var i = 0; i < hits.length; ++i) {
+      if (hits[i].chunk === chunk) {
+        at = i;
+        break;
+      }
+    }
     var ordinal = -1;
-    var selected;
-    hits.forEach(function (hit, index) {
-      if (hit.chunk === chunk) {
-        if (at === -1) {
-          at = kept.length;
-        }
-        if (index === current) {
-          ordinal = hit.ordinal;
-        }
-      } else {
-        if (index === current) {
-          selected = hit;
-        }
-        kept.push(hit);
+    if (at !== -1) {
+      if (currentEntry === hits[at]) {
+        ordinal = currentOrdinal;
+        currentEntry = null;
       }
-    });
-    if (at === -1) {
-      if (found.length === 0) {
-        return;
-      }
+      hits.splice(at, 1);
+    } else if (found.length === 0) {
+      return;
+    } else {
       // a chunk that loaded before the index counted it
-      var high = kept.length;
+      var high = hits.length;
       at = 0;
       while (at < high) {
         var middle = (at + high) >> 1;
-        if (precedes(kept[middle], { chunk: chunk })) {
+        if (precedes(hits[middle], { chunk: chunk })) {
           at = middle + 1;
         } else {
           high = middle;
         }
       }
     }
-    hits = kept.slice(0, at).concat(found, kept.slice(at));
-    current = -1;
-    if (ordinal !== -1 && hits.length > 0) {
+    Array.prototype.splice.apply(hits, [at, 0].concat(found));
+    recount();
+    if (ordinal !== -1 && total > 0) {
       // the DOM states the hits of the chunk; the index only counted them
+      var place = at < hits.length ? placeOf(hits[at]) : total - 1;
       var offset = Math.max(Math.min(ordinal, found.length - 1), 0);
-      select(Math.min(at + offset, hits.length - 1));
-    } else if (selected !== undefined) {
-      current = hits.indexOf(selected);
+      select(Math.min(place + offset, total - 1));
     }
     notify();
   });
 
   function select(index) {
-    if (current >= 0 && hits[current] && hits[current].marks !== undefined) {
-      hits[current].marks.forEach(function (mark) {
+    if (currentEntry !== null && currentEntry.marks !== undefined) {
+      currentEntry.marks.forEach(function (mark) {
         mark.classList.remove("current");
       });
     }
+    var place = 0;
+    var i = 0;
+    while (place + weight(hits[i]) <= index) {
+      place += weight(hits[i++]);
+    }
     current = index;
-    var hit = hits[current];
+    currentEntry = hits[i];
+    currentOrdinal = index - place;
+    var hit = currentEntry;
     if (hit.marks === undefined) {
       // selected once its chunk loads
       odr.chunks.show(hit.chunk);
@@ -366,14 +408,15 @@
     if (next !== undefined && next !== null && fold(String(next)).text !== keyword) {
       return odr.search(next);
     }
-    if (hits.length === 0) {
+    if (total === 0) {
       return 0;
     }
-    select((current + delta + hits.length) % hits.length);
+    select((current + delta + total) % total);
     notify();
-    return hits.length;
+    return total;
   }
 
+  // A search that a new one replaces resolves its `searchDone` with null.
   function reset() {
     hits.forEach(function (hit) {
       (hit.marks || []).forEach(function (mark) {
@@ -389,10 +432,14 @@
       });
     });
     hits = [];
+    total = 0;
     current = -1;
+    currentEntry = null;
+    currentOrdinal = 0;
     keyword = "";
     ++generation;
     complete = true;
+    resolveDone(null);
   }
 
   odr.resetSearch = function () {
@@ -412,7 +459,8 @@
       return 0;
     }
     hits = markIn(document.body);
-    if (hits.length > 0) {
+    total = hits.length;
+    if (total > 0) {
       select(0);
     }
     complete = false;
@@ -430,14 +478,15 @@
     if (!complete) {
       notify();
     }
-    return hits.length;
+    return total;
   };
 
-  // The count of the last search once it holds every chunk.
+  // The count of the last search once it holds every chunk, or null where a
+  // new search replaced it first.
   odr.searchDone = function () {
     return new Promise(function (resolve) {
       if (complete) {
-        resolve(hits.length);
+        resolve(total);
       } else {
         done.push(resolve);
       }
