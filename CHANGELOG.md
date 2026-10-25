@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v7.6.1 - 2026-10-25
+
 ### HTML output
 
 - `odr.search` no longer computes the style of the parts of a page the
