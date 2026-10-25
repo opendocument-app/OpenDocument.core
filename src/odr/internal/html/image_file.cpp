@@ -51,8 +51,6 @@ void write_image_src(const ImageFile &image_file, std::ostream &out,
   out << file_to_url(*image_file.stream(), mime_type);
 }
 
-/// An image file knows exactly which format it is holding, so the data url
-/// says so. The table's first mime type is the canonical one.
 /// An SVM image as the SVG a browser shows, converted when it is written.
 class SvgImageResource final : public abstract::HtmlResource {
 public:
@@ -75,10 +73,21 @@ public:
   [[nodiscard]] bool is_external() const override { return false; }
   [[nodiscard]] bool is_accessible() const override { return true; }
 
+  /// Nothing where the conversion fails, so a broken image does not stop
+  /// `bring_offline` or the server.
   void write_resource(std::ostream &os) const override {
-    // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
-    const svm::SvmFile svm_file(std::make_shared<MemoryFile>(*m_file->impl()));
-    svm::translate_to_svg(svm_file, os, m_logger);
+    try {
+      // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
+      const svm::SvmFile svm_file(
+          std::make_shared<MemoryFile>(*m_file->impl()));
+      std::ostringstream svg;
+      svm::translate_to_svg(svm_file, svg, m_logger);
+      os << std::move(svg).str();
+    } catch (const std::exception &e) {
+      ODR_WARNING(m_logger, "svm translation failed: " << e.what());
+    } catch (...) {
+      ODR_WARNING(m_logger, "svm translation failed");
+    }
   }
 
 private:
@@ -87,6 +96,8 @@ private:
   Logger m_logger;
 };
 
+/// An image file knows exactly which format it is holding, so the data url
+/// says so. The table's first mime type is the canonical one.
 std::string image_mime_type(const ImageFile &image_file) {
   const std::span<const std::string_view> mimetypes =
       mimetypes_by_file_type(image_file.file_type());
