@@ -9,7 +9,6 @@ class Element;
 class ElementRange;
 class MasterPage;
 class Slide;
-class Sheet;
 class Page;
 } // namespace odr
 
@@ -20,17 +19,20 @@ class HtmlWriter;
 void translate_children(const ElementRange &range, const WritingState &state);
 void translate_element(const Element &element, const WritingState &state);
 
+/// Whether a reader sees anything. A bookmark marks a place rather than
+/// filling one, and a span or a link is a style around what it holds, so a
+/// paragraph holding only those is still an empty line.
+[[nodiscard]] bool has_content(const ElementRange &children);
+/// A break where the paragraph holds nothing, so a blank line survives being
+/// pasted elsewhere; otherwise a break opportunity, or content all out of
+/// flow leaves no line box.
+void write_paragraph_line_box(bool empty, const WritingState &state);
+/// Whether @p element carries the address an edit operation names.
+/// `contenteditable` is not written: the mode adds it to these runs.
+[[nodiscard]] bool writes_edit_markup(const Element &element,
+                                      const WritingState &state);
+
 void translate_slide(const Slide &slide, const WritingState &state);
-void translate_sheet(const Sheet &sheet, const WritingState &state);
-
-/// The extent `translate_sheet` writes @p sheet at, once the limits in
-/// @p config have applied.
-[[nodiscard]] TableDimensions sheet_rendered_extent(const Sheet &sheet,
-                                                    const HtmlConfig &config);
-
-/// Costs a pass over the cells, so measure it once.
-[[nodiscard]] std::optional<HtmlSheetCut> sheet_cut(const Sheet &sheet,
-                                                    const HtmlConfig &config);
 void translate_page(const Page &page, const WritingState &state);
 
 void translate_master_page(const MasterPage &masterPage,
