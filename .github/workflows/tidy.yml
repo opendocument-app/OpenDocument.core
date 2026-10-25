@@ -75,7 +75,7 @@ jobs:
           -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
           -DCMAKE_BUILD_TYPE=Release
           -DODR_CLANG_TIDY=ON
-          -DCLANG_TIDY_COMMAND=clang-tidy-20
+          -DCLANG_TIDY_COMMAND=/usr/bin/clang-tidy-20
 
       # One job for each core: the generator is make, which runs one compile at
       # a time unless told otherwise, and each one runs clang-tidy.
