@@ -20,8 +20,6 @@
 #include <odr/internal/html/sheet.hpp>
 #include <odr/internal/html/style_registry.hpp>
 #include <odr/internal/util/stream_util.hpp>
-#include <odr/internal/util/string_util.hpp>
-#include <odr/internal/xml/xml_util.hpp>
 
 #include <algorithm>
 #include <mutex>
