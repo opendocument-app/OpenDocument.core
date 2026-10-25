@@ -14,8 +14,8 @@ inline constexpr std::size_t text_limit = 32767;
 [[nodiscard]] std::size_t utf16_length(std::string_view text);
 
 /// @p text in UTF-16, the units both applications count a text in. Nothing
-/// where it holds a character past the basic plane, whose two units a cut
-/// could split.
+/// where it is no valid UTF-8, or holds a character past the basic plane,
+/// whose two units a cut could split.
 [[nodiscard]] std::optional<std::u16string> utf16_of(std::string_view text);
 [[nodiscard]] std::string utf8_of(const std::u16string &text);
 

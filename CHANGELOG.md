@@ -19,12 +19,12 @@ The release run heads these entries with the version and opens a fresh
 ### Build and packaging
 
 - The formula module of the Android AAR, the xcframework, the PyPI wheels and
-  the conan package handles its exceptions in JavaScript, so it loads in a
+  the conan package is built without exception handling, so it loads in a
   WebView before Chrome 95 too. Native wasm exceptions need Chrome 95, so in
-  7.6.1 such a WebView refused every typed formula. The module is 741 KB, not
-  640 KB, and an evaluation takes 2 to 4 times as long: 18 µs for `A1+A2*3`,
-  250 µs for a `VLOOKUP` over 100 rows. The npm package keeps native
-  exceptions, because its core needs them anyway.
+  7.6.1 such a WebView refused every typed formula. The module is as small
+  and as fast as in 7.6.1: 646 KB, 5 µs for `A1+A2*3`, 61 µs for a `VLOOKUP`
+  over 100 rows. The npm package keeps native exceptions, because its core
+  needs them anyway.
 
 ## v7.6.1 - 2026-10-25
 

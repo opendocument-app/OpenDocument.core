@@ -5,8 +5,8 @@ name: formula
 # (`docs/design/spreadsheet-editing.md` decision 5), so `release.yml` builds
 # it before the draft and attaches it as `odr-formula-<tag>.js`.
 #
-# Built with exceptions in JavaScript (`emscripten-wasm-js-eh`): a page of an
-# app runs in whatever WebView the device has, and native wasm exceptions need
+# Built without exception handling (`emscripten-wasm-no-eh`): a page of an app
+# runs in whatever WebView the device has, and native wasm exceptions need
 # Chrome 95. The npm package keeps its own native build, because its core
 # needs native exceptions anyway.
 on:
@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       CACHE_FLAVOR: formula
-      HOST_PROFILE: emscripten-wasm-js-eh
+      HOST_PROFILE: emscripten-wasm-no-eh
       BUILD_PROFILE: ubuntu-24.04-clang-20
     steps:
       - name: checkout
@@ -60,7 +60,7 @@ jobs:
         shell: bash
         run: echo "CONAN_CACHE_KEY=${{ hashFiles('conanfile.py', '.github/config/conan/**') }}" >> "$GITHUB_ENV"
 
-      # its own: the dependencies are built in another exception mode
+      # its own: the dependencies are built without exception handling
       - name: cache conan
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:

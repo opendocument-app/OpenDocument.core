@@ -97,6 +97,10 @@ std::optional<std::u16string> mapped(const std::u16string &text,
 namespace odr::internal {
 
 std::optional<std::u16string> formula::utf16_of(const std::string_view text) {
+  // the conversion throws on invalid UTF-8
+  if (!util::string::is_valid_utf8(text)) {
+    return std::nullopt;
+  }
   std::u16string result = util::string::string_to_u16string(text);
   if (std::ranges::any_of(result, [](const char16_t c) {
         return c >= 0xD800 && c <= 0xDFFF;

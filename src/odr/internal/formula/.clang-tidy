@@ -1,0 +1,10 @@
+---
+# Every function here is noexcept, and the formula module builds without
+# exceptions, so the exceptions below end the program. On top of the failed
+# allocation of the parent: `out_of_range` is a position past the end, which
+# libc++'s `substr` and string `+` check for.
+# `std::visit` throws `bad_variant_access` only for a variant a throw left
+# empty. A visitor in a `std::function` is never empty.
+InheritParentConfig: true
+CheckOptions:
+  bugprone-exception-escape.IgnoredExceptions: 'length_error,bad_array_new_length,out_of_range,bad_variant_access,bad_function_call'

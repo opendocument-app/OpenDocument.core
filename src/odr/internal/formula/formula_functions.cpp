@@ -27,7 +27,7 @@ constexpr std::array constant_functions{
 };
 
 /// The function a name stands for once the prefix of its format is gone.
-std::string canonical_name(std::string_view name) {
+std::string canonical_name(std::string_view name) noexcept {
   for (const std::string_view prefix :
        {"_xlfn._xlws.", "_xlfn.", "_xlws.", "com.microsoft.", "org.openoffice.",
         "org.libreoffice."}) {
@@ -42,7 +42,7 @@ std::string canonical_name(std::string_view name) {
   return result;
 }
 
-const std::unordered_map<std::string, Function> &functions() {
+const std::unordered_map<std::string, Function> &functions() noexcept {
   static const std::unordered_map<std::string, Function> result = [] {
     std::unordered_map<std::string, Function> table;
     for (const std::span<const FunctionEntry> entries :
@@ -80,8 +80,8 @@ formula::Errors::first() const noexcept {
   return m_first;
 }
 
-formula::Result<double> formula::number_argument(const Call &call,
-                                                 const std::size_t index) {
+formula::Result<double>
+formula::number_argument(const Call &call, const std::size_t index) noexcept {
   const Result<Number> number = call.scalar(index).and_then(
       [&](const Value &value) { return call.number(value); });
   if (!number.has_value()) {
@@ -139,7 +139,8 @@ formula::expect_arguments(const Call &call, const std::size_t least,
   return {};
 }
 
-formula::ArrayRule formula::find_array_rule(const std::string_view name) {
+formula::ArrayRule
+formula::find_array_rule(const std::string_view name) noexcept {
   const std::string canonical = canonical_name(name);
   const auto in = [&](const std::initializer_list<std::string_view> names) {
     return std::ranges::find(names, canonical) != names.end();
@@ -151,28 +152,32 @@ formula::ArrayRule formula::find_array_rule(const std::string_view name) {
           "MIN",    "MEDIAN",  "SUMSQ",   "STDEV",     "STDEV.P", "STDEV.S",
           "STDEVP", "VAR",     "VAR.P",   "VAR.S",     "VARP",    "AND",
           "OR",     "XOR",     "CONCAT",  "SUMPRODUCT"})) {
-    return [](std::size_t) { return true; };
+    return [](std::size_t) noexcept { return true; };
   }
   if (in({"INDEX", "LARGE", "SMALL", "ROWS", "COLUMNS", "COUNTIF",
           "COUNTBLANK"})) {
-    return [](const std::size_t index) { return index == 0; };
+    return [](const std::size_t index) noexcept { return index == 0; };
   }
   if (in({"MATCH", "VLOOKUP", "HLOOKUP"})) {
-    return [](const std::size_t index) { return index == 1; };
+    return [](const std::size_t index) noexcept { return index == 1; };
   }
   if (in({"SUMIF", "AVERAGEIF"})) {
-    return [](const std::size_t index) { return index == 0 || index == 2; };
+    return [](const std::size_t index) noexcept {
+      return index == 0 || index == 2;
+    };
   }
   if (in({"COUNTIFS"})) {
-    return [](const std::size_t index) { return index % 2 == 0; };
+    return [](const std::size_t index) noexcept { return index % 2 == 0; };
   }
   if (in({"SUMIFS", "AVERAGEIFS"})) {
-    return [](const std::size_t index) { return index == 0 || index % 2 == 1; };
+    return [](const std::size_t index) noexcept {
+      return index == 0 || index % 2 == 1;
+    };
   }
-  return [](std::size_t) { return false; };
+  return [](std::size_t) noexcept { return false; };
 }
 
-bool formula::is_volatile(const Node &node) {
+bool formula::is_volatile(const Node &node) noexcept {
   if (const auto *call = std::get_if<FunctionCall>(&node.content)) {
     const std::string name = canonical_name(call->name);
     for (const std::string_view volatile_name :
@@ -186,7 +191,7 @@ bool formula::is_volatile(const Node &node) {
   return std::ranges::any_of(node.children, is_volatile);
 }
 
-bool formula::has_dynamic_references(const Node &node) {
+bool formula::has_dynamic_references(const Node &node) noexcept {
   if (const auto *call = std::get_if<FunctionCall>(&node.content)) {
     const std::string name = canonical_name(call->name);
     if (name == "OFFSET" || name == "INDIRECT") {
@@ -196,7 +201,7 @@ bool formula::has_dynamic_references(const Node &node) {
   return std::ranges::any_of(node.children, has_dynamic_references);
 }
 
-formula::Function formula::find_function(const std::string_view name) {
+formula::Function formula::find_function(const std::string_view name) noexcept {
   const auto found = functions().find(canonical_name(name));
   return found == functions().end() ? nullptr : found->second;
 }

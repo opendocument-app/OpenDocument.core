@@ -19,7 +19,7 @@ namespace {
 
 /// Checks array size before narrowing or allocating, including on 32-bit hosts.
 Result<std::size_t> array_size(const std::uint64_t columns,
-                               const std::uint64_t rows) {
+                               const std::uint64_t rows) noexcept {
   constexpr std::uint64_t limit = 1 << 20;
   if (columns > limit || rows > limit || columns * rows > limit) {
     return no_answer();
@@ -28,7 +28,7 @@ Result<std::size_t> array_size(const std::uint64_t columns,
 }
 
 /// The last index of an axis that states @p count positions.
-std::uint32_t last_of(const std::uint32_t count) {
+std::uint32_t last_of(const std::uint32_t count) noexcept {
   return count == 0 ? 0 : count - 1;
 }
 
@@ -39,13 +39,15 @@ std::uint32_t last_of(const std::uint32_t count) {
 class Evaluator final {
 public:
   Evaluator(const CellSource *source, const Settings *settings,
-            const SheetPosition &cell, const Node *root)
+            const SheetPosition &cell, const Node *root) noexcept
       : m_source{source}, m_settings{settings}, m_cell{cell}, m_root{root} {}
 
-  [[nodiscard]] const Settings &settings() const { return *m_settings; }
-  [[nodiscard]] const SheetPosition &cell() const { return m_cell; }
+  [[nodiscard]] const Settings &settings() const noexcept {
+    return *m_settings;
+  }
+  [[nodiscard]] const SheetPosition &cell() const noexcept { return m_cell; }
 
-  [[nodiscard]] Result<Value> value(const Node &node) {
+  [[nodiscard]] Result<Value> value(const Node &node) noexcept {
     return std::visit(
         [&](const auto &content) -> Result<Value> {
           return value_of(content, node);
@@ -55,7 +57,7 @@ public:
 
   /// @p value as one value: a range gives the cell the formula's row or
   /// column crosses, an array its first element.
-  [[nodiscard]] Result<Value> scalar(Value value) const {
+  [[nodiscard]] Result<Value> scalar(Value value) const noexcept {
     if (const auto *reference = std::get_if<Reference>(&value.content)) {
       return intersection(*reference);
     }
@@ -69,7 +71,7 @@ public:
   }
 
   /// @ref Call::reference.
-  [[nodiscard]] Result<Value> reference(const Node &node) {
+  [[nodiscard]] Result<Value> reference(const Node &node) noexcept {
     const auto known = [&](const CellReference &cell) -> Result<bool> {
       if (cell.document.has_value() ||
           (cell.sheet.has_value() &&
@@ -125,13 +127,13 @@ public:
   }
 
   /// @ref Call::array of an argument evaluated ahead.
-  [[nodiscard]] Result<Matrix> array_of(Value value) const {
+  [[nodiscard]] Result<Matrix> array_of(Value value) const noexcept {
     return matrix_of(std::move(value));
   }
 
   /// Evaluates @p node as an array, expanding range operands as `SUMPRODUCT`
   /// does.
-  [[nodiscard]] Result<Matrix> array(const Node &node) {
+  [[nodiscard]] Result<Matrix> array(const Node &node) noexcept {
     const bool outer = m_array;
     m_array = true;
     Result<Value> result = value(node);
@@ -144,7 +146,8 @@ public:
 
   /// The cell at @p position, without reading one past the extent of its
   /// sheet, which is empty.
-  [[nodiscard]] Result<Value> cell_value(const SheetPosition &position) const {
+  [[nodiscard]] Result<Value>
+  cell_value(const SheetPosition &position) const noexcept {
     const TableDimensions extent = m_source->extent(position.sheet);
     if (position.cell.row >= extent.rows ||
         position.cell.column >= extent.columns) {
@@ -153,7 +156,8 @@ public:
     return read(position);
   }
 
-  [[nodiscard]] Result<Value> read(const SheetPosition &position) const {
+  [[nodiscard]] Result<Value>
+  read(const SheetPosition &position) const noexcept {
     std::optional<Value> value = m_source->cell(position);
     if (!value.has_value()) {
       return no_answer();
@@ -164,7 +168,7 @@ public:
   [[nodiscard]] Result<void> for_each(
       const Reference &reference,
       const std::function<Result<void>(const SheetPosition &, const Value &)>
-          &visit) const {
+          &visit) const noexcept {
     const auto visit_value =
         [&](const SheetPosition &position,
             const std::optional<Value> &value) -> Result<void> {
@@ -183,7 +187,7 @@ public:
     return {};
   }
 
-  [[nodiscard]] Result<Number> number(const Value &value) const {
+  [[nodiscard]] Result<Number> number(const Value &value) const noexcept {
     return std::visit(
         [&]<typename T>(const T &content) -> Result<Number> {
           if constexpr (std::is_same_v<T, Empty>) {
@@ -207,7 +211,7 @@ public:
         value.content);
   }
 
-  [[nodiscard]] Result<Text> text(const Value &value) const {
+  [[nodiscard]] Result<Text> text(const Value &value) const noexcept {
     return std::visit(
         [&]<typename T>(const T &content) -> Result<Text> {
           if constexpr (std::is_same_v<T, Empty>) {
@@ -249,7 +253,7 @@ private:
   static constexpr std::uint32_t name_limit = 16;
 
   /// @p value as an array: the cells of a range, an array, or one value.
-  [[nodiscard]] Result<Matrix> matrix_of(Value value) const {
+  [[nodiscard]] Result<Matrix> matrix_of(Value value) const noexcept {
     if (auto *matrix = std::get_if<Matrix>(&value.content)) {
       return std::move(*matrix);
     }
@@ -291,25 +295,29 @@ private:
     return result;
   }
 
-  [[nodiscard]] Value value_of(const NumberLiteral &literal, const Node &) {
+  [[nodiscard]] Value value_of(const NumberLiteral &literal,
+                               const Node &) noexcept {
     return Value{literal.value};
   }
-  [[nodiscard]] Value value_of(const StringLiteral &literal, const Node &) {
+  [[nodiscard]] Value value_of(const StringLiteral &literal,
+                               const Node &) noexcept {
     return Value{literal.value};
   }
-  [[nodiscard]] Value value_of(const BooleanLiteral &literal, const Node &) {
+  [[nodiscard]] Value value_of(const BooleanLiteral &literal,
+                               const Node &) noexcept {
     return Value{literal.value};
   }
-  [[nodiscard]] Value value_of(const ErrorLiteral &literal, const Node &) {
+  [[nodiscard]] Value value_of(const ErrorLiteral &literal,
+                               const Node &) noexcept {
     return Value{literal.type};
   }
-  [[nodiscard]] Value value_of(const Missing &, const Node &) {
+  [[nodiscard]] Value value_of(const Missing &, const Node &) noexcept {
     return Value{Empty{}};
   }
   /// What a name stands for. A name whose references are relative reads
   /// from a base cell the two formats state apart, so it has no answer.
   [[nodiscard]] Result<Value> value_of(const NameReference &reference,
-                                       const Node &) {
+                                       const Node &) noexcept {
     if (reference.document.has_value() || m_name_depth >= name_limit) {
       return no_answer();
     }
@@ -329,7 +337,7 @@ private:
 
   /// Whether @p node holds a reference that is relative on an axis, or that
   /// names no sheet.
-  [[nodiscard]] static bool is_relative(const Node &node) {
+  [[nodiscard]] static bool is_relative(const Node &node) noexcept {
     const auto relative = [](const CellReference &cell, const bool first) {
       return (first && !cell.sheet.has_value()) ||
              (cell.column.has_value() && !cell.column->absolute) ||
@@ -344,20 +352,20 @@ private:
     return std::ranges::any_of(node.children, is_relative);
   }
   [[nodiscard]] Result<Value> value_of(const CellReference &cell,
-                                       const Node &) {
+                                       const Node &) noexcept {
     return area(cell, cell).transform([](const Area &one) {
       return Value{Reference{{one}}};
     });
   }
   [[nodiscard]] Result<Value> value_of(const RangeReference &range,
-                                       const Node &) {
+                                       const Node &) noexcept {
     return area(range.from, range.to).transform([](const Area &one) {
       return Value{Reference{{one}}};
     });
   }
 
   [[nodiscard]] Result<Value> value_of(const FunctionCall &call,
-                                       const Node &node) {
+                                       const Node &node) noexcept {
     const Function function = find_function(call.name);
     if (function == nullptr) {
       return no_answer();
@@ -371,20 +379,16 @@ private:
   /// What @p function gives for @p call: an error it stops with is its
   /// result.
   [[nodiscard]] static Result<Value> called(const Function function,
-                                            const Call &call) {
-    try {
-      Result<Value> result = function(call);
-      if (result.has_value()) {
-        return result;
-      }
-      if (const std::optional<ErrorType> error = result.error().error;
-          error.has_value()) {
-        return Value{*error};
-      }
+                                            const Call &call) noexcept {
+    Result<Value> result = function(call);
+    if (result.has_value()) {
       return result;
-    } catch (const ErrorResult &result) {
-      return Value{result.error};
     }
+    if (const std::optional<ErrorType> error = result.error().error;
+        error.has_value()) {
+      return Value{*error};
+    }
+    return result;
   }
 
   /// A function in an array context. An argument @p takes_array names stays
@@ -392,7 +396,7 @@ private:
   /// elements of every other one: a range gives a one-cell reference each.
   [[nodiscard]] Result<Value> mapped(const Function function,
                                      const ArrayRule takes_array,
-                                     const Node &node) {
+                                     const Node &node) noexcept {
     if (takes_array == nullptr) {
       return no_answer();
     }
@@ -454,7 +458,7 @@ private:
 
   /// The columns and rows of an array or a range, 1 by 1 for a scalar.
   [[nodiscard]] static Result<std::pair<std::uint32_t, std::uint32_t>>
-  shape_of(const Value &value) {
+  shape_of(const Value &value) noexcept {
     if (const auto *matrix = std::get_if<Matrix>(&value.content)) {
       return std::pair{matrix->columns, matrix->rows};
     }
@@ -475,9 +479,9 @@ private:
 
   /// The element of @p value at (@p column, @p row), as @ref spread places
   /// it: a range gives the reference of one cell.
-  [[nodiscard]] static Result<Value> element_of(const Value &value,
-                                                const std::uint32_t column,
-                                                const std::uint32_t row) {
+  [[nodiscard]] static Result<Value>
+  element_of(const Value &value, const std::uint32_t column,
+             const std::uint32_t row) noexcept {
     if (const auto *matrix = std::get_if<Matrix>(&value.content)) {
       return spread(*matrix, column, row);
     }
@@ -503,7 +507,7 @@ private:
   }
 
   /// One element of an array a mapped function gives.
-  [[nodiscard]] Result<Value> one_value(Value value) {
+  [[nodiscard]] Result<Value> one_value(Value value) noexcept {
     if (const auto *reference = std::get_if<Reference>(&value.content)) {
       if (reference->areas.size() != 1 ||
           reference->areas.front().range.from() !=
@@ -523,7 +527,7 @@ private:
   }
 
   [[nodiscard]] Result<Value> value_of(const ArrayLiteral &array,
-                                       const Node &node) {
+                                       const Node &node) noexcept {
     Matrix matrix{array.columns, array.rows, {}};
     const Result<std::size_t> count = array_size(array.columns, array.rows);
     if (!count.has_value()) {
@@ -545,7 +549,7 @@ private:
   }
 
   [[nodiscard]] Result<Value> value_of(const UnaryOperation &operation,
-                                       const Node &node) {
+                                       const Node &node) noexcept {
     const Result<Value> operand = value(node.children.front());
     if (!operand.has_value()) {
       return std::unexpected(operand.error());
@@ -569,7 +573,7 @@ private:
   }
 
   [[nodiscard]] Result<Value> value_of(const BinaryOperation &operation,
-                                       const Node &node) {
+                                       const Node &node) noexcept {
     const Result<Value> left = value(node.children.front());
     if (!left.has_value()) {
       return std::unexpected(left.error());
@@ -596,7 +600,7 @@ private:
 
   /// The rectangle two corners span, on the sheet the first names.
   [[nodiscard]] Result<Area> area(const CellReference &from,
-                                  const CellReference &to) const {
+                                  const CellReference &to) const noexcept {
     const Result<std::uint32_t> sheet =
         from.document.has_value() ? external_sheet_of(from, to)
                                   : sheet_of(from.sheet, m_cell.sheet);
@@ -639,7 +643,8 @@ private:
   /// The sheet holding the copy the file caches of the sheet of another
   /// document that both corners name.
   [[nodiscard]] Result<std::uint32_t>
-  external_sheet_of(const CellReference &from, const CellReference &to) const {
+  external_sheet_of(const CellReference &from,
+                    const CellReference &to) const noexcept {
     if (!from.document.has_value() || !from.sheet.has_value() ||
         (to.document.has_value() && to.document != from.document) ||
         (to.sheet.has_value() &&
@@ -656,7 +661,7 @@ private:
 
   [[nodiscard]] Result<std::uint32_t>
   sheet_of(const std::optional<std::string> &name,
-           const std::uint32_t unstated) const {
+           const std::uint32_t unstated) const noexcept {
     if (!name.has_value()) {
       return unstated;
     }
@@ -668,7 +673,8 @@ private:
   }
 
   /// The cell of a range the formula's row or column crosses.
-  [[nodiscard]] Result<Value> intersection(const Reference &reference) const {
+  [[nodiscard]] Result<Value>
+  intersection(const Reference &reference) const noexcept {
     if (reference.areas.size() != 1) {
       return Value{ErrorType::value};
     }
@@ -695,7 +701,8 @@ private:
 
   /// The single area @p value is, else nothing. A whole column has no
   /// answer: the extent of its sheet cuts it, and the grid does not.
-  [[nodiscard]] static Result<std::optional<Area>> area_of(const Value &value) {
+  [[nodiscard]] static Result<std::optional<Area>>
+  area_of(const Value &value) noexcept {
     const auto *reference = std::get_if<Reference>(&value.content);
     if (reference == nullptr || reference->areas.size() != 1) {
       return std::optional<Area>();
@@ -709,7 +716,7 @@ private:
 
   /// `A1:B2` spelled as two references around `:`: the rectangle both span.
   [[nodiscard]] static Result<Value> range(const Value &left,
-                                           const Value &right) {
+                                           const Value &right) noexcept {
     const Result<std::optional<Area>> a = area_of(left);
     if (!a.has_value()) {
       return std::unexpected(a.error());
@@ -736,7 +743,7 @@ private:
 
   /// The cells two areas share, `#NULL!` where they share none.
   [[nodiscard]] static Result<Value> intersect(const Value &left,
-                                               const Value &right) {
+                                               const Value &right) noexcept {
     const Result<std::optional<Area>> first = area_of(left);
     if (!first.has_value()) {
       return std::unexpected(first.error());
@@ -761,7 +768,8 @@ private:
     return Value{Reference{{Area{a.sheet, TableRange(from, to)}}}};
   }
 
-  [[nodiscard]] static Value unite(const Value &left, const Value &right) {
+  [[nodiscard]] static Value unite(const Value &left,
+                                   const Value &right) noexcept {
     const auto *a = std::get_if<Reference>(&left.content);
     const auto *b = std::get_if<Reference>(&right.content);
     if (a == nullptr || b == nullptr) {
@@ -776,8 +784,9 @@ private:
   /// array. A single row or column of an array stands for every row or column
   /// of the other, and a position past both is `#N/A`.
   template <typename Operation>
-  [[nodiscard]] Result<Value> elementwise(const Value &a, const Value &b,
-                                          const Operation &operation) const {
+  [[nodiscard]] Result<Value>
+  elementwise(const Value &a, const Value &b,
+              const Operation &operation) const noexcept {
     if (m_array && (a.holds<Reference>() || b.holds<Reference>())) {
       const auto expanded = [&](const Value &value) -> Result<Value> {
         if (!value.holds<Reference>()) {
@@ -850,7 +859,8 @@ private:
 
   /// @p last where @p op is the last operation of the formula.
   [[nodiscard]] Result<Value> binary(const BinaryOperator op, const Value &a,
-                                     const Value &b, const bool last) const {
+                                     const Value &b,
+                                     const bool last) const noexcept {
     switch (op) {
     case BinaryOperator::concat:
       return concatenate(a, b);
@@ -868,7 +878,7 @@ private:
 
   [[nodiscard]] Result<Value> arithmetic(const BinaryOperator op,
                                          const Value &a, const Value &b,
-                                         const bool last) const {
+                                         const bool last) const noexcept {
     const Result<Number> left = number(a);
     if (!left.has_value()) {
       return std::unexpected(left.error());
@@ -919,7 +929,7 @@ private:
   /// Adds with LibreOffice cancellation (`rtl::math::approxAdd`). Excel
   /// cancellation depends on parentheses absent from this AST.
   [[nodiscard]] Result<double> add(const double a, const double b,
-                                   const bool last) const {
+                                   const bool last) const noexcept {
     const double result = a + b;
     if (result == 0 || (a < 0) == (b < 0)) {
       return result;
@@ -934,7 +944,7 @@ private:
   }
 
   [[nodiscard]] Result<Value> concatenate(const Value &a,
-                                          const Value &b) const {
+                                          const Value &b) const noexcept {
     if (m_settings->dialect == Dialect::libreoffice &&
         (a.holds<bool>() || b.holds<bool>())) {
       if (!m_settings->boolean_word.has_value()) {
@@ -953,7 +963,7 @@ private:
   }
 
   [[nodiscard]] Result<Value> concatenate_texts(const Value &a,
-                                                const Value &b) const {
+                                                const Value &b) const noexcept {
     const Result<Text> left = text(a);
     if (!left.has_value()) {
       return std::unexpected(left.error());
@@ -980,7 +990,7 @@ private:
   /// has no boolean: it is the number 1 or 0. An empty cell is 0, an empty
   /// text or false, whichever the other side is.
   [[nodiscard]] Result<Value> compare(const BinaryOperator op, Value a,
-                                      Value b) const {
+                                      Value b) const noexcept {
     if (const auto *error = std::get_if<ErrorType>(&a.content)) {
       return Value{*error};
     }
@@ -1074,16 +1084,16 @@ private:
 };
 
 Call::Call(Evaluator *evaluator, const Node *node,
-           const std::vector<std::optional<Value>> *given)
+           const std::vector<std::optional<Value>> *given) noexcept
     : m_evaluator{evaluator}, m_node{node}, m_given{given} {}
 
-std::size_t Call::size() const { return m_node->children.size(); }
+std::size_t Call::size() const noexcept { return m_node->children.size(); }
 
-bool Call::missing(const std::size_t index) const {
+bool Call::missing(const std::size_t index) const noexcept {
   return index >= size() || m_node->children[index].holds<Missing>();
 }
 
-Result<Value> Call::value(const std::size_t index) const {
+Result<Value> Call::value(const std::size_t index) const noexcept {
   if (index >= size()) {
     return Value{Empty{}};
   }
@@ -1096,16 +1106,16 @@ Result<Value> Call::value(const std::size_t index) const {
   return m_evaluator->value(m_node->children[index]);
 }
 
-Result<Value> Call::scalar(const std::size_t index) const {
+Result<Value> Call::scalar(const std::size_t index) const noexcept {
   return value(index).and_then(
       [&](Value value) { return scalar_of(std::move(value)); });
 }
 
-Result<Value> Call::scalar_of(Value value) const {
+Result<Value> Call::scalar_of(Value value) const noexcept {
   return m_evaluator->scalar(std::move(value));
 }
 
-Result<Matrix> Call::array(const std::size_t index) const {
+Result<Matrix> Call::array(const std::size_t index) const noexcept {
   if (index >= size()) {
     return Matrix{1, 1, {Value{Empty{}}}};
   }
@@ -1118,9 +1128,10 @@ Result<Matrix> Call::array(const std::size_t index) const {
   return m_evaluator->array(m_node->children[index]);
 }
 
-Result<void> Call::for_each_value(
-    const std::size_t index,
-    const std::function<Result<void>(const Value &, bool)> &visit) const {
+Result<void>
+Call::for_each_value(const std::size_t index,
+                     const std::function<Result<void>(const Value &, bool)>
+                         &visit) const noexcept {
   const Result<Value> value = this->value(index);
   if (!value.has_value()) {
     return std::unexpected(value.error());
@@ -1144,36 +1155,38 @@ Result<void> Call::for_each_value(
 Result<void> Call::for_each(
     const Reference &reference,
     const std::function<Result<void>(const SheetPosition &, const Value &)>
-        &visit) const {
+        &visit) const noexcept {
   return m_evaluator->for_each(reference, visit);
 }
 
-Result<Value> Call::cell_value(const SheetPosition &position) const {
+Result<Value> Call::cell_value(const SheetPosition &position) const noexcept {
   return m_evaluator->cell_value(position);
 }
 
-Result<Value> Call::reference(const Node &node) const {
+Result<Value> Call::reference(const Node &node) const noexcept {
   return m_evaluator->reference(node);
 }
 
-Result<Number> Call::number(const Value &value) const {
+Result<Number> Call::number(const Value &value) const noexcept {
   return m_evaluator->number(value);
 }
 
-Result<Text> Call::text(const Value &value) const {
+Result<Text> Call::text(const Value &value) const noexcept {
   return m_evaluator->text(value);
 }
 
-const Settings &Call::settings() const { return m_evaluator->settings(); }
+const Settings &Call::settings() const noexcept {
+  return m_evaluator->settings();
+}
 
-const SheetPosition &Call::cell() const { return m_evaluator->cell(); }
+const SheetPosition &Call::cell() const noexcept { return m_evaluator->cell(); }
 
 } // namespace odr::internal::formula
 
 namespace odr::internal {
 
 formula::Result<formula::Value> formula::power(const double x, const double y,
-                                               const Dialect dialect) {
+                                               const Dialect dialect) noexcept {
   const bool libreoffice = dialect == Dialect::libreoffice;
   if (x == 0 && y == 0) {
     return libreoffice ? Value{1.0} : Value{ErrorType::number};
@@ -1197,8 +1210,9 @@ formula::Result<formula::Value> formula::power(const double x, const double y,
 
 formula::Result<void> formula::CellSource::for_each_cell(
     const Area &area,
-    const std::function<Result<void>(
-        const SheetPosition &, const std::optional<Value> &)> &visit) const {
+    const std::function<Result<void>(const SheetPosition &,
+                                     const std::optional<Value> &)> &visit)
+    const noexcept {
   const TableDimensions extent = this->extent(area.sheet);
   if (extent.rows == 0 || extent.columns == 0) {
     return {};
@@ -1221,7 +1235,7 @@ formula::Result<void> formula::CellSource::for_each_cell(
 
 formula::Result<std::strong_ordering>
 formula::order_of_texts(const std::string_view a, const std::string_view b,
-                        const bool case_sensitive) {
+                        const bool case_sensitive) noexcept {
   if (a == b) {
     return std::strong_ordering::equal;
   }
@@ -1256,7 +1270,7 @@ formula::order_of_texts(const std::string_view a, const std::string_view b,
 
 formula::Result<bool> formula::equal_texts(const std::string_view a,
                                            const std::string_view b,
-                                           const bool case_sensitive) {
+                                           const bool case_sensitive) noexcept {
   if (a == b) {
     return true;
   }
@@ -1272,56 +1286,48 @@ formula::Result<bool> formula::equal_texts(const std::string_view a,
   return *left == *right;
 }
 
-std::optional<formula::Value> formula::evaluate(const Node &node,
-                                                const SheetPosition &cell,
-                                                const CellSource &source,
-                                                const Settings &settings) {
-  try {
-    Evaluator evaluator(&source, &settings, cell, &node);
-    Result<Value> result = evaluator.value(node).and_then(
-        [&](Value value) { return evaluator.scalar(std::move(value)); });
-    if (!result.has_value()) {
-      return std::nullopt;
-    }
-    // a formula reading an empty cell shows 0
-    if (result->holds<Empty>()) {
-      return Value{0.0};
-    }
-    if (result->holds<double>() && !std::isfinite(result->get<double>())) {
-      return std::nullopt;
-    }
-    return std::move(*result);
-  } catch (const NoAnswer &) {
+std::optional<formula::Value>
+formula::evaluate(const Node &node, const SheetPosition &cell,
+                  const CellSource &source, const Settings &settings) noexcept {
+  Evaluator evaluator(&source, &settings, cell, &node);
+  Result<Value> result = evaluator.value(node).and_then(
+      [&](Value value) { return evaluator.scalar(std::move(value)); });
+  if (!result.has_value()) {
     return std::nullopt;
   }
+  // a formula reading an empty cell shows 0
+  if (result->holds<Empty>()) {
+    return Value{0.0};
+  }
+  if (result->holds<double>() && !std::isfinite(result->get<double>())) {
+    return std::nullopt;
+  }
+  return std::move(*result);
 }
 
 std::optional<formula::Matrix>
 formula::evaluate_array(const Node &node, const SheetPosition &cell,
-                        const CellSource &source, const Settings &settings) {
-  try {
-    Evaluator evaluator(&source, &settings, cell, &node);
-    Result<Matrix> result = evaluator.array(node);
-    if (!result.has_value()) {
-      return std::nullopt;
-    }
-    for (Value &element : result->cells) {
-      // an element reading an empty cell is 0, which LibreOffice shows blank
-      if (element.holds<Empty>()) {
-        element = Value{0.0};
-      } else if (element.holds<double>() &&
-                 !std::isfinite(element.get<double>())) {
-        return std::nullopt;
-      }
-    }
-    return std::move(*result);
-  } catch (const NoAnswer &) {
+                        const CellSource &source,
+                        const Settings &settings) noexcept {
+  Evaluator evaluator(&source, &settings, cell, &node);
+  Result<Matrix> result = evaluator.array(node);
+  if (!result.has_value()) {
     return std::nullopt;
   }
+  for (Value &element : result->cells) {
+    // an element reading an empty cell is 0, which LibreOffice shows blank
+    if (element.holds<Empty>()) {
+      element = Value{0.0};
+    } else if (element.holds<double>() &&
+               !std::isfinite(element.get<double>())) {
+      return std::nullopt;
+    }
+  }
+  return std::move(*result);
 }
 
 formula::Value formula::spread(const Matrix &result, const std::uint32_t column,
-                               const std::uint32_t row) {
+                               const std::uint32_t row) noexcept {
   const std::uint32_t c = result.columns == 1 ? 0 : column;
   const std::uint32_t r = result.rows == 1 ? 0 : row;
   if (c >= result.columns || r >= result.rows) {

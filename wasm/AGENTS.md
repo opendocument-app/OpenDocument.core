@@ -48,7 +48,7 @@ structured-cloned. Three rules follow.
 - Bind the public API only. Never include `odr/internal/...`, except
   `odr_meta_util.hpp`, so the meta blob matches `cli/src/meta.cpp` byte for
   byte. `formula/` is the exception: it has no public API to bind, and it
-  links `odr_oz`, the library at `-Oz`.
+  links `odr_formula_oz` and `odr_oz`, the library at `-Oz`.
 - An embind `std::string` parameter is binary-safe, a `std::string` return is
   not: it goes through `UTF8ToString`. Binary results go through
   `to_uint8_array`.
@@ -82,11 +82,15 @@ Emscripten only. See [`README.md`](README.md) for the conan invocation and
   in CMake flags. The EH mode is an ABI, so every dependency needs the same
   one.
 - The formula module that the native builds embed is the exception:
-  `formula.yml` builds it with `emscripten-wasm-js-eh` (`-fexceptions`),
-  because an app's WebView may predate native wasm exceptions (Chrome 95).
-  That profile names its flags in the package id, or conan would reuse the
-  dependencies built with `-fwasm-exceptions`.
-  `scripts/wasm_has_no_native_eh.py` checks the result.
+  `formula.yml` builds it with `emscripten-wasm-no-eh`, because an app's
+  WebView may predate native wasm exceptions (Chrome 95). That profile builds
+  without exception handling (`-fignore-exceptions`: a `throw` ends the call
+  as a JavaScript exception, a `catch` never runs), and names its flags in the
+  package id, or conan would reuse the dependencies built with
+  `-fwasm-exceptions`. `scripts/wasm_has_no_native_eh.py` checks the result.
+- The formula code (`odr_formula_oz`) and `formula/odr_formula.cpp` build
+  with `-fno-exceptions` in every wasm build, so a `throw` or a `catch` there
+  fails it. The rest of the library they link (`odr_oz`) still throws.
 - `compiler.threads` is omitted from the profile, not set to `null`. A profile
   value is a string, so `null` fails against `settings.yml`.
 - `-sSTACK_SIZE=8388608` in `CMakeLists.txt` is required. Emscripten defaults

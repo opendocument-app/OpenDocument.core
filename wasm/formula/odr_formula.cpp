@@ -15,7 +15,6 @@
 #include <cstdint>
 #include <optional>
 #include <random>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -143,14 +142,17 @@ val to_js(const formula::Value &value) {
 }
 
 /// The cells, in the callbacks of a JavaScript object. A callback must not
-/// throw: a JavaScript exception unwinds through the evaluator.
+/// throw: a JavaScript exception, which `noexcept` does not stop, unwinds
+/// through the evaluator without its destructors, so it leaks what the
+/// evaluation holds. The page drops the module after one (`compute` in
+/// `sheet-editing.js`).
 class JsCellSource final : public formula::CellSource {
 public:
   JsCellSource(val source, const formula::Syntax syntax)
       : m_source{std::move(source)}, m_syntax{syntax} {}
 
   [[nodiscard]] std::optional<std::uint32_t>
-  sheet(const std::string_view name) const override {
+  sheet(const std::string_view name) const noexcept override {
     const val result = m_source.call<val>("sheet", std::string(name));
     if (is_absent(result)) {
       return std::nullopt;
@@ -159,20 +161,21 @@ public:
   }
 
   [[nodiscard]] std::optional<formula::Value>
-  cell(const SheetPosition &position) const override {
+  cell(const SheetPosition &position) const noexcept override {
     return value_of(m_source.call<val>(
         "cell", position.sheet, position.cell.column, position.cell.row));
   }
 
   [[nodiscard]] TableDimensions
-  extent(const std::uint32_t sheet) const override {
+  extent(const std::uint32_t sheet) const noexcept override {
     const val result = m_source.call<val>("extent", sheet);
     return TableDimensions(result["rows"].as<std::uint32_t>(),
                            result["columns"].as<std::uint32_t>());
   }
 
   [[nodiscard]] std::optional<formula::Node>
-  name(const std::string_view name, const std::uint32_t sheet) const override {
+  name(const std::string_view name,
+       const std::uint32_t sheet) const noexcept override {
     if (is_absent(m_source["name"])) {
       return std::nullopt;
     }
@@ -254,32 +257,34 @@ val evaluate_array(const val &expression, const val &syntax,
 /// language of the BCP 47 tag @p locale. Null where @p code is no format code.
 val format(const double number, const std::string &code,
            const std::string &locale, const bool from_1904) {
-  try {
-    const number_format::Format parsed =
-        code.empty() ? number_format::Format() : number_format::Format(code);
-    return val(parsed.format(number,
-                             from_1904 ? number_format::Epoch::from_1904
-                                       : number_format::Epoch::from_1900,
-                             number_format::symbols_of(locale)));
-  } catch (const std::invalid_argument &) {
+  const std::optional<number_format::Format> parsed =
+      code.empty() ? number_format::Format()
+                   : number_format::Format::parse(code);
+  if (!parsed.has_value()) {
     return val::null();
   }
+  return val(parsed->format(number,
+                            from_1904 ? number_format::Epoch::from_1904
+                                      : number_format::Epoch::from_1900,
+                            number_format::symbols_of(locale)));
 }
 
 /// What the first section of @p code shows a number as: `number`, `date` or
 /// `time`. Null where @p code is no format code.
 val category(const std::string &code) {
-  try {
-    switch (code.empty() ? number_format::Category::number
-                         : number_format::Format(code).category()) {
-    case number_format::Category::date:
-      return val("date");
-    case number_format::Category::time:
-      return val("time");
-    case number_format::Category::number:
-      return val("number");
-    }
-  } catch (const std::invalid_argument &) {
+  const std::optional<number_format::Format> parsed =
+      code.empty() ? number_format::Format()
+                   : number_format::Format::parse(code);
+  if (!parsed.has_value()) {
+    return val::null();
+  }
+  switch (parsed->category()) {
+  case number_format::Category::date:
+    return val("date");
+  case number_format::Category::time:
+    return val("time");
+  case number_format::Category::number:
+    return val("number");
   }
   return val::null();
 }

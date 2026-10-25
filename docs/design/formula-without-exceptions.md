@@ -1,6 +1,6 @@
 # The formula evaluator without exceptions
 
-Status: in progress. Related: [`spreadsheet-editing.md`](spreadsheet-editing.md)
+Status: done. Related: [`spreadsheet-editing.md`](spreadsheet-editing.md)
 decision 5, which builds the evaluator as the formula module of a page.
 
 ## Problem
@@ -25,8 +25,9 @@ them: a function call (`ErrorResult`) and `evaluate` (`NoAnswer`).
 
 ## Decision
 
-The evaluator returns its stops as values, and the module builds with
-`-fno-exceptions`, which is smaller and faster than both modes.
+The evaluator returns its stops as values, and the module builds without
+exception handling. It loads anywhere, and is as small and as fast as the
+module with native exceptions: 646 KB, and 5 µs for `A1+A2*3`.
 
 - **One result type.** `Stop` is what ends an evaluation early: no answer, or
   an error that becomes the result of the function. `Result<T>` is
@@ -45,6 +46,18 @@ The evaluator returns its stops as values, and the module builds with
 - **No throwing call of the standard library** in the module: checked access
   instead of `.at()`, `.value()` and `std::get`, and `std::from_chars` instead
   of `std::stod`. With `-fno-exceptions` such a call aborts.
+- **Every function is `noexcept`**: the functions, the evaluator, the `Call`
+  accessors, the helpers, and the pointer types `Function` and `ArrayRule`.
+  Only a failed allocation can still reach one, and it ends the program.
+- **`CellSource` is `noexcept` too.** `SheetCellSource` catches what a
+  document's adapter throws on a broken file: such a cell has no answer, and
+  a sheet the adapter cannot visit reaches as far as a reference does, so
+  every read of it has none. A callback of the module's JavaScript source can
+  still throw a JavaScript exception, which `noexcept` does not stop.
+- **What the formula code calls outside itself** does not throw on what it
+  can see: `utf16_of` checks the UTF-8 before utfcpp converts it.
+  `src/odr/internal/formula/.clang-tidy` names the exceptions of the standard
+  library that `bugprone-exception-escape` does not count, and why.
 
 ## Order of work
 
@@ -58,10 +71,25 @@ Each step builds and passes the suite.
 2. **The functions, one PR for each file:** math, logic, text, date, lookup.
    A function returns `Result<Value>`, and its `throw`s and `require()`s
    become returns.
-3. **The module.** `require()` and the catches go. A profile
-   `emscripten-wasm-no-eh` builds the module and its dependencies with
-   `-fno-exceptions`; `formula.yml` uses it, and a `throw` in the formula code
-   then fails the build. The JS exception profile of #1283 goes.
+3. **The module.** `require()` and the catches go. `formula.yml` builds the
+   module with the profile `emscripten-wasm-no-eh`, which replaces the JS
+   exception profile of #1283.
+
+## How the module builds
+
+- **The formula code** is its own library, `odr_formula_oz`, built with
+  `-fno-exceptions`, and so is `wasm/formula/odr_formula.cpp`. A `throw` or a
+  `catch` there fails every wasm build, the npm one too.
+- **The rest it links** (`odr_oz`: the number formats, the string helpers)
+  still throws, so it cannot build with `-fno-exceptions`. The profile builds
+  it and the dependencies with `-fignore-exceptions`, which emscripten picks
+  without a flag: a `throw` raises a JavaScript
+  exception that nothing in the module catches, and the module carries no
+  exception code. `scripts/wasm_has_no_native_eh.py` checks that.
+- **A format code** that does not parse is `number_format::Format::parse`
+  giving nothing, where the module caught `std::invalid_argument` before.
+- **`TextCursor::advance`** throws out of line, so the formula parser can
+  include its header.
 
 ## Left out
 

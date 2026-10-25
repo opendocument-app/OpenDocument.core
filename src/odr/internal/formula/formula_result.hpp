@@ -10,6 +10,18 @@ namespace odr::internal::formula {
 /// What ends an evaluation early: no answer, or an argument error that
 /// becomes the result of its function.
 struct Stop final {
+  Stop() noexcept = default;
+  explicit Stop(const std::optional<ErrorType> error) noexcept : error{error} {}
+  /// Copies the member, not the bytes: the trivial copy of a `Result` of a
+  /// smaller value copies the bytes of a stop it does not hold, which GCC 14
+  /// reports as `-Wmaybe-uninitialized`.
+  Stop(const Stop &other) noexcept : error{other.error} {}
+  Stop &operator=(const Stop &other) noexcept {
+    error = other.error;
+    return *this;
+  }
+  ~Stop() = default;
+
   /// The error the function gives, nothing where there is no answer.
   std::optional<ErrorType> error{};
 };
@@ -17,14 +29,15 @@ struct Stop final {
 template <typename T> using Result = std::expected<T, Stop>;
 
 /// The stop of an indeterminate result: `evaluate` gives nothing.
-[[nodiscard]] inline std::unexpected<Stop> no_answer() {
-  return std::unexpected(Stop{});
+[[nodiscard]] inline std::unexpected<Stop> no_answer() noexcept {
+  return std::unexpected(Stop());
 }
 
 /// The stop of an argument error: @p error becomes the result of its
 /// function.
-[[nodiscard]] inline std::unexpected<Stop> error_result(const ErrorType error) {
-  return std::unexpected(Stop{error});
+[[nodiscard]] inline std::unexpected<Stop>
+error_result(const ErrorType error) noexcept {
+  return std::unexpected(Stop(error));
 }
 
 } // namespace odr::internal::formula

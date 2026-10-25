@@ -80,11 +80,12 @@ target_link_options(odr_wasm PRIVATE
 )
 
 # The evaluator alone, for a page that computes its formula cells as the user
-# edits. It links `odr_oz`, so it needs the source tree.
-if (TARGET odr_oz)
+# edits. It links `odr_formula_oz`, so it needs the source tree. Like the
+# formula code, it builds without exceptions.
+if (TARGET odr_formula_oz)
     add_executable(odr_formula_wasm "formula/odr_formula.cpp")
-    target_link_libraries(odr_formula_wasm PRIVATE odr_oz embind)
-    target_compile_options(odr_formula_wasm PRIVATE -Oz -flto)
+    target_link_libraries(odr_formula_wasm PRIVATE odr_formula_oz odr_oz embind)
+    target_compile_options(odr_formula_wasm PRIVATE -Oz -flto -fno-exceptions)
     # One script with the wasm inside, because a page opened from `file://`
     # cannot fetch a second file.
     set_target_properties(odr_formula_wasm PROPERTIES
