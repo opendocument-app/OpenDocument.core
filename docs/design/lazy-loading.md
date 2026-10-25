@@ -381,6 +381,16 @@ it.
   HTML fragment (`text-chunks/12.html`), and `viewport.js` could `fetch` it
   when the page is not on `file://`. The script stays the fallback. Only
   `write_chunk` and `load()` know the format.
+- **A pdf in the single layer at level 3.** The single layer votes over
+  the runs of every page in its pass for the code point of each glyph, and
+  re-encodes the font with the winners. A page rendered alone would vote
+  differently and need a font of its own. Two ways:
+  - Each script carries its fonts inline, with suffixed face names
+    (`odr-f3_12`). This is about 0.5 MB for a page of `Core_v5.1.pdf`, and
+    the browser loads a font again for each page.
+  - The service votes once over the whole document and keeps the winners,
+    so every page links one file for each font. This costs a pass over
+    every page before the first byte.
 - **The size of a chunk.** 256 lines is a guess. It trades the count of
   chunks against the cost of one.
 - **When a view takes level 2.** A threshold on the size of the content, or
