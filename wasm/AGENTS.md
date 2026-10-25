@@ -81,6 +81,12 @@ Emscripten only. See [`README.md`](README.md) for the conan invocation and
 - `-fwasm-exceptions` lives in the profile's `[conf] tools.build:*flags`, not
   in CMake flags. The EH mode is an ABI, so every dependency needs the same
   one.
+- The formula module that the native builds embed is the exception:
+  `formula.yml` builds it with `emscripten-wasm-js-eh` (`-fexceptions`),
+  because an app's WebView may predate native wasm exceptions (Chrome 95).
+  That profile names its flags in the package id, or conan would reuse the
+  dependencies built with `-fwasm-exceptions`.
+  `scripts/wasm_has_no_native_eh.py` checks the result.
 - `compiler.threads` is omitted from the profile, not set to `null`. A profile
   value is a string, so `null` fails against `settings.yml`.
 - `-sSTACK_SIZE=8388608` in `CMakeLists.txt` is required. Emscripten defaults
