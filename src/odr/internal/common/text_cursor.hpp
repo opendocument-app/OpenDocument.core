@@ -3,7 +3,6 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <cstddef>
-#include <stdexcept>
 #include <string_view>
 
 namespace odr::internal {
@@ -33,9 +32,10 @@ public:
     return c;
   }
 
+  /// @throws std::out_of_range past the end of the input.
   void advance(const std::size_t count) {
     if (count > m_rest.size()) {
-      throw std::out_of_range("TextCursor::advance: past end of input");
+      throw_past_end();
     }
     m_rest.remove_prefix(count);
   }
@@ -88,6 +88,10 @@ public:
 
 private:
   std::string_view m_rest;
+
+  /// Out of line, so the formula code, which builds without exceptions, can
+  /// include this header.
+  [[noreturn]] static void throw_past_end();
 };
 
 } // namespace odr::internal

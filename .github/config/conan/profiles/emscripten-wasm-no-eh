@@ -1,0 +1,20 @@
+{# The WebAssembly slice without exception handling, for the formula module
+   that the native builds embed (`formula.yml`). Native wasm exceptions need
+   Chrome 95, and an Android WebView can be older.
+
+   `-fignore-exceptions` is what emscripten does without a flag: a `throw`
+   compiles and ends the call, a `catch` never runs, and the module carries no
+   exception code. The formula code builds with `-fno-exceptions` on top
+   (`CMakeLists.txt`).
+
+   The EH mode is an ABI, so every dependency is built again in this mode.
+   Conan leaves `tools.build:*flags` out of a package id, so the id has to
+   name them, or the build would take the packages of `emscripten-wasm`. #}
+include(emscripten-wasm)
+
+[conf]
+tools.build:cflags=['-fignore-exceptions']
+tools.build:cxxflags=['-fignore-exceptions']
+tools.build:exelinkflags=['-fignore-exceptions']
+tools.build:sharedlinkflags=['-fignore-exceptions']
+tools.info.package_id:confs=['tools.build:cflags', 'tools.build:cxxflags']

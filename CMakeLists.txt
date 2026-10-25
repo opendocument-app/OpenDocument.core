@@ -222,6 +222,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/common/table_cursor.cpp"
         "src/odr/internal/common/table_range.cpp"
         "src/odr/internal/common/temporary_file.cpp"
+        "src/odr/internal/common/text_cursor.cpp"
 
         "src/odr/internal/crypto/crypto_argon2.cpp"
         "src/odr/internal/crypto/crypto_util.cpp"
@@ -456,14 +457,27 @@ odr_configure_library(odr "${CMAKE_CURRENT_BINARY_DIR}/generated")
 # the formula module calls. `-Oz` is 30% smaller than `-O2` and about 20%
 # slower, which an edit does not notice (`docs/design/spreadsheet-editing.md`).
 # It embeds no formula module, because the module links it.
+#
+# The formula code is `odr_formula_oz`, built with `-fno-exceptions`, so a
+# `throw` or a `catch` in it fails the build
+# (`docs/design/formula-without-exceptions.md`). `odr_oz` is the rest.
 if (ODR_WASM)
     set(ODR_OZ_GENERATED "${CMAKE_CURRENT_BINARY_DIR}/generated-oz")
     set(ODR_OZ_FRONTEND_ASSETS_HEADER
             "${ODR_OZ_GENERATED}/odr/internal/html/frontend_assets.hpp")
     odr_frontend_assets_header("${ODR_OZ_FRONTEND_ASSETS_HEADER}" "")
-    add_library(odr_oz STATIC ${ODR_SOURCE_FILES} "${ODR_OZ_FRONTEND_ASSETS_HEADER}")
+    set(ODR_OZ_SOURCE_FILES ${ODR_SOURCE_FILES})
+    list(FILTER ODR_OZ_SOURCE_FILES EXCLUDE REGEX "/internal/formula/")
+    add_library(odr_oz STATIC ${ODR_OZ_SOURCE_FILES} "${ODR_OZ_FRONTEND_ASSETS_HEADER}")
     odr_configure_library(odr_oz "${ODR_OZ_GENERATED}")
     target_compile_options(odr_oz PRIVATE -Oz -flto)
+
+    set(ODR_FORMULA_OZ_SOURCE_FILES ${ODR_SOURCE_FILES})
+    list(FILTER ODR_FORMULA_OZ_SOURCE_FILES INCLUDE REGEX "/internal/formula/")
+    add_library(odr_formula_oz STATIC ${ODR_FORMULA_OZ_SOURCE_FILES})
+    odr_configure_library(odr_formula_oz "${ODR_OZ_GENERATED}")
+    target_link_libraries(odr_formula_oz PRIVATE odr_oz)
+    target_compile_options(odr_formula_oz PRIVATE -Oz -flto -fno-exceptions)
 endif ()
 
 if (ODR_WITH_HTTP_SERVER)

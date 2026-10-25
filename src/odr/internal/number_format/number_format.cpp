@@ -8,6 +8,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <expected>
 #include <stdexcept>
 #include <tuple>
 #include <utility>
@@ -150,9 +151,10 @@ std::string_view language_of(const std::uint32_t lcid) {
 }
 
 /// The content of `[…]`: a condition, a currency or locale, or a colour.
-void parse_bracket(const std::string_view content, Section &section) {
+std::expected<void, const char *> parse_bracket(const std::string_view content,
+                                                Section &section) {
   if (content.empty()) {
-    throw std::invalid_argument("empty bracket in a format code");
+    return std::unexpected("empty bracket in a format code");
   }
   if (content.front() == '<' || content.front() == '>' ||
       content.front() == '=') {
@@ -175,11 +177,11 @@ void parse_bracket(const std::string_view content, Section &section) {
     const std::optional<double> operand =
         util::number::parse(content.substr(length));
     if (!operand.has_value()) {
-      throw std::invalid_argument("condition without a number");
+      return std::unexpected("condition without a number");
     }
     condition.operand = *operand;
     section.condition = condition;
-    return;
+    return {};
   }
   if (content.front() == '$') {
     // `[$€-407]`: the symbol is shown, and the locale id, in hex, names the
@@ -197,7 +199,7 @@ void parse_bracket(const std::string_view content, Section &section) {
         lcid.has_value()) {
       section.names = names_of(language_of(*lcid & 0xffff));
     }
-    return;
+    return {};
   }
   const char first = util::string::to_lower(content.front());
   if ((first == 'h' || first == 'm' || first == 's') &&
@@ -208,9 +210,10 @@ void parse_bracket(const std::string_view content, Section &section) {
                               .unit = first,
                               .width = content.size(),
                               .elapsed = true});
-    return;
+    return {};
   }
   // a colour, `[DBNum1]` and the like change nothing here
+  return {};
 }
 
 /// `m` and `mm` are minutes after an hour or before a second, months
@@ -234,7 +237,8 @@ void resolve_minutes(Section &section) {
   }
 }
 
-std::vector<Section> parse_code(const std::string_view code) {
+std::expected<std::vector<Section>, const char *>
+parse_code(const std::string_view code) {
   std::vector<Section> sections(1);
   for (std::size_t i = 0; i < code.size(); ++i) {
     Section &section = sections.back();
@@ -247,7 +251,7 @@ std::vector<Section> parse_code(const std::string_view code) {
     case '"': {
       const std::size_t end = code.find('"', i + 1);
       if (end == std::string_view::npos) {
-        throw std::invalid_argument("unterminated quote in a format code");
+        return std::unexpected("unterminated quote in a format code");
       }
       append_literal(tokens, std::string(code.substr(i + 1, end - i - 1)));
       i = end;
@@ -267,9 +271,13 @@ std::vector<Section> parse_code(const std::string_view code) {
     case '[': {
       const std::size_t end = code.find(']', i + 1);
       if (end == std::string_view::npos) {
-        throw std::invalid_argument("unterminated bracket in a format code");
+        return std::unexpected("unterminated bracket in a format code");
       }
-      parse_bracket(code.substr(i + 1, end - i - 1), section);
+      if (const std::expected<void, const char *> parsed =
+              parse_bracket(code.substr(i + 1, end - i - 1), section);
+          !parsed.has_value()) {
+        return std::unexpected(parsed.error());
+      }
       i = end;
     } break;
     case '0':
@@ -369,6 +377,9 @@ std::vector<Section> parse_code(const std::string_view code) {
       append_literal(tokens, std::string(1, c));
       break;
     }
+  }
+  if (sections.size() > 4) {
+    return std::unexpected("a format code has four sections at most");
   }
   for (Section &section : sections) {
     resolve_minutes(section);
@@ -989,11 +1000,24 @@ bool Condition::matches(const double value) const {
 
 Format::Format() : m_sections{Section{{{.kind = Kind::general}}, {}}} {}
 
-Format::Format(const std::string_view code)
-    : m_sections{parse_code(code)}, m_code{code} {
-  if (m_sections.size() > 4) {
-    throw std::invalid_argument("a format code has four sections at most");
+Format::Format(const std::string_view code) {
+  std::expected<std::vector<Section>, const char *> sections = parse_code(code);
+  if (!sections.has_value()) {
+    throw std::invalid_argument(sections.error());
   }
+  m_sections = std::move(*sections);
+  m_code = code;
+}
+
+Format::Format(std::vector<Section> sections, const std::string_view code)
+    : m_sections{std::move(sections)}, m_code{code} {}
+
+std::optional<Format> Format::parse(const std::string_view code) {
+  std::expected<std::vector<Section>, const char *> sections = parse_code(code);
+  if (!sections.has_value()) {
+    return std::nullopt;
+  }
+  return Format(std::move(*sections), code);
 }
 
 const std::string &Format::code() const { return m_code; }

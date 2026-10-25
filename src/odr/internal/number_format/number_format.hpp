@@ -119,6 +119,9 @@ public:
   /// @throws std::invalid_argument where @p code is no format code.
   explicit Format(std::string_view code);
 
+  /// The format of @p code, nothing where it is no format code.
+  [[nodiscard]] static std::optional<Format> parse(std::string_view code);
+
   /// The text a cell holding @p value shows, with @p symbols for the point,
   /// the grouping comma and the names of a date. A date or time section reads
   /// it as a serial counted from @p epoch.
@@ -132,6 +135,8 @@ public:
   [[nodiscard]] const std::string &code() const;
 
 private:
+  Format(std::vector<Section> sections, std::string_view code);
+
   std::vector<Section> m_sections;
   std::string m_code;
 };

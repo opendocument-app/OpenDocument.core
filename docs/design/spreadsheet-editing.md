@@ -182,10 +182,9 @@ builds it first (`formula.yml`) and attaches it to the draft as
 android, python and conan workflows download it from the release they
 publish. A build names it with `ODR_FORMULA_MODULE`, as a CMake option or in
 the environment, and each release workflow checks that its binary carries it.
-That module is built with exceptions in JavaScript, not native wasm ones,
-because a WebView before Chrome 95 cannot compile native ones. The evaluator
-throws, so it needs one of the two; an evaluator that reports its errors as
-values could do without either, smaller and faster.
+That module is built without exception handling, because a WebView before
+Chrome 95 cannot compile native wasm exceptions. The evaluator returns its
+errors as values ([`formula-without-exceptions.md`](formula-without-exceptions.md)).
 A build without it locks the formula cells and marks their results stale.
 
 The page computes in the order the marked cells read each other, so no

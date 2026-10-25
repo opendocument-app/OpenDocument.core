@@ -3,7 +3,7 @@
 
 Native wasm exceptions live in a tag section (id 13), and a browser before
 Chrome 95 refuses a module that has one. The formula module that the native
-builds embed is built with exceptions in JavaScript (`formula.yml`), so it
+builds embed is built without exception handling (`formula.yml`), so it
 must have none. The wasm sits in the script as one base64 data url
 (`-sSINGLE_FILE`).
 
