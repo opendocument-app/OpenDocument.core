@@ -629,10 +629,15 @@ std::string svg_path_fragment(const pdf::PathElement &path,
 /// and a host may render them into one directory.
 class ImageRegistry {
 public:
-  ImageRegistry(const HtmlConfig &config, HtmlResources &resources)
-      : m_config{&config}, m_resources{&resources} {}
+  /// @p drops for a render that keeps only its text: no image is read.
+  ImageRegistry(const HtmlConfig &config, HtmlResources &resources,
+                const bool drops = false)
+      : m_config{&config}, m_resources{&resources}, m_drops{drops} {}
 
   std::string url(const pdf::ImageElement &image) {
+    if (m_drops) {
+      return {};
+    }
     if (image.source != nullptr) {
       if (const auto it = m_url_by_source.find(image.source);
           it != std::end(m_url_by_source)) {
@@ -649,6 +654,9 @@ public:
   /// Keyed on the bytes: a stencil, an inline image and an alpha mask carry no
   /// object to key on, so identical bytes reach us as separate elements.
   std::string url(const std::string &data, const std::string &mime) {
+    if (m_drops) {
+      return {};
+    }
     const std::string name =
         "image" +
         crypto::util::hex_encode(crypto::util::sha256(data)).substr(0, 16) +
@@ -677,6 +685,7 @@ private:
 
   const HtmlConfig *m_config{nullptr};
   HtmlResources *m_resources{nullptr};
+  bool m_drops{false};
   std::unordered_map<const pdf::XObject *, std::string> m_url_by_source;
   std::unordered_map<std::string, std::string> m_url_by_name;
 };
@@ -1221,10 +1230,6 @@ std::string page_script_path(const std::size_t number) {
   return "pdf-pages/" + std::to_string(number) + ".js";
 }
 
-/// The pages that one script of the search index holds the text of
-/// (`lazy-loading.md` decision 4).
-constexpr std::size_t pages_per_index = 64;
-
 /// Where the text of index group @p group loads from.
 std::string index_script_path(const std::size_t group) {
   return "pdf-search/" + std::to_string(group) + ".js";
@@ -1366,24 +1371,37 @@ public:
         m_views, [&path](const auto &view) { return view.path() == path; });
   }
 
+  /// The resource at @p path, copied: a render on another thread may add to
+  /// the list meanwhile.
+  [[nodiscard]] std::optional<odr::HtmlResource>
+  linked_resource(const std::string &path) const {
+    std::lock_guard lock(m_resources_mutex);
+    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
+        resource != nullptr) {
+      return *resource;
+    }
+    return std::nullopt;
+  }
+
   [[nodiscard]] bool exists(const std::string &path) const override {
-    return is_view(path) || resource_at(m_resources, path) != nullptr;
+    return is_view(path) || linked_resource(path).has_value();
   }
 
   [[nodiscard]] std::string mimetype(const std::string &path) const override {
     if (is_view(path)) {
       return "text/html";
     }
-    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
-        resource != nullptr) {
+    if (const std::optional<odr::HtmlResource> resource = linked_resource(path);
+        resource.has_value()) {
       return resource->mime_type();
     }
     throw FileNotFound("Unknown path: " + path);
   }
 
   void write(const std::string &path, std::ostream &out) const override {
-    if (const odr::HtmlResource *resource = resource_at(m_resources, path);
-        !is_view(path) && resource != nullptr) {
+    // written without the lock, which a page script takes itself
+    if (const std::optional<odr::HtmlResource> resource = linked_resource(path);
+        !is_view(path) && resource.has_value()) {
       resource->write_resource(out);
       return;
     }
@@ -1413,6 +1431,7 @@ public:
   /// be asked for, so collecting them here is enough; pre-rendering every view
   /// to fill the list up front is not worth what it costs on a pdf.
   HtmlResources remember_linked(HtmlResources resources) const {
+    std::lock_guard lock(m_resources_mutex);
     for (const auto &entry : resources) {
       if (entry.second.has_value() &&
           resource_at(m_resources, *entry.second) == nullptr) {
@@ -1475,8 +1494,12 @@ public:
     std::ostringstream html;
     HtmlWriter out(html, false, "");
     const std::size_t index = number - 1 - m_first_page;
-    write_pages_dual_layer(out, std::span(m_pages).subspan(index, 1), number,
-                           document_page_href(), {}, true);
+    DualLayerPages page = write_pages_dual_layer(
+        out, std::span(m_pages).subspan(index, 1), number, document_page_href(),
+        {}, DualRender::fragment);
+    // a search index asked for later need not render it again
+    m_page_texts.resize(m_pages.size());
+    m_page_texts[index] = std::move(page.texts.front());
     os << "odr.chunks.fill(" << script_string("p" + std::to_string(number))
        << "," << script_string(html.str()) << ");\n";
   }
@@ -1487,9 +1510,10 @@ public:
   void write_index_script(const std::size_t group, std::ostream &os) const {
     std::lock_guard lock(m_mutex);
     m_page_texts.resize(m_pages.size());
-    const std::size_t first = std::max<std::size_t>(group * pages_per_index, 1);
+    const std::size_t first =
+        std::max<std::size_t>(group * chunks_per_index, 1);
     const std::size_t end =
-        std::min(m_pages.size(), (group + 1) * pages_per_index);
+        std::min<std::size_t>(m_pages.size(), (group + 1) * chunks_per_index);
     os << "odr.chunks.text({";
     for (std::size_t index = first; index < end; ++index) {
       const std::size_t number = m_first_page + index + 1;
@@ -1497,10 +1521,10 @@ public:
       if (!text.has_value()) {
         NullStream null;
         HtmlWriter out(null, false, "");
-        text = std::move(
-            write_pages_dual_layer(out, std::span(m_pages).subspan(index, 1),
-                                   number, document_page_href(), {}, true)
-                .texts.front());
+        text = std::move(write_pages_dual_layer(
+                             out, std::span(m_pages).subspan(index, 1), number,
+                             document_page_href(), {}, DualRender::text)
+                             .texts.front());
       }
       os << (index > first ? "," : "")
          << script_string("p" + std::to_string(number)) << ":"
@@ -1678,15 +1702,23 @@ public:
     return texts;
   }
 
+  /// What a render of the dual layer is for.
+  enum class DualRender {
+    document, ///< pages, and the pages that load as empty ones
+    fragment, ///< the one page of a page script
+    text,     ///< a fragment for its text alone, with no image read
+  };
+
   /// @p pages rendered, and @p later as empty pages that load as scripts
-  /// (`lazy-loading.md` decision 3). A @p fragment is the one page of such a
+  /// (`lazy-loading.md` decision 3). A fragment is the one page of such a
   /// script: the rules it needs and what its page box holds, which the script
   /// puts into the empty page.
   DualLayerPages write_pages_dual_layer(
       HtmlWriter &out, const std::span<pdf::Page *const> pages,
       const std::size_t first_page_number, const PageHref &page_href,
       const std::span<pdf::Page *const> later = {},
-      const bool fragment = false) const {
+      const DualRender render = DualRender::document) const {
+    const bool fragment = render != DualRender::document;
     // pages rendered apart share one page, so their names must not clash: a
     // fragment suffixes its classes with its page, and a font has one number
     // and one file for the whole service
@@ -1701,7 +1733,8 @@ public:
     };
 
     HtmlResources resources;
-    ImageRegistry images(fragment ? fragment_config : config(), resources);
+    ImageRegistry images(fragment ? fragment_config : config(), resources,
+                         render == DualRender::text);
     const WritingState state(out, config(), resources, logger());
 
     pdf::DocumentParser &parser = *m_parser;
@@ -2357,9 +2390,9 @@ public:
       const std::size_t number = page_number++;
       // the first page of a group that loads names the script of its text;
       // `later` starts at the second page
-      const std::size_t group = (i + 1) / pages_per_index;
+      const std::size_t group = (i + 1) / chunks_per_index;
       const std::string text_attribute =
-          i == 0 || (i + 1) % pages_per_index == 0
+          i == 0 || (i + 1) % chunks_per_index == 0
               ? R"( data-odr-chunk-text=")" + index_script_path(group) + '"'
               : std::string();
       std::ostringstream size;
@@ -3521,6 +3554,9 @@ protected:
   /// The search css and js every view links; empty of locations when the config
   /// embeds them.
   mutable HtmlResources m_resources;
+  /// Guards `m_resources`, apart from `m_mutex`: a resource is looked up while
+  /// a render holds that one, and a page script takes it to render.
+  mutable std::mutex m_resources_mutex;
 
   // Lazily initialized by `warmup()` (all guarded by `m_mutex`): one parse
   // shared by the combined-document and per-page renders.

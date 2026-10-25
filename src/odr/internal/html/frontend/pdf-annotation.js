@@ -632,6 +632,8 @@
     scheduleMark();
   });
   window.addEventListener("resize", redraw);
+  // a page that loads replaces what its empty box held, the marks too
+  document.addEventListener("odr-chunk-filled", redraw);
   applyOptions();
 
   odr.annotation = {

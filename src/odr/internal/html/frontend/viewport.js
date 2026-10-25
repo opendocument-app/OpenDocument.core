@@ -405,8 +405,9 @@
   }
 
   // The text of the chunks that have not loaded, by chunk key, which the
-  // scripts of the search index state (`lazy-loading.md` decision 4). A
-  // script that failed has no text, and is not asked for again.
+  // scripts of the search index state (`lazy-loading.md` decision 4), folded
+  // where `search.js` is there to fold it. A script that failed has no text,
+  // and is not asked for again.
   var texts = {};
   var indexes = {};
 
@@ -434,32 +435,47 @@
   }
 
   var chunks = document.getElementsByClassName("odr-chunk");
-  var near =
-    typeof IntersectionObserver === "function"
-      ? new IntersectionObserver(
-          function (entries) {
-            entries.forEach(function (entry) {
-              setNear(entry.target, entry.isIntersecting);
-            });
-          },
-          { rootMargin: "100% 0px" }
-        )
-      : null;
+
+  function observed(entries) {
+    entries.forEach(function (entry) {
+      setNear(entry.target, entry.isIntersecting);
+    });
+  }
+
+  // The document as the root, because a frame from another origin ignores the
+  // margin of the implicit one; a browser that takes no document as a root
+  // takes the implicit one.
+  var near = null;
+  if (typeof IntersectionObserver === "function") {
+    try {
+      near = new IntersectionObserver(observed, {
+        root: document,
+        rootMargin: "100% 0px",
+      });
+    } catch (e) {
+      near = new IntersectionObserver(observed, { rootMargin: "100% 0px" });
+    }
+  }
   for (var i = 0; i < chunks.length; ++i) {
     if (near !== null && !chunks[i].hasAttribute("data-odr-chunk-held")) {
       near.observe(chunks[i]);
     } else {
-      chunks[i].classList.add("odr-chunk-near");
+      setNear(chunks[i], true);
     }
   }
 
   odr.chunks = {
     // Lays out the chunk that holds @p element, so it can be measured and
-    // scrolled to. The observer takes it back once it is far again.
+    // scrolled to. Observed anew, so the observer takes it back once it is
+    // far, though it saw no change.
     show: function (element) {
       var chunk = element.closest(".odr-chunk");
       if (chunk !== null) {
         setNear(chunk, true);
+        if (near !== null && !chunk.hasAttribute("data-odr-chunk-held")) {
+          near.unobserve(chunk);
+          near.observe(chunk);
+        }
       }
     },
     // Puts the content of chunk @p index in, which its script states.
@@ -474,27 +490,35 @@
       chunk.removeAttribute("data-odr-chunk-loading");
       chunk.dispatchEvent(new CustomEvent("odr-chunk-filled", { bubbles: true }));
     },
-    // Keeps the text of the chunks that a script of the search index states.
+    // Keeps the text of the chunks that a script of the search index states
+    // and that have not loaded since.
     text: function (byKey) {
+      var fold = typeof odr.foldSearchText === "function" ? odr.foldSearchText : null;
       for (var key in byKey) {
-        if (Object.prototype.hasOwnProperty.call(byKey, key)) {
-          texts[key] = byKey[key];
+        if (!Object.prototype.hasOwnProperty.call(byKey, key)) {
+          continue;
+        }
+        var chunk = document.querySelector('[data-odr-chunk="' + key + '"]');
+        if (chunk !== null && chunk.hasAttribute("data-odr-chunk-src")) {
+          texts[key] = { text: fold === null ? byKey[key] : fold(byKey[key]), folded: fold !== null };
         }
       }
     },
     // The chunks that have not loaded, in document order, each with its text
-    // or null, once the index scripts have loaded. The first chunk of a group
-    // names the script of the group, whether it has loaded or not.
+    // or null and whether that is folded, once the index scripts have loaded.
+    // The first chunk of a group names the script of the group, which is
+    // loaded only while a chunk of the group has not.
     pending: function (then) {
       var waiting = [];
       var sources = [];
+      var group = null;
       for (var i = 0; i < chunks.length; ++i) {
-        var source = chunks[i].getAttribute("data-odr-chunk-text");
-        if (source !== null && sources.indexOf(source) === -1) {
-          sources.push(source);
-        }
+        group = chunks[i].getAttribute("data-odr-chunk-text") || group;
         if (chunks[i].hasAttribute("data-odr-chunk-src")) {
           waiting.push(chunks[i]);
+          if (group !== null && sources.indexOf(group) === -1) {
+            sources.push(group);
+          }
         }
       }
       var left = sources.length + 1;
@@ -509,7 +533,9 @@
             })
             .map(function (chunk) {
               var text = texts[chunk.getAttribute("data-odr-chunk")];
-              return { chunk: chunk, text: text === undefined ? null : text };
+              return text === undefined
+                ? { chunk: chunk, text: null, folded: false }
+                : { chunk: chunk, text: text.text, folded: text.folded };
             })
         );
       }
@@ -523,7 +549,7 @@
       if (near !== null) {
         near.observe(chunk);
       } else {
-        chunk.classList.add("odr-chunk-near");
+        setNear(chunk, true);
       }
     },
   };

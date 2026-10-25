@@ -52,6 +52,8 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
   row goes into the chunk of the row it moves, and a chunk with no row left
   goes. A column goes into every table. A write into a far chunk spills only
   once the chunk is near, and a sort keeps the count of each chunk.
+- `nochunks.html`: a sheet with `lazy_layout` off, whose rows are in no
+  chunk.
 - `positions.html`: `odr.sheet` over a merged sheet. `translate_sheet` writes
   no `td` for a position a span covers, so the fixture has a `colspan`, a
   `rowspan`, and a `rowspan` that reaches past the last cell of the row below.

@@ -219,6 +219,15 @@
       page1.querySelector("svg.an-m path") !== null
     );
 
+    // a page that loads later replaces what its box held, and the mark is drawn
+    // again (`lazy-loading.md` decision 3)
+    page1.querySelectorAll("svg.an").forEach((svg) => svg.remove());
+    page1.dispatchEvent(new CustomEvent("odr-chunk-filled", { bubbles: true }));
+    check(
+      "a page that fills gets its marks back",
+      page1.querySelector("svg.an-m path") !== null
+    );
+
     api.clear();
     api.setTool("underline");
     selectRun(0);

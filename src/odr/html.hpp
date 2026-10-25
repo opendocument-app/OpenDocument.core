@@ -194,15 +194,17 @@ struct HtmlConfig {
   std::optional<std::uint32_t> viewport_width;
   /// The zoom the view opens at, 1 being actual size; unset follows the fit.
   std::optional<double> initial_zoom;
-  /// Lay out only the lines, rows and pages near the viewport. Off, the
-  /// browser lays out all of them, which a large file may not survive, but its
-  /// own find and a screen reader reach every one.
+  /// Lay out only the lines, rows, pages and slides near the viewport. Off,
+  /// the browser lays out all of them, which a large file may not survive, but
+  /// its own find and a screen reader reach every one.
   bool lazy_layout{true};
-  /// Write the chunks of a text file after the first as scripts of their own,
-  /// which the page loads once the reader comes near. `bring_offline` writes
-  /// them beside the page, and the HTTP server serves them. Needs
-  /// @ref lazy_layout. An editable render, and a file the page cannot spell in
-  /// UTF-8, write every line into the page.
+  /// Write the chunks of a text file, a sheet and a pdf after the first as
+  /// scripts of their own, which the page loads once the reader comes near,
+  /// and the text of those chunks as a search index beside them.
+  /// `bring_offline` writes them beside the page, and the HTTP server serves
+  /// them. Needs @ref lazy_layout. An editable render, a text file the page
+  /// cannot spell in UTF-8, and a pdf in the single layer write everything
+  /// into the page.
   bool lazy_loading{false};
 
   /// The least distance the generated content keeps from the view's border. A

@@ -160,6 +160,8 @@ export interface HtmlConfig {
   hostMessageHandler?: string;
   textDocumentMargin?: boolean;
   formatHtml?: boolean;
+  /** Lay out only the lines, rows, pages and slides near the viewport; on by default. */
+  lazyLayout?: boolean;
   pageRangeBegin?: number;
   pageRangeEnd?: number;
   colorScheme?: number;

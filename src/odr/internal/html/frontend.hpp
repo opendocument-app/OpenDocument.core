@@ -2,6 +2,7 @@
 
 #include <odr/html.hpp>
 
+#include <cstdint>
 #include <string_view>
 
 namespace odr::internal::html {
@@ -38,6 +39,9 @@ void write_chunk_style(const WritingState &state);
 /// @p near where it is near the viewport before the script runs. Empty where
 /// `HtmlConfig::lazy_layout` is off.
 [[nodiscard]] std::string chunk_classes(const HtmlConfig &config, bool near);
+/// The chunks that one script of a search index holds the text of, in every
+/// view (`lazy-loading.md` decision 4).
+constexpr std::uint32_t chunks_per_index = 64;
 /// A json string that cannot end the `<script>` it sits in.
 [[nodiscard]] std::string script_string(const std::string &value);
 

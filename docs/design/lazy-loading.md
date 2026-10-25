@@ -182,6 +182,27 @@ without them.
    them is a decision of its own.
 3. **Text documents** (decision 6), once a measured file asks for it.
 
+## Known limits
+
+- **Sheets.** A merge that stays open, such as a sidebar merged over the
+  whole sheet, ends no chunk, so the sheet is one chunk. The page render
+  still renders the rows of a later chunk to find its end, so a sheet costs
+  core as much as before. A copy of a whole column or of the sheet holds
+  only the rows that have loaded.
+- **The index and the DOM.** A list marker in a sheet cell and a U+0000 in
+  a text file are in one and not in the other. The DOM count of a chunk
+  wins once it loads.
+- **pdf page scripts.** A page script carries its images inline, so the
+  browser cannot cache an image that repeats from page to page. A font that
+  only a pattern, a soft mask, a Type 3 font or an annotation uses has no
+  shared file, so each page that uses it carries it. Each script states the
+  faces and the `.fvN` rules of its fonts again, which is why its rules
+  outrank a single class; stating them once in the head would let the
+  registry stay plain. The numbers of the shared fonts follow the order of
+  an `unordered_map`, so they may differ between standard libraries.
+- **Resources.** A chunk resource holds a bare pointer to its service, so
+  it must not outlive the service.
+
 ## Open questions
 
 - **Print at level 3.** A chunk that has not loaded prints as empty space

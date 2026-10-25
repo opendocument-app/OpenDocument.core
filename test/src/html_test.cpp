@@ -815,6 +815,8 @@ TEST(html, a_text_file_writes_a_search_index) {
   ASSERT_TRUE(service.exists("text-search/1.js"));
   EXPECT_FALSE(service.exists("text-search/2.js"));
   EXPECT_FALSE(service.exists("text-search/00.js"));
+  // 2^58 groups of 64 chunks wrap a 64-bit product to 0
+  EXPECT_FALSE(service.exists("text-search/288230376151711744.js"));
   EXPECT_EQ(service.mimetype("text-search/1.js"), "text/javascript");
 
   std::ostringstream first;
