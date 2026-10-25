@@ -30,7 +30,8 @@ The release run heads these entries with the version and opens a fresh
   `ROW()`, `COLUMN()` and a reference whose position changes.
 - `font-family` ends with a generic family, so a font that is not installed
   falls back to one of the same kind: a sans-serif font for Calibri, not the
-  browser's serif default. A bare font name is quoted.
+  browser's serif default. A bare font name is quoted, but a generic family
+  such as the `monospace` of Markdown code stays a keyword.
 - An editable ods or xlsx sheet page carries the formula module, where the
   build has one: the npm package does, and another build names it with
   `ODR_FORMULA_MODULE`. The page is about 540 KB larger.

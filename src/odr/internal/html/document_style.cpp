@@ -108,6 +108,10 @@ bool is_font_family_list(const std::string_view value) {
 
 std::string html::translate_font_family(const std::string_view font_name) {
   const std::string_view value = util::string::trim_view(font_name);
+  // a keyword, which quotes would turn into the name of a font no one has
+  if (is_generic_font_family(value)) {
+    return std::string(value);
+  }
   if (value.find_first_of("'\",") == std::string_view::npos ||
       !is_font_family_list(value)) {
     std::string result = "'";
