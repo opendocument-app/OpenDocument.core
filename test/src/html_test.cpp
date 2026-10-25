@@ -1967,9 +1967,8 @@ TEST(html, a_linked_host_bridge_is_served) {
   }
 }
 
-// A formula cell is locked where the page has no formula module to compute it
-// with, as a build without `ODR_FORMULA_MODULE`: overwriting it would leave
-// its dependants stale. A release embeds the module, and the cell is open.
+// Without the formula module a formula cell is locked: overwriting it would
+// leave its dependants stale.
 TEST(html, a_formula_cell_states_its_lock_expression_and_dependencies) {
   const std::string page = render_sheet(
       fods_file(fods_row(

@@ -78,6 +78,14 @@ jobs:
           VERSION: ${{ steps.derive.outputs.version }}
         run: scripts/release.py changelog --version "$VERSION" > /dev/null
 
+  # The formula module every native build embeds: apple takes it from this
+  # run, the publish workflows from the release.
+  formula:
+    needs: version
+    uses: ./.github/workflows/formula.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+
   # SwiftPM resolves `Package.swift` at the tag, and its binary target names a
   # sha256 of an archive that does not exist until it is built — so the archive
   # is built here, against the version derived above, and its checksum comes
@@ -85,15 +93,6 @@ jobs:
   #
   # Anything that merely reacts to a release belongs in its own workflow on
   # `release: published`, the way conan, maven and android do.
-  # The formula module every other build embeds, built before them: the apple
-  # build below takes it from this run, and the publish workflows from the
-  # release it is attached to.
-  formula:
-    needs: version
-    uses: ./.github/workflows/formula.yml
-    with:
-      version: ${{ needs.version.outputs.version }}
-
   apple:
     needs: [version, formula]
     uses: ./.github/workflows/apple.yml

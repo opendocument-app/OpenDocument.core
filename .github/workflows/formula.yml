@@ -1,10 +1,9 @@
 name: formula
 
-# The formula module of `wasm/formula`, which only emscripten builds. An
-# editable sheet page of every other build embeds the one of its core version
-# (`docs/design/spreadsheet-editing.md` decision 5), so `release.yml` builds it
-# before the draft: the apple build of the same run embeds it, and the publish
-# workflows download it from the release by its name, `odr-formula-<tag>.js`.
+# The formula module of `wasm/formula`, which only emscripten builds. Every
+# native release build embeds the one of its version
+# (`docs/design/spreadsheet-editing.md` decision 5), so `release.yml` builds
+# it before the draft and attaches it as `odr-formula-<tag>.js`.
 on:
   workflow_call:
     inputs:

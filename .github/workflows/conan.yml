@@ -95,5 +95,6 @@ jobs:
       # `readyPromiseResolve` is in the emscripten glue of the module alone
       - name: check the formula module is embedded
         run: |
-          package=$(conan list "odrcore/${VERSION}:*" --format=json | python -c 'import json, sys; recipes = json.load(sys.stdin)["Local Cache"]; ref = next(iter(recipes)); revision = next(iter(recipes[ref]["revisions"].values())); print(ref + ":" + next(iter(revision["packages"])))')
+          package=$(conan list "odrcore/${VERSION}:*" --format=json \
+            | jq -r '."Local Cache" | to_entries[0] | .key + ":" + (.value.revisions[].packages | keys[0])')
           grep -rqa readyPromiseResolve "$(conan cache path "$package")"
