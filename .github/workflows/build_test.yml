@@ -41,7 +41,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18, bindings: true }
+          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-20, host_profile: ubuntu-24.04-clang-20, bindings: true }
           - { os: ubuntu-24.04, build_profile: ubuntu-24.04-gcc-14, host_profile: ubuntu-24.04-gcc-14 }
           - { os: macos-15, build_profile: macos-15-armv8-clang-14, host_profile: macos-15-armv8-clang-14 }
           - { os: macos-26, build_profile: macos-26-armv8-clang-14, host_profile: macos-26-armv8-clang-14, bindings: true }
@@ -53,10 +53,11 @@ jobs:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - name: ubuntu install ccache
+      - name: ubuntu install ccache and clang-20
         if: runner.os == 'Linux'
         run: |
-          sudo apt install ccache
+          sudo apt update
+          sudo apt install -y ccache clang-20
           ccache -V
       - name: macos install ccache
         if: runner.os == 'macOS'
@@ -181,7 +182,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, host_profile: ubuntu-24.04-clang-18 }
+          - { os: ubuntu-24.04, host_profile: ubuntu-24.04-clang-20 }
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -241,7 +242,7 @@ jobs:
           # Disabled while pdf2htmlEX was still built; that blocker is gone, but
           # the reference output is generated on macOS, so re-enabling needs a
           # cross-platform comparison run first.
-          #- { os: ubuntu-24.04, host_profile: ubuntu-24.04-clang-18 }
+          #- { os: ubuntu-24.04, host_profile: ubuntu-24.04-clang-20 }
           #- { os: ubuntu-24.04, host_profile: ubuntu-24.04-gcc-14 }
           - { os: macos-26, host_profile: macos-26-armv8-clang-14 }
           # Windows test disabled because:
@@ -357,15 +358,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18 }
+          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-20, host_profile: ubuntu-24.04-clang-20 }
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - name: ubuntu install ccache
+      - name: ubuntu install ccache and clang-20
         if: runner.os == 'Linux'
         run: |
-          sudo apt install ccache
+          sudo apt update
+          sudo apt install -y ccache clang-20
           ccache -V
       - name: macos install ccache
         if: runner.os == 'macOS'

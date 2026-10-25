@@ -40,9 +40,10 @@ jobs:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - name: install ccache
+      - name: install ccache and clang-20
         run: |
-          sudo apt install ccache
+          sudo apt update
+          sudo apt install -y ccache clang-20
           ccache -V
 
       - name: setup python 3.14
@@ -95,7 +96,7 @@ jobs:
         run: >
           python android/build_native.py
           --abi ${{ matrix.architecture }}
-          --build-profile ubuntu-24.04-clang-18
+          --build-profile ubuntu-24.04-clang-20
 
       # `readyPromiseResolve` is in the emscripten glue of the module alone
       - name: check the formula module is embedded

@@ -15,6 +15,6 @@ done
 
 for architecture in armv7 armv8 x86 x86_64; do
     conan lock create . \
-        --profile:build ".github/config/conan/profiles/ubuntu-24.04-clang-18" \
+        --profile:build ".github/config/conan/profiles/ubuntu-24.04-clang-20" \
         --profile:host ".github/config/conan/profiles/android-${architecture}"
 done

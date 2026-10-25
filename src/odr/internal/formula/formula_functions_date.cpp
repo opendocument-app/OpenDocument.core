@@ -20,7 +20,7 @@ namespace {
 /// 15 digits first gives another one: LibreOffice does (`double_to`), and
 /// Excel does not document it.
 double whole_argument(const Call &call, const std::size_t index) {
-  const double x = number_argument(call, index);
+  const double x = require(number_argument(call, index));
   const double whole = std::trunc(x);
   if (whole != std::trunc(snapped(x, 15))) {
     throw NoAnswer{};
@@ -110,7 +110,7 @@ shifted(const std::int64_t days, const double months) {
 /// `DATE`: a year, a month and a day, which may run over into the next.
 /// LibreOffice reads each as a 16-bit integer (`GetInt16`).
 Value date(const Call &call) {
-  expect_arguments(call, 3, 3);
+  require(expect_arguments(call, 3, 3));
   double year = whole_argument(call, 0);
   const double month = whole_argument(call, 1);
   const double day = whole_argument(call, 2);
@@ -156,21 +156,21 @@ Value date(const Call &call) {
 /// `TIME`: hours, minutes and seconds as a fraction of a day, past a whole
 /// day from 0 again. Excel truncates each argument, LibreOffice does not.
 Value time(const Call &call) {
-  expect_arguments(call, 3, 3);
+  require(expect_arguments(call, 3, 3));
   const bool whole = !is_libreoffice(call);
   const double hours =
-      whole ? whole_argument(call, 0) : number_argument(call, 0);
+      whole ? whole_argument(call, 0) : require(number_argument(call, 0));
   const double minutes =
-      whole ? whole_argument(call, 1) : number_argument(call, 1);
+      whole ? whole_argument(call, 1) : require(number_argument(call, 1));
   const double seconds =
-      whole ? whole_argument(call, 2) : number_argument(call, 2);
+      whole ? whole_argument(call, 2) : require(number_argument(call, 2));
   // Excel takes each part up to 32767
   if (whole && std::max({hours, minutes, seconds}) > 32767) {
     return Value{ErrorType::number};
   }
   const double total = hours * 3600 + minutes * 60 + seconds;
   if (total < 0) {
-    return refused(call, ErrorType::number);
+    return require(refused(call, ErrorType::number));
   }
   return Value{std::fmod(total, 86400) / 86400};
 }
@@ -178,8 +178,8 @@ Value time(const Call &call) {
 enum class Part { year, month, day };
 
 template <Part part> Value date_part(const Call &call) {
-  expect_arguments(call, 1, 1);
-  const std::int64_t days = day_of(call, number_argument(call, 0));
+  require(expect_arguments(call, 1, 1));
+  const std::int64_t days = day_of(call, require(number_argument(call, 0)));
   const auto [year, month, day] = number_format::civil_from_days(days);
   switch (part) {
   case Part::year:
@@ -197,8 +197,8 @@ template <Part part> Value date_part(const Call &call) {
 /// second give another @p part.
 template <std::int64_t unit, std::int64_t count>
 Value time_part(const Call &call) {
-  expect_arguments(call, 1, 1);
-  const double serial = number_argument(call, 0);
+  require(expect_arguments(call, 1, 1));
+  const double serial = require(number_argument(call, 0));
   if (!is_libreoffice(call) && serial < 0) {
     return Value{ErrorType::number};
   }
@@ -216,8 +216,8 @@ Value time_part(const Call &call) {
 
 /// `WEEKDAY`: the day of the week by the numbering @p type names.
 Value weekday(const Call &call) {
-  expect_arguments(call, 1, 2);
-  const std::int64_t days = day_of(call, number_argument(call, 0));
+  require(expect_arguments(call, 1, 2));
+  const std::int64_t days = day_of(call, require(number_argument(call, 0)));
   const double type = call.size() > 1 ? whole_argument(call, 1) : 1;
   // 1899-12-30 was a Saturday; 0 is Sunday here
   const std::int64_t sunday_based = ((days % 7) + 7 + 6) % 7;
@@ -236,14 +236,14 @@ Value weekday(const Call &call) {
     const auto first = static_cast<std::int64_t>(type) - 11;
     return Value{static_cast<double>((monday_based - first + 7) % 7 + 1)};
   }
-  return refused(call, ErrorType::number);
+  return require(refused(call, ErrorType::number));
 }
 
 /// `EDATE` and `EOMONTH`: a date some months on, on its day or on the last
 /// day of the month.
 template <bool end_of_month> Value months_on(const Call &call) {
-  expect_arguments(call, 2, 2);
-  const std::int64_t days = day_of(call, number_argument(call, 0));
+  require(expect_arguments(call, 2, 2));
+  const std::int64_t days = day_of(call, require(number_argument(call, 0)));
   const auto [year, month, day] = shifted(days, whole_argument(call, 1));
   const std::uint32_t length = month_length(year, month);
   return serial_of(
@@ -255,9 +255,9 @@ template <bool end_of_month> Value months_on(const Call &call) {
 /// days, and refuses a date out of its range, LibreOffice the difference of
 /// the serials.
 Value days(const Call &call) {
-  expect_arguments(call, 2, 2);
-  const double end = number_argument(call, 0);
-  const double start = number_argument(call, 1);
+  require(expect_arguments(call, 2, 2));
+  const double end = require(number_argument(call, 0));
+  const double start = require(number_argument(call, 1));
   if (is_libreoffice(call)) {
     return Value{end - start};
   }
@@ -273,15 +273,15 @@ Value days(const Call &call) {
 /// date in another month or year (`MD`, `YM`, `YD`) have no answer, as
 /// Excel documents one of them as wrong.
 Value date_difference(const Call &call) {
-  expect_arguments(call, 3, 3);
-  const std::int64_t start = day_of(call, number_argument(call, 0));
-  const std::int64_t end = day_of(call, number_argument(call, 1));
-  const Text unit = call.text(call.scalar(2));
+  require(expect_arguments(call, 3, 3));
+  const std::int64_t start = day_of(call, require(number_argument(call, 0)));
+  const std::int64_t end = day_of(call, require(number_argument(call, 1)));
+  const Text unit = require(call.text(require(call.scalar(2))));
   if (const auto *error = std::get_if<ErrorType>(&unit)) {
     return Value{*error};
   }
   if (end < start) {
-    return refused(call, ErrorType::number);
+    return require(refused(call, ErrorType::number));
   }
   const std::string &spelled = std::get<std::string>(unit);
   if (spelled == "D" || spelled == "d") {
@@ -309,7 +309,7 @@ Value date_difference(const Call &call) {
 /// `NOW` and `TODAY`: the moment the caller states, without the time for
 /// `TODAY`.
 template <bool with_time> Value now(const Call &call) {
-  expect_arguments(call, 0, 0);
+  require(expect_arguments(call, 0, 0));
   const std::optional<double> days = call.settings().now;
   if (!days.has_value()) {
     throw NoAnswer{};
@@ -318,21 +318,21 @@ template <bool with_time> Value now(const Call &call) {
 }
 
 constexpr std::array entries{
-    FunctionEntry{"DATE", date},
-    FunctionEntry{"DATEDIF", date_difference},
-    FunctionEntry{"DAY", date_part<Part::day>},
-    FunctionEntry{"DAYS", days},
-    FunctionEntry{"EDATE", months_on<false>},
-    FunctionEntry{"EOMONTH", months_on<true>},
-    FunctionEntry{"HOUR", time_part<3600, 24>},
-    FunctionEntry{"MINUTE", time_part<60, 60>},
-    FunctionEntry{"MONTH", date_part<Part::month>},
-    FunctionEntry{"NOW", now<true>},
-    FunctionEntry{"SECOND", time_part<1, 60>},
-    FunctionEntry{"TIME", time},
-    FunctionEntry{"TODAY", now<false>},
-    FunctionEntry{"WEEKDAY", weekday},
-    FunctionEntry{"YEAR", date_part<Part::year>},
+    FunctionEntry{"DATE", bridged<date>},
+    FunctionEntry{"DATEDIF", bridged<date_difference>},
+    FunctionEntry{"DAY", bridged<date_part<Part::day>>},
+    FunctionEntry{"DAYS", bridged<days>},
+    FunctionEntry{"EDATE", bridged<months_on<false>>},
+    FunctionEntry{"EOMONTH", bridged<months_on<true>>},
+    FunctionEntry{"HOUR", bridged<time_part<3600, 24>>},
+    FunctionEntry{"MINUTE", bridged<time_part<60, 60>>},
+    FunctionEntry{"MONTH", bridged<date_part<Part::month>>},
+    FunctionEntry{"NOW", bridged<now<true>>},
+    FunctionEntry{"SECOND", bridged<time_part<1, 60>>},
+    FunctionEntry{"TIME", bridged<time>},
+    FunctionEntry{"TODAY", bridged<now<false>>},
+    FunctionEntry{"WEEKDAY", bridged<weekday>},
+    FunctionEntry{"YEAR", bridged<date_part<Part::year>>},
 };
 
 } // namespace

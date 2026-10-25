@@ -3,6 +3,7 @@
 #include <odr/sheet_position.hpp>
 
 #include <odr/internal/formula/formula_ast.hpp>
+#include <odr/internal/formula/formula_result.hpp>
 #include <odr/internal/formula/formula_value.hpp>
 
 #include <compare>
@@ -12,6 +13,8 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace odr::internal::formula {
@@ -31,9 +34,9 @@ struct ErrorResult final {
 class Errors final {
 public:
   void add(ErrorType error);
-  /// The error the argument gives, nothing where it holds none.
-  /// @throws NoAnswer where it holds two different ones.
-  [[nodiscard]] std::optional<ErrorType> first() const;
+  /// The error the argument gives, nothing where it holds none. No answer
+  /// where it holds two different ones.
+  [[nodiscard]] Result<std::optional<ErrorType>> first() const;
 
 private:
   std::optional<ErrorType> m_first{};
@@ -53,39 +56,43 @@ public:
   /// Whether argument @p index is left out: the second of `IF(A1;;B1)`.
   [[nodiscard]] bool missing(std::size_t index) const;
   /// Argument @p index. A reference stays one.
-  [[nodiscard]] Value value(std::size_t index) const;
+  [[nodiscard]] Result<Value> value(std::size_t index) const;
   /// Argument @p index read as one value: a range gives the cell the
   /// formula's row or column crosses, an array its first element.
-  [[nodiscard]] Value scalar(std::size_t index) const;
+  [[nodiscard]] Result<Value> scalar(std::size_t index) const;
   /// @p value read as one value, as @ref scalar reads an argument.
-  [[nodiscard]] Value scalar_of(Value value) const;
+  [[nodiscard]] Result<Value> scalar_of(Value value) const;
   /// Argument @p index read in an array context, as `SUMPRODUCT` reads it:
   /// an operator reads every cell of a range.
-  [[nodiscard]] Matrix array(std::size_t index) const;
+  [[nodiscard]] Result<Matrix> array(std::size_t index) const;
 
   /// Calls @p visit with what argument @p index holds: every cell of a range
   /// up to the extent of its sheet, every element of an array, or the
-  /// argument itself, which is @p stated.
-  void for_each_value(
+  /// argument itself, which is @p stated. A stop of @p visit ends the walk
+  /// and is its result.
+  [[nodiscard]] Result<void> for_each_value(
       std::size_t index,
-      const std::function<void(const Value &value, bool stated)> &visit) const;
+      const std::function<Result<void>(const Value &value, bool stated)> &visit)
+      const;
 
   /// Calls @p visit for every cell of @p reference up to the extent of its
-  /// sheet, row by row, with what the cell holds.
-  void for_each(const Reference &reference,
-                const std::function<void(const SheetPosition &, const Value &)>
-                    &visit) const;
+  /// sheet, row by row, with what the cell holds. A stop of @p visit ends the
+  /// walk and is its result.
+  [[nodiscard]] Result<void> for_each(
+      const Reference &reference,
+      const std::function<Result<void>(const SheetPosition &, const Value &)>
+          &visit) const;
 
   /// What the cell at @p position holds. A cell past the extent of its
   /// sheet is empty.
-  [[nodiscard]] Value cell_value(const SheetPosition &position) const;
+  [[nodiscard]] Result<Value> cell_value(const SheetPosition &position) const;
   /// The reference @p node, which a function built at runtime, refers to:
   /// a cell, a range or a name. `#REF!` where it names a sheet or a name the
   /// document does not know, or is no reference.
-  [[nodiscard]] Value reference(const Node &node) const;
+  [[nodiscard]] Result<Value> reference(const Node &node) const;
 
-  [[nodiscard]] Number number(const Value &value) const;
-  [[nodiscard]] Text text(const Value &value) const;
+  [[nodiscard]] Result<Number> number(const Value &value) const;
+  [[nodiscard]] Result<Text> text(const Value &value) const;
 
   [[nodiscard]] const Settings &settings() const;
   /// The cell whose formula this is.
@@ -97,7 +104,32 @@ private:
   const std::vector<std::optional<Value>> *m_given{nullptr};
 };
 
-using Function = Value (*)(const Call &call);
+using Function = Result<Value> (*)(const Call &call);
+
+// The bridge for a function that still throws its stops goes in step 3.
+
+/// The value of @p result, else its stop thrown as `NoAnswer` or
+/// `ErrorResult`.
+template <typename T> T require(Result<T> result) {
+  if (!result.has_value()) {
+    if (const std::optional<ErrorType> error = result.error().error;
+        error.has_value()) {
+      throw ErrorResult{*error};
+    }
+    throw NoAnswer{};
+  }
+  if constexpr (std::is_void_v<T>) {
+    return;
+  } else {
+    return std::move(*result);
+  }
+}
+
+/// @p function, which throws its stops, as a @ref Function.
+template <Value (*function)(const Call &call)>
+Result<Value> bridged(const Call &call) {
+  return function(call);
+}
 
 /// A function as a formula names it, without the prefix of its format.
 struct FunctionEntry final {
@@ -106,26 +138,27 @@ struct FunctionEntry final {
 };
 
 /// Compares ASCII letters and digits, ignoring case first; case-sensitive
-/// ties put lowercase first.
-/// @throws NoAnswer if ordering requires application-specific collation.
-[[nodiscard]] std::strong_ordering
+/// ties put lowercase first. No answer where ordering requires
+/// application-specific collation.
+[[nodiscard]] Result<std::strong_ordering>
 order_of_texts(std::string_view a, std::string_view b, bool case_sensitive);
-/// Whether two texts are equal, without case unless @p case_sensitive.
-/// @throws NoAnswer where the case of a letter cannot be folded.
-[[nodiscard]] bool equal_texts(std::string_view a, std::string_view b,
-                               bool case_sensitive);
+/// Whether two texts are equal, without case unless @p case_sensitive. No
+/// answer where the case of a letter cannot be folded.
+[[nodiscard]] Result<bool> equal_texts(std::string_view a, std::string_view b,
+                                       bool case_sensitive);
 
 /// The sum of @p numbers: as LibreOffice's `KahanSum` adds them, and in
 /// Excel exact, with no answer where it nearly cancels.
-[[nodiscard]] Value sum_of(const Call &call, std::span<const double> numbers);
+[[nodiscard]] Result<Value> sum_of(const Call &call,
+                                   std::span<const double> numbers);
 
 /// `x^y`, which LibreOffice and Excel compute apart at 0 and below.
-[[nodiscard]] Value power(double x, double y, Dialect dialect);
+[[nodiscard]] Result<Value> power(double x, double y, Dialect dialect);
 
 /// Whether @p a and @p b are one number in @p dialect: LibreOffice decides
 /// as `approxEqual`. Excel's tolerance is not documented, so where
 /// `approxEqual` and a reading to 15 digits decide apart, it has no answer.
-[[nodiscard]] bool same_number(Dialect dialect, double a, double b);
+[[nodiscard]] Result<bool> same_number(Dialect dialect, double a, double b);
 
 /// Whether @p text contains wildcard or regular-expression syntax enabled
 /// by the document.
@@ -137,14 +170,16 @@ order_of_texts(std::string_view a, std::string_view b, bool case_sensitive);
 /// An argument a function refuses: @p excel in Excel. LibreOffice states a
 /// code of its own (`Err:502`), which a file cannot hold as an error, so it
 /// has no answer.
-[[nodiscard]] Value refused(const Call &call, ErrorType excel);
+[[nodiscard]] Result<Value> refused(const Call &call, ErrorType excel);
 
-/// Argument @p index as a number. @throws ErrorResult where it is an error.
-[[nodiscard]] double number_argument(const Call &call, std::size_t index);
+/// Argument @p index as a number. Stops with the error where it is one.
+[[nodiscard]] Result<double> number_argument(const Call &call,
+                                             std::size_t index);
 
-/// Fails where @p call does not have @p least to @p most arguments, or
+/// No answer where @p call does not have @p least to @p most arguments, or
 /// leaves one out.
-void expect_arguments(const Call &call, std::size_t least, std::size_t most);
+[[nodiscard]] Result<void> expect_arguments(const Call &call, std::size_t least,
+                                            std::size_t most);
 
 /// The functions of mathematics and aggregation: `SUM`, `ROUND`, `SIN`.
 [[nodiscard]] std::span<const FunctionEntry> math_functions();

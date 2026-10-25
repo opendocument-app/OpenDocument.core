@@ -150,6 +150,8 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file to HTML
     `views::zip`, `ranges::fold_left`, monadic `std::optional`. Not available:
     `views::enumerate`, `std::generator`, `std::move_only_function`,
     `std::flat_map`. `std::mdspan` is missing in libstdc++ (the gcc-14 job).
+    libstdc++ gives `std::expected` only to clang 19 and later, so the linux
+    clang jobs use clang 20.
   - `std::format` is unusable. It needs a floating-point `std::to_chars` that
     macOS 13.3 and iOS 16.3 introduced, and the apple slices deploy to macOS 12
     and iOS 15. Use `fmt`.

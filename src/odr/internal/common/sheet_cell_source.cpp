@@ -228,20 +228,18 @@ SheetCellSource::bands(const std::uint32_t sheet) const {
   return m_bands.emplace(sheet, std::move(result)).first->second;
 }
 
-void SheetCellSource::for_each_cell(
+formula::Result<void> SheetCellSource::for_each_cell(
     const formula::Area &area,
-    const std::function<void(const SheetPosition &,
-                             const std::optional<formula::Value> &)> &visit)
+    const std::function<formula::Result<void>(
+        const SheetPosition &, const std::optional<formula::Value> &)> &visit)
     const {
   if (area.sheet >= m_sheets.size()) {
     // the copy of another document's sheet
-    CellSource::for_each_cell(area, visit);
-    return;
+    return CellSource::for_each_cell(area, visit);
   }
   const std::optional<std::vector<RowBand>> &sheet_bands = bands(area.sheet);
   if (!sheet_bands.has_value()) {
-    CellSource::for_each_cell(area, visit);
-    return;
+    return CellSource::for_each_cell(area, visit);
   }
   const TablePosition &from = area.range.from();
   const TablePosition &to = area.range.to();
@@ -254,11 +252,16 @@ void SheetCellSource::for_each_cell(
       for (const CellRun &run : band.cells) {
         for (std::uint32_t column = std::max(run.first_column, from.column);
              column < run.end_column && column <= to.column; ++column) {
-          visit(SheetPosition(area.sheet, column, row), run.value);
+          if (formula::Result<void> visited =
+                  visit(SheetPosition(area.sheet, column, row), run.value);
+              !visited.has_value()) {
+            return visited;
+          }
         }
       }
     }
   }
+  return {};
 }
 
 const formula::Settings &SheetCellSource::settings() const noexcept {

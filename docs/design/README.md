@@ -24,6 +24,9 @@
   browser lays out only near the viewport, and that core renders on demand;
   a search over the chunks that have not loaded, and images that load near
   the viewport.
+- [The formula evaluator without exceptions](formula-without-exceptions.md):
+  stops as `std::expected` values, so the formula module builds with
+  `-fno-exceptions` and loads in any WebView.
 - [Document creation design](document-creation.md): a new odt, ods, docx or
   xlsx, generated in code and opened through the read path.
 

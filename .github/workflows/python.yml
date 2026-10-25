@@ -51,7 +51,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18 }
+          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-20, host_profile: ubuntu-24.04-clang-20 }
           - { os: macos-26, build_profile: macos-26-armv8-clang-14, host_profile: macos-26-armv8-clang-14 }
     steps:
       - name: checkout
@@ -62,10 +62,11 @@ jobs:
 
       # The conan profiles use ccache as compiler launcher, so it must exist
       # even for `--build missing` source builds.
-      - name: ubuntu install ccache
+      - name: ubuntu install ccache and clang-20
         if: runner.os == 'Linux'
         run: |
-          sudo apt install ccache
+          sudo apt update
+          sudo apt install -y ccache clang-20
           ccache -V
       - name: macos install ccache
         if: runner.os == 'macOS'

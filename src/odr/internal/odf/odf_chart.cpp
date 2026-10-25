@@ -226,8 +226,8 @@ private:
       if (!cells.has_value()) {
         return false;
       }
-      labels = *cells | std::views::transform(read_text) |
-               std::ranges::to<std::vector<std::string>>();
+      labels = std::ranges::to<std::vector<std::string>>(
+          *cells | std::views::transform(read_text));
     }
 
     std::vector<std::vector<std::optional<double>>> columns;
