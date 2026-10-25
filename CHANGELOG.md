@@ -46,6 +46,11 @@ The release run heads these entries with the version and opens a fresh
 - `HtmlConfig::lazy_loading` loads the rows of a sheet the same way. The
   sheet of 500 K cells in `efficiency-big-1.ods` is then a page of 370 KB.
   Such a sheet has no sort control, because a sort needs every row.
+- `HtmlConfig::lazy_loading` renders each page of a pdf after the first
+  when the reader comes near it, and links the fonts as files. The 2985
+  pages of a technical manual are then a document of 1.4 MB, which the
+  HTTP server answers after 0.5 s, not 5.4 s. A pdf in the single layer
+  keeps every page in the document.
 
 ### Spreadsheets
 

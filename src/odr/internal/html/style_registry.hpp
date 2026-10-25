@@ -39,6 +39,10 @@ public:
   /// inline.
   void close() { m_closed = true; }
 
+  /// What every name ends in, so the names of two registries cannot clash in
+  /// one page: `x0_12`, not `x0`.
+  void set_suffix(std::string suffix) { m_suffix = std::move(suffix); }
+
   [[nodiscard]] bool has_rules() const { return !m_order.empty(); }
 
   /// One rule per line, each preceded by a newline.
@@ -52,6 +56,7 @@ private:
   Rank m_rank{Rank::plain};
   Digits m_digits{Digits::decimal};
   bool m_closed{false};
+  std::string m_suffix;
 };
 
 } // namespace odr::internal::html
