@@ -8,6 +8,7 @@
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/abstract/font.hpp>
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/common/null_stream.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/font/cff_font.hpp>
@@ -1220,6 +1221,15 @@ std::string page_script_path(const std::size_t number) {
   return "pdf-pages/" + std::to_string(number) + ".js";
 }
 
+/// The pages that one script of the search index holds the text of
+/// (`lazy-loading.md` decision 8).
+constexpr std::size_t pages_per_index = 64;
+
+/// Where the text of index group @p group loads from.
+std::string index_script_path(const std::size_t group) {
+  return "pdf-search/" + std::to_string(group) + ".js";
+}
+
 /// A resource the service renders when it is asked for.
 class RenderedResource : public abstract::HtmlResource {
 public:
@@ -1264,6 +1274,20 @@ public:
 
 private:
   std::size_t m_number{0};
+};
+
+/// A script of the search index: the text of the pages of a group that load.
+class PageIndexResource final : public RenderedResource {
+public:
+  PageIndexResource(const HtmlServiceImpl &service, std::string path,
+                    const std::size_t group)
+      : RenderedResource(service, std::move(path), "text/javascript"),
+        m_group{group} {}
+
+  void write_resource(std::ostream &os) const override;
+
+private:
+  std::size_t m_group{0};
 };
 
 /// A font that every page links, rather than each page carrying it.
@@ -1409,9 +1433,11 @@ public:
     if (loads_pages()) {
       // before the first page, so its faces read the files too
       const std::vector<const pdf::Font *> &fonts = document_fonts();
-      HtmlResources resources = write_pages_dual_layer(
-          out, std::span(m_pages).first(1), m_first_page + 1,
-          document_page_href(), std::span(m_pages).subspan(1));
+      HtmlResources resources =
+          write_pages_dual_layer(out, std::span(m_pages).first(1),
+                                 m_first_page + 1, document_page_href(),
+                                 std::span(m_pages).subspan(1))
+              .resources;
       for (const pdf::Font *font : fonts) {
         if (const std::optional<std::string> file = shared_font_file(font);
             file.has_value()) {
@@ -1455,9 +1481,47 @@ public:
        << "," << script_string(html.str()) << ");\n";
   }
 
+  /// The text of the pages of index group @p group that load, as the script
+  /// that hands it to the page. Each page renders once for it, alone and to
+  /// nothing; the service keeps the text.
+  void write_index_script(const std::size_t group, std::ostream &os) const {
+    std::lock_guard lock(m_mutex);
+    m_page_texts.resize(m_pages.size());
+    const std::size_t first = std::max<std::size_t>(group * pages_per_index, 1);
+    const std::size_t end =
+        std::min(m_pages.size(), (group + 1) * pages_per_index);
+    os << "odr.chunks.text({";
+    for (std::size_t index = first; index < end; ++index) {
+      const std::size_t number = m_first_page + index + 1;
+      std::optional<std::string> &text = m_page_texts[index];
+      if (!text.has_value()) {
+        NullStream null;
+        HtmlWriter out(null, false, "");
+        text = std::move(
+            write_pages_dual_layer(out, std::span(m_pages).subspan(index, 1),
+                                   number, document_page_href(), {}, true)
+                .texts.front());
+      }
+      os << (index > first ? "," : "")
+         << script_string("p" + std::to_string(number)) << ":"
+         << script_string(*text);
+    }
+    os << "});\n";
+  }
+
   void write_font_file(const pdf::Font &font, std::ostream &os) const {
     std::lock_guard lock(m_mutex);
     os << reencoded_font(font, {});
+  }
+
+  /// Whether a font re-encodes, which the service asks once for each font:
+  /// the test re-encodes it, and every page rendered apart would ask again.
+  [[nodiscard]] bool shared_font_is_usable(const pdf::Font *font) const {
+    const auto [it, inserted] = m_font_usable.try_emplace(font, false);
+    if (inserted) {
+      it->second = font_is_usable(*font, m_logger);
+    }
+    return it->second;
   }
 
   /// The number a font has in every page rendered apart.
@@ -1492,7 +1556,7 @@ public:
       }
       for (const auto &[name, font] : resources->font) {
         if (font != nullptr && !m_font_files.contains(font) &&
-            font_is_usable(*font, Logger::null())) {
+            shared_font_is_usable(font)) {
           m_font_files.insert(font);
           static_cast<void>(shared_font_id(font));
           result.push_back(font);
@@ -1535,7 +1599,8 @@ public:
     if (config().pdf_text_mode == PdfTextMode::single_layer) {
       return write_pages_single_layer(out, pages, first_page_number, page_href);
     }
-    return write_pages_dual_layer(out, pages, first_page_number, page_href);
+    return write_pages_dual_layer(out, pages, first_page_number, page_href)
+        .resources;
   }
 
   // `.vis` paints PUA glyphs; `.sel` carries transparent Unicode in stream
@@ -1563,7 +1628,7 @@ public:
   /// justify). Empty `text` means a spacer-only span.
   struct SelRunOut {
     std::string classes; ///< "sr wN [mlN]"
-    std::string text; ///< real unicode (HTML-escaped), may be empty for spacer
+    std::string text;    ///< real unicode, may be empty for spacer
   };
   /// One selection-layer line block: absolutely positioned, transparent.
   struct SelLineOut {
@@ -1582,11 +1647,42 @@ public:
     std::vector<LinkOut> links;
   };
 
+  /// What the dual layer writes: the resources, and the text of each page as
+  /// `search.js` reads it, a `\n` between two lines of its `.sel` layer
+  /// (`lazy-loading.md` decision 8).
+  struct DualLayerPages {
+    HtmlResources resources;
+    std::vector<std::string> texts;
+  };
+
+  /// The text of each page as a search reads it.
+  static std::vector<std::string>
+  sel_texts(const std::span<const DualPageOut> pages) {
+    std::vector<std::string> texts;
+    texts.reserve(pages.size());
+    for (const DualPageOut &page : pages) {
+      std::string text;
+      for (const SelLineOut &line : page.sel_lines) {
+        if (&line != page.sel_lines.data()) {
+          text += '\n';
+        }
+        for (const SelRunOut &run : line.runs) {
+          // `search.js` folds it to a space; only a line boundary keeps one
+          std::string run_text = run.text;
+          std::ranges::replace(run_text, '\n', ' ');
+          text += run_text;
+        }
+      }
+      texts.push_back(std::move(text));
+    }
+    return texts;
+  }
+
   /// @p pages rendered, and @p later as empty pages that load as scripts
   /// (`lazy-loading.md` decision 7). A @p fragment is the one page of such a
   /// script: the rules it needs and what its page box holds, which the script
   /// puts into the empty page.
-  HtmlResources write_pages_dual_layer(
+  DualLayerPages write_pages_dual_layer(
       HtmlWriter &out, const std::span<pdf::Page *const> pages,
       const std::size_t first_page_number, const PageHref &page_href,
       const std::span<pdf::Page *const> later = {},
@@ -1640,7 +1736,7 @@ public:
                            });
       }
       const auto [it, inserted] = family_index.try_emplace(font, 0);
-      if (!inserted || !font_is_usable(*font, m_logger)) {
+      if (!inserted || !shared_font_is_usable(font)) {
         return it->second;
       }
       const std::uint32_t index = shared_font_id(font);
@@ -1986,7 +2082,7 @@ public:
                 add_class(cls, "w", pt_decl("width", width_pt));
               }
               page_out.sel_lines[sel_cur_line].runs.push_back(
-                  SelRunOut{std::move(cls), escape_markup(std::move(core))});
+                  SelRunOut{std::move(cls), std::move(core)});
               sel_cur_run_start_ox = sel_ox;
               sel_tail_width_pt = width_pt;
               sel_tail_gap_font_size_pt.reset();
@@ -2043,8 +2139,7 @@ public:
               if (width_pt > 0) {
                 add_class(cls, "w", pt_decl("width", width_pt));
               }
-              runs.push_back(
-                  SelRunOut{std::move(cls), escape_markup(std::move(core))});
+              runs.push_back(SelRunOut{std::move(cls), std::move(core)});
               sel_cur_run_start_ox = sel_ox + lead;
               sel_tail_width_pt = width_pt;
               sel_tail_gap_font_size_pt.reset();
@@ -2057,7 +2152,7 @@ public:
             std::vector<SelRunOut> &runs =
                 page_out.sel_lines[sel_cur_line].runs;
             if (!runs.empty()) {
-              runs.back().text += escape_markup(text.text);
+              runs.back().text += text.text;
               strip_width_class(runs.back().classes);
               const double merged_width_pt =
                   round2(sel_ox + sel_extent - sel_cur_run_start_ox);
@@ -2118,7 +2213,7 @@ public:
             "span",
             HtmlElementOptions().set_inline(true).set_class(run.classes));
         if (!run.text.empty()) {
-          out.write_raw(run.text);
+          out.write_raw(escape_markup(run.text));
         }
         out.write_element_end("span");
       }
@@ -2153,7 +2248,7 @@ public:
       for (const DualPageOut &page : pages_out) {
         write_page_content(page);
       }
-      return resources;
+      return {std::move(resources), sel_texts(pages_out)};
     }
 
     // a page that loads later states its size, so the column and the print
@@ -2260,6 +2355,13 @@ public:
     for (std::size_t i = 0; i < later.size(); ++i) {
       const PageBox &box = later_boxes[i];
       const std::size_t number = page_number++;
+      // the first page of a group that loads names the script of its text;
+      // `later` starts at the second page
+      const std::size_t group = (i + 1) / pages_per_index;
+      const std::string text_attribute =
+          i == 0 || (i + 1) % pages_per_index == 0
+              ? R"( data-odr-chunk-text=")" + index_script_path(group) + '"'
+              : std::string();
       std::ostringstream size;
       size << "width:" << box.width * pt_to_in
            << "in;height:" << box.height * pt_to_in
@@ -2272,13 +2374,19 @@ public:
               .set_extra(R"(id="p)" + std::to_string(number) +
                          R"(" data-odr-chunk="p)" + std::to_string(number) +
                          R"(" data-odr-chunk-src=")" +
-                         page_script_path(number) + '"' +
+                         page_script_path(number) + '"' + text_attribute +
                          page_attributes(number - 1, box.to_box)));
       out.write_element_end("div");
       resources.emplace_back(
           odr::HtmlResource(
               std::make_shared<PageScriptResource>(*this, number)),
           page_script_path(number));
+      if (!text_attribute.empty()) {
+        resources.emplace_back(
+            odr::HtmlResource(std::make_shared<PageIndexResource>(
+                *this, index_script_path(group), group)),
+            index_script_path(group));
+      }
     }
     out.write_element_end("div"); // .d
     write_search_script(state);
@@ -2288,7 +2396,7 @@ public:
     out.write_body_end();
     out.write_end();
 
-    return resources;
+    return {std::move(resources), sel_texts(pages_out)};
   }
 
   // Frequency-selected cmap entries render clean runs as Unicode. Other runs
@@ -3429,11 +3537,18 @@ protected:
   /// that have a file of their own.
   mutable std::unordered_map<const pdf::Font *, std::uint32_t> m_font_ids;
   mutable std::unordered_set<const pdf::Font *> m_font_files;
+  mutable std::unordered_map<const pdf::Font *, bool> m_font_usable;
   mutable std::optional<std::vector<const pdf::Font *>> m_document_fonts;
+  /// The text of each page a search index has asked for.
+  mutable std::vector<std::optional<std::string>> m_page_texts;
 };
 
 void PageScriptResource::write_resource(std::ostream &os) const {
   m_service->write_page_script(m_number, os);
+}
+
+void PageIndexResource::write_resource(std::ostream &os) const {
+  m_service->write_index_script(m_group, os);
 }
 
 void FontFileResource::write_resource(std::ostream &os) const {

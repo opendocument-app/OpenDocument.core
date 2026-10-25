@@ -446,6 +446,13 @@ index is 2 scripts of 68 KB, beside 100 MB of chunks. For four keywords, the
 count from the index is the count of a page with every row in it, and the
 search takes 6 to 13 ms there, against 205 to 398 ms in that page.
 
+**Measured** on `Core_v5.1.pdf` (2985 pages): the index is 47 scripts of
+5.3 MB. Core renders each page alone and to nothing for its text, 4.9 s for
+all of them, and keeps the text. For five keywords, the count from the
+index is the count of the page with every page in it (7387 hits of
+"Bluetooth", 461030 of "é"). The search takes 12 to 54 ms, against 0.7 to
+9.4 s in that page. A step to the last hit loads page 2985 in 24 ms.
+
 **Over HTTP, the server searches.** The index then stays on the server,
 and the page does not load 9 MB of text for one keyword:
 

@@ -51,6 +51,12 @@ The release run heads these entries with the version and opens a fresh
   A step to a hit loads its chunk.
 - `odr.search` in a sheet whose rows load finds the rows that have not
   loaded the same way, from `sheet<n>-search/<m>.js`.
+- `odr.search` in a pdf whose pages load finds the pages that have not
+  loaded the same way, from `pdf-search/<n>.js`. The service renders each
+  page once for it and keeps the text: 4.9 s for the 2985 pages of a
+  technical manual, whose index is 5.3 MB.
+- A pdf page that loads renders in about half the time, because the service
+  tests once for each font whether it re-encodes, not once for each page.
 - `odr.search` no longer finds the row numbers and the column letters of a
   sheet, because they label the cells and are not their content.
 - `HtmlConfig::lazy_loading` loads the rows of a sheet the same way. The
