@@ -1647,9 +1647,9 @@ public:
     std::vector<LinkOut> links;
   };
 
-  /// What the dual layer writes: the resources, and the text of each page as
-  /// `search.js` reads it, a `\n` between two lines of its `.sel` layer
-  /// (`lazy-loading.md` decision 8).
+  /// What the dual layer writes: the resources, and for a fragment the text of
+  /// its page as `search.js` reads it, a `\n` between two lines of its `.sel`
+  /// layer (`lazy-loading.md` decision 8).
   struct DualLayerPages {
     HtmlResources resources;
     std::vector<std::string> texts;
@@ -1667,7 +1667,7 @@ public:
           text += '\n';
         }
         for (const SelRunOut &run : line.runs) {
-          // `search.js` folds it to a space; only a line boundary keeps one
+          // `search.js` folds it to a space; only a new line writes a `\n`
           std::string run_text = run.text;
           std::ranges::replace(run_text, '\n', ' ');
           text += run_text;
@@ -2396,7 +2396,7 @@ public:
     out.write_body_end();
     out.write_end();
 
-    return {std::move(resources), sel_texts(pages_out)};
+    return {std::move(resources), {}};
   }
 
   // Frequency-selected cmap entries render clean runs as Unicode. Other runs
