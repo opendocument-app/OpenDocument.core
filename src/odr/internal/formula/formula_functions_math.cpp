@@ -15,21 +15,22 @@ namespace odr::internal::formula {
 namespace {
 
 /// An argument outside the domain of a function.
-Value invalid(const Call &call) {
-  return require(refused(call, ErrorType::number));
+Result<Value> invalid(const Call &call) noexcept {
+  return refused(call, ErrorType::number);
 }
 
-Value checked(const double x) {
+Value checked(const double x) noexcept {
   return std::isfinite(x) ? Value{x} : Value{ErrorType::number};
 }
 
-/// @p round applied to @p x read to 15 significant digits. Nothing where
+/// @p round applied to @p x read to 15 significant digits. No answer where
 /// reading x to 12 digits rounds it elsewhere: x is so close to the edge
 /// that the two applications decide apart.
-template <typename Round> double stable(const double x, const Round &round) {
+template <typename Round>
+Result<double> stable(const double x, const Round &round) noexcept {
   const double result = round(snapped(x, 15));
   if (round(snapped(x, 12)) != result) {
-    throw NoAnswer{};
+    return no_answer();
   }
   return result;
 }
@@ -37,55 +38,80 @@ template <typename Round> double stable(const double x, const Round &round) {
 /// @p round applied as `stable` does. Excel documents no such reading for a
 /// function other than a rounding, so there a number it moves has no answer.
 template <typename Round>
-double settled(const Call &call, const double x, const Round &round) {
-  const double result = stable(x, round);
-  if (!is_libreoffice(call) && round(x) != result) {
-    throw NoAnswer{};
+Result<double> settled(const Call &call, const double x,
+                       const Round &round) noexcept {
+  const Result<double> result = stable(x, round);
+  if (!result.has_value()) {
+    return result;
+  }
+  if (!is_libreoffice(call) && round(x) != *result) {
+    return no_answer();
   }
   return result;
 }
 
-double round_half_away(const double x) { return std::round(x); }
-double round_away(const double x) {
+double round_half_away(const double x) noexcept { return std::round(x); }
+double round_away(const double x) noexcept {
   return x < 0 ? -std::ceil(-x) : std::ceil(x);
 }
-double round_toward(const double x) { return std::trunc(x); }
+double round_toward(const double x) noexcept { return std::trunc(x); }
 
 /// @p x rounded to @p digits after the decimal point, by @p round.
 template <typename Round>
-Value round_to(const double x, const double digits, const Round &round) {
+Result<Value> round_to(const double x, const double digits,
+                       const Round &round) noexcept {
   const double places = std::trunc(digits);
   if (std::abs(places) > 300) {
-    throw NoAnswer{};
+    return no_answer();
   }
   if (places >= 0) {
     const double scale = std::pow(10.0, places);
     if (!std::isfinite(x * scale)) {
       return Value{x};
     }
-    return checked(stable(x * scale, round) / scale);
+    return stable(x * scale, round).transform([&](const double rounded) {
+      return checked(rounded / scale);
+    });
   }
   const double scale = std::pow(10.0, -places);
-  return checked(stable(x / scale, round) * scale);
+  return stable(x / scale, round).transform([&](const double rounded) {
+    return checked(rounded * scale);
+  });
 }
 
-using Unary = Value (*)(const Call &, double);
-using Binary = Value (*)(const Call &, double, double);
+using Unary = Result<Value> (*)(const Call &, double);
+using Binary = Result<Value> (*)(const Call &, double, double);
 
 /// A function of one number.
-template <Unary function> Value unary(const Call &call) {
-  require(expect_arguments(call, 1, 1));
-  return function(call, require(number_argument(call, 0)));
+template <Unary function> Result<Value> unary(const Call &call) {
+  if (const Result<void> expected = expect_arguments(call, 1, 1);
+      !expected.has_value()) {
+    return std::unexpected(expected.error());
+  }
+  return number_argument(call, 0).and_then(
+      [&](const double x) { return function(call, x); });
 }
 
 /// A function of two numbers, the second @p fallback where it is left out.
 template <Binary function, std::int32_t fallback = 0, bool optional = false>
-Value binary(const Call &call) {
-  require(expect_arguments(call, optional ? 1 : 2, 2));
-  const double x = require(number_argument(call, 0));
-  const double y =
-      call.size() > 1 ? require(number_argument(call, 1)) : fallback;
-  return function(call, x, y);
+Result<Value> binary(const Call &call) {
+  if (const Result<void> expected = expect_arguments(call, optional ? 1 : 2, 2);
+      !expected.has_value()) {
+    return std::unexpected(expected.error());
+  }
+  const Result<double> x = number_argument(call, 0);
+  if (!x.has_value()) {
+    return std::unexpected(x.error());
+  }
+  double y = fallback;
+  if (call.size() > 1) {
+    const Result<double> second = number_argument(call, 1);
+    if (!second.has_value()) {
+      return std::unexpected(second.error());
+    }
+    y = *second;
+  }
+  return function(call, *x, y);
 }
 
 /// The numbers an aggregate reads out of its arguments, and the first error
@@ -97,55 +123,66 @@ struct Collected final {
 
 /// Reads @p count arguments as SUM does: numeric cells and LibreOffice
 /// boolean cells; direct booleans and Excel numeric text also count.
-Collected collect(const Call &call, const std::size_t count) {
+Result<Collected> collect(const Call &call, const std::size_t count) {
   Collected result;
   for (std::size_t i = 0; i < count; ++i) {
     if (call.missing(i)) {
-      throw NoAnswer{};
+      return no_answer();
     }
     Errors errors;
-    require(call.for_each_value(
-        i, [&](const Value &value, const bool stated) -> Result<void> {
-          if (const auto *number = std::get_if<double>(&value.content)) {
-            result.numbers.push_back(*number);
-          } else if (const auto *boolean = std::get_if<bool>(&value.content)) {
-            if (stated || is_libreoffice(call)) {
-              result.numbers.push_back(*boolean ? 1 : 0);
-            }
-          } else if (const auto *error =
-                         std::get_if<ErrorType>(&value.content)) {
-            errors.add(*error);
-          } else if (!stated) {
-            return {};
-          } else if (const auto *text =
-                         std::get_if<std::string>(&value.content)) {
-            // LibreOffice refuses a text argument with `#VALUE!` or a code of
-            // its own, function by function
-            if (is_libreoffice(call)) {
-              throw NoAnswer{};
-            }
-            const std::optional<Number> read = number_of_text(*text);
-            if (!read.has_value()) {
-              throw NoAnswer{};
-            }
-            if (const auto *error = std::get_if<ErrorType>(&*read)) {
-              errors.add(*error);
-            } else {
-              result.numbers.push_back(std::get<double>(*read));
-            }
-          } else {
-            throw NoAnswer{};
-          }
-          return {};
-        }));
+    if (const Result<void> walked = call.for_each_value(
+            i,
+            [&](const Value &value, const bool stated) -> Result<void> {
+              if (const auto *number = std::get_if<double>(&value.content)) {
+                result.numbers.push_back(*number);
+              } else if (const auto *boolean =
+                             std::get_if<bool>(&value.content)) {
+                if (stated || is_libreoffice(call)) {
+                  result.numbers.push_back(*boolean ? 1 : 0);
+                }
+              } else if (const auto *error =
+                             std::get_if<ErrorType>(&value.content)) {
+                errors.add(*error);
+              } else if (!stated) {
+                return {};
+              } else if (const auto *text =
+                             std::get_if<std::string>(&value.content)) {
+                // LibreOffice refuses a text argument with `#VALUE!` or a code
+                // of its own, function by function
+                if (is_libreoffice(call)) {
+                  return no_answer();
+                }
+                const std::optional<Number> read = number_of_text(*text);
+                if (!read.has_value()) {
+                  return no_answer();
+                }
+                if (const auto *error = std::get_if<ErrorType>(&*read)) {
+                  errors.add(*error);
+                } else {
+                  result.numbers.push_back(*std::get_if<double>(&*read));
+                }
+              } else {
+                return no_answer();
+              }
+              return {};
+            });
+        !walked.has_value()) {
+      return std::unexpected(walked.error());
+    }
     if (!result.error.has_value()) {
-      result.error = require(errors.first());
+      const Result<std::optional<ErrorType>> first = errors.first();
+      if (!first.has_value()) {
+        return std::unexpected(first.error());
+      }
+      result.error = *first;
     }
   }
   return result;
 }
 
-Collected collect(const Call &call) { return collect(call, call.size()); }
+Result<Collected> collect(const Call &call) {
+  return collect(call, call.size());
+}
 
 /// A sum as LibreOffice's `KahanSum` adds it (`sc/inc/kahan.hxx`): a
 /// Neumaier sum that holds the last number back, and gives 0 where that
@@ -189,7 +226,7 @@ private:
   }
 };
 
-double kahan_sum(const std::span<const double> numbers) {
+double kahan_sum(const std::span<const double> numbers) noexcept {
   KahanSum sum;
   for (const double number : numbers) {
     sum.add(number);
@@ -197,73 +234,89 @@ double kahan_sum(const std::span<const double> numbers) {
   return sum.get();
 }
 
-Value sum(const Call &call) {
-  const Collected collected = collect(call);
-  if (collected.error.has_value()) {
-    return Value{*collected.error};
+Result<Value> sum(const Call &call) {
+  const Result<Collected> collected = collect(call);
+  if (!collected.has_value()) {
+    return std::unexpected(collected.error());
   }
-  return require(sum_of(call, collected.numbers));
+  if (collected->error.has_value()) {
+    return Value{*collected->error};
+  }
+  return sum_of(call, collected->numbers);
 }
 
-Value average(const Call &call) {
-  const Collected collected = collect(call);
-  if (collected.error.has_value()) {
-    return Value{*collected.error};
+Result<Value> average(const Call &call) {
+  const Result<Collected> collected = collect(call);
+  if (!collected.has_value()) {
+    return std::unexpected(collected.error());
   }
-  if (collected.numbers.empty()) {
+  if (collected->error.has_value()) {
+    return Value{*collected->error};
+  }
+  if (collected->numbers.empty()) {
     return Value{ErrorType::division};
   }
-  Value total = require(sum_of(call, collected.numbers));
-  if (!total.holds<double>()) {
+  Result<Value> total = sum_of(call, collected->numbers);
+  if (!total.has_value() || !total->holds<double>()) {
     return total;
   }
-  return checked(total.get<double>() /
-                 static_cast<double>(collected.numbers.size()));
+  return checked(total->get<double>() /
+                 static_cast<double>(collected->numbers.size()));
 }
 
-template <bool largest> Value extreme(const Call &call) {
-  const Collected collected = collect(call);
-  if (collected.error.has_value()) {
-    return Value{*collected.error};
+template <bool largest> Result<Value> extreme(const Call &call) {
+  const Result<Collected> collected = collect(call);
+  if (!collected.has_value()) {
+    return std::unexpected(collected.error());
   }
-  if (collected.numbers.empty()) {
+  if (collected->error.has_value()) {
+    return Value{*collected->error};
+  }
+  if (collected->numbers.empty()) {
     return Value{0.0};
   }
-  return Value{largest ? std::ranges::max(collected.numbers)
-                       : std::ranges::min(collected.numbers)};
+  return Value{largest ? std::ranges::max(collected->numbers)
+                       : std::ranges::min(collected->numbers)};
 }
 
-Value product(const Call &call) {
-  const Collected collected = collect(call);
-  if (collected.error.has_value()) {
-    return Value{*collected.error};
+Result<Value> product(const Call &call) {
+  const Result<Collected> collected = collect(call);
+  if (!collected.has_value()) {
+    return std::unexpected(collected.error());
   }
-  if (collected.numbers.empty()) {
+  if (collected->error.has_value()) {
+    return Value{*collected->error};
+  }
+  if (collected->numbers.empty()) {
     return Value{0.0};
   }
   double result = 1;
-  for (const double number : collected.numbers) {
+  for (const double number : collected->numbers) {
     result *= number;
   }
   return checked(result);
 }
 
-Value sum_of_squares(const Call &call) {
-  const Collected collected = collect(call);
-  if (collected.error.has_value()) {
-    return Value{*collected.error};
+Result<Value> sum_of_squares(const Call &call) {
+  const Result<Collected> collected = collect(call);
+  if (!collected.has_value()) {
+    return std::unexpected(collected.error());
+  }
+  if (collected->error.has_value()) {
+    return Value{*collected->error};
   }
   std::vector<double> squares;
-  squares.reserve(collected.numbers.size());
-  for (const double number : collected.numbers) {
+  squares.reserve(collected->numbers.size());
+  for (const double number : collected->numbers) {
     squares.push_back(number * number);
   }
-  return require(sum_of(call, squares));
+  return sum_of(call, squares);
 }
 
 /// The numbers of an aggregate that needs at least one, where none is
 /// `#VALUE!` in LibreOffice and `#NUM!` in Excel.
-std::optional<Value> no_numbers(const Call &call, const Collected &collected) {
+std::optional<Value> no_numbers(const Call &call,
+                                const Collected &collected) noexcept {
   if (collected.error.has_value()) {
     return Value{*collected.error};
   }
@@ -273,13 +326,16 @@ std::optional<Value> no_numbers(const Call &call, const Collected &collected) {
   return std::nullopt;
 }
 
-Value median(const Call &call) {
-  Collected collected = collect(call);
-  if (const std::optional<Value> refused = no_numbers(call, collected);
+Result<Value> median(const Call &call) {
+  Result<Collected> collected = collect(call);
+  if (!collected.has_value()) {
+    return std::unexpected(collected.error());
+  }
+  if (const std::optional<Value> refused = no_numbers(call, *collected);
       refused.has_value()) {
     return *refused;
   }
-  std::vector<double> &numbers = collected.numbers;
+  std::vector<double> &numbers = collected->numbers;
   std::ranges::sort(numbers);
   const std::size_t middle = numbers.size() / 2;
   if (numbers.size() % 2 == 1) {
@@ -290,21 +346,31 @@ Value median(const Call &call) {
 
 /// The @p k th largest or smallest of the first argument. LibreOffice reads a
 /// fraction of k up, Excel's rule for one is not documented.
-template <bool largest> Value kth(const Call &call) {
-  require(expect_arguments(call, 2, 2));
-  Collected collected = collect(call, 1);
-  if (const std::optional<Value> refused = no_numbers(call, collected);
+template <bool largest> Result<Value> kth(const Call &call) {
+  if (const Result<void> expected = expect_arguments(call, 2, 2);
+      !expected.has_value()) {
+    return std::unexpected(expected.error());
+  }
+  Result<Collected> collected = collect(call, 1);
+  if (!collected.has_value()) {
+    return std::unexpected(collected.error());
+  }
+  if (const std::optional<Value> refused = no_numbers(call, *collected);
       refused.has_value()) {
     return *refused;
   }
-  double rank = require(number_argument(call, 1));
+  const Result<double> read = number_argument(call, 1);
+  if (!read.has_value()) {
+    return std::unexpected(read.error());
+  }
+  double rank = *read;
   if (rank != std::trunc(rank)) {
     if (!is_libreoffice(call)) {
-      throw NoAnswer{};
+      return no_answer();
     }
     rank = std::ceil(rank);
   }
-  std::vector<double> &numbers = collected.numbers;
+  std::vector<double> &numbers = collected->numbers;
   if (rank < 1 || rank > static_cast<double>(numbers.size())) {
     return invalid(call);
   }
@@ -315,12 +381,15 @@ template <bool largest> Value kth(const Call &call) {
 
 /// The variance of the numbers, of a sample where @p sample. LibreOffice
 /// takes the mean with `KahanSum` and each deviation with `approxSub`.
-template <bool sample, bool root> Value variance_of(const Call &call) {
-  const Collected collected = collect(call);
-  if (collected.error.has_value()) {
-    return Value{*collected.error};
+template <bool sample, bool root> Result<Value> variance_of(const Call &call) {
+  const Result<Collected> collected = collect(call);
+  if (!collected.has_value()) {
+    return std::unexpected(collected.error());
   }
-  const std::vector<double> &numbers = collected.numbers;
+  if (collected->error.has_value()) {
+    return Value{*collected->error};
+  }
+  const std::vector<double> &numbers = collected->numbers;
   const std::size_t least = sample ? 2 : 1;
   if (numbers.size() < least) {
     return Value{ErrorType::division};
@@ -346,60 +415,75 @@ template <bool sample, bool root> Value variance_of(const Call &call) {
   return checked(root ? std::sqrt(variance) : variance);
 }
 
-Value count(const Call &call) {
+Result<Value> count(const Call &call) {
   double result = 0;
   for (std::size_t i = 0; i < call.size(); ++i) {
     if (call.missing(i)) {
-      throw NoAnswer{};
+      return no_answer();
     }
-    require(call.for_each_value(
-        i, [&](const Value &value, const bool stated) -> Result<void> {
-          if (const auto *text = std::get_if<std::string>(&value.content);
-              text != nullptr && stated) {
-            const std::optional<Number> read = number_of_text(*text);
-            if (!read.has_value()) {
-              throw NoAnswer{};
-            }
-            result += std::holds_alternative<double>(*read) ? 1 : 0;
-            return {};
-          }
-          result += value.holds<double>() || (value.holds<bool>() &&
-                                              (stated || is_libreoffice(call)))
-                        ? 1
-                        : 0;
-          return {};
-        }));
+    if (const Result<void> walked = call.for_each_value(
+            i,
+            [&](const Value &value, const bool stated) -> Result<void> {
+              if (const auto *text = std::get_if<std::string>(&value.content);
+                  text != nullptr && stated) {
+                const std::optional<Number> read = number_of_text(*text);
+                if (!read.has_value()) {
+                  return no_answer();
+                }
+                result += std::holds_alternative<double>(*read) ? 1 : 0;
+                return {};
+              }
+              result +=
+                  value.holds<double>() || (value.holds<bool>() &&
+                                            (stated || is_libreoffice(call)))
+                      ? 1
+                      : 0;
+              return {};
+            });
+        !walked.has_value()) {
+      return std::unexpected(walked.error());
+    }
   }
   return Value{result};
 }
 
-Value count_stated(const Call &call) {
+Result<Value> count_stated(const Call &call) {
   double result = 0;
   for (std::size_t i = 0; i < call.size(); ++i) {
     if (call.missing(i)) {
-      throw NoAnswer{};
+      return no_answer();
     }
-    require(call.for_each_value(
-        i, [&](const Value &value, const bool stated) -> Result<void> {
-          result += stated || !value.holds<Empty>() ? 1 : 0;
-          return {};
-        }));
+    if (const Result<void> walked = call.for_each_value(
+            i,
+            [&](const Value &value, const bool stated) -> Result<void> {
+              result += stated || !value.holds<Empty>() ? 1 : 0;
+              return {};
+            });
+        !walked.has_value()) {
+      return std::unexpected(walked.error());
+    }
   }
   return Value{result};
 }
 
 /// Empty cells, and in Excel the cells holding an empty text. Whether
 /// LibreOffice counts an empty text depends on whether a formula made it.
-Value count_blank(const Call &call) {
-  require(expect_arguments(call, 1, 1));
-  const Value value = require(call.value(0));
-  const auto *reference = std::get_if<Reference>(&value.content);
+Result<Value> count_blank(const Call &call) {
+  if (const Result<void> expected = expect_arguments(call, 1, 1);
+      !expected.has_value()) {
+    return std::unexpected(expected.error());
+  }
+  const Result<Value> value = call.value(0);
+  if (!value.has_value()) {
+    return std::unexpected(value.error());
+  }
+  const auto *reference = std::get_if<Reference>(&value->content);
   // a whole column counts the blank cells of the grid, which the extent of
   // its sheet cuts
   if (reference == nullptr || reference->areas.size() != 1 ||
       reference->areas.front().whole_columns ||
       reference->areas.front().whole_rows) {
-    throw NoAnswer{};
+    return no_answer();
   }
   // the cells past the extent of the sheet are empty, and not visited
   const TableRange &range = reference->areas.front().range;
@@ -407,29 +491,39 @@ Value count_blank(const Call &call) {
       (static_cast<double>(range.to().column) - range.from().column + 1) *
       (static_cast<double>(range.to().row) - range.from().row + 1);
   double stated = 0;
-  require(call.for_each(
-      *reference,
-      [&](const SheetPosition &, const Value &cell) -> Result<void> {
-        const auto *text = std::get_if<std::string>(&cell.content);
-        if (text != nullptr && text->empty()) {
-          if (is_libreoffice(call)) {
-            throw NoAnswer{};
-          }
-          return {};
-        }
-        stated += cell.holds<Empty>() ? 0 : 1;
-        return {};
-      }));
+  if (const Result<void> walked = call.for_each(
+          *reference,
+          [&](const SheetPosition &, const Value &cell) -> Result<void> {
+            const auto *text = std::get_if<std::string>(&cell.content);
+            if (text != nullptr && text->empty()) {
+              if (is_libreoffice(call)) {
+                return no_answer();
+              }
+              return {};
+            }
+            stated += cell.holds<Empty>() ? 0 : 1;
+            return {};
+          });
+      !walked.has_value()) {
+    return std::unexpected(walked.error());
+  }
   return Value{cells - stated};
 }
 
 /// `SUMPRODUCT`: the arrays element by element. A text and an empty cell are
 /// 0, and so is a boolean in Excel.
-Value sum_product(const Call &call) {
-  require(expect_arguments(call, 1, 255));
+Result<Value> sum_product(const Call &call) {
+  if (const Result<void> expected = expect_arguments(call, 1, 255);
+      !expected.has_value()) {
+    return std::unexpected(expected.error());
+  }
   std::vector<Matrix> arrays;
   for (std::size_t i = 0; i < call.size(); ++i) {
-    arrays.push_back(require(call.array(i)));
+    Result<Matrix> array = call.array(i);
+    if (!array.has_value()) {
+      return std::unexpected(array.error());
+    }
+    arrays.push_back(std::move(*array));
     if (arrays.back().columns != arrays.front().columns ||
         arrays.back().rows != arrays.front().rows) {
       return Value{ErrorType::value};
@@ -451,151 +545,177 @@ Value sum_product(const Call &call) {
       products[i] *= factor;
     }
   }
-  if (const std::optional<ErrorType> error = require(errors.first());
-      error.has_value()) {
-    return Value{*error};
+  const Result<std::optional<ErrorType>> error = errors.first();
+  if (!error.has_value()) {
+    return std::unexpected(error.error());
   }
-  return require(sum_of(call, products));
+  if (error->has_value()) {
+    return Value{**error};
+  }
+  return sum_of(call, products);
 }
 
-Value absolute(const Call &, const double x) { return Value{std::abs(x)}; }
+Result<Value> absolute(const Call &, const double x) noexcept {
+  return Value{std::abs(x)};
+}
 
-Value sign(const Call &, const double x) {
+Result<Value> sign(const Call &, const double x) noexcept {
   return Value{x > 0 ? 1.0 : x < 0 ? -1.0 : 0.0};
 }
 
-Value integer(const Call &call, const double x) {
-  return checked(
-      settled(call, x, [](const double y) { return std::floor(y); }));
+Result<Value> integer(const Call &call, const double x) noexcept {
+  return settled(call, x, [](const double y) { return std::floor(y); })
+      .transform(checked);
 }
 
-Value round_function(const Call &, const double x, const double digits) {
+Result<Value> round_function(const Call &, const double x,
+                             const double digits) noexcept {
   return round_to(x, digits, round_half_away);
 }
-Value round_up(const Call &, const double x, const double digits) {
+Result<Value> round_up(const Call &, const double x,
+                       const double digits) noexcept {
   return round_to(x, digits, round_away);
 }
-Value round_down(const Call &, const double x, const double digits) {
+Result<Value> round_down(const Call &, const double x,
+                         const double digits) noexcept {
   return round_to(x, digits, round_toward);
 }
 
-Value modulo(const Call &call, const double x, const double y) {
+Result<Value> modulo(const Call &call, const double x,
+                     const double y) noexcept {
   if (y == 0) {
     return Value{ErrorType::division};
   }
   const double quotient = x / y;
   // Excel refuses a quotient this large in some versions
   if (!is_libreoffice(call) && std::abs(quotient) >= 134217728.0) {
-    throw NoAnswer{};
+    return no_answer();
   }
-  const double floor =
+  const Result<double> floor =
       settled(call, quotient, [](const double q) { return std::floor(q); });
+  if (!floor.has_value()) {
+    return std::unexpected(floor.error());
+  }
   if (!is_libreoffice(call)) {
-    const double result = x - y * floor;
+    const double result = x - y * *floor;
     if (nearly_cancels(result, std::abs(x))) {
-      throw NoAnswer{};
+      return no_answer();
     }
     return checked(result);
   }
   // LibreOffice refuses a remainder that precision put outside the divisor
-  const double result = approximate_add(x, -y * floor);
+  const double result = approximate_add(x, -y * *floor);
   if (y > 0 ? result < 0 || result >= y : result > 0 || result <= y) {
     return Value{ErrorType::value};
   }
   return checked(result);
 }
 
-Value quotient(const Call &call, const double x, const double y) {
+Result<Value> quotient(const Call &call, const double x,
+                       const double y) noexcept {
   if (y == 0) {
     if (is_libreoffice(call)) {
-      throw NoAnswer{};
+      return no_answer();
     }
     return Value{ErrorType::division};
   }
-  return checked(settled(call, x / y, round_toward));
+  return settled(call, x / y, round_toward).transform(checked);
 }
 
-Value square_root(const Call &call, const double x) {
+Result<Value> square_root(const Call &call, const double x) noexcept {
   if (x < 0) {
     return invalid(call);
   }
   return Value{std::sqrt(x)};
 }
 
-Value exponential(const Call &, const double x) { return checked(std::exp(x)); }
+Result<Value> exponential(const Call &, const double x) noexcept {
+  return checked(std::exp(x));
+}
 
-Value natural_logarithm(const Call &call, const double x) {
+Result<Value> natural_logarithm(const Call &call, const double x) noexcept {
   if (x <= 0) {
     return invalid(call);
   }
   return Value{std::log(x)};
 }
 
-Value logarithm(const Call &call, const double x, const double base) {
+Result<Value> logarithm(const Call &call, const double x,
+                        const double base) noexcept {
   if (x <= 0 || base <= 0) {
     return invalid(call);
   }
   if (base == 1) {
     if (is_libreoffice(call)) {
-      throw NoAnswer{};
+      return no_answer();
     }
     return Value{ErrorType::division};
   }
   return checked(std::log(x) / std::log(base));
 }
 
-Value logarithm_10(const Call &call, const double x) {
+Result<Value> logarithm_10(const Call &call, const double x) noexcept {
   if (x <= 0) {
     return invalid(call);
   }
   return Value{std::log10(x)};
 }
 
-Value power_function(const Call &call, const double x, const double y) {
-  return require(power(x, y, call.settings().dialect));
+Result<Value> power_function(const Call &call, const double x,
+                             const double y) noexcept {
+  return power(x, y, call.settings().dialect);
 }
 
-Value pi(const Call &call) {
-  require(expect_arguments(call, 0, 0));
-  return Value{std::numbers::pi};
+Result<Value> pi(const Call &call) noexcept {
+  return expect_arguments(call, 0, 0).transform([] {
+    return Value{std::numbers::pi};
+  });
 }
 
-Value radians(const Call &, const double x) {
+Result<Value> radians(const Call &, const double x) noexcept {
   return checked(x * std::numbers::pi / 180);
 }
-Value degrees(const Call &, const double x) {
+Result<Value> degrees(const Call &, const double x) noexcept {
   return checked(x * 180 / std::numbers::pi);
 }
 /// @p result, a sine, cosine or tangent of @p x. Excel refuses an angle of
 /// 2^27 or more, at a limit it does not document, so it has no answer.
-Value circular(const double x, const double result) {
+Result<Value> circular(const double x, const double result) noexcept {
   if (std::abs(x) >= 134217728.0) {
-    throw NoAnswer{};
+    return no_answer();
   }
   return checked(result);
 }
-Value sine(const Call &, const double x) { return circular(x, std::sin(x)); }
-Value cosine(const Call &, const double x) { return circular(x, std::cos(x)); }
-Value tangent(const Call &, const double x) { return circular(x, std::tan(x)); }
-Value hyperbolic_sine(const Call &, const double x) {
+Result<Value> sine(const Call &, const double x) noexcept {
+  return circular(x, std::sin(x));
+}
+Result<Value> cosine(const Call &, const double x) noexcept {
+  return circular(x, std::cos(x));
+}
+Result<Value> tangent(const Call &, const double x) noexcept {
+  return circular(x, std::tan(x));
+}
+Result<Value> hyperbolic_sine(const Call &, const double x) noexcept {
   return checked(std::sinh(x));
 }
-Value hyperbolic_cosine(const Call &, const double x) {
+Result<Value> hyperbolic_cosine(const Call &, const double x) noexcept {
   return checked(std::cosh(x));
 }
-Value hyperbolic_tangent(const Call &, const double x) {
+Result<Value> hyperbolic_tangent(const Call &, const double x) noexcept {
   return checked(std::tanh(x));
 }
-Value arc_tangent(const Call &, const double x) { return Value{std::atan(x)}; }
+Result<Value> arc_tangent(const Call &, const double x) noexcept {
+  return Value{std::atan(x)};
+}
 
-Value arc_sine(const Call &, const double x) {
+Result<Value> arc_sine(const Call &, const double x) noexcept {
   if (x < -1 || x > 1) {
     return Value{ErrorType::number};
   }
   return Value{std::asin(x)};
 }
 
-Value arc_cosine(const Call &, const double x) {
+Result<Value> arc_cosine(const Call &, const double x) noexcept {
   if (x < -1 || x > 1) {
     return Value{ErrorType::number};
   }
@@ -604,7 +724,8 @@ Value arc_cosine(const Call &, const double x) {
 
 /// `ATAN2(x; y)`: the angle of the point (x, y), which both applications
 /// take in this order.
-Value arc_tangent_2(const Call &call, const double x, const double y) {
+Result<Value> arc_tangent_2(const Call &call, const double x,
+                            const double y) noexcept {
   if (x == 0 && y == 0) {
     return is_libreoffice(call) ? Value{0.0} : Value{ErrorType::division};
   }
@@ -612,9 +733,13 @@ Value arc_tangent_2(const Call &call, const double x, const double y) {
 }
 
 /// `EVEN` and `ODD`: away from 0 to the next even or odd integer.
-template <bool odd> Value parity(const Call &call, const double x) {
-  const double away = settled(call, x, round_away);
-  const double magnitude = std::abs(away);
+template <bool odd>
+Result<Value> parity(const Call &call, const double x) noexcept {
+  const Result<double> away = settled(call, x, round_away);
+  if (!away.has_value()) {
+    return std::unexpected(away.error());
+  }
+  const double magnitude = std::abs(*away);
   double result = magnitude;
   if (odd) {
     result = std::fmod(magnitude, 2) == 1 ? magnitude : magnitude + 1;
@@ -624,103 +749,121 @@ template <bool odd> Value parity(const Call &call, const double x) {
   return checked(x < 0 ? -result : result);
 }
 
-Value factorial(const Call &call, const double x) {
+Result<Value> factorial(const Call &call, const double x) noexcept {
   // LibreOffice reads -0.5 as -1, and Excel refuses any negative number
   if (x < 0) {
     return invalid(call);
   }
-  const double n = settled(call, x, round_toward);
-  if (n > 170) {
+  const Result<double> n = settled(call, x, round_toward);
+  if (!n.has_value()) {
+    return std::unexpected(n.error());
+  }
+  if (*n > 170) {
     return Value{is_libreoffice(call) ? ErrorType::value : ErrorType::number};
   }
   double result = 1;
-  for (std::uint32_t i = 2; i <= n; ++i) {
+  for (std::uint32_t i = 2; i <= *n; ++i) {
     result *= i;
   }
   return Value{result};
 }
 
 /// A number in [0, 1) from the caller's source.
-double random_of(const Call &call) {
+Result<double> random_of(const Call &call) {
   if (!call.settings().random) {
-    throw NoAnswer{};
+    return no_answer();
   }
   return call.settings().random();
 }
 
-Value random(const Call &call) {
-  require(expect_arguments(call, 0, 0));
-  return Value{random_of(call)};
+Result<Value> random(const Call &call) {
+  if (const Result<void> expected = expect_arguments(call, 0, 0);
+      !expected.has_value()) {
+    return std::unexpected(expected.error());
+  }
+  return random_of(call).transform([](const double x) { return Value{x}; });
 }
 
 /// `RANDBETWEEN`: a whole number between two. A bound that is no whole
 /// number, or a bottom above the top, has no answer: LibreOffice refuses the
 /// second, and neither application documents what they do.
-Value random_between(const Call &call) {
-  require(expect_arguments(call, 2, 2));
-  const double bottom = require(number_argument(call, 0));
-  const double top = require(number_argument(call, 1));
-  if (bottom != std::trunc(bottom) || top != std::trunc(top) || bottom > top) {
-    throw NoAnswer{};
+Result<Value> random_between(const Call &call) {
+  if (const Result<void> expected = expect_arguments(call, 2, 2);
+      !expected.has_value()) {
+    return std::unexpected(expected.error());
   }
-  return Value{bottom + std::floor(random_of(call) * (top - bottom + 1))};
+  const Result<double> bottom = number_argument(call, 0);
+  if (!bottom.has_value()) {
+    return std::unexpected(bottom.error());
+  }
+  const Result<double> top = number_argument(call, 1);
+  if (!top.has_value()) {
+    return std::unexpected(top.error());
+  }
+  if (*bottom != std::trunc(*bottom) || *top != std::trunc(*top) ||
+      *bottom > *top) {
+    return no_answer();
+  }
+  return random_of(call).transform([&](const double x) {
+    return Value{*bottom + std::floor(x * (*top - *bottom + 1))};
+  });
 }
 
 constexpr std::array entries{
-    FunctionEntry{"ABS", bridged<unary<absolute>>},
-    FunctionEntry{"ACOS", bridged<unary<arc_cosine>>},
-    FunctionEntry{"ASIN", bridged<unary<arc_sine>>},
-    FunctionEntry{"ATAN", bridged<unary<arc_tangent>>},
-    FunctionEntry{"ATAN2", bridged<binary<arc_tangent_2>>},
-    FunctionEntry{"AVERAGE", bridged<average>},
-    FunctionEntry{"COS", bridged<unary<cosine>>},
-    FunctionEntry{"COSH", bridged<unary<hyperbolic_cosine>>},
-    FunctionEntry{"COUNT", bridged<count>},
-    FunctionEntry{"COUNTA", bridged<count_stated>},
-    FunctionEntry{"COUNTBLANK", bridged<count_blank>},
-    FunctionEntry{"DEGREES", bridged<unary<degrees>>},
-    FunctionEntry{"EVEN", bridged<unary<parity<false>>>},
-    FunctionEntry{"EXP", bridged<unary<exponential>>},
-    FunctionEntry{"FACT", bridged<unary<factorial>>},
-    FunctionEntry{"INT", bridged<unary<integer>>},
-    FunctionEntry{"LARGE", bridged<kth<true>>},
-    FunctionEntry{"LN", bridged<unary<natural_logarithm>>},
-    FunctionEntry{"LOG", bridged<binary<logarithm, 10, true>>},
-    FunctionEntry{"LOG10", bridged<unary<logarithm_10>>},
-    FunctionEntry{"MAX", bridged<extreme<true>>},
-    FunctionEntry{"MEDIAN", bridged<median>},
-    FunctionEntry{"MIN", bridged<extreme<false>>},
-    FunctionEntry{"MOD", bridged<binary<modulo>>},
-    FunctionEntry{"ODD", bridged<unary<parity<true>>>},
-    FunctionEntry{"PI", bridged<pi>},
-    FunctionEntry{"POWER", bridged<binary<power_function>>},
-    FunctionEntry{"PRODUCT", bridged<product>},
-    FunctionEntry{"QUOTIENT", bridged<binary<quotient>>},
-    FunctionEntry{"RADIANS", bridged<unary<radians>>},
-    FunctionEntry{"RAND", bridged<random>},
-    FunctionEntry{"RANDBETWEEN", bridged<random_between>},
-    FunctionEntry{"ROUND", bridged<binary<round_function, 0, true>>},
-    FunctionEntry{"ROUNDDOWN", bridged<binary<round_down, 0, true>>},
-    FunctionEntry{"ROUNDUP", bridged<binary<round_up, 0, true>>},
-    FunctionEntry{"SIGN", bridged<unary<sign>>},
-    FunctionEntry{"SIN", bridged<unary<sine>>},
-    FunctionEntry{"SINH", bridged<unary<hyperbolic_sine>>},
-    FunctionEntry{"SMALL", bridged<kth<false>>},
-    FunctionEntry{"SQRT", bridged<unary<square_root>>},
-    FunctionEntry{"STDEV", bridged<variance_of<true, true>>},
-    FunctionEntry{"STDEV.P", bridged<variance_of<false, true>>},
-    FunctionEntry{"STDEV.S", bridged<variance_of<true, true>>},
-    FunctionEntry{"STDEVP", bridged<variance_of<false, true>>},
-    FunctionEntry{"SUM", bridged<sum>},
-    FunctionEntry{"SUMPRODUCT", bridged<sum_product>},
-    FunctionEntry{"SUMSQ", bridged<sum_of_squares>},
-    FunctionEntry{"TAN", bridged<unary<tangent>>},
-    FunctionEntry{"TANH", bridged<unary<hyperbolic_tangent>>},
-    FunctionEntry{"TRUNC", bridged<binary<round_down, 0, true>>},
-    FunctionEntry{"VAR", bridged<variance_of<true, false>>},
-    FunctionEntry{"VAR.P", bridged<variance_of<false, false>>},
-    FunctionEntry{"VAR.S", bridged<variance_of<true, false>>},
-    FunctionEntry{"VARP", bridged<variance_of<false, false>>},
+    FunctionEntry{"ABS", unary<absolute>},
+    FunctionEntry{"ACOS", unary<arc_cosine>},
+    FunctionEntry{"ASIN", unary<arc_sine>},
+    FunctionEntry{"ATAN", unary<arc_tangent>},
+    FunctionEntry{"ATAN2", binary<arc_tangent_2>},
+    FunctionEntry{"AVERAGE", average},
+    FunctionEntry{"COS", unary<cosine>},
+    FunctionEntry{"COSH", unary<hyperbolic_cosine>},
+    FunctionEntry{"COUNT", count},
+    FunctionEntry{"COUNTA", count_stated},
+    FunctionEntry{"COUNTBLANK", count_blank},
+    FunctionEntry{"DEGREES", unary<degrees>},
+    FunctionEntry{"EVEN", unary<parity<false>>},
+    FunctionEntry{"EXP", unary<exponential>},
+    FunctionEntry{"FACT", unary<factorial>},
+    FunctionEntry{"INT", unary<integer>},
+    FunctionEntry{"LARGE", kth<true>},
+    FunctionEntry{"LN", unary<natural_logarithm>},
+    FunctionEntry{"LOG", binary<logarithm, 10, true>},
+    FunctionEntry{"LOG10", unary<logarithm_10>},
+    FunctionEntry{"MAX", extreme<true>},
+    FunctionEntry{"MEDIAN", median},
+    FunctionEntry{"MIN", extreme<false>},
+    FunctionEntry{"MOD", binary<modulo>},
+    FunctionEntry{"ODD", unary<parity<true>>},
+    FunctionEntry{"PI", pi},
+    FunctionEntry{"POWER", binary<power_function>},
+    FunctionEntry{"PRODUCT", product},
+    FunctionEntry{"QUOTIENT", binary<quotient>},
+    FunctionEntry{"RADIANS", unary<radians>},
+    FunctionEntry{"RAND", random},
+    FunctionEntry{"RANDBETWEEN", random_between},
+    FunctionEntry{"ROUND", binary<round_function, 0, true>},
+    FunctionEntry{"ROUNDDOWN", binary<round_down, 0, true>},
+    FunctionEntry{"ROUNDUP", binary<round_up, 0, true>},
+    FunctionEntry{"SIGN", unary<sign>},
+    FunctionEntry{"SIN", unary<sine>},
+    FunctionEntry{"SINH", unary<hyperbolic_sine>},
+    FunctionEntry{"SMALL", kth<false>},
+    FunctionEntry{"SQRT", unary<square_root>},
+    FunctionEntry{"STDEV", variance_of<true, true>},
+    FunctionEntry{"STDEV.P", variance_of<false, true>},
+    FunctionEntry{"STDEV.S", variance_of<true, true>},
+    FunctionEntry{"STDEVP", variance_of<false, true>},
+    FunctionEntry{"SUM", sum},
+    FunctionEntry{"SUMPRODUCT", sum_product},
+    FunctionEntry{"SUMSQ", sum_of_squares},
+    FunctionEntry{"TAN", unary<tangent>},
+    FunctionEntry{"TANH", unary<hyperbolic_tangent>},
+    FunctionEntry{"TRUNC", binary<round_down, 0, true>},
+    FunctionEntry{"VAR", variance_of<true, false>},
+    FunctionEntry{"VAR.P", variance_of<false, false>},
+    FunctionEntry{"VAR.S", variance_of<true, false>},
+    FunctionEntry{"VARP", variance_of<false, false>},
 };
 
 } // namespace
@@ -730,7 +873,8 @@ constexpr std::array entries{
 namespace odr::internal {
 
 formula::Result<formula::Value>
-formula::sum_of(const Call &call, const std::span<const double> numbers) {
+formula::sum_of(const Call &call,
+                const std::span<const double> numbers) noexcept {
   if (is_libreoffice(call)) {
     return checked(kahan_sum(numbers));
   }

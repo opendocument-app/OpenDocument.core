@@ -33,10 +33,10 @@ struct ErrorResult final {
 /// applications agree on.
 class Errors final {
 public:
-  void add(ErrorType error);
+  void add(ErrorType error) noexcept;
   /// The error the argument gives, nothing where it holds none. No answer
   /// where it holds two different ones.
-  [[nodiscard]] Result<std::optional<ErrorType>> first() const;
+  [[nodiscard]] Result<std::optional<ErrorType>> first() const noexcept;
 
 private:
   std::optional<ErrorType> m_first{};
@@ -150,7 +150,7 @@ order_of_texts(std::string_view a, std::string_view b, bool case_sensitive);
 /// The sum of @p numbers: as LibreOffice's `KahanSum` adds them, and in
 /// Excel exact, with no answer where it nearly cancels.
 [[nodiscard]] Result<Value> sum_of(const Call &call,
-                                   std::span<const double> numbers);
+                                   std::span<const double> numbers) noexcept;
 
 /// `x^y`, which LibreOffice and Excel compute apart at 0 and below.
 [[nodiscard]] Result<Value> power(double x, double y, Dialect dialect);
@@ -158,19 +158,20 @@ order_of_texts(std::string_view a, std::string_view b, bool case_sensitive);
 /// Whether @p a and @p b are one number in @p dialect: LibreOffice decides
 /// as `approxEqual`. Excel's tolerance is not documented, so where
 /// `approxEqual` and a reading to 15 digits decide apart, it has no answer.
-[[nodiscard]] Result<bool> same_number(Dialect dialect, double a, double b);
+[[nodiscard]] Result<bool> same_number(Dialect dialect, double a,
+                                       double b) noexcept;
 
 /// Whether @p text contains wildcard or regular-expression syntax enabled
 /// by the document.
-[[nodiscard]] bool is_pattern(const Call &call, std::string_view text);
+[[nodiscard]] bool is_pattern(const Call &call, std::string_view text) noexcept;
 
 /// Whether @p call follows LibreOffice's rules.
-[[nodiscard]] bool is_libreoffice(const Call &call);
+[[nodiscard]] bool is_libreoffice(const Call &call) noexcept;
 
 /// An argument a function refuses: @p excel in Excel. LibreOffice states a
 /// code of its own (`Err:502`), which a file cannot hold as an error, so it
 /// has no answer.
-[[nodiscard]] Result<Value> refused(const Call &call, ErrorType excel);
+[[nodiscard]] Result<Value> refused(const Call &call, ErrorType excel) noexcept;
 
 /// Argument @p index as a number. Stops with the error where it is one.
 [[nodiscard]] Result<double> number_argument(const Call &call,
@@ -179,7 +180,7 @@ order_of_texts(std::string_view a, std::string_view b, bool case_sensitive);
 /// No answer where @p call does not have @p least to @p most arguments, or
 /// leaves one out.
 [[nodiscard]] Result<void> expect_arguments(const Call &call, std::size_t least,
-                                            std::size_t most);
+                                            std::size_t most) noexcept;
 
 /// The functions of mathematics and aggregation: `SUM`, `ROUND`, `SIN`.
 [[nodiscard]] std::span<const FunctionEntry> math_functions();
