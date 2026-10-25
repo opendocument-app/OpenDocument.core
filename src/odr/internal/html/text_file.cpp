@@ -12,6 +12,7 @@
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
+#include <algorithm>
 #include <charconv>
 #include <cstdint>
 #include <mutex>
@@ -30,21 +31,49 @@ std::string chunk_path(const std::size_t index) {
   return "text-chunks/" + std::to_string(index) + ".js";
 }
 
-/// The chunk a path names, nothing where it names none.
-std::optional<std::size_t> chunk_of(const std::string_view path) {
-  constexpr std::string_view prefix = "text-chunks/";
+/// The chunks that one script of the search index holds the text of.
+constexpr std::size_t chunks_per_index = 64;
+
+/// Where the page loads the text of index group @p group from
+/// (`lazy-loading.md` decision 8).
+std::string index_path(const std::size_t group) {
+  return "text-search/" + std::to_string(group) + ".js";
+}
+
+/// The number in @p path after @p prefix, as @p write writes it, nothing where
+/// it holds none.
+std::optional<std::size_t> number_of(const std::string_view path,
+                                     const std::string_view prefix,
+                                     std::string (*const write)(std::size_t)) {
   if (!path.starts_with(prefix)) {
     return std::nullopt;
   }
   const std::string_view digits = path.substr(prefix.size());
-  std::size_t index = 0;
-  // one path for each chunk, the one `chunk_path` writes: no leading zero
-  if (std::from_chars(digits.data(), digits.data() + digits.size(), index).ec !=
-          std::errc{} ||
-      chunk_path(index) != path) {
+  std::size_t number = 0;
+  // one path for each number, the one `write` writes: no leading zero
+  if (std::from_chars(digits.data(), digits.data() + digits.size(), number)
+              .ec != std::errc{} ||
+      write(number) != path) {
     return std::nullopt;
   }
-  return index;
+  return number;
+}
+
+/// The chunk a path names, nothing where it names none.
+std::optional<std::size_t> chunk_of(const std::string_view path) {
+  return number_of(path, "text-chunks/", chunk_path);
+}
+
+/// The index group a path names, nothing where it names none.
+std::optional<std::size_t> index_of(const std::string_view path) {
+  return number_of(path, "text-search/", index_path);
+}
+
+/// The next line of @p in, without its end.
+std::string read_line(std::istream &in) {
+  std::ostringstream line;
+  util::stream::pipe_line(in, line, false);
+  return std::move(line).str();
 }
 
 /// The lines from @p in, @p count of them at most, the first of which is line
@@ -60,9 +89,7 @@ void write_lines(HtmlWriter &out, std::istream &in, const std::uint32_t first,
     }
     out.write_element_begin("div", line_options);
 
-    std::ostringstream ss_out;
-    util::stream::pipe_line(in, ss_out, false);
-    if (std::string text_line = ss_out.str(); text_line.empty()) {
+    if (std::string text_line = read_line(in); text_line.empty()) {
       out.write_element_begin(
           "br", HtmlElementOptions().set_close_type(HtmlCloseType::trailing));
     } else {
@@ -75,12 +102,13 @@ void write_lines(HtmlWriter &out, std::istream &in, const std::uint32_t first,
 
 class HtmlServiceImpl;
 
-/// A chunk the page loads as a script, which `bring_offline` writes beside
-/// the page, and the HTTP server serves, from the service on demand.
-class ChunkResource final : public abstract::HtmlResource {
+/// A script the page loads, a chunk or a part of the search index, which
+/// `bring_offline` writes beside the page, and the HTTP server serves, from the
+/// service on demand.
+class ScriptResource final : public abstract::HtmlResource {
 public:
-  ChunkResource(const HtmlServiceImpl &service, const std::size_t index)
-      : m_service{&service}, m_index{index}, m_path{chunk_path(index)} {}
+  ScriptResource(const HtmlServiceImpl &service, std::string path)
+      : m_service{&service}, m_path{std::move(path)} {}
 
   [[nodiscard]] HtmlResourceType type() const override {
     return HtmlResourceType::js;
@@ -103,7 +131,6 @@ public:
 
 private:
   const HtmlServiceImpl *m_service{nullptr};
-  std::size_t m_index{0};
   std::string m_path;
 };
 
@@ -126,6 +153,13 @@ public:
         chunk.has_value()) {
       return loads_chunks() && *chunk > 0 && *chunk < lines().offsets.size();
     }
+    if (const std::optional<std::size_t> group = index_of(path);
+        group.has_value()) {
+      // the first chunk is in the page, so no group holds only that one
+      return loads_chunks() &&
+             std::max<std::size_t>(*group * chunks_per_index, 1) <
+                 lines().offsets.size();
+    }
     return path == "text.html" || resource_at(m_resources, path) != nullptr;
   }
 
@@ -133,7 +167,8 @@ public:
     if (path == "text.html") {
       return "text/html";
     }
-    if (chunk_of(path).has_value() && exists(path)) {
+    if ((chunk_of(path).has_value() || index_of(path).has_value()) &&
+        exists(path)) {
       return "text/javascript";
     }
     if (const odr::HtmlResource *resource = resource_at(m_resources, path);
@@ -153,6 +188,11 @@ public:
     if (const std::optional<std::size_t> chunk = chunk_of(path);
         chunk.has_value() && exists(path)) {
       write_chunk(*chunk, out);
+      return;
+    }
+    if (const std::optional<std::size_t> group = index_of(path);
+        group.has_value() && exists(path)) {
+      write_index(*group, out);
       return;
     }
     if (const odr::HtmlResource *resource = resource_at(m_resources, path);
@@ -252,12 +292,23 @@ public:
         chunk.set_style("--odr-text-lines:" + std::to_string(lines_in_block));
       }
       if (placeholder) {
-        chunk.set_attributes(
-            HtmlAttributesVector{{"data-odr-chunk", std::to_string(index)},
-                                 {"data-odr-chunk-src", chunk_path(index)}});
+        HtmlAttributesVector attributes{
+            {"data-odr-chunk", std::to_string(index)},
+            {"data-odr-chunk-src", chunk_path(index)}};
         resources.emplace_back(
-            odr::HtmlResource(std::make_shared<ChunkResource>(*this, index)),
+            odr::HtmlResource(
+                std::make_shared<ScriptResource>(*this, chunk_path(index))),
             chunk_path(index));
+        // the first chunk of a group that loads names the script of its text,
+        // which holds the text of the group
+        if (index == 1 || index % chunks_per_index == 0) {
+          const std::string text = index_path(index / chunks_per_index);
+          attributes.emplace_back("data-odr-chunk-text", text);
+          resources.emplace_back(
+              odr::HtmlResource(std::make_shared<ScriptResource>(*this, text)),
+              text);
+        }
+        chunk.set_attributes(std::move(attributes));
       }
       out.write_element_begin("div", chunk);
       if (!placeholder) {
@@ -296,6 +347,35 @@ public:
                                 static_cast<std::uint32_t>(all.count) - first));
     out << "odr.chunks.fill(" << index << "," << script_string(html.str())
         << ");\n";
+  }
+
+  /// The text of index group @p group, as the script that hands it to the
+  /// page: the lines of each chunk that loads, with a `\n` after each line
+  /// but the last, because a line is a block that a search does not match
+  /// across.
+  void write_index(const std::size_t group, std::ostream &out) const {
+    const Lines &all = lines();
+    std::istringstream in(all.text);
+    const std::size_t first =
+        std::max<std::size_t>(group * chunks_per_index, 1);
+    const std::size_t end =
+        std::min(all.offsets.size(), (group + 1) * chunks_per_index);
+    in.seekg(static_cast<std::streamoff>(all.offsets.at(first)));
+    out << "odr.chunks.text({";
+    for (std::size_t index = first; index < end; ++index) {
+      const std::size_t line_end =
+          std::min(all.count, (index + 1) * chunk_lines);
+      std::string text;
+      for (std::size_t line = index * chunk_lines; line < line_end; ++line) {
+        if (line > index * chunk_lines) {
+          text += '\n';
+        }
+        text += read_line(in);
+      }
+      out << (index > first ? "," : "") << script_string(std::to_string(index))
+          << ":" << script_string(text);
+    }
+    out << "});\n";
   }
 
   /// Whether the page loads its later chunks, which it does where they are
@@ -347,8 +427,8 @@ protected:
   HtmlViews m_views;
 };
 
-void ChunkResource::write_resource(std::ostream &os) const {
-  m_service->write_chunk(m_index, os);
+void ScriptResource::write_resource(std::ostream &os) const {
+  m_service->write(m_path, os);
 }
 
 } // namespace

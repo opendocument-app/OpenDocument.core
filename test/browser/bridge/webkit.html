@@ -24,6 +24,7 @@
     <script src="error-codes.js"></script>
     <script src="editing.js"></script>
     <script src="pdf-annotation.js"></script>
+    <script src="search.js"></script>
     <!-- what `write_host_bridge_script` writes, last in the body -->
     <script>
       window.odr = window.odr || {};
@@ -81,6 +82,13 @@
       check(
         "the bridge replaces the annotation default",
         last().type === "annotationChange" && last().detail.count === 3,
+        last()
+      );
+
+      odr.search("nothing on this page");
+      check(
+        "a search posts its count",
+        last().type === "searchChange" && last().detail.count === 0 && last().detail.complete === true,
         last()
       );
 

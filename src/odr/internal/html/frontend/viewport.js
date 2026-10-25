@@ -404,6 +404,35 @@
     document.head.appendChild(script);
   }
 
+  // The text of the chunks that have not loaded, by chunk key, which the
+  // scripts of the search index state (`lazy-loading.md` decision 8). A
+  // script that failed has no text, and is not asked for again.
+  var texts = {};
+  var indexes = {};
+
+  function loadIndex(source, then) {
+    var state = indexes[source];
+    if (state === undefined) {
+      state = indexes[source] = { done: false, waiting: [] };
+      var script = document.createElement("script");
+      script.src = source;
+      script.onload = script.onerror = function () {
+        script.remove();
+        state.done = true;
+        state.waiting.forEach(function (waiting) {
+          waiting();
+        });
+        state.waiting = [];
+      };
+      document.head.appendChild(script);
+    }
+    if (state.done) {
+      then();
+    } else {
+      state.waiting.push(then);
+    }
+  }
+
   var chunks = document.getElementsByClassName("odr-chunk");
   var near =
     typeof IntersectionObserver === "function"
@@ -440,9 +469,54 @@
         return;
       }
       chunk.innerHTML = html;
+      delete texts[index];
       chunk.removeAttribute("data-odr-chunk-src");
       chunk.removeAttribute("data-odr-chunk-loading");
       chunk.dispatchEvent(new CustomEvent("odr-chunk-filled", { bubbles: true }));
+    },
+    // Keeps the text of the chunks that a script of the search index states.
+    text: function (byKey) {
+      for (var key in byKey) {
+        if (Object.prototype.hasOwnProperty.call(byKey, key)) {
+          texts[key] = byKey[key];
+        }
+      }
+    },
+    // The chunks that have not loaded, in document order, each with its text
+    // or null, once the index scripts have loaded. The first chunk of a group
+    // names the script of the group, whether it has loaded or not.
+    pending: function (then) {
+      var waiting = [];
+      var sources = [];
+      for (var i = 0; i < chunks.length; ++i) {
+        var source = chunks[i].getAttribute("data-odr-chunk-text");
+        if (source !== null && sources.indexOf(source) === -1) {
+          sources.push(source);
+        }
+        if (chunks[i].hasAttribute("data-odr-chunk-src")) {
+          waiting.push(chunks[i]);
+        }
+      }
+      var left = sources.length + 1;
+      function loaded() {
+        if (--left > 0) {
+          return;
+        }
+        then(
+          waiting
+            .filter(function (chunk) {
+              return chunk.hasAttribute("data-odr-chunk-src");
+            })
+            .map(function (chunk) {
+              var text = texts[chunk.getAttribute("data-odr-chunk")];
+              return { chunk: chunk, text: text === undefined ? null : text };
+            })
+        );
+      }
+      sources.forEach(function (source) {
+        loadIndex(source, loaded);
+      });
+      loaded();
     },
     // Watches a chunk that a script added, as the view writes them.
     observe: function (chunk) {

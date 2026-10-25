@@ -3,24 +3,52 @@
 
   var odr = (window.odr = window.odr || {});
 
-  var marks = [];
+  // Every hit in document order: the marks of a hit in the DOM, or the chunk
+  // and the ordinal in it of a hit in a chunk that has not loaded
+  // (`lazy-loading.md` decision 8).
+  var hits = [];
   var current = -1;
   var keyword = "";
+  var complete = true;
+  var generation = 0;
+  var done = [];
 
-  // Case- and diacritic-folded `text` plus a folded-index to source-index map
-  // (with an end sentinel), so a match maps back onto the source string.
-  // Folding per character is what keeps that map right when a character folds
-  // to none or to several. Every space folds to one: the page holds a
-  // tab as is, and a keyword is typed without one.
+  var foldedCharacters = {};
+
+  // Case- and diacritic-folded: one character at a time, so the fold of a
+  // text is the folds of its characters. Every space folds to one: the page
+  // holds a tab as is, and a keyword is typed without one.
+  function foldCharacter(character) {
+    var folded = foldedCharacters[character];
+    if (folded === undefined) {
+      folded = foldedCharacters[character] = character
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[\t\n\u00a0\u2000-\u200a\u202f\u205f\u3000]/g, " ")
+        .toLowerCase();
+    }
+    return folded;
+  }
+
+  // `fold` with no map, for the text of a chunk: an ASCII character folds by
+  // `toLowerCase` of the whole text, which is far faster. A `\n` is where the
+  // text of a block ends, so it stays.
+  function foldText(text) {
+    return text
+      .replace(/[^\x00-\x7f]/g, foldCharacter)
+      .replace(/\t/g, " ")
+      .toLowerCase();
+  }
+
+  // The folded `text` plus a folded-index to source-index map (with an end
+  // sentinel), so a match maps back onto the source string. Folding per
+  // character is what keeps that map right when a character folds to none or
+  // to several.
   function fold(text) {
     var folded = "";
     var map = [];
     for (var i = 0; i < text.length; ++i) {
-      var character = text[i]
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[\t\u00a0\u2000-\u200a\u202f\u205f\u3000]/g, " ")
-        .toLowerCase();
+      var character = foldCharacter(text[i]);
       for (var j = 0; j < character.length; ++j) {
         map.push(i);
       }
@@ -54,9 +82,9 @@
 
   // Rejected by the subtree, `aria-hidden` included: that is what keeps a pdf's
   // glyph layer out of a search of the same page's text layer.
-  function textNodes() {
+  function textNodes(root) {
     var walker = document.createTreeWalker(
-      document.body,
+      root,
       NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
       {
         acceptNode: function (node) {
@@ -85,8 +113,8 @@
   // One folded string per block, with the piece of it each text node
   // contributed. A pdf writes a word per span and a slide a run per span, so a
   // keyword spanning several of them is the ordinary case, not the exception.
-  function blocks() {
-    var nodes = textNodes();
+  function blocks(root) {
+    var nodes = textNodes(root);
     var result = [];
     var block = null;
     var open = null;
@@ -150,20 +178,159 @@
     return found;
   }
 
+  // How often `needle` is in `text`, counted as `findIn` counts.
+  function count(text, needle) {
+    var found = 0;
+    for (var at = text.indexOf(needle); at !== -1; at = text.indexOf(needle, at + needle.length)) {
+      ++found;
+    }
+    return found;
+  }
+
+  // Marks every occurrence under `root` and returns the hits in reading order.
+  function markIn(root) {
+    var result = [];
+    blocks(root).forEach(function (block) {
+      var found = findIn(block, keyword);
+      // Wrapped back to front: an offset still to be used sits before the split
+      // that would move it. The marks are collected back into reading order.
+      var wrapped = [];
+      for (var i = found.length - 1; i >= 0; --i) {
+        var marks = [];
+        for (var j = found[i].length - 1; j >= 0; --j) {
+          var slice = found[i][j];
+          marks.unshift(wrap(slice.node, slice.from, slice.to));
+        }
+        wrapped.unshift({ marks: marks });
+      }
+      result = result.concat(wrapped);
+    });
+    return result;
+  }
+
+  function nodeOf(hit) {
+    return hit.marks !== undefined ? hit.marks[0] : hit.chunk;
+  }
+
+  function precedes(a, b) {
+    return (nodeOf(a).compareDocumentPosition(nodeOf(b)) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+  }
+
+  function notify() {
+    if (typeof odr.onSearchChange === "function") {
+      odr.onSearchChange({ count: hits.length, current: current, complete: complete });
+    }
+    if (complete) {
+      var waiting = done;
+      done = [];
+      waiting.forEach(function (resolve) {
+        resolve(hits.length);
+      });
+    }
+  }
+
+  // Adds the hits that the text of the chunks that have not loaded holds.
+  // Both lists are in document order, so they merge.
+  function finish(pending) {
+    var counted = [];
+    pending.forEach(function (chunk) {
+      var found = chunk.text === null ? 0 : count(foldText(chunk.text), keyword);
+      for (var ordinal = 0; ordinal < found; ++ordinal) {
+        counted.push({ chunk: chunk.chunk, ordinal: ordinal });
+      }
+    });
+    var selected = hits[current];
+    var merged = [];
+    var i = 0;
+    var j = 0;
+    while (i < hits.length || j < counted.length) {
+      merged.push(j === counted.length || (i < hits.length && precedes(hits[i], counted[j])) ? hits[i++] : counted[j++]);
+    }
+    hits = merged;
+    complete = true;
+    if (selected !== undefined) {
+      current = hits.indexOf(selected);
+    } else if (hits.length > 0) {
+      select(0);
+    }
+    notify();
+  }
+
+  // A chunk that loads while a keyword is searched for: its hits move from
+  // the index into the DOM, and a hit selected in it is selected there.
+  document.addEventListener("odr-chunk-filled", function (event) {
+    if (keyword === "") {
+      return;
+    }
+    var chunk = event.target;
+    var found = markIn(chunk);
+    var kept = [];
+    var at = -1;
+    var ordinal = -1;
+    var selected;
+    hits.forEach(function (hit, index) {
+      if (hit.chunk === chunk) {
+        if (at === -1) {
+          at = kept.length;
+        }
+        if (index === current) {
+          ordinal = hit.ordinal;
+        }
+      } else {
+        if (index === current) {
+          selected = hit;
+        }
+        kept.push(hit);
+      }
+    });
+    if (at === -1) {
+      if (found.length === 0) {
+        return;
+      }
+      // a chunk that loaded before the index counted it
+      var high = kept.length;
+      at = 0;
+      while (at < high) {
+        var middle = (at + high) >> 1;
+        if (precedes(kept[middle], { chunk: chunk })) {
+          at = middle + 1;
+        } else {
+          high = middle;
+        }
+      }
+    }
+    hits = kept.slice(0, at).concat(found, kept.slice(at));
+    current = -1;
+    if (ordinal !== -1 && hits.length > 0) {
+      // the DOM states the hits of the chunk; the index only counted them
+      select(Math.min(at + Math.max(Math.min(ordinal, found.length - 1), 0), hits.length - 1));
+    } else if (selected !== undefined) {
+      current = hits.indexOf(selected);
+    }
+    notify();
+  });
+
   function select(index) {
-    if (current >= 0 && marks[current]) {
-      marks[current].forEach(function (mark) {
+    if (current >= 0 && hits[current] && hits[current].marks !== undefined) {
+      hits[current].marks.forEach(function (mark) {
         mark.classList.remove("current");
       });
     }
     current = index;
-    marks[current].forEach(function (mark) {
+    var hit = hits[current];
+    if (hit.marks === undefined) {
+      // selected once its chunk loads
+      odr.chunks.show(hit.chunk);
+      hit.chunk.scrollIntoView({ block: "center", inline: "center" });
+      return;
+    }
+    hit.marks.forEach(function (mark) {
       mark.classList.add("current");
     });
     // A hit inside a folded section, or in a chunk the browser does not lay
     // out, is shown before it is scrolled to.
     for (
-      var element = marks[current][0].parentElement;
+      var element = hit.marks[0].parentElement;
       element !== null;
       element = element.parentElement
     ) {
@@ -172,25 +339,26 @@
       }
     }
     if (odr.chunks !== undefined) {
-      odr.chunks.show(marks[current][0]);
+      odr.chunks.show(hit.marks[0]);
     }
-    marks[current][0].scrollIntoView({ block: "center", inline: "center" });
+    hit.marks[0].scrollIntoView({ block: "center", inline: "center" });
   }
 
   function step(delta, next) {
     if (next !== undefined && next !== null && fold(String(next)).text !== keyword) {
       return odr.search(next);
     }
-    if (marks.length === 0) {
+    if (hits.length === 0) {
       return 0;
     }
-    select((current + delta + marks.length) % marks.length);
-    return marks.length;
+    select((current + delta + hits.length) % hits.length);
+    notify();
+    return hits.length;
   }
 
-  odr.resetSearch = function () {
-    marks.forEach(function (hit) {
-      hit.forEach(function (mark) {
+  function reset() {
+    hits.forEach(function (hit) {
+      (hit.marks || []).forEach(function (mark) {
         var parent = mark.parentNode;
         if (!parent) {
           return;
@@ -202,38 +370,60 @@
         parent.normalize();
       });
     });
-    marks = [];
+    hits = [];
     current = -1;
     keyword = "";
+    ++generation;
+    complete = true;
+  }
+
+  odr.resetSearch = function () {
+    reset();
+    notify();
   };
 
   // Highlights every occurrence, selects the first and returns the count. An
-  // occurrence is one hit however many nodes it is written across.
+  // occurrence is one hit however many nodes it is written across. The count
+  // is what is known at once: the hits of the chunks that have not loaded
+  // come with `odr.onSearchChange` and `odr.searchDone`.
   odr.search = function (text) {
-    odr.resetSearch();
+    reset();
     keyword = fold(text === undefined || text === null ? "" : String(text)).text;
     if (keyword === "") {
+      notify();
       return 0;
     }
-    blocks().forEach(function (block) {
-      var hits = findIn(block, keyword);
-      // Wrapped back to front: an offset still to be used sits before the split
-      // that would move it. The marks are collected back into reading order.
-      var wrapped = [];
-      for (var i = hits.length - 1; i >= 0; --i) {
-        var hit = [];
-        for (var j = hits[i].length - 1; j >= 0; --j) {
-          var slice = hits[i][j];
-          hit.unshift(wrap(slice.node, slice.from, slice.to));
-        }
-        wrapped.unshift(hit);
-      }
-      marks = marks.concat(wrapped);
-    });
-    if (marks.length > 0) {
+    hits = markIn(document.body);
+    if (hits.length > 0) {
       select(0);
     }
-    return marks.length;
+    complete = false;
+    var searched = generation;
+    var finishing = function (pending) {
+      if (searched === generation) {
+        finish(pending);
+      }
+    };
+    if (odr.chunks !== undefined && typeof odr.chunks.pending === "function") {
+      odr.chunks.pending(finishing);
+    } else {
+      finishing([]);
+    }
+    if (!complete) {
+      notify();
+    }
+    return hits.length;
+  };
+
+  // The count of the last search once it holds every chunk.
+  odr.searchDone = function () {
+    return new Promise(function (resolve) {
+      if (complete) {
+        resolve(hits.length);
+      } else {
+        done.push(resolve);
+      }
+    });
   };
 
   // An argument is searched for first unless it is already the highlighted
