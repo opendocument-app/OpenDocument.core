@@ -202,26 +202,26 @@ public:
       }
       return false;
     }
-    const Result<std::optional<std::strong_ordering>> order = order_with(value);
+    const Result<std::partial_ordering> order = order_with(value);
     if (!order.has_value()) {
       return std::unexpected(order.error());
     }
-    if (!order->has_value()) {
+    if (*order == std::partial_ordering::unordered) {
       return m_relation == Relation::not_equal;
     }
     switch (m_relation) {
     case Relation::equal:
-      return **order == 0;
+      return *order == 0;
     case Relation::not_equal:
-      return **order != 0;
+      return *order != 0;
     case Relation::less:
-      return **order < 0;
+      return *order < 0;
     case Relation::less_equal:
-      return **order <= 0;
+      return *order <= 0;
     case Relation::greater:
-      return **order > 0;
+      return *order > 0;
     case Relation::greater_equal:
-      return **order >= 0;
+      return *order >= 0;
     }
     return false;
   }
@@ -247,9 +247,9 @@ private:
     return same_text(text, "FALSE");
   }
 
-  /// How @p value orders against the criterion, nothing where the two do not
-  /// compare: a number and a text.
-  [[nodiscard]] Result<std::optional<std::strong_ordering>>
+  /// How @p value orders against the criterion, unordered where the two do
+  /// not compare: a number and a text.
+  [[nodiscard]] Result<std::partial_ordering>
   order_with(const Value &value) const {
     if (m_number.has_value()) {
       if (const auto *number = std::get_if<double>(&value.content)) {
@@ -259,10 +259,10 @@ private:
           return std::unexpected(same.error());
         }
         if (*same) {
-          return std::strong_ordering::equal;
+          return std::partial_ordering::equivalent;
         }
-        return *number < *m_number ? std::strong_ordering::less
-                                   : std::strong_ordering::greater;
+        return *number < *m_number ? std::partial_ordering::less
+                                   : std::partial_ordering::greater;
       }
       const auto *text = std::get_if<std::string>(&value.content);
       if (text == nullptr || m_exact_number) {
@@ -274,7 +274,7 @@ private:
             return no_answer();
           }
         }
-        return std::nullopt;
+        return std::partial_ordering::unordered;
       }
       // a text spelling the number is the number for `=` and `<>`
       const std::optional<Number> read = number_of_text(*text);
@@ -284,12 +284,12 @@ private:
         return no_answer();
       }
       if (m_relation != Relation::equal && m_relation != Relation::not_equal) {
-        return std::nullopt;
+        return std::partial_ordering::unordered;
       }
       const double *spelled =
           read.has_value() ? std::get_if<double>(&*read) : nullptr;
       if (spelled == nullptr) {
-        return std::nullopt;
+        return std::partial_ordering::unordered;
       }
       const Result<bool> same =
           same_number(m_call->settings().dialect, *spelled, *m_number);
@@ -297,24 +297,21 @@ private:
         return std::unexpected(same.error());
       }
       if (*same) {
-        return std::strong_ordering::equal;
+        return std::partial_ordering::equivalent;
       }
-      return std::nullopt;
+      return std::partial_ordering::unordered;
     }
     const auto *text = std::get_if<std::string>(&value.content);
     if (text == nullptr) {
-      return std::nullopt;
+      return std::partial_ordering::unordered;
     }
     if (m_relation == Relation::equal || m_relation == Relation::not_equal) {
       return same_text(*text, m_text).transform([](const bool same) {
-        return std::optional<std::strong_ordering>{
-            same ? std::strong_ordering::equal : std::strong_ordering::less};
+        return same ? std::partial_ordering::equivalent
+                    : std::partial_ordering::less;
       });
     }
-    return order_of_texts(*text, m_text, false)
-        .transform([](const std::strong_ordering order) {
-          return std::optional<std::strong_ordering>{order};
-        });
+    return order_of_texts(*text, m_text, false);
   }
 };
 
