@@ -1967,7 +1967,9 @@ TEST(html, a_linked_host_bridge_is_served) {
   }
 }
 
-// A formula cell is locked: overwriting it leaves its dependants stale.
+// A formula cell is locked where the page has no formula module to compute it
+// with, as a build without `ODR_FORMULA_MODULE`: overwriting it would leave
+// its dependants stale. A release embeds the module, and the cell is open.
 TEST(html, a_formula_cell_states_its_lock_expression_and_dependencies) {
   const std::string page = render_sheet(
       fods_file(fods_row(
@@ -1976,8 +1978,13 @@ TEST(html, a_formula_cell_states_its_lock_expression_and_dependencies) {
           R"(<text:p>7</text:p></table:table-cell>)")),
       editing_config());
 
-  EXPECT_NE(page.find(R"(data-odr-lock="formula")"), std::string::npos);
-  EXPECT_NE(page.find("odr-locked"), std::string::npos);
+  // the emscripten glue of the module, which only a page that carries it holds
+  if (page.find("readyPromiseResolve") != std::string::npos) {
+    EXPECT_EQ(page.find(R"(data-odr-lock=)"), std::string::npos);
+  } else {
+    EXPECT_NE(page.find(R"(data-odr-lock="formula")"), std::string::npos);
+    EXPECT_NE(page.find("odr-locked"), std::string::npos);
+  }
   EXPECT_NE(page.find(R"xml(data-odr-formula="of:=SUM([.B1:.C1])")xml"),
             std::string::npos);
   EXPECT_NE(page.find(R"xml(data-odr-reads="0,1,2,0,0")xml"),

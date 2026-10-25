@@ -20,7 +20,9 @@ option(ODR_PYTHON "Build Python bindings" OFF)
 option(ODR_JNI "Build JNI bindings" OFF)
 option(ODR_APPLE "Build Objective-C bindings as a framework" OFF)
 option(ODR_WASM "Build WebAssembly bindings" OFF)
-set(ODR_FORMULA_MODULE "" CACHE FILEPATH
+# The environment names it too, so a build that goes through conan, a wheel or
+# a script gets it without a flag of its own.
+set(ODR_FORMULA_MODULE "$ENV{ODR_FORMULA_MODULE}" CACHE FILEPATH
         "The odr-formula.js an editable sheet page computes its formulas with")
 
 if (ODR_CLANG_TIDY)

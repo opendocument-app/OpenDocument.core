@@ -117,6 +117,23 @@ jobs:
           restore-keys: |
             ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.profile }}-${{ env.CCACHE_KEY_SUFFIX }}-
 
+      # A release embeds the formula module that `release.yml` built in this run,
+      # so its sheet pages compute what is typed into them.
+      - name: download the formula module
+        if: inputs.version
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: release-asset-formula
+          path: ${{ runner.temp }}/formula
+      - name: name the formula module
+        if: inputs.version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          module="$RUNNER_TEMP/formula/odr-formula-${VERSION}.js"
+          test -s "$module"
+          echo "ODR_FORMULA_MODULE=$module" >> "$GITHUB_ENV"
+
       # Identify by the tag, not by the commit: the commit that carries the
       # checksum does not exist yet, and would change the binary if it did.
       - name: release version
@@ -127,6 +144,11 @@ jobs:
 
       - name: build
         run: python apple/build_xcframework.py slice --profile ${{ matrix.profile }}
+
+      # `readyPromiseResolve` is in the emscripten glue of the module alone
+      - name: check the formula module is embedded
+        if: inputs.version
+        run: grep -rqa readyPromiseResolve "apple/build/${{ matrix.profile }}/cmake/apple/OdrCoreObjC.framework"
 
       - name: save ccache
         if: github.ref == 'refs/heads/main'

@@ -85,14 +85,23 @@ jobs:
   #
   # Anything that merely reacts to a release belongs in its own workflow on
   # `release: published`, the way conan, maven and android do.
-  apple:
+  # The formula module every other build embeds, built before them: the apple
+  # build below takes it from this run, and the publish workflows from the
+  # release it is attached to.
+  formula:
     needs: version
+    uses: ./.github/workflows/formula.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+
+  apple:
+    needs: [version, formula]
     uses: ./.github/workflows/apple.yml
     with:
       version: ${{ needs.version.outputs.version }}
 
   release:
-    needs: [version, apple]
+    needs: [version, formula, apple]
     runs-on: ubuntu-24.04
     permissions:
       contents: write # the draft
@@ -131,8 +140,10 @@ jobs:
           path: ${{ runner.temp }}/assets
           merge-multiple: true
 
-      - name: verify required release asset
-        run: test -s "$RUNNER_TEMP/assets/OdrCoreObjC.xcframework.zip"
+      - name: verify required release assets
+        run: |
+          test -s "$RUNNER_TEMP/assets/OdrCoreObjC.xcframework.zip"
+          test -s "$RUNNER_TEMP/assets/odr-formula-${VERSION}.js"
 
       # Whatever the release has to record about itself is written into the tree
       # here; `stamp` commits all of it as one commit.

@@ -224,14 +224,11 @@ jobs:
           path: ${{ env.BUNDLE }}
           if-no-files-found: error
 
-      # The page resource of `wasm/formula`. A build that ships the pages takes
-      # the one of its core version (`docs/design/spreadsheet-editing.md`).
+      # The page resource of `wasm/formula`, for a build that wants it from a
+      # push. A release takes the one `release.yml` built and attached.
       - name: name the formula module
         run: |
           formula="odr-formula.js"
-          if [ "${{ github.event_name }}" = "release" ]; then
-            formula="odr-formula-${GITHUB_REF_NAME}.js"
-          fi
           cp build/wasm/formula/odr-formula.js "$formula"
           echo "FORMULA=${formula}" >> "$GITHUB_ENV"
 
@@ -249,7 +246,7 @@ jobs:
         if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$GITHUB_REF_NAME" "$BUNDLE" "$FORMULA" --clobber
+        run: gh release upload "$GITHUB_REF_NAME" "$BUNDLE" --clobber
 
   # npm trusted publishing (OIDC), as `python.yml` does with PyPI: the package
   # on npm must name this repository and workflow.

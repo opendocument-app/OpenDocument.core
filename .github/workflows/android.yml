@@ -78,6 +78,17 @@ jobs:
           restore-keys: |
             ccache-${{ env.CACHE_FLAVOR }}-android-${{ matrix.architecture }}-${{ env.CCACHE_KEY_SUFFIX }}-
 
+      # A release embeds the formula module that `release.yml` built and
+      # attached, so its sheet pages compute what is typed into them.
+      - name: download the formula module
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          module="odr-formula-${GITHUB_REF_NAME}.js"
+          gh release download "$GITHUB_REF_NAME" --pattern "$module" --dir "$RUNNER_TEMP"
+          echo "ODR_FORMULA_MODULE=$RUNNER_TEMP/$module" >> "$GITHUB_ENV"
+
       # Cross compiling the bindings is the cheap half of the guard: #628 was a
       # compile error in jni/src that only android sees, and no host job can.
       - name: build
@@ -85,6 +96,11 @@ jobs:
           python android/build_native.py
           --abi ${{ matrix.architecture }}
           --build-profile ubuntu-24.04-clang-18
+
+      # `readyPromiseResolve` is in the emscripten glue of the module alone
+      - name: check the formula module is embedded
+        if: github.event_name == 'release'
+        run: grep -rqa readyPromiseResolve android/native/prebuilt --include=libodr_jni.so
 
       - name: save ccache
         if: github.ref == 'refs/heads/main'
