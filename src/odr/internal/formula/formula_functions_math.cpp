@@ -125,47 +125,45 @@ struct Collected final {
 /// boolean cells; direct booleans and Excel numeric text also count.
 Result<Collected> collect(const Call &call, const std::size_t count) {
   Collected result;
+  Errors errors;
+  const auto visit = [&](const Value &value,
+                         const bool stated) -> Result<void> {
+    if (const auto *number = std::get_if<double>(&value.content)) {
+      result.numbers.push_back(*number);
+    } else if (const auto *boolean = std::get_if<bool>(&value.content)) {
+      if (stated || is_libreoffice(call)) {
+        result.numbers.push_back(*boolean ? 1 : 0);
+      }
+    } else if (const auto *error = std::get_if<ErrorType>(&value.content)) {
+      errors.add(*error);
+    } else if (!stated) {
+      return {};
+    } else if (const auto *text = std::get_if<std::string>(&value.content)) {
+      // LibreOffice refuses a text argument with `#VALUE!` or a code of
+      // its own, function by function
+      if (is_libreoffice(call)) {
+        return no_answer();
+      }
+      const std::optional<Number> read = number_of_text(*text);
+      if (!read.has_value()) {
+        return no_answer();
+      }
+      if (const auto *error = std::get_if<ErrorType>(&*read)) {
+        errors.add(*error);
+      } else {
+        result.numbers.push_back(*std::get_if<double>(&*read));
+      }
+    } else {
+      return no_answer();
+    }
+    return {};
+  };
   for (std::size_t i = 0; i < count; ++i) {
     if (call.missing(i)) {
       return no_answer();
     }
-    Errors errors;
-    if (const Result<void> walked = call.for_each_value(
-            i,
-            [&](const Value &value, const bool stated) -> Result<void> {
-              if (const auto *number = std::get_if<double>(&value.content)) {
-                result.numbers.push_back(*number);
-              } else if (const auto *boolean =
-                             std::get_if<bool>(&value.content)) {
-                if (stated || is_libreoffice(call)) {
-                  result.numbers.push_back(*boolean ? 1 : 0);
-                }
-              } else if (const auto *error =
-                             std::get_if<ErrorType>(&value.content)) {
-                errors.add(*error);
-              } else if (!stated) {
-                return {};
-              } else if (const auto *text =
-                             std::get_if<std::string>(&value.content)) {
-                // LibreOffice refuses a text argument with `#VALUE!` or a code
-                // of its own, function by function
-                if (is_libreoffice(call)) {
-                  return no_answer();
-                }
-                const std::optional<Number> read = number_of_text(*text);
-                if (!read.has_value()) {
-                  return no_answer();
-                }
-                if (const auto *error = std::get_if<ErrorType>(&*read)) {
-                  errors.add(*error);
-                } else {
-                  result.numbers.push_back(*std::get_if<double>(&*read));
-                }
-              } else {
-                return no_answer();
-              }
-              return {};
-            });
+    errors = Errors();
+    if (const Result<void> walked = call.for_each_value(i, visit);
         !walked.has_value()) {
       return std::unexpected(walked.error());
     }
@@ -417,29 +415,28 @@ template <bool sample, bool root> Result<Value> variance_of(const Call &call) {
 
 Result<Value> count(const Call &call) {
   double result = 0;
+  const auto visit = [&](const Value &value,
+                         const bool stated) -> Result<void> {
+    if (const auto *text = std::get_if<std::string>(&value.content);
+        text != nullptr && stated) {
+      const std::optional<Number> read = number_of_text(*text);
+      if (!read.has_value()) {
+        return no_answer();
+      }
+      result += std::holds_alternative<double>(*read) ? 1 : 0;
+      return {};
+    }
+    result += value.holds<double>() ||
+                      (value.holds<bool>() && (stated || is_libreoffice(call)))
+                  ? 1
+                  : 0;
+    return {};
+  };
   for (std::size_t i = 0; i < call.size(); ++i) {
     if (call.missing(i)) {
       return no_answer();
     }
-    if (const Result<void> walked = call.for_each_value(
-            i,
-            [&](const Value &value, const bool stated) -> Result<void> {
-              if (const auto *text = std::get_if<std::string>(&value.content);
-                  text != nullptr && stated) {
-                const std::optional<Number> read = number_of_text(*text);
-                if (!read.has_value()) {
-                  return no_answer();
-                }
-                result += std::holds_alternative<double>(*read) ? 1 : 0;
-                return {};
-              }
-              result +=
-                  value.holds<double>() || (value.holds<bool>() &&
-                                            (stated || is_libreoffice(call)))
-                      ? 1
-                      : 0;
-              return {};
-            });
+    if (const Result<void> walked = call.for_each_value(i, visit);
         !walked.has_value()) {
       return std::unexpected(walked.error());
     }
@@ -449,16 +446,16 @@ Result<Value> count(const Call &call) {
 
 Result<Value> count_stated(const Call &call) {
   double result = 0;
+  const auto visit = [&](const Value &value,
+                         const bool stated) -> Result<void> {
+    result += stated || !value.holds<Empty>() ? 1 : 0;
+    return {};
+  };
   for (std::size_t i = 0; i < call.size(); ++i) {
     if (call.missing(i)) {
       return no_answer();
     }
-    if (const Result<void> walked = call.for_each_value(
-            i,
-            [&](const Value &value, const bool stated) -> Result<void> {
-              result += stated || !value.holds<Empty>() ? 1 : 0;
-              return {};
-            });
+    if (const Result<void> walked = call.for_each_value(i, visit);
         !walked.has_value()) {
       return std::unexpected(walked.error());
     }
@@ -491,19 +488,19 @@ Result<Value> count_blank(const Call &call) {
       (static_cast<double>(range.to().column) - range.from().column + 1) *
       (static_cast<double>(range.to().row) - range.from().row + 1);
   double stated = 0;
-  if (const Result<void> walked = call.for_each(
-          *reference,
-          [&](const SheetPosition &, const Value &cell) -> Result<void> {
-            const auto *text = std::get_if<std::string>(&cell.content);
-            if (text != nullptr && text->empty()) {
-              if (is_libreoffice(call)) {
-                return no_answer();
-              }
-              return {};
-            }
-            stated += cell.holds<Empty>() ? 0 : 1;
-            return {};
-          });
+  const auto visit = [&](const SheetPosition &,
+                         const Value &cell) -> Result<void> {
+    const auto *text = std::get_if<std::string>(&cell.content);
+    if (text != nullptr && text->empty()) {
+      if (is_libreoffice(call)) {
+        return no_answer();
+      }
+      return {};
+    }
+    stated += cell.holds<Empty>() ? 0 : 1;
+    return {};
+  };
+  if (const Result<void> walked = call.for_each(*reference, visit);
       !walked.has_value()) {
     return std::unexpected(walked.error());
   }
