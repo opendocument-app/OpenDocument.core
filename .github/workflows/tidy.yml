@@ -9,10 +9,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
+# clang-tidy runs on every translation unit, also on one that ccache would
+# take from its cache, so a cache buys nothing here. The profiles still name
+# ccache as the compiler launcher; disabled, it passes each compile through.
 env:
-  CCACHE_DIR: ${{ github.workspace }}/ccache
-  CCACHE_MAXSIZE: 1G
-  CCACHE_KEY_SUFFIX: r1
+  CCACHE_DISABLE: 1
   CONAN_HOME: ${{ github.workspace }}/.conan2
   CONAN_KEY_SUFFIX: r1
 
@@ -59,14 +60,6 @@ jobs:
       - name: conan config
         run: conan config install .github/config/conan
 
-      - name: cache ccache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}
-          restore-keys: |
-            ccache-${{ matrix.host_profile }}-
-
       - name: conan install
         run: >
           conan install .
@@ -82,5 +75,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release
           -DODR_CLANG_TIDY=ON
 
+      # One job for each core: the generator is make, which runs one compile at
+      # a time unless told otherwise, and each one runs clang-tidy.
       - name: clang-tidy
-        run: cmake --build build
+        run: cmake --build build --parallel "$(nproc)"
