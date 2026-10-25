@@ -388,8 +388,14 @@ inside a block to a space, as it folds a tab. So the separator is the only
 | view | a block |
 |---|---|
 | text file | a line |
-| sheet | a cell, and the header cell of each row, because a search of the DOM finds the row numbers too |
+| sheet | a cell; the headers of the rows and the columns are not in the index |
 | pdf | a line of the `.sel` layer; `.vis` is `aria-hidden` |
+
+**A search does not find the headers of a sheet.** Today a search of the
+DOM finds the row numbers and the column letters, so "12" finds row 12.
+They are labels, not content. So `search.js` skips the cells of
+`odr-sheet-row-header` and `odr-sheet-column-header`, at every level, and
+the index of a sheet does not hold them. The markup does not change.
 
 Core writes the index from the same model that it writes the chunk from:
 the lines, the cells, the `SelLineOut`s. It does not write it from the
@@ -424,6 +430,36 @@ html. The cost in core:
 whole text file, and `fold` now normalizes one character at a time. A
 string that is all ASCII folds with one `toLowerCase` and one `replace`,
 and its map is the identity.
+
+**Over HTTP, the server searches.** The index then stays on the server,
+and the page does not load 9 MB of text for one keyword:
+
+```js
+// pdf-search/hits/protocol%20stack.js
+odr.chunks.hits("protocol stack", [[0, 2], [17, 1], [2210, 5]]);
+```
+
+1. The page folds the keyword and asks for `<index directory>/hits/<the
+   folded keyword>.js`, with a `<script src>` tag, as for the other scripts.
+   It takes the index directory from `data-odr-chunk-text`.
+2. `HtmlService::exists` and `write` answer that path, so `HttpServer`
+   needs no new route. The keyword is the part between `hits/` and the
+   last `.js`, so a keyword with a `/` works too.
+3. The service searches the index that it keeps for the index scripts,
+   and answers each chunk that has a hit, with its count.
+4. The page does this only where `location.protocol` is `http:` or
+   `https:`. If the script fails, it loads the index scripts. That is the
+   case for a file that `bring_offline` wrote and a static server serves,
+   because `bring_offline` writes no `hits/` path.
+
+The server must fold as `search.js` folds, or the counts differ. `fold`
+folds one UTF-16 unit at a time, so a table states it exactly: for each
+unit whose fold is not the unit itself, the units it folds to. A script
+generates that table from the `fold` of `search.js` with node, so the two
+cannot differ, and core needs no Unicode library. A test runs the C++ fold
+and the JS fold over the same strings. Where the counts still differ, the
+DOM count of a loaded chunk replaces the server count, as it replaces the
+index count.
 
 **The API for a host.** A search at level 3 completes only after the index
 scripts load, so it is asynchronous:
@@ -474,9 +510,14 @@ that issue with `Refs`.
    `content.xml` and its DOM resident for editing. A render on demand that
    does not hold them is a decision of its own. It waits for a measurement
    of the page side.
-8. **Search at level 3** (decision 8), in three PRs: text files, then
-   sheets, then pdf. The first PR also brings the fast path of `fold`, the
-   callback and `odr.searchDone`.
+8. **Search at level 3** (decision 8), in this order:
+   1. Text files, the index scripts. This PR also brings the fast path of
+      `fold`, `odr.onSearchChange` and `odr.searchDone`.
+   2. Text files, the search on the server. This PR brings the generated
+      fold table, its test, and the `hits/` path.
+   3. Sheets: no search of the headers, at every level, and then the index
+      and the `hits/` path.
+   4. pdf: the index and the `hits/` path.
 
 ## Open questions
 
@@ -501,12 +542,6 @@ that issue with `Refs`.
   chunks against the cost of one.
 - **When a view takes level 2.** A threshold on the size of the content, or
   a switch in `HtmlConfig`.
-- **The row numbers in a search.** A search of a sheet finds the header
-  cell of a row, so "12" finds row 12. Decision 8 keeps that, so the index
-  and the DOM agree. To drop the headers from both is a change of its own.
-- **A search on the server.** Over HTTP, the server could answer a search
-  itself and send only the hits. That is faster for a large pdf, but the
-  index stays, because it works offline too.
 - **The find of the browser.** `hidden="until-found"` lets it reach a hidden
   chunk and show it. But a browser without that value hides the chunk for
   good, where a browser without `content-visibility` shows it.
