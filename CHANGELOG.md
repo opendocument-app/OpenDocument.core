@@ -124,6 +124,10 @@ The release run heads these entries with the version and opens a fresh
   parse refuses with the new code `formulaInvalid` (1012).
 - Localized function input accepts lowercase and mixed-case non-ASCII letters,
   including German umlauts and Russian names.
+- A locale tag with a script (`pt-Latn-BR`), with `_` (`de_CH`) or in another
+  case (`DE-ch`) now selects the function names, the decimal sign and the
+  grouping, the month names and the boolean words of its language and region.
+  Before, the script read as the region, and the other two missed the tables.
 - An xlsx formula with a cached string result writes valid formula-result XML.
   Rejecting an invalid formula no longer creates an empty cell or grows the sheet.
 - `Sheet::set_cell` and the `setCell` op write a formula: `{"type":

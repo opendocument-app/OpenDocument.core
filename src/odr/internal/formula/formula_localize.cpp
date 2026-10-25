@@ -1,8 +1,10 @@
 #include <odr/internal/formula/formula_function_names.hpp>
 
+#include <odr/internal/util/locale_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <optional>
+#include <utility>
 
 namespace odr::internal::formula {
 
@@ -10,25 +12,9 @@ namespace {
 
 /// The language of @p locale as LibreOffice names its translations.
 std::string language_of(const std::string_view locale) {
-  if (util::string::equals_ignore_case(locale, "pt-BR")) {
-    return "pt-BR";
-  }
-  std::string language =
-      util::string::to_lower(locale.substr(0, locale.find('-')));
-  // `no` is Norwegian, which is written as Bokmål
-  return language == "no" ? "nb" : language;
-}
-
-/// Whether two names in @p language are the same, ignoring case.
-bool same_name(std::string_view a, std::string_view b,
-               const std::string_view language) {
-  while (!a.empty() && !b.empty()) {
-    if (lower_function_letter(util::string::next_utf8(a), language) !=
-        lower_function_letter(util::string::next_utf8(b), language)) {
-      return false;
-    }
-  }
-  return a.empty() && b.empty();
+  util::locale::LanguageTag tag = util::locale::LanguageTag::parse(locale);
+  return tag.language == "pt" && tag.region == "BR" ? "pt-BR"
+                                                    : std::move(tag.language);
 }
 
 /// What a function name is spelled out of: a byte of a letter past ASCII
@@ -113,7 +99,8 @@ std::string formula::english_functions(const std::string_view formula,
         }
         for (const FunctionName &entry : function_names()) {
           if (entry.language == language &&
-              same_name(entry.localized, name, language)) {
+              util::locale::equals_ignore_case(entry.localized, name,
+                                               language)) {
             return entry.english;
           }
         }
