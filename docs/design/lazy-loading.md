@@ -521,12 +521,13 @@ A chunk and a search index reduce a large DOM, which these files do not
 have. The browser must parse a data URL before the first frame. It fetches
 and decodes a linked image only when it needs the image.
 
-`HtmlConfig::embed_images` already links the images, and the droid and the
-ios app turn it off. What is missing:
+With `HtmlConfig::embed_images` off, core already links the images, and
+the droid and the ios app turn it off. What is missing:
 
 - **`loading="lazy"`** and **`decoding="async"`** on an `<img>` that links
   its image, so the browser fetches only the images near the viewport. A
-  data URL keeps neither, because nothing is fetched.
+  data URL gains nothing from `loading="lazy"`, because the page already
+  holds its bytes.
 - **The format of a linked image.** The embedded path converts an SVM
   metafile to SVG. The linked path writes the file as it is, as
   `image/jpg`, so the browser shows a broken image. This is a bug in the
