@@ -52,10 +52,10 @@ The release run heads these entries with the version and opens a fresh
     Such a sheet has no sort control, because a sort needs every row.
   - A pdf renders each page after the first alone, and links the fonts as
     files. The 2985 pages of a technical manual are a document of 1.4 MB,
-    which the HTTP server answers after 0.5 s, not 5.4 s. A page renders in
-    half the time it took, because the service tests each font once
-    whether it re-encodes. A pdf in the single layer keeps every page in
-    the document.
+    which the HTTP server answers after 0.5 s, not 5.4 s. The script of a
+    page renders in half the time it took, because the service tests each
+    font once whether it re-encodes. A pdf in the single layer keeps every
+    page in the document.
 - `odr.search` finds the parts that have not loaded, from a search index
   that `HtmlConfig::lazy_loading` writes beside the page
   (`text-search/<n>.js`, `sheet<n>-search/<m>.js`, `pdf-search/<n>.js`).

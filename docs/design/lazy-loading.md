@@ -42,7 +42,9 @@ find out whether it is near (13.5 s).
   `write`, with no route of its own.
 - The first chunk is near in the markup, so the first frame needs no script.
   `data-odr-chunk-held` keeps a chunk near. Without a script, a
-  `<noscript>` rule gives the chunks `auto`. A print shows every chunk.
+  `<noscript>` rule gives the chunks `auto`. A print shows every chunk that
+  is in the DOM, so at level 3 not one that has not loaded (see "Open
+  questions").
 - A browser without `content-visibility` lays out every chunk, as before.
 - An editable render and a page that is not UTF-8 stay at level 1, because
   the edit log states the whole content, and a script is UTF-8.
