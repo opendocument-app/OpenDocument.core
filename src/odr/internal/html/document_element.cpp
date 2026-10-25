@@ -1610,11 +1610,11 @@ void html::translate_image(const Element &element, const WritingState &state) {
     // the location is resolved against the document, so an engine naming the
     // image by its absolute path in the container has to lose the root
     const std::string path = Path(image.href()).make_relative().string();
-    resource =
-        image.file().has_value()
-            ? linked_image_resource(*image.file(), path, state.logger())
-            : HtmlResource::create(HtmlResourceType::image, "image/jpg", path,
-                                   path, image.file(), false, false, true);
+    const std::optional<File> file = image.file();
+    resource = file.has_value()
+                   ? linked_image_resource(*file, path, state.logger())
+                   : HtmlResource::create(HtmlResourceType::image, "image/jpg",
+                                          path, path, file, false, false, true);
     resource_location =
         state.config().resource_locator(resource, state.config());
     if (resource_location.has_value()) {
