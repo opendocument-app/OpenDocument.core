@@ -48,8 +48,14 @@ module with native exceptions: 646 KB, and 5 µs for `A1+A2*3`.
   of `std::stod`. With `-fno-exceptions` such a call aborts.
 - **Every function is `noexcept`**: the functions, the evaluator, the `Call`
   accessors, the helpers, and the pointer types `Function` and `ArrayRule`.
-  An exception that still reaches one ends the program: a failed allocation,
-  or a `CellSource` that throws, which a native document's adapter can.
+  Only a failed allocation can still reach one, and it ends the program.
+- **`CellSource` is `noexcept` too.** `SheetCellSource` catches what a
+  document's adapter throws on a broken file: such a cell has no answer, and
+  a sheet the adapter cannot visit reaches as far as a reference does, so
+  every read of it has none. A callback of the module's JavaScript source can
+  still throw a JavaScript exception, which `noexcept` does not stop.
+- **What the formula code calls outside itself** does not throw on what it
+  can see: `utf16_of` checks the UTF-8 before utfcpp converts it.
   `src/odr/internal/formula/.clang-tidy` names the exceptions of the standard
   library that `bugprone-exception-escape` does not count, and why.
 

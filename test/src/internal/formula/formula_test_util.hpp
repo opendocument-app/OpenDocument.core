@@ -30,7 +30,7 @@ public:
   std::map<std::string, std::string> names;
 
   [[nodiscard]] std::optional<std::uint32_t>
-  sheet(const std::string_view name) const override {
+  sheet(const std::string_view name) const noexcept override {
     if (name == "s" || name == "S") {
       return 0;
     }
@@ -40,15 +40,16 @@ public:
     return std::nullopt;
   }
   [[nodiscard]] std::optional<Value>
-  cell(const SheetPosition &position) const override {
+  cell(const SheetPosition &position) const noexcept override {
     if (stale.contains(position)) {
       return std::nullopt;
     }
     const auto found = values.find(position);
     return found == values.end() ? Value{Empty{}} : found->second;
   }
-  [[nodiscard]] std::optional<Node> name(const std::string_view name,
-                                         const std::uint32_t) const override {
+  [[nodiscard]] std::optional<Node>
+  name(const std::string_view name,
+       const std::uint32_t) const noexcept override {
     std::string lower(name);
     std::ranges::transform(lower, lower.begin(), [](const char c) {
       return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -60,7 +61,7 @@ public:
     return parse(found->second, Syntax::opendocument);
   }
   [[nodiscard]] TableDimensions
-  extent(const std::uint32_t sheet) const override {
+  extent(const std::uint32_t sheet) const noexcept override {
     TableDimensions result;
     for (const auto &[position, value] : values) {
       if (position.sheet == sheet) {

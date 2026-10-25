@@ -20,3 +20,7 @@ Checks: >
 WarningsAsErrors: '*,-clang-analyzer-*'
 HeaderFilterRegex: '(^|/)src/odr/'
 FormatStyle: file
+CheckOptions:
+  # A failed allocation ends the program; a `noexcept` function does not
+  # report it.
+  bugprone-exception-escape.IgnoredExceptions: 'length_error,bad_array_new_length'

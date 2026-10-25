@@ -4,6 +4,7 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
+#include <limits>
 #include <map>
 #include <utility>
 
@@ -110,7 +111,7 @@ SheetCellSource::SheetCellSource(const abstract::Document &document)
 }
 
 std::optional<std::uint32_t>
-SheetCellSource::sheet(const std::string_view name) const {
+SheetCellSource::sheet(const std::string_view name) const noexcept {
   const auto found = m_by_name.find(util::string::to_lower(name));
   if (found == m_by_name.end()) {
     return std::nullopt;
@@ -120,9 +121,12 @@ SheetCellSource::sheet(const std::string_view name) const {
 
 std::optional<std::uint32_t>
 SheetCellSource::external_sheet(const std::string_view document,
-                                const std::string_view sheet) const {
-  if (const auto found = m_by_name.find(util::string::to_lower(
-          "'" + std::string(document) + "'#" + std::string(sheet)));
+                                const std::string_view sheet) const noexcept {
+  std::string copy = "'";
+  copy += document;
+  copy += "'#";
+  copy += sheet;
+  if (const auto found = m_by_name.find(util::string::to_lower(copy));
       found != m_by_name.end()) {
     return found->second;
   }
@@ -136,7 +140,7 @@ SheetCellSource::external_sheet(const std::string_view document,
 }
 
 std::optional<formula::Value>
-SheetCellSource::cell(const SheetPosition &position) const {
+SheetCellSource::cell(const SheetPosition &position) const noexcept {
   if (position.sheet >= m_sheets.size()) {
     const std::size_t copy = position.sheet - m_sheets.size();
     if (copy >= m_external_cells.size()) {
@@ -150,18 +154,25 @@ SheetCellSource::cell(const SheetPosition &position) const {
   if (const auto known = m_cells.find(position); known != m_cells.end()) {
     return known->second;
   }
+  if (m_unreadable.contains(position.sheet)) {
+    return std::nullopt;
+  }
   std::optional<formula::Value> value;
-  if (position.sheet < m_sheets.size()) {
+  try {
     const SheetCell cell =
         m_sheets[position.sheet].cell(position.cell.column, position.cell.row);
     value = is_at(cell, position.cell) ? value_of(cell.value(), m_settings)
                                        : formula::Value{formula::Empty{}};
+  } catch (...) {
+    // a cell of a broken file has no answer
+    return std::nullopt;
   }
   m_cells.emplace(position, value);
   return value;
 }
 
-TableDimensions SheetCellSource::extent(const std::uint32_t sheet) const {
+TableDimensions
+SheetCellSource::extent(const std::uint32_t sheet) const noexcept {
   if (sheet >= m_sheets.size()) {
     const std::size_t copy = sheet - m_sheets.size();
     return copy < m_external_extents.size() ? m_external_extents[copy]
@@ -170,18 +181,29 @@ TableDimensions SheetCellSource::extent(const std::uint32_t sheet) const {
   if (const auto known = m_extents.find(sheet); known != m_extents.end()) {
     return known->second;
   }
+  // a sheet of a broken file reaches as far as a reference does, so that a
+  // read of it asks `cell`, which has no answer, and is not read as empty
+  constexpr std::uint32_t unbounded = std::numeric_limits<std::uint32_t>::max();
+  if (m_unreadable.contains(sheet)) {
+    return TableDimensions(unbounded, unbounded);
+  }
   // the stated cells, a formula without a result too, which shows no content
   TableDimensions extent;
-  if (const std::optional<std::vector<RowBand>> &sheet_bands = bands(sheet);
-      sheet_bands.has_value()) {
-    for (const RowBand &band : *sheet_bands) {
-      extent.rows = std::max(extent.rows, band.end_row);
-      for (const CellRun &run : band.cells) {
-        extent.columns = std::max(extent.columns, run.end_column);
+  try {
+    if (const std::optional<std::vector<RowBand>> &sheet_bands = bands(sheet);
+        sheet_bands.has_value()) {
+      for (const RowBand &band : *sheet_bands) {
+        extent.rows = std::max(extent.rows, band.end_row);
+        for (const CellRun &run : band.cells) {
+          extent.columns = std::max(extent.columns, run.end_column);
+        }
       }
+    } else {
+      extent = m_sheets[sheet].content(std::nullopt);
     }
-  } else {
-    extent = m_sheets[sheet].content(std::nullopt);
+  } catch (...) {
+    m_unreadable.insert(sheet);
+    return TableDimensions(unbounded, unbounded);
   }
   m_extents.emplace(sheet, extent);
   return extent;
@@ -189,7 +211,7 @@ TableDimensions SheetCellSource::extent(const std::uint32_t sheet) const {
 
 std::optional<formula::Node>
 SheetCellSource::name(const std::string_view name,
-                      const std::uint32_t sheet) const {
+                      const std::uint32_t sheet) const noexcept {
   const auto found = m_names.find(util::string::to_lower(name));
   if (found == m_names.end() || !m_syntax.has_value()) {
     return std::nullopt;
@@ -198,7 +220,11 @@ SheetCellSource::name(const std::string_view name,
   if (named == nullptr) {
     return std::nullopt;
   }
-  return formula::parse(named->expression, *m_syntax);
+  try {
+    return formula::parse(named->expression, *m_syntax);
+  } catch (...) {
+    return std::nullopt;
+  }
 }
 
 const std::optional<std::vector<SheetCellSource::RowBand>> &
@@ -232,36 +258,45 @@ formula::Result<void> SheetCellSource::for_each_cell(
     const formula::Area &area,
     const std::function<formula::Result<void>(
         const SheetPosition &, const std::optional<formula::Value> &)> &visit)
-    const {
+    const noexcept {
   if (area.sheet >= m_sheets.size()) {
     // the copy of another document's sheet
     return CellSource::for_each_cell(area, visit);
   }
-  const std::optional<std::vector<RowBand>> &sheet_bands = bands(area.sheet);
-  if (!sheet_bands.has_value()) {
-    return CellSource::for_each_cell(area, visit);
+  if (m_unreadable.contains(area.sheet)) {
+    return formula::no_answer();
   }
-  const TablePosition &from = area.range.from();
-  const TablePosition &to = area.range.to();
-  for (const RowBand &band : *sheet_bands) {
-    if (band.end_row <= from.row || band.first_row > to.row) {
-      continue;
+  try {
+    const std::optional<std::vector<RowBand>> &sheet_bands = bands(area.sheet);
+    if (!sheet_bands.has_value()) {
+      return CellSource::for_each_cell(area, visit);
     }
-    for (std::uint32_t row = std::max(band.first_row, from.row);
-         row < band.end_row && row <= to.row; ++row) {
-      for (const CellRun &run : band.cells) {
-        for (std::uint32_t column = std::max(run.first_column, from.column);
-             column < run.end_column && column <= to.column; ++column) {
-          if (formula::Result<void> visited =
-                  visit(SheetPosition(area.sheet, column, row), run.value);
-              !visited.has_value()) {
-            return visited;
+    const TablePosition &from = area.range.from();
+    const TablePosition &to = area.range.to();
+    for (const RowBand &band : *sheet_bands) {
+      if (band.end_row <= from.row || band.first_row > to.row) {
+        continue;
+      }
+      for (std::uint32_t row = std::max(band.first_row, from.row);
+           row < band.end_row && row <= to.row; ++row) {
+        for (const CellRun &run : band.cells) {
+          for (std::uint32_t column = std::max(run.first_column, from.column);
+               column < run.end_column && column <= to.column; ++column) {
+            if (formula::Result<void> visited =
+                    visit(SheetPosition(area.sheet, column, row), run.value);
+                !visited.has_value()) {
+              return visited;
+            }
           }
         }
       }
     }
+    return {};
+  } catch (...) {
+    // the adapter could not visit the cells of a broken file
+    m_unreadable.insert(area.sheet);
+    return formula::no_answer();
   }
-  return {};
 }
 
 const formula::Settings &SheetCellSource::settings() const noexcept {

@@ -142,16 +142,17 @@ val to_js(const formula::Value &value) {
 }
 
 /// The cells, in the callbacks of a JavaScript object. A callback must not
-/// throw: a JavaScript exception unwinds through the evaluator without its
-/// destructors, so it leaks what the evaluation holds. The page drops the
-/// module after one (`compute` in `sheet-editing.js`).
+/// throw: a JavaScript exception, which `noexcept` does not stop, unwinds
+/// through the evaluator without its destructors, so it leaks what the
+/// evaluation holds. The page drops the module after one (`compute` in
+/// `sheet-editing.js`).
 class JsCellSource final : public formula::CellSource {
 public:
   JsCellSource(val source, const formula::Syntax syntax)
       : m_source{std::move(source)}, m_syntax{syntax} {}
 
   [[nodiscard]] std::optional<std::uint32_t>
-  sheet(const std::string_view name) const override {
+  sheet(const std::string_view name) const noexcept override {
     const val result = m_source.call<val>("sheet", std::string(name));
     if (is_absent(result)) {
       return std::nullopt;
@@ -160,20 +161,21 @@ public:
   }
 
   [[nodiscard]] std::optional<formula::Value>
-  cell(const SheetPosition &position) const override {
+  cell(const SheetPosition &position) const noexcept override {
     return value_of(m_source.call<val>(
         "cell", position.sheet, position.cell.column, position.cell.row));
   }
 
   [[nodiscard]] TableDimensions
-  extent(const std::uint32_t sheet) const override {
+  extent(const std::uint32_t sheet) const noexcept override {
     const val result = m_source.call<val>("extent", sheet);
     return TableDimensions(result["rows"].as<std::uint32_t>(),
                            result["columns"].as<std::uint32_t>());
   }
 
   [[nodiscard]] std::optional<formula::Node>
-  name(const std::string_view name, const std::uint32_t sheet) const override {
+  name(const std::string_view name,
+       const std::uint32_t sheet) const noexcept override {
     if (is_absent(m_source["name"])) {
       return std::nullopt;
     }

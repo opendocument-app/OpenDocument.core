@@ -14,6 +14,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace odr::internal::abstract {
@@ -29,22 +30,23 @@ public:
   explicit SheetCellSource(const abstract::Document &document);
 
   [[nodiscard]] std::optional<std::uint32_t>
-  sheet(std::string_view name) const override;
+  sheet(std::string_view name) const noexcept override;
   [[nodiscard]] std::optional<formula::Value>
-  cell(const SheetPosition &position) const override;
-  [[nodiscard]] TableDimensions extent(std::uint32_t sheet) const override;
+  cell(const SheetPosition &position) const noexcept override;
+  [[nodiscard]] TableDimensions
+  extent(std::uint32_t sheet) const noexcept override;
   [[nodiscard]] formula::Result<void> for_each_cell(
       const formula::Area &area,
       const std::function<formula::Result<void>(
           const SheetPosition &, const std::optional<formula::Value> &)> &visit)
-      const override;
+      const noexcept override;
   [[nodiscard]] std::optional<formula::Node>
-  name(std::string_view name, std::uint32_t sheet) const override;
+  name(std::string_view name, std::uint32_t sheet) const noexcept override;
   /// An `.ods` holds the copy as a sheet of its own, `'file:///x.ods'#Sheet1`,
   /// and an `.xlsx` apart, after the sheets of the document.
   [[nodiscard]] std::optional<std::uint32_t>
   external_sheet(std::string_view document,
-                 std::string_view sheet) const override;
+                 std::string_view sheet) const noexcept override;
 
   /// The settings the document states, which a cell's date is read with.
   [[nodiscard]] const formula::Settings &settings() const noexcept;
@@ -90,6 +92,9 @@ private:
   mutable std::unordered_map<std::uint32_t, TableDimensions> m_extents;
   mutable std::unordered_map<std::uint32_t, std::optional<std::vector<RowBand>>>
       m_bands;
+  /// The sheets whose cells the adapter failed to visit or measure, which
+  /// a broken file can give.
+  mutable std::unordered_set<std::uint32_t> m_unreadable;
 };
 
 } // namespace odr::internal

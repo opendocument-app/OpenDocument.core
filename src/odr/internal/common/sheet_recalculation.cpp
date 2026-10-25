@@ -108,7 +108,7 @@ public:
   }
 
   [[nodiscard]] std::optional<std::uint32_t>
-  sheet(const std::string_view name) const override {
+  sheet(const std::string_view name) const noexcept override {
     return m_base->sheet(name);
   }
   /// A stale cell is computed where its position is read, so an area holding
@@ -117,28 +117,29 @@ public:
       const formula::Area &area,
       const std::function<formula::Result<void>(
           const SheetPosition &, const std::optional<formula::Value> &)> &visit)
-      const override {
+      const noexcept override {
     if (holds_stale(area)) {
       return CellSource::for_each_cell(area, visit);
     }
     return m_base->for_each_cell(area, visit);
   }
   [[nodiscard]] TableDimensions
-  extent(const std::uint32_t sheet) const override {
+  extent(const std::uint32_t sheet) const noexcept override {
     return m_base->extent(sheet);
   }
   [[nodiscard]] std::optional<formula::Node>
-  name(const std::string_view name, const std::uint32_t sheet) const override {
+  name(const std::string_view name,
+       const std::uint32_t sheet) const noexcept override {
     return m_base->name(name, sheet);
   }
   [[nodiscard]] std::optional<std::uint32_t>
   external_sheet(const std::string_view document,
-                 const std::string_view sheet) const override {
+                 const std::string_view sheet) const noexcept override {
     return m_base->external_sheet(document, sheet);
   }
 
   [[nodiscard]] std::optional<formula::Value>
-  cell(const SheetPosition &position) const override {
+  cell(const SheetPosition &position) const noexcept override {
     const auto formula = m_formulas->find(position);
     if (!m_stale.contains(position) || formula == m_formulas->end()) {
       return m_base->cell(position);

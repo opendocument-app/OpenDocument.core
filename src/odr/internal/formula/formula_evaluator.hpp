@@ -22,28 +22,30 @@ public:
   /// The sheet a formula names as @p name, which is read without case.
   /// Nothing where the document has no such sheet.
   [[nodiscard]] virtual std::optional<std::uint32_t>
-  sheet(std::string_view name) const = 0;
+  sheet(std::string_view name) const noexcept = 0;
   /// What the cell at @p position holds: empty, a number, a string, a boolean
   /// or an error. Nothing where it has no answer, such as a formula cell whose
   /// result is stale.
   [[nodiscard]] virtual std::optional<Value>
-  cell(const SheetPosition &position) const = 0;
+  cell(const SheetPosition &position) const noexcept = 0;
   /// The columns and rows of @p sheet up to the last one stating content. A
   /// whole column (`A:A`) reaches to the last row of it.
-  [[nodiscard]] virtual TableDimensions extent(std::uint32_t sheet) const = 0;
+  [[nodiscard]] virtual TableDimensions
+  extent(std::uint32_t sheet) const noexcept = 0;
   /// Visits cells of @p area in reading order; null values mean no answer.
   /// Empty and out-of-extent cells may be skipped; the default visits every
   /// in-extent position. A stop of @p visit ends the walk and is its result.
-  [[nodiscard]] virtual Result<void> for_each_cell(
-      const Area &area,
-      const std::function<Result<void>(
-          const SheetPosition &, const std::optional<Value> &)> &visit) const;
+  [[nodiscard]] virtual Result<void>
+  for_each_cell(const Area &area,
+                const std::function<Result<void>(const SheetPosition &,
+                                                 const std::optional<Value> &)>
+                    &visit) const noexcept;
   /// The sheet that holds the cached copy of @p sheet of another document,
   /// which a formula names as @p document: `1` in `[1]Sheet1!A1`, the url
   /// in `['file:///x.ods'#$Sheet1.A1]`. Nothing where the file caches none.
   [[nodiscard]] virtual std::optional<std::uint32_t>
   external_sheet([[maybe_unused]] std::string_view document,
-                 [[maybe_unused]] std::string_view sheet) const {
+                 [[maybe_unused]] std::string_view sheet) const noexcept {
     return std::nullopt;
   }
   /// What @p name stands for in a formula on @p sheet: a name local to the
@@ -51,7 +53,7 @@ public:
   /// the document defines none, or one that does not parse.
   [[nodiscard]] virtual std::optional<Node>
   name([[maybe_unused]] std::string_view name,
-       [[maybe_unused]] std::uint32_t sheet) const {
+       [[maybe_unused]] std::uint32_t sheet) const noexcept {
     return std::nullopt;
   }
 };

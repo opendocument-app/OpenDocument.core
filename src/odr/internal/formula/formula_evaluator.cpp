@@ -1210,8 +1210,9 @@ formula::Result<formula::Value> formula::power(const double x, const double y,
 
 formula::Result<void> formula::CellSource::for_each_cell(
     const Area &area,
-    const std::function<Result<void>(
-        const SheetPosition &, const std::optional<Value> &)> &visit) const {
+    const std::function<Result<void>(const SheetPosition &,
+                                     const std::optional<Value> &)> &visit)
+    const noexcept {
   const TableDimensions extent = this->extent(area.sheet);
   if (extent.rows == 0 || extent.columns == 0) {
     return {};
