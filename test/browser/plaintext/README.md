@@ -16,7 +16,8 @@ built from `src/odr/error_code.{hpp,cpp}` by `test/browser/serve.py`, because
 the library writes that table into the page.
 
 `tests.html` is three lines in two chunks, without
-`contenteditable`. The mode puts that on.
+`contenteditable`. The mode puts that on. It also deletes 513 lines across
+three chunks and checks the save log, undo and redo.
 
 Rules the checks follow:
 

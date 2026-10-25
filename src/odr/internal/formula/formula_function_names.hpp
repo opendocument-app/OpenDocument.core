@@ -17,6 +17,11 @@ struct FunctionName final {
 /// evaluator implements. `tools/formula/generate_function_names.py` writes it.
 [[nodiscard]] std::span<const FunctionName> function_names();
 
+/// @p letter in lowercase, for the letters of the generated names in
+/// @p language, as LibreOffice names it.
+[[nodiscard]] char32_t lower_function_letter(char32_t letter,
+                                             std::string_view language);
+
 /// @p formula with each function name spelled as LibreOffice shows it in the
 /// language of the BCP 47 tag @p locale. A name the language keeps stays.
 [[nodiscard]] std::string localized_functions(std::string_view formula,

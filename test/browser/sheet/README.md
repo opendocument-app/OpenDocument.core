@@ -100,6 +100,8 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
 - `formula-chain.html`: a chain of 600 formulas, whose end the first formula
   reads. The editor computes them in the order they read each other, so no
   evaluation nests in another.
+- `formula-structure.html`: row and column edits recalculate position-sensitive
+  formulas, including ones with no reads, through undo, redo and commits.
 - `formula-input.html`: formula input in a German sheet. A formula cell
   opens as the user types it, `;` and `,` read as the locale spells them,
   the op states the syntax of the file, and the result shows at once. A new
@@ -119,7 +121,7 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
   its booleans in, and the pair of the one word it shows: `WAHR` for a page
   that shows `FALSCH`, also in a French document.
 
-  The six pages load `odr-formula.js`, which the wasm build writes:
+  The formula pages load `odr-formula.js`, which the wasm build writes:
   `ODR_FORMULA_WASM=build-wasm/wasm/formula/odr-formula.js
   test/browser/sheet/serve`. Without it the first check fails.
 - `sorting.html`: the same questions after the sort control moved every row.

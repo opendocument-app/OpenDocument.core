@@ -156,6 +156,36 @@ TEST(OoxmlSpreadsheetWrite, a_formula_is_written_and_computed) {
       << worksheet_of(document);
 }
 
+TEST(OoxmlSpreadsheetWrite, a_formula_caches_a_string_as_a_value) {
+  const Document document = decode(workbook(""));
+  first_sheet(document).set_cell(
+      0, 0, CellValue("hello & world").with_formula("\"hello & world\""));
+
+  const std::string xml = worksheet_of(document);
+  EXPECT_EQ(xml.find("inlineStr"), std::string::npos);
+  EXPECT_NE(xml.find("<v>hello &amp; world</v>"), std::string::npos) << xml;
+  EXPECT_NE(xml.find(R"(t="str")"), std::string::npos) << xml;
+  const Document reopened = decode(std::make_shared<internal::MemoryFile>(
+      std::string(document.save_to_memory().memory_data().value())));
+  const CellValue value = first_sheet(reopened).cell(0, 0).value();
+  EXPECT_EQ(value.formula(), "\"hello & world\"");
+  EXPECT_EQ(value.text(), "hello & world");
+}
+
+TEST(OoxmlSpreadsheetWrite, an_invalid_formula_does_not_create_a_cell) {
+  const Document document = decode(workbook(""));
+  const Sheet sheet = first_sheet(document);
+  const TableDimensions before = sheet.dimensions();
+  const std::string xml = worksheet_of(document);
+
+  EXPECT_THROW(sheet.set_cell(3, 9, CellValue().with_formula("SUM(")),
+               UnsupportedOperation);
+
+  EXPECT_EQ(sheet.dimensions().columns, before.columns);
+  EXPECT_EQ(sheet.dimensions().rows, before.rows);
+  EXPECT_EQ(worksheet_of(document), xml);
+}
+
 TEST(OoxmlSpreadsheetWrite, a_formula_is_written_without_its_equals_sign) {
   const Document document =
       decode(workbook(R"(<row r="1"><c r="A1"><v>3</v></c></row>)"));

@@ -255,6 +255,34 @@
         "and an edit no longer lands",
         lines() === "Zfirst line|second line|third line"
       );
+
+      note("Deleting across three chunks keeps the edit and its undo");
+      odr.editing.enable();
+      odr.editing.committed();
+      body.textContent = "";
+      var original = [];
+      for (var c = 0; c < 3; ++c) {
+        var chunk = document.createElement("div");
+        chunk.className = "odr-text-lines odr-chunk odr-chunk-near";
+        body.appendChild(chunk);
+        for (var i = 0; i < (c === 2 ? 1 : 256); ++i) {
+          var line = document.createElement("div");
+          line.textContent = "line " + (original.length + 1);
+          original.push(line.textContent);
+          chunk.appendChild(line);
+        }
+      }
+      var range = document.createRange();
+      range.setStart(lineNodes()[0].firstChild, 0);
+      range.setEnd(lineNodes()[512].firstChild, lineNodes()[512].textContent.length);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+      input("deleteContentBackward");
+      check("deleting 513 lines leaves one empty line", lines() === "" && lineNodes().length === 1);
+      check("the empty chunks are removed", body.childElementCount === 1);
+      check("the log saves the deletion", ops().length === 1 && ops()[0].text === "");
+      check("undo restores all the text", odr.editing.undo() && lines() === original.join("|"));
+      check("redo deletes it again", odr.editing.redo() && lines() === "");
     </script>
   </body>
 </html>

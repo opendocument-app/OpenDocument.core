@@ -605,14 +605,13 @@
     return result.cells[r * result.columns + c];
   }
 
-  /// The formula of @p cell and what it reads in this sheet, null where it
-  /// states no reads. An array formula that reads none is kept, so a row or
-  /// column edit knows its range.
+  /// Every formula, including one with no reads: ROW() and COLUMN() still
+  /// change when their own cell moves.
   function readerOf(cell) {
     var at = odr.sheet.positionOf(cell);
     var stated = cell.getAttribute("data-odr-reads");
     var array = arrayOf(cell);
-    if (at === null || (stated === null && array === null)) {
+    if (at === null || !cell.hasAttribute("data-odr-formula")) {
       return null;
     }
     return {
@@ -630,7 +629,7 @@
       return readers;
     }
     readers = [];
-    var cells = table.querySelectorAll("td[data-odr-reads], td[data-odr-array]");
+    var cells = table.querySelectorAll("td[data-odr-formula]");
     for (var i = 0; i < cells.length; ++i) {
       var entry = readerOf(cells[i]);
       if (entry !== null) {
@@ -778,16 +777,10 @@
       }
       // a box is [first column, last column, first row, last row]
       var low = axis === "row" ? 2 : 0;
-      var edge = op[axis];
-      var inserts = op.op.indexOf("insert") === 0;
       entries = entries.filter(function (entry) {
-        entry.marked =
-          entry.marked ||
-          entry.reads.some(function (box) {
-            return inserts
-              ? box[low] < edge && edge <= box[low + 1] && box[low + 1] !== Infinity
-              : box[low] < edge + op.count && box[low + 1] >= edge;
-          });
+        // As in native recalculation: position-sensitive formulas can change
+        // even when the values they read do not.
+        entry.marked = true;
         entry.at[axis] = movedIndex(op, entry.at[axis]);
         entry.moves.push(op);
         entry.reads = entry.reads

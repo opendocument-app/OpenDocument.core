@@ -250,3 +250,20 @@ TEST(FormulaWriter, a_function_name_takes_the_language_of_the_document) {
   EXPECT_EQ(localized_functions("SUM(A1)", "no"),
             localized_functions("SUM(A1)", "nb"));
 }
+
+TEST(FormulaWriter, localized_names_ignore_non_ascii_case) {
+  EXPECT_EQ(english_functions("zÄhLeNwEnN(A1:A2,1)", "de-DE"),
+            "COUNTIF(A1:A2,1)");
+  EXPECT_EQ(english_functions("zählenwenn(A1:A2,1)", "de-DE"),
+            "COUNTIF(A1:A2,1)");
+  EXPECT_EQ(english_functions("сУмМ(A1:A2)", "ru-RU"), "SUM(A1:A2)");
+  EXPECT_EQ(english_functions("dł(A1)", "pl-PL"), "LEN(A1)");
+  EXPECT_EQ(english_functions("mínimo(A1:A2)", "pt-BR"), "MIN(A1:A2)");
+  EXPECT_EQ(english_functions("min(A1:A2)", "tr-TR"), "MIN(A1:A2)");
+  EXPECT_EQ(english_functions("yanlış()", "tr-TR"), "FALSE()");
+  EXPECT_EQ(english_functions(R"(LEN("zählenwenn(")+'сумм('!A1)", "de-DE"),
+            R"(LEN("zählenwenn(")+'сумм('!A1)");
+  const std::string invalid =
+      "Z" + std::string(1, static_cast<char>(0xFF)) + "(1)";
+  EXPECT_EQ(english_functions(invalid, "de-DE"), invalid);
+}
