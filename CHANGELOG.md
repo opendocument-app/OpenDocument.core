@@ -24,11 +24,10 @@ The release run heads these entries with the version and opens a fresh
 
 ### HTML output
 
-- Deleting text across three or more chunks completes and can be saved,
-  undone and redone.
-- A row or column edit recalculates every formula in the sheet page, including
-  `ROW()` and `COLUMN()` and references whose position changes.
-
+- In an editable text file, a delete across three or more chunks of lines
+  completes, and it can be saved, undone and redone.
+- A row or column edit recalculates every formula in the sheet page, also
+  `ROW()`, `COLUMN()` and a reference whose position changes.
 - `font-family` ends with a generic family, so a font that is not installed
   falls back to one of the same kind: a sans-serif font for Calibri, not the
   browser's serif default. A bare font name is quoted.
