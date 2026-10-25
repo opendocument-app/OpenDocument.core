@@ -45,12 +45,12 @@ draws no text below 9px. The oracle is a document served to a real webkit.
 
 `chunks.html` checks that `viewport.js` loads a chunk that names its source
 once the chunk is near, and one that `odr.chunks.show` shows, as
-`HtmlConfig::lazy_loading` writes them (`lazy-loading.md` decision 3).
+`HtmlConfig::lazy_loading` writes them (`lazy-loading.md` decision 2).
 `chunk-1.js` and `chunk-2.js` are those chunks.
 
 `search.html` checks that `odr.search` counts the hits of the chunks that
 have not loaded from the search index, and loads the chunk of a hit when
-the reader steps to it (`lazy-loading.md` decision 8). `search-index.js`
+the reader steps to it (`lazy-loading.md` decision 4). `search-index.js`
 is the index, and `search-1.js` and `search-2.js` are the chunks. The
 report is text of the page too, so no check names a keyword.
 `search-early.html` fills a chunk before the index has counted it.

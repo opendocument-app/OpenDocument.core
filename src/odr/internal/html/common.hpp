@@ -79,7 +79,7 @@ struct WritingState {
 
   /// Whether the page box of a slide or a drawing page is a chunk, and if so,
   /// whether it is near the viewport in the markup; nothing in a view of one
-  /// page, which has nothing to skip (`lazy-loading.md` decision 10).
+  /// page, which has nothing to skip (`lazy-loading.md` decision 3).
   [[nodiscard]] std::optional<bool> page_chunk_near() const {
     return m_page_chunk_near;
   }

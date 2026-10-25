@@ -47,24 +47,25 @@ The release run heads these entries with the version and opens a fresh
   page loads when the reader comes near. `bring_offline` writes the
   scripts, and the HTTP server serves them. A print shows a part that has
   not loaded as empty space.
-  - A text file of 1 M lines is then a page of 485 KB.
+  - A text file of 1 M lines is then a page of 495 KB.
   - The sheet of 500 K cells in `efficiency-big-1.ods` is a page of 370 KB.
     Such a sheet has no sort control, because a sort needs every row.
   - A pdf renders each page after the first alone, and links the fonts as
     files. The 2985 pages of a technical manual are a document of 1.4 MB,
-    which the HTTP server answers after 0.5 s, not 5.4 s. A pdf in the
-    single layer keeps every page in the document.
-- A pdf page that loads renders in about half the time, because the service
-  tests once for each font whether it re-encodes, not once for each page.
+    which the HTTP server answers after 0.5 s, not 5.4 s. A page renders in
+    half the time it took, because the service tests each font once
+    whether it re-encodes. A pdf in the single layer keeps every page in
+    the document.
 - `odr.search` finds the parts that have not loaded, from a search index
-  that `HtmlConfig::lazy_loading` writes beside the page:
-  `text-search/<n>.js`, `sheet<n>-search/<m>.js` and `pdf-search/<n>.js`.
-  For a pdf, the service renders each page once for the index and keeps
-  the text: 4.9 s for the 2985 pages of the technical manual, whose index
-  is 5.3 MB. A step to a hit loads its part.
-- `odr.search` returns the hits it knows at once. The new
-  `odr.onSearchChange({count, current, complete})`, which the host bridge
-  forwards as `searchChange`, and `odr.searchDone()` give the final count.
+  that `HtmlConfig::lazy_loading` writes beside the page
+  (`text-search/<n>.js`, `sheet<n>-search/<m>.js`, `pdf-search/<n>.js`).
+  A step to a hit loads its part. For a pdf, the service renders each page
+  once for the index and keeps the text: 4.9 s for the technical manual,
+  whose index is 5.3 MB.
+  - Where parts load, `odr.search` returns the hits it knows at once. The
+    new `odr.onSearchChange({count, current, complete})`, which the host
+    bridge forwards as `searchChange`, and `odr.searchDone()`, a Promise,
+    give the final count.
 - `odr.search` no longer finds the row numbers and the column letters of a
   sheet, because they label the cells and are not their content.
 - With `HtmlConfig::embed_images` off, an image loads once the reader comes
@@ -73,7 +74,8 @@ The release run heads these entries with the version and opens a fresh
 - With `HtmlConfig::embed_images` off, an SVM image is a file of SVG, as
   its data url is, and every linked image states its media type. Before,
   the browser got the SVM as it is, labelled `image/jpg`, and showed a
-  broken image.
+  broken image. An SVM that does not convert is an empty file and a
+  warning.
 
 ### Spreadsheets
 

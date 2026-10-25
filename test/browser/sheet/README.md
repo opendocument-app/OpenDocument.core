@@ -48,7 +48,7 @@ frame on `<body>` with `data-odr-editable` and `data-odr-keyboard`, where
   goes out of flow, no row changes height, and a click inside it is for the
   text.
 - `chunks.html`: a sheet in three tables, one for each chunk of rows
-  (`lazy-loading.md` decision 6). A position answers across the chunks. A
+  (`lazy-loading.md` decision 3). A position answers across the chunks. A
   row goes into the chunk of the row it moves, and a chunk with no row left
   goes. A column goes into every table. A write into a far chunk spills only
   once the chunk is near, and a sort keeps the count of each chunk.

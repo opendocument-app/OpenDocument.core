@@ -181,7 +181,7 @@ TEST(html, linked_images_are_served) {
 }
 
 // A linked image holds what its data url would, with its media type, and loads
-// once it is near the viewport (`lazy-loading.md` decision 9).
+// once it is near the viewport (`lazy-loading.md` decision 5).
 TEST(html, a_linked_image_is_shown_as_its_data_url_shows_it) {
   HtmlConfig config;
   config.embed_images = false;
@@ -711,7 +711,7 @@ TEST(html, a_text_file_writes_its_lines_in_chunks) {
   EXPECT_EQ(page.find("odr-line 512"), std::string::npos);
 }
 
-// `lazy-loading.md` decision 3: the chunks after the first are scripts of
+// `lazy-loading.md` decision 2: the chunks after the first are scripts of
 // their own, which the page loads, and the service serves.
 // The file changes under the service, so a render after an edit shows it.
 TEST(html, a_text_file_renders_the_text_of_an_edit) {
@@ -930,7 +930,7 @@ TEST(html, a_sheet_writes_a_search_index) {
   EXPECT_TRUE(second.str().ends_with("\\nr4097c64\"});\n"));
 }
 
-// `lazy-loading.md` decision 7: a pdf page after the first renders alone, and
+// `lazy-loading.md` decision 3: a pdf page after the first renders alone, and
 // the fonts are files that every page links.
 TEST(html, a_pdf_loads_its_later_pages) {
   const DecodedFile file = open(
@@ -1035,7 +1035,7 @@ TEST(html, lazy_layout_off_writes_no_chunk) {
 
 // A slide and a drawing page state their size, so each one is a chunk of the
 // whole document, and the first one is near the viewport in the markup
-// (`lazy-loading.md` decision 10).
+// (`lazy-loading.md` decision 3).
 TEST(html, a_slide_is_a_chunk_of_the_document) {
   for (const char *path : {"odr-public/odp/presentation-yunation.odp",
                            "odr-public/odg/sample.odg"}) {

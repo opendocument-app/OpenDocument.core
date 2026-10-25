@@ -1216,13 +1216,13 @@ std::vector<pdf::PageElement> page_elements(const pdf::Page &page,
 
 class HtmlServiceImpl;
 
-/// Where page @p number loads from (`lazy-loading.md` decision 7).
+/// Where page @p number loads from (`lazy-loading.md` decision 3).
 std::string page_script_path(const std::size_t number) {
   return "pdf-pages/" + std::to_string(number) + ".js";
 }
 
 /// The pages that one script of the search index holds the text of
-/// (`lazy-loading.md` decision 8).
+/// (`lazy-loading.md` decision 4).
 constexpr std::size_t pages_per_index = 64;
 
 /// Where the text of index group @p group loads from.
@@ -1649,7 +1649,7 @@ public:
 
   /// What the dual layer writes: the resources, and for a fragment the text of
   /// its page as `search.js` reads it, a `\n` between two lines of its `.sel`
-  /// layer (`lazy-loading.md` decision 8).
+  /// layer (`lazy-loading.md` decision 4).
   struct DualLayerPages {
     HtmlResources resources;
     std::vector<std::string> texts;
@@ -1679,7 +1679,7 @@ public:
   }
 
   /// @p pages rendered, and @p later as empty pages that load as scripts
-  /// (`lazy-loading.md` decision 7). A @p fragment is the one page of such a
+  /// (`lazy-loading.md` decision 3). A @p fragment is the one page of such a
   /// script: the rules it needs and what its page box holds, which the script
   /// puts into the empty page.
   DualLayerPages write_pages_dual_layer(
