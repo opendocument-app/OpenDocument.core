@@ -53,9 +53,7 @@
   // The folded `text` plus a folded-index to source-index map (with an end
   // sentinel), so a match maps back onto the source string. Folding per
   // character is what keeps that map right when a character folds to none or
-  // to several. ASCII folds to as many characters, so its map is null: the
-  // identity, which a page of a million lines would else hold an entry of
-  // for each character.
+  // to several. ASCII folds one to one, so its map is null, the identity.
   function fold(text) {
     if (ascii.test(text)) {
       return { text: text.replace(/[\t\n]/g, " ").toLowerCase(), map: null };
@@ -80,20 +78,19 @@
   }
 
   var inlineTags = {
-    A: true, ABBR: true, B: true, BDI: true, BDO: true, BIG: true, BR: true,
-    CITE: true, CODE: true, DATA: true, DEL: true, DFN: true, EM: true,
-    FONT: true, I: true, IMG: true, INS: true, KBD: true, LABEL: true,
-    MARK: true, Q: true, S: true, SAMP: true, SMALL: true, SPAN: true,
-    STRONG: true, SUB: true, SUP: true, TIME: true, U: true, VAR: true,
-    WBR: true, "X-S": true,
+    A: true, ABBR: true, AUDIO: true, B: true, BDI: true, BDO: true,
+    BIG: true, BR: true, CITE: true, CODE: true, DATA: true, DEL: true,
+    DFN: true, EM: true, FONT: true, I: true, IMG: true, INS: true, KBD: true,
+    LABEL: true, MARK: true, Q: true, S: true, SAMP: true, SMALL: true,
+    SPAN: true, STRONG: true, SUB: true, SUP: true, TIME: true, U: true,
+    VAR: true, VIDEO: true, WBR: true,
   };
 
-  // Whether an element flows inline, from what states it: its own style, the
-  // one class the frontend css makes a block of, its tag. Not
-  // `getComputedStyle`, which computes the style of a whole chunk the browser
-  // does not lay out: on a text file of 200,000 lines, a search took a
-  // gigabyte and a minute. An element of another namespace, such as svg,
-  // flows inline, and an unknown element too, as the browser has it.
+  // Whether an element flows inline, from its own style, the one class the
+  // frontend css makes a block of, and its tag. Not `getComputedStyle`,
+  // which computes the style of a whole chunk the browser does not lay out.
+  // An svg element and a custom element other than `x-p` flow inline, as in
+  // the browser.
   function isInline(element) {
     var display = element.style.display;
     if (display !== "") {

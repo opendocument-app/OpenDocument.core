@@ -1167,9 +1167,8 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
                 clb("data-odr-chunk-text", index_path);
               }
             })
-            // the size first, which a browser before `auto` (Chrome 95)
-            // keeps where it drops the second declaration and with it any
-            // height of a chunk it does not lay out
+            // a browser before Chrome 95 drops the `auto` declaration and
+            // keeps only the size
             .set_style(
                 lazy ? std::optional<HtmlWritable>(
                            "contain-intrinsic-size:0 " + pixels +
