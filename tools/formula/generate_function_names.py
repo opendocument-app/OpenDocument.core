@@ -127,11 +127,18 @@ def main() -> None:
             f'      {{"{language}", "{_escape(english)}", "{_escape(localized)}"}},'
         )
     lines += ["  }};", "  return names;", "}", ""]
-    # Only the alphabet of these names is needed. Turkish dotted I is
-    # locale-sensitive and handled by the caller.
+    # Only the alphabet of these names is needed. Turkish pairs I with a
+    # dotless and İ with a dotted lowercase letter, which `lower()` gets wrong.
     letters = sorted(set("".join(localized for _, _, localized in rows)))
     lines += [
-        "char32_t formula::lower_function_letter(const char32_t letter) {",
+        "char32_t formula::lower_function_letter(const char32_t letter,",
+        "                                        const std::string_view language) {",
+        '  if (language == "tr" && letter == U\'I\') {',
+        "    return U'ı';",
+        "  }",
+        '  if (language == "tr" && letter == U\'İ\') {',
+        "    return U'i';",
+        "  }",
         "  switch (letter) {",
     ]
     for letter in letters:

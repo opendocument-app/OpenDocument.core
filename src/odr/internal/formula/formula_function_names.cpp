@@ -1540,7 +1540,14 @@ std::span<const formula::FunctionName> formula::function_names() {
   return names;
 }
 
-char32_t formula::lower_function_letter(const char32_t letter) {
+char32_t formula::lower_function_letter(const char32_t letter,
+                                        const std::string_view language) {
+  if (language == "tr" && letter == U'I') {
+    return U'ı';
+  }
+  if (language == "tr" && letter == U'İ') {
+    return U'i';
+  }
   switch (letter) {
   case U'A':
     return U'a';

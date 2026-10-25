@@ -19,23 +19,12 @@ std::string language_of(const std::string_view locale) {
   return language == "no" ? "nb" : language;
 }
 
-/// Case matching for the generated names, including Turkish dotted I.
+/// Whether two names in @p language are the same, ignoring case.
 bool same_name(std::string_view a, std::string_view b,
                const std::string_view language) {
-  const auto lower = [language](const char32_t c) {
-    if (language == "tr") {
-      if (c == U'I') {
-        return U'ı';
-      }
-      if (c == U'İ') {
-        return U'i';
-      }
-    }
-    return lower_function_letter(c);
-  };
   while (!a.empty() && !b.empty()) {
-    if (lower(util::string::next_utf8(a)) !=
-        lower(util::string::next_utf8(b))) {
+    if (lower_function_letter(util::string::next_utf8(a), language) !=
+        lower_function_letter(util::string::next_utf8(b), language)) {
       return false;
     }
   }
