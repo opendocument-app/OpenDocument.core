@@ -842,6 +842,54 @@ TEST(html, a_sheet_loads_its_later_chunks) {
   EXPECT_EQ(editable.str().find(R"(data-odr-chunk-src=")"), std::string::npos);
 }
 
+// The text of the rows that load is in the scripts of a search index: a block
+// for each cell, and no header.
+TEST(html, a_sheet_writes_a_search_index) {
+  std::string csv;
+  // 64 cells a row make chunks of 64 rows, so chunks 0 to 64
+  for (std::uint32_t row = 0; row < 64 * 64 + 1; ++row) {
+    for (std::uint32_t column = 0; column < 64; ++column) {
+      csv += (column == 0 ? "" : ",") + std::string("r") +
+             std::to_string(row + 1) + "c" + std::to_string(column + 1);
+    }
+    csv += "\n";
+  }
+  const DecodedFile file =
+      open(File::from_memory(csv), DecodeOptions::as_csv({}));
+  HtmlConfig config;
+  config.lazy_loading = true;
+  const HtmlService service = html::translate(file, config, Logger::null());
+  const std::string path = service.list_views().at(1).path();
+
+  std::ostringstream page;
+  service.write_html(path, page);
+  EXPECT_NE(
+      page.str().find(
+          R"(data-odr-chunk="0-1" data-odr-chunk-src="sheet0-chunks/1.js" data-odr-chunk-text="sheet0-search/0.js")"),
+      std::string::npos);
+  EXPECT_NE(
+      page.str().find(
+          R"(data-odr-chunk-src="sheet0-chunks/64.js" data-odr-chunk-text="sheet0-search/1.js")"),
+      std::string::npos);
+  EXPECT_NE(page.str().find(R"(data-odr-chunk-src="sheet0-chunks/2.js">)"),
+            std::string::npos);
+
+  ASSERT_TRUE(service.exists("sheet0-search/0.js"));
+  std::ostringstream first;
+  service.write("sheet0-search/0.js", first);
+  EXPECT_TRUE(
+      first.str().starts_with(R"(odr.chunks.text({"0-1":"r65c1\nr65c2\n)"));
+  EXPECT_NE(first.str().find(R"(\nr128c64","0-2":"r129c1\n)"),
+            std::string::npos);
+  EXPECT_EQ(first.str().find(R"("0-64":)"), std::string::npos);
+
+  std::ostringstream second;
+  service.write("sheet0-search/1.js", second);
+  EXPECT_TRUE(
+      second.str().starts_with(R"(odr.chunks.text({"0-64":"r4097c1\n)"));
+  EXPECT_TRUE(second.str().ends_with("\\nr4097c64\"});\n"));
+}
+
 // `lazy-loading.md` decision 7: a pdf page after the first renders alone, and
 // the fonts are files that every page links.
 TEST(html, a_pdf_loads_its_later_pages) {

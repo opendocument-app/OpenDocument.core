@@ -49,6 +49,10 @@ The release run heads these entries with the version and opens a fresh
   `odr.onSearchChange({count, current, complete})`, which the host bridge
   forwards as `searchChange`, and `odr.searchDone()` give the final count.
   A step to a hit loads its chunk.
+- `odr.search` in a sheet whose rows load finds the rows that have not
+  loaded the same way, from `sheet<n>-search/<m>.js`.
+- `odr.search` no longer finds the row numbers and the column letters of a
+  sheet, because they label the cells and are not their content.
 - `HtmlConfig::lazy_loading` loads the rows of a sheet the same way. The
   sheet of 500 K cells in `efficiency-big-1.ods` is then a page of 370 KB.
   Such a sheet has no sort control, because a sort needs every row.

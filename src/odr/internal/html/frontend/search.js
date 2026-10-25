@@ -81,7 +81,8 @@
   }
 
   // Rejected by the subtree, `aria-hidden` included: that is what keeps a pdf's
-  // glyph layer out of a search of the same page's text layer.
+  // glyph layer out of a search of the same page's text layer. The numbers and
+  // letters of a sheet label its rows and columns; they are not its content.
   function textNodes(root) {
     var walker = document.createTreeWalker(
       root,
@@ -93,7 +94,10 @@
             return name === "SCRIPT" ||
               name === "STYLE" ||
               name === "MARK" ||
-              node.getAttribute("aria-hidden") === "true"
+              node.getAttribute("aria-hidden") === "true" ||
+              (name === "TH" &&
+                (node.classList.contains("odr-sheet-row-header") ||
+                  node.classList.contains("odr-sheet-column-header")))
               ? NodeFilter.FILTER_REJECT
               : NodeFilter.FILTER_SKIP;
           }

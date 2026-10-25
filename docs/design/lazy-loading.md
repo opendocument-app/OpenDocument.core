@@ -441,6 +441,11 @@ every hit in 175 ms, and the counts are those of the file (120, 33407 and
 566808 hits). A search with the index loaded takes 155 ms. A step to the
 last hit loads its chunk and selects the hit in 9 ms.
 
+**Measured** on the sheet of 500 K cells in `efficiency-big-1.ods`: the
+index is 2 scripts of 68 KB, beside 100 MB of chunks. For four keywords, the
+count from the index is the count of a page with every row in it, and the
+search takes 6 to 13 ms there, against 205 to 398 ms in that page.
+
 **Over HTTP, the server searches.** The index then stays on the server,
 and the page does not load 9 MB of text for one keyword:
 
