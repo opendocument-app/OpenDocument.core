@@ -361,7 +361,7 @@ chunks, one string for each chunk:
 
 ```js
 // text-search/0.js
-odr.chunks.text(0, ["the text of chunk 0", "the text of chunk 1", …]);
+odr.chunks.text({"1": "the text of chunk 1", "2": "the text of chunk 2", …});
 ```
 
 A chunk that loads names its index script, as it names its own:
@@ -372,7 +372,8 @@ A chunk that loads names its index script, as it names its own:
      data-odr-chunk-text="text-search/0.js"></div>
 ```
 
-The first argument is the first chunk the script covers. The paths follow
+The keys are the keys of `data-odr-chunk`, which `odr.chunks.fill` takes
+too. A script holds only the chunks that load, not the first. The paths follow
 the paths of the chunks: `text-search/<n>.js`, `sheet<n>-search/<m>.js`,
 `pdf-search/<n>.js`. The view returns each script as an `HtmlResource`, so
 `bring_offline` writes it and `HttpServer` serves it with no new route
@@ -436,7 +437,7 @@ and the page does not load 9 MB of text for one keyword:
 
 ```js
 // pdf-search/hits/protocol%20stack.js
-odr.chunks.hits("protocol stack", [[0, 2], [17, 1], [2210, 5]]);
+odr.chunks.hits("protocol stack", {"p1": 2, "p18": 1, "p2211": 5});
 ```
 
 1. The page folds the keyword and asks for `<index directory>/hits/<the
