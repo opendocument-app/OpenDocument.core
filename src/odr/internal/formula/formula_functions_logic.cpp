@@ -103,32 +103,30 @@ Result<Value> combine(const Call &call, const bool start, const Combine &next) {
   }
   bool result = start;
   bool any = false;
+  Errors errors;
+  const auto visit = [&](const Value &value,
+                         const bool stated) -> Result<void> {
+    if (const auto *boolean = std::get_if<bool>(&value.content)) {
+      result = next(result, *boolean);
+      any = true;
+    } else if (const auto *number = std::get_if<double>(&value.content)) {
+      result = next(result, *number != 0);
+      any = true;
+    } else if (const auto *error = std::get_if<ErrorType>(&value.content)) {
+      errors.add(*error);
+    } else if (const auto *text = std::get_if<std::string>(&value.content);
+               text != nullptr && stated) {
+      const Result<ErrorType> read = truth_of_text(*text);
+      if (!read.has_value()) {
+        return std::unexpected(read.error());
+      }
+      errors.add(*read);
+    }
+    return {};
+  };
   for (std::size_t i = 0; i < call.size(); ++i) {
-    Errors errors;
-    if (const Result<void> walked = call.for_each_value(
-            i,
-            [&](const Value &value, const bool stated) -> Result<void> {
-              if (const auto *boolean = std::get_if<bool>(&value.content)) {
-                result = next(result, *boolean);
-                any = true;
-              } else if (const auto *number =
-                             std::get_if<double>(&value.content)) {
-                result = next(result, *number != 0);
-                any = true;
-              } else if (const auto *error =
-                             std::get_if<ErrorType>(&value.content)) {
-                errors.add(*error);
-              } else if (const auto *text =
-                             std::get_if<std::string>(&value.content);
-                         text != nullptr && stated) {
-                const Result<ErrorType> read = truth_of_text(*text);
-                if (!read.has_value()) {
-                  return std::unexpected(read.error());
-                }
-                errors.add(*read);
-              }
-              return {};
-            });
+    errors = Errors();
+    if (const Result<void> walked = call.for_each_value(i, visit);
         !walked.has_value()) {
       return std::unexpected(walked.error());
     }
