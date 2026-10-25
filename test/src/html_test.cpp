@@ -180,6 +180,46 @@ TEST(html, linked_images_are_served) {
   check("odr-public/xlsx/sample.xlsx");
 }
 
+// A linked image holds what its data url would, with its media type, and loads
+// once it is near the viewport (`lazy-loading.md` decision 9).
+TEST(html, a_linked_image_is_shown_as_its_data_url_shows_it) {
+  HtmlConfig config;
+  config.embed_images = false;
+
+  // the replacement image of an object is a starview metafile
+  const HtmlService svm = html::translate(
+      open(TestData::test_file_path("odr-public/odt/XYZ-Rechnung.odt")),
+      config);
+  std::ostringstream page;
+  svm.list_views().at(0).write_html(page);
+  EXPECT_NE(
+      page.str().find(
+          R"(src="ObjectReplacements/Object 1.svg" loading="lazy" decoding="async")"),
+      std::string::npos);
+  ASSERT_TRUE(svm.exists("ObjectReplacements/Object 1.svg"));
+  EXPECT_EQ(svm.mimetype("ObjectReplacements/Object 1.svg"), "image/svg+xml");
+  std::ostringstream svg;
+  svm.write("ObjectReplacements/Object 1.svg", svg);
+  EXPECT_TRUE(svg.str().starts_with("<svg"));
+
+  const HtmlService png = html::translate(
+      open(TestData::test_file_path("odr-public/docx/sample4.docx")), config);
+  png.list_views().at(0).write_html(page);
+  EXPECT_EQ(png.mimetype("word/media/image1.png"), "image/png");
+
+  // a data url is not fetched, so it loads at once
+  std::ostringstream embedded;
+  html::translate(
+      open(TestData::test_file_path("odr-public/odt/XYZ-Rechnung.odt")),
+      HtmlConfig())
+      .list_views()
+      .at(0)
+      .write_html(embedded);
+  EXPECT_EQ(embedded.str().find(R"(loading="lazy")"), std::string::npos);
+  EXPECT_NE(embedded.str().find("data:image/svg+xml;base64,"),
+            std::string::npos);
+}
+
 TEST(html, document_images_yield_to_shipped_resources) {
   for (const auto &[path, target] : std::array{
            std::pair{"odr-public/odt/image-text-wrap.odt", "search.js"},

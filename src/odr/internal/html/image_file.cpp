@@ -51,6 +51,53 @@ void write_image_src(const ImageFile &image_file, std::ostream &out,
   out << file_to_url(*image_file.stream(), mime_type);
 }
 
+/// An SVM image as the SVG a browser shows, converted when it is written.
+class SvgImageResource final : public abstract::HtmlResource {
+public:
+  SvgImageResource(File file, std::string path, const Logger &logger)
+      : m_file{std::move(file)}, m_path{std::move(path)}, m_logger{logger} {}
+
+  [[nodiscard]] HtmlResourceType type() const override {
+    return HtmlResourceType::image;
+  }
+  [[nodiscard]] const std::string &mime_type() const override {
+    static const std::string mime_type = "image/svg+xml";
+    return mime_type;
+  }
+  [[nodiscard]] const std::string &name() const override { return m_path; }
+  [[nodiscard]] const std::string &path() const override { return m_path; }
+  [[nodiscard]] const std::optional<File> &file() const override {
+    return m_file;
+  }
+  [[nodiscard]] bool is_shipped() const override { return false; }
+  [[nodiscard]] bool is_external() const override { return false; }
+  [[nodiscard]] bool is_accessible() const override { return true; }
+
+  /// Nothing where the conversion fails, so a broken image does not stop
+  /// `bring_offline` or the server.
+  void write_resource(std::ostream &os) const override {
+    if (!m_file.has_value()) {
+      return;
+    }
+    try {
+      const svm::SvmFile svm_file(
+          std::make_shared<MemoryFile>(*m_file->impl()));
+      std::ostringstream svg;
+      svm::translate_to_svg(svm_file, svg, m_logger);
+      os << std::move(svg).str();
+    } catch (const std::exception &e) {
+      ODR_WARNING(m_logger, "svm translation failed: " << e.what());
+    } catch (...) {
+      ODR_WARNING(m_logger, "svm translation failed");
+    }
+  }
+
+private:
+  std::optional<File> m_file;
+  std::string m_path;
+  Logger m_logger;
+};
+
 /// An image file knows exactly which format it is holding, so the data url
 /// says so. The table's first mime type is the canonical one.
 std::string image_mime_type(const ImageFile &image_file) {
@@ -200,6 +247,25 @@ void html::translate_image_src(const ImageFile &image_file, std::ostream &out,
                                const HtmlConfig & /*config*/,
                                const Logger &logger) {
   write_image_src(image_file, out, image_mime_type(image_file), logger);
+}
+
+odr::HtmlResource html::linked_image_resource(const File &file,
+                                              std::string path,
+                                              const Logger &logger) {
+  std::string mime_type = "image/jpg";
+  try {
+    const ImageFile image_file = odr::open(file).as_image_file();
+    if (image_file.file_type() == FileType::starview_metafile) {
+      path += ".svg";
+      return odr::HtmlResource(
+          std::make_shared<SvgImageResource>(file, std::move(path), logger));
+    }
+    mime_type = image_mime_type(image_file);
+  } catch (...) {
+    // what nothing names goes out as the data url labels it
+  }
+  return HtmlResource::create(HtmlResourceType::image, std::move(mime_type),
+                              path, path, file, false, false, true);
 }
 
 HtmlService html::create_image_service(const ImageFile &image_file,
