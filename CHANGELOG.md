@@ -24,6 +24,11 @@ The release run heads these entries with the version and opens a fresh
 
 ### HTML output
 
+- Deleting text across three or more chunks completes and can be saved,
+  undone and redone.
+- A row or column edit recalculates every formula in the sheet page, including
+  `ROW()` and `COLUMN()` and references whose position changes.
+
 - `font-family` ends with a generic family, so a font that is not installed
   falls back to one of the same kind: a sans-serif font for Calibri, not the
   browser's serif default. A bare font name is quoted.
@@ -117,6 +122,10 @@ The release run heads these entries with the version and opens a fresh
   syntax of the file, and a formula cell opens on its formula. A formula cell
   is locked only where the build has no module. A formula that does not
   parse refuses with the new code `formulaInvalid` (1012).
+- Localized function input accepts lowercase and mixed-case non-ASCII letters,
+  including German umlauts and Russian names.
+- An xlsx formula with a cached string result writes valid formula-result XML.
+  Rejecting an invalid formula no longer creates an empty cell or grows the sheet.
 - `Sheet::set_cell` and the `setCell` op write a formula: `{"type":
   "formula", "formula": "of:=[.A1]*2"}`, in the syntax of the file. A formula
   cell can now be overwritten, except the anchor of an array or of a shared

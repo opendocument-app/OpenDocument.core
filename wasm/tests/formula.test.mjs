@@ -150,6 +150,9 @@ describe('formula module', { skip: path === '' && 'no odr-formula.js' }, () => {
     assert.equal(module.toFile('summe(A1)', 'ooxml', 'de-AT'), 'SUM(A1)');
     assert.equal(module.toFile('ZÄHLENWENN(A1:A3,1)', 'ooxml', 'de-DE'),
       'COUNTIF(A1:A3,1)');
+    assert.equal(module.toFile('zählenwenn(A1:A3,1)', 'ooxml', 'de-DE'),
+      'COUNTIF(A1:A3,1)');
+    assert.equal(module.toFile('сумм(A1:A3)', 'ooxml', 'ru-RU'), 'SUM(A1:A3)');
     // an English name and a name in a text stay
     assert.equal(module.toFile('SUM(A1)', 'ooxml', 'de-DE'), 'SUM(A1)');
     assert.equal(module.toFile('LEN("SUMME(")', 'ooxml', 'de-DE'),

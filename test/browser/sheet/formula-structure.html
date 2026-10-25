@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>position-sensitive formula checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body class="odr-body" data-odr-editable="true"
+        data-odr-formula-syntax="ooxml" data-odr-formula-settings='{"dialect":"excel"}'>
+    <div class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="s">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" /><col style="width:80px" /><col style="width:80px" />
+        <col style="width:80px" /><col style="width:80px" /><col style="width:80px" />
+        <thead><tr><th class="odr-sheet-corner"></th>
+          <th class="odr-sheet-column-header">A</th><th class="odr-sheet-column-header">B</th>
+          <th class="odr-sheet-column-header">C</th><th class="odr-sheet-column-header">D</th>
+          <th class="odr-sheet-column-header">E</th>
+        </tr></thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" /><col style="width:80px" /><col style="width:80px" />
+        <col style="width:80px" /><col style="width:80px" /><col style="width:80px" />
+        <tbody>
+          <tr><th class="odr-sheet-row-header">1</th>
+            <td class="odr-value-type-float" data-odr-formula="ROW()">1</td>
+            <td class="odr-value-type-float" data-odr-formula="ROW(A1)" data-odr-reads="0,0,0,0,0">1</td>
+            <td class="odr-value-type-float" data-odr-formula="COLUMN()">3</td>
+            <td class="odr-value-type-float" data-odr-formula="COLUMN(B1)" data-odr-reads="0,1,1,0,0">2</td>
+            <td class="odr-value-type-float" data-odr-formula='CELL("row",A1)' data-odr-reads="0,0,*,0,*">1</td>
+          </tr>
+          <tr><th class="odr-sheet-row-header">2</th>
+            <td class="odr-value-type-float" data-odr-formula="SUM(A1:E1)" data-odr-reads="0,0,4,0,0">8</td>
+            <td></td><td></td><td></td><td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="report"></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="odr-formula.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      function shown(column, row) {
+        var values = [];
+        for (var i = 0; i < 5; ++i) {
+          values.push(odr.sheet.cellAt(column + i, row).textContent);
+        }
+        values.push(odr.sheet.cellAt(column, row + 1).textContent);
+        return values.join("|");
+      }
+      odr.editing.enable();
+      odr.editing.loadFormulas().then(function (computes) {
+        check("the page computes", computes === true);
+        odr.sheet.pin({ column: 0, row: 0 });
+        check("insert a row above the references", odr.editing.insertRows());
+        check("position-sensitive formulas and their dependent update", shown(0, 1) === "2|2|3|2|2|11", shown(0, 1));
+        check("the reference moved too", odr.sheet.formulaAt(1, 1) === "ROW(A2)");
+        odr.editing.undo();
+        check("undo restores the original results", shown(0, 0) === "1|1|3|2|1|8");
+        odr.editing.redo();
+        check("redo recomputes", shown(0, 1) === "2|2|3|2|2|11");
+        odr.editing.committed();
+        odr.sheet.pin({ column: 0, row: 1 });
+        check("insert a column left of the references", odr.editing.insertColumns());
+        check("column positions and the dependent update after a save", shown(1, 1) === "2|2|4|3|2|13", shown(1, 1));
+        odr.editing.undo();
+        check("undo after a save restores the results", shown(0, 1) === "2|2|3|2|2|11");
+        odr.editing.redo();
+        odr.editing.committed();
+        odr.sheet.pin({ column: 0, row: 0 });
+        check("delete the inserted row", odr.editing.deleteRows());
+        check("deleting above the references also recomputes", shown(1, 0) === "1|1|4|3|1|10", shown(1, 0));
+        check("nothing remains stale", document.querySelectorAll(".odr-sheet-stale").length === 0);
+      });
+    </script>
+  </body>
+</html>

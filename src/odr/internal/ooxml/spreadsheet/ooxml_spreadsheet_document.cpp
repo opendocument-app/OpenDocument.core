@@ -565,7 +565,7 @@ public:
     return true;
   }
   /// ECMA-376 18.3.1.4: a cell states its value as `v`, or as the text under
-  /// `is` with `t="inlineStr"`. A written string goes inline - rewriting the
+  /// `is` with `t="inlineStr"`. A literal string goes inline - rewriting the
   /// shared entry would rewrite every other cell indexing it.
   void sheet_set_cell(const ElementIdentifier element_id,
                       const std::uint32_t column, const std::uint32_t row,
@@ -574,6 +574,10 @@ public:
         ((value.type() == ValueType::date || value.type() == ValueType::time) &&
          !value.has_number())) {
       throw UnsupportedOperation(); // no form to write it in
+    }
+    if (value.has_formula() &&
+        !formula::parse(value.formula(), formula::Syntax::ooxml).has_value()) {
+      throw UnsupportedOperation();
     }
     const ElementRegistry::Sheet &sheet =
         m_registry->sheet_element_at(element_id);
@@ -595,10 +599,6 @@ public:
         throw UnsupportedOperation();
       }
     }
-    if (value.has_formula() &&
-        !formula::parse(value.formula(), formula::Syntax::ooxml).has_value()) {
-      throw UnsupportedOperation();
-    }
 
     pugi::xml_node node = get_node(cell_id);
     const bool had_formula = !node.child("f").empty();
@@ -611,14 +611,19 @@ public:
     case ValueType::unknown:
       break;
     case ValueType::string: {
-      node.append_attribute("t").set_value("inlineStr");
-      pugi::xml_node text_node = node.append_child("is").append_child("t");
-      // the text is written verbatim, so a leading space in one has to survive
-      text_node.append_attribute("xml:space").set_value("preserve");
-      text_node.text().set(value.has_text() ? value.text().c_str() : "");
-      const auto &[text_id, unused1, unused2] =
-          m_registry->create_text_element(text_node, text_node);
-      m_registry->append_child(cell_id, text_id);
+      if (value.has_formula()) {
+        write_result(cell_id, value);
+      } else {
+        node.append_attribute("t").set_value("inlineStr");
+        pugi::xml_node text_node = node.append_child("is").append_child("t");
+        // the text is written verbatim, so a leading space in one has to
+        // survive
+        text_node.append_attribute("xml:space").set_value("preserve");
+        text_node.text().set(value.has_text() ? value.text().c_str() : "");
+        const auto &[text_id, unused1, unused2] =
+            m_registry->create_text_element(text_node, text_node);
+        m_registry->append_child(cell_id, text_id);
+      }
       // Excel shows a line break only in a cell that wraps
       if (value.has_text() && value.text().contains('\n') &&
           !sheet_cell_style(element_id, column, row)

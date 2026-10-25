@@ -19,6 +19,29 @@ std::string language_of(const std::string_view locale) {
   return language == "no" ? "nb" : language;
 }
 
+/// Case matching for the generated names, including Turkish dotted I.
+bool same_name(std::string_view a, std::string_view b,
+               const std::string_view language) {
+  const auto lower = [language](const char32_t c) {
+    if (language == "tr") {
+      if (c == U'I') {
+        return U'ı';
+      }
+      if (c == U'İ') {
+        return U'i';
+      }
+    }
+    return lower_function_letter(c);
+  };
+  while (!a.empty() && !b.empty()) {
+    if (lower(util::string::next_utf8(a)) !=
+        lower(util::string::next_utf8(b))) {
+      return false;
+    }
+  }
+  return a.empty() && b.empty();
+}
+
 /// What a function name is spelled out of: a byte of a letter past ASCII
 /// too, as `ZÄHLENWENN` holds.
 bool is_name_byte(const char c) {
@@ -96,9 +119,12 @@ std::string formula::english_functions(const std::string_view formula,
   return replaced(
       formula,
       [&](const std::string_view name) -> std::optional<std::string_view> {
+        if (!util::string::is_valid_utf8(name)) {
+          return std::nullopt;
+        }
         for (const FunctionName &entry : function_names()) {
           if (entry.language == language &&
-              util::string::equals_ignore_case(entry.localized, name)) {
+              same_name(entry.localized, name, language)) {
             return entry.english;
           }
         }

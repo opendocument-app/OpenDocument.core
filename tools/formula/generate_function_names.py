@@ -126,7 +126,22 @@ def main() -> None:
         lines.append(
             f'      {{"{language}", "{_escape(english)}", "{_escape(localized)}"}},'
         )
-    lines += ["  }};", "  return names;", "}", "", "} // namespace odr::internal", ""]
+    lines += ["  }};", "  return names;", "}", ""]
+    # Only the alphabet of these names is needed. Turkish dotted I is
+    # locale-sensitive and handled by the caller.
+    letters = sorted(set("".join(localized for _, _, localized in rows)))
+    lines += [
+        "char32_t formula::lower_function_letter(const char32_t letter) {",
+        "  switch (letter) {",
+    ]
+    for letter in letters:
+        lower = letter.lower()
+        if lower != letter and len(lower) == 1:
+            lines += [f"  case U'{letter}':", f"    return U'{lower}';"]
+    lines += [
+        "  default:", "    return letter;", "  }", "}", "",
+        "} // namespace odr::internal", "",
+    ]
     with open(_OUTPUT, "w", encoding="utf-8") as file:
         file.write("\n".join(lines))
     print(f"{len(rows)} names in {len(_LANGUAGES)} languages -> {_OUTPUT}")

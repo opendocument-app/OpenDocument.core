@@ -30,6 +30,7 @@ serve(
         "columns.html",
         "formulas.html",
         "formula-chain.html",
+        "formula-structure.html",
         "formula-input.html",
         "formula-words.html",
         "formula-iteration.html",
