@@ -165,17 +165,18 @@ public:
       const Reference &reference,
       const std::function<Result<void>(const SheetPosition &, const Value &)>
           &visit) const {
+    const auto visit_value =
+        [&](const SheetPosition &position,
+            const std::optional<Value> &value) -> Result<void> {
+      if (!value.has_value()) {
+        return no_answer();
+      }
+      return visit(position, *value);
+    };
     for (const Area &area : reference.areas) {
-      const Result<void> walked = m_source->for_each_cell(
-          area,
-          [&](const SheetPosition &position,
-              const std::optional<Value> &value) -> Result<void> {
-            if (!value.has_value()) {
-              return no_answer();
-            }
-            return visit(position, *value);
-          });
-      if (!walked.has_value()) {
+      if (const Result<void> walked =
+              m_source->for_each_cell(area, visit_value);
+          !walked.has_value()) {
         return walked;
       }
     }
