@@ -76,8 +76,10 @@ public:
   /// Nothing where the conversion fails, so a broken image does not stop
   /// `bring_offline` or the server.
   void write_resource(std::ostream &os) const override {
+    if (!m_file.has_value()) {
+      return;
+    }
     try {
-      // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
       const svm::SvmFile svm_file(
           std::make_shared<MemoryFile>(*m_file->impl()));
       std::ostringstream svg;
