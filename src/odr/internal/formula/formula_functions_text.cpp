@@ -47,7 +47,7 @@ Result<double> count_argument(const Call &call, const std::size_t index) {
   });
 }
 
-Result<Value> text_value(const std::u16string &text) noexcept {
+Result<Value> text_value(const std::u16string &text) {
   if (text.size() > text_limit) {
     return no_answer();
   }
@@ -185,30 +185,30 @@ Result<Value> concat(const Call &call) {
     return std::unexpected(expected.error());
   }
   std::u16string result;
+  Errors errors;
+  const auto visit = [&](const Value &value, bool) -> Result<void> {
+    const Result<Text> text = call.text(value);
+    if (!text.has_value()) {
+      return std::unexpected(text.error());
+    }
+    if (const auto *error = std::get_if<ErrorType>(&*text)) {
+      errors.add(*error);
+      return {};
+    }
+    const std::optional<std::u16string> units =
+        utf16_of(*std::get_if<std::string>(&*text));
+    if (!units.has_value()) {
+      return no_answer();
+    }
+    result += *units;
+    if (result.size() > text_limit) {
+      return no_answer();
+    }
+    return {};
+  };
   for (std::size_t i = 0; i < call.size(); ++i) {
-    Errors errors;
-    if (const Result<void> walked = call.for_each_value(
-            i,
-            [&](const Value &value, bool) -> Result<void> {
-              const Result<Text> text = call.text(value);
-              if (!text.has_value()) {
-                return std::unexpected(text.error());
-              }
-              if (const auto *error = std::get_if<ErrorType>(&*text)) {
-                errors.add(*error);
-                return {};
-              }
-              const std::optional<std::u16string> units =
-                  utf16_of(*std::get_if<std::string>(&*text));
-              if (!units.has_value()) {
-                return no_answer();
-              }
-              result += *units;
-              if (result.size() > text_limit) {
-                return no_answer();
-              }
-              return {};
-            });
+    errors = Errors();
+    if (const Result<void> walked = call.for_each_value(i, visit);
         !walked.has_value()) {
       return std::unexpected(walked.error());
     }
