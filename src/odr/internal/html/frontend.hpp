@@ -64,8 +64,9 @@ bool carries_formula_module();
 /// the editor, and nothing where the build has no module.
 void write_formula_script(const WritingState &state);
 void write_text_script(const WritingState &state);
-/// `odr.search()`, `searchNext()`, `searchPrevious()`, `resetSearch()` — the
-/// rest of that object, for every view rendering text, whatever the format.
+/// `odr.search()`, `searchNext()`, `searchPrevious()`, `resetSearch()`,
+/// `searchDone()` and the `onSearchChange` callback — the rest of that object,
+/// for every view rendering text, whatever the format.
 void write_search_script(const WritingState &state);
 
 /// `odr.annotation`: the pending markup a viewer draws on a pdf page, and

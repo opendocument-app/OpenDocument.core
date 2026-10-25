@@ -733,6 +733,72 @@ TEST(html, a_text_file_loads_its_later_chunks) {
   EXPECT_EQ(editable.str().find(R"(data-odr-chunk-src=")"), std::string::npos);
 }
 
+// The text of the chunks that load is in the scripts of a search index, 64
+// chunks in each, so a search counts them before they load.
+TEST(html, a_text_file_writes_a_search_index) {
+  std::string text;
+  // chunks 0 to 64, the last one of two lines
+  for (std::uint32_t line = 0; line < 64 * 256 + 2; ++line) {
+    text += "line " + std::to_string(line + 1) + "\n";
+  }
+  text.back() = '\t';
+  text += "<b>";
+  const DecodedFile file =
+      open(File::from_memory(text), DecodeOptions::as(FileType::text_file));
+  HtmlConfig config;
+  config.lazy_loading = true;
+  const HtmlService service = html::translate(file, config, Logger::null());
+
+  std::ostringstream page;
+  const HtmlResources resources = service.write_html("text.html", page);
+  EXPECT_NE(
+      page.str().find(
+          R"(data-odr-chunk="1" data-odr-chunk-src="text-chunks/1.js" data-odr-chunk-text="text-search/0.js")"),
+      std::string::npos);
+  EXPECT_NE(
+      page.str().find(
+          R"(data-odr-chunk="64" data-odr-chunk-src="text-chunks/64.js" data-odr-chunk-text="text-search/1.js")"),
+      std::string::npos);
+  // a chunk inside a group names no script
+  EXPECT_NE(page.str().find(
+                R"(data-odr-chunk="2" data-odr-chunk-src="text-chunks/2.js">)"),
+            std::string::npos);
+  EXPECT_EQ(
+      std::ranges::count_if(resources,
+                            [](const auto &resource) {
+                              return resource.second.value_or("").starts_with(
+                                  "text-search/");
+                            }),
+      2);
+
+  ASSERT_TRUE(service.exists("text-search/0.js"));
+  ASSERT_TRUE(service.exists("text-search/1.js"));
+  EXPECT_FALSE(service.exists("text-search/2.js"));
+  EXPECT_FALSE(service.exists("text-search/00.js"));
+  EXPECT_EQ(service.mimetype("text-search/1.js"), "text/javascript");
+
+  std::ostringstream first;
+  service.write("text-search/0.js", first);
+  // the first chunk is in the page
+  EXPECT_TRUE(
+      first.str().starts_with(R"(odr.chunks.text({"1":"line 257\nline 258\n)"));
+  EXPECT_NE(first.str().find(R"(\nline 512","2":"line 513\n)"),
+            std::string::npos);
+  EXPECT_NE(first.str().find(R"("63":)"), std::string::npos);
+  EXPECT_EQ(first.str().find(R"("64":)"), std::string::npos);
+
+  std::ostringstream second;
+  service.write("text-search/1.js", second);
+  EXPECT_EQ(
+      second.str(),
+      "odr.chunks.text({\"64\":\"line 16385\\nline 16386\\t\\u003cb>\"});\n");
+
+  // a page with every line in it has no index
+  config.lazy_loading = false;
+  EXPECT_FALSE(
+      html::translate(file, config, Logger::null()).exists("text-search/0.js"));
+}
+
 // The rows of a sheet after its first chunk load as scripts too, which the
 // document service serves.
 TEST(html, a_sheet_loads_its_later_chunks) {

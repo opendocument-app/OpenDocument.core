@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>search over a chunk that loads early checks</title>
+    <style>
+      .odr-chunk{content-visibility:hidden}
+      .odr-chunk-near{content-visibility:visible}
+    </style>
+  </head>
+  <body>
+    <!-- The chunks of `search.html`. The first one that loads fills before
+         the search index has counted it. -->
+    <div class="odr-chunk odr-chunk-near"><div>zeile 1</div><div>zeile 2</div></div>
+    <div style="height:400vh"></div>
+    <div class="odr-chunk" id="first" data-odr-chunk="1" data-odr-chunk-src="search-1.js" data-odr-chunk-text="search-index.js" style="min-height:40px"></div>
+    <div style="height:400vh"></div>
+    <div class="odr-chunk" id="second" data-odr-chunk="2" data-odr-chunk-src="search-2.js" style="min-height:40px"></div>
+    <div style="height:400vh"></div>
+
+    <div id="report"></div>
+    <script src="checks.js"></script>
+    <script src="search.js"></script>
+    <script src="viewport.js"></script>
+    <script>
+      var first = document.getElementById("first");
+
+      // the report is text of the page too, so no check names a keyword
+      var known = odr.search("zeile");
+      odr.chunks.fill(1, "<div>zeile 3</div><div>zeile 4</div>");
+      check("a chunk that fills during a search is marked", first.querySelectorAll("mark").length === 2);
+      check("and counted at once", known === 2 && odr.searchNext() === 4, known);
+      check("after the hits before it", document.querySelector("mark.current").closest(".odr-chunk") !== first);
+      odr.searchDone().then(function (found) {
+        check("the index does not count it again", found === 5, found);
+        odr.searchNext();
+        odr.searchNext();
+        check(
+          "and its hits are in document order",
+          document.querySelector("mark.current").closest(".odr-chunk") === first,
+          document.querySelector("mark.current").textContent
+        );
+      });
+    </script>
+  </body>
+</html>

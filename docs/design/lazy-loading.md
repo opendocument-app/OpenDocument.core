@@ -364,12 +364,13 @@ chunks, one string for each chunk:
 odr.chunks.text({"1": "the text of chunk 1", "2": "the text of chunk 2", …});
 ```
 
-A chunk that loads names its index script, as it names its own:
+The first chunk of a group that loads names the index script of the
+group:
 
 ```html
-<div class="odr-text-lines odr-chunk" data-odr-chunk="12"
-     data-odr-chunk-src="text-chunks/12.js"
-     data-odr-chunk-text="text-search/0.js"></div>
+<div class="odr-text-lines odr-chunk" data-odr-chunk="64"
+     data-odr-chunk-src="text-chunks/64.js"
+     data-odr-chunk-text="text-search/1.js"></div>
 ```
 
 The keys are the keys of `data-odr-chunk`, which `odr.chunks.fill` takes
@@ -377,7 +378,9 @@ too. A script holds only the chunks that load, not the first. The paths follow
 the paths of the chunks: `text-search/<n>.js`, `sheet<n>-search/<m>.js`,
 `pdf-search/<n>.js`. The view returns each script as an `HtmlResource`, so
 `bring_offline` writes it and `HttpServer` serves it with no new route
-(decision 4). The attribute costs about 30 bytes for each chunk.
+(decision 4). An attribute on every chunk made the page of a million lines
+a third larger (648 KB, not 485 KB). On the first chunk of each group, it
+costs 3 KB.
 
 **What the text of a chunk is.** The text that `search.js` reads from the
 DOM of that chunk: every text node outside `script`, `style` and
@@ -428,9 +431,15 @@ html. The cost in core:
    two counts are the same for each fixture.
 
 `fold` must be fast on a large index: an index of a million lines is the
-whole text file, and `fold` now normalizes one character at a time. A
-string that is all ASCII folds with one `toLowerCase` and one `replace`,
-and its map is the identity.
+whole text file, and `fold` normalizes one character at a time. So the
+text of a chunk folds with no map: a character that is not ASCII folds on
+its own, through a cache, and then one `toLowerCase` folds the rest.
+
+**Measured** on the text file of one million lines (71 MB), from `file://`:
+the index is 62 scripts of 69 MB in all. A search loads them and counts
+every hit in 175 ms, and the counts are those of the file (120, 33407 and
+566808 hits). A search with the index loaded takes 155 ms. A step to the
+last hit loads its chunk and selects the hit in 9 ms.
 
 **Over HTTP, the server searches.** The index then stays on the server,
 and the page does not load 9 MB of text for one keyword:

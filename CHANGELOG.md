@@ -41,8 +41,14 @@ The release run heads these entries with the version and opens a fresh
   each chunk of a text file after the first as a script beside the page,
   which the page loads when the reader comes near. `bring_offline` writes
   the scripts, and the HTTP server serves them. A text file of 1 M lines is
-  then a page of 485 KB. `odr.search` finds only the loaded chunks, and a
-  print shows a chunk that has not loaded as empty space.
+  then a page of 485 KB. A print shows a chunk that has not loaded as
+  empty space.
+- `odr.search` in such a text file finds the lines that have not loaded,
+  from the text that `HtmlConfig::lazy_loading` writes beside the page in
+  `text-search/<n>.js`. It returns the hits it knows at once. The new
+  `odr.onSearchChange({count, current, complete})`, which the host bridge
+  forwards as `searchChange`, and `odr.searchDone()` give the final count.
+  A step to a hit loads its chunk.
 - `HtmlConfig::lazy_loading` loads the rows of a sheet the same way. The
   sheet of 500 K cells in `efficiency-big-1.ods` is then a page of 370 KB.
   Such a sheet has no sort control, because a sort needs every row.

@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>search over chunks checks</title>
+    <!-- what `write_chunk_style` writes -->
+    <style>
+      .odr-chunk{content-visibility:hidden}
+      .odr-chunk-near{content-visibility:visible}
+    </style>
+  </head>
+  <body>
+    <!-- Chunks as `HtmlConfig::lazy_loading` writes them, the first one that
+         loads naming the script of the search index that holds the text of
+         both (`lazy-loading.md` decision 8). Both are far from the
+         viewport. -->
+    <div class="odr-chunk odr-chunk-near"><div>zeile 1</div><div>zeile 2</div></div>
+    <div style="height:400vh"></div>
+    <div class="odr-chunk" id="first" data-odr-chunk="1" data-odr-chunk-src="search-1.js" data-odr-chunk-text="search-index.js" style="min-height:40px"></div>
+    <div style="height:400vh"></div>
+    <div class="odr-chunk" id="second" data-odr-chunk="2" data-odr-chunk-src="search-2.js" style="min-height:40px"></div>
+    <div style="height:400vh"></div>
+
+    <div id="report"></div>
+    <script src="checks.js"></script>
+    <script src="search.js"></script>
+    <script src="viewport.js"></script>
+    <script>
+      var first = document.getElementById("first");
+      var second = document.getElementById("second");
+      var changes = [];
+      odr.onSearchChange = function (change) {
+        changes.push(change);
+      };
+
+      function marks(chunk) {
+        return chunk.querySelectorAll("mark").length;
+      }
+      function current() {
+        var mark = document.querySelector("mark.current");
+        return mark === null ? null : mark.closest(".odr-chunk");
+      }
+      function once(condition, then) {
+        var tries = 0;
+        (function poll() {
+          if (condition() || ++tries > 100) {
+            then();
+          } else {
+            setTimeout(poll, 20);
+          }
+        })();
+      }
+
+      // the report is text of the page too, so no check names a keyword
+      var known = odr.search("zeile");
+      check("a search counts the loaded chunk at once", known === 2, known);
+      check("and says that it is not complete", changes[changes.length - 1].complete === false, changes[changes.length - 1]);
+      odr
+        .searchDone()
+        .then(function (found) {
+          check("the index counts the chunks that have not loaded", found === 5, found);
+          check("and the change says so", changes[changes.length - 1].count === 5 && changes[changes.length - 1].complete, changes[changes.length - 1]);
+          check("a count loads no chunk", first.hasAttribute("data-odr-chunk-src") && second.hasAttribute("data-odr-chunk-src"));
+          check("the scripts of the index are gone", document.querySelector('script[src="search-index.js"]') === null);
+
+          check("a keyword does not match across two lines of the index", odr.search("3 zeile") === 0);
+          check("a search with the index loaded is complete at once", odr.search("zeile") === 5 && changes[changes.length - 1].complete);
+
+          odr.searchNext();
+          odr.searchNext();
+          check("a step to a hit of a chunk that has not loaded reports it", changes[changes.length - 1].current === 2, changes[changes.length - 1]);
+          once(
+            function () {
+              return marks(first) > 0;
+            },
+            function () {
+              check("loads its chunk and marks its hits", marks(first) === 2, marks(first));
+              check("and selects the hit in it", current() === first);
+              check("the count stays", changes[changes.length - 1].count === 5, changes[changes.length - 1]);
+              check("the other chunk has not loaded", second.hasAttribute("data-odr-chunk-src"));
+
+              odr.searchPrevious();
+              check("a step back selects the hit before", current() !== first && current() !== null);
+
+              var accented = odr.search("CAFE AU");
+              odr.searchDone().then(function (found) {
+                check("the index folds case, a diacritic and a tab", accented === 1 && found === 1, found);
+                odr.searchNext();
+                once(
+                  function () {
+                    return marks(second) > 0;
+                  },
+                  function () {
+                    check("and so does the DOM of its chunk", marks(second) === 1 && current() === second, marks(second));
+                    odr.resetSearch();
+                    check("a reset clears every mark", document.querySelectorAll("mark").length === 0);
+                  }
+                );
+              });
+            }
+          );
+        });
+    </script>
+  </body>
+</html>
