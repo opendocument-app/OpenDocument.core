@@ -1606,8 +1606,11 @@ void html::translate_image(const Element &element, const WritingState &state) {
     // the location is resolved against the document, so an engine naming the
     // image by its absolute path in the container has to lose the root
     const std::string path = Path(image.href()).make_relative().string();
-    resource = HtmlResource::create(HtmlResourceType::image, "image/jpg", path,
-                                    path, image.file(), false, false, true);
+    resource =
+        image.file().has_value()
+            ? linked_image_resource(*image.file(), path, state.logger())
+            : HtmlResource::create(HtmlResourceType::image, "image/jpg", path,
+                                   path, image.file(), false, false, true);
     resource_location =
         state.config().resource_locator(resource, state.config());
     if (resource_location.has_value()) {
@@ -1647,6 +1650,9 @@ void html::translate_image(const Element &element, const WritingState &state) {
             clb("alt", "Error: image not found or unsupported");
             if (resource_location.has_value()) {
               clb("src", xml::escape_attribute(resource_location.value()));
+              // fetched only near the viewport (`lazy-loading.md` decision 9)
+              clb("loading", "lazy");
+              clb("decoding", "async");
             } else {
               clb("src", [&](std::ostream &o) {
                 // reached only for internal images, which have a file

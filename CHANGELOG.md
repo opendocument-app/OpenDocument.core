@@ -57,6 +57,13 @@ The release run heads these entries with the version and opens a fresh
   technical manual, whose index is 5.3 MB.
 - A pdf page that loads renders in about half the time, because the service
   tests once for each font whether it re-encodes, not once for each page.
+- With `HtmlConfig::embed_images` off, an image loads once the reader comes
+  near it (`loading="lazy"`), so a page fetches 3 of the 187 images of a
+  long docx at the start. A print still shows every image.
+- With `HtmlConfig::embed_images` off, an SVM image is a file of SVG, as
+  its data url is, and every linked image states its media type. Before,
+  the browser got the SVM as it is, labelled `image/jpg`, and showed a
+  broken image.
 - `odr.search` no longer finds the row numbers and the column letters of a
   sheet, because they label the cells and are not their content.
 - `HtmlConfig::lazy_loading` loads the rows of a sheet the same way. The
