@@ -181,7 +181,11 @@
   // How often `needle` is in `text`, counted as `findIn` counts.
   function count(text, needle) {
     var found = 0;
-    for (var at = text.indexOf(needle); at !== -1; at = text.indexOf(needle, at + needle.length)) {
+    for (
+      var at = text.indexOf(needle);
+      at !== -1;
+      at = text.indexOf(needle, at + needle.length)
+    ) {
       ++found;
     }
     return found;
@@ -213,12 +217,17 @@
   }
 
   function precedes(a, b) {
-    return (nodeOf(a).compareDocumentPosition(nodeOf(b)) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    var position = nodeOf(a).compareDocumentPosition(nodeOf(b));
+    return (position & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
   }
 
   function notify() {
     if (typeof odr.onSearchChange === "function") {
-      odr.onSearchChange({ count: hits.length, current: current, complete: complete });
+      odr.onSearchChange({
+        count: hits.length,
+        current: current,
+        complete: complete,
+      });
     }
     if (complete) {
       var waiting = done;
@@ -234,7 +243,8 @@
   function finish(pending) {
     var counted = [];
     pending.forEach(function (chunk) {
-      var found = chunk.text === null ? 0 : count(foldText(chunk.text), keyword);
+      var found =
+        chunk.text === null ? 0 : count(foldText(chunk.text), keyword);
       for (var ordinal = 0; ordinal < found; ++ordinal) {
         counted.push({ chunk: chunk.chunk, ordinal: ordinal });
       }
@@ -244,7 +254,10 @@
     var i = 0;
     var j = 0;
     while (i < hits.length || j < counted.length) {
-      merged.push(j === counted.length || (i < hits.length && precedes(hits[i], counted[j])) ? hits[i++] : counted[j++]);
+      var fromHits =
+        j === counted.length ||
+        (i < hits.length && precedes(hits[i], counted[j]));
+      merged.push(fromHits ? hits[i++] : counted[j++]);
     }
     hits = merged;
     complete = true;
@@ -303,7 +316,8 @@
     current = -1;
     if (ordinal !== -1 && hits.length > 0) {
       // the DOM states the hits of the chunk; the index only counted them
-      select(Math.min(at + Math.max(Math.min(ordinal, found.length - 1), 0), hits.length - 1));
+      var offset = Math.max(Math.min(ordinal, found.length - 1), 0);
+      select(Math.min(at + offset, hits.length - 1));
     } else if (selected !== undefined) {
       current = hits.indexOf(selected);
     }
