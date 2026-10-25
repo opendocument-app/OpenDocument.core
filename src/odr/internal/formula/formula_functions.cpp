@@ -16,15 +16,14 @@ namespace str = util::string;
 
 namespace {
 
-template <auto value> Value constant(const Call &call) {
-  require(expect_arguments(call, 0, 0));
-  return Value{value};
+template <auto value> Result<Value> constant(const Call &call) noexcept {
+  return expect_arguments(call, 0, 0).transform([] { return Value{value}; });
 }
 
 constexpr std::array constant_functions{
-    FunctionEntry{"TRUE", bridged<constant<true>>},
-    FunctionEntry{"FALSE", bridged<constant<false>>},
-    FunctionEntry{"NA", bridged<constant<ErrorType::not_available>>},
+    FunctionEntry{"TRUE", constant<true>},
+    FunctionEntry{"FALSE", constant<false>},
+    FunctionEntry{"NA", constant<ErrorType::not_available>},
 };
 
 /// The function a name stands for once the prefix of its format is gone.
@@ -65,7 +64,7 @@ const std::unordered_map<std::string, Function> &functions() {
 
 namespace odr::internal {
 
-void formula::Errors::add(const ErrorType error) {
+void formula::Errors::add(const ErrorType error) noexcept {
   if (!m_first.has_value()) {
     m_first = error;
   } else if (*m_first != error) {
@@ -74,7 +73,7 @@ void formula::Errors::add(const ErrorType error) {
 }
 
 formula::Result<std::optional<formula::ErrorType>>
-formula::Errors::first() const {
+formula::Errors::first() const noexcept {
   if (m_mixed) {
     return no_answer();
   }
@@ -91,7 +90,7 @@ formula::Result<double> formula::number_argument(const Call &call,
   if (const auto *error = std::get_if<ErrorType>(&*number)) {
     return error_result(*error);
   }
-  const double value = std::get<double>(*number);
+  const double value = *std::get_if<double>(&*number);
   if (!std::isfinite(value)) {
     return no_answer();
   }
@@ -99,7 +98,8 @@ formula::Result<double> formula::number_argument(const Call &call,
 }
 
 formula::Result<bool> formula::same_number(const Dialect dialect,
-                                           const double a, const double b) {
+                                           const double a,
+                                           const double b) noexcept {
   const bool approximately = approximately_equal(a, b);
   // two numbers this far apart differ in 15 digits too
   if (dialect == Dialect::libreoffice || a == b ||
@@ -113,21 +113,21 @@ formula::Result<bool> formula::same_number(const Dialect dialect,
   return approximately;
 }
 
-bool formula::is_libreoffice(const Call &call) {
+bool formula::is_libreoffice(const Call &call) noexcept {
   return call.settings().dialect == Dialect::libreoffice;
 }
 
-formula::Result<formula::Value> formula::refused(const Call &call,
-                                                 const ErrorType excel) {
+formula::Result<formula::Value>
+formula::refused(const Call &call, const ErrorType excel) noexcept {
   if (is_libreoffice(call)) {
     return no_answer();
   }
   return Value{excel};
 }
 
-formula::Result<void> formula::expect_arguments(const Call &call,
-                                                const std::size_t least,
-                                                const std::size_t most) {
+formula::Result<void>
+formula::expect_arguments(const Call &call, const std::size_t least,
+                          const std::size_t most) noexcept {
   if (call.size() < least || call.size() > most) {
     return no_answer();
   }
@@ -201,7 +201,8 @@ formula::Function formula::find_function(const std::string_view name) {
   return found == functions().end() ? nullptr : found->second;
 }
 
-bool formula::is_pattern(const Call &call, const std::string_view text) {
+bool formula::is_pattern(const Call &call,
+                         const std::string_view text) noexcept {
   const bool wildcards = !is_libreoffice(call) || call.settings().wildcards;
   const bool expressions =
       is_libreoffice(call) && call.settings().regular_expressions;
