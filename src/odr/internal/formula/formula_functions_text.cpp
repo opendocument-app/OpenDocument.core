@@ -14,7 +14,8 @@ namespace odr::internal::formula {
 namespace {
 
 /// Argument @p index as a text.
-Result<std::string> string_argument(const Call &call, const std::size_t index) {
+Result<std::string> string_argument(const Call &call,
+                                    const std::size_t index) noexcept {
   Result<Text> text = call.scalar(index).and_then(
       [&](const Value &value) { return call.text(value); });
   if (!text.has_value()) {
@@ -28,7 +29,7 @@ Result<std::string> string_argument(const Call &call, const std::size_t index) {
 
 /// Argument @p index as a text in UTF-16.
 Result<std::u16string> text_argument(const Call &call,
-                                     const std::size_t index) {
+                                     const std::size_t index) noexcept {
   const Result<std::string> text = string_argument(call, index);
   if (!text.has_value()) {
     return std::unexpected(text.error());
@@ -41,7 +42,8 @@ Result<std::u16string> text_argument(const Call &call,
 }
 
 /// Argument @p index as a whole number.
-Result<double> count_argument(const Call &call, const std::size_t index) {
+Result<double> count_argument(const Call &call,
+                              const std::size_t index) noexcept {
   return number_argument(call, index).transform([](const double x) {
     return std::trunc(x);
   });
@@ -54,7 +56,7 @@ Result<Value> text_value(const std::u16string &text) {
   return Value{utf8_of(text)};
 }
 
-Result<Value> length(const Call &call) {
+Result<Value> length(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 1, 1);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -119,7 +121,7 @@ Result<Value> middle(const Call &call) {
       text->substr(from, static_cast<std::size_t>(std::min(*count, 1e9))));
 }
 
-template <bool upper> Result<Value> change_case(const Call &call) {
+template <bool upper> Result<Value> change_case(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 1, 1);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -179,7 +181,7 @@ Result<Value> concatenate(const Call &call) {
 }
 
 /// `CONCAT`: as `CONCATENATE`, but a range adds every cell, row by row.
-Result<Value> concat(const Call &call) {
+Result<Value> concat(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 1, 255);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -387,7 +389,7 @@ Result<Value> replace(const Call &call) {
                     text->substr(from + removed));
 }
 
-Result<Value> exact(const Call &call) {
+Result<Value> exact(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 2, 2);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -404,7 +406,7 @@ Result<Value> exact(const Call &call) {
 }
 
 /// `VALUE`: the number a text reads as.
-Result<Value> value(const Call &call) {
+Result<Value> value(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 1, 1);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -449,7 +451,7 @@ Result<Value> character(const Call &call) {
   return Value{std::string(1, static_cast<char>(*code))};
 }
 
-Result<Value> code(const Call &call) {
+Result<Value> code(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 1, 1);
       !expected.has_value()) {
     return std::unexpected(expected.error());

@@ -175,7 +175,7 @@ order_of_texts(std::string_view a, std::string_view b, bool case_sensitive);
 
 /// Argument @p index as a number. Stops with the error where it is one.
 [[nodiscard]] Result<double> number_argument(const Call &call,
-                                             std::size_t index);
+                                             std::size_t index) noexcept;
 
 /// No answer where @p call does not have @p least to @p most arguments, or
 /// leaves one out.
