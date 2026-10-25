@@ -1,5 +1,6 @@
 #include <odr/internal/number_format/number_format.hpp>
 
+#include <odr/internal/util/locale_util.hpp>
 #include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
@@ -83,10 +84,8 @@ void append_literal(std::vector<Token> &tokens, const std::string &text) {
 
 /// The names of @p language, or null where the table has none.
 const CalendarNames *names_of(const std::string_view language) {
-  // `no` is Norwegian, which is written as Bokmål
-  const std::string_view key = language == "no" ? "nb" : language;
   const auto found =
-      std::ranges::find(calendar_names, key, &CalendarNames::language);
+      std::ranges::find(calendar_names, language, &CalendarNames::language);
   return found != std::end(calendar_names) ? &*found : nullptr;
 }
 
@@ -1172,17 +1171,17 @@ double number_format::serial_from_days(const double days, const Epoch epoch) {
 
 number_format::Symbols
 number_format::symbols_of(const std::string_view locale) {
-  const std::string_view language = locale.substr(0, locale.find('-'));
-  const std::string_view region = locale.find('-') == std::string_view::npos
-                                      ? std::string_view()
-                                      : locale.substr(locale.rfind('-') + 1);
+  const util::locale::LanguageTag tag =
+      util::locale::LanguageTag::parse(locale);
+  const std::string_view language = tag.language;
+  const std::string_view region = tag.region;
   // CLDR, for the languages a spreadsheet is most often written in
   constexpr std::array<std::string_view, 16> point_group{
       "de", "es", "it", "nl", "pt", "id", "tr", "da",
       "el", "ro", "sl", "hr", "sr", "bs", "vi", "ca"};
-  constexpr std::array<std::string_view, 18> space_group{
+  constexpr std::array<std::string_view, 17> space_group{
       "fr", "ru", "pl", "cs", "sk", "sv", "fi", "nb", "nn",
-      "no", "uk", "hu", "bg", "lt", "lv", "et", "be", "kk"};
+      "uk", "hu", "bg", "lt", "lv", "et", "be", "kk"};
   Symbols result;
   if ((language == "de" || language == "it") &&
       (region == "CH" || region == "LI")) {
@@ -1214,9 +1213,7 @@ number_format::boolean_words(const std::string_view locale,
            (!shown_false.empty() &&
             util::string::equals_ignore_case(entry.false_word, shown_false));
   };
-  const std::string_view language = locale.substr(0, locale.find('-'));
-  // `no` is Norwegian, which is written as Bokmål
-  const std::string_view key = language == "no" ? "nb" : language;
+  const std::string key = util::locale::LanguageTag::parse(locale).language;
   const BooleanEntry *entry = &boolean_entries.front();
   // `FALSO` is Spanish, Italian and Portuguese, so it names no pair
   if (std::ranges::count_if(boolean_entries, pairs_shown) == 1) {

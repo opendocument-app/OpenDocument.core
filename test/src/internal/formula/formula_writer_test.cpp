@@ -249,6 +249,11 @@ TEST(FormulaWriter, a_function_name_takes_the_language_of_the_document) {
   EXPECT_EQ(localized_functions("SUM(A1)", "ja-JP"), "SUM(A1)");
   EXPECT_EQ(localized_functions("SUM(A1)", "no"),
             localized_functions("SUM(A1)", "nb"));
+  // Brazil has its own table, whatever the tag states beside the region
+  EXPECT_EQ(localized_functions("COLUMN(A1)", "pt-PT"), "COL(A1)");
+  EXPECT_EQ(localized_functions("COLUMN(A1)", "pt-BR"), "COLUNA(A1)");
+  EXPECT_EQ(localized_functions("COLUMN(A1)", "pt-Latn-BR"), "COLUNA(A1)");
+  EXPECT_EQ(localized_functions("COLUMN(A1)", "pt_br"), "COLUNA(A1)");
 }
 
 TEST(FormulaWriter, localized_names_ignore_non_ascii_case) {

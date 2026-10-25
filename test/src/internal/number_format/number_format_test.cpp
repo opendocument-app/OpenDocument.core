@@ -199,6 +199,11 @@ TEST(NumberFormat, a_locale_writes_its_own_point_and_grouping) {
   EXPECT_EQ(symbols_of("ja").group, ",");
   EXPECT_EQ(symbols_of("es-MX").decimal, ".");
   EXPECT_EQ(symbols_of("pt-BR").group, ".");
+  // the region of a tag in another case, with a script, or after `_`
+  EXPECT_EQ(symbols_of("DE-ch").group, "\u2019");
+  EXPECT_EQ(symbols_of("de_CH").group, "\u2019");
+  EXPECT_EQ(symbols_of("pt-Latn-PT").group, "\u00a0");
+  EXPECT_EQ(symbols_of("no-NO").group, "\u00a0");
 }
 
 TEST(NumberFormat, a_boolean_takes_the_words_a_document_shows) {

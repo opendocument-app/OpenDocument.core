@@ -1,8 +1,10 @@
 #include <odr/internal/formula/formula_function_names.hpp>
 
+#include <odr/internal/util/locale_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <optional>
+#include <utility>
 
 namespace odr::internal::formula {
 
@@ -10,13 +12,9 @@ namespace {
 
 /// The language of @p locale as LibreOffice names its translations.
 std::string language_of(const std::string_view locale) {
-  if (util::string::equals_ignore_case(locale, "pt-BR")) {
-    return "pt-BR";
-  }
-  std::string language =
-      util::string::to_lower(locale.substr(0, locale.find('-')));
-  // `no` is Norwegian, which is written as Bokmål
-  return language == "no" ? "nb" : language;
+  util::locale::LanguageTag tag = util::locale::LanguageTag::parse(locale);
+  return tag.language == "pt" && tag.region == "BR" ? "pt-BR"
+                                                    : std::move(tag.language);
 }
 
 /// Whether two names in @p language are the same, ignoring case.

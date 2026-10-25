@@ -404,6 +404,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/util/byte_string.cpp"
         "src/odr/internal/util/file_util.cpp"
         "src/odr/internal/util/hash_util.cpp"
+        "src/odr/internal/util/locale_util.cpp"
         "src/odr/internal/util/number_util.cpp"
         "src/odr/internal/util/odr_meta_util.cpp"
         "src/odr/internal/util/stream_util.cpp"
