@@ -24,15 +24,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18 }
+          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-20, host_profile: ubuntu-24.04-clang-20 }
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - name: ubuntu install ccache
+      - name: ubuntu install ccache, clang-20 and clang-tidy-20
         if: runner.os == 'Linux'
         run: |
-          sudo apt install ccache
+          sudo apt update
+          sudo apt install -y ccache clang-20 clang-tidy-20
           ccache -V
       - name: macos install ccache
         if: runner.os == 'macOS'
@@ -40,7 +41,7 @@ jobs:
           brew install ccache
           ccache -V
 
-      - run: clang-tidy --version
+      - run: clang-tidy-20 --version
 
       - name: setup python 3.14
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
@@ -74,6 +75,7 @@ jobs:
           -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake"
           -DCMAKE_BUILD_TYPE=Release
           -DODR_CLANG_TIDY=ON
+          -DCLANG_TIDY_COMMAND=clang-tidy-20
 
       # One job for each core: the generator is make, which runs one compile at
       # a time unless told otherwise, and each one runs clang-tidy.

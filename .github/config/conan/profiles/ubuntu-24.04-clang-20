@@ -2,15 +2,15 @@
 arch=x86_64
 build_type=Release
 compiler=clang
-compiler.version=18
+compiler.version=20
 compiler.cppstd=23
 compiler.libcxx=libstdc++11
 os=Linux
 
 [conf]
-tools.build:compiler_executables={'c': 'clang-18', 'cpp': 'clang++-18'}
+tools.build:compiler_executables={'c': 'clang-20', 'cpp': 'clang++-20'}
 tools.cmake.cmaketoolchain:extra_variables={'CMAKE_CXX_COMPILER_LAUNCHER': 'ccache', 'CMAKE_C_COMPILER_LAUNCHER': 'ccache'}
 
 [buildenv]
-CC=ccache clang-18
-CXX=ccache clang++-18
+CC=ccache clang-20
+CXX=ccache clang++-20

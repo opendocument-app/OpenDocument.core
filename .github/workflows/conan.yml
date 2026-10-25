@@ -18,15 +18,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-18, host_profile: ubuntu-24.04-clang-18 }
+          - { os: ubuntu-24.04, build_profile: ubuntu-24.04-clang-20, host_profile: ubuntu-24.04-clang-20 }
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - name: ubuntu install ccache
+      - name: ubuntu install ccache and clang-20
         if: runner.os == 'Linux'
         run: |
-          sudo apt install ccache
+          sudo apt update
+          sudo apt install -y ccache clang-20
           ccache -V
       - name: macos install ccache
         if: runner.os == 'macOS'
