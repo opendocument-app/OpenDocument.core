@@ -937,6 +937,41 @@ TEST(html, a_pdf_loads_its_later_pages) {
             std::string::npos);
 }
 
+// The text of the pages that load is in a script of a search index: the lines
+// of the selection layer of each page.
+TEST(html, a_pdf_writes_a_search_index) {
+  const DecodedFile file = open(
+      TestData::test_file_path("odr-public/pdf/opendocument-app-website.pdf"),
+      {}, Logger::null());
+  HtmlConfig config;
+  config.lazy_loading = true;
+  const HtmlService service = html::translate(file, config, Logger::null());
+
+  std::ostringstream page;
+  const HtmlResources resources = service.write_html("document.html", page);
+  EXPECT_NE(
+      page.str().find(
+          R"(data-odr-chunk-src="pdf-pages/2.js" data-odr-chunk-text="pdf-search/0.js")"),
+      std::string::npos);
+  EXPECT_NE(page.str().find(R"(data-odr-chunk-src="pdf-pages/3.js" )"),
+            std::string::npos);
+  EXPECT_TRUE(std::ranges::any_of(resources, [](const auto &resource) {
+    return resource.second == "pdf-search/0.js";
+  }));
+
+  ASSERT_TRUE(service.exists("pdf-search/0.js"));
+  EXPECT_FALSE(service.exists("pdf-search/1.js"));
+  std::ostringstream index;
+  service.write("pdf-search/0.js", index);
+  EXPECT_TRUE(index.str().starts_with(R"(odr.chunks.text({"p2":")"));
+  EXPECT_NE(index.str().find(R"(without uploading \nanything. \n)"),
+            std::string::npos);
+  EXPECT_NE(index.str().find(R"("p9":")"), std::string::npos);
+  EXPECT_EQ(index.str().find(R"("p1":")"), std::string::npos);
+  // the markup of the page escapes it; the index states it
+  EXPECT_EQ(index.str().find("&amp;"), std::string::npos);
+}
+
 // Without lazy layout the browser lays out everything, so no view writes a
 // chunk, nor the style that hides one.
 TEST(html, lazy_layout_off_writes_no_chunk) {
