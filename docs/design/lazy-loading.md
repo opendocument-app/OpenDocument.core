@@ -586,43 +586,58 @@ What it would take:
 
 ## Order of work
 
-1. **Text files, level 1.** Chunks of lines that are `hidden` until
+The state on 2026-10-25: items 1 to 6, 8.1 to 8.3, 9 and 10 are done.
+Items 7, 8.4 and 11 are left.
+
+1. **Done (#1247).** **Text files, level 1.** Chunks of lines that are `hidden` until
    `text.js` marks them near the viewport. The line number moves into each
    line as a CSS counter, so the gutter needs no `ResizeObserver` and wraps
    with its line. A chunk has style containment, so a counter does not count
    on past it. The first line of each chunk sets the number it starts at.
-2. **Text files, level 3** (decisions 3 and 4). Level 2 gains little for
+2. **Done (#1253).** **Text files, level 3** (decisions 3 and 4). Level 2 gains little for
    a text file: a window of strings painted in 0.5 s with 1.2 GB, and the
    hidden chunks in 0.85 s with 0.9 GB.
-3. **pdf, level 1.** A page has its size, so each page is a chunk of
+3. **Done (#1248).** **pdf, level 1.** A page has its size, so each page is a chunk of
    exactly the right size. The observer moves into `viewport.js`, which
    every view loads.
-4. **Sheets, level 1** (decision 6). First the markup and the column
+4. **Done (#1250, the switch #1251).** **Sheets, level 1** (decision 6). First the markup and the column
    widths in the writer, and the row accessor in `spreadsheet.js`. Then the
    geometry: `reflow`, the overlay, and the pin.
-5. **Sheets, level 3, the page.** A chunk of rows after the first is an
+5. **Done (#1255).** **Sheets, level 3, the page.** A chunk of rows after the first is an
    empty table that names `sheet<n>-chunks/<m>.js`, on the decode as it is.
    The view writes the rows of such a chunk to nothing, because that is
    where it finds the chunk to end, and renders them again, with inline
    styles, when the script is asked for. A sheet whose rows load has no
    sort control, because a sort needs every row. The sheet of 500 K cells
    in `efficiency-big-1.ods` is a page of 370 KB that paints after 107 ms.
-6. **pdf, level 3** (decision 7, option B).
-7. **Core per engine, level 3.** ods first (#781). The ods decode keeps
+6. **Done (#1257).** **pdf, level 3** (decision 7, option B).
+7. **Left.** **Core per engine, level 3.** ods first (#781). The ods decode keeps
    `content.xml` and its DOM resident for editing. A render on demand that
    does not hold them is a decision of its own. It waits for a measurement
    of the page side.
 8. **Search at level 3** (decision 8), in this order:
-   1. Text files, the index scripts. This PR also brings the fast path of
+   1. **Done (#1259).** Text files, the index scripts. This PR also brings the fast path of
       `fold`, `odr.onSearchChange` and `odr.searchDone`.
-   2. Sheets: no search of the headers, at every level, and the index.
-   3. pdf: the index.
-   4. The search on the server: the generated fold table, its test, and
+   2. **Done (#1260).** Sheets: no search of the headers, at every level,
+      and the index.
+   3. **Done (#1261).** pdf: the index.
+   4. **Left.** The search on the server: the generated fold table, its test, and
       the `hits/` path for each view.
-9. **Images** (decision 9): `loading="lazy"` on a linked image, and a
+9. **Done (#1263).** **Images** (decision 9): `loading="lazy"` on a linked image, and a
    linked image in the format and the media type of its data URL.
-10. **Slides and drawing pages, level 1** (decision 10).
-11. **Text documents** (decision 11), once a measured file asks for it.
+10. **Done (#1264).** **Slides and drawing pages, level 1** (decision 10).
+11. **Left.** **Text documents** (decision 11), once a measured file asks
+    for it.
+
+**Not verified yet:**
+
+- **WebKit.** The print of a lazy image and of a chunk that is not near
+  were checked in Chrome only. The ios app renders in WebKit, so it needs
+  one check on a device or in Safari before it takes this release. The
+  zoom probe of `viewport.js` is not checked in WebKit on ios either.
+- **The apps.** The droid app uses the find of the WebView, which does not
+  reach a hidden chunk (opendocument-app/OpenDocument.droid#732). The ios
+  app calls `odr.search`, and can show the count through `searchChange`.
 
 ## Open questions
 
