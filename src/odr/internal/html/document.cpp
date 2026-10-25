@@ -692,7 +692,7 @@ public:
                   document_content_pixels(m_document, config()),
                   [this](const WritingState &state) {
                     // the browser lays out only the slides and drawing pages
-                    // near the viewport, and the first one is
+                    // near the viewport; the first one is near in the markup
                     WritingState fragment_state = state;
                     for (const auto &fragment : m_fragments) {
                       fragment_state.set_page_chunk_near(fragment ==

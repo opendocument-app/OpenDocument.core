@@ -558,9 +558,10 @@ pages and the same size. A view of one slide writes no chunk, because it
 has nothing to skip.
 
 The decks of the corpus have 3.9 K elements at most, and a deck of 7.1 MB
-has 1.3 K, so level 3 gains little after decision 9. A slide is a chunk of its own, so level 3 can follow as it did
-for a pdf page (decision 7), and the search index can take the text from
-the elements, as for a sheet (decision 8).
+has 1.3 K, so level 3 gains little after decision 9. A slide is a chunk of
+its own, so level 3 can follow as it did for a pdf page (decision 7), and
+the search index can take the text from the elements, as for a sheet
+(decision 8).
 
 ### 11. A text document waits for a measurement
 
