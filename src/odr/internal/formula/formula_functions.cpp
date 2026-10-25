@@ -80,8 +80,8 @@ formula::Errors::first() const noexcept {
   return m_first;
 }
 
-formula::Result<double>
-formula::number_argument(const Call &call, const std::size_t index) noexcept {
+formula::Result<double> formula::number_argument(const Call &call,
+                                                 const std::size_t index) {
   const Result<Number> number = call.scalar(index).and_then(
       [&](const Value &value) { return call.number(value); });
   if (!number.has_value()) {

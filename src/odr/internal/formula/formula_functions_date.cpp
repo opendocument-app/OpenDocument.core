@@ -19,8 +19,7 @@ namespace {
 /// Argument @p index as a whole number, toward 0. No answer where reading it
 /// to 15 digits first gives another one: LibreOffice does (`double_to`), and
 /// Excel does not document it.
-Result<double> whole_argument(const Call &call,
-                              const std::size_t index) noexcept {
+Result<double> whole_argument(const Call &call, const std::size_t index) {
   const Result<double> x = number_argument(call, index);
   if (!x.has_value()) {
     return x;
@@ -77,8 +76,7 @@ Result<std::int64_t> day_of(const Call &call, const double serial) noexcept {
 
 /// The days since 1899-12-30 that argument @p index stands for, as `day_of`
 /// reads it.
-Result<std::int64_t> day_argument(const Call &call,
-                                  const std::size_t index) noexcept {
+Result<std::int64_t> day_argument(const Call &call, const std::size_t index) {
   return number_argument(call, index).and_then([&](const double serial) {
     return day_of(call, serial);
   });
@@ -124,7 +122,7 @@ shifted(const std::int64_t days, const double months) noexcept {
 
 /// `DATE`: a year, a month and a day, which may run over into the next.
 /// LibreOffice reads each as a 16-bit integer (`GetInt16`).
-Result<Value> date(const Call &call) noexcept {
+Result<Value> date(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 3, 3);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -185,7 +183,7 @@ Result<Value> date(const Call &call) noexcept {
 
 /// `TIME`: hours, minutes and seconds as a fraction of a day, past a whole
 /// day from 0 again. Excel truncates each argument, LibreOffice does not.
-Result<Value> time(const Call &call) noexcept {
+Result<Value> time(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 3, 3);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -219,7 +217,7 @@ Result<Value> time(const Call &call) noexcept {
 
 enum class Part { year, month, day };
 
-template <Part part> Result<Value> date_part(const Call &call) noexcept {
+template <Part part> Result<Value> date_part(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 1, 1);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -244,7 +242,7 @@ template <Part part> Result<Value> date_part(const Call &call) noexcept {
 /// in a way not documented: no answer where rounding and truncating to the
 /// second give another @p part.
 template <std::int64_t unit, std::int64_t count>
-Result<Value> time_part(const Call &call) noexcept {
+Result<Value> time_part(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 1, 1);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -269,7 +267,7 @@ Result<Value> time_part(const Call &call) noexcept {
 }
 
 /// `WEEKDAY`: the day of the week by the numbering @p type names.
-Result<Value> weekday(const Call &call) noexcept {
+Result<Value> weekday(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 1, 2);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -308,8 +306,7 @@ Result<Value> weekday(const Call &call) noexcept {
 
 /// `EDATE` and `EOMONTH`: a date some months on, on its day or on the last
 /// day of the month.
-template <bool end_of_month>
-Result<Value> months_on(const Call &call) noexcept {
+template <bool end_of_month> Result<Value> months_on(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 2, 2);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -336,7 +333,7 @@ Result<Value> months_on(const Call &call) noexcept {
 /// `DAYS`: the days from the second date to the first. Excel counts whole
 /// days, and refuses a date out of its range, LibreOffice the difference of
 /// the serials.
-Result<Value> days(const Call &call) noexcept {
+Result<Value> days(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 2, 2);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -363,7 +360,7 @@ Result<Value> days(const Call &call) noexcept {
 /// `DATEDIF` in whole years, months or days. The units that count from a
 /// date in another month or year (`MD`, `YM`, `YD`) have no answer, as
 /// Excel documents one of them as wrong.
-Result<Value> date_difference(const Call &call) noexcept {
+Result<Value> date_difference(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 3, 3);
       !expected.has_value()) {
     return std::unexpected(expected.error());

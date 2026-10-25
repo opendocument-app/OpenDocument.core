@@ -50,7 +50,7 @@ Result<Truth> truth(const Value &value) noexcept {
       [](const ErrorType error) { return Truth{error}; });
 }
 
-Result<Value> condition(const Call &call) noexcept {
+Result<Value> condition(const Call &call) {
   if (call.size() < 1 || call.size() > 3 || call.missing(0)) {
     return no_answer();
   }
@@ -75,8 +75,7 @@ Result<Value> condition(const Call &call) noexcept {
 
 /// `IFERROR` and `IFNA`: the second argument where the first is an error
 /// @p catches answers to.
-template <bool only_not_available>
-Result<Value> if_error(const Call &call) noexcept {
+template <bool only_not_available> Result<Value> if_error(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 2, 2);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -97,8 +96,7 @@ Result<Value> if_error(const Call &call) noexcept {
 /// adds its booleans and numbers, a text and an empty cell nothing. With
 /// none at all the result is `#VALUE!`.
 template <typename Combine>
-Result<Value> combine(const Call &call, const bool start,
-                      const Combine &next) noexcept {
+Result<Value> combine(const Call &call, const bool start, const Combine &next) {
   if (const Result<void> expected = expect_arguments(call, 1, 255);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -146,19 +144,19 @@ Result<Value> combine(const Call &call, const bool start,
   return Value{result};
 }
 
-Result<Value> all(const Call &call) noexcept {
+Result<Value> all(const Call &call) {
   return combine(call, true, [](const bool a, const bool b) { return a && b; });
 }
-Result<Value> any(const Call &call) noexcept {
+Result<Value> any(const Call &call) {
   return combine(call, false,
                  [](const bool a, const bool b) { return a || b; });
 }
-Result<Value> one(const Call &call) noexcept {
+Result<Value> one(const Call &call) {
   return combine(call, false,
                  [](const bool a, const bool b) { return a != b; });
 }
 
-Result<Value> negation(const Call &call) noexcept {
+Result<Value> negation(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 1, 1);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -173,7 +171,7 @@ Result<Value> negation(const Call &call) noexcept {
   return Value{!*std::get_if<bool>(&*test)};
 }
 
-Result<Value> choose(const Call &call) noexcept {
+Result<Value> choose(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 2, 255);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -192,7 +190,7 @@ Result<Value> choose(const Call &call) noexcept {
 /// A question about the type of a value, which never answers an error.
 template <bool (*question)(const Call &, const Value &argument,
                            const Value &value)>
-Result<Value> is(const Call &call) noexcept {
+Result<Value> is(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 1, 1);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -242,7 +240,7 @@ bool is_not_available(const Call &, const Value &,
 
 /// `ISEVEN` and `ISODD`. Excel refuses a boolean, with an error its
 /// documentation does not name.
-template <bool odd> Result<Value> parity(const Call &call) noexcept {
+template <bool odd> Result<Value> parity(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 1, 1);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -266,7 +264,7 @@ template <bool odd> Result<Value> parity(const Call &call) noexcept {
 }
 
 /// `N`: a number as it is, a boolean as 1 or 0, anything else as 0.
-Result<Value> number_of(const Call &call) noexcept {
+Result<Value> number_of(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 1, 1);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -283,7 +281,7 @@ Result<Value> number_of(const Call &call) noexcept {
 }
 
 /// `T`: a text as it is, anything else as the empty text.
-Result<Value> text_of(const Call &call) noexcept {
+Result<Value> text_of(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 1, 1);
       !expected.has_value()) {
     return std::unexpected(expected.error());

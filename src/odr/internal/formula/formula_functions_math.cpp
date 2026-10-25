@@ -83,7 +83,7 @@ using Unary = Result<Value> (*)(const Call &, double);
 using Binary = Result<Value> (*)(const Call &, double, double);
 
 /// A function of one number.
-template <Unary function> Result<Value> unary(const Call &call) noexcept {
+template <Unary function> Result<Value> unary(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 1, 1);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -94,7 +94,7 @@ template <Unary function> Result<Value> unary(const Call &call) noexcept {
 
 /// A function of two numbers, the second @p fallback where it is left out.
 template <Binary function, std::int32_t fallback = 0, bool optional = false>
-Result<Value> binary(const Call &call) noexcept {
+Result<Value> binary(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, optional ? 1 : 2, 2);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -123,7 +123,7 @@ struct Collected final {
 
 /// Reads @p count arguments as SUM does: numeric cells and LibreOffice
 /// boolean cells; direct booleans and Excel numeric text also count.
-Result<Collected> collect(const Call &call, const std::size_t count) noexcept {
+Result<Collected> collect(const Call &call, const std::size_t count) {
   Collected result;
   Errors errors;
   const auto visit = [&](const Value &value,
@@ -178,7 +178,7 @@ Result<Collected> collect(const Call &call, const std::size_t count) noexcept {
   return result;
 }
 
-Result<Collected> collect(const Call &call) noexcept {
+Result<Collected> collect(const Call &call) {
   return collect(call, call.size());
 }
 
@@ -232,7 +232,7 @@ double kahan_sum(const std::span<const double> numbers) noexcept {
   return sum.get();
 }
 
-Result<Value> sum(const Call &call) noexcept {
+Result<Value> sum(const Call &call) {
   const Result<Collected> collected = collect(call);
   if (!collected.has_value()) {
     return std::unexpected(collected.error());
@@ -262,7 +262,7 @@ Result<Value> average(const Call &call) {
                  static_cast<double>(collected->numbers.size()));
 }
 
-template <bool largest> Result<Value> extreme(const Call &call) noexcept {
+template <bool largest> Result<Value> extreme(const Call &call) {
   const Result<Collected> collected = collect(call);
   if (!collected.has_value()) {
     return std::unexpected(collected.error());
@@ -277,7 +277,7 @@ template <bool largest> Result<Value> extreme(const Call &call) noexcept {
                        : std::ranges::min(collected->numbers)};
 }
 
-Result<Value> product(const Call &call) noexcept {
+Result<Value> product(const Call &call) {
   const Result<Collected> collected = collect(call);
   if (!collected.has_value()) {
     return std::unexpected(collected.error());
@@ -324,7 +324,7 @@ std::optional<Value> no_numbers(const Call &call,
   return std::nullopt;
 }
 
-Result<Value> median(const Call &call) noexcept {
+Result<Value> median(const Call &call) {
   Result<Collected> collected = collect(call);
   if (!collected.has_value()) {
     return std::unexpected(collected.error());
@@ -344,7 +344,7 @@ Result<Value> median(const Call &call) noexcept {
 
 /// The @p k th largest or smallest of the first argument. LibreOffice reads a
 /// fraction of k up, Excel's rule for one is not documented.
-template <bool largest> Result<Value> kth(const Call &call) noexcept {
+template <bool largest> Result<Value> kth(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 2, 2);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -379,8 +379,7 @@ template <bool largest> Result<Value> kth(const Call &call) noexcept {
 
 /// The variance of the numbers, of a sample where @p sample. LibreOffice
 /// takes the mean with `KahanSum` and each deviation with `approxSub`.
-template <bool sample, bool root>
-Result<Value> variance_of(const Call &call) noexcept {
+template <bool sample, bool root> Result<Value> variance_of(const Call &call) {
   const Result<Collected> collected = collect(call);
   if (!collected.has_value()) {
     return std::unexpected(collected.error());
@@ -414,7 +413,7 @@ Result<Value> variance_of(const Call &call) noexcept {
   return checked(root ? std::sqrt(variance) : variance);
 }
 
-Result<Value> count(const Call &call) noexcept {
+Result<Value> count(const Call &call) {
   double result = 0;
   const auto visit = [&](const Value &value,
                          const bool stated) -> Result<void> {
@@ -445,7 +444,7 @@ Result<Value> count(const Call &call) noexcept {
   return Value{result};
 }
 
-Result<Value> count_stated(const Call &call) noexcept {
+Result<Value> count_stated(const Call &call) {
   double result = 0;
   const auto visit = [&](const Value &value,
                          const bool stated) -> Result<void> {
@@ -466,7 +465,7 @@ Result<Value> count_stated(const Call &call) noexcept {
 
 /// Empty cells, and in Excel the cells holding an empty text. Whether
 /// LibreOffice counts an empty text depends on whether a formula made it.
-Result<Value> count_blank(const Call &call) noexcept {
+Result<Value> count_blank(const Call &call) {
   if (const Result<void> expected = expect_arguments(call, 1, 1);
       !expected.has_value()) {
     return std::unexpected(expected.error());

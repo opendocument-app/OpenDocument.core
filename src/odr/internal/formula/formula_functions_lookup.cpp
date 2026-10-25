@@ -20,7 +20,7 @@ namespace odr::internal::formula {
 namespace {
 
 /// @p value with a boolean as the number LibreOffice states it as.
-Value as_dialect(const Call &call, const Value &value) noexcept {
+Value as_dialect(const Call &call, const Value &value) {
   if (const auto *boolean = std::get_if<bool>(&value.content);
       boolean != nullptr && is_libreoffice(call)) {
     return Value{*boolean ? 1.0 : 0.0};
@@ -30,8 +30,7 @@ Value as_dialect(const Call &call, const Value &value) noexcept {
 
 /// Whether two texts are one without case, as a criterion and a lookup
 /// compare them in both applications, whatever the settings.
-Result<bool> same_text(const std::string_view a,
-                       const std::string_view b) noexcept {
+Result<bool> same_text(const std::string_view a, const std::string_view b) {
   return equal_texts(a, b, false);
 }
 
@@ -81,7 +80,7 @@ public:
   bool whole{false};
 
   [[nodiscard]] Result<Value> at(const std::uint32_t column,
-                                 const std::uint32_t row) const noexcept {
+                                 const std::uint32_t row) const {
     if (m_area.has_value()) {
       return m_call->cell_value(
           SheetPosition(m_area->sheet, m_area->range.from().column + column,
@@ -185,7 +184,7 @@ public:
     return result;
   }
 
-  [[nodiscard]] Result<bool> matches(const Value &stated) const noexcept {
+  [[nodiscard]] Result<bool> matches(const Value &stated) const {
     const Value value = as_dialect(*m_call, stated);
     if (m_blank) {
       // `""` matches an empty cell and an empty text, `"="` an empty cell
@@ -240,7 +239,7 @@ private:
 
   Criterion() = default;
 
-  static Result<bool> is_truth_text(const std::string_view text) noexcept {
+  static Result<bool> is_truth_text(const std::string_view text) {
     const Result<bool> is_true = same_text(text, "TRUE");
     if (!is_true.has_value() || *is_true) {
       return is_true;
@@ -251,7 +250,7 @@ private:
   /// How @p value orders against the criterion, nothing where the two do not
   /// compare: a number and a text.
   [[nodiscard]] Result<std::optional<std::strong_ordering>>
-  order_with(const Value &value) const noexcept {
+  order_with(const Value &value) const {
     if (m_number.has_value()) {
       if (const auto *number = std::get_if<double>(&value.content)) {
         const Result<bool> same =
@@ -439,12 +438,11 @@ template <std::size_t most> Result<Value> count_if(const Call &call) {
     return std::unexpected(tested.error());
   }
   double result = 0;
-  if (const Result<void> walked =
-          each_match(*tested,
-                     [&](std::uint32_t, std::uint32_t) -> Result<void> {
-                       ++result;
-                       return {};
-                     });
+  const auto visit = [&](std::uint32_t, std::uint32_t) -> Result<void> {
+    ++result;
+    return {};
+  };
+  if (const Result<void> walked = each_match(*tested, visit);
       !walked.has_value()) {
     return std::unexpected(walked.error());
   }
@@ -459,23 +457,21 @@ Result<Value> matched(const Call &call,
                       const Cells &values, const bool average) {
   std::vector<double> numbers;
   Errors errors;
-  if (const Result<void> walked = each_match(
-          conditions,
-          [&](const std::uint32_t column,
-              const std::uint32_t row) -> Result<void> {
-            const Result<Value> cell = values.at(column, row);
-            if (!cell.has_value()) {
-              return std::unexpected(cell.error());
-            }
-            const Value value = as_dialect(call, *cell);
-            if (const auto *number = std::get_if<double>(&value.content)) {
-              numbers.push_back(*number);
-            } else if (const auto *error =
-                           std::get_if<ErrorType>(&value.content)) {
-              errors.add(*error);
-            }
-            return {};
-          });
+  const auto visit = [&](const std::uint32_t column,
+                         const std::uint32_t row) -> Result<void> {
+    const Result<Value> cell = values.at(column, row);
+    if (!cell.has_value()) {
+      return std::unexpected(cell.error());
+    }
+    const Value value = as_dialect(call, *cell);
+    if (const auto *number = std::get_if<double>(&value.content)) {
+      numbers.push_back(*number);
+    } else if (const auto *error = std::get_if<ErrorType>(&value.content)) {
+      errors.add(*error);
+    }
+    return {};
+  };
+  if (const Result<void> walked = each_match(conditions, visit);
       !walked.has_value()) {
     return std::unexpected(walked.error());
   }
@@ -561,7 +557,7 @@ template <bool average> Result<Value> sum_ifs(const Call &call) {
 /// Whether a cell is the value a lookup asks for: a number the same number,
 /// a text the same text without case. A pattern has no answer.
 Result<bool> is_lookup_match(const Call &call, const Value &wanted,
-                             const Value &stated) noexcept {
+                             const Value &stated) {
   const Value value = as_dialect(call, stated);
   if (const auto *number = std::get_if<double>(&wanted.content)) {
     const auto *cell = std::get_if<double>(&value.content);
@@ -585,7 +581,7 @@ Result<bool> is_lookup_match(const Call &call, const Value &wanted,
 }
 
 /// The value a lookup asks for, as a scalar.
-Result<Value> wanted_of(const Call &call, const std::size_t index) noexcept {
+Result<Value> wanted_of(const Call &call, const std::size_t index) {
   const Result<Value> scalar = call.scalar(index);
   if (!scalar.has_value()) {
     return scalar;
@@ -610,7 +606,7 @@ Result<Value> wanted_of(const Call &call, const std::size_t index) noexcept {
 template <typename CellAt>
 Result<std::optional<std::uint32_t>>
 position_of(const Call &call, const Value &wanted, const std::uint32_t count,
-            const bool exact, const CellAt &cell_at) noexcept {
+            const bool exact, const CellAt &cell_at) {
   if (count > cell_limit) {
     return no_answer();
   }
@@ -667,7 +663,7 @@ position_of(const Call &call, const Value &wanted, const std::uint32_t count,
 
 /// Whether a lookup is exact, as its last argument states: 0 or false.
 Result<bool> exact_of(const Call &call, const std::size_t index,
-                      const bool unstated) noexcept {
+                      const bool unstated) {
   if (index >= call.size()) {
     return unstated;
   }
@@ -775,8 +771,7 @@ Result<Value> match(const Call &call) {
 }
 
 /// Argument @p index as a whole number, toward 0.
-Result<double> truncated_argument(const Call &call,
-                                  const std::size_t index) noexcept {
+Result<double> truncated_argument(const Call &call, const std::size_t index) {
   return number_argument(call, index).transform([](const double x) {
     return std::trunc(x);
   });
@@ -1126,7 +1121,7 @@ Result<Value> indirect(const Call &call) {
 
 /// `ROW` and `COLUMN`: of the first cell of a reference, or of the formula's
 /// own cell.
-template <bool of_row> Result<Value> position(const Call &call) noexcept {
+template <bool of_row> Result<Value> position(const Call &call) {
   if (call.size() > 1) {
     return no_answer();
   }
