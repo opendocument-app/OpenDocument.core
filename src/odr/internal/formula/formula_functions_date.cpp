@@ -445,7 +445,7 @@ constexpr std::array entries{
 
 namespace odr::internal {
 
-std::span<const formula::FunctionEntry> formula::date_functions() {
+std::span<const formula::FunctionEntry> formula::date_functions() noexcept {
   return entries;
 }
 

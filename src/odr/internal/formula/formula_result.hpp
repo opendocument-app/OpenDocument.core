@@ -17,13 +17,14 @@ struct Stop final {
 template <typename T> using Result = std::expected<T, Stop>;
 
 /// The stop of an indeterminate result: `evaluate` gives nothing.
-[[nodiscard]] inline std::unexpected<Stop> no_answer() {
+[[nodiscard]] inline std::unexpected<Stop> no_answer() noexcept {
   return std::unexpected(Stop{});
 }
 
 /// The stop of an argument error: @p error becomes the result of its
 /// function.
-[[nodiscard]] inline std::unexpected<Stop> error_result(const ErrorType error) {
+[[nodiscard]] inline std::unexpected<Stop>
+error_result(const ErrorType error) noexcept {
   return std::unexpected(Stop{error});
 }
 

@@ -187,7 +187,7 @@ Result<Collected> collect(const Call &call) {
 /// number cancels the rest as `approxAdd` decides.
 class KahanSum final {
 public:
-  void add(const double x) {
+  void add(const double x) noexcept {
     if (x == 0) {
       return;
     }
@@ -197,7 +197,7 @@ public:
     m_last = x;
   }
 
-  [[nodiscard]] double get() const {
+  [[nodiscard]] double get() const noexcept {
     const double total = m_sum + m_error;
     if (m_last == 0) {
       return total;
@@ -216,7 +216,7 @@ private:
   double m_error{0};
   double m_last{0};
 
-  void neumaier(const double x) {
+  void neumaier(const double x) noexcept {
     const double t = m_sum + x;
     m_error +=
         std::abs(m_sum) >= std::abs(x) ? (m_sum - t) + x : (x - t) + m_sum;
@@ -243,7 +243,7 @@ Result<Value> sum(const Call &call) {
   return sum_of(call, collected->numbers);
 }
 
-Result<Value> average(const Call &call) {
+Result<Value> average(const Call &call) noexcept {
   const Result<Collected> collected = collect(call);
   if (!collected.has_value()) {
     return std::unexpected(collected.error());
@@ -295,7 +295,7 @@ Result<Value> product(const Call &call) {
   return checked(result);
 }
 
-Result<Value> sum_of_squares(const Call &call) {
+Result<Value> sum_of_squares(const Call &call) noexcept {
   const Result<Collected> collected = collect(call);
   if (!collected.has_value()) {
     return std::unexpected(collected.error());
@@ -509,7 +509,7 @@ Result<Value> count_blank(const Call &call) {
 
 /// `SUMPRODUCT`: the arrays element by element. A text and an empty cell are
 /// 0, and so is a boolean in Excel.
-Result<Value> sum_product(const Call &call) {
+Result<Value> sum_product(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 1, 255);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -766,14 +766,14 @@ Result<Value> factorial(const Call &call, const double x) noexcept {
 }
 
 /// A number in [0, 1) from the caller's source.
-Result<double> random_of(const Call &call) {
+Result<double> random_of(const Call &call) noexcept {
   if (!call.settings().random) {
     return no_answer();
   }
   return call.settings().random();
 }
 
-Result<Value> random(const Call &call) {
+Result<Value> random(const Call &call) noexcept {
   return expect_arguments(call, 0, 0)
       .and_then([&] { return random_of(call); })
       .transform([](const double x) { return Value{x}; });
@@ -782,7 +782,7 @@ Result<Value> random(const Call &call) {
 /// `RANDBETWEEN`: a whole number between two. A bound that is no whole
 /// number, or a bottom above the top, has no answer: LibreOffice refuses the
 /// second, and neither application documents what they do.
-Result<Value> random_between(const Call &call) {
+Result<Value> random_between(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 2, 2);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -885,7 +885,7 @@ formula::sum_of(const Call &call,
   return checked(total);
 }
 
-std::span<const formula::FunctionEntry> formula::math_functions() {
+std::span<const formula::FunctionEntry> formula::math_functions() noexcept {
   return entries;
 }
 

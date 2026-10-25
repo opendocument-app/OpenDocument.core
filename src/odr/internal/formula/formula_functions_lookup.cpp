@@ -39,7 +39,8 @@ class Cells final {
 public:
   /// The cells of @p value: a range, an array, or one value. Stops with the
   /// error where it is one.
-  [[nodiscard]] static Result<Cells> of(const Call &call, const Value &value) {
+  [[nodiscard]] static Result<Cells> of(const Call &call,
+                                        const Value &value) noexcept {
     Cells result;
     result.m_call = &call;
     if (const auto *reference = std::get_if<Reference>(&value.content)) {
@@ -91,8 +92,9 @@ public:
 
   /// The reference to the cell at (@p column, @p row), or its value where
   /// the cells are an array.
-  [[nodiscard]] Result<Value> reference_at(const std::uint32_t column,
-                                           const std::uint32_t row) const {
+  [[nodiscard]] Result<Value>
+  reference_at(const std::uint32_t column,
+               const std::uint32_t row) const noexcept {
     if (!m_area.has_value()) {
       return at(column, row);
     }
@@ -127,7 +129,7 @@ class Criterion final {
 public:
   /// The criterion @p stated spells. Stops with the error where it is one.
   [[nodiscard]] static Result<Criterion> of(const Call &call,
-                                            const Value &stated) {
+                                            const Value &stated) noexcept {
     Criterion result;
     result.m_call = &call;
     const Value value = as_dialect(call, stated);
@@ -325,7 +327,7 @@ struct Condition final {
 /// The condition of the range argument @p cells and the criterion argument
 /// @p criterion, read in this order.
 Result<Condition> condition_of(const Call &call, const std::size_t cells,
-                               const std::size_t criterion) {
+                               const std::size_t criterion) noexcept {
   Result<Cells> tested = call.value(cells).and_then(
       [&](const Value &value) { return Cells::of(call, value); });
   if (!tested.has_value()) {
@@ -340,7 +342,7 @@ Result<Condition> condition_of(const Call &call, const std::size_t cells,
 }
 
 Result<std::vector<Condition>> conditions(const Call &call,
-                                          const std::size_t first) {
+                                          const std::size_t first) noexcept {
   if (call.size() <= first || (call.size() - first) % 2 != 0) {
     return no_answer();
   }
@@ -375,7 +377,7 @@ constexpr std::size_t cell_limit = 1 << 22;
 /// ends the walk and is its result.
 template <typename Visit>
 Result<void> each_match(const std::span<const Condition> conditions,
-                        const Visit &visit) {
+                        const Visit &visit) noexcept {
   const Cells &shape = conditions.front().cells;
   if (std::uint64_t{shape.columns} * shape.rows > cell_limit) {
     return no_answer();
@@ -425,7 +427,7 @@ Result<void> each_match(const std::span<const Condition> conditions,
 }
 
 /// `COUNTIF` and `COUNTIFS`, which take up to @p most arguments.
-template <std::size_t most> Result<Value> count_if(const Call &call) {
+template <std::size_t most> Result<Value> count_if(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 2, most);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -451,7 +453,7 @@ template <std::size_t most> Result<Value> count_if(const Call &call) {
 /// is the result.
 Result<Value> matched(const Call &call,
                       const std::span<const Condition> conditions,
-                      const Cells &values, const bool average) {
+                      const Cells &values, const bool average) noexcept {
   std::vector<double> numbers;
   Errors errors;
   const auto visit = [&](const std::uint32_t column,
@@ -492,7 +494,7 @@ Result<Value> matched(const Call &call,
 /// The range a `SUMIF` adds: the one it names, of the size of the range it
 /// tests, from its first cell on, as both applications read it.
 Result<Cells> sum_range(const Call &call, const Cells &tested,
-                        const std::size_t index) {
+                        const std::size_t index) noexcept {
   if (index >= call.size()) {
     return tested;
   }
@@ -510,7 +512,7 @@ Result<Cells> sum_range(const Call &call, const Cells &tested,
   return stated;
 }
 
-template <bool average> Result<Value> sum_if(const Call &call) {
+template <bool average> Result<Value> sum_if(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 2, 3);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -527,7 +529,7 @@ template <bool average> Result<Value> sum_if(const Call &call) {
   return matched(call, tested, *values, average);
 }
 
-template <bool average> Result<Value> sum_ifs(const Call &call) {
+template <bool average> Result<Value> sum_ifs(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 3, 255);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -671,7 +673,7 @@ Result<bool> exact_of(const Call &call, const std::size_t index,
 
 /// `VLOOKUP` and `HLOOKUP`: the value in line @p index of the table, of the
 /// first column or row matching.
-template <bool vertical> Result<Value> lookup(const Call &call) {
+template <bool vertical> Result<Value> lookup(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 3, 4);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -721,7 +723,7 @@ template <bool vertical> Result<Value> lookup(const Call &call) {
 }
 
 /// `MATCH`: the position of a value in a row or a column, counted from 1.
-Result<Value> match(const Call &call) {
+Result<Value> match(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 2, 3);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -776,7 +778,7 @@ Result<double> truncated_argument(const Call &call, const std::size_t index) {
 
 /// `INDEX`: the cell at a row and a column of a range, counted from 1. A
 /// single row or column takes one index.
-Result<Value> index(const Call &call) {
+Result<Value> index(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 2, 3);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -828,7 +830,7 @@ constexpr double grid_rows = 1048576;
 
 /// `OFFSET`: a reference moved by rows and columns, and sized anew where a
 /// height or a width is given.
-Result<Value> offset(const Call &call) {
+Result<Value> offset(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 3, 5);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -963,7 +965,7 @@ std::optional<Coordinate> r1c1_axis(std::string_view &text, const char letter,
 /// argument false: `Sheet1!R2C3`, `R[-1]C:R[1]C`. Null for anything else,
 /// such as a whole row (`R2`), which this does not read.
 std::optional<Node> r1c1_reference(std::string_view text,
-                                   const TablePosition &at) {
+                                   const TablePosition &at) noexcept {
   std::optional<std::string> sheet;
   if (const std::size_t bang = text.rfind('!');
       bang != std::string_view::npos) {
@@ -1009,7 +1011,7 @@ std::optional<Node> r1c1_reference(std::string_view text,
 /// A reference in A1 as `INDIRECT` reads one: Excel's `Sheet1!A1:B2` and a
 /// name, and in LibreOffice its own `$Sheet1.$A$1:B2` too.
 std::optional<Node> a1_reference(const std::string_view text,
-                                 const bool libreoffice) {
+                                 const bool libreoffice) noexcept {
   const auto is_reference = [](const std::optional<Node> &node) {
     return node.has_value() &&
            (node->holds<CellReference>() || node->holds<RangeReference>() ||
@@ -1063,7 +1065,7 @@ bool spaced(const std::string_view text) noexcept {
 
 /// `INDIRECT`: the reference a text spells, in A1, or in R1C1 where the
 /// second argument is false. A text that spells none is `#REF!`.
-Result<Value> indirect(const Call &call) {
+Result<Value> indirect(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 1, 2);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -1140,7 +1142,7 @@ template <bool of_row> Result<Value> position(const Call &call) {
 
 /// `ROWS` and `COLUMNS`: the size of a range or an array. A whole column is
 /// as tall as the grid of the application, which the two state apart.
-template <bool of_rows> Result<Value> size(const Call &call) {
+template <bool of_rows> Result<Value> size(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 1, 1);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -1191,7 +1193,7 @@ constexpr std::array entries{
 
 namespace odr::internal {
 
-std::span<const formula::FunctionEntry> formula::lookup_functions() {
+std::span<const formula::FunctionEntry> formula::lookup_functions() noexcept {
   return entries;
 }
 

@@ -65,7 +65,7 @@ Result<Value> length(const Call &call) {
 }
 
 /// `LEFT` and `RIGHT`: the first or the last @p count units.
-template <bool from_end> Result<Value> side(const Call &call) {
+template <bool from_end> Result<Value> side(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 1, 2);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -91,7 +91,7 @@ template <bool from_end> Result<Value> side(const Call &call) {
                              : text->substr(0, take));
 }
 
-Result<Value> middle(const Call &call) {
+Result<Value> middle(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 3, 3);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -137,7 +137,7 @@ template <bool upper> Result<Value> change_case(const Call &call) {
 }
 
 /// `TRIM`: no space at either end, and one between words.
-Result<Value> trim(const Call &call) {
+Result<Value> trim(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 1, 1);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -162,7 +162,7 @@ Result<Value> trim(const Call &call) {
   return text_value(result);
 }
 
-Result<Value> concatenate(const Call &call) {
+Result<Value> concatenate(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 1, 255);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -223,7 +223,7 @@ Result<Value> concat(const Call &call) {
   return text_value(result);
 }
 
-Result<Value> repeat(const Call &call) {
+Result<Value> repeat(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 2, 2);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -254,7 +254,7 @@ Result<Value> repeat(const Call &call) {
 
 /// `FIND` and `SEARCH`: the position of the first match from the start on,
 /// counted from 1. `SEARCH` ignores case.
-template <bool ignore_case> Result<Value> find(const Call &call) {
+template <bool ignore_case> Result<Value> find(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 2, 3);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -304,7 +304,7 @@ template <bool ignore_case> Result<Value> find(const Call &call) {
   return Value{static_cast<double>(at + 1)};
 }
 
-Result<Value> substitute(const Call &call) {
+Result<Value> substitute(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 3, 4);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -355,7 +355,7 @@ Result<Value> substitute(const Call &call) {
   return text_value(result);
 }
 
-Result<Value> replace(const Call &call) {
+Result<Value> replace(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 4, 4);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -431,7 +431,7 @@ Result<Value> value(const Call &call) {
 
 /// `CHAR`: an ASCII character. The applications map the codes past it by
 /// different code pages.
-Result<Value> character(const Call &call) {
+Result<Value> character(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 1, 1);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -494,7 +494,7 @@ constexpr std::array entries{
 
 namespace odr::internal {
 
-std::span<const formula::FunctionEntry> formula::text_functions() {
+std::span<const formula::FunctionEntry> formula::text_functions() noexcept {
   return entries;
 }
 

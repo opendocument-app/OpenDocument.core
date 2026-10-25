@@ -297,7 +297,7 @@ Result<Value> text_of(const Call &call) {
 /// `CELL`: what a cell is, as the first argument asks: `address`, `col`,
 /// `row`, `contents` or `type`. Without a reference LibreOffice reads the
 /// formula's own cell, and Excel the cell that changed last.
-Result<Value> cell_info(const Call &call) {
+Result<Value> cell_info(const Call &call) noexcept {
   if (const Result<void> expected = expect_arguments(call, 1, 2);
       !expected.has_value()) {
     return std::unexpected(expected.error());
@@ -391,7 +391,7 @@ constexpr std::array entries{
 
 namespace odr::internal {
 
-std::span<const formula::FunctionEntry> formula::logic_functions() {
+std::span<const formula::FunctionEntry> formula::logic_functions() noexcept {
   return entries;
 }
 
