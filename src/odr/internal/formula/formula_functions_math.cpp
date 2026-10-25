@@ -777,11 +777,9 @@ Result<double> random_of(const Call &call) {
 }
 
 Result<Value> random(const Call &call) {
-  if (const Result<void> expected = expect_arguments(call, 0, 0);
-      !expected.has_value()) {
-    return std::unexpected(expected.error());
-  }
-  return random_of(call).transform([](const double x) { return Value{x}; });
+  return expect_arguments(call, 0, 0)
+      .and_then([&] { return random_of(call); })
+      .transform([](const double x) { return Value{x}; });
 }
 
 /// `RANDBETWEEN`: a whole number between two. A bound that is no whole
