@@ -16,6 +16,13 @@ on:
         description: tag being cut (e.g. v6.2.0)
         type: string
         required: true
+  # a branch that changes the module tries it here, before a release does
+  workflow_dispatch:
+    inputs:
+      version:
+        description: name to build the module under (e.g. v0.0.0-test)
+        type: string
+        required: true
 
 env:
   CCACHE_DIR: ${{ github.workspace }}/.ccache
