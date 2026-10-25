@@ -1,8 +1,10 @@
 #include <odr/internal/util/locale_util.hpp>
 
+#include <odr/internal/util/lowercase_table.hpp>
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
+#include <span>
 
 namespace odr::internal {
 
@@ -42,6 +44,29 @@ util::locale::LanguageTag::parse(const std::string_view tag) {
     }
   }
   return result;
+}
+
+char32_t util::locale::to_lower(const char32_t letter,
+                                const std::string_view language) {
+  if (letter == U'I' && (language == "tr" || language == "az")) {
+    return U'ı';
+  }
+  const std::span<const LowercasePair> pairs = lowercase_pairs();
+  const auto found =
+      std::ranges::lower_bound(pairs, letter, {}, &LowercasePair::letter);
+  return found != pairs.end() && found->letter == letter ? found->lower
+                                                         : letter;
+}
+
+bool util::locale::equals_ignore_case(std::string_view a, std::string_view b,
+                                      const std::string_view language) {
+  while (!a.empty() && !b.empty()) {
+    if (to_lower(util::string::next_utf8(a), language) !=
+        to_lower(util::string::next_utf8(b), language)) {
+      return false;
+    }
+  }
+  return a.empty() && b.empty();
 }
 
 } // namespace odr::internal

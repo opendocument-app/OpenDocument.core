@@ -16,4 +16,14 @@ struct LanguageTag final {
   [[nodiscard]] static LanguageTag parse(std::string_view tag);
 };
 
+/// @p letter in lowercase, with the rules of @p language, a lowercase BCP 47
+/// language subtag: in `tr` and `az`, `I` is a dotless `ı`. A letter whose
+/// lowercase is more than one code point takes its simple lowercase.
+[[nodiscard]] char32_t to_lower(char32_t letter, std::string_view language);
+
+/// Whether the UTF-8 strings @p a and @p b are the same in lowercase, with the
+/// rules of @p language.
+[[nodiscard]] bool equals_ignore_case(std::string_view a, std::string_view b,
+                                      std::string_view language);
+
 } // namespace odr::internal::util::locale

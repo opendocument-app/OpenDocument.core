@@ -17,18 +17,6 @@ std::string language_of(const std::string_view locale) {
                                                     : std::move(tag.language);
 }
 
-/// Whether two names in @p language are the same, ignoring case.
-bool same_name(std::string_view a, std::string_view b,
-               const std::string_view language) {
-  while (!a.empty() && !b.empty()) {
-    if (lower_function_letter(util::string::next_utf8(a), language) !=
-        lower_function_letter(util::string::next_utf8(b), language)) {
-      return false;
-    }
-  }
-  return a.empty() && b.empty();
-}
-
 /// What a function name is spelled out of: a byte of a letter past ASCII
 /// too, as `ZÄHLENWENN` holds.
 bool is_name_byte(const char c) {
@@ -111,7 +99,8 @@ std::string formula::english_functions(const std::string_view formula,
         }
         for (const FunctionName &entry : function_names()) {
           if (entry.language == language &&
-              same_name(entry.localized, name, language)) {
+              util::locale::equals_ignore_case(entry.localized, name,
+                                               language)) {
             return entry.english;
           }
         }

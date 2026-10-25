@@ -48,3 +48,33 @@ TEST(LocaleUtil, norwegian_is_bokmal) {
 }
 
 TEST(LocaleUtil, an_empty_tag_states_nothing) { expect_tag("", "", "", ""); }
+
+TEST(LocaleUtil, to_lower_takes_any_alphabet) {
+  EXPECT_EQ(to_lower(U'A', "en"), U'a');
+  EXPECT_EQ(to_lower(U'a', "en"), U'a');
+  EXPECT_EQ(to_lower(U'Ä', "de"), U'ä');
+  EXPECT_EQ(to_lower(U'Ł', "pl"), U'ł');
+  EXPECT_EQ(to_lower(U'Σ', "el"), U'σ');
+  EXPECT_EQ(to_lower(U'Ж', "ru"), U'ж');
+  EXPECT_EQ(to_lower(U'\U00010400', "en"), U'\U00010428');
+  EXPECT_EQ(to_lower(U'1', "en"), U'1');
+  EXPECT_EQ(to_lower(U'ß', "de"), U'ß');
+}
+
+TEST(LocaleUtil, to_lower_keeps_the_dot_of_a_turkish_i) {
+  EXPECT_EQ(to_lower(U'I', "en"), U'i');
+  EXPECT_EQ(to_lower(U'I', "tr"), U'ı');
+  EXPECT_EQ(to_lower(U'I', "az"), U'ı');
+  EXPECT_EQ(to_lower(U'İ', "tr"), U'i');
+  EXPECT_EQ(to_lower(U'İ', "en"), U'i');
+}
+
+TEST(LocaleUtil, equals_ignore_case_reads_utf8) {
+  EXPECT_TRUE(equals_ignore_case("ZÄHLENWENN", "zählenwenn", "de"));
+  EXPECT_TRUE(equals_ignore_case("СУММ", "сумм", "ru"));
+  EXPECT_TRUE(equals_ignore_case("YANLIŞ", "yanlış", "tr"));
+  EXPECT_FALSE(equals_ignore_case("YANLIŞ", "yanliş", "tr"));
+  EXPECT_TRUE(equals_ignore_case("MİN", "min", "tr"));
+  EXPECT_FALSE(equals_ignore_case("SUMME", "SUMMEN", "de"));
+  EXPECT_FALSE(equals_ignore_case("SUMME", "SUMM", "de"));
+}
