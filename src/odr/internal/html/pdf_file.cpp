@@ -2163,13 +2163,16 @@ public:
       double height{0};
     };
     std::vector<PageSize> sizes;
+    sizes.reserve(pages_out.size() + later.size());
     std::vector<PageBox> later_boxes;
+    later_boxes.reserve(later.size());
     for (const DualPageOut &page : pages_out) {
       sizes.push_back({page.width, page.height});
     }
     for (pdf::Page *page : later) {
-      later_boxes.push_back(begin_page(
-          *page, [](std::string &, const std::string &, std::string) {}));
+      later_boxes.push_back(
+          begin_page(*page, [](std::string &, const std::string &,
+                               const std::string &) {}));
       sizes.push_back({later_boxes.back().width, later_boxes.back().height});
     }
 
