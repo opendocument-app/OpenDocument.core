@@ -357,7 +357,8 @@
     if (ordinal !== -1 && total > 0) {
       // the DOM states the hits of the chunk; the index only counted them
       var place = at < hits.length ? placeOf(hits[at]) : total - 1;
-      select(Math.min(place + Math.max(Math.min(ordinal, found.length - 1), 0), total - 1));
+      var offset = Math.max(Math.min(ordinal, found.length - 1), 0);
+      select(Math.min(place + offset, total - 1));
     }
     notify();
   });

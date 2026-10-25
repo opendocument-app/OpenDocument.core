@@ -493,14 +493,18 @@
     // Keeps the text of the chunks that a script of the search index states
     // and that have not loaded since.
     text: function (byKey) {
-      var fold = typeof odr.foldSearchText === "function" ? odr.foldSearchText : null;
+      var fold =
+        typeof odr.foldSearchText === "function" ? odr.foldSearchText : null;
       for (var key in byKey) {
         if (!Object.prototype.hasOwnProperty.call(byKey, key)) {
           continue;
         }
         var chunk = document.querySelector('[data-odr-chunk="' + key + '"]');
         if (chunk !== null && chunk.hasAttribute("data-odr-chunk-src")) {
-          texts[key] = { text: fold === null ? byKey[key] : fold(byKey[key]), folded: fold !== null };
+          texts[key] = {
+            text: fold === null ? byKey[key] : fold(byKey[key]),
+            folded: fold !== null,
+          };
         }
       }
     },
