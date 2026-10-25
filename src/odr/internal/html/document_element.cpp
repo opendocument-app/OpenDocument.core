@@ -1354,10 +1354,14 @@ namespace {
 template <typename PageLike>
 void translate_page_like(const PageLike &page,
                          const html::WritingState &state) {
+  const std::optional<bool> near = state.page_chunk_near();
   state.out().write_element_begin(
       "div",
       html::HtmlElementOptions()
-          .set_class("odr-page-outer")
+          .set_class("odr-page-outer" +
+                     (near.has_value()
+                          ? html::chunk_classes(state.config(), *near)
+                          : std::string()))
           .set_style(html::translate_outer_page_style(page.page_layout())));
 
   html::translate_master_page(page.master_page(), state);

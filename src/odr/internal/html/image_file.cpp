@@ -252,7 +252,7 @@ void html::translate_image_src(const ImageFile &image_file, std::ostream &out,
 odr::HtmlResource html::linked_image_resource(const File &file,
                                               std::string path,
                                               const Logger &logger) {
-  std::string mime_type = "image/jpg";
+  std::string mime_type;
   try {
     const ImageFile image_file = odr::open(file).as_image_file();
     if (image_file.file_type() == FileType::starview_metafile) {
@@ -263,6 +263,7 @@ odr::HtmlResource html::linked_image_resource(const File &file,
     mime_type = image_mime_type(image_file);
   } catch (...) {
     // what nothing names goes out as the data url labels it
+    mime_type = "image/jpg";
   }
   return HtmlResource::create(HtmlResourceType::image, std::move(mime_type),
                               path, path, file, false, false, true);

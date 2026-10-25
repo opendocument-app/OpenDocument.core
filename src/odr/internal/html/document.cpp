@@ -251,6 +251,10 @@ void write_head(const Document &document, const WritingState &state,
   if (document.document_type() == DocumentType::spreadsheet) {
     write_spreadsheet_style(state);
     write_spreadsheet_dark_style(state);
+  }
+  if (document.document_type() == DocumentType::spreadsheet ||
+      document.document_type() == DocumentType::presentation ||
+      document.document_type() == DocumentType::drawing) {
     write_chunk_style(state);
   }
   // Last, after the sheets whose rules they stand in for.
@@ -687,8 +691,13 @@ public:
     return render(m_document, config(), logger(), out, "",
                   document_content_pixels(m_document, config()),
                   [this](const WritingState &state) {
+                    // the browser lays out only the slides and drawing pages
+                    // near the viewport; the first one is near in the markup
+                    WritingState fragment_state = state;
                     for (const auto &fragment : m_fragments) {
-                      fragment->write_fragment(state.out(), state);
+                      fragment_state.set_page_chunk_near(fragment ==
+                                                         m_fragments.front());
+                      fragment->write_fragment(state.out(), fragment_state);
                     }
                   });
   }
