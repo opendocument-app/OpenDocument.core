@@ -30,54 +30,52 @@ The release run heads these entries with the version and opens a fresh
 - An editable ods or xlsx sheet page carries the formula module, where the
   build has one: the npm package does, and another build names it with
   `ODR_FORMULA_MODULE`. The page is about 540 KB larger.
-- A text file, a pdf and a sheet page let the browser lay out only the
-  lines, pages and rows near the viewport. A text file of 1 M lines shows
-  its first frame after 0.85 s, not 154 s. The find of the browser does not
-  reach a far part, but `odr.search` does. `HtmlConfig::lazy_layout` (on by
-  default, also in the bindings) turns this off.
+- A text file, a pdf, a sheet, a presentation and a drawing let the
+  browser lay out only the lines, pages, rows and slides near the viewport.
+  A text file of 1 M lines shows its first frame after 0.85 s, not 154 s,
+  and a deck of 600 slides after 150 ms, not 570 ms.
+  `HtmlConfig::lazy_layout` (on by default, also in the bindings) turns
+  this off.
+- The find of the browser does not reach a part that is far from the
+  viewport, but `odr.search` does. A host that offers the find of its web
+  view needs `odr.search` instead, or `lazy_layout` off
+  (opendocument-app/OpenDocument.droid#732).
 - The line numbers of a text file are in each line, so a wrapped line keeps
   its number beside it.
 - `HtmlConfig::lazy_loading` (off by default, also in the bindings) writes
-  each chunk of a text file after the first as a script beside the page,
-  which the page loads when the reader comes near. `bring_offline` writes
-  the scripts, and the HTTP server serves them. A text file of 1 M lines is
-  then a page of 485 KB. A print shows a chunk that has not loaded as
-  empty space.
-- `odr.search` in such a text file finds the lines that have not loaded,
-  from the text that `HtmlConfig::lazy_loading` writes beside the page in
-  `text-search/<n>.js`. It returns the hits it knows at once. The new
-  `odr.onSearchChange({count, current, complete})`, which the host bridge
-  forwards as `searchChange`, and `odr.searchDone()` give the final count.
-  A step to a hit loads its chunk.
-- `odr.search` in a sheet whose rows load finds the rows that have not
-  loaded the same way, from `sheet<n>-search/<m>.js`.
-- `odr.search` in a pdf whose pages load finds the pages that have not
-  loaded the same way, from `pdf-search/<n>.js`. The service renders each
-  page once for it and keeps the text: 4.9 s for the 2985 pages of a
-  technical manual, whose index is 5.3 MB.
-- A pdf page that loads renders in about half the time, because the service
-  tests once for each font whether it re-encodes, not once for each page.
-- The page of a presentation or a drawing lets the browser lay out only the
-  slides near the viewport, as a pdf does. A deck of 600 slides shows its
-  first frame after 150 ms, not 570 ms. `HtmlConfig::lazy_layout` turns
-  this off.
+  the parts of a view after the first as scripts beside the page, which the
+  page loads when the reader comes near. `bring_offline` writes the
+  scripts, and the HTTP server serves them. A print shows a part that has
+  not loaded as empty space.
+  - A text file of 1 M lines is then a page of 495 KB.
+  - The sheet of 500 K cells in `efficiency-big-1.ods` is a page of 370 KB.
+    Such a sheet has no sort control, because a sort needs every row.
+  - A pdf renders each page after the first alone, and links the fonts as
+    files. The 2985 pages of a technical manual are a document of 1.4 MB,
+    which the HTTP server answers after 0.5 s, not 5.4 s. The script of a
+    page renders in half the time it took, because the service tests each
+    font once whether it re-encodes. A pdf in the single layer keeps every
+    page in the document.
+- `odr.search` finds the parts that have not loaded, from a search index
+  that `HtmlConfig::lazy_loading` writes beside the page
+  (`text-search/<n>.js`, `sheet<n>-search/<m>.js`, `pdf-search/<n>.js`).
+  A step to a hit loads its part. For a pdf, the service renders each page
+  once for the index and keeps the text: 4.9 s for the technical manual,
+  whose index is 5.3 MB.
+  - Where parts load, `odr.search` returns the hits it knows at once. The
+    new `odr.onSearchChange({count, current, complete})`, which the host
+    bridge forwards as `searchChange`, and `odr.searchDone()`, a Promise,
+    give the final count.
+- `odr.search` no longer finds the row numbers and the column letters of a
+  sheet, because they label the cells and are not their content.
 - With `HtmlConfig::embed_images` off, an image loads once the reader comes
   near it (`loading="lazy"`), so a page fetches 3 of the 187 images of a
   long docx at the start. A print still shows every image.
 - With `HtmlConfig::embed_images` off, an SVM image is a file of SVG, as
   its data url is, and every linked image states its media type. Before,
   the browser got the SVM as it is, labelled `image/jpg`, and showed a
-  broken image.
-- `odr.search` no longer finds the row numbers and the column letters of a
-  sheet, because they label the cells and are not their content.
-- `HtmlConfig::lazy_loading` loads the rows of a sheet the same way. The
-  sheet of 500 K cells in `efficiency-big-1.ods` is then a page of 370 KB.
-  Such a sheet has no sort control, because a sort needs every row.
-- `HtmlConfig::lazy_loading` renders each page of a pdf after the first
-  when the reader comes near it, and links the fonts as files. The 2985
-  pages of a technical manual are then a document of 1.4 MB, which the
-  HTTP server answers after 0.5 s, not 5.4 s. A pdf in the single layer
-  keeps every page in the document.
+  broken image. An SVM that does not convert is an empty file and a
+  warning.
 
 ### Spreadsheets
 

@@ -2,7 +2,7 @@
   "use strict";
 
   // The sheet: the ruler, and a table for each chunk of rows
-  // (`lazy-loading.md` decision 6).
+  // (`lazy-loading.md` decision 3).
   var table = document.querySelector(".odr-sheet");
   if (table === null) {
     return;

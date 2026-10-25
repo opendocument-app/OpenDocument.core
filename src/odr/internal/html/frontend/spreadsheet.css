@@ -17,7 +17,7 @@
 /* A sheet is not a page: past the last row and column is canvas. */
 body{margin:0;background:var(--odr-sheet-canvas)}
 /* A sheet is the ruler and a table for each chunk of rows (`lazy-loading.md`
-   decision 6). Every column states its width, so the tables line up. The
+   decision 3). Every column states its width, so the tables line up. The
    ruler sticks to the top of the whole sheet, not of one table. */
 .odr-sheet-head,.odr-sheet-rows{background:#fff;border-collapse:collapse;table-layout:fixed;width:var(--odr-sheet-width)}
 .odr-sheet-head{position:sticky;top:0;z-index:2}

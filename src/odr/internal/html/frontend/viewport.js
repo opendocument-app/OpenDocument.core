@@ -383,7 +383,7 @@
   }
 
   // A chunk that names its source has its content in a script of its own,
-  // which puts it in through `odr.chunks.fill` (`lazy-loading.md` decision 3).
+  // which puts it in through `odr.chunks.fill` (`lazy-loading.md` decision 2).
   // A script loads over HTTP and from a file alike.
   function load(chunk) {
     var source = chunk.getAttribute("data-odr-chunk-src");
@@ -405,7 +405,7 @@
   }
 
   // The text of the chunks that have not loaded, by chunk key, which the
-  // scripts of the search index state (`lazy-loading.md` decision 8). A
+  // scripts of the search index state (`lazy-loading.md` decision 4). A
   // script that failed has no text, and is not asked for again.
   var texts = {};
   var indexes = {};

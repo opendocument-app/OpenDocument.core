@@ -5,7 +5,7 @@
 
   // Every hit in document order: the marks of a hit in the DOM, or the chunk
   // and the ordinal in it of a hit in a chunk that has not loaded
-  // (`lazy-loading.md` decision 8).
+  // (`lazy-loading.md` decision 4).
   var hits = [];
   var current = -1;
   var keyword = "";

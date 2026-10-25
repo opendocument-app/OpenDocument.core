@@ -26,7 +26,7 @@ namespace {
 /// 256 lines of 20px: a chunk the browser skips is a few screens tall.
 constexpr std::uint32_t chunk_lines = 256;
 
-/// Where the page loads chunk @p index from (`lazy-loading.md` decision 3).
+/// Where the page loads chunk @p index from (`lazy-loading.md` decision 2).
 std::string chunk_path(const std::size_t index) {
   return "text-chunks/" + std::to_string(index) + ".js";
 }
@@ -35,7 +35,7 @@ std::string chunk_path(const std::size_t index) {
 constexpr std::size_t chunks_per_index = 64;
 
 /// Where the page loads the text of index group @p group from
-/// (`lazy-loading.md` decision 8).
+/// (`lazy-loading.md` decision 4).
 std::string index_path(const std::size_t group) {
   return "text-search/" + std::to_string(group) + ".js";
 }
