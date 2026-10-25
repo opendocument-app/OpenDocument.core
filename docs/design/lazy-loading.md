@@ -343,6 +343,109 @@ At the start, in the middle and at nine tenths of the document, a
 screenshot is the same to the pixel as one of the page with every page in
 it.
 
+### 8. A search finds the chunks that have not loaded
+
+At level 3, `odr.search` searches the DOM, so it finds only the chunks that
+have loaded. To load every chunk for a search would bring back the cost
+that level 3 removes: 127 MB of html for `Core_v5.1.pdf`. A search on the
+server works only over HTTP. So the page searches a text index that core
+writes beside the chunks, and loads the chunk of a hit only when the reader
+goes to it.
+
+**Measured:** the plain text of `Core_v5.1.pdf` is at most 9.0 MB, and
+1.3 MB gzipped (ghostscript `txtwrite`, which pads the layout with
+spaces). The html of its pages is 122 MB.
+
+**The index is a script, as a chunk is.** One script holds the text of 64
+chunks, one string for each chunk:
+
+```js
+// text-search/0.js
+odr.chunks.text(0, ["the text of chunk 0", "the text of chunk 1", …]);
+```
+
+A chunk that loads names its index script, as it names its own:
+
+```html
+<div class="odr-text-lines odr-chunk" data-odr-chunk="12"
+     data-odr-chunk-src="text-chunks/12.js"
+     data-odr-chunk-text="text-search/0.js"></div>
+```
+
+The first argument is the first chunk the script covers. The paths follow
+the paths of the chunks: `text-search/<n>.js`, `sheet<n>-search/<m>.js`,
+`pdf-search/<n>.js`. The view returns each script as an `HtmlResource`, so
+`bring_offline` writes it and `HttpServer` serves it with no new route
+(decision 4). The attribute costs about 30 bytes for each chunk.
+
+**What the text of a chunk is.** The text that `search.js` reads from the
+DOM of that chunk: every text node outside `script`, `style` and
+`aria-hidden`, in document order. A `\n` separates two blocks, because
+`search.js` never matches across a block boundary. `search.js` folds a `\n`
+inside a block to a space, as it folds a tab. So the separator is the only
+`\n` that the folded text keeps, and a keyword never matches across it.
+
+| view | a block |
+|---|---|
+| text file | a line |
+| sheet | a cell, and the header cell of each row, because a search of the DOM finds the row numbers too |
+| pdf | a line of the `.sel` layer; `.vis` is `aria-hidden` |
+
+Core writes the index from the same model that it writes the chunk from:
+the lines, the cells, the `SelLineOut`s. It does not write it from the
+html. The cost in core:
+
+- **Text file:** the service already keeps the text and where each chunk
+  starts (decision 4). The index is the text.
+- **Sheet:** the text of each cell. The decode is resident, so this costs
+  less than the render of the rows.
+- **pdf:** the text runs of every page. This interprets every content
+  stream, but writes no html, no fonts and no images. The service keeps the
+  result, so it does this once.
+
+**How the page searches.**
+
+1. `odr.search(keyword)` marks the hits in the loaded chunks, as it does
+   now.
+2. It then loads the index scripts once, with a `<script src>` tag, and
+   keeps the strings.
+3. It counts the hits in each chunk that has not loaded. Such a hit is a
+   chunk and an ordinal in that chunk, with no mark.
+4. When the reader steps to such a hit, `odr.chunks.show` loads its chunk.
+   On `odr-chunk-filled`, `search.js` marks the hits of that chunk in the
+   DOM and selects the hit.
+5. A chunk that loads because the reader scrolls to it gets its marks the
+   same way.
+6. When the DOM count of a chunk differs from its index count, the DOM
+   count replaces it. This is the safety net, and a test asserts that the
+   two counts are the same for each fixture.
+
+`fold` must be fast on a large index: an index of a million lines is the
+whole text file, and `fold` now normalizes one character at a time. A
+string that is all ASCII folds with one `toLowerCase` and one `replace`,
+and its map is the identity.
+
+**The API for a host.** A search at level 3 completes only after the index
+scripts load, so it is asynchronous:
+
+- `odr.search` returns the count that it knows now, as it does today. A page
+  that does not load chunks knows every hit at once, so for that page
+  nothing changes.
+- `odr.onSearchChange({count, current, complete})` reports a new count or a
+  new current hit. `host-bridge.js` forwards it as `searchChange`, as it
+  forwards the other `odr.on*` callbacks. A callback, and not a Promise,
+  because the Android `evaluateJavascript` does not wait for a Promise.
+- `odr.searchDone()` returns a Promise of the final count, for a host that
+  can wait for one. The ios app calls `odr.search` with
+  `callAsyncJavaScript`, so its screenshot of a search can wait for it.
+
+**The apps.** The ios app calls `odr.search`, and needs only the new
+callback to show the count. The droid app uses the find of the WebView
+(`findAllAsync`). That find does not reach a chunk that is
+`content-visibility: hidden`, so it already misses text at level 1. The
+droid app must move to `odr.search` and `searchChange`. A core PR names
+that issue with `Refs`.
+
 ## Order of work
 
 1. **Text files, level 1.** Chunks of lines that are `hidden` until
@@ -371,6 +474,9 @@ it.
    `content.xml` and its DOM resident for editing. A render on demand that
    does not hold them is a decision of its own. It waits for a measurement
    of the page side.
+8. **Search at level 3** (decision 8), in three PRs: text files, then
+   sheets, then pdf. The first PR also brings the fast path of `fold`, the
+   callback and `odr.searchDone`.
 
 ## Open questions
 
@@ -395,9 +501,12 @@ it.
   chunks against the cost of one.
 - **When a view takes level 2.** A threshold on the size of the content, or
   a switch in `HtmlConfig`.
-- **Search at level 3.** `odr.search` searches the DOM, so it finds only
-  the chunks that have loaded. It needs the text of the others, from the
-  host or from the scripts.
+- **The row numbers in a search.** A search of a sheet finds the header
+  cell of a row, so "12" finds row 12. Decision 8 keeps that, so the index
+  and the DOM agree. To drop the headers from both is a change of its own.
+- **A search on the server.** Over HTTP, the server could answer a search
+  itself and send only the hits. That is faster for a large pdf, but the
+  index stays, because it works offline too.
 - **The find of the browser.** `hidden="until-found"` lets it reach a hidden
   chunk and show it. But a browser without that value hides the chunk for
   good, where a browser without `content-visibility` shows it.
