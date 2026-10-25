@@ -247,6 +247,10 @@ Both run by hand, and `--dry-run` mutates nothing.
   ruleset.
 - A job attaches something to the release by naming its artifact
   `release-asset-*`.
+- `formula.yml` builds the formula module before the draft, as the asset
+  `odr-formula-<tag>.js`. Every native release build embeds it through
+  `ODR_FORMULA_MODULE`: apple from the run, android, python and conan from the
+  release.
 - `release_status.yml` waits for the publish workflows and fails if one failed
   or never started. `EXPECTED` in `scripts/release_status.py` lists the
   destinations. Status matches the release tag and commit; use GitHub's rerun

@@ -71,6 +71,17 @@ jobs:
           --profile:build '${{ matrix.build_profile }}'
           --build missing
 
+      # A release embeds the formula module that `release.yml` built and
+      # attached, so its sheet pages compute what is typed into them.
+      - name: download the formula module
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          module="odr-formula-${GITHUB_REF_NAME}.js"
+          gh release download "$GITHUB_REF_NAME" --pattern "$module" --dir "$RUNNER_TEMP"
+          echo "ODR_FORMULA_MODULE=$RUNNER_TEMP/$module" >> "$GITHUB_ENV"
+
       - name: create conan package
         run: >
           conan create .
@@ -80,3 +91,10 @@ jobs:
           --name odrcore
           --version "${VERSION}"
           --build missing
+
+      # `readyPromiseResolve` is in the emscripten glue of the module alone
+      - name: check the formula module is embedded
+        run: |
+          package=$(conan list "odrcore/${VERSION}:*" --format=json \
+            | jq -r '."Local Cache" | to_entries[0] | .key + ":" + (.value.revisions[].packages | keys[0])')
+          grep -rqa readyPromiseResolve "$(conan cache path "$package")"

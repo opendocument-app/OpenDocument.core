@@ -176,8 +176,12 @@ The module is built with `-Oz`, which is about 30% smaller than `-O2` and
 about 20% slower: one evaluation takes about 8 µs, which an edit does not
 notice. As base64 it adds about 540 KB to a page, so a page carries it
 only where it edits an ods or xlsx sheet. Only the emscripten build makes
-it, and it must match the core that renders the page. So CI publishes it per
-core version, and another build names that file with `ODR_FORMULA_MODULE`.
+it, and it must match the core that renders the page. So `release.yml`
+builds it first (`formula.yml`) and attaches it to the draft as
+`odr-formula-<tag>.js`. The apple build of the same run embeds it, and the
+android, python and conan workflows download it from the release they
+publish. A build names it with `ODR_FORMULA_MODULE`, as a CMake option or in
+the environment, and each release workflow checks that its binary carries it.
 A build without it locks the formula cells and marks their results stale.
 
 The page computes in the order the marked cells read each other, so no

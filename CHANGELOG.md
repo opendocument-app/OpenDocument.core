@@ -16,6 +16,15 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+### Build and packaging
+
+- The Android AAR, the xcframework, the PyPI wheels and the conan package
+  embed the formula module of their version, so an editable ods or xlsx sheet
+  computes what is typed into it, as the npm package does. In 7.6.0 only the
+  npm package carried it, and the others locked the formula cells. Each
+  native library is about 640 KB larger. A build names the module with
+  `ODR_FORMULA_MODULE`, now also from the environment.
+
 ## v7.6.0 - 2026-10-25
 
 ### Spreadsheets

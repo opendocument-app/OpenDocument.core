@@ -1,0 +1,107 @@
+name: formula
+
+# The formula module of `wasm/formula`, which only emscripten builds. Every
+# native release build embeds the one of its version
+# (`docs/design/spreadsheet-editing.md` decision 5), so `release.yml` builds
+# it before the draft and attaches it as `odr-formula-<tag>.js`.
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: tag being cut (e.g. v6.2.0)
+        type: string
+        required: true
+
+env:
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+  CCACHE_MAXSIZE: 1G
+  CCACHE_KEY_SUFFIX: r1
+  CONAN_HOME: ${{ github.workspace }}/.conan2
+  CONAN_KEY_SUFFIX: r1
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      CACHE_FLAVOR: wasm
+      HOST_PROFILE: emscripten-wasm
+      BUILD_PROFILE: ubuntu-24.04-clang-18
+    steps:
+      - name: checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      # the profiles use ccache as compiler launcher
+      - name: install ccache
+        run: |
+          sudo apt install ccache
+          ccache -V
+
+      - name: setup python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: 3.14
+      - name: install conan
+        run: pip install conan
+
+      - name: conan cache key
+        shell: bash
+        run: echo "CONAN_CACHE_KEY=${{ hashFiles('conanfile.py', '.github/config/conan/**') }}" >> "$GITHUB_ENV"
+
+      # the cache of `wasm.yml`, which has the same dependency set
+      - name: cache conan
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: ${{ env.CONAN_HOME }}
+          key: conan-${{ env.CACHE_FLAVOR }}-${{ env.HOST_PROFILE }}-${{ env.CONAN_KEY_SUFFIX }}-${{ env.CONAN_CACHE_KEY }}
+          restore-keys: |
+            conan-${{ env.CACHE_FLAVOR }}-${{ env.HOST_PROFILE }}-${{ env.CONAN_KEY_SUFFIX }}-
+
+      - name: conan config
+        run: conan config install .github/config/conan
+
+      - name: restore ccache
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ env.CACHE_FLAVOR }}-${{ env.HOST_PROFILE }}-${{ env.CCACHE_KEY_SUFFIX }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-${{ env.CACHE_FLAVOR }}-${{ env.HOST_PROFILE }}-${{ env.CCACHE_KEY_SUFFIX }}-
+
+      # `--lockfile-partial`: the lockfile knows nothing of `emsdk`
+      - name: conan install
+        run: >
+          conan install .
+          --output-folder build
+          -o '&:with_wasm=True'
+          --profile:host '${{ env.HOST_PROFILE }}'
+          --profile:build '${{ env.BUILD_PROFILE }}'
+          --lockfile-partial
+          --build missing
+
+      - name: cmake configure
+        run: >
+          cmake -B build -S .
+          -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_SHARED_LIBS=OFF
+          -DODR_WASM=ON
+          -DODR_CLI=OFF
+          -DODR_WITH_HTTP_SERVER=OFF
+          -DODR_TEST=OFF
+
+      - name: cmake build
+        run: cmake --build build --target odr_formula_wasm
+
+      - name: name the formula module
+        env:
+          VERSION: ${{ inputs.version }}
+        run: cp build/wasm/formula/odr-formula.js "odr-formula-${VERSION}.js"
+
+      # `release.yml` attaches every `release-asset-*` artifact of the run, and
+      # the apple build of the run downloads this one
+      - name: upload as a release asset
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-asset-formula
+          path: odr-formula-${{ inputs.version }}.js
+          if-no-files-found: error
