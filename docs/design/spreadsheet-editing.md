@@ -140,7 +140,10 @@ German one, and a formula cell opens with those names
 (`formula::localized_functions`, from LibreOffice's translations by
 `tools/formula`). The match ignores the case of ASCII letters only. A formula
 that does not parse refuses with `formulaInvalid`. Without the module, a
-formula refuses with `formulaInput`.
+formula refuses with `formulaInput`. Under the `paragraph` scope it refuses
+with `outOfScope`, and the page computes nothing: an edit marks its formulas
+stale and raises `odr.onCellsStale`, and the save computes them. So a host
+can hold formulas back as policy and tell the user why.
 
 **Why:** the file states the type per cell (`office:value-type`, `c/@t`) and
 changes it freely, so a cell has no fixed type. A number cell writes

@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet formula scope checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body
+    class="odr-body"
+    data-odr-editable="true"
+    data-odr-editing-scope="paragraph"
+    data-odr-keyboard="navigation shortcuts"
+    data-odr-formula-syntax="ooxml"
+    data-odr-formula-settings='{"dialect":"excel"}'
+  >
+    <!-- An xlsx sheet under the `paragraph` scope: B1 doubles A1. -->
+    <div class="odr-sheet" data-odr-sheet="0" data-odr-sheet-name="Sheet1">
+      <table class="odr-sheet-head">
+        <thead>
+          <tr>
+            <th class="odr-sheet-corner"></th>
+            <th class="odr-sheet-column-header">A</th>
+            <th class="odr-sheet-column-header">B</th>
+            <th class="odr-sheet-column-header">C</th>
+          </tr>
+        </thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <tbody>
+          <tr>
+            <th class="odr-sheet-row-header">1</th>
+            <td class="odr-value-type-float">1</td>
+            <td class="odr-value-type-float" data-odr-formula="A1*2" data-odr-reads="0,0,0,0,0">2</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="report"></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="odr-formula.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var refusals = [];
+      odr.onEditRefused = function (event) {
+        refusals.push(event.reason + " " + event.code);
+      };
+      var stale = [];
+      odr.onCellsStale = function (event) {
+        stale.push(event.cells);
+      };
+      function editor() {
+        return document.querySelector(".odr-sheet-editor");
+      }
+      function text(column, row) {
+        return odr.sheet.cellAt(column, row).textContent;
+      }
+      function type(column, row, typed) {
+        odr.editing.editAt(column, row);
+        editor().value = typed;
+        editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      }
+
+      odr.editing.enable();
+      odr.editing.loadFormulas().then(function () {
+        type(2, 0, "=A1+1");
+        check("a typed formula is past the scope", refusals.join() === "outOfScope 1010", refusals.join());
+        check("and leaves the editor open", editor() !== null && editor().value === "=A1+1");
+        editor().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        check("the cell was not written", text(2, 0) === "");
+
+        type(0, 0, "5");
+        check("an input does not compute its formula", text(1, 0) === "2", text(1, 0));
+        check("but marks it stale", odr.sheet.cellAt(1, 0).classList.contains("odr-sheet-stale"));
+        check(
+          "and the host hears which cell is stale",
+          stale.length === 1 && JSON.stringify(stale[0]) === '[{"column":1,"row":0}]',
+          JSON.stringify(stale)
+        );
+
+        document.body.removeAttribute("data-odr-editing-scope");
+        type(0, 0, "6");
+        check("a wider scope computes at the next edit", text(1, 0) === "12", text(1, 0));
+        check("and nothing is stale", document.querySelectorAll(".odr-sheet-stale").length === 0);
+        type(2, 0, "=A1+1");
+        check("a typed formula commits there", editor() === null && text(2, 0) === "7", text(2, 0));
+      });
+    </script>
+  </body>
+</html>

@@ -32,6 +32,7 @@ serve(
         "formula-chain.html",
         "formula-structure.html",
         "formula-input.html",
+        "formula-scope.html",
         "formula-words.html",
         "formula-iteration.html",
         "formula-arrays.html",

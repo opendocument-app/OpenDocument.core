@@ -195,7 +195,7 @@ sets host policy through `data-odr-editing-scope`; violations report
 | Scope | Accepted edits |
 |---|---|
 | `document` (default) | decision 13 |
-| `paragraph` | edits and host formatting confined to one paragraph; no formatting chords |
+| `paragraph` | edits and host formatting confined to one paragraph; no formatting chords; in a sheet, values only, and an edit marks its formulas stale rather than computing them |
 
 The editor reads the attribute per edit, so a host can change scope without
 rendering again.
