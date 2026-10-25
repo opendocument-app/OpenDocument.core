@@ -341,13 +341,13 @@ private:
             entry.node.has_value() && !entry.spanned && !entry.array.has_value()
                 ? formula::evaluate(*entry.node, position, *this, m_settings)
                 : std::nullopt;
-        if (!value.has_value()) {
+        std::optional<formula::Value> &previous = m_iterated[position];
+        if (!value.has_value() || !previous.has_value()) {
           answered = false;
           break;
         }
-        change =
-            std::max(change, difference(m_iterated[position].value(), *value));
-        m_iterated[position] = std::move(value);
+        change = std::max(change, difference(*previous, *value));
+        previous = std::move(value);
       }
       converged = answered && change < iteration.difference;
     }
