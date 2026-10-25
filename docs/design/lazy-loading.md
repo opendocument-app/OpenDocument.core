@@ -207,9 +207,17 @@ without them.
 
 - **Print at level 3.** A chunk that has not loaded prints as empty space
   of its height. `beforeprint` cannot wait for a script to load.
-- **A pdf in the single layer at level 3.** Each script carries its fonts
-  inline (about 0.5 MB a page of `Core_v5.1.pdf`), or the service votes
-  once over every page for the code points of each font.
+- **A pdf in the single layer at level 3.** The single layer votes over
+  the runs it meets for the code point of each glyph, and re-encodes the
+  font with the winners, so a page rendered alone has fonts of its own.
+  That works: each page script re-encodes its fonts for its own runs and
+  carries them with suffixed face names, as a page view (`pageN.html`)
+  already does today. On `Core_v5.1.pdf` such a page carries about 300 KB of
+  fonts, as much as in the dual layer, because neither subsets. The cost is
+  that the browser loads a font again for each page. Two ways to cut it:
+  name each re-encoded font file by a digest of its bytes, so the pages
+  whose votes agree share one file, as the images of a pdf do; and subset a
+  font to the glyphs of its page.
 - **Eviction at level 3.** Whether the page drops a far chunk and asks for
   it again, or keeps its string.
 - **The find of the browser.** `hidden="until-found"` lets it reach a hidden
