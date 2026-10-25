@@ -60,6 +60,7 @@
     <script src="error-codes.js"></script>
     <script src="editing.js"></script>
     <script src="spreadsheet.js"></script>
+    <script src="search.js"></script>
     <script src="checks.js"></script>
     <script>
       var chunks = document.getElementsByClassName("odr-sheet-rows");
@@ -139,6 +140,16 @@
         far.style.overflow === "visible" && far.style.clipPath !== "",
         far.style.overflow + " " + far.style.clipPath
       );
+
+      note("search");
+      // the report is text of the page too, so the hits are counted in the sheet
+      odr.search("2");
+      check(
+        "a search finds the cells and not the headers",
+        document.querySelectorAll(".odr-sheet mark").length === 2 && document.querySelectorAll("th mark").length === 0,
+        document.querySelectorAll(".odr-sheet mark").length
+      );
+      odr.resetSearch();
 
       note("sort");
       click(document.querySelectorAll(".odr-sheet-sort")[0]);

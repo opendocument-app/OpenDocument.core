@@ -196,6 +196,9 @@ constexpr double gutter_padding_pixels = 14;
 constexpr double estimated_row_pixels = 20;
 /// A chunk of a sheet holds about as many cells (`lazy-loading.md` decision 6).
 constexpr std::uint32_t chunk_cells = 4096;
+/// The chunks of a sheet that one script of its search index holds the text
+/// of (`lazy-loading.md` decision 8).
+constexpr std::uint32_t chunks_per_index = 64;
 
 /// Whether a reader sees anything. A bookmark marks a place rather than filling
 /// one, and a span or a link is a style around what it holds, so a paragraph
@@ -1023,6 +1026,115 @@ private:
   std::uint32_t m_end_row{0};
 };
 
+/// The text under an element as `search.js` reads it from the DOM: the runs,
+/// with a `\n` where the block they flow in changes. A paragraph, a list, a
+/// table and a frame are each a block, and a span or a link is not.
+struct BlockText final {
+  std::string text;
+  /// the block the last run flowed in, 0 before the first
+  std::uint64_t owner{0};
+  std::uint64_t blocks{0};
+
+  void append(const Element &element, const std::uint64_t in) {
+    for (const Element child : element.children()) {
+      switch (child.type()) {
+      case ElementType::text: {
+        std::string content = child.as_text().content();
+        if (content.empty()) {
+          break;
+        }
+        // `search.js` folds it to a space; only a new block writes a `\n`
+        std::ranges::replace(content, '\n', ' ');
+        if (owner != 0 && owner != in) {
+          text += '\n';
+        }
+        owner = in;
+        text += content;
+        break;
+      }
+      case ElementType::span:
+      case ElementType::link:
+      case ElementType::bookmark:
+      case ElementType::line_break:
+        append(child, in);
+        break;
+      default:
+        append(child, ++blocks);
+        break;
+      }
+    }
+  }
+};
+
+/// The text of rows [@p first_row, @p end_row): a block for each cell, and for
+/// each paragraph in it. The headers are not in it, because a search skips
+/// them.
+std::string sheet_chunk_text(const SheetRows &rows,
+                             const std::uint32_t first_row,
+                             const std::uint32_t end_row) {
+  BlockText text;
+  for (std::uint32_t row_index = first_row; row_index < end_row; ++row_index) {
+    for (std::uint32_t column_index = 0; column_index < rows.end_column;
+         ++column_index) {
+      const SheetCell cell = rows.sheet.cell(column_index, row_index);
+      if (!cell.is_covered()) {
+        text.append(cell, ++text.blocks);
+      }
+    }
+  }
+  return std::move(text.text);
+}
+
+/// A chunk whose text a script of the search index holds.
+struct IndexedChunk final {
+  std::string key;
+  std::uint32_t first_row{0};
+  std::uint32_t end_row{0};
+};
+
+/// A script of the search index of a sheet, rendered when it is asked for.
+/// The writer adds each chunk once it knows where the chunk ends.
+class SheetIndexResource final : public abstract::HtmlResource {
+public:
+  SheetIndexResource(std::shared_ptr<const SheetRows> rows, std::string path,
+                     std::shared_ptr<const std::vector<IndexedChunk>> chunks)
+      : m_rows{std::move(rows)}, m_path{std::move(path)},
+        m_chunks{std::move(chunks)} {}
+
+  [[nodiscard]] HtmlResourceType type() const override {
+    return HtmlResourceType::js;
+  }
+  [[nodiscard]] const std::string &mime_type() const override {
+    static const std::string mime_type = "text/javascript";
+    return mime_type;
+  }
+  [[nodiscard]] const std::string &name() const override { return m_path; }
+  [[nodiscard]] const std::string &path() const override { return m_path; }
+  [[nodiscard]] const std::optional<File> &file() const override {
+    static const std::optional<File> none;
+    return none;
+  }
+  [[nodiscard]] bool is_shipped() const override { return false; }
+  [[nodiscard]] bool is_external() const override { return false; }
+  [[nodiscard]] bool is_accessible() const override { return true; }
+
+  void write_resource(std::ostream &os) const override {
+    os << "odr.chunks.text({";
+    for (const IndexedChunk &chunk : *m_chunks) {
+      os << (&chunk == m_chunks->data() ? "" : ",") << script_string(chunk.key)
+         << ":"
+         << script_string(
+                sheet_chunk_text(*m_rows, chunk.first_row, chunk.end_row));
+    }
+    os << "});\n";
+  }
+
+private:
+  std::shared_ptr<const SheetRows> m_rows;
+  std::string m_path;
+  std::shared_ptr<const std::vector<IndexedChunk>> m_chunks;
+};
+
 } // namespace
 } // namespace html
 
@@ -1138,6 +1250,9 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   std::uint32_t rows_in_chunk = 0;
   bool chunk_open = false;
   bool placeholder = false;
+  // the chunks of the group of the search index the open chunk is in
+  std::shared_ptr<std::vector<IndexedChunk>> indexed;
+  std::string index_path;
   const auto chunk_key = [&] {
     return std::to_string(rows->ordinal) + "-" + std::to_string(chunk_index);
   };
@@ -1147,6 +1262,19 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   };
   const auto begin_chunk = [&](const std::uint32_t first_row) {
     placeholder = loads && first_row > 0;
+    // the first chunk of a group that loads names the script of its text
+    const bool begins_index =
+        placeholder &&
+        (chunk_index == 1 || chunk_index % chunks_per_index == 0);
+    if (begins_index) {
+      indexed = std::make_shared<std::vector<IndexedChunk>>();
+      index_path = "sheet" + std::to_string(rows->ordinal) + "-search/" +
+                   std::to_string(chunk_index / chunks_per_index) + ".js";
+      state.resources().emplace_back(
+          odr::HtmlResource(
+              std::make_shared<SheetIndexResource>(rows, index_path, indexed)),
+          index_path);
+    }
     double height = 0;
     for (std::uint32_t row_index = first_row;
          lazy && row_index < std::min(end_row, first_row + chunk_rows);
@@ -1168,6 +1296,9 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
               if (placeholder) {
                 clb("data-odr-chunk", chunk_key());
                 clb("data-odr-chunk-src", chunk_path());
+              }
+              if (begins_index) {
+                clb("data-odr-chunk-text", index_path);
               }
             })
             .set_style(
@@ -1191,6 +1322,7 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
               rows, chunk_config, chunk_key(), chunk_path(), chunk_first_row,
               end)),
           chunk_path());
+      indexed->push_back(IndexedChunk{chunk_key(), chunk_first_row, end});
     }
     chunk_open = false;
     ++chunk_index;
