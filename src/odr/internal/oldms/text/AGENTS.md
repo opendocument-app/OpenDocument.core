@@ -18,6 +18,7 @@ text.
 | File (`oldms/text/`) | Role |
 |---|---|
 | `doc_structs.hpp` | `#pragma pack(1)` PODs (`FibBase`, `FibRgFcLcb97`, `Sprm`, `FcCompressed`, `Pcd`, `PnFkpChpx`, `FfnFixed`), `PlcMap` (`PlcPcdMap`, `PlcBteChpxMap`), `ParsedFib`, the character SPRM opcodes |
+| `doc_crypto.{hpp,cpp}` | `decrypt`: the WordDocument, Table and Data streams decrypted |
 | `doc_io.{hpp,cpp}` | `read(...)` over `std::istream`: variable-length FIB, Clx walk, string decoding, `uncompress_char` |
 | `doc_helper.{hpp,cpp}` | `CharacterIndex` (decoded piece table) and `read_character_index`; `CharacterRuns` (fc-keyed style-index runs) and `read_character_runs` |
 | `doc_style.{hpp,cpp}` | `StyleRegistry` (resolved `TextStyle`s by index, font-name store), `apply_character_sprms`, `read_font_names` (SttbfFfn) |
@@ -88,6 +89,15 @@ are dropped.
 `Document::is_editable()` is `false`. `save` and `text_set_content` throw.
 `text_root_page_layout` returns `{}`.
 
+**Decryption** ([MS-DOC] 2.2.6). `FibBase.fObfuscated` selects XOR
+obfuscation, which is not read. Otherwise the first `FibBase.lKey` bytes of
+the Table stream are the RC4 or RC4 CryptoAPI header. The keystream starts at
+the beginning of each stream, and the key changes every 512 bytes. The first
+68 bytes of WordDocument and the header stay plain; the Data stream is
+encrypted from its start. `FibBase` loses `fEncrypted`, `fObfuscated` and
+`lKey`, so the parser and `password_encrypted` see a plain document. No
+fixture has a Data stream.
+
 ## Tests
 
 - `OldMs.doc_read_string_compressed`: the compressed decoder against the
@@ -97,7 +107,8 @@ are dropped.
 - `OldMs.doc_read_font_names`: a synthetic SttbfFfn.
 - `OldMs.doc_character_formatting`: end to end over a synthetic `.doc` (FIB,
   ChpxFkp, piece table).
-- `OldMsEncryption.*`: the `fEncrypted` flag.
+- `OldMsEncryption.*`: the `fEncrypted` flag, RC4 and RC4 CryptoAPI
+  decryption, the refusal of XOR obfuscation.
 - `html_output_test` compares the real `.doc` fixtures against the reference
   output. There is no assertion-based test over a real fixture.
 
@@ -175,5 +186,6 @@ The remaining layers of *Determining Formatting Properties* (§2.4.6.6):
   `sprmSDyaBottom`, §2.6.4) are unparsed.
 - Images, OLE and drawn objects. Anchor characters are dropped. Needs
   `PlcfSpa` and Office Art (`dggInfo`).
-- Decryption ([MS-OFFCRYPTO]). See [`../AGENTS.md`](../AGENTS.md).
+- XOR obfuscation ([MS-DOC] 2.2.6.1, [MS-OFFCRYPTO] 2.3.7.4 to 2.3.7.6)
+  throws `MsUnsupportedCryptoAlgorithm`. No fixture has it.
 - Endianness. See [`../AGENTS.md`](../AGENTS.md).

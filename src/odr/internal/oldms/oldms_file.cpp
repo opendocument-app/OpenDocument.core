@@ -11,6 +11,7 @@
 #include <odr/internal/oldms/spreadsheet/xls_crypto.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_document.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_parser.hpp>
+#include <odr/internal/oldms/text/doc_crypto.hpp>
 #include <odr/internal/oldms/text/doc_document.hpp>
 #include <odr/internal/oldms/text/doc_parser.hpp>
 
@@ -87,6 +88,8 @@ std::optional<crypto::DecryptedStreams>
 decrypt_streams(const FileType type, const abstract::ReadableFilesystem &files,
                 const std::string_view password) {
   switch (type) {
+  case FileType::legacy_word_document:
+    return text::decrypt(files, password);
   case FileType::legacy_excel_worksheets:
     return spreadsheet::decrypt(files, password);
   default:

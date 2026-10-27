@@ -32,9 +32,8 @@ the PDFs under `offline/documentation/`.
 lays them over the compound file (`DecryptedFilesystem` in `oldms_file.cpp`).
 The parsers then read plaintext and know nothing of the encryption. A module
 returns nothing for a wrong password and throws
-`MsUnsupportedCryptoAlgorithm` for an encryption it cannot read. `.xls`
-decrypts; `.doc` and `.ppt` still throw `UnsupportedOperation`, and
-`html_output_test` skips the encrypted `.doc` fixture for that reason.
+`MsUnsupportedCryptoAlgorithm` for an encryption it cannot read. `.xls` and
+`.doc` decrypt; `.ppt` still throws `UnsupportedOperation`.
 
 `oldms_crypto.{hpp,cpp}` holds what the formats share ([MS-OFFCRYPTO]):
 
