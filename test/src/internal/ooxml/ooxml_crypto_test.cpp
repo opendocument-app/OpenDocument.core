@@ -84,8 +84,10 @@ TEST(OoxmlCrypto, ECMA376Agile_refuses_what_it_cannot_decrypt) {
                    make_agile_info(make_password_encryptor("100000"), "3DES")),
                odr::MsUnsupportedCryptoAlgorithm);
   // a certificate key encryptor needs a private key, not a password
-  EXPECT_THROW((void)crypto::Util(make_agile_info("")),
-               odr::MsUnsupportedCryptoAlgorithm);
+  EXPECT_THROW(
+      (void)crypto::Util(make_agile_info(
+          R"(<keyEncryptor uri="http://schemas.microsoft.com/office/2006/keyEncryptor/certificate"/>)")),
+      odr::MsUnsupportedCryptoAlgorithm);
   EXPECT_THROW(
       (void)crypto::Util(make_agile_info(make_password_encryptor("10000001"))),
       std::runtime_error);

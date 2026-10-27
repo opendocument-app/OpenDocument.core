@@ -18,24 +18,10 @@ namespace odr::internal::ooxml::crypto {
 
 namespace {
 
-/// [MS-OFFCRYPTO] 2.3.4.11: the password as UTF-16LE bytes.
-std::string password_bytes(const std::string_view password) {
-  const std::u16string password_u16 =
-      util::string::string_to_u16string(password);
-  return {reinterpret_cast<const char *>(password_u16.data()),
-          2 * password_u16.size()};
-}
-
 /// [MS-OFFCRYPTO] 2.3.4.11 and 2.3.4.12: pads with 0x36 or truncates.
 std::string fit(std::string bytes, const std::size_t size) {
   bytes.resize(size, '\x36');
   return bytes;
-}
-
-std::string block_key_of(const std::uint32_t block) {
-  std::string result;
-  util::byte_string::put_u32_le(result, block);
-  return result;
 }
 
 /// The child element whose name without its namespace prefix is `name`.
@@ -188,7 +174,7 @@ std::string ECMA376Standard::derive_key(const std::string_view password) const {
     hash = internal::crypto::util::sha1(
         std::string(m_encryption_verifier.salt.data(),
                     m_encryption_verifier.salt_size) +
-        password_bytes(password));
+        util::string::string_to_utf16le(password));
     std::string ibytes(4, ' ');
     for (std::uint32_t i = 0; i < iteration_count; ++i) {
       util::byte::to_little_endian(i, ibytes);
@@ -262,12 +248,16 @@ ECMA376Agile::ECMA376Agile(const std::string_view encryption_info) {
   if (encryption.empty()) {
     throw std::runtime_error("bad ooxml agile encryption descriptor");
   }
-  m_key_data =
-      read_cipher_parameters(child_by_local_name(encryption, "keyData"));
+  const pugi::xml_node key_data = child_by_local_name(encryption, "keyData");
+  const pugi::xml_node key_encryptors =
+      child_by_local_name(encryption, "keyEncryptors");
+  if (key_data.empty() || key_encryptors.empty()) {
+    throw std::runtime_error("bad ooxml agile encryption descriptor");
+  }
+  m_key_data = read_cipher_parameters(key_data);
 
   pugi::xml_node encrypted_key;
-  for (const pugi::xml_node key_encryptor :
-       child_by_local_name(encryption, "keyEncryptors").children()) {
+  for (const pugi::xml_node key_encryptor : key_encryptors.children()) {
     if (key_encryptor.attribute("uri").value() == password_key_encryptor_uri) {
       encrypted_key = child_by_local_name(key_encryptor, "encryptedKey");
       break;
@@ -288,14 +278,21 @@ ECMA376Agile::ECMA376Agile(const std::string_view encryption_info) {
   m_encrypted_verifier_hash_value =
       read_base64(encrypted_key, "encryptedVerifierHashValue");
   m_encrypted_key_value = read_base64(encrypted_key, "encryptedKeyValue");
+  for (const std::string *value :
+       {&m_encrypted_verifier_hash_input, &m_encrypted_verifier_hash_value,
+        &m_encrypted_key_value}) {
+    if (value->empty() || value->size() % m_password.block_size != 0) {
+      throw std::runtime_error("bad ooxml agile encrypted value size");
+    }
+  }
 }
 
 std::string ECMA376Agile::derive_key(const std::string_view password) const {
   // [MS-OFFCRYPTO] 2.3.4.11, up to the block key.
-  std::string hash =
-      m_password.hash(m_password.salt + password_bytes(password));
+  std::string hash = m_password.hash(m_password.salt +
+                                     util::string::string_to_utf16le(password));
   for (std::uint32_t i = 0; i < m_spin_count; ++i) {
-    std::string input = block_key_of(i);
+    std::string input = util::byte_string::u32_le(i);
     input += hash;
     hash = m_password.hash(input);
   }
@@ -341,7 +338,8 @@ std::string ECMA376Agile::decrypt(const std::string_view encrypted_package,
   // [MS-OFFCRYPTO] 2.3.4.4: the stream opens with the plaintext size.
   const auto total_size = reader.read<std::uint64_t>();
   const std::string_view ciphertext = reader.rest();
-  if (total_size > ciphertext.size()) {
+  if (total_size > ciphertext.size() ||
+      ciphertext.size() % m_key_data.block_size != 0) {
     throw std::runtime_error("truncated ooxml encrypted package");
   }
 
@@ -351,9 +349,9 @@ std::string ECMA376Agile::decrypt(const std::string_view encrypted_package,
   for (std::size_t offset = 0; offset < ciphertext.size();
        offset += segment_size) {
     const auto segment = static_cast<std::uint32_t>(offset / segment_size);
-    const std::string iv =
-        fit(m_key_data.hash(m_key_data.salt + block_key_of(segment)),
-            m_key_data.block_size);
+    const std::string iv = fit(
+        m_key_data.hash(m_key_data.salt + util::byte_string::u32_le(segment)),
+        m_key_data.block_size);
     result += internal::crypto::util::decrypt_aes_cbc(
         secret_key, iv, ciphertext.substr(offset, segment_size));
   }
