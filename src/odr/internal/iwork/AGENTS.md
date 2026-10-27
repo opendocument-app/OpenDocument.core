@@ -259,9 +259,8 @@ points. Each fact below is pinned by a test or a fixture.
 
 - `.iwpv2` (104 bytes, plain) marks the package: version 2 and format 1 (two
   u16), the PBKDF2 iteration count (u32, 100000 in every fixture, refused
-  above 10000000), a 16-byte
-  salt, a 16-byte IV and a 64-byte check block. `.iwph` is the plain UTF-8
-  hint.
+  above 10000000), a 16-byte salt, a 16-byte IV and a 64-byte check block.
+  `.iwph` is the plain UTF-8 hint.
 - The key is PBKDF2-HMAC-SHA1 of the UTF-8 password, 16 bytes, for
   AES-128-CBC. The check block decrypts to 32 random bytes and their SHA-256,
   so a wrong password is known before any member is read. Only NFC was seen
@@ -271,8 +270,8 @@ points. Each fact below is pinned by a test or a fixture.
   random block, the payload and PKCS#7 padding, then an HMAC-SHA1 of the
   payload keyed with the password, not with the AES key. A member with more
   than 1 MiB of payload can be split into segments of exactly 1 MiB of
-  payload; `Data/*` was split and a 2 MB `.iwa` was not, so `is_segmented`
-  decrypts the block where a full first segment would end its padding.
+  payload; `Data/*` was split and a 2 MB `.iwa` was not, so the HMAC of the
+  first segment decides.
 - The plaintext is the ordinary package. An encrypted package writes no
   preview.
 
@@ -281,8 +280,11 @@ name it. So before decryption `guess_encrypted_file_type` uses the plain
 member names: a `Slide` member makes Keynote, a `Tables/` member Numbers,
 anything else Pages. A Pages document with a table may be guessed as
 Numbers; `decrypt` reads the real type. A caller that asks for a type gets
-that type, as for an encrypted OOXML file. `decrypt` hides `.iwpv2` and
-`.iwph`, so the decrypted package reads as plain.
+that type, as for an encrypted OOXML file. In the decrypted package,
+`exists`, `is_file` and `open` hide `.iwpv2` and `.iwph`; the file walker
+still lists them. Each `open` decrypts the member again, so
+`Index/Document.iwa`, which `IworkFile` and `Document` both read, is
+decrypted twice.
 
 ## Not read yet
 

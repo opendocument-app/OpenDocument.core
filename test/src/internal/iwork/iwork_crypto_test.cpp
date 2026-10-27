@@ -92,6 +92,9 @@ TEST(IworkCrypto, decrypts_with_a_unicode_password) {
           .as_document_file();
   EXPECT_THROW(std::ignore = file.decrypt("Tr0ub4dor&3 aou"),
                WrongPasswordError);
+  // NFD: each umlaut as a letter and U+0308
+  EXPECT_THROW(std::ignore = file.decrypt("Tr0ub4dor&3 a\u0308o\u0308u\u0308"),
+               WrongPasswordError);
   EXPECT_NO_THROW(std::ignore = file.decrypt("Tr0ub4dor&3 äöü"));
 }
 

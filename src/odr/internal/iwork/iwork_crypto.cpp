@@ -11,6 +11,7 @@
 #include <odr/internal/util/stream_util.hpp>
 
 #include <array>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -31,20 +32,21 @@ constexpr std::size_t hmac_size = 20;
 /// The fixtures use 100000. The cap keeps a crafted count from blocking for
 /// hours, as `max_spin_count` does for OOXML.
 constexpr std::uint32_t max_iterations = 10000000;
-/// A member longer than one segment is split into segments of 1 MiB of
-/// payload each: IV, random block, payload, a whole padding block, HMAC.
+/// A split member has segments of 1 MiB of payload each: IV, random block,
+/// payload, a whole padding block, HMAC.
 constexpr std::size_t segment_payload_size = std::size_t{1} << 20;
 constexpr std::size_t segment_size = aes_block_size + aes_block_size +
                                      segment_payload_size + aes_block_size +
                                      hmac_size;
 
-/// Payload of one segment.
-std::string decrypt_segment(const std::string_view segment,
-                            const std::string_view key,
-                            const std::string_view password) {
+/// The payload of one segment, or nothing if its size, padding or HMAC is
+/// wrong.
+std::optional<std::string> decrypt_segment(const std::string_view segment,
+                                           const std::string_view key,
+                                           const std::string_view password) {
   if (segment.size() < aes_block_size + 2 * aes_block_size + hmac_size ||
       (segment.size() - aes_block_size - hmac_size) % aes_block_size != 0) {
-    throw std::runtime_error("iwork: bad encrypted segment size");
+    return std::nullopt;
   }
   const std::string_view iv = segment.substr(0, aes_block_size);
   const std::string_view ciphertext = segment.substr(
@@ -58,27 +60,14 @@ std::string decrypt_segment(const std::string_view segment,
       plaintext.find_first_not_of(static_cast<char>(padding),
                                   plaintext.size() - padding) !=
           std::string::npos) {
-    throw std::runtime_error("iwork: bad padding, the member is damaged");
+    return std::nullopt;
   }
   std::string payload = plaintext.substr(
       aes_block_size, plaintext.size() - aes_block_size - padding);
   if (internal::crypto::util::hmac_sha1(password, payload) != mac) {
-    throw std::runtime_error("iwork: bad HMAC, the member is damaged");
+    return std::nullopt;
   }
   return payload;
-}
-
-/// Whether a member starts with a full segment, which ends in a whole block of
-/// padding. A large member can also be a single segment.
-bool is_segmented(const std::string_view data, const std::string_view key) {
-  if (data.size() <= segment_size) {
-    return false;
-  }
-  const std::size_t last_block = segment_size - hmac_size - aes_block_size;
-  const std::string block = internal::crypto::util::decrypt_aes_cbc(
-      key, data.substr(last_block - aes_block_size, aes_block_size),
-      data.substr(last_block, aes_block_size));
-  return block == std::string(aes_block_size, '\x10');
 }
 
 bool is_plain(const AbsPath &path) {
@@ -198,14 +187,28 @@ iwork::decrypt(std::shared_ptr<abstract::ReadableFilesystem> filesystem,
 std::string iwork::decrypt_member(const std::string_view data,
                                   const std::string_view key,
                                   const std::string_view password) {
-  if (!is_segmented(data, key)) {
-    return decrypt_segment(data, key, password);
+  // A member longer than one segment can be one segment or several; the HMAC
+  // of the first segment tells.
+  if (data.size() > segment_size) {
+    if (std::optional<std::string> result =
+            decrypt_segment(data.substr(0, segment_size), key, password)) {
+      for (std::size_t offset = segment_size; offset < data.size();
+           offset += segment_size) {
+        const std::optional<std::string> segment =
+            decrypt_segment(data.substr(offset, segment_size), key, password);
+        if (!segment.has_value()) {
+          throw std::runtime_error("iwork: a damaged member segment");
+        }
+        *result += *segment;
+      }
+      return *std::move(result);
+    }
   }
-  std::string result;
-  for (std::size_t offset = 0; offset < data.size(); offset += segment_size) {
-    result += decrypt_segment(data.substr(offset, segment_size), key, password);
+  std::optional<std::string> result = decrypt_segment(data, key, password);
+  if (!result.has_value()) {
+    throw std::runtime_error("iwork: a damaged member");
   }
-  return result;
+  return *std::move(result);
 }
 
 } // namespace odr::internal
