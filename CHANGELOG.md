@@ -18,8 +18,9 @@ The release run heads these entries with the version and opens a fresh
 
 ### Spreadsheets
 
-- XLS chart caches no longer overwrite worksheet cells or stop parsing cells
-  after the embedded chart ends.
+- An xls sheet with an embedded chart keeps its cell values and its size.
+  The data cache of the chart replaced cells near A1 and the size of the
+  sheet.
 
 ### Build and packaging
 

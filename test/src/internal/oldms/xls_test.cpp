@@ -170,6 +170,31 @@ std::string make_label(const std::uint16_t row, const std::uint16_t column,
   return body;
 }
 
+/// A Number record body ([MS-XLS] 2.4.180).
+std::string make_number(const std::uint16_t row, const std::uint16_t column,
+                        const std::uint16_t ixfe, const double value) {
+  std::string body;
+  append_u16(body, row);
+  append_u16(body, column);
+  append_u16(body, ixfe);
+  const auto bits = std::bit_cast<std::uint64_t>(value);
+  append_u32(body, static_cast<std::uint32_t>(bits));
+  append_u32(body, static_cast<std::uint32_t>(bits >> 32));
+  return body;
+}
+
+/// A Dimensions record body ([MS-XLS] 2.4.90) for cells from A1 on.
+std::string make_dimensions(const std::uint32_t rows,
+                            const std::uint16_t columns) {
+  std::string body;
+  append_u32(body, 0); // rwMic
+  append_u32(body, rows);
+  append_u16(body, 0); // colMic
+  append_u16(body, columns);
+  append_u16(body, 0); // reserved
+  return body;
+}
+
 std::string make_bof(const std::uint16_t dt) {
   std::string body;
   append_u16(body, 0x0600); // vers: BIFF8
@@ -223,16 +248,17 @@ Text first_text(const Element cell) {
 
 } // namespace
 
-// Chart substreams have their own cell-like cache records. Their EOF must
-// not end the worksheet, and deeper substreams must stay excluded as well.
+// An embedded chart's data cache ([MS-XLS] 2.1.7.20.1 SERIESDATA) is not part
+// of the worksheet, and the chart's EOF does not end it.
 TEST(OldMs, xls_nested_chart_caches_do_not_replace_cells) {
-  std::string workbook = make_workbook("", {make_label(0, 0, 0, "actual")});
-  workbook.resize(workbook.size() - 4); // replace the worksheet EOF
+  std::string workbook = make_workbook("", {});
+  workbook.resize(workbook.size() - 4); // drop the worksheet EOF
+  append_record(workbook, 0x0200 /* Dimensions */, make_dimensions(2, 1));
+  append_record(workbook, 0x0204 /* Label */, make_label(0, 0, 0, "actual"));
   append_record(workbook, 0x0809 /* BOF */, make_bof(0x0020));
-  append_record(workbook, 0x0204 /* Label */, make_label(0, 0, 0, "cache"));
-  append_record(workbook, 0x0809 /* BOF */, make_bof(0x0020));
-  append_record(workbook, 0x0204 /* Label */, make_label(0, 0, 0, "deeper"));
-  append_record(workbook, 0x000A /* EOF */, "");
+  append_record(workbook, 0x0200 /* Dimensions */, make_dimensions(3, 2));
+  append_record(workbook, 0x0203 /* Number */, make_number(0, 0, 0, 7.0));
+  append_record(workbook, 0x0204 /* Label */, make_label(2, 1, 0, "cache"));
   append_record(workbook, 0x000A /* EOF */, "");
   append_record(workbook, 0x0204 /* Label */, make_label(1, 0, 0, "after"));
   append_record(workbook, 0x000A /* EOF */, "");
@@ -241,6 +267,14 @@ TEST(OldMs, xls_nested_chart_caches_do_not_replace_cells) {
   const Sheet sheet = document.root_element().first_child().as_sheet();
   EXPECT_EQ(collect_text(sheet.cell(0, 0)), "actual");
   EXPECT_EQ(collect_text(sheet.cell(0, 1)), "after");
+
+  const TableDimensions dimensions = sheet.dimensions();
+  EXPECT_EQ(dimensions.rows, 2);
+  EXPECT_EQ(dimensions.columns, 1);
+
+  const TableDimensions content = sheet.content(std::nullopt);
+  EXPECT_EQ(content.rows, 2);
+  EXPECT_EQ(content.columns, 1);
 }
 
 // Fonts and fills resolve through XF -> Font/palette ([MS-XLS] 2.4.353,

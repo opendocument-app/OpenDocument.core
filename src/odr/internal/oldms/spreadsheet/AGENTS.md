@@ -58,6 +58,15 @@ dropped; `Dimensions` is clamped to the grid; `MulRk` takes its cell count from
 the body size and ignores `colLast`; a string formula without its `String`
 record stays empty; a clean end of stream ends a substream without `EOF`.
 
+**Nested substreams are skipped.** An embedded chart is a whole chart
+substream (`BOF` to `EOF`) inside the worksheet substream (§2.1.7.20.6
+`CHART`). Its data cache (§2.1.7.20.1 `SERIESDATA`) holds a `Dimensions`
+record and `Number`, `BoolErr`, `Blank` and `Label` records, which would
+replace the sheet's own. `parse_sheet` counts `BOF` and `EOF`, reads records
+only at depth 1, and stops at the worksheet's own `EOF`. Records such as
+`MergeCells` follow the drawing objects (§2.1.7.20.5), so the chart's `EOF`
+must not end the worksheet.
+
 **Cell formatting is resolved at parse time, per XF, in the `StyleRegistry`.**
 The parser fills both registries, because BIFF keeps styles and content in
 the same `/Workbook` stream. Each cell keeps its `ixfe` on the `SheetCell`.
@@ -106,6 +115,9 @@ returns the fill.
   default palette, automatic colors, a solid fill, unstyled empty positions.
 - `OldMs.xls_palette_record`: a `Palette` record that overrides the default
   palette.
+- `OldMs.xls_nested_chart_caches_do_not_replace_cells`: a chart substream
+  whose cached `Dimensions`, `Number` and `Label` records leave the sheet's
+  cells and size unchanged, and whose `EOF` does not end the sheet.
 - `OldMs.xls_empty`, `OldMs.xls_file_example_10`,
   `OldMs.xls_file_example_5000`: real fixtures. The 5000-row file exercises
   SST `CONTINUE` on real data.
