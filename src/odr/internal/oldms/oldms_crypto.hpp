@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -68,6 +69,6 @@ std::optional<XorArray> unlock_xor_method1(std::uint16_t key,
 /// `DecryptData_Method1` (2.3.7.3) on `data`, in place, from `index` into the
 /// XOR array.
 void decrypt_xor_method1(const XorArray &xor_array, std::size_t index,
-                         char *data, std::size_t size);
+                         std::span<char> data);
 
 } // namespace odr::internal::oldms::crypto

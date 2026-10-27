@@ -128,15 +128,15 @@ crypto::XorArray create_xor_array_method1(const std::string_view password,
     --index;
     result[index] = xor_ror(at(index), low);
   }
+  // signed, because the spec's loop ends at -1 for an even password length
   index = 15;
-  std::size_t pad_index = 15 - password.size();
-  while (pad_index > 0) {
-    result[index] = xor_ror(pad_array[pad_index], high);
-    --index;
-    --pad_index;
-    result[index] = xor_ror(pad_array[pad_index], low);
-    --index;
-    --pad_index;
+  for (auto pad_index = static_cast<std::int32_t>(15 - password.size());
+       pad_index > 0; pad_index -= 2) {
+    result[index] =
+        xor_ror(pad_array[static_cast<std::size_t>(pad_index)], high);
+    result[index - 1] =
+        xor_ror(pad_array[static_cast<std::size_t>(pad_index - 1)], low);
+    index -= 2;
   }
   return result;
 }
@@ -276,12 +276,11 @@ crypto::unlock_xor_method1(const std::uint16_t key,
 }
 
 void crypto::decrypt_xor_method1(const XorArray &xor_array, std::size_t index,
-                                 char *data, const std::size_t size) {
-  for (std::size_t i = 0; i < size; ++i) {
-    const auto value =
-        static_cast<std::uint8_t>(static_cast<std::uint8_t>(data[i]) ^
-                                  xor_array[index % xor_array.size()]);
-    data[i] = static_cast<char>((value >> 5) | (value << 3));
+                                 const std::span<char> data) {
+  for (char &byte : data) {
+    const auto value = static_cast<std::uint8_t>(
+        static_cast<std::uint8_t>(byte) ^ xor_array[index % xor_array.size()]);
+    byte = static_cast<char>((value >> 5) | (value << 3));
     ++index;
   }
 }

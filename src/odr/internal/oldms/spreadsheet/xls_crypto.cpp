@@ -10,6 +10,7 @@
 #include <odr/internal/util/stream_util.hpp>
 
 #include <algorithm>
+#include <span>
 #include <stdexcept>
 #include <utility>
 #include <variant>
@@ -21,7 +22,7 @@ namespace {
 /// [MS-XLS] 2.1.4: a record header, type and size.
 constexpr std::size_t header_size = 4;
 
-/// [MS-XLS] 2.2.10: XOR obfuscation and the RC4 key change every 1024 bytes.
+/// [MS-XLS] 2.2.10: the RC4 key changes every 1024 bytes.
 constexpr std::size_t rc4_block_size = 1024;
 
 struct Record {
@@ -133,8 +134,9 @@ spreadsheet::decrypt_workbook(std::string workbook,
     if (const auto *xor_array = std::get_if<crypto::XorArray>(&keys)) {
       // The XOR array index continues from where the encrypted bytes end, and
       // BoundSheet8 adds the 4 bytes of its lbPlyPos.
-      crypto::decrypt_xor_method1(*xor_array, end + *from, &workbook[begin],
-                                  end - begin);
+      crypto::decrypt_xor_method1(
+          *xor_array, end + *from,
+          std::span(workbook).subspan(begin, end - begin));
     } else {
       for (std::size_t i = begin; i < end; ++i) {
         workbook[i] = static_cast<char>(workbook[i] ^ keystream[i]);

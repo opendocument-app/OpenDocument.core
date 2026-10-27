@@ -11,6 +11,7 @@
 #include <odr/internal/common/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
+#include <odr/internal/oldms/oldms_crypto.hpp>
 #include <odr/internal/oldms/oldms_file.hpp>
 #include <odr/internal/oldms/presentation/ppt_parser.hpp>
 #include <odr/internal/oldms/presentation/ppt_structs.hpp>
@@ -228,6 +229,36 @@ TEST(OldMsEncryption, xls_decrypts_like_msoffcrypto_tool) {
     EXPECT_EQ(decrypted.encryption_state(), EncryptionState::decrypted) << path;
     EXPECT_TRUE(decrypted.document().root_element().first_child().as_sheet())
         << path;
+  }
+}
+
+/// XOR obfuscation method 1 ([MS-OFFCRYPTO] 2.3.7.1 to 2.3.7.3) for passwords
+/// of odd and even length. The expected values come from
+/// msoffcrypto-tool 6.0.0.
+TEST(OldMsEncryption, xor_method1_like_msoffcrypto_tool) {
+  struct Case {
+    std::string password;
+    std::uint16_t key;
+    std::uint16_t verifier;
+    std::string xor_array;
+  };
+  for (const auto &[password, key, verifier, expected] : {
+           Case{"a", 0x9d77, 0xce88, "0b134431e6314412fbcee449bb113cce"},
+           Case{"ab", 0x69f0, 0xcf03, "c885a54b87e9874ba4f478ebffb4a733"},
+           Case{"abcd", 0x2cf6, 0xca5d, "cb27ca24a6e9844b84e9a7567b49fc16"},
+           Case{"password", 0x147a, 0x83af, "05ba84b386bd0438e0f5c257c2f5e14a"},
+           Case{"123456789012345", 0x8265, 0x9eb1,
+                "2a582b5b285a295d2e592a582b5b289c"},
+       }) {
+    const std::optional<oldms::crypto::XorArray> xor_array =
+        oldms::crypto::unlock_xor_method1(key, verifier, password);
+    ASSERT_TRUE(xor_array.has_value()) << password;
+    EXPECT_EQ(internal::crypto::util::hex_encode(
+                  std::string(xor_array->begin(), xor_array->end())),
+              expected)
+        << password;
+    EXPECT_FALSE(oldms::crypto::unlock_xor_method1(key, verifier, "wrong"))
+        << password;
   }
 }
 
