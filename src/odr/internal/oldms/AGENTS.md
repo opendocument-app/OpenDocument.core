@@ -24,9 +24,37 @@ the PDFs under `offline/documentation/`.
 - Fail early on malformed input. Skip records and structures that are not
   modelled.
 - `password_encrypted()` reads the format's own flag or record, so an encrypted
-  file surfaces as encrypted instead of a parse error. Reading one still needs
-  a `decrypt` ([MS-OFFCRYPTO]), which throws today. `html_output_test` skips
-  the encrypted `.doc` fixture for that reason.
+  file surfaces as encrypted instead of a parse error.
+
+## Decryption
+
+`LegacyMicrosoftFile::decrypt` asks the module for its decrypted streams and
+lays them over the compound file (`DecryptedFilesystem` in `oldms_file.cpp`).
+The parsers then read plaintext and know nothing of the encryption. A module
+returns nothing for a wrong password and throws
+`MsUnsupportedCryptoAlgorithm` for an encryption it cannot read. `.xls`
+decrypts; `.doc` and `.ppt` still throw `UnsupportedOperation`, and
+`html_output_test` skips the encrypted `.doc` fixture for that reason.
+
+`oldms_crypto.{hpp,cpp}` holds what the formats share ([MS-OFFCRYPTO]):
+
+- `Rc4Encryption` reads the RC4 header (1.1, 2.3.6.1) or the RC4 CryptoAPI
+  header (2.2, 3.2 or 4.2, 2.3.5.1). `unlock(password)` checks the verifier
+  and returns `Rc4Keys`, which derives the key of each block.
+  `Rc4Keys::keystream` covers a whole stream whose key changes every
+  `block_size` bytes; a format then XORs only the bytes it encrypts, so the
+  keystream also runs over the plain bytes, as the formats require.
+- `unlock_xor_method1` and `decrypt_xor_method1`: XOR obfuscation method 1
+  (2.3.7.1 to 2.3.7.3).
+
+A format may have a default password, which an application writes when the
+user set none. The constructor tries it, and a file that opens with it reads as
+not encrypted, as in LibreOffice: `VelvetSweatshop` for `.xls`.
+
+Tests compare a decrypted stream with what msoffcrypto-tool 6.0.0 decrypts, by
+its SHA-1. The fixtures come from the msoffcrypto-tool tests (MIT) and from
+LibreOffice, which writes only RC4 (1.1) for `.doc` and `.xls`, standard
+encryption for OOXML, and no encrypted `.ppt`.
 
 ## Endianness: little-endian host assumed (shared open work)
 

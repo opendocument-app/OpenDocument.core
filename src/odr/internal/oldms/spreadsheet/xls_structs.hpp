@@ -12,26 +12,31 @@ namespace odr::internal::oldms::spreadsheet {
 
 /// BIFF8 record type values handled here ([MS-XLS] 2.3 Record Enumeration).
 enum BiffRecordType : std::uint16_t {
-  biff_formula = 0x0006,    //< [MS-XLS] 2.4.127
-  biff_eof = 0x000A,        //< [MS-XLS] 2.4.103
-  biff_filepass = 0x002F,   //< [MS-XLS] 2.4.117
-  biff_font = 0x0031,       //< [MS-XLS] 2.4.122
-  biff_continue = 0x003C,   //< [MS-XLS] 2.4.58
-  biff_boundsheet = 0x0085, //< [MS-XLS] 2.4.28 BoundSheet8
-  biff_palette = 0x0092,    //< [MS-XLS] 2.4.188
-  biff_mulrk = 0x00BD,      //< [MS-XLS] 2.4.175
-  biff_mulblank = 0x00BE,   //< [MS-XLS] 2.4.174
-  biff_xf = 0x00E0,         //< [MS-XLS] 2.4.353
-  biff_sst = 0x00FC,        //< [MS-XLS] 2.4.265
-  biff_labelsst = 0x00FD,   //< [MS-XLS] 2.4.149
-  biff_dimensions = 0x0200, //< [MS-XLS] 2.4.90
-  biff_blank = 0x0201,      //< [MS-XLS] 2.4.20
-  biff_number = 0x0203,     //< [MS-XLS] 2.4.180
-  biff_label = 0x0204,      //< [MS-XLS] 2.4.148
-  biff_boolerr = 0x0205,    //< [MS-XLS] 2.4.24
-  biff_string = 0x0207,     //< [MS-XLS] 2.4.268
-  biff_rk = 0x027E,         //< [MS-XLS] 2.4.220
-  biff_bof = 0x0809,        //< [MS-XLS] 2.4.21
+  biff_formula = 0x0006,      //< [MS-XLS] 2.4.127
+  biff_eof = 0x000A,          //< [MS-XLS] 2.4.103
+  biff_filepass = 0x002F,     //< [MS-XLS] 2.4.117
+  biff_font = 0x0031,         //< [MS-XLS] 2.4.122
+  biff_continue = 0x003C,     //< [MS-XLS] 2.4.58
+  biff_boundsheet = 0x0085,   //< [MS-XLS] 2.4.28 BoundSheet8
+  biff_palette = 0x0092,      //< [MS-XLS] 2.4.188
+  biff_mulrk = 0x00BD,        //< [MS-XLS] 2.4.175
+  biff_mulblank = 0x00BE,     //< [MS-XLS] 2.4.174
+  biff_xf = 0x00E0,           //< [MS-XLS] 2.4.353
+  biff_interfacehdr = 0x00E1, //< [MS-XLS] 2.4.146
+  biff_sst = 0x00FC,          //< [MS-XLS] 2.4.265
+  biff_labelsst = 0x00FD,     //< [MS-XLS] 2.4.149
+  biff_rrdhead = 0x0138,      //< [MS-XLS] 2.4.226
+  biff_usrexcl = 0x0194,      //< [MS-XLS] 2.4.339
+  biff_filelock = 0x0195,     //< [MS-XLS] 2.4.116
+  biff_rrdinfo = 0x0196,      //< [MS-XLS] 2.4.227
+  biff_dimensions = 0x0200,   //< [MS-XLS] 2.4.90
+  biff_blank = 0x0201,        //< [MS-XLS] 2.4.20
+  biff_number = 0x0203,       //< [MS-XLS] 2.4.180
+  biff_label = 0x0204,        //< [MS-XLS] 2.4.148
+  biff_boolerr = 0x0205,      //< [MS-XLS] 2.4.24
+  biff_string = 0x0207,       //< [MS-XLS] 2.4.268
+  biff_rk = 0x027E,           //< [MS-XLS] 2.4.220
+  biff_bof = 0x0809,          //< [MS-XLS] 2.4.21
 };
 
 /// FormulaValue type discriminator when fExprO == 0xFFFF ([MS-XLS] 2.5.133).

@@ -20,6 +20,9 @@ The release run heads these entries with the version and opens a fresh
 
 - A docx, xlsx or pptx with agile encryption, the default of Office 2010 and
   later, opens with its password. It threw `MsUnsupportedCryptoAlgorithm`.
+- An encrypted xls opens with its password: RC4, RC4 CryptoAPI and XOR
+  obfuscation. An xls that Excel encrypted with its default password, for a
+  workbook whose structure is protected, opens without a password.
 
 ### Spreadsheets
 
