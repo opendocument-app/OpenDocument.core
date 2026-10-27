@@ -9,35 +9,39 @@
 #include <odr/internal/util/byte_string.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
-#include <cstring>
+#include <algorithm>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 namespace odr::internal::oldms::presentation {
 
 namespace {
 
-/// The persist object at `offset`, decrypted with the key of its persist id
-/// ([MS-PPT] 2.3.7). The record header is encrypted too, so it is decrypted
-/// first to learn the length.
-void decrypt_persist_object(std::string &document, const std::uint32_t offset,
-                            const std::string &key) {
+/// Decrypts the persist object at `offset` with the key of its persist id
+/// ([MS-PPT] 2.3.7) and returns its size. The record header is encrypted too,
+/// so it is decrypted first to learn the length.
+std::size_t decrypt_persist_object(std::string &document,
+                                   const std::uint32_t offset,
+                                   const std::string_view key) {
   if (offset > document.size() ||
       document.size() - offset < sizeof(RecordHeader)) {
     throw std::runtime_error("ppt: persist object beyond the stream");
   }
-  const std::string header = internal::crypto::util::rc4(
-      key, std::string_view(document).substr(offset, sizeof(RecordHeader)));
-  RecordHeader record_header{};
-  std::memcpy(&record_header, header.data(), sizeof(record_header));
-  const std::size_t size = sizeof(RecordHeader) + record_header.recLen;
+  const auto header =
+      util::byte_string::Reader(
+          internal::crypto::util::rc4(key, std::string_view(document).substr(
+                                               offset, sizeof(RecordHeader))))
+          .read<RecordHeader>();
+  const std::size_t size = sizeof(RecordHeader) + header.recLen;
   if (document.size() - offset < size) {
     throw std::runtime_error("ppt: persist object beyond the stream");
   }
-  const std::string plaintext = internal::crypto::util::rc4(
-      key, std::string_view(document).substr(offset, size));
-  document.replace(offset, size, plaintext);
+  document.replace(offset, size,
+                   internal::crypto::util::rc4(
+                       key, std::string_view(document).substr(offset, size)));
+  return size;
 }
 
 /// [MS-ODRAW] 2.2.23 and 2.2.32: the record types of the Pictures stream.
@@ -69,7 +73,7 @@ bool has_second_uid(const std::uint16_t instance) {
 /// [MS-PPT] 2.3.7 and 4: each field of a record in the Pictures stream is
 /// encrypted on its own with the key of block 0. Which fields there are
 /// follows Apache POI's `HSLFSlideShowEncrypted`.
-void decrypt_pictures(std::string &pictures, const std::string &key) {
+void decrypt_pictures(std::string &pictures, const std::string_view key) {
   std::size_t position = 0;
   std::size_t end = 0;
   const auto field = [&](const std::size_t size) {
@@ -84,10 +88,10 @@ void decrypt_pictures(std::string &pictures, const std::string &key) {
   };
   const auto header_field = [&] {
     field(sizeof(RecordHeader));
-    RecordHeader header{};
-    std::memcpy(&header, pictures.data() + position - sizeof(header),
-                sizeof(header));
-    return header;
+    return util::byte_string::Reader(
+               std::string_view(pictures).substr(
+                   position - sizeof(RecordHeader), sizeof(RecordHeader)))
+        .read<RecordHeader>();
   };
 
   while (pictures.size() - position >= sizeof(RecordHeader)) {
@@ -159,9 +163,10 @@ presentation::decrypt(const abstract::ReadableFilesystem &files,
   }
 
   // [MS-PPT] 2.3.7: the CryptSession10Container is plain.
-  RecordHeader session_header{};
-  std::memcpy(&session_header, document.data() + session->second,
-              sizeof(session_header));
+  const auto session_header =
+      util::byte_string::Reader(
+          std::string_view(document).substr(session->second))
+          .read<RecordHeader>();
   if (session_header.recType != RT_CryptSession10Container ||
       document.size() - session->second - sizeof(RecordHeader) <
           session_header.recLen) {
@@ -176,10 +181,22 @@ presentation::decrypt(const abstract::ReadableFilesystem &files,
     return std::nullopt;
   }
 
+  // A valid file has one edit, so its objects do not overlap; refusing an
+  // overlap also bounds the work by the stream size.
+  std::vector<std::pair<std::uint32_t, std::uint32_t>> objects;
   for (const auto &[persist_id, offset] : chain.directory) {
     if (persist_id != session->first) {
-      decrypt_persist_object(document, offset, keys->block_key(persist_id));
+      objects.emplace_back(offset, persist_id);
     }
+  }
+  std::ranges::sort(objects);
+  std::size_t end = 0;
+  for (const auto &[offset, persist_id] : objects) {
+    if (offset < end) {
+      throw std::runtime_error("ppt: overlapping persist objects");
+    }
+    end = offset +
+          decrypt_persist_object(document, offset, keys->block_key(persist_id));
   }
 
   // [MS-PPT] 2.3.2: headerToken follows the record header and `size`.

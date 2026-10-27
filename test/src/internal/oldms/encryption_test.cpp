@@ -22,10 +22,12 @@
 #include <odr/internal/oldms/text/doc_crypto.hpp>
 #include <odr/internal/oldms/text/doc_parser.hpp>
 #include <odr/internal/oldms/text/doc_structs.hpp>
+#include <odr/internal/util/stream_util.hpp>
 
 #include <internal/oldms/oldms_test_util.hpp>
 #include <test_util.hpp>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <cstdint>
@@ -427,6 +429,36 @@ TEST(OldMsEncryption, ppt_decrypts_like_msoffcrypto_tool) {
   const DocumentFile decrypted = file.decrypt(password);
   const Document document_handle = decrypted.document();
   EXPECT_EQ(collect_text(document_handle.root_element()), "Lorem ipsum");
+}
+
+/// Two persist ids at one offset would decrypt the same bytes twice; a crafted
+/// directory of many such ids would make the work quadratic.
+TEST(OldMsEncryption, ppt_refuses_overlapping_persist_objects) {
+  const auto files =
+      fixture_streams("odr-public/ppt/encrypted-rc4-cryptoapi.ppt");
+  const std::string current_user = internal::util::stream::read(
+      *files->open(AbsPath("/Current User"))->stream());
+  std::string document = internal::util::stream::read(
+      *files->open(AbsPath("/PowerPoint Document"))->stream());
+
+  // CurrentUserAtom.offsetToCurrentEdit, then UserEditAtom
+  // .offsetPersistDirectory ([MS-PPT] 2.3.2, 2.3.3)
+  std::uint32_t edit = 0;
+  std::memcpy(&edit, current_user.data() + 16, sizeof(edit));
+  std::uint32_t directory = 0;
+  std::memcpy(&directory, document.data() + edit + 8 + 12, sizeof(directory));
+  // the first entry's second offset takes the value of its first
+  document.replace(directory + 16, 4, document.substr(directory + 12, 4));
+
+  VirtualFilesystem modified;
+  modified.copy(std::make_shared<MemoryFile>(current_user),
+                AbsPath("/Current User"));
+  modified.copy(std::make_shared<MemoryFile>(document),
+                AbsPath("/PowerPoint Document"));
+  EXPECT_THAT(
+      [&] { std::ignore = presentation::decrypt(modified, "Password1234_"); },
+      testing::ThrowsMessage<std::runtime_error>(
+          testing::HasSubstr("overlapping")));
 }
 
 /// Apache POI 5.5.1 encrypted these, pictures included. The expected hashes

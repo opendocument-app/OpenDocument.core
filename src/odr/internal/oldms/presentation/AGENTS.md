@@ -113,18 +113,20 @@ shapes, so it renders underneath.
 `TextBytesAtom` is one byte per character. `0x0D` is a paragraph break,
 `0x0B` a manual line break, `0x09` is kept, other controls are dropped.
 
-**Decryption** ([MS-PPT] 2.3.7). Only RC4 CryptoAPI exists for `.ppt`.
-`read_edit_chain` walks the UserEditAtom chain for the parser and for
-`decrypt`, because UserEditAtom, PersistDirectoryAtom and the
-CryptSession10Container that `encryptSessionPersistIdRef` names are plain.
-Every other persist object restarts RC4 with its persist id as the block
-number; its record header is encrypted too, so it is decrypted first to learn
-the length. The Pictures stream restarts RC4 with block 0 for each field of a
-record: the header, the FBSE fields, each UID, the 34-byte metafile header or
-the tag byte, and the rest. The spec does not list the fields; they follow
-Apache POI's `HSLFSlideShowEncrypted`, and only POI-made files test them.
-`decrypt` sets the plain header token in the CurrentUserAtom, so the parser
-and `password_encrypted` see a plain presentation. The default password of
+**Decryption** ([MS-PPT] 2.3.7). The spec allows only RC4 CryptoAPI;
+`Rc4Encryption` would also read an RC4 header. `read_edit_chain` walks the
+UserEditAtom chain for the parser and for `decrypt`, because UserEditAtom,
+PersistDirectoryAtom and the CryptSession10Container that
+`encryptSessionPersistIdRef` names are plain. Every other persist object
+restarts RC4 with its persist id as the block number; its record header is
+encrypted too, so it is decrypted first to learn the length. Objects that
+overlap are refused, which also bounds the work by the stream size. The
+Pictures stream restarts RC4 with block 0 for each field of a record: the
+header, the FBSE fields, each UID, the 34-byte metafile header or the tag
+byte, and the rest. The spec does not list the fields; they follow Apache
+POI's `HSLFSlideShowEncrypted`, and only POI-made files test them. `decrypt`
+sets the plain header token in the CurrentUserAtom, so the parser and
+`password_encrypted` see a plain presentation. The default password of
 PowerPoint is not tried, because no fixture has it.
 
 ## Tests
