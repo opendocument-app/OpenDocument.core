@@ -12,24 +12,11 @@ namespace odr::internal::oldms {
 
 namespace {
 
-std::string password_bytes(const std::string_view password) {
-  const std::u16string password_u16 =
-      util::string::string_to_u16string(password);
-  return {reinterpret_cast<const char *>(password_u16.data()),
-          2 * password_u16.size()};
-}
-
 /// The next `size` bytes; throws if fewer are left.
 std::string read_string(util::byte_string::Reader &reader,
                         const std::size_t size) {
   std::string result(reader.rest().substr(0, size));
   reader.skip(size);
-  return result;
-}
-
-std::string le32(const std::uint32_t value) {
-  std::string result;
-  util::byte_string::put_u32_le(result, value);
   return result;
 }
 
@@ -152,10 +139,11 @@ std::string crypto::Rc4Keys::block_key(const std::uint32_t block) const {
   if (m_kind == Kind::rc4) {
     // [MS-OFFCRYPTO] 2.3.6.2.
     return internal::crypto::util::md5(m_password_hash.substr(0, 5) +
-                                       le32(block));
+                                       util::byte_string::u32_le(block));
   }
   // [MS-OFFCRYPTO] 2.3.5.2: a 40-bit key is padded with zeros to 128 bits.
-  std::string key = internal::crypto::util::sha1(m_password_hash + le32(block))
+  std::string key = internal::crypto::util::sha1(
+                        m_password_hash + util::byte_string::u32_le(block))
                         .substr(0, m_key_size);
   if (m_key_size == 5) {
     key.resize(16, '\0');
@@ -231,7 +219,7 @@ crypto::Rc4Encryption::unlock(const std::string_view password) const {
   if (m_kind == Rc4Keys::Kind::rc4) {
     // [MS-OFFCRYPTO] 2.3.6.2.
     const std::string h0 =
-        internal::crypto::util::md5(password_bytes(password));
+        internal::crypto::util::md5(util::string::string_to_utf16le(password));
     std::string intermediate;
     for (std::uint32_t i = 0; i < 16; ++i) {
       intermediate += h0.substr(0, 5);
@@ -240,8 +228,8 @@ crypto::Rc4Encryption::unlock(const std::string_view password) const {
     password_hash = internal::crypto::util::md5(intermediate);
   } else {
     // [MS-OFFCRYPTO] 2.3.5.2.
-    password_hash =
-        internal::crypto::util::sha1(m_salt + password_bytes(password));
+    password_hash = internal::crypto::util::sha1(
+        m_salt + util::string::string_to_utf16le(password));
   }
   Rc4Keys keys(m_kind, std::move(password_hash), m_key_size);
 

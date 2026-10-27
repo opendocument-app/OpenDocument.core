@@ -77,7 +77,7 @@ the stream. XOR obfuscation starts each record at the array index where its
 encrypted bytes end, plus 4 for `BoundSheet8`, as msoffcrypto-tool does; the
 sheet name of the XOR fixture shows that the 4 is needed. The password for XOR
 is the low byte of each UTF-16 unit, or the high byte if the low one is zero,
-at most 15 characters. `FilePass` becomes an empty record of type 0, so the
+at most 15 characters. `FilePass` becomes a zero-filled record of type 0, so the
 parser and `password_encrypted` see a plain workbook. Only `/Workbook` is
 decrypted; revision and pivot cache streams are not read anyway.
 

@@ -13,7 +13,7 @@ class ReadableFilesystem;
 namespace odr::internal::oldms::spreadsheet {
 
 /// The `/Workbook` stream with its record data decrypted ([MS-XLS] 2.2.10),
-/// or nothing if `password` is wrong. The FilePass record becomes an empty
+/// or nothing if `password` is wrong. The FilePass record becomes a zero-filled
 /// record of type 0, so the result reads as not encrypted. Throws
 /// `MsUnsupportedCryptoAlgorithm` for an unknown encryption.
 [[nodiscard]] std::optional<std::string>

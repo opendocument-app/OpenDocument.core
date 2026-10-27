@@ -194,7 +194,7 @@ TEST(OldMsEncryption, an_encrypted_doc_surfaces_as_encrypted) {
 
 /// RC4 CryptoAPI and XOR obfuscation from Excel, RC4 from LibreOffice. The
 /// expected hashes are of the Workbook stream that msoffcrypto-tool 6.0.0
-/// decrypts, which also replaces FilePass with an empty record of type 0.
+/// decrypts, which also replaces FilePass with a zero-filled record of type 0.
 TEST(OldMsEncryption, xls_decrypts_like_msoffcrypto_tool) {
   struct Case {
     std::string path;

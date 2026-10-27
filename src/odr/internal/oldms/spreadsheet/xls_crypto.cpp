@@ -13,7 +13,6 @@
 #include <span>
 #include <stdexcept>
 #include <utility>
-#include <variant>
 
 namespace odr::internal::oldms::spreadsheet {
 
@@ -93,33 +92,27 @@ spreadsheet::decrypt_workbook(std::string workbook,
   util::byte_string::Reader reader(
       std::string_view(workbook).substr(file_pass.body, file_pass.size));
 
-  // [MS-XLS] 2.4.117.
-  std::variant<crypto::XorArray, crypto::Rc4Keys> keys = crypto::XorArray{};
+  // [MS-XLS] 2.4.117: XOR obfuscation or RC4.
+  std::optional<crypto::XorArray> xor_array;
+  std::string keystream;
   if (const auto encryption_type = reader.read<std::uint16_t>();
       encryption_type == 0) {
     // [MS-XLS] 2.5.343.
     const auto key = reader.read<std::uint16_t>();
     const auto verifier = reader.read<std::uint16_t>();
-    std::optional<crypto::XorArray> xor_array =
-        crypto::unlock_xor_method1(key, verifier, password);
+    xor_array = crypto::unlock_xor_method1(key, verifier, password);
     if (!xor_array.has_value()) {
       return std::nullopt;
     }
-    keys = *xor_array;
   } else if (encryption_type == 1) {
-    std::optional<crypto::Rc4Keys> rc4_keys =
+    const std::optional<crypto::Rc4Keys> keys =
         crypto::Rc4Encryption(reader.rest()).unlock(password);
-    if (!rc4_keys.has_value()) {
+    if (!keys.has_value()) {
       return std::nullopt;
     }
-    keys = std::move(*rc4_keys);
+    keystream = keys->keystream(workbook.size(), rc4_block_size);
   } else {
     throw MsUnsupportedCryptoAlgorithm();
-  }
-
-  std::string keystream;
-  if (const auto *rc4_keys = std::get_if<crypto::Rc4Keys>(&keys)) {
-    keystream = rc4_keys->keystream(workbook.size(), rc4_block_size);
   }
 
   for (std::optional<Record> record = record_at(workbook, 0);
@@ -131,7 +124,7 @@ spreadsheet::decrypt_workbook(std::string workbook,
     }
     const std::size_t begin = record->body + *from;
     const std::size_t end = record->body + record->size;
-    if (const auto *xor_array = std::get_if<crypto::XorArray>(&keys)) {
+    if (xor_array.has_value()) {
       // The XOR array index continues from where the encrypted bytes end, and
       // BoundSheet8 adds the 4 bytes of its lbPlyPos.
       crypto::decrypt_xor_method1(
@@ -144,7 +137,7 @@ spreadsheet::decrypt_workbook(std::string workbook,
     }
   }
 
-  // An empty record of type 0 in place of the FilePass record.
+  // A zero-filled record of type 0 in place of the FilePass record.
   std::fill_n(workbook.begin() +
                   static_cast<std::ptrdiff_t>(file_pass.body - header_size),
               2, '\0');
