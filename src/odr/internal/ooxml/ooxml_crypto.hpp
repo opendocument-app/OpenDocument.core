@@ -80,6 +80,42 @@ private:
   void validate_() const;
 };
 
+/// [MS-OFFCRYPTO] 2.3.4.10. The key is the iterated password hash; the block
+/// keys of 2.3.4.13 are derived from it.
+class ECMA376Agile final : public Algorithm {
+public:
+  explicit ECMA376Agile(std::string_view encryption_info);
+
+  [[nodiscard]] std::string
+  derive_key(std::string_view password) const override;
+  [[nodiscard]] bool verify(std::string_view key) const override;
+  [[nodiscard]] std::string decrypt(std::string_view encrypted_package,
+                                    std::string_view key) const override;
+
+  using HashFunction = std::string (*)(std::string_view);
+
+  /// The cipher and hash of `keyData` or of the password key encryptor.
+  struct CipherParameters {
+    std::string salt;
+    std::uint32_t block_size{0};
+    std::uint32_t key_bits{0};
+    std::uint32_t hash_size{0};
+    HashFunction hash{nullptr};
+  };
+
+private:
+  CipherParameters m_key_data;
+  CipherParameters m_password;
+  std::uint32_t m_spin_count{0};
+  std::string m_encrypted_verifier_hash_input;
+  std::string m_encrypted_verifier_hash_value;
+  std::string m_encrypted_key_value;
+
+  [[nodiscard]] std::string
+  decrypt_with_block_key(std::string_view key, std::string_view block_key,
+                         std::string_view input) const;
+};
+
 class Util final : public Algorithm {
 public:
   explicit Util(std::string_view encryption_info);

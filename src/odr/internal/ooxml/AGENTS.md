@@ -44,22 +44,31 @@ a per-part `ParseContext` (path, its relations, the part cache).
 
 ## Encryption
 
-Only ECMA-376 standard encryption (AES-ECB plus SHA1) is implemented:
-`ECMA376Standard`, selected when `VersionInfo` major is 2, 3 or 4 and minor is
-2. Key derivation: password as UTF-16LE, salt-prefixed SHA1, 50000 iterations
-(`ITER_COUNT`), then the block key with the `0x36` and `0x5c` pads. The
-container is a [CFB](../cfb/) compound file. `open_strategy.cpp` routes an
-encrypted package through the cfb filesystem and a plain one through
+The container is a [CFB](../cfb/) compound file. `open_strategy.cpp` routes
+an encrypted package through the cfb filesystem and a plain one through
 [zip](../zip/). `decrypt()` verifies the password, decrypts
-`/EncryptedPackage` and reopens the plain zip in memory.
+`/EncryptedPackage` and reopens the plain zip in memory. `crypto::Util` picks
+the algorithm from `VersionInfo`:
 
-Agile (4.4) and extensible encryption throw `MsUnsupportedCryptoAlgorithm`. A
-big-endian host throws `UnsupportedEndian`, because the crypto structs are
-`#pragma pack(1)` and read by `memcpy`.
+- **Standard** (major 2, 3 or 4, minor 2; [MS-OFFCRYPTO] 2.3.4.5):
+  `ECMA376Standard`, AES-ECB plus SHA1. Key derivation: password as UTF-16LE,
+  salt-prefixed SHA1, 50000 iterations, then the block key with the `0x36` and
+  `0x5c` pads.
+- **Agile** (4.4; 2.3.4.10): `ECMA376Agile`, the default of Office 2010 and
+  later. The descriptor is XML. Only the password key encryptor is read, with
+  AES in CBC mode and SHA-1, SHA-256, SHA-384 or SHA-512. `derive_key` returns
+  the iterated password hash (2.3.4.11 without the block key), so the one
+  `Algorithm` interface serves both. The package is decrypted in 4096-byte
+  segments, each with its own IV (2.3.4.15). The `dataIntegrity` HMAC
+  (2.3.4.14) is not checked.
+
+Extensible encryption (3.3, 4.3), another cipher or chaining mode, and an
+agile file with only a certificate key encryptor throw
+`MsUnsupportedCryptoAlgorithm`. A big-endian host throws `UnsupportedEndian`,
+because the crypto structs are `#pragma pack(1)` and read by `memcpy`.
 
 ## Shared open work
 
-- Agile encryption, the common modern scheme.
 - Big-endian hosts.
 - Document statistics (page and table counts) for any format.
 - `Crypto::Util` is rebuilt per `decrypt()` call.

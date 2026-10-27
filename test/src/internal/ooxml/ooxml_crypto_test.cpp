@@ -1,16 +1,95 @@
 #include <odr/internal/ooxml/ooxml_crypto.hpp>
 
+#include <odr/document.hpp>
+#include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
+#include <odr/file.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/util/byte_string.hpp>
+#include <odr/odr.hpp>
+
+#include <test_util.hpp>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <cstring>
 #include <string>
+#include <tuple>
 
 using namespace odr::internal::ooxml;
+using odr::test::TestData;
+
+namespace {
+
+/// The attributes of `CT_KeyData` and `CT_PasswordKeyEncryptor`
+/// ([MS-OFFCRYPTO] 2.3.4.10), with an all-zero 16-byte salt.
+std::string cipher_attributes(const std::string &cipher) {
+  return R"( saltSize="16" blockSize="16" keyBits="256" hashSize="64")"
+         R"( cipherAlgorithm=")" +
+         cipher +
+         R"(" cipherChaining="ChainingModeCBC" hashAlgorithm="SHA512")"
+         R"( saltValue="AAAAAAAAAAAAAAAAAAAAAA==")";
+}
+
+/// An agile `EncryptionInfo` stream around the given key encryptors.
+std::string make_agile_info(const std::string &key_encryptors,
+                            const std::string &cipher = "AES") {
+  std::string info;
+  odr::internal::util::byte_string::put_u32_le(info, 0x00040004);
+  odr::internal::util::byte_string::put_u32_le(info, 0x40);
+  info +=
+      R"(<encryption xmlns="http://schemas.microsoft.com/office/2006/encryption")"
+      R"( xmlns:p="http://schemas.microsoft.com/office/2006/keyEncryptor/password">)"
+      R"(<keyData)" +
+      cipher_attributes(cipher) + R"(/><keyEncryptors>)" + key_encryptors +
+      R"(</keyEncryptors></encryption>)";
+  return info;
+}
+
+std::string make_password_encryptor(const std::string &spin_count) {
+  return R"(<keyEncryptor uri="http://schemas.microsoft.com/office/2006/keyEncryptor/password">)"
+         R"(<p:encryptedKey spinCount=")" +
+         spin_count + R"(")" + cipher_attributes("AES") +
+         R"( encryptedVerifierHashInput="AAAAAAAAAAAAAAAAAAAAAA==")"
+         R"( encryptedVerifierHashValue="AAAAAAAAAAAAAAAAAAAAAA==")"
+         R"( encryptedKeyValue="AAAAAAAAAAAAAAAAAAAAAA=="/></keyEncryptor>)";
+}
+
+} // namespace
+
+TEST(OoxmlCrypto, ECMA376Agile_decrypts_word_excel_and_powerpoint) {
+  for (const std::string path : {"odr-public/docx/encrypted-agile.docx",
+                                 "odr-public/xlsx/encrypted-agile.xlsx",
+                                 "odr-public/pptx/encrypted-agile.pptx"}) {
+    const odr::DocumentFile file =
+        odr::open(TestData::test_file_path(path)).as_document_file();
+    EXPECT_EQ(file.encryption_state(), odr::EncryptionState::encrypted) << path;
+    EXPECT_THROW(std::ignore = file.decrypt("wrong"), odr::WrongPasswordError)
+        << path;
+
+    const odr::DocumentFile decrypted =
+        file.decrypt(TestData::test_file(path).password.value());
+    EXPECT_EQ(decrypted.encryption_state(), odr::EncryptionState::decrypted)
+        << path;
+    EXPECT_EQ(decrypted.file_type(), TestData::test_file(path).type) << path;
+    EXPECT_TRUE(decrypted.document().root_element().first_child()) << path;
+  }
+}
+
+TEST(OoxmlCrypto, ECMA376Agile_refuses_what_it_cannot_decrypt) {
+  EXPECT_NO_THROW(
+      (void)crypto::Util(make_agile_info(make_password_encryptor("100000"))));
+  EXPECT_THROW((void)crypto::Util(
+                   make_agile_info(make_password_encryptor("100000"), "3DES")),
+               odr::MsUnsupportedCryptoAlgorithm);
+  // a certificate key encryptor needs a private key, not a password
+  EXPECT_THROW((void)crypto::Util(make_agile_info("")),
+               odr::MsUnsupportedCryptoAlgorithm);
+  EXPECT_THROW(
+      (void)crypto::Util(make_agile_info(make_password_encryptor("10000001"))),
+      std::runtime_error);
+}
 
 TEST(OoxmlCrypto, ECMA376Standard_derive_key) {
   crypto::EncryptionHeader encryption_header{};
