@@ -223,6 +223,26 @@ Text first_text(const Element cell) {
 
 } // namespace
 
+// Chart substreams have their own cell-like cache records. Their EOF must
+// not end the worksheet, and deeper substreams must stay excluded as well.
+TEST(OldMs, xls_nested_chart_caches_do_not_replace_cells) {
+  std::string workbook = make_workbook("", {make_label(0, 0, 0, "actual")});
+  workbook.resize(workbook.size() - 4); // replace the worksheet EOF
+  append_record(workbook, 0x0809 /* BOF */, make_bof(0x0020));
+  append_record(workbook, 0x0204 /* Label */, make_label(0, 0, 0, "cache"));
+  append_record(workbook, 0x0809 /* BOF */, make_bof(0x0020));
+  append_record(workbook, 0x0204 /* Label */, make_label(0, 0, 0, "deeper"));
+  append_record(workbook, 0x000A /* EOF */, "");
+  append_record(workbook, 0x000A /* EOF */, "");
+  append_record(workbook, 0x0204 /* Label */, make_label(1, 0, 0, "after"));
+  append_record(workbook, 0x000A /* EOF */, "");
+
+  const Document document = open_workbook(workbook);
+  const Sheet sheet = document.root_element().first_child().as_sheet();
+  EXPECT_EQ(collect_text(sheet.cell(0, 0)), "actual");
+  EXPECT_EQ(collect_text(sheet.cell(0, 1)), "after");
+}
+
 // Fonts and fills resolve through XF -> Font/palette ([MS-XLS] 2.4.353,
 // 2.4.122): the cell's ixfe picks the XF, whose ifnt picks the Font (index 4
 // is skipped and values above 4 are one-based, [MS-XLS] 2.5.129); colors use
