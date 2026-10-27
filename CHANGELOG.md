@@ -25,6 +25,7 @@ The release run heads these entries with the version and opens a fresh
   workbook whose structure is protected, opens without a password.
 - An encrypted doc opens with its password: RC4 and RC4 CryptoAPI. A doc
   with XOR obfuscation throws `MsUnsupportedCryptoAlgorithm`.
+- An encrypted ppt opens with its password, pictures included.
 
 ### Spreadsheets
 

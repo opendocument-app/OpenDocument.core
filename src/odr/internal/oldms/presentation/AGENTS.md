@@ -17,6 +17,7 @@ drawing records) and the `[MS-CFB]` container.
 | File (`oldms/presentation/`) | Role |
 |---|---|
 | `ppt_structs.hpp` | `#pragma pack(1)` PODs (`RecordHeader`, atom bodies, `Anchor`), the `RecordType`, `BlipInstance` and `SlideListInstance` enums |
+| `ppt_crypto.{hpp,cpp}` | `decrypt`: the Current User, PowerPoint Document and Pictures streams decrypted |
 | `ppt_io.{hpp,cpp}` | `read_*` helpers over `std::istream`: record headers, atoms, anchors, text |
 | `ppt_style.{hpp,cpp}` | `parse_style_text_prop_atom` (StyleTextPropAtom to `TextCFRun`s), `resolve_style` (`TextCFRun` plus `StyleContext` to a style index), the 18pt default, the `StyleRegistry` that owns the resolved `TextStyle`s and font names |
 | `ppt_parser.{hpp,cpp}` | `parse_tree(registry, style_registry, files)`: walks the stream, builds the tree, fills the `StyleRegistry` |
@@ -112,6 +113,20 @@ shapes, so it renders underneath.
 `TextBytesAtom` is one byte per character. `0x0D` is a paragraph break,
 `0x0B` a manual line break, `0x09` is kept, other controls are dropped.
 
+**Decryption** ([MS-PPT] 2.3.7). Only RC4 CryptoAPI exists for `.ppt`.
+`read_edit_chain` walks the UserEditAtom chain for the parser and for
+`decrypt`, because UserEditAtom, PersistDirectoryAtom and the
+CryptSession10Container that `encryptSessionPersistIdRef` names are plain.
+Every other persist object restarts RC4 with its persist id as the block
+number; its record header is encrypted too, so it is decrypted first to learn
+the length. The Pictures stream restarts RC4 with block 0 for each field of a
+record: the header, the FBSE fields, each UID, the 34-byte metafile header or
+the tag byte, and the rest. The spec does not list the fields; they follow
+Apache POI's `HSLFSlideShowEncrypted`, and only POI-made files test them.
+`decrypt` sets the plain header token in the CurrentUserAtom, so the parser
+and `password_encrypted` see a plain presentation. The default password of
+PowerPoint is not tried, because no fixture has it.
+
 ## Tests
 
 - `OldMs.ppt_parse_style_text_prop_atom`: PF-run skipping, CFStyle bold and
@@ -119,7 +134,9 @@ shapes, so it renders underneath.
 - `OldMs.ppt_empty` (`empty.ppt`): one slide.
 - `OldMs.ppt_style_various` (`style-various-1.ppt`): 8 slides, positioned
   frames, per-box text, style assertions, the slide-6 background picture.
-- `OldMsEncryption.*`: the header token.
+- `OldMsEncryption.*`: the header token; decryption compared with
+  msoffcrypto-tool (persist objects) and Apache POI (pictures, every BLIP
+  type).
 - `html_output_test` compares the `.ppt` fixtures against the reference output.
 
 No fixture exercises the `OutlineTextRefAtom` path.

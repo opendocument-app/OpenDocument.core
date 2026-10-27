@@ -13,6 +13,7 @@
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/oldms/oldms_crypto.hpp>
 #include <odr/internal/oldms/oldms_file.hpp>
+#include <odr/internal/oldms/presentation/ppt_crypto.hpp>
 #include <odr/internal/oldms/presentation/ppt_parser.hpp>
 #include <odr/internal/oldms/presentation/ppt_structs.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_crypto.hpp>
@@ -28,7 +29,10 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <cstring>
+#include <map>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <tuple>
 
@@ -375,4 +379,84 @@ TEST(OldMsEncryption, doc_without_its_table_stream_is_an_error) {
 
   EXPECT_THROW(std::ignore = text::decrypt(files, "password"),
                std::runtime_error);
+}
+
+/// RC4 CryptoAPI from PowerPoint. The expected hash is of the persist objects,
+/// in persist id order, that msoffcrypto-tool 6.0.0 decrypts; the
+/// CryptSession10Container is plain and not among them.
+TEST(OldMsEncryption, ppt_decrypts_like_msoffcrypto_tool) {
+  const std::string path = "odr-public/ppt/encrypted-rc4-cryptoapi.ppt";
+  const auto files = fixture_streams(path);
+  const std::string password = TestData::test_file(path).password.value();
+
+  EXPECT_FALSE(presentation::decrypt(*files, "wrong").has_value());
+  std::optional<oldms::crypto::DecryptedStreams> streams =
+      presentation::decrypt(*files, password);
+  ASSERT_TRUE(streams.has_value());
+  std::map<std::string, std::string> by_path;
+  for (auto &[stream_path, data] : *streams) {
+    by_path.emplace(stream_path.string(), std::move(data));
+  }
+  const std::string &document = by_path.at("/PowerPoint Document");
+
+  std::istringstream current_user_in(by_path.at("/Current User"));
+  std::istringstream document_in(document);
+  const presentation::EditChain chain =
+      presentation::read_edit_chain(current_user_in, document_in);
+  const std::map<std::uint32_t, std::uint32_t> objects(chain.directory.begin(),
+                                                       chain.directory.end());
+  std::string persist_objects;
+  for (const auto &[persist_id, offset] : objects) {
+    if (persist_id == chain.encrypt_session_persist_id) {
+      continue;
+    }
+    presentation::RecordHeader header{};
+    std::memcpy(&header, document.data() + offset, sizeof(header));
+    persist_objects += document.substr(offset, sizeof(header) + header.recLen);
+  }
+  EXPECT_EQ(internal::crypto::util::hex_encode(
+                internal::crypto::util::sha1(persist_objects)),
+            "0ce380af3e8f325b0050f842d7c7f8dc6db8cc68");
+  EXPECT_EQ(presentation::password_encrypted(
+                filesystem_of("/Current User", by_path.at("/Current User"))),
+            false);
+
+  const DocumentFile file =
+      odr::open(TestData::test_file_path(path)).as_document_file();
+  EXPECT_THROW(std::ignore = file.decrypt("wrong"), WrongPasswordError);
+  const DocumentFile decrypted = file.decrypt(password);
+  const Document document_handle = decrypted.document();
+  EXPECT_EQ(collect_text(document_handle.root_element()), "Lorem ipsum");
+}
+
+/// Apache POI 5.5.1 encrypted these, pictures included. The expected hashes
+/// are of the streams that POI decrypts; the Pictures stream is encrypted
+/// field by field ([MS-PPT] 2.3.7), and the second file has a picture of each
+/// BLIP type with one and with two UIDs.
+TEST(OldMsEncryption, ppt_decrypts_pictures_like_apache_poi) {
+  struct Case {
+    std::string path;
+    std::string document_sha1;
+    std::string pictures_sha1;
+  };
+  for (const auto &[path, document_sha1, pictures_sha1] : {
+           Case{"odr-public/ppt/encrypted-pictures.ppt",
+                "e22fa9b7518ff4aaab111f6c70e98db6ead415c9",
+                "81dd6c878d19f9c1df1b11586e140b610d3c5ed5"},
+           Case{"odr-public/ppt/encrypted-blip-types.ppt",
+                "5436585c07b40b4aa9bc8442c3d1a752803b2d6c",
+                "f04e9e3f2ea49b4f62d3f2d351079ee874172320"},
+       }) {
+    const std::optional<oldms::crypto::DecryptedStreams> streams =
+        presentation::decrypt(*fixture_streams(path), "password");
+    ASSERT_TRUE(streams.has_value()) << path;
+    std::map<std::string, std::string> sha1s;
+    for (const auto &[stream_path, data] : *streams) {
+      sha1s.emplace(stream_path.string(),
+                    internal::crypto::util::hex_encode(
+                        internal::crypto::util::sha1(data)));
+    }
+    EXPECT_EQ(sha1s.at("/PowerPoint Document"), document_sha1) << path;
+    EXPECT_EQ(sha1s.at("/Pictures"), pictures_sha1) << path;
+  }
 }
