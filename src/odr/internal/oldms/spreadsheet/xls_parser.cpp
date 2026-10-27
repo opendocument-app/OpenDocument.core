@@ -124,7 +124,22 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
   };
   std::optional<PendingCell> pending_string_cell;
 
-  while (reader.next_record() && reader.record_type() != biff_eof) {
+  std::uint32_t depth = 1;
+  while (reader.next_record()) {
+    // Nested chart caches are not worksheet cells ([MS-XLS] 2.4.21).
+    if (reader.record_type() == biff_bof) {
+      ++depth;
+      continue;
+    }
+    if (reader.record_type() == biff_eof) {
+      if (--depth == 0) {
+        break;
+      }
+      continue;
+    }
+    if (depth != 1) {
+      continue;
+    }
     switch (reader.record_type()) {
     case biff_dimensions: {
       const auto dimensions = reader.read<DimensionsBody>();

@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+### Spreadsheets
+
+- XLS chart caches no longer overwrite worksheet cells or stop parsing cells
+  after the embedded chart ends.
+
 ### Build and packaging
 
 - The formula module of the Android AAR, the xcframework, the PyPI wheels and
