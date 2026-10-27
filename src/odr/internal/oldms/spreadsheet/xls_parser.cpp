@@ -124,20 +124,22 @@ void parse_sheet(BiffReader &reader, ElementRegistry &registry,
   };
   std::optional<PendingCell> pending_string_cell;
 
+  // An embedded chart nests its own substream, with a data cache of cell
+  // records ([MS-XLS] 2.1.7.20.1 SERIESDATA, 2.1.7.20.6 CHART).
   std::uint32_t depth = 1;
   while (reader.next_record()) {
-    // Nested chart caches are not worksheet cells ([MS-XLS] 2.4.21).
     if (reader.record_type() == biff_bof) {
       ++depth;
       continue;
     }
     if (reader.record_type() == biff_eof) {
-      if (--depth == 0) {
+      --depth;
+      if (depth == 0) {
         break;
       }
       continue;
     }
-    if (depth != 1) {
+    if (depth > 1) {
       continue;
     }
     switch (reader.record_type()) {
