@@ -28,6 +28,9 @@ constexpr std::array<std::string_view, 2> plain_members = {
 constexpr std::size_t aes_block_size = 16;
 constexpr std::size_t aes_key_size = 16;
 constexpr std::size_t hmac_size = 20;
+/// The fixtures use 100000. The cap keeps a crafted count from blocking for
+/// hours, as `max_spin_count` does for OOXML.
+constexpr std::uint32_t max_iterations = 10000000;
 /// A member longer than one segment is split into segments of 1 MiB of
 /// payload each: IV, random block, payload, a whole padding block, HMAC.
 constexpr std::size_t segment_payload_size = std::size_t{1} << 20;
@@ -172,6 +175,9 @@ iwork::decrypt(std::shared_ptr<abstract::ReadableFilesystem> filesystem,
   const auto iterations = reader.read<std::uint32_t>();
   if (version != 2 || format != 1) {
     throw UnsupportedCryptoAlgorithm();
+  }
+  if (iterations == 0 || iterations > max_iterations) {
+    throw std::runtime_error("iwork: bad .iwpv2 iteration count");
   }
   const std::string_view rest = reader.rest();
   const std::string_view salt = rest.substr(0, 16);

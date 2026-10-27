@@ -8,6 +8,7 @@
 #include <odr/internal/abstract/file.hpp>
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/common/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/iwork/iwork_crypto.hpp>
@@ -127,5 +128,19 @@ TEST(IworkCrypto, refuses_a_damaged_member) {
   const std::string key = internal::crypto::util::pbkdf2(
       16, "password", verifier.substr(8, 16), 100000);
   EXPECT_THROW(std::ignore = iwork::decrypt_member(data, key, "password"),
+               std::runtime_error);
+}
+
+/// The iteration count comes from the file.
+TEST(IworkCrypto, refuses_an_excessive_iteration_count) {
+  std::string verifier(104, '\0');
+  verifier[0] = 2; // version
+  verifier[2] = 1; // format
+  verifier.replace(4, 4, "\xff\xff\xff\xff");
+  const auto files = std::make_shared<internal::VirtualFilesystem>();
+  files->copy(std::make_shared<internal::MemoryFile>(verifier),
+              internal::AbsPath("/.iwpv2"));
+
+  EXPECT_THROW(std::ignore = iwork::decrypt(files, "password"),
                std::runtime_error);
 }

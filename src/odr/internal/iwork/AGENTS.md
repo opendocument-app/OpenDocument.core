@@ -258,7 +258,8 @@ Numbers and Keynote 15.3.1 saved, with the John the Ripper `iwork` format
 points. Each fact below is pinned by a test or a fixture.
 
 - `.iwpv2` (104 bytes, plain) marks the package: version 2 and format 1 (two
-  u16), the PBKDF2 iteration count (u32, 100000 in every fixture), a 16-byte
+  u16), the PBKDF2 iteration count (u32, 100000 in every fixture, refused
+  above 10000000), a 16-byte
   salt, a 16-byte IV and a 64-byte check block. `.iwph` is the plain UTF-8
   hint.
 - The key is PBKDF2-HMAC-SHA1 of the UTF-8 password, 16 bytes, for
