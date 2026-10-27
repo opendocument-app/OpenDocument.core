@@ -6,6 +6,7 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/oldms/text/doc_structs.hpp>
+#include <odr/internal/util/byte_string.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <cstring>
@@ -45,11 +46,10 @@ text::decrypt(const abstract::ReadableFilesystem &files,
   const AbsPath word_document_path("/WordDocument");
   std::string word_document =
       util::stream::read(*files.open(word_document_path)->stream());
-  FibBase base{};
   if (word_document.size() < plain_word_document_size) {
     throw std::runtime_error("doc: WordDocument stream too short");
   }
-  std::memcpy(&base, word_document.data(), sizeof(base));
+  auto base = util::byte_string::Reader(word_document).read<FibBase>();
   if (base.fObfuscated != 0) {
     // XOR obfuscation method 2 ([MS-DOC] 2.2.6.1)
     throw MsUnsupportedCryptoAlgorithm();
