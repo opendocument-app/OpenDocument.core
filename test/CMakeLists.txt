@@ -87,6 +87,7 @@ add_executable(odr_test
         "src/internal/markdown/markdown_file_test.cpp"
 
         "src/internal/iwork/iwork_archive_test.cpp"
+        "src/internal/iwork/iwork_crypto_test.cpp"
         "src/internal/iwork/iwork_protobuf_test.cpp"
         "src/internal/iwork/iwork_snappy_test.cpp"
         "src/internal/iwork/keynote_test.cpp"

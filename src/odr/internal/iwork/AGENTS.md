@@ -23,6 +23,7 @@ along those seams:
 | `iwork_text.cpp` | A `TSWP` storage into elements. Everything that builds elements (rows, a cell's own storage, an anchored drawable) lives here, where the recursion closes. |
 | `iwork_parser.cpp` | The three spines (body, show, sheets), calling the two above. |
 | `iwork_archive.cpp` | `TSP`: the package, components, objects, and `reference_identifier(s)`. All three readers resolve references through it. |
+| `iwork_crypto.cpp` | A password-protected package: the verifier, and each member decrypted when it is opened. |
 | `iwork_budget.hpp` | A parse-wide meter. The spines spend for slides, sheets and frames. The text layer spends for paragraphs, runs and cells. |
 
 The module is named `iwork`, not `apple`, because `apple/` at the repo root is
@@ -249,6 +250,39 @@ that lands mid-character is an error.
 not an exception. `empty.key` pins that one slide with empty placeholders and
 no drawable list comes back as one empty slide.
 
+## A password-protected package
+
+There is no spec. The format was worked out from fixtures that Pages,
+Numbers and Keynote 15.3.1 saved, with the John the Ripper `iwork` format
+(the verifier) and obriensp/iWorkFileFormat (the member layout) as starting
+points. Each fact below is pinned by a test or a fixture.
+
+- `.iwpv2` (104 bytes, plain) marks the package: version 2 and format 1 (two
+  u16), the PBKDF2 iteration count (u32, 100000 in every fixture), a 16-byte
+  salt, a 16-byte IV and a 64-byte check block. `.iwph` is the plain UTF-8
+  hint.
+- The key is PBKDF2-HMAC-SHA1 of the UTF-8 password, 16 bytes, for
+  AES-128-CBC. The check block decrypts to 32 random bytes and their SHA-256,
+  so a wrong password is known before any member is read. Only NFC was seen
+  to work for a non-ASCII password; nothing normalizes it.
+- `Metadata/Properties.plist` and `Metadata/DocumentIdentifier` stay plain;
+  every other member is encrypted. A segment is an IV, then AES-CBC of a
+  random block, the payload and PKCS#7 padding, then an HMAC-SHA1 of the
+  payload keyed with the password, not with the AES key. A member with more
+  than 1 MiB of payload can be split into segments of exactly 1 MiB of
+  payload; `Data/*` was split and a 2 MB `.iwa` was not, so `is_segmented`
+  decrypts the block where a full first segment would end its padding.
+- The plaintext is the ordinary package. An encrypted package writes no
+  preview.
+
+The member that names the app is encrypted, and `Properties.plist` does not
+name it. So before decryption `guess_encrypted_file_type` uses the plain
+member names: a `Slide` member makes Keynote, a `Tables/` member Numbers,
+anything else Pages. A Pages document with a table may be guessed as
+Numbers; `decrypt` reads the real type. A caller that asks for a type gets
+that type, as for an encrypted OOXML file. `decrypt` hides `.iwpv2` and
+`.iwph`, so the decrypted package reads as plain.
+
 ## Not read yet
 
 `Index/DocumentStylesheet.iwa` (so `text_root_page_layout` is empty and every
@@ -257,6 +291,4 @@ so `slide_master_page` is null) and presenter notes, non-table drawables in a
 Pages text flow or on a Numbers sheet, number formats, `CalculationEngine.iwa`
 (a cell shows what the app last computed, as `.xls` does), and merged cell
 ranges (they live outside the tiles, so a merge renders as separate cells).
-`password_encrypted()` is not answered: an encrypted package is one whose
-`Index/Document.iwa` does not decompress, and it is reported as a zip.
 [`PLAN.md`](PLAN.md) has the rest.

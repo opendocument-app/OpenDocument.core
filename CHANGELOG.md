@@ -26,6 +26,8 @@ The release run heads these entries with the version and opens a fresh
 - An encrypted doc opens with its password: RC4 and RC4 CryptoAPI. A doc
   with XOR obfuscation throws `MsUnsupportedCryptoAlgorithm`.
 - An encrypted ppt opens with its password, pictures included.
+- A password-protected Pages, Numbers or Keynote file is detected and opens
+  with its password. It was reported as a zip.
 
 ### Spreadsheets
 

@@ -21,6 +21,7 @@
 #include <cryptopp/filters.h>
 #include <cryptopp/gcm.h>
 #include <cryptopp/hex.h>
+#include <cryptopp/hmac.h>
 #include <cryptopp/md5.h>
 #include <cryptopp/modes.h>
 #include <cryptopp/pwdbased.h>
@@ -110,6 +111,17 @@ std::string util::sha1(const std::string_view in) {
   std::array<byte, CryptoPP::SHA1::DIGESTSIZE> out;
   CryptoPP::SHA1().CalculateDigest(
       out.data(), reinterpret_cast<const byte *>(in.data()), in.size());
+  return {reinterpret_cast<char *>(out.data()), out.size()};
+}
+
+std::string util::hmac_sha1(const std::string_view key,
+                            const std::string_view message) {
+  CryptoPP::HMAC<CryptoPP::SHA1> hmac(
+      reinterpret_cast<const byte *>(key.data()), key.size());
+  std::array<byte, CryptoPP::HMAC<CryptoPP::SHA1>::DIGESTSIZE> out;
+  hmac.CalculateDigest(out.data(),
+                       reinterpret_cast<const byte *>(message.data()),
+                       message.size());
   return {reinterpret_cast<char *>(out.data()), out.size()};
 }
 

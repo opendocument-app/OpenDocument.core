@@ -14,7 +14,7 @@ and [OpenDocument.ios](https://github.com/opendocument-app/OpenDocument.ios).
 | docx, pptx, xlsx | yes | yes | Office Open XML. Encrypted files are decrypted. |
 | doc, ppt, xls | yes | no | Legacy Microsoft binary. Text and direct formatting; ppt also supports JPEG/PNG pictures. Encrypted files are decrypted. |
 | pdf | yes | no | Own parser. Encrypted files are decrypted. Supports annotation. |
-| pages, key, numbers | yes | no | Apple iWork. Text and tables. No styles, images, masters, presenter notes, number formats or merged cells. |
+| pages, key, numbers | yes | no | Apple iWork. Text and tables. No styles, images, masters, presenter notes, number formats or merged cells. Password-protected files are decrypted. |
 | rtf | yes | no | Body text only. |
 | md | yes | no | CommonMark plus GitHub extensions. No raw html, images or horizontal rules. A `.md` or `.markdown` name selects it for text input; unnamed bytes need `FileType::markdown`. |
 | txt | yes | yes | |

@@ -116,7 +116,8 @@ open_file_as(const std::shared_ptr<abstract::File> &file, const FileType as,
     try {
       auto zip_file = std::make_unique<zip::ZipFile>(file);
       auto filesystem = zip_file->archive()->as_filesystem();
-      auto iwork_file = std::make_unique<iwork::IworkFile>(filesystem, file);
+      auto iwork_file =
+          std::make_unique<iwork::IworkFile>(filesystem, file, as);
       if (iwork_file->file_type() == as) {
         return iwork_file;
       }

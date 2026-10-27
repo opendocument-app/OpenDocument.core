@@ -47,9 +47,9 @@ pins it.
   written since 2013. If it ever happens it lives at `iwork/legacy/` behind
   the same three `FileType`s, which is why those are named for the app and
   not the era.
-- Password-protected files: `Index/Metadata.iwph` and encrypted `.iwa`s.
-  Nothing here has seen one. `password_encrypted()` is not answered, and an
-  encrypted package is reported as a zip.
+- A password-protected package in the directory form, or from an app older
+  than 15.3.1. Only the single-file form from 15.3.1 was tested (see
+  `AGENTS.md`).
 - The package form. On macOS a `.pages` can be a directory. The engine would
   not notice, because `common::SystemFilesystem` roots at a directory, but
   nothing in the public API opens a directory today. A seam, not a stage.
