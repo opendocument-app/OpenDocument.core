@@ -9,7 +9,6 @@
 #include <odr/internal/xml/xml_util.hpp>
 
 #include <cstdint>
-#include <cstring>
 #include <stdexcept>
 #include <utility>
 
@@ -73,10 +72,9 @@ std::string read_base64(const pugi::xml_node node, const char *name) {
 /// [MS-OFFCRYPTO] 2.3.4.10 `CT_KeyData` and `CT_PasswordKeyEncryptor`.
 ECMA376Agile::CipherParameters
 read_cipher_parameters(const pugi::xml_node node) {
-  // Only AES in CBC mode and the SHA hashes are supported.
-  if (std::strcmp(node.attribute("cipherAlgorithm").value(), "AES") != 0 ||
-      std::strcmp(node.attribute("cipherChaining").value(),
-                  "ChainingModeCBC") != 0) {
+  if (std::string_view(node.attribute("cipherAlgorithm").value()) != "AES" ||
+      std::string_view(node.attribute("cipherChaining").value()) !=
+          "ChainingModeCBC") {
     throw MsUnsupportedCryptoAlgorithm();
   }
   const std::string_view hash_algorithm =
@@ -261,6 +259,9 @@ ECMA376Agile::ECMA376Agile(const std::string_view encryption_info) {
 
   const pugi::xml_document document = xml::parse(std::string(reader.rest()));
   const pugi::xml_node encryption = child_by_local_name(document, "encryption");
+  if (encryption.empty()) {
+    throw std::runtime_error("bad ooxml agile encryption descriptor");
+  }
   m_key_data =
       read_cipher_parameters(child_by_local_name(encryption, "keyData"));
 

@@ -18,10 +18,8 @@ The release run heads these entries with the version and opens a fresh
 
 ### Encryption
 
-- A docx, xlsx or pptx with agile encryption opens with its password. Office
-  2010 and later encrypts with agile encryption by default, and odrcore read
-  only the older standard encryption, so such a file threw
-  `MsUnsupportedCryptoAlgorithm`.
+- A docx, xlsx or pptx with agile encryption, the default of Office 2010 and
+  later, opens with its password. It threw `MsUnsupportedCryptoAlgorithm`.
 
 ### Spreadsheets
 
