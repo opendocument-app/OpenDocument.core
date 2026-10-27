@@ -9,6 +9,7 @@
 #include <odr/internal/util/stream_util.hpp>
 
 #include <cstring>
+#include <memory>
 #include <stdexcept>
 #include <utility>
 
@@ -55,7 +56,11 @@ text::decrypt(const abstract::ReadableFilesystem &files,
   }
 
   const AbsPath table_path(base.fWhichTblStm == 1 ? "/1Table" : "/0Table");
-  std::string table = util::stream::read(*files.open(table_path)->stream());
+  const std::shared_ptr<abstract::File> table_file = files.open(table_path);
+  if (table_file == nullptr) {
+    throw std::runtime_error("doc: no Table stream");
+  }
+  std::string table = util::stream::read(*table_file->stream());
   if (base.lKey > table.size()) {
     throw std::runtime_error("doc: encryption header beyond the Table stream");
   }

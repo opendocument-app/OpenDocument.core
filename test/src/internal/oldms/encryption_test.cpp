@@ -366,3 +366,13 @@ TEST(OldMsEncryption, doc_refuses_xor_obfuscation) {
   EXPECT_THROW(std::ignore = text::decrypt(files, "password"),
                MsUnsupportedCryptoAlgorithm);
 }
+
+/// `fWhichTblStm` comes from the file, so the Table stream may be missing.
+TEST(OldMsEncryption, doc_without_its_table_stream_is_an_error) {
+  std::string word_document = word_document_stream(true);
+  word_document.resize(68, '\0');
+  const VirtualFilesystem files = filesystem_of("/WordDocument", word_document);
+
+  EXPECT_THROW(std::ignore = text::decrypt(files, "password"),
+               std::runtime_error);
+}
