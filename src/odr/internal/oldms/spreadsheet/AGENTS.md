@@ -15,6 +15,7 @@ and the `[MS-CFB]` container.
 | File (`oldms/spreadsheet/`) | Role |
 |---|---|
 | `xls_structs.hpp` | `#pragma pack(1)` PODs for record bodies, the record-type enum |
+| `xls_crypto.{hpp,cpp}` | `decrypt_workbook`: the record data of `/Workbook` decrypted in place |
 | `xls_io.{hpp,cpp}` | `BiffReader` (record walker with transparent `CONTINUE` hopping, the `[MS-XLS]` string readers, `expect_bof`), RK decoding, `format_number`, `error_code_string` |
 | `xls_parser.{hpp,cpp}` | `parse_tree`: the globals (BoundSheet8, SST, Font, XF, Palette), then one pass per sheet substream |
 | `xls_element_registry.{hpp,cpp}` | The element store plus `Sheet` (name, dimensions, cell-position map) and `SheetCell` payloads |
@@ -66,6 +67,19 @@ replace the sheet's own. `parse_sheet` counts `BOF` and `EOF`, reads records
 only at depth 1, and stops at the worksheet's own `EOF`. Records such as
 `MergeCells` follow the drawing objects (§2.1.7.20.5), so the chart's `EOF`
 must not end the worksheet.
+
+**Decryption** ([MS-XLS] 2.2.10). `FilePass` (2.4.117) selects XOR
+obfuscation (`wEncryptionType` 0) or RC4 (1), whose header says RC4 or RC4
+CryptoAPI. Record headers stay plain, and so do the bodies of `BOF`,
+`FilePass`, `UsrExcl`, `FileLock`, `InterfaceHdr`, `RRDInfo` and `RRDHead`,
+and the `lbPlyPos` of `BoundSheet8`. RC4 changes its key every 1024 bytes of
+the stream. XOR obfuscation starts each record at the array index where its
+encrypted bytes end, plus 4 for `BoundSheet8`, as msoffcrypto-tool does; the
+sheet name of the XOR fixture shows that the 4 is needed. The password for XOR
+is the low byte of each UTF-16 unit, or the high byte if the low one is zero,
+at most 15 characters. `FilePass` becomes a zero-filled record of type 0, so the
+parser and `password_encrypted` see a plain workbook. Only `/Workbook` is
+decrypted; revision and pivot cache streams are not read anyway.
 
 **Cell formatting is resolved at parse time, per XF, in the `StyleRegistry`.**
 The parser fills both registries, because BIFF keeps styles and content in
@@ -121,7 +135,8 @@ returns the fill.
 - `OldMs.xls_empty`, `OldMs.xls_file_example_10`,
   `OldMs.xls_file_example_5000`: real fixtures. The 5000-row file exercises
   SST `CONTINUE` on real data.
-- `OldMsEncryption.*`: the `FilePass` record.
+- `OldMsEncryption.*`: the `FilePass` record, decryption of every scheme, the
+  default password.
 - `html_output_test` compares the `.xls` fixtures against the reference output.
 
 # Open work
@@ -147,7 +162,6 @@ the epoch). Full custom-format rendering comes later.
 - Hidden rows and columns (`Row.fDyZero`, `ColInfo.fHidden`).
 - Typed cell values: numeric, boolean and date `ValueType`s instead of
   strings.
-- Decryption ([MS-OFFCRYPTO]). See [`../AGENTS.md`](../AGENTS.md).
 - BIFF5 and BIFF7 (`vers != 0x0600`) throw. Older files have no SST, and
   `Label` records carry strings inline.
 - Drawings, charts and images.
