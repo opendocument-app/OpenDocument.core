@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>search over many matches checks</title>
+  </head>
+  <body>
+    <div id="chunk" class="odr-chunk"></div>
+    <div id="report"></div>
+    <script src="checks.js"></script>
+    <script src="search.js"></script>
+    <script>
+      var chunk = document.getElementById("chunk");
+      var latest;
+      odr.onSearchChange = function (change) { latest = change; };
+      odr.chunks = {
+        show: function () {},
+        pending: function (then) {
+          then([{ chunk: chunk, text: "x ".repeat(150000), folded: true }]);
+        },
+      };
+      odr.search("x");
+      check("the index counts every hit", latest.count === 150000);
+      // More matches than a browser accepts as arguments to Function.apply.
+      chunk.innerHTML = ("<div>" + "x ".repeat(150) + "</div>").repeat(1000);
+      chunk.dispatchEvent(new CustomEvent("odr-chunk-filled", { bubbles: true }));
+      check("loading keeps every hit", latest.count === 150000);
+      check("loading selects the first hit", chunk.querySelectorAll("mark.current").length === 1);
+      check("stepping keeps every hit", odr.searchNext() === 150000);
+      check("stepping selects the second hit", latest.current === 1);
+      // Keep the report small when a headless browser dumps the DOM.
+      chunk.remove();
+    </script>
+  </body>
+</html>

@@ -5,6 +5,7 @@
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/util/byte_string.hpp>
 #include <odr/internal/util/byte_util.hpp>
+#include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
@@ -44,7 +45,13 @@ std::uint32_t read_uint(const pugi::xml_node node, const char *name) {
   if (attribute.empty()) {
     throw std::runtime_error("ooxml agile encryption lacks an attribute");
   }
-  return attribute.as_uint();
+  const std::optional<std::uint32_t> value =
+      util::number::parse_integer<std::uint32_t>(
+          util::string::trim_view(attribute.value()), {.allow_plus = true});
+  if (!value.has_value()) {
+    throw std::runtime_error("bad ooxml agile integer attribute");
+  }
+  return *value;
 }
 
 std::string read_base64(const pugi::xml_node node, const char *name) {
@@ -67,7 +74,7 @@ read_cipher_parameters(const pugi::xml_node node) {
       node.attribute("hashAlgorithm").value();
   ECMA376Agile::CipherParameters result;
   std::uint32_t expected_hash_size = 0;
-  if (hash_algorithm == "SHA1") {
+  if (hash_algorithm == "SHA1" || hash_algorithm == "SHA-1") {
     result.hash = internal::crypto::util::sha1;
     expected_hash_size = 20;
   } else if (hash_algorithm == "SHA256") {
@@ -94,7 +101,7 @@ read_cipher_parameters(const pugi::xml_node node) {
   }
   if (result.hash_size != expected_hash_size ||
       result.salt.size() != read_uint(node, "saltSize") ||
-      result.salt.empty()) {
+      result.salt.empty() || result.salt.size() > 65536) {
     throw std::runtime_error("bad ooxml agile encryption parameters");
   }
   return result;
@@ -278,12 +285,16 @@ ECMA376Agile::ECMA376Agile(const std::string_view encryption_info) {
   m_encrypted_verifier_hash_value =
       read_base64(encrypted_key, "encryptedVerifierHashValue");
   m_encrypted_key_value = read_base64(encrypted_key, "encryptedKeyValue");
-  for (const std::string *value :
-       {&m_encrypted_verifier_hash_input, &m_encrypted_verifier_hash_value,
-        &m_encrypted_key_value}) {
-    if (value->empty() || value->size() % m_password.block_size != 0) {
-      throw std::runtime_error("bad ooxml agile encrypted value size");
-    }
+  // [MS-OFFCRYPTO] 2.3.4.13: each value is padded to a whole cipher block.
+  const auto padded = [this](const std::size_t size) {
+    return (size + m_password.block_size - 1) / m_password.block_size *
+           m_password.block_size;
+  };
+  if (m_encrypted_verifier_hash_input.size() !=
+          padded(m_password.salt.size()) ||
+      m_encrypted_verifier_hash_value.size() != padded(m_password.hash_size) ||
+      m_encrypted_key_value.size() != padded(m_key_data.key_bits / 8)) {
+    throw std::runtime_error("bad ooxml agile encrypted value size");
   }
 }
 

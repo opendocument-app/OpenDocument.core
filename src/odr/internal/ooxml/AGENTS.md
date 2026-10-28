@@ -62,6 +62,9 @@ the algorithm from `VersionInfo`:
   segments, each with its own IV (2.3.4.15). The `dataIntegrity` HMAC
   (2.3.4.14) is not checked.
 
+Agile numeric attributes and padded verifier/key lengths are validated before
+password hashing. SHA-1 accepts both `SHA-1` (2.3.4.10) and `SHA1` (Office).
+
 Extensible encryption (3.3, 4.3), another cipher or chaining mode, and an
 agile file with only a certificate key encryptor throw
 `MsUnsupportedCryptoAlgorithm`. A big-endian host throws `UnsupportedEndian`,

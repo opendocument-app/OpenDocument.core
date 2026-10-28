@@ -245,11 +245,13 @@
         var marks = [];
         for (var j = found[i].length - 1; j >= 0; --j) {
           var slice = found[i][j];
-          marks.unshift(wrap(slice.node, slice.from, slice.to));
+          marks.push(wrap(slice.node, slice.from, slice.to));
         }
-        wrapped.unshift({ marks: marks });
+        wrapped.push({ marks: marks.reverse() });
       }
-      result = result.concat(wrapped);
+      for (var i = wrapped.length - 1; i >= 0; --i) {
+        result.push(wrapped[i]);
+      }
     });
     return result;
   }
@@ -376,7 +378,7 @@
         }
       }
     }
-    Array.prototype.splice.apply(hits, [at, 0].concat(found));
+    hits = hits.slice(0, at).concat(found, hits.slice(at));
     recount();
     if (ordinal !== -1 && total > 0) {
       // the DOM states the hits of the chunk; the index only counted them

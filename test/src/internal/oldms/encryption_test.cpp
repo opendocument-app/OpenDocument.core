@@ -22,6 +22,7 @@
 #include <odr/internal/oldms/text/doc_crypto.hpp>
 #include <odr/internal/oldms/text/doc_parser.hpp>
 #include <odr/internal/oldms/text/doc_structs.hpp>
+#include <odr/internal/util/byte_string.hpp>
 #include <odr/internal/util/stream_util.hpp>
 
 #include <internal/oldms/oldms_test_util.hpp>
@@ -32,6 +33,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -459,6 +461,46 @@ TEST(OldMsEncryption, ppt_refuses_overlapping_persist_objects) {
       [&] { std::ignore = presentation::decrypt(modified, "Password1234_"); },
       testing::ThrowsMessage<std::runtime_error>(
           testing::HasSubstr("overlapping")));
+}
+
+TEST(OldMsEncryption, ppt_refuses_a_persist_length_that_overflows_32_bits) {
+  const auto files =
+      fixture_streams("odr-public/ppt/encrypted-rc4-cryptoapi.ppt");
+  const std::string current_user =
+      util::stream::read(*files->open(AbsPath("/Current User"))->stream());
+  std::string document = util::stream::read(
+      *files->open(AbsPath("/PowerPoint Document"))->stream());
+  std::istringstream user_in(current_user);
+  std::istringstream document_in(document);
+  const presentation::EditChain chain =
+      presentation::read_edit_chain(user_in, document_in);
+  const std::size_t session =
+      chain.directory.at(*chain.encrypt_session_persist_id);
+  util::byte_string::Reader reader(std::string_view(document).substr(session));
+  const auto session_header = reader.read<presentation::RecordHeader>();
+  const auto keys = oldms::crypto::Rc4Encryption(
+                        reader.rest().substr(0, session_header.recLen))
+                        .unlock("Password1234_");
+  ASSERT_TRUE(keys.has_value());
+  const std::size_t offset = chain.directory.at(chain.doc_persist_id);
+  const std::string key = keys->block_key(chain.doc_persist_id);
+  std::string header = internal::crypto::util::rc4(
+      key, std::string_view(document).substr(
+               offset, sizeof(presentation::RecordHeader)));
+  // recLen plus the record header must not wrap on wasm32 or Android armv7.
+  const std::uint32_t length = std::numeric_limits<std::uint32_t>::max();
+  std::memcpy(header.data() + 4, &length, sizeof(length));
+  document.replace(offset, header.size(),
+                   internal::crypto::util::rc4(key, header));
+  VirtualFilesystem modified;
+  modified.copy(std::make_shared<MemoryFile>(current_user),
+                AbsPath("/Current User"));
+  modified.copy(std::make_shared<MemoryFile>(document),
+                AbsPath("/PowerPoint Document"));
+  EXPECT_THAT(
+      [&] { std::ignore = presentation::decrypt(modified, "Password1234_"); },
+      testing::ThrowsMessage<std::runtime_error>(
+          testing::HasSubstr("persist object beyond")));
 }
 
 /// Apache POI 5.5.1 encrypted these, pictures included. The expected hashes
