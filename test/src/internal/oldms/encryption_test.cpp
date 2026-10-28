@@ -18,6 +18,7 @@
 #include <odr/internal/oldms/spreadsheet/xls_crypto.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_parser.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_structs.hpp>
+#include <odr/internal/oldms/text/doc_crypto.hpp>
 #include <odr/internal/oldms/text/doc_parser.hpp>
 #include <odr/internal/oldms/text/doc_structs.hpp>
 
@@ -300,4 +301,78 @@ TEST(OldMsEncryption, xls_refuses_an_unknown_encryption) {
   EXPECT_THROW(std::ignore = spreadsheet::decrypt_workbook(
                    workbook(unknown_version), "password"),
                MsUnsupportedCryptoAlgorithm);
+}
+
+/// RC4 from Word and from LibreOffice, RC4 CryptoAPI from Word. The expected
+/// hashes are of the streams that msoffcrypto-tool 6.0.0 decrypts: the
+/// WordDocument stream, and the Table stream after its encryption header,
+/// which msoffcrypto-tool does not keep plain.
+TEST(OldMsEncryption, doc_decrypts_like_msoffcrypto_tool) {
+  struct Case {
+    std::string path;
+    std::size_t header_size;
+    std::string word_document_sha1;
+    std::string table_sha1;
+    std::string text;
+  };
+  for (const auto &[path, header_size, word_document_sha1, table_sha1, text] : {
+           Case{"odr-public/doc/encrypted.doc", 52,
+                "91f4083c5112a1a1d8f227e6a0af59e3ba86c568",
+                "5efbbc93e4183a4254dbe085d8afbacf5410026e", ""},
+           Case{"odr-public/doc/encrypted-rc4-cryptoapi.doc", 198,
+                "abfc4fbb0b8482304132597b07f79b2007804c78",
+                "a23516cd10e61395ce496e8b27f091dd733c8bc4", "lorem ipsum"},
+           Case{"odr-public/doc/encrypted-rc4.doc", 52,
+                "a754748265c9d77dd8045c897c88a294cd441787",
+                "79104f7a0e198476f08797e51953577e608597b5",
+                "Secret text in a Word document."},
+       }) {
+    const auto files = fixture_streams(path);
+    const std::string password = TestData::test_file(path).password.value();
+
+    EXPECT_FALSE(text::decrypt(*files, "wrong").has_value()) << path;
+    const std::optional<oldms::crypto::DecryptedStreams> streams =
+        text::decrypt(*files, password);
+    ASSERT_TRUE(streams.has_value()) << path;
+    ASSERT_EQ(streams->size(), 2) << path;
+    const auto sha1 = [](const std::string_view data) {
+      return internal::crypto::util::hex_encode(
+          internal::crypto::util::sha1(data));
+    };
+    EXPECT_EQ(sha1(streams->at(0).second), word_document_sha1) << path;
+    EXPECT_EQ(sha1(std::string_view(streams->at(1).second).substr(header_size)),
+              table_sha1)
+        << path;
+
+    const DocumentFile file =
+        odr::open(TestData::test_file_path(path)).as_document_file();
+    EXPECT_THROW(std::ignore = file.decrypt("wrong"), WrongPasswordError)
+        << path;
+    const DocumentFile decrypted = file.decrypt(password);
+    EXPECT_EQ(decrypted.encryption_state(), EncryptionState::decrypted) << path;
+    const Document document = decrypted.document();
+    EXPECT_EQ(collect_text(document.root_element()), text) << path;
+  }
+}
+
+/// XOR obfuscation method 2 ([MS-DOC] 2.2.6.1) is not read.
+TEST(OldMsEncryption, doc_refuses_xor_obfuscation) {
+  std::string word_document = word_document_stream(true);
+  word_document[11] =
+      static_cast<char>(word_document[11] | 0x80); // fObfuscated
+  word_document.resize(68, '\0');
+  const VirtualFilesystem files = filesystem_of("/WordDocument", word_document);
+
+  EXPECT_THROW(std::ignore = text::decrypt(files, "password"),
+               MsUnsupportedCryptoAlgorithm);
+}
+
+/// `fWhichTblStm` comes from the file, so the Table stream may be missing.
+TEST(OldMsEncryption, doc_without_its_table_stream_is_an_error) {
+  std::string word_document = word_document_stream(true);
+  word_document.resize(68, '\0');
+  const VirtualFilesystem files = filesystem_of("/WordDocument", word_document);
+
+  EXPECT_THROW(std::ignore = text::decrypt(files, "password"),
+               std::runtime_error);
 }

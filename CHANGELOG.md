@@ -23,6 +23,8 @@ The release run heads these entries with the version and opens a fresh
 - An encrypted xls opens with its password: RC4, RC4 CryptoAPI and XOR
   obfuscation. An xls that Excel encrypted with its default password, for a
   workbook whose structure is protected, opens without a password.
+- An encrypted doc opens with its password: RC4 and RC4 CryptoAPI. A doc
+  with XOR obfuscation throws `MsUnsupportedCryptoAlgorithm`.
 
 ### Spreadsheets
 
