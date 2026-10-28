@@ -6,6 +6,7 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/oldms/oldms_crypto.hpp>
+#include <odr/internal/oldms/presentation/ppt_crypto.hpp>
 #include <odr/internal/oldms/presentation/ppt_document.hpp>
 #include <odr/internal/oldms/presentation/ppt_parser.hpp>
 #include <odr/internal/oldms/spreadsheet/xls_crypto.hpp>
@@ -90,6 +91,8 @@ decrypt_streams(const FileType type, const abstract::ReadableFilesystem &files,
   switch (type) {
   case FileType::legacy_word_document:
     return text::decrypt(files, password);
+  case FileType::legacy_powerpoint_presentation:
+    return presentation::decrypt(files, password);
   case FileType::legacy_excel_worksheets:
     return spreadsheet::decrypt(files, password);
   default:

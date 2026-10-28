@@ -32,8 +32,8 @@ the PDFs under `offline/documentation/`.
 lays them over the compound file (`DecryptedFilesystem` in `oldms_file.cpp`).
 The parsers then read plaintext and know nothing of the encryption. A module
 returns nothing for a wrong password and throws
-`MsUnsupportedCryptoAlgorithm` for an encryption it cannot read. `.xls` and
-`.doc` decrypt; `.ppt` still throws `UnsupportedOperation`.
+`MsUnsupportedCryptoAlgorithm` for an encryption it cannot read. `.xls`, `.doc`
+and `.ppt` decrypt.
 
 `oldms_crypto.{hpp,cpp}` holds what the formats share ([MS-OFFCRYPTO]):
 
@@ -50,10 +50,10 @@ A format may have a default password, which an application writes when the
 user set none. The constructor tries it, and a file that opens with it reads as
 not encrypted, as in LibreOffice: `VelvetSweatshop` for `.xls`.
 
-Tests compare a decrypted stream with what msoffcrypto-tool 6.0.0 decrypts, by
-its SHA-1. The fixtures come from the msoffcrypto-tool tests (MIT) and from
-LibreOffice, which writes only RC4 (1.1) for `.doc` and `.xls`, standard
-encryption for OOXML, and no encrypted `.ppt`.
+Tests compare a decrypted stream with what msoffcrypto-tool 6.0.0 or, for
+`.ppt` pictures, Apache POI 5.5.1 decrypts, by its SHA-1. The fixtures come
+from the msoffcrypto-tool tests (MIT), from LibreOffice, which writes only RC4
+(1.1) for `.doc` and `.xls` and no encrypted `.ppt`, and from Apache POI.
 
 ## Endianness: little-endian host assumed (shared open work)
 

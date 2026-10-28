@@ -476,10 +476,6 @@ read_slide_shapes(std::istream &in, const RecordHeader &slide,
   return shapes;
 }
 
-/// Maps a persist object identifier to its offset in the PowerPoint Document
-/// stream. See [MS-PPT] 2.3.4 "persist object directory".
-using PersistDirectory = std::unordered_map<std::uint32_t, std::uint32_t>;
-
 /// Adds a PersistDirectoryAtom's (persistId -> offset) pairs to the directory.
 /// Insert-if-absent, so processing edits newest-first keeps the newest offset
 /// per id ([MS-PPT] reading algorithm step 8). Stream at the atom body.
@@ -717,49 +713,9 @@ std::vector<std::vector<Shape>>
 collect_slides(std::istream &current_user, std::istream &document,
                const abstract::ReadableFilesystem &files,
                ElementRegistry &registry, StyleContext &context) {
-  // Newest user edit offset, from the Current User stream.
-  const CurrentUserAtomHead head = read_current_user_atom_head(current_user);
-  if (head.rh.recType != RT_CurrentUserAtom ||
-      head.rh.recLen < sizeof(CurrentUserAtomHead) - sizeof(RecordHeader)) {
-    throw std::runtime_error(
-        "ppt: invalid CurrentUserAtom in \"Current User\" stream");
-  }
-  const std::uint32_t current_edit = head.offsetToCurrentEdit;
-
-  // Walk the UserEditAtom chain newest -> oldest, accumulating the persist
-  // directory (newest wins) and capturing the live document's persist id.
-  PersistDirectory directory;
-  std::uint32_t doc_persist_id = 0;
-  std::uint32_t edit_offset = current_edit;
-  for (bool first = true; edit_offset != 0; first = false) {
-    document.clear();
-    document.seekg(edit_offset);
-    const RecordHeader edit_header = read_header(document, RT_UserEditAtom);
-    if (edit_header.recLen < sizeof(UserEditAtomBody)) {
-      throw std::runtime_error("ppt: truncated UserEditAtom");
-    }
-    const UserEditAtomBody edit = read_user_edit_atom_body(document);
-    if (first) {
-      doc_persist_id = edit.docPersistIdRef;
-    }
-
-    // Persist directory for this edit.
-    document.clear();
-    document.seekg(edit.offsetPersistDirectory);
-    const RecordHeader dir_header =
-        read_header(document, RT_PersistDirectoryAtom);
-    read_persist_directory(document, dir_header, directory);
-
-    // offsetLastEdit MUST strictly decrease (0 ends the chain), so this also
-    // breaks a looping chain.
-    if (edit.offsetLastEdit != 0 && edit.offsetLastEdit >= edit_offset) {
-      throw std::runtime_error("ppt: non-decreasing UserEditAtom chain");
-    }
-    edit_offset = edit.offsetLastEdit;
-  }
-  if (doc_persist_id == 0) {
-    throw std::runtime_error("ppt: empty UserEditAtom chain (no document)");
-  }
+  const EditChain chain = read_edit_chain(current_user, document);
+  const PersistDirectory &directory = chain.directory;
+  const std::uint32_t doc_persist_id = chain.doc_persist_id;
 
   // Resolve the live DocumentContainer through the directory.
   const auto doc_it = directory.find(doc_persist_id);
@@ -931,6 +887,59 @@ presentation::parse_tree(ElementRegistry &registry,
   style_registry = StyleRegistry(std::move(context.styles));
 
   return root_id;
+}
+
+presentation::EditChain
+presentation::read_edit_chain(std::istream &current_user,
+                              std::istream &document) {
+  // Newest user edit offset, from the Current User stream.
+  const CurrentUserAtomHead head = read_current_user_atom_head(current_user);
+  if (head.rh.recType != RT_CurrentUserAtom ||
+      head.rh.recLen < sizeof(CurrentUserAtomHead) - sizeof(RecordHeader)) {
+    throw std::runtime_error(
+        "ppt: invalid CurrentUserAtom in \"Current User\" stream");
+  }
+  const std::uint32_t current_edit = head.offsetToCurrentEdit;
+
+  // Walk the UserEditAtom chain newest -> oldest, accumulating the persist
+  // directory (newest wins) and capturing the live document's persist id.
+  EditChain result;
+  std::uint32_t edit_offset = current_edit;
+  for (bool first = true; edit_offset != 0; first = false) {
+    document.clear();
+    document.seekg(edit_offset);
+    const RecordHeader edit_header = read_header(document, RT_UserEditAtom);
+    if (edit_header.recLen < sizeof(UserEditAtomBody)) {
+      throw std::runtime_error("ppt: truncated UserEditAtom");
+    }
+    const UserEditAtomBody edit = read_user_edit_atom_body(document);
+    if (first) {
+      result.doc_persist_id = edit.docPersistIdRef;
+      if (edit_header.recLen >=
+          sizeof(UserEditAtomBody) + sizeof(std::uint32_t)) {
+        result.encrypt_session_persist_id = read_u32(document);
+      }
+    }
+
+    // Persist directory for this edit.
+    document.clear();
+    document.seekg(edit.offsetPersistDirectory);
+    const RecordHeader dir_header =
+        read_header(document, RT_PersistDirectoryAtom);
+    read_persist_directory(document, dir_header, result.directory);
+
+    // offsetLastEdit MUST strictly decrease (0 ends the chain), so this also
+    // breaks a looping chain.
+    if (edit.offsetLastEdit != 0 && edit.offsetLastEdit >= edit_offset) {
+      throw std::runtime_error("ppt: non-decreasing UserEditAtom chain");
+    }
+    edit_offset = edit.offsetLastEdit;
+  }
+  if (result.doc_persist_id == 0) {
+    throw std::runtime_error("ppt: empty UserEditAtom chain (no document)");
+  }
+
+  return result;
 }
 
 std::optional<bool>

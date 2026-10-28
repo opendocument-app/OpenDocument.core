@@ -32,7 +32,8 @@ enum RecordType : std::uint16_t {
   RT_SlideListWithText = 0x0FF0,  //< outline text for all slides
   RT_UserEditAtom = 0x0FF5,    //< a user edit (offsets to dir + previous edit)
   RT_CurrentUserAtom = 0x0FF6, //< in the "Current User" stream
-  RT_PersistDirectoryAtom = 0x1772, //< persist id -> stream offset directory
+  RT_PersistDirectoryAtom = 0x1772,    //< persist id -> stream offset directory
+  RT_CryptSession10Container = 0x2F14, //< encryption header [MS-PPT] 2.3.7
 
   // Office Art (Escher) drawing records holding the slide's text boxes:
   // OfficeArt* are [MS-ODRAW], client records (textbox/anchor) are [MS-PPT].
