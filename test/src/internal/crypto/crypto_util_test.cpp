@@ -65,6 +65,12 @@ TEST(CryptoUtil, sha512) {
             "2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f");
 }
 
+// RFC 2202 test case 2.
+TEST(CryptoUtil, hmac_sha1) {
+  EXPECT_EQ(hex_encode(hmac_sha1("Jefe", "what do ya want for nothing?")),
+            "effcdf6ae5eb2fa2d27416d5f184df9c259a7c79");
+}
+
 TEST(CryptoUtil, hex_roundtrip) {
   EXPECT_EQ(hex_encode(std::string("\x00\x48\xff", 3)), "0048ff");
   EXPECT_EQ(hex_decode("0048FF"), std::string("\x00\x48\xff", 3));

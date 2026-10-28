@@ -19,6 +19,8 @@ std::uint32_t crc32(std::string_view input);
 std::string md5(std::string_view);
 std::string sha1(std::string_view);
 std::string sha256(std::string_view);
+/// HMAC (RFC 2104) with SHA-1.
+std::string hmac_sha1(std::string_view key, std::string_view message);
 std::string sha384(std::string_view);
 std::string sha512(std::string_view);
 

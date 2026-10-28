@@ -6,6 +6,7 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/path.hpp>
 #include <odr/internal/iwork/iwork_archive.hpp>
+#include <odr/internal/iwork/iwork_crypto.hpp>
 #include <odr/internal/iwork/iwork_document.hpp>
 #include <odr/internal/iwork/iwork_types.hpp>
 
@@ -60,13 +61,22 @@ FileType parse_file_type(const abstract::ReadableFilesystem &filesystem) {
 } // namespace
 
 IworkFile::IworkFile(std::shared_ptr<abstract::ReadableFilesystem> filesystem,
-                     std::shared_ptr<abstract::File> source)
+                     std::shared_ptr<abstract::File> source,
+                     const std::optional<FileType> encrypted_type)
     : m_filesystem{std::move(filesystem)}, m_source{std::move(source)} {
   if (!m_filesystem->is_file(AbsPath("/Index/Document.iwa"))) {
     throw NoIworkFile();
   }
 
-  m_file_meta.type = parse_file_type(*m_filesystem);
+  if (iwork::password_encrypted(*m_filesystem)) {
+    m_file_meta.type = encrypted_type.has_value()
+                           ? *encrypted_type
+                           : guess_encrypted_file_type(*m_filesystem);
+    m_file_meta.password_encrypted = true;
+    m_encryption_state = EncryptionState::encrypted;
+  } else {
+    m_file_meta.type = parse_file_type(*m_filesystem);
+  }
   m_file_meta.mimetype = mimetype_by_file_type(m_file_meta.type);
   m_file_meta.document_type = document_type_by_file_type(m_file_meta.type);
 }
@@ -87,9 +97,42 @@ DocumentType IworkFile::document_type() const {
   return m_file_meta.document_type;
 }
 
-bool IworkFile::is_decodable() const noexcept { return true; }
+bool IworkFile::password_encrypted() const noexcept {
+  return m_file_meta.password_encrypted;
+}
+
+EncryptionState IworkFile::encryption_state() const noexcept {
+  return m_encryption_state;
+}
+
+std::shared_ptr<abstract::DecodedFile>
+IworkFile::decrypt(const std::string &password) const {
+  if (m_encryption_state != EncryptionState::encrypted) {
+    throw NotEncryptedError();
+  }
+
+  std::optional<std::shared_ptr<abstract::ReadableFilesystem>> filesystem =
+      iwork::decrypt(m_filesystem, password);
+  if (!filesystem.has_value()) {
+    throw WrongPasswordError();
+  }
+
+  auto decrypted =
+      std::make_shared<IworkFile>(std::move(*filesystem), m_source);
+  decrypted->m_file_meta.password_encrypted = true;
+  decrypted->m_encryption_state = EncryptionState::decrypted;
+  return decrypted;
+}
+
+bool IworkFile::is_decodable() const noexcept {
+  return m_encryption_state != EncryptionState::encrypted;
+}
 
 std::shared_ptr<abstract::Document> IworkFile::document() const {
+  if (m_encryption_state == EncryptionState::encrypted) {
+    throw FileEncryptedError();
+  }
+
   switch (file_type()) {
   case FileType::iwork_pages:
   case FileType::iwork_keynote:
