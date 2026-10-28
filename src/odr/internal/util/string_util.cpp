@@ -296,6 +296,15 @@ std::u16string string::string_to_u16string(const std::string_view string) {
   return utf8::utf8to16(string);
 }
 
+std::string string::string_to_utf16le(const std::string_view string) {
+  std::string result;
+  for (const char16_t unit : string_to_u16string(string)) {
+    result += static_cast<char>(unit & 0xff);
+    result += static_cast<char>(unit >> 8);
+  }
+  return result;
+}
+
 std::string string::c16str_to_string(const char16_t *c16str,
                                      const std::size_t length) {
   return u16string_to_string(std::u16string(c16str, length / 2));

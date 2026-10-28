@@ -32,6 +32,8 @@ void put_u8(std::string &out, std::uint8_t value);
 
 void put_u16_le(std::string &out, std::uint16_t value);
 void put_u32_le(std::string &out, std::uint32_t value);
+/// The four little-endian bytes of @p value.
+std::string u32_le(std::uint32_t value);
 
 void put_u16_be(std::string &out, std::uint16_t value);
 void put_u32_be(std::string &out, std::uint32_t value);

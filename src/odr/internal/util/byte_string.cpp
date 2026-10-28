@@ -80,6 +80,12 @@ void byte_string::put_u32_le(std::string &out, const std::uint32_t value) {
   put_u16_le(out, static_cast<std::uint16_t>(value >> 16));
 }
 
+std::string byte_string::u32_le(const std::uint32_t value) {
+  std::string result;
+  put_u32_le(result, value);
+  return result;
+}
+
 void byte_string::put_u16_be(std::string &out, const std::uint16_t value) {
   out += static_cast<char>(value >> 8);
   out += static_cast<char>(value & 0xff);

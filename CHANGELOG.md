@@ -16,6 +16,11 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+### Encryption
+
+- A docx, xlsx or pptx with agile encryption, the default of Office 2010 and
+  later, opens with its password. It threw `MsUnsupportedCryptoAlgorithm`.
+
 ### Spreadsheets
 
 - An xls sheet with an embedded chart keeps its cell values and its size.
