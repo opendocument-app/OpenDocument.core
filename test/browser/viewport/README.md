@@ -9,6 +9,7 @@ open http://localhost:8731/tests.html
 open http://localhost:8731/chunks.html
 open http://localhost:8731/search.html
 open http://localhost:8731/search-early.html
+open http://localhost:8731/search-many.html
 ```
 
 `serve` serves `viewport.js` out of `src/odr/internal/html/frontend/`, so the
@@ -54,3 +55,5 @@ the reader steps to it (`lazy-loading.md` decision 4). `search-index.js`
 is the index, and `search-1.js` and `search-2.js` are the chunks. The
 report is text of the page too, so no check names a keyword.
 `search-early.html` fills a chunk before the index has counted it.
+`search-many.html` loads a chunk with 150,000 hits, beyond the browser's
+function argument limit, and checks selection and navigation.

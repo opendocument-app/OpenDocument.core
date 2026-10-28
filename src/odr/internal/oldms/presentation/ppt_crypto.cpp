@@ -34,10 +34,10 @@ std::size_t decrypt_persist_object(std::string &document,
           internal::crypto::util::rc4(key, std::string_view(document).substr(
                                                offset, sizeof(RecordHeader))))
           .read<RecordHeader>();
-  const std::size_t size = sizeof(RecordHeader) + header.recLen;
-  if (document.size() - offset < size) {
+  if (header.recLen > document.size() - offset - sizeof(RecordHeader)) {
     throw std::runtime_error("ppt: persist object beyond the stream");
   }
+  const std::size_t size = sizeof(RecordHeader) + header.recLen;
   document.replace(offset, size,
                    internal::crypto::util::rc4(
                        key, std::string_view(document).substr(offset, size)));

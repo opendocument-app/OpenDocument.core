@@ -6,6 +6,7 @@
 #include <odr/file.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/util/byte_string.hpp>
+#include <odr/internal/util/string_util.hpp>
 #include <odr/odr.hpp>
 
 #include <test_util.hpp>
@@ -52,8 +53,11 @@ std::string make_password_encryptor(const std::string &spin_count) {
          R"(<p:encryptedKey spinCount=")" +
          spin_count + R"(")" + cipher_attributes("AES") +
          R"( encryptedVerifierHashInput="AAAAAAAAAAAAAAAAAAAAAA==")"
-         R"( encryptedVerifierHashValue="AAAAAAAAAAAAAAAAAAAAAA==")"
-         R"( encryptedKeyValue="AAAAAAAAAAAAAAAAAAAAAA=="/></keyEncryptor>)";
+         R"( encryptedVerifierHashValue=")" +
+         odr::internal::crypto::util::base64_encode(std::string(64, '\0')) +
+         R"(" encryptedKeyValue=")" +
+         odr::internal::crypto::util::base64_encode(std::string(32, '\0')) +
+         R"("/></keyEncryptor>)";
 }
 
 } // namespace
@@ -91,6 +95,57 @@ TEST(OoxmlCrypto, ECMA376Agile_refuses_what_it_cannot_decrypt) {
   EXPECT_THROW(
       (void)crypto::Util(make_agile_info(make_password_encryptor("10000001"))),
       std::runtime_error);
+}
+
+TEST(OoxmlCrypto, agile_rejects_malformed_parameters_before_hashing) {
+  for (const std::string count : {"0", "+1", " 10000000 "}) {
+    EXPECT_NO_THROW(
+        (void)crypto::Util(make_agile_info(make_password_encryptor(count))));
+  }
+  for (const std::string count : {"", "invalid", "1tail", "-1", "4294967296"}) {
+    EXPECT_THROW(
+        (void)crypto::Util(make_agile_info(make_password_encryptor(count))),
+        std::runtime_error)
+        << count;
+  }
+  for (const std::string field :
+       {"encryptedVerifierHashInput", "encryptedVerifierHashValue",
+        "encryptedKeyValue"}) {
+    for (const std::size_t size : {0, 16, 48, 80}) {
+      if (field == "encryptedVerifierHashInput" && size == 16) {
+        continue;
+      }
+      std::string info = make_agile_info(make_password_encryptor("0"));
+      const std::size_t begin = info.find(field + "=\"") + field.size() + 2;
+      info.replace(
+          begin, info.find('"', begin) - begin,
+          odr::internal::crypto::util::base64_encode(std::string(size, '\0')));
+      EXPECT_THROW((void)crypto::Util(info), std::runtime_error)
+          << field << ": " << size;
+    }
+  }
+  std::string info = make_agile_info(make_password_encryptor("0"));
+  odr::internal::util::string::replace_all(info, "saltSize=\"16\"",
+                                           "saltSize=\"65537\"");
+  odr::internal::util::string::replace_all(
+      info, "saltValue=\"AAAAAAAAAAAAAAAAAAAAAA==\"",
+      "saltValue=\"" +
+          odr::internal::crypto::util::base64_encode(std::string(65537, '\0')) +
+          "\"");
+  EXPECT_THROW((void)crypto::Util(info), std::runtime_error);
+}
+
+TEST(OoxmlCrypto, agile_accepts_the_specification_sha1_name) {
+  std::string info = make_agile_info(make_password_encryptor("0"));
+  odr::internal::util::string::replace_all(info, "SHA512", "SHA-1");
+  odr::internal::util::string::replace_all(info, "hashSize=\"64\"",
+                                           "hashSize=\"20\"");
+  const std::string field = "encryptedVerifierHashValue=\"";
+  const std::size_t begin = info.find(field) + field.size();
+  info.replace(
+      begin, info.find('"', begin) - begin,
+      odr::internal::crypto::util::base64_encode(std::string(32, '\0')));
+  EXPECT_NO_THROW((void)crypto::Util(info));
 }
 
 TEST(OoxmlCrypto, ECMA376Standard_derive_key) {

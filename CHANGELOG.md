@@ -26,6 +26,10 @@ The release run heads these entries with the version and opens a fresh
 - An encrypted doc opens with its password: RC4 and RC4 CryptoAPI. A doc
   with XOR obfuscation throws `MsUnsupportedCryptoAlgorithm`.
 - An encrypted ppt opens with its password, pictures included.
+- Agile OOXML encryption accepts the specification's `SHA-1` name and
+  rejects malformed numeric attributes and verifier lengths before hashing.
+- Encrypted ppt record lengths are checked before adding the header size,
+  preventing overflow on 32-bit targets.
 - A password-protected Pages, Numbers or Keynote file is detected and opens
   with its password. It was reported as a zip.
 
@@ -34,6 +38,11 @@ The release run heads these entries with the version and opens a fresh
 - An xls sheet with an embedded chart keeps its cell values and its size.
   The data cache of the chart replaced cells near A1 and the size of the
   sheet.
+
+### HTML
+
+- Loading a chunk with many search matches no longer exceeds the browser's
+  function argument limit or breaks selection and navigation.
 
 ### Build and packaging
 
