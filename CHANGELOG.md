@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v7.7.0 - 2026-10-31
+
 ### Encryption
 
 - A docx, xlsx or pptx with agile encryption, the default of Office 2010 and
