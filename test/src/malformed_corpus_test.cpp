@@ -24,8 +24,8 @@ TEST(MalformedCorpus, every_file_fails_with_its_error) {
     try {
       const DecodedFile file =
           open(test_file.absolute_path, DecodeOptions::as(test_file.type));
-      for (const HtmlView &view :
-           html::translate(file, HtmlConfig()).list_views()) {
+      const HtmlService service = html::translate(file, HtmlConfig());
+      for (const HtmlView &view : service.list_views()) {
         std::ostringstream out;
         view.write_html(out);
       }
