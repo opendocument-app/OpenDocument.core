@@ -92,7 +92,7 @@ void CompoundFileReader::parse_entry(std::istream &in,
       std::uint64_t{entry_id} * sizeof(CompoundFileEntry);
 
   if (offset >= m_file_size) {
-    throw std::invalid_argument("");
+    throw CfbFileCorrupted();
   }
 
   const SectorOffset sector_offset = normalize_sector_offset(

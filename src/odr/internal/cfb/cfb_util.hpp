@@ -66,6 +66,9 @@ public:
     impl::CompoundFileEntry m_entry{};
     RelPath m_path;
 
+    [[nodiscard]] std::optional<Entry> linked_(std::uint32_t entry_id,
+                                               const RelPath &parent) const;
+
     friend Iterator;
   };
 

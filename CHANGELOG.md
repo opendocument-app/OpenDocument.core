@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+### Fixes
+
+- A doc, xls or ppt opens when its storage directory gives a stream a child or
+  links to an unused slot. A link past the directory throws `CfbFileCorrupted`,
+  not a `std::invalid_argument` with an empty message.
+
 ## v7.7.0 - 2026-10-31
 
 ### Encryption
