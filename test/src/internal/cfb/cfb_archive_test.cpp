@@ -147,6 +147,47 @@ TEST(CfbArchive, nested_children_finish_before_outer_siblings) {
             (std::vector<std::string>{"", "AA", "AA/D", "BB", "CC", "DD"}));
 }
 
+namespace {
+
+void set_link(std::string &bytes, const std::size_t entry,
+              const std::size_t field, const std::uint32_t id) {
+  std::memcpy(bytes.data() + 1024 + entry * 128 + field, &id, sizeof(id));
+}
+
+std::vector<std::string> paths_of(const cfb::util::Archive &archive) {
+  std::vector<std::string> paths;
+  for (const auto &entry : archive) {
+    paths.push_back(entry.path().string());
+  }
+  return paths;
+}
+
+constexpr std::size_t right_sibling = 72;
+constexpr std::size_t child = 76;
+
+} // namespace
+
+TEST(CfbArchive, a_stream_child_id_is_ignored) {
+  auto bytes = directory_archive();
+  set_link(bytes, 3, child, 0xff0effff);
+  EXPECT_EQ(paths_of(cfb::util::Archive(std::make_shared<MemoryFile>(bytes))),
+            (std::vector<std::string>{"", "AA", "AA/D", "BB", "CC", "DD"}));
+}
+
+TEST(CfbArchive, a_link_into_an_unallocated_slot_is_dropped) {
+  auto bytes = directory_archive();
+  set_link(bytes, 5, right_sibling, 6);
+  EXPECT_EQ(paths_of(cfb::util::Archive(std::make_shared<MemoryFile>(bytes))),
+            (std::vector<std::string>{"", "AA", "AA/D", "BB", "CC", "DD"}));
+}
+
+TEST(CfbArchive, a_link_past_the_directory_is_corrupt) {
+  auto bytes = directory_archive();
+  set_link(bytes, 5, right_sibling, 0x00100000);
+  const cfb::util::Archive archive(std::make_shared<MemoryFile>(bytes));
+  EXPECT_THROW((void)paths_of(archive), CfbFileCorrupted);
+}
+
 TEST(CfbArchive, rejects_unsupported_header_layouts) {
   for (const std::size_t field : {28U, 32U, 56U}) {
     auto bytes = directory_archive();

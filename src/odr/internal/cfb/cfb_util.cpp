@@ -153,33 +153,35 @@ std::unique_ptr<abstract::File> Archive::Entry::file() const {
 }
 
 std::optional<Archive::Entry> Archive::Entry::left() const {
-  if (m_entry.left_sibling_id == impl::NullId) {
-    return {};
-  }
-  const impl::CompoundFileEntry left = m_archive->m_cfb.parse_entry(
-      *m_archive->m_file->stream(), m_entry.left_sibling_id);
-  return Entry(*m_archive, m_entry.left_sibling_id, left,
-               m_path.parent().join(RelPath(left.get_name())));
+  return linked_(m_entry.left_sibling_id, m_path.parent());
 }
 
 std::optional<Archive::Entry> Archive::Entry::right() const {
-  if (m_entry.right_sibling_id == impl::NullId) {
-    return {};
-  }
-  const impl::CompoundFileEntry right = m_archive->m_cfb.parse_entry(
-      *m_archive->m_file->stream(), m_entry.right_sibling_id);
-  return Entry(*m_archive, m_entry.right_sibling_id, right,
-               m_path.parent().join(RelPath(right.get_name())));
+  return linked_(m_entry.right_sibling_id, m_path.parent());
 }
 
 std::optional<Archive::Entry> Archive::Entry::child() const {
-  if (m_entry.child_id == impl::NullId) {
+  // [MS-CFB] 2.6.3: a stream has no children, whatever its child id says.
+  if (is_file()) {
     return {};
   }
-  const impl::CompoundFileEntry child = m_archive->m_cfb.parse_entry(
-      *m_archive->m_file->stream(), m_entry.child_id);
-  return Entry(*m_archive, m_entry.child_id, child,
-               m_path.join(RelPath(child.get_name())));
+  return linked_(m_entry.child_id, m_path);
+}
+
+std::optional<Archive::Entry>
+Archive::Entry::linked_(const std::uint32_t entry_id,
+                        const RelPath &parent) const {
+  if (entry_id == impl::NullId) {
+    return {};
+  }
+  const impl::CompoundFileEntry entry =
+      m_archive->m_cfb.parse_entry(*m_archive->m_file->stream(), entry_id);
+  // An unallocated slot is no entry; its zeroed links point back at the root.
+  if (entry.type == 0) {
+    return {};
+  }
+  return Entry(*m_archive, entry_id, entry,
+               parent.join(RelPath(entry.get_name())));
 }
 
 void Archive::Iterator::enter_(Entry entry) {

@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -93,12 +94,15 @@ std::vector<TestFile> get_test_files(const std::string &root_path,
       std::optional<std::string> password =
           field("encrypted") == "yes" ? std::optional(field("password"))
                                       : std::optional<std::string>();
+      std::optional<std::string> error = field("error").empty()
+                                             ? std::optional<std::string>()
+                                             : std::optional(field("error"));
 
       if (type == FileType::unknown) {
         continue;
       }
       result.emplace_back(std::move(absolute_path), std::move(short_path), type,
-                          std::move(password));
+                          std::move(password), std::move(error));
     }
   }
 
@@ -158,10 +162,11 @@ std::vector<TestFile> get_test_files() {
 } // namespace
 
 TestFile::TestFile(std::string absolute_path, std::string short_path,
-                   const FileType type, std::optional<std::string> password)
+                   const FileType type, std::optional<std::string> password,
+                   std::optional<std::string> error)
     : absolute_path{std::move(absolute_path)},
       short_path{std::move(short_path)}, type{type},
-      password{std::move(password)} {}
+      password{std::move(password)}, error{std::move(error)} {}
 
 std::string TestData::test_input_directory() {
   return Path(info::odr_test_data_path()).join(RelPath("input")).string();
@@ -173,7 +178,18 @@ TestData &TestData::instance_() {
 }
 
 std::vector<TestFile> TestData::test_files() {
-  return instance_().m_test_files;
+  std::vector<TestFile> result;
+  std::ranges::copy_if(instance_().m_test_files, std::back_inserter(result),
+                       [](const TestFile &file) { return !file.error; });
+  return result;
+}
+
+std::vector<TestFile> TestData::malformed_test_files() {
+  std::vector<TestFile> result;
+  std::ranges::copy_if(
+      instance_().m_test_files, std::back_inserter(result),
+      [](const TestFile &file) { return file.error.has_value(); });
+  return result;
 }
 
 std::vector<TestFile> TestData::test_files(const FileType fileType) {
@@ -200,7 +216,7 @@ std::vector<TestFile> TestData::test_files_(const FileType file_type) const {
   std::vector<TestFile> result;
   result.reserve(m_test_files.size());
   for (auto &&file : m_test_files) {
-    if (file.type == file_type) {
+    if (file.type == file_type && !file.error) {
       result.push_back(file);
     }
   }

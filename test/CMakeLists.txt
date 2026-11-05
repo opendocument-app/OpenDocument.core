@@ -37,6 +37,7 @@ add_executable(odr_test
         "src/html_output_test.cpp"
         "src/html_test.cpp"
         "src/logger_test.cpp"
+        "src/malformed_corpus_test.cpp"
         "src/odr_test.cpp"
         "src/pdf_annotate_test.cpp"
         "src/quantity_test.cpp"
