@@ -120,6 +120,17 @@ ServerBindFailed::ServerBindFailed(const std::string &host,
     : CodedException("server bind failed: " + host + ":" +
                      std::to_string(port)) {}
 
+ServerBindFailed::ServerBindFailed(const std::string &host,
+                                   const std::uint32_t port,
+                                   const std::string &reason)
+    : CodedException("server bind failed: " + host + ":" +
+                     std::to_string(port) + " (" + reason + ")") {}
+
+ServerSocketDenied::ServerSocketDenied(const std::string &host,
+                                       const std::uint32_t port)
+    : CodedException("server socket denied: " + host + ":" +
+                     std::to_string(port)) {}
+
 ServerAlreadyBound::ServerAlreadyBound()
     : CodedException("server is bound already") {}
 

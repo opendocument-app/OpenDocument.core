@@ -7,14 +7,39 @@
 #include <httplib/httplib.h>
 
 #include <atomic>
+#include <cerrno>
 #include <chrono>
 #include <condition_variable>
 #include <cstddef>
 #include <memory>
 #include <mutex>
 #include <sstream>
+#include <system_error>
+
+#ifndef _WIN32
+#include <sys/socket.h>
+#include <unistd.h>
+#endif
 
 namespace odr {
+
+namespace {
+
+#ifndef _WIN32
+/// Whether the platform refuses the process any socket, as GrapheneOS does to
+/// an app without network permission. The errno cpp-httplib leaves after a
+/// failed bind can come from its cleanup, so a fresh socket is the evidence.
+bool socket_is_denied() {
+  const int sock = ::socket(AF_INET, SOCK_STREAM, 0);
+  if (sock >= 0) {
+    ::close(sock);
+    return false;
+  }
+  return errno == EPERM || errno == EACCES;
+}
+#endif
+
+} // namespace
 
 class HttpServer::Impl : public std::enable_shared_from_this<Impl> {
 public:
@@ -191,15 +216,29 @@ public:
     });
 #endif
 
+    errno = 0;
     const int bound =
         port == 0 ? m_server->bind_to_any_port(host)
                   : (m_server->bind_to_port(host, static_cast<int>(port))
                          ? static_cast<int>(port)
                          : -1);
     if (bound < 0) {
+      const int error = errno;
       // a failed bind decommissions the server and only stop() clears that, so
       // without this no later bind - a fallback to any port - could succeed
       m_server->stop();
+#ifndef _WIN32
+      if (socket_is_denied()) {
+        throw ServerSocketDenied(host, port);
+      }
+      if (error != 0) {
+        throw ServerBindFailed(host, port,
+                               std::generic_category().message(error));
+      }
+#else
+      // winsock does not set errno
+      static_cast<void>(error);
+#endif
       throw ServerBindFailed(host, port);
     }
 

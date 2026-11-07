@@ -262,6 +262,15 @@ struct PrefixInUse final : CodedException<ErrorCode::prefix_in_use> {
 /// HTTP server socket could not be bound
 struct ServerBindFailed final : CodedException<ErrorCode::server_bind_failed> {
   ServerBindFailed(const std::string &host, std::uint32_t port);
+  ServerBindFailed(const std::string &host, std::uint32_t port,
+                   const std::string &reason);
+};
+
+/// The platform refuses the process any socket, for example an Android app
+/// without network permission
+struct ServerSocketDenied final
+    : CodedException<ErrorCode::server_socket_denied> {
+  ServerSocketDenied(const std::string &host, std::uint32_t port);
 };
 
 /// HTTP server is bound already

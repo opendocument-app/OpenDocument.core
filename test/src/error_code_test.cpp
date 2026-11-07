@@ -69,6 +69,7 @@ std::vector<std::pair<ErrorCode, const char *>> thrown_codes() {
       {of(UnsupportedFileEncoding("e")), "UnsupportedFileEncoding"},
       {of(FileEncryptedError()), "FileEncrypted"},
       {of(UnauthenticatedReadError()), "UnauthenticatedReadError"},
+      {of(ServerSocketDenied("h", 1)), "ServerSocketDenied"},
   };
 }
 
