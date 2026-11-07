@@ -16,6 +16,16 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+### HTTP server
+
+- `HttpServer::bind` throws the new `ServerSocketDenied`
+  (`ErrorCode::server_socket_denied`) if the platform refuses the process any
+  socket. GrapheneOS does this to an app without the Network permission. It
+  threw `ServerBindFailed`.
+- The message of `ServerBindFailed` names the reason on Linux, macOS, Android
+  and iOS, for example `server bind failed: 127.0.0.1:29665 (Address already
+  in use)`.
+
 ### Fixes
 
 - A doc, xls or ppt opens when its storage directory gives a stream a child or

@@ -49,7 +49,8 @@ public:
 
   /// Binds the socket and returns the port it got - pass port 0 for any free
   /// one. Connections are accepted into the backlog from here on, before
-  /// listen() runs. Throws ServerBindFailed / ServerAlreadyBound.
+  /// listen() runs. Throws ServerBindFailed / ServerSocketDenied /
+  /// ServerAlreadyBound.
   std::uint32_t bind(const std::string &host, std::uint32_t port,
                      const Options &options = {}) const;
 

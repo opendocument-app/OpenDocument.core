@@ -6,8 +6,11 @@
 #include <gtest/gtest.h>
 
 #include <atomic>
+#include <cerrno>
 #include <chrono>
 #include <cstdint>
+#include <string_view>
+#include <system_error>
 #include <thread>
 
 using namespace odr;
@@ -97,6 +100,26 @@ TEST(HttpServer, bind_reports_a_port_in_use) {
 
   taken.stop();
 }
+
+#ifndef _WIN32
+TEST(HttpServer, bind_failure_names_the_reason) {
+  const HttpServer taken;
+  const std::uint32_t port = taken.bind("127.0.0.1", 0);
+
+  const HttpServer other;
+  try {
+    other.bind("127.0.0.1", port);
+    FAIL() << "bind succeeded on a port in use";
+  } catch (const ServerBindFailed &e) {
+    EXPECT_NE(std::string_view(e.what()).find(
+                  std::generic_category().message(EADDRINUSE)),
+              std::string_view::npos)
+        << e.what();
+  }
+
+  taken.stop();
+}
+#endif
 
 TEST(HttpServer, bind_can_be_retried_after_it_failed) {
   const HttpServer taken;
