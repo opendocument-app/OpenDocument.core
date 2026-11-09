@@ -561,19 +561,23 @@ public:
     if (const ElementIdentifier master_page_id =
             text_root_first_master_page(element_id);
         master_page_id != null_element_id) {
-      PageLayout result = master_page_page_layout(master_page_id);
-      // A layout stating no size takes the application's paper; LibreOffice
-      // the locale's. A4 here, so the page has a width to set its lines in.
-      // A sheet keeps none, and prints to the printer's paper.
-      if (!result.width.has_value() && !result.height.has_value()) {
-        const bool landscape =
-            result.print_orientation == PrintOrientation::landscape;
-        result.width = Measure(landscape ? "29.7cm" : "21cm");
-        result.height = Measure(landscape ? "21cm" : "29.7cm");
-      }
-      return result;
+      return with_default_paper(master_page_page_layout(master_page_id));
     }
     return {};
+  }
+
+  /// A layout stating no size takes the application's paper; LibreOffice the
+  /// locale's. A4 here, so a text page has a width to set its lines in and a
+  /// drawing page a box to hold its shapes. A sheet keeps none, and prints to
+  /// the printer's paper.
+  static PageLayout with_default_paper(PageLayout layout) {
+    if (!layout.width.has_value() && !layout.height.has_value()) {
+      const bool landscape =
+          layout.print_orientation == PrintOrientation::landscape;
+      layout.width = Measure(landscape ? "29.7cm" : "21cm");
+      layout.height = Measure(landscape ? "21cm" : "29.7cm");
+    }
+    return layout;
   }
   static bool is_anchored_frame(const pugi::xml_node node) {
     return std::strcmp(node.name(), "draw:frame") == 0;
@@ -644,7 +648,7 @@ public:
   page_layout(const ElementIdentifier element_id) const override {
     if (const ElementIdentifier master_page_id = page_master_page(element_id);
         master_page_id != null_element_id) {
-      return master_page_page_layout(master_page_id);
+      return with_default_paper(master_page_page_layout(master_page_id));
     }
     return {};
   }

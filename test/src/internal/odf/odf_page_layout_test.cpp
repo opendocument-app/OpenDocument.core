@@ -94,3 +94,43 @@ TEST(OdfPageLayout, a_stated_size_is_kept) {
   EXPECT_EQ(layout.width->to_string(), "8.5in");
   EXPECT_EQ(layout.height->to_string(), "11in");
 }
+
+TEST(OdfPageLayout, a_drawing_page_whose_master_names_no_layout_takes_a4) {
+  // As LibreOffice's BPMN template writes it: a master page with no
+  // `style:page-layout-name` at all.
+  const std::string path =
+      (std::filesystem::current_path() / "odf_page_layout_drawing.odg")
+          .string();
+  const std::string content =
+      R"(<?xml version="1.0" encoding="UTF-8"?><office:document-content )"
+      R"(xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" )"
+      R"(xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0">)"
+      R"(<office:body><office:drawing><draw:page draw:name="page1" )"
+      R"(draw:master-page-name="Standard"/></office:drawing></office:body>)"
+      R"(</office:document-content>)";
+  const std::string styles =
+      R"(<?xml version="1.0" encoding="UTF-8"?><office:document-styles )"
+      R"(xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" )"
+      R"(xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0">)"
+      R"(<office:master-styles><style:master-page style:name="Standard"/>)"
+      R"(</office:master-styles></office:document-styles>)";
+  zip::ZipArchive zip;
+  zip.insert_file(std::end(zip), RelPath("mimetype"),
+                  std::make_shared<MemoryFile>(
+                      "application/vnd.oasis.opendocument.graphics"));
+  zip.insert_file(std::end(zip), RelPath("content.xml"),
+                  std::make_shared<MemoryFile>(content));
+  zip.insert_file(std::end(zip), RelPath("styles.xml"),
+                  std::make_shared<MemoryFile>(styles));
+  {
+    std::ofstream out(path, std::ios::binary);
+    zip.save(out);
+  }
+
+  const Document document = odr::open(path).as_document_file().document();
+  const PageLayout layout =
+      (*document.root_element().children().begin()).as_page().page_layout();
+
+  EXPECT_EQ(layout.width->to_string(), "21cm");
+  EXPECT_EQ(layout.height->to_string(), "29.7cm");
+}
