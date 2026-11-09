@@ -598,13 +598,18 @@ std::string html::translate_drawing_style(const GraphicStyle &graphic_style) {
   std::string result;
   if (const std::optional<Measure> stroke_width = graphic_style.stroke_width;
       stroke_width.has_value()) {
+    // A width of zero is a hairline ([OpenDocument] 20.398), which svg would
+    // not draw at all.
     result.append("stroke-width:")
-        .append(css_length(*stroke_width))
+        .append(stroke_width->magnitude() == 0 ? "1px"
+                                               : css_length(*stroke_width))
         .append(";");
   }
   if (const std::optional<Color> stroke_color = graphic_style.stroke_color;
       stroke_color.has_value()) {
-    result.append("stroke:").append(color(*stroke_color)).append(";");
+    result.append("stroke:")
+        .append(stroke_color->alpha == 0 ? "none" : color(*stroke_color))
+        .append(";");
   }
   if (const std::optional<Color> fill_color = graphic_style.fill_color;
       fill_color.has_value()) {
