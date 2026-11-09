@@ -1137,6 +1137,11 @@ pugi::xml_node StyleRegistry::list_style_node(const std::string &name) const {
       list_style_it != std::end(m_index_list_style)) {
     return list_style_it->second;
   }
+  // a list may number by the outline, which it names like a list style
+  if (const auto outline_style_it = m_index_outline_style.find(name);
+      outline_style_it != std::end(m_index_outline_style)) {
+    return outline_style_it->second;
+  }
   return {};
 }
 

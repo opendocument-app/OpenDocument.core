@@ -22,9 +22,16 @@ public final class Paragraph extends Element {
     return textStyleNative(handle());
   }
 
+  /** A heading's number in a numbered outline, or empty for any other paragraph. */
+  public String marker() {
+    return markerNative(handle());
+  }
+
   private native ParagraphStyle styleNative(long handle);
 
   private native void setStyleNative(long handle, ParagraphStyle style);
 
   private native TextStyle textStyleNative(long handle);
+
+  private native String markerNative(long handle);
 }

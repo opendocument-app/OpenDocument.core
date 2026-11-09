@@ -120,6 +120,18 @@ def test_list_markers(odt_path):
     assert [item.number() for item in items(lists[1])] == [1, 2]
 
 
+def test_paragraph_markers(outline_odt_path):
+    document = pyodr.open(str(outline_odt_path)).as_document_file().document()
+
+    paragraphs = [
+        child.as_paragraph()
+        for child in document.root_element().children()
+        if child.type() == pyodr.ElementType.paragraph
+    ]
+    # a heading has its number in the outline, any other paragraph none
+    assert [paragraph.marker() for paragraph in paragraphs] == ["1", "1.1", ""]
+
+
 def test_save_to_memory_round_trips(odt_path, tmp_path):
     document = pyodr.open(str(odt_path)).as_document_file().document()
     assert document.is_savable()

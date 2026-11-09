@@ -104,9 +104,10 @@ variants. Design and open work are in [`AGENTS.md`](AGENTS.md). Relies on
   - [x] bullets
   - [x] numbering (`text:list-style` levels resolved to markers: format,
     prefix / suffix, `text:display-levels`, `text:start-value`,
-    `text:continue-numbering`)
+    `text:continue-numbering`; an item without a paragraph is not counted, a
+    skipped level opens at its start, a level without a format is left out)
   - [ ] `text:list-level-style-image` (falls back to a bullet)
-  - [ ] `text:outline-style` (indexed, not applied to headings)
+  - [x] `text:outline-style` (headings numbered, `Paragraph::marker`)
 
 ### Spreadsheet documents (`.ods`)
 

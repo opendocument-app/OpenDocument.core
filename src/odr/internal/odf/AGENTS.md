@@ -79,7 +79,8 @@ arrays are allocated once. The elements are a `std::deque`, because
 **Ids are stored narrow, payloads in sorted arrays.** `StoredId` is 32 bits.
 Every boundary widens it to the public 64-bit `ElementIdentifier`. The payload
 tables are `SortedSideTable`s written in id order. `m_list_types` and
-`m_list_markers` are plain `SideTable`s, written when a list is resolved.
+`m_list_markers` are plain `SideTable`s, written when lists and the outline
+are resolved.
 
 **Styles resolve to a flattened `ResolvedStyle`, eagerly.** `StyleRegistry`
 builds name-to-node indices from both files. Automatic and named styles land
@@ -111,6 +112,17 @@ sets it, `draw:fill-color` sets the rgb and keeps it, and `draw:fill` defaults
 to none, so a colour with no fill anywhere in the chain paints nothing.
 `draw:stroke` and `svg:stroke-color` ride the same way in the stroke colour's
 alpha, but `draw:stroke` defaults to solid.
+
+**Lists and the outline count as LibreOffice does.** A label follows
+`SwNumRule::MakeNumString`: prefix, the numbers of the last
+`text:display-levels` levels joined by a period, suffix. A shown level
+without a format drops out with its period, and a level without one itself
+keeps only prefix and suffix. LibreOffice numbers paragraphs, not items, and
+Word writes a deeper item inside an item of each level above that holds only
+the nested list. So an item counts only where a `text:p` or `text:h` comes
+before any nested list. A level an item skips opens at its start: 1, 1.1.1,
+then 1.2. A heading in a `text:list` is numbered as an item, not by the
+outline.
 
 **A flat document is the same `Document`, minus the package.** Its
 `office:document` root carries what `content.xml` and `styles.xml` carry
@@ -206,7 +218,7 @@ unknown mimetype are tolerated.
 | `odf_parser.{hpp,cpp}` | `content.xml` to registry: dispatch table, run coalescing, sheet cursor |
 | `odf_document.{hpp,cpp}` | `Document` (owns the DOMs, the registry and the adapter), the `ElementAdapter`, edit and `save` |
 | `odf_style.{hpp,cpp}` | `StyleRegistry` and `Style`: indices, eager flatten, master pages, `ResolvedStyle` readers, `create_text_style` |
-| `odf_list.{hpp,cpp}` | List styles resolved to markers |
+| `odf_list.{hpp,cpp}` | List styles and the outline resolved to markers |
 | `odf_table.{hpp,cpp}`, `odf_value_cursor.hpp` | Table and cell helpers |
 | `odf_geometry.{hpp,cpp}`, `odf_enhanced_geometry.{hpp,cpp}` | Shape paths, transforms, `draw:enhanced-path` |
 | `odf_chart.{hpp,cpp}` | Charts drawn from an embedded chart object |
@@ -235,7 +247,6 @@ Larger tables fall back to the embedded replacement image.
 4. **Style gaps.** `transparent` reads as no colour; as a background it clears
    the inherited one (`// TODO use alpha`). Other alpha colours are not parsed.
    The style-versus-element cascade is provisional (`// TODO use override?`).
-   `text:outline-style` is indexed but not applied to headings.
 5. **StarOffice, template and flat mimetypes** are aliased onto the four base
    types (`odf_meta.cpp`). A flat document is parsed twice: once to recognise
    it, once to build the tree.

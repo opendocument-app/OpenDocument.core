@@ -226,6 +226,9 @@ NS_SWIFT_NAME(Paragraph)
 @interface ODRParagraph : ODRElement
 @property(nonatomic, readonly) ODRParagraphStyle *style;
 @property(nonatomic, readonly) ODRTextStyle *textStyle;
+/// A heading's number in a numbered outline, or empty for any other
+/// paragraph.
+@property(nonatomic, readonly, copy) NSString *marker;
 /// States the non-nil properties of `style` on the paragraph and leaves the
 /// rest. Only `textAlign` is written; any other refuses with
 /// `ODRErrorUnsupportedOperation`.

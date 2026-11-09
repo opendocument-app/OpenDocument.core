@@ -419,6 +419,13 @@ final class ElementTreeTests: XCTestCase {
     XCTAssertTrue(root is TextRoot, "root of an odt is a TextRoot, got \(type(of: root))")
     XCTAssertNotNil(root.firstDescendant(ofType: Paragraph.self))
   }
+
+  /// The fixture's outline has no number format, so no heading is numbered.
+  func testAParagraphOutsideANumberedOutlineHasNoMarker() throws {
+    let root = try XCTUnwrap(try document().rootElement())
+    let paragraphs = Array(root.descendants(ofType: Paragraph.self))
+    XCTAssertEqual(paragraphs.map(\.marker), ["", "", "", ""])
+  }
 }
 
 final class DocumentSaveTests: XCTestCase {

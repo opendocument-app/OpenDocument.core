@@ -22,7 +22,8 @@ enum class ListNumberFormat {
 ///
 /// `label` is OOXML's `w:lvlText`: literal text in which `%N` stands for the
 /// counter of level N, counted from 1. ODF has no such template — its
-/// prefix / suffix / `text:display-levels` compose into one.
+/// prefix / suffix / `text:display-levels` compose into one, and as it has a
+/// tenth level, `%{N}` stands for level N too.
 struct ListLevel final {
   ListNumberFormat format{ListNumberFormat::none};
   std::string label;
@@ -48,6 +49,10 @@ public:
   [[nodiscard]] std::uint32_t number(std::uint32_t level) const;
 
   void restart(std::uint32_t level, std::uint32_t number);
+
+  /// Opens `level` at its start, unless it is open already, without counting
+  /// an item on it.
+  void start(std::uint32_t level, const ListLevel &list_level);
 
 private:
   std::vector<std::optional<std::uint32_t>> m_numbers;
