@@ -39,6 +39,50 @@ TextEncoding encoding_by_bom(const std::string_view probe) {
   return TextEncoding::unknown;
 }
 
+/// Whether @p probe holds non-ascii bytes and all of them form well formed
+/// utf-8 sequences. A sequence the probe's end cuts off counts as well formed,
+/// since the probe is a prefix of the file.
+bool is_utf8_beyond_ascii(const std::string_view probe) {
+  bool beyond_ascii = false;
+  for (std::size_t i = 0; i < probe.size();) {
+    const auto lead = static_cast<unsigned char>(probe[i]);
+    if (lead < 0x80) {
+      ++i;
+      continue;
+    }
+    beyond_ascii = true;
+    std::size_t length = 0;
+    // the bounds of the second byte rule out overlong forms, surrogates and
+    // code points past U+10FFFF
+    unsigned char low = 0x80;
+    unsigned char high = 0xbf;
+    if (lead >= 0xc2 && lead <= 0xdf) {
+      length = 2;
+    } else if (lead >= 0xe0 && lead <= 0xef) {
+      length = 3;
+      low = lead == 0xe0 ? 0xa0 : 0x80;
+      high = lead == 0xed ? 0x9f : 0xbf;
+    } else if (lead >= 0xf0 && lead <= 0xf4) {
+      length = 4;
+      low = lead == 0xf0 ? 0x90 : 0x80;
+      high = lead == 0xf4 ? 0x8f : 0xbf;
+    } else {
+      return false;
+    }
+    for (std::size_t k = 1; k < length; ++k) {
+      if (i + k >= probe.size()) {
+        return true;
+      }
+      const auto next = static_cast<unsigned char>(probe[i + k]);
+      if (next < (k == 1 ? low : 0x80) || next > (k == 1 ? high : 0xbf)) {
+        return false;
+      }
+    }
+    i += length;
+  }
+  return beyond_ascii;
+}
+
 /// Whether NUL bytes are ordinary characters in @p encoding.
 bool encoding_holds_nul(const TextEncoding encoding) {
   return encoding == TextEncoding::utf16le ||
@@ -57,6 +101,13 @@ TextEncoding encoding::detect(const std::string_view probe) {
   if (const TextEncoding by_bom = encoding_by_bom(probe);
       by_bom != TextEncoding::unknown) {
     return by_bom;
+  }
+  // uchardet weighs a few non-ascii characters among much ascii by
+  // single-byte statistics and names such utf-8 MAC-CENTRALEUROPE, IBM852 or
+  // ISO-8859-11; text in a legacy single-byte encoding is well formed utf-8
+  // only by rare accident
+  if (is_utf8_beyond_ascii(probe)) {
+    return TextEncoding::utf8;
   }
 
   auto *const detector = uchardet_new();

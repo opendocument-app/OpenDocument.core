@@ -151,3 +151,28 @@ TEST(Detect, a_byte_order_mark_wins) {
   EXPECT_EQ(encoding::detect(std::string("\xff\xfeh\0", 4)),
             TextEncoding::utf16le);
 }
+
+TEST(Detect, well_formed_utf8_beyond_ascii_is_utf8) {
+  // one soft hyphen among much ascii, as LibreOffice's tdf129357.fodt
+  const std::string ascii(4096, 'a');
+  EXPECT_EQ(encoding::detect(ascii + "hyphena\xc2\xadtion"),
+            TextEncoding::utf8);
+  EXPECT_EQ(encoding::detect(ascii + "Gr\xc3\xbc\xc3\x9f"
+                                     "e"),
+            TextEncoding::utf8);
+  EXPECT_EQ(encoding::detect(ascii + "\xe2\x82\xac \xf0\x9f\x98\x80"),
+            TextEncoding::utf8);
+}
+
+TEST(Detect, a_sequence_the_probe_cuts_off_is_still_utf8) {
+  const std::string ascii(4096, 'a');
+  EXPECT_EQ(encoding::detect(ascii + "\xc3\xbc\xe2\x82"), TextEncoding::utf8);
+}
+
+TEST(Detect, malformed_utf8_is_left_to_uchardet) {
+  const std::string ascii(4096, 'a');
+  // a lone latin-1 umlaut, an overlong slash and an encoded surrogate
+  EXPECT_NE(encoding::detect(ascii + "\xe4 "), TextEncoding::utf8);
+  EXPECT_NE(encoding::detect(ascii + "\xc0\xaf "), TextEncoding::utf8);
+  EXPECT_NE(encoding::detect(ascii + "\xed\xa0\x80 "), TextEncoding::utf8);
+}

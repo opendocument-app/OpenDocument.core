@@ -99,6 +99,21 @@ TEST(FlatOdf, a_latin1_document_reads_its_text_once) {
   EXPECT_EQ(paragraph.first_child().as_text().content(), "\xc3\xa4");
 }
 
+TEST(FlatOdf, utf8_with_a_single_soft_hyphen_among_much_ascii_opens) {
+  // uchardet named such files MAC-CENTRALEUROPE, which left them unknown, as
+  // LibreOffice's own tdf129357.fodt
+  const std::string filler(4096, ' ');
+  const Document document =
+      open(File::from_memory(
+               flat_text(filler + "<text:p>hyphena\xc2\xadtion</text:p>")))
+          .as_document_file()
+          .document();
+  const Element paragraph =
+      first_of_type(document.root_element(), ElementType::paragraph);
+  ASSERT_TRUE(paragraph);
+  EXPECT_EQ(paragraph.first_child().as_text().content(), "hyphena\xc2\xadtion");
+}
+
 TEST(FlatOdf, missing_related_elements_return_empty_handles) {
   const Document document = open(File::from_memory(flat_text("<table:table/>")))
                                 .as_document_file()
