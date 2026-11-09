@@ -44,8 +44,8 @@ const char *translate_font_position(FontPosition font_position);
 std::string translate_outer_page_style(const PageLayout &page_layout);
 std::string translate_outer_flowing_page_style(const PageLayout &page_layout);
 std::string translate_inner_page_style(const PageLayout &page_layout);
-/// The box of a page's header or footer: its least height and the space on
-/// the side facing the body, @p spacing_side naming that margin.
+/// The box of a page's header or footer: its least height, the space on the
+/// side facing the body within it, @p spacing_side naming that padding.
 std::string
 translate_page_marginal_style(const std::optional<Measure> &min_height,
                               std::string_view spacing_side,

@@ -26,16 +26,25 @@ The release run heads these entries with the version and opens a fresh
   and iOS, for example `server bind failed: 127.0.0.1:29665 (Address already
   in use)`.
 
-### Rendering
+### Text documents and presentations
 
 - With `text_document_margin`, an odt's page box carries the header and the
-  footer of its master page, the first box the first master page's, each
-  later one the next master page's (`style:next-style-name`). They were not
-  written. A box is a run between manual breaks, not a page, so a page number
-  field shows the number the file stored.
-- `MasterPage` has `header()`, `footer()` and `next_master_page()`, and
-  `PageLayout` the `header_min_height`, `header_spacing`,
-  `footer_min_height` and `footer_spacing` the layout states.
+  footer of its master page, its first page's (`style:header-first`) where
+  the box opens a run of that master page. A paragraph naming a master page
+  opens a box of that page's size, as it opens a page in LibreOffice; a later
+  box takes the next master page (`style:next-style-name`). The header's
+  height holds its spacing, as in LibreOffice. A box is a run between breaks,
+  not a page, so a page number field shows the number the file stored;
+  `style:header-left` and the header's own margins, border and background are
+  not read. In an editable view the header and footer carry no editing
+  address.
+
+### API, files and saving
+
+- `MasterPage` has `header()`, `footer()`, `first_header()`, `first_footer()`
+  and `next_master_page()`, `Paragraph` has `master_page()`, and `PageLayout`
+  the `header_min_height`, `header_spacing`, `footer_min_height` and
+  `footer_spacing` the layout states.
 
 ### Fixes
 

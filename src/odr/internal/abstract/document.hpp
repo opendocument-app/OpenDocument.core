@@ -477,6 +477,13 @@ public:
   /// The footer group of a text master page; null where it has none.
   [[nodiscard]] virtual ElementIdentifier
   master_page_footer(ElementIdentifier element_id) const = 0;
+  /// The header of the first page of a run of this master page, where it
+  /// differs from the others; null where it does not.
+  [[nodiscard]] virtual ElementIdentifier
+  master_page_first_header(ElementIdentifier element_id) const = 0;
+  /// The same for the footer.
+  [[nodiscard]] virtual ElementIdentifier
+  master_page_first_footer(ElementIdentifier element_id) const = 0;
   /// The master page the page after this one takes; null where it names
   /// none, which keeps this one.
   [[nodiscard]] virtual ElementIdentifier
@@ -499,6 +506,12 @@ public:
   paragraph_style(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual TextStyle
   paragraph_text_style(ElementIdentifier element_id) const = 0;
+  /// The master page whose page this paragraph opens; null where it names
+  /// none.
+  [[nodiscard]] virtual ElementIdentifier
+  paragraph_master_page([[maybe_unused]] ElementIdentifier element_id) const {
+    return null_element_id;
+  }
   /// Writes `text_align` of @p style, which is set, on the paragraph.
   virtual void
   paragraph_set_style([[maybe_unused]] const ElementIdentifier element_id,

@@ -285,7 +285,9 @@ std::string
 html::translate_page_marginal_style(const std::optional<Measure> &min_height,
                                     const std::string_view spacing_side,
                                     const std::optional<Measure> &spacing) {
-  std::string result = "flex:none;";
+  // LibreOffice's height holds the spacing ([OpenDocument] 17.5's
+  // `fo:min-height` is `PROP_HeaderHeight`)
+  std::string result = "flex:none;box-sizing:border-box;";
   if (min_height.has_value()) {
     result.append("min-height:").append(css_length(*min_height)).append(";");
   }

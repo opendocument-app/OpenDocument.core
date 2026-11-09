@@ -99,8 +99,9 @@ variants. Design and open work are in [`AGENTS.md`](AGENTS.md). Relies on
 - [x] sections, date / time fields (rendered as generic groups)
 - [x] table of contents / indices (rendered as generic groups)
 - [x] manual page breaks (`fo:break-before`, `fo:break-after`)
-- [x] headers and footers (`style:header`, `style:footer`; not the `-left`
-  and `-first` variants), one per page box
+- [x] headers and footers (`style:header`, `style:footer`, `-first`; not
+  `-left`, nor their own margins, border and background), one per page box
+- [x] a paragraph naming a master page opens a box of that page
 - [ ] producer-recorded automatic breaks (`text:soft-page-break`)
 - [x] listings
   - [x] bullets

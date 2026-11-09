@@ -1852,6 +1852,26 @@ public:
   }
 
   [[nodiscard]] ElementIdentifier
+  master_page_first_header(const ElementIdentifier element_id) const override {
+    if (const ElementIdentifier header =
+            master_page_child(element_id, "style:header-first");
+        header != null_element_id) {
+      return header;
+    }
+    return master_page_child(element_id, "loext:header-first");
+  }
+
+  [[nodiscard]] ElementIdentifier
+  master_page_first_footer(const ElementIdentifier element_id) const override {
+    if (const ElementIdentifier footer =
+            master_page_child(element_id, "style:footer-first");
+        footer != null_element_id) {
+      return footer;
+    }
+    return master_page_child(element_id, "loext:footer-first");
+  }
+
+  [[nodiscard]] ElementIdentifier
   master_page_next(const ElementIdentifier element_id) const override {
     if (const pugi::xml_attribute next =
             get_node(element_id).attribute("style:next-style-name")) {
@@ -1905,6 +1925,13 @@ public:
   [[nodiscard]] TextStyle
   paragraph_text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
+  }
+  [[nodiscard]] ElementIdentifier
+  paragraph_master_page(const ElementIdentifier element_id) const override {
+    const char *style_name = get_style_name(element_id);
+    return style_name == nullptr
+               ? null_element_id
+               : m_document->style_registry().master_page_of_style(style_name);
   }
   void paragraph_set_style(const ElementIdentifier element_id,
                            const ParagraphStyle &style) const override {
