@@ -43,6 +43,14 @@ in `m_shape_types`, and `frame_shape_type` reads it back. `draw:rect` and
 `draw:circle` and `draw:ellipse` are `ellipse` unless `draw:kind` cuts them,
 and every shape whose geometry is drawn rather than named is `custom`.
 
+**A frame floats by its stated position, not by its wrap.** LibreOffice
+places a frame where `style:horizontal-pos` says, and `style:wrap` only names
+the sides the text may flow on. `TextWrap` names the side the frame floats
+to, so `place_by_position` derives it from the position: the frame floats to
+its side where text may flow on the other, and stands alone where none may,
+or where it is centred, which css cannot flow around. A wrap its style chain
+does not state, inherited from around the frame, is left as it resolved.
+
 **Text runs are coalesced.** A maximal run of consecutive text nodes
 (`node_pcdata`, `text:s`, `text:tab`) is one `text` element spanning
 `[first, last]` (`Text.last`). `text:line-break` is its own element and ends

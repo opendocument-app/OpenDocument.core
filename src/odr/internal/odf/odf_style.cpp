@@ -1140,6 +1140,36 @@ pugi::xml_node StyleRegistry::list_style_node(const std::string &name) const {
   return {};
 }
 
+pugi::xml_attribute StyleRegistry::graphic_attribute(const char *style_name,
+                                                     const char *name) const {
+  const auto it = m_index_style.find(style_name != nullptr ? style_name : "");
+  return graphic_attribute(
+      it == std::end(m_index_style) ? pugi::xml_node() : it->second, name);
+}
+
+pugi::xml_attribute StyleRegistry::graphic_attribute(const pugi::xml_node style,
+                                                     const char *name) const {
+  pugi::xml_node node = style;
+  // bounded, so a cycle of parents ends
+  for (std::size_t remaining = m_index_style.size() + 1; node && remaining > 0;
+       --remaining) {
+    if (const pugi::xml_attribute attribute =
+            node.child("style:graphic-properties").attribute(name)) {
+      return attribute;
+    }
+    const pugi::xml_attribute parent =
+        node.attribute("style:parent-style-name");
+    if (!parent) {
+      break;
+    }
+    const auto it = m_index_style.find(parent.value());
+    node = it == std::end(m_index_style) ? pugi::xml_node() : it->second;
+  }
+  return default_style_node("graphic")
+      .child("style:graphic-properties")
+      .attribute(name);
+}
+
 ElementIdentifier StyleRegistry::master_page(const std::string &name) const {
   if (const auto master_page_elements_it = m_master_page_elements.find(name);
       master_page_elements_it != std::end(m_master_page_elements)) {

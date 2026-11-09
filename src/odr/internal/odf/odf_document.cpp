@@ -2201,7 +2201,9 @@ public:
   }
   [[nodiscard]] GraphicStyle
   frame_style(const ElementIdentifier element_id) const override {
-    return get_intermediate_style(element_id).graphic_style;
+    GraphicStyle result = get_intermediate_style(element_id).graphic_style;
+    place_by_position(element_id, result);
+    return result;
   }
 
   [[nodiscard]] bool
@@ -2252,6 +2254,40 @@ public:
   }
 
 private:
+  /// Derives `text_wrap` from a stated `style:horizontal-pos`; see AGENTS.md.
+  void place_by_position(const ElementIdentifier element_id,
+                         GraphicStyle &style) const {
+    if (!style.horizontal_position.has_value() ||
+        !style.text_wrap.has_value() ||
+        (*style.text_wrap != TextWrap::before &&
+         *style.text_wrap != TextWrap::after)) {
+      return;
+    }
+    const std::string_view wrap =
+        m_document->style_registry()
+            .graphic_attribute(get_style_name(element_id), "style:wrap")
+            .value();
+    if (wrap.empty()) {
+      return;
+    }
+    // `biggest` LibreOffice does not read; it is the widest side
+    const bool both =
+        wrap == "dynamic" || wrap == "parallel" || wrap == "biggest";
+    switch (*style.horizontal_position) {
+    case HorizontalAlign::left:
+      style.text_wrap =
+          both || wrap == "right" ? TextWrap::after : TextWrap::none;
+      break;
+    case HorizontalAlign::right:
+      style.text_wrap =
+          both || wrap == "left" ? TextWrap::before : TextWrap::none;
+      break;
+    default:
+      style.text_wrap = TextWrap::none;
+      break;
+    }
+  }
+
   Document *m_document{nullptr};
   mutable std::mutex m_charts_mutex;
   mutable std::unordered_map<ElementIdentifier, std::optional<std::string>>
