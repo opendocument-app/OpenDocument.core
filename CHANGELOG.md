@@ -28,11 +28,8 @@ The release run heads these entries with the version and opens a fresh
 
 ### Fixes
 
-- An odt or odg whose page layout states no paper size, as LibreOffice's
-  letter and BPMN templates do, is laid out on A4 portrait, LibreOffice's
-  paper in an A4 locale. A text page had no width, so with `text_document_margin` no line
-  wrapped, and the pages of a drawing had no box and were drawn over each
-  other. A sheet still takes none and prints to the printer's paper.
+- An odt or odg whose page layout states no paper size is laid out on A4; one
+  stating only its width or height takes the other from A4.
 - A doc, xls or ppt opens when its storage directory gives a stream a child or
   links to an unused slot. A link past the directory throws `CfbFileCorrupted`,
   not a `std::invalid_argument` with an empty message.

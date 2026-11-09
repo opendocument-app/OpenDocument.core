@@ -87,6 +87,13 @@ walks the element parent chain and overrides partial styles down to the
 target. Font names go through `style:font-face` to `svg:font-family`. Master
 pages are parsed into the element tree and into the style index.
 
+**A page layout stating no paper size is on A4 portrait.** LibreOffice takes
+the application's paper, from the locale (Letter in the US), and keeps it
+upright for a landscape layout; with no locale to ask, A4. Its
+`XMLPageMasterContext` completes the width and the height each on its own.
+So a text page has a width to set its lines in and a drawing page a box to
+hold its shapes. A sheet keeps none and prints to the printer's paper.
+
 **Percent units.** A percent font size, and the relative size of
 `style:text-position`, multiply the inherited size. A percent line height
 passes through, and the renderer writes it as a unitless CSS ratio. A percent
