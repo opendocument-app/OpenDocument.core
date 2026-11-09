@@ -203,6 +203,21 @@ std::string shown_text(const Element &element) {
   return result;
 }
 
+/// The value a number cell shows where its file cached no text, as
+/// `SheetCell::value` spells it. Nothing for any cell with text.
+std::optional<std::string> uncached_text(const SheetCell &cell,
+                                         const ValueType type) {
+  if (type != ValueType::float_number && type != ValueType::date &&
+      type != ValueType::time) {
+    return std::nullopt;
+  }
+  const CellValue value = cell.value();
+  if (!value.has_text() || value.text().empty() || !shown_text(cell).empty()) {
+    return std::nullopt;
+  }
+  return value.text();
+}
+
 /// The number the editor opens a cell on and a sort orders it by, where the
 /// cell shows it formatted: a date and a time always.
 std::optional<std::string> formatted_value(const CellValue &value,
@@ -804,6 +819,10 @@ void write_row(const SheetRows &rows, RowCursor &at, const WritingState &state,
     }
     if (folded.has_value()) {
       state.out().out() << folded->text;
+    } else if (const std::optional<std::string> uncached =
+                   uncached_text(cell, cell_value_type);
+               uncached.has_value()) {
+      state.out().out() << xml::escape_text(*uncached);
     } else {
       translate_cell_children(cell, state);
     }

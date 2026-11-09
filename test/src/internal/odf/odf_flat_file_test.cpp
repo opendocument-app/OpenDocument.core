@@ -877,6 +877,45 @@ std::optional<std::string> font_of(const std::string &properties) {
       .font_name;
 }
 
+/// A row of sums as LibreOffice 4.2 saved it: the value, but no text.
+std::string sheet_of_uncached_sums(const std::string &cached) {
+  return flat_document(
+      "application/vnd.oasis.opendocument.spreadsheet",
+      R"(<office:spreadsheet><table:table table:name="Sheet1">)"
+      R"(<table:table-column table:number-columns-repeated="3"/>)"
+      R"(<table:table-row>)"
+      R"(<table:table-cell table:style-name="ce1" table:formula="of:=1+1")"
+      R"( office:value-type="float" office:value="55281.25"><text:p>)" +
+          cached +
+          R"(</text:p></table:table-cell>)"
+          R"(<table:table-cell office:value-type="float")"
+          R"( office:value="474.6"><text:p/></table:table-cell>)"
+          R"(<table:table-cell office:value-type="string">)"
+          R"(<text:p/></table:table-cell>)"
+          R"(</table:table-row></table:table></office:spreadsheet>)",
+      R"(<office:automatic-styles>)"
+      R"(<number:number-style style:name="N4" number:language="de")"
+      R"( number:country="DE"><number:number number:decimal-places="2")"
+      R"( number:min-integer-digits="1" number:grouping="true"/>)"
+      R"(</number:number-style>)"
+      R"(<style:style style:name="ce1" style:family="table-cell")"
+      R"( style:data-style-name="N4"/></office:automatic-styles>)");
+}
+
+std::vector<std::optional<std::string>>
+first_row_texts(const std::string &source) {
+  const Document document =
+      open(File::from_memory(source)).as_document_file().document();
+  const Sheet sheet = document.root_element().first_child().as_sheet();
+  std::vector<std::optional<std::string>> result;
+  for (std::uint32_t column = 0; column < 3; ++column) {
+    const CellValue value = sheet.cell(column, 0).value();
+    result.push_back(value.has_text() ? std::optional(value.text())
+                                      : std::nullopt);
+  }
+  return result;
+}
+
 } // namespace
 
 TEST(FlatOdf, a_font_family_stated_directly_is_read) {
@@ -892,4 +931,20 @@ TEST(FlatOdf, a_font_face_outranks_a_font_family) {
 
 TEST(FlatOdf, a_powerpoint_theme_font_is_no_family) {
   EXPECT_EQ(font_of(R"(fo:font-family="+mn-lt")"), std::nullopt);
+}
+
+TEST(FlatOpenDocumentFile, a_number_without_text_shows_its_value) {
+  // the string cell shows its own text, which is none
+  EXPECT_EQ(
+      first_row_texts(sheet_of_uncached_sums("")),
+      (std::vector<std::optional<std::string>>{"55.281,25", "474.6", ""}));
+
+  const std::string html = render(sheet_of_uncached_sums(""));
+  EXPECT_EQ(count(html, "55.281,25"), 1U);
+  EXPECT_EQ(count(html, "474.6<"), 1U);
+}
+
+TEST(FlatOpenDocumentFile, a_cached_text_is_shown_as_the_file_has_it) {
+  EXPECT_EQ(first_row_texts(sheet_of_uncached_sums("55281.25"))[0], "55281.25");
+  EXPECT_EQ(count(render(sheet_of_uncached_sums("55281.25")), "55.281,25"), 0U);
 }

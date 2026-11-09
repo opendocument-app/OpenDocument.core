@@ -1827,7 +1827,53 @@ public:
     if (const pugi::xml_attribute formula = node.attribute("table:formula")) {
       result = result.with_formula(formula.value());
     }
+    if (const std::optional<std::string> text =
+            uncached_text(element_id, result);
+        text.has_value()) {
+      result = result.with_text(*text);
+    }
     return result;
+  }
+
+  /// What a number, date or time cell shows where the file cached no text
+  /// for it: its value in its data style, else as `General`. LibreOffice
+  /// formats `office:value` when it loads, so a row of sums saved without
+  /// their text shows the sums there. Nothing for a cell with text.
+  [[nodiscard]] std::optional<std::string>
+  uncached_text(const ElementIdentifier element_id,
+                const CellValue &value) const {
+    if (!value.has_number() ||
+        (value.type() != ValueType::float_number &&
+         value.type() != ValueType::date && value.type() != ValueType::time)) {
+      return std::nullopt;
+    }
+    if (m_registry->sheet_cell_element(element_id) == nullptr ||
+        states_text(get_node(element_id))) {
+      return std::nullopt;
+    }
+    if (std::optional<std::string> shown =
+            shown_value(element_parent(element_id), element_id,
+                        sheet_cell_position(element_id), value);
+        shown.has_value()) {
+      return shown;
+    }
+    if (value.type() != ValueType::float_number) {
+      return std::nullopt;
+    }
+    return number_format::Format().format(
+        value.number(), number_format::Epoch::from_1900,
+        number_format::symbols_of(m_document->locale().value_or("")));
+  }
+
+  /// Whether @p cell holds any text, a space or a tab.
+  [[nodiscard]] static bool states_text(const pugi::xml_node cell) {
+    return cell.find_node([](const pugi::xml_node node) {
+      if (node.type() == pugi::node_pcdata || node.type() == pugi::node_cdata) {
+        return *node.value() != '\0';
+      }
+      const std::string_view name = node.name();
+      return name == "text:s" || name == "text:tab";
+    });
   }
 
   [[nodiscard]] PageLayout
