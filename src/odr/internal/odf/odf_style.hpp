@@ -89,6 +89,9 @@ public:
 
   [[nodiscard]] ElementIdentifier master_page(const std::string &name) const;
   [[nodiscard]] ElementIdentifier first_master_page() const;
+  /// Every master page's element by its name.
+  [[nodiscard]] const std::unordered_map<std::string, ElementIdentifier> &
+  master_pages() const;
   /// The master page a style or one of its bases names (20.283); null if none.
   [[nodiscard]] ElementIdentifier
   master_page_of_style(const char *style_name) const;

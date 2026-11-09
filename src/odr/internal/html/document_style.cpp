@@ -104,6 +104,26 @@ bool is_font_family_list(const std::string_view value) {
   return false;
 }
 
+/// A header or footer box whose least height holds the @p spacing_side
+/// padding toward the body, as in LibreOffice.
+std::string page_marginal_style(const std::optional<Measure> &min_height,
+                                const std::string_view spacing_side,
+                                const std::optional<Measure> &spacing) {
+  std::string result = "flex:none;box-sizing:border-box;";
+  if (min_height.has_value()) {
+    result.append("min-height:")
+        .append(html::css_length(*min_height))
+        .append(";");
+  }
+  if (spacing.has_value()) {
+    result.append(spacing_side)
+        .append(":")
+        .append(html::css_length(*spacing))
+        .append(";");
+  }
+  return result;
+}
+
 } // namespace
 
 std::string html::translate_font_family(const std::string_view font_name) {
@@ -281,23 +301,14 @@ html::translate_outer_flowing_page_style(const PageLayout &page_layout) {
   return result;
 }
 
-std::string
-html::translate_page_marginal_style(const std::optional<Measure> &min_height,
-                                    const std::string_view spacing_side,
-                                    const std::optional<Measure> &spacing) {
-  // LibreOffice's height holds the spacing ([OpenDocument] 17.5's
-  // `fo:min-height` is `PROP_HeaderHeight`)
-  std::string result = "flex:none;box-sizing:border-box;";
-  if (min_height.has_value()) {
-    result.append("min-height:").append(css_length(*min_height)).append(";");
-  }
-  if (spacing.has_value()) {
-    result.append(spacing_side)
-        .append(":")
-        .append(css_length(*spacing))
-        .append(";");
-  }
-  return result;
+std::string html::translate_page_header_style(const PageLayout &page_layout) {
+  return page_marginal_style(page_layout.header_min_height, "padding-bottom",
+                             page_layout.header_spacing);
+}
+
+std::string html::translate_page_footer_style(const PageLayout &page_layout) {
+  return page_marginal_style(page_layout.footer_min_height, "padding-top",
+                             page_layout.footer_spacing);
 }
 
 std::string html::translate_inner_page_style(const PageLayout &page_layout) {

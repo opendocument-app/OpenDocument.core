@@ -668,20 +668,16 @@ private:
   /// height. `.odr-pages` stacks them.
   static void write_pages(HtmlWriter &out, const WritingState &state,
                           const TextRoot &element) {
-    // The master page of the box being written: the first; then the one a
-    // paragraph names, which opens a page ([OpenDocument] 19.501); else each
-    // one's next. A box is not a page, so a header written once per box is
-    // the closest the boxes come.
+    // the box's master page: the first, one a paragraph names, or the next
     MasterPage master_page = element.first_master_page();
-    // whether the box opens a run of its master page, which takes the first
-    // page's header and footer where they differ
+    // whether the box opens a run of its master page
     bool opens_run = true;
     bool first_box = true;
+    PageLayout page_layout;
     Element footer;
     bool marginals = false;
 
-    // The header and footer repeat per box and edit the styles' part, so
-    // they carry no editing address.
+    // a header or footer repeats per box, so it carries no editing address
     WritingState marginal_state = state;
     marginal_state.set_editable_markup(false);
     const auto write_marginal = [&](const Element &marginal, const char *clazz,
@@ -698,28 +694,31 @@ private:
     };
 
     const auto begin_page = [&] {
-      // the first box keeps the text root's layout, the size it may have
-      // fallen back to included
-      PageLayout page_layout = element.page_layout();
-      if (!first_box) {
-        if (const PageLayout own = master_page.page_layout();
-            own.width.has_value()) {
-          page_layout = own;
+      // a later box takes its own layout, the size completed from the first's
+      page_layout = element.page_layout();
+      if (!first_box && master_page) {
+        PageLayout own = master_page.page_layout();
+        if (!own.width.has_value()) {
+          own.width = page_layout.width;
         }
+        if (!own.height.has_value()) {
+          own.height = page_layout.height;
+        }
+        page_layout = own;
       }
       first_box = false;
       Element header = master_page.header();
       footer = master_page.footer();
+      // a first page's header or footer only where the page has one at all
       if (opens_run) {
-        if (const Element first = master_page.first_header(); first) {
+        if (const Element first = master_page.first_header(); first && header) {
           header = first;
         }
-        if (const Element first = master_page.first_footer(); first) {
+        if (const Element first = master_page.first_footer(); first && footer) {
           footer = first;
         }
       }
       marginals = header || footer;
-      const PageLayout sizes = master_page.page_layout();
       out.write_element_begin(
           "div",
           HtmlElementOptions()
@@ -732,8 +731,7 @@ private:
                        .set_style(translate_inner_page_style(page_layout)));
         return;
       }
-      // A column, so the footer sits at the foot of the box however short
-      // the body.
+      // a column, so the footer sits at the foot of the box
       out.write_element_begin(
           "div", HtmlElementOptions()
                      .set_class("odr-page-inner")
@@ -741,9 +739,7 @@ private:
                                 "display:flex;flex-direction:column;"));
       if (header) {
         write_marginal(header, "odr-page-header",
-                       translate_page_marginal_style(sizes.header_min_height,
-                                                     "padding-bottom",
-                                                     sizes.header_spacing));
+                       translate_page_header_style(page_layout));
       }
       out.write_element_begin("div", HtmlElementOptions()
                                          .set_class("odr-page-body")
@@ -753,17 +749,14 @@ private:
       if (marginals) {
         out.write_element_end("div");
         if (footer) {
-          const PageLayout sizes = master_page.page_layout();
           write_marginal(footer, "odr-page-footer",
-                         translate_page_marginal_style(sizes.footer_min_height,
-                                                       "padding-top",
-                                                       sizes.footer_spacing));
+                         translate_page_footer_style(page_layout));
         }
       }
       out.write_element_end("div");
       out.write_element_end("div");
       const MasterPage next = master_page.next_master_page();
-      opens_run = !(next == master_page);
+      opens_run = next != master_page;
       master_page = next;
     };
 
@@ -771,6 +764,9 @@ private:
     // Otherwise a leading or doubled break opens an empty sheet.
     bool empty = true;
     bool pending_break = false;
+    // a master page named ahead of any flowing content, after the frames
+    // anchored to the page, keeps their page
+    bool flows = false;
 
     for (const Element child : element.children()) {
       if (child.type() == ElementType::page_break) {
@@ -781,18 +777,23 @@ private:
       const MasterPage named = child.type() == ElementType::paragraph
                                    ? child.as_paragraph().master_page()
                                    : MasterPage();
-      if ((pending_break || breaks_page_before(child) || named) && !empty) {
+      if (((pending_break || breaks_page_before(child)) && !empty) ||
+          (named && flows)) {
+        const MasterPage previous = master_page;
         end_page();
+        // naming the master page in use again opens a page, not a run
         if (named) {
           master_page = named;
-          opens_run = true;
+          opens_run = named != previous;
         }
         begin_page();
         empty = true;
+        flows = false;
       }
       pending_break = breaks_page_after(child);
       translate_element(child, state);
       empty = false;
+      flows = flows || child.type() != ElementType::frame;
     }
 
     end_page();

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <odr/quantity.hpp>
-
 #include <optional>
 #include <string>
 #include <string_view>
@@ -44,12 +42,8 @@ const char *translate_font_position(FontPosition font_position);
 std::string translate_outer_page_style(const PageLayout &page_layout);
 std::string translate_outer_flowing_page_style(const PageLayout &page_layout);
 std::string translate_inner_page_style(const PageLayout &page_layout);
-/// The box of a page's header or footer: its least height, the space on the
-/// side facing the body within it, @p spacing_side naming that padding.
-std::string
-translate_page_marginal_style(const std::optional<Measure> &min_height,
-                              std::string_view spacing_side,
-                              const std::optional<Measure> &spacing);
+std::string translate_page_header_style(const PageLayout &page_layout);
+std::string translate_page_footer_style(const PageLayout &page_layout);
 /// A bare name is quoted. A generic family follows, unless the value is a
 /// list that ends with one already.
 std::string translate_font_family(std::string_view font_name);
