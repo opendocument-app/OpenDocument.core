@@ -26,6 +26,17 @@ The release run heads these entries with the version and opens a fresh
   and iOS, for example `server bind failed: 127.0.0.1:29665 (Address already
   in use)`.
 
+### Rendering
+
+- With `text_document_margin`, an odt's page box carries the header and the
+  footer of its master page, the first box the first master page's, each
+  later one the next master page's (`style:next-style-name`). They were not
+  written. A box is a run between manual breaks, not a page, so a page number
+  field shows the number the file stored.
+- `MasterPage` has `header()`, `footer()` and `next_master_page()`, and
+  `PageLayout` the `header_min_height`, `header_spacing`,
+  `footer_min_height` and `footer_spacing` the layout states.
+
 ### Fixes
 
 - A shape or connector with a stroke width of zero is drawn with a hairline,

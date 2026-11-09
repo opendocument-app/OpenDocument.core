@@ -468,6 +468,12 @@ public:
   using ElementBase::ElementBase;
 
   [[nodiscard]] PageLayout page_layout() const;
+  /// The header of a text document's page; an absent element where none.
+  [[nodiscard]] Element header() const;
+  /// The footer of a text document's page; an absent element where none.
+  [[nodiscard]] Element footer() const;
+  /// The master page the following page takes; this one where none is named.
+  [[nodiscard]] MasterPage next_master_page() const;
 };
 
 /// Represents a line break element in a document.

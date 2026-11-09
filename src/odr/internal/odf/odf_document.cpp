@@ -1841,6 +1841,38 @@ public:
     return {};
   }
 
+  [[nodiscard]] ElementIdentifier
+  master_page_header(const ElementIdentifier element_id) const override {
+    return master_page_child(element_id, "style:header");
+  }
+
+  [[nodiscard]] ElementIdentifier
+  master_page_footer(const ElementIdentifier element_id) const override {
+    return master_page_child(element_id, "style:footer");
+  }
+
+  [[nodiscard]] ElementIdentifier
+  master_page_next(const ElementIdentifier element_id) const override {
+    if (const pugi::xml_attribute next =
+            get_node(element_id).attribute("style:next-style-name")) {
+      return m_document->style_registry().master_page(next.value());
+    }
+    return null_element_id;
+  }
+
+  /// The child of a master page parsed from the node named @p name.
+  [[nodiscard]] ElementIdentifier
+  master_page_child(const ElementIdentifier element_id,
+                    const char *name) const {
+    for (ElementIdentifier child = element_first_child(element_id);
+         child != null_element_id; child = element_next_sibling(child)) {
+      if (std::strcmp(get_node(child).name(), name) == 0) {
+        return child;
+      }
+    }
+    return null_element_id;
+  }
+
   [[nodiscard]] TextStyle
   line_break_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;

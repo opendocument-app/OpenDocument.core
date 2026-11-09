@@ -257,6 +257,14 @@ struct PageLayout final {
   std::optional<Color> background_color;
   /// The base direction, inherited by paragraphs stating none of their own.
   std::optional<TextDirection> direction;
+  /// The least height of the header ([OpenDocument] 17.5).
+  std::optional<Measure> header_min_height;
+  /// The space between the header and the body.
+  std::optional<Measure> header_spacing;
+  /// The least height of the footer.
+  std::optional<Measure> footer_min_height;
+  /// The space between the body and the footer.
+  std::optional<Measure> footer_spacing;
 };
 
 } // namespace odr

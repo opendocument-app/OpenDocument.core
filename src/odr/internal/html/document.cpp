@@ -669,21 +669,67 @@ private:
   static void write_pages(HtmlWriter &out, const WritingState &state,
                           const TextRoot &element) {
     const PageLayout page_layout = element.page_layout();
+    // The master page of the box being written: the first, then each one's
+    // next. A box is not a page, so a header written once per box is the
+    // closest the boxes come.
+    MasterPage master_page = element.first_master_page();
+    Element footer;
 
     const auto begin_page = [&] {
+      const Element header = master_page.header();
+      footer = master_page.footer();
+      const PageLayout marginals = master_page.page_layout();
       out.write_element_begin(
           "div",
           HtmlElementOptions()
               .set_class("odr-page-outer")
               .set_style(translate_outer_flowing_page_style(page_layout)));
+      if (!header && !footer) {
+        out.write_element_begin(
+            "div", HtmlElementOptions()
+                       .set_class("odr-page-inner")
+                       .set_style(translate_inner_page_style(page_layout)));
+        return;
+      }
+      // A column, so the footer sits at the foot of the box however short
+      // the body.
       out.write_element_begin(
           "div", HtmlElementOptions()
                      .set_class("odr-page-inner")
-                     .set_style(translate_inner_page_style(page_layout)));
+                     .set_style(translate_inner_page_style(page_layout) +
+                                "display:flex;flex-direction:column;"));
+      if (header) {
+        out.write_element_begin(
+            "div", HtmlElementOptions()
+                       .set_class("odr-page-header")
+                       .set_style(translate_page_marginal_style(
+                           marginals.header_min_height, "margin-bottom",
+                           marginals.header_spacing)));
+        translate_children(header.children(), state);
+        out.write_element_end("div");
+      }
+      out.write_element_begin("div", HtmlElementOptions()
+                                         .set_class("odr-page-body")
+                                         .set_style("flex:1 0 auto;"));
     };
     const auto end_page = [&] {
+      if (footer) {
+        out.write_element_end("div");
+        const PageLayout marginals = master_page.page_layout();
+        out.write_element_begin(
+            "div", HtmlElementOptions()
+                       .set_class("odr-page-footer")
+                       .set_style(translate_page_marginal_style(
+                           marginals.footer_min_height, "margin-top",
+                           marginals.footer_spacing)));
+        translate_children(footer.children(), state);
+        out.write_element_end("div");
+      } else if (master_page.header()) {
+        out.write_element_end("div");
+      }
       out.write_element_end("div");
       out.write_element_end("div");
+      master_page = master_page.next_master_page();
     };
 
     begin_page();

@@ -281,6 +281,23 @@ html::translate_outer_flowing_page_style(const PageLayout &page_layout) {
   return result;
 }
 
+std::string
+html::translate_page_marginal_style(const std::optional<Measure> &min_height,
+                                    const std::string_view spacing_side,
+                                    const std::optional<Measure> &spacing) {
+  std::string result = "flex:none;";
+  if (min_height.has_value()) {
+    result.append("min-height:").append(css_length(*min_height)).append(";");
+  }
+  if (spacing.has_value()) {
+    result.append(spacing_side)
+        .append(":")
+        .append(css_length(*spacing))
+        .append(";");
+  }
+  return result;
+}
+
 std::string html::translate_inner_page_style(const PageLayout &page_layout) {
   std::string result;
   if (const std::optional<Quantity<double>> margin_right =

@@ -471,6 +471,16 @@ public:
 
   [[nodiscard]] virtual PageLayout
   master_page_page_layout(ElementIdentifier element_id) const = 0;
+  /// The header group of a text master page; null where it has none.
+  [[nodiscard]] virtual ElementIdentifier
+  master_page_header(ElementIdentifier element_id) const = 0;
+  /// The footer group of a text master page; null where it has none.
+  [[nodiscard]] virtual ElementIdentifier
+  master_page_footer(ElementIdentifier element_id) const = 0;
+  /// The master page the page after this one takes; null where it names
+  /// none, which keeps this one.
+  [[nodiscard]] virtual ElementIdentifier
+  master_page_next(ElementIdentifier element_id) const = 0;
 };
 
 class LineBreakAdapter {
