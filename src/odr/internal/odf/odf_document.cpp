@@ -1847,8 +1847,8 @@ public:
          value.type() != ValueType::date && value.type() != ValueType::time)) {
       return std::nullopt;
     }
-    if (m_registry->sheet_cell_element(element_id) == nullptr ||
-        states_text(get_node(element_id))) {
+    // a positional cell is one the file does not state
+    if (positional_id::holds(element_id) || states_text(get_node(element_id))) {
       return std::nullopt;
     }
     if (std::optional<std::string> shown =

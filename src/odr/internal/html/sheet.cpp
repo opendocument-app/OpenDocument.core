@@ -205,14 +205,9 @@ std::string shown_text(const Element &element) {
 
 /// The value a number cell shows where its file cached no text, as
 /// `SheetCell::value` spells it. Nothing for any cell with text.
-std::optional<std::string> uncached_text(const SheetCell &cell,
-                                         const ValueType type) {
-  if (type != ValueType::float_number && type != ValueType::date &&
-      type != ValueType::time) {
-    return std::nullopt;
-  }
-  const CellValue value = cell.value();
-  if (!value.has_text() || value.text().empty() || !shown_text(cell).empty()) {
+std::optional<std::string> uncached_text(const CellValue &value,
+                                         const std::string_view shown) {
+  if (!shown.empty() || !value.has_text() || value.text().empty()) {
     return std::nullopt;
   }
   return value.text();
@@ -221,7 +216,7 @@ std::optional<std::string> uncached_text(const SheetCell &cell,
 /// The number the editor opens a cell on and a sort orders it by, where the
 /// cell shows it formatted: a date and a time always.
 std::optional<std::string> formatted_value(const CellValue &value,
-                                           const SheetCell &cell) {
+                                           const std::string_view shown) {
   if (!value.has_number()) {
     return std::nullopt;
   }
@@ -232,7 +227,7 @@ std::optional<std::string> formatted_value(const CellValue &value,
     return std::nullopt;
   }
   std::string plain = fmt::format("{}", value.number());
-  if (shown_text(cell) == plain) {
+  if (shown == plain) {
     return std::nullopt;
   }
   return plain;
@@ -706,16 +701,21 @@ void write_row(const SheetRows &rows, RowCursor &at, const WritingState &state,
     const std::optional<FoldedCell> folded =
         fold_cell(cell, state, wraps, anchors_shapes, table_row_style.height);
 
+    const bool numeric = cell_value_type == ValueType::date ||
+                         cell_value_type == ValueType::time ||
+                         cell_value_type == ValueType::float_number;
+    // read once: a number's value is asked for its spelling and its text
+    const CellValue read_value =
+        state.config().editable || numeric ? cell.value() : CellValue();
     const CellValue cell_value =
-        state.config().editable ? cell.value() : CellValue();
+        state.config().editable ? read_value : CellValue();
+    const std::string shown =
+        state.config().editable || numeric ? shown_text(cell) : std::string();
     // a formatted cell's text need not state the number a sort needs
     const std::optional<std::string> value_spelling =
-        state.config().editable ? formatted_value(cell_value, cell)
-        : cell_value_type == ValueType::date ||
-                cell_value_type == ValueType::time ||
-                cell_value_type == ValueType::float_number
-            ? formatted_value(cell.value(), cell)
-            : std::nullopt;
+        state.config().editable ? formatted_value(cell_value, shown)
+        : numeric               ? formatted_value(read_value, shown)
+                                : std::nullopt;
     const std::optional<TableDimensions> array =
         state.config().editable ? cell.array_span() : std::nullopt;
     if (array.has_value()) {
@@ -820,7 +820,7 @@ void write_row(const SheetRows &rows, RowCursor &at, const WritingState &state,
     if (folded.has_value()) {
       state.out().out() << folded->text;
     } else if (const std::optional<std::string> uncached =
-                   uncached_text(cell, cell_value_type);
+                   numeric ? uncached_text(read_value, shown) : std::nullopt;
                uncached.has_value()) {
       state.out().out() << xml::escape_text(*uncached);
     } else {
