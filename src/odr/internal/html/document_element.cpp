@@ -96,7 +96,7 @@ void html::translate_element(const Element &element,
     translate_line_break(element, state);
     break;
   case ElementType::paragraph:
-    translate_paragraph(element, state);
+    translate_paragraph(element, state, element.as_paragraph().marker());
     break;
   case ElementType::span:
     translate_span(element, state);

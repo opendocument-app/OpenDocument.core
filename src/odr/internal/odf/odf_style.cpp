@@ -1140,6 +1140,13 @@ pugi::xml_node StyleRegistry::list_style_node(const std::string &name) const {
   return {};
 }
 
+pugi::xml_node StyleRegistry::outline_style_node() const {
+  // ODF allows one
+  return m_index_outline_style.empty()
+             ? pugi::xml_node()
+             : std::begin(m_index_outline_style)->second;
+}
+
 ElementIdentifier StyleRegistry::master_page(const std::string &name) const {
   if (const auto master_page_elements_it = m_master_page_elements.find(name);
       master_page_elements_it != std::end(m_master_page_elements)) {

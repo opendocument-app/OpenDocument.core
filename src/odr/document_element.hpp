@@ -491,6 +491,9 @@ public:
   /// `UnsupportedOperation`.
   void set_style(const ParagraphStyle &style) const;
   [[nodiscard]] TextStyle text_style() const;
+  /// A heading's number in a numbered outline, "1.2"; empty for any other
+  /// paragraph, also one in a list (see `ListItem::marker`).
+  [[nodiscard]] std::string marker() const;
 };
 
 /// Represents a span element in a document.

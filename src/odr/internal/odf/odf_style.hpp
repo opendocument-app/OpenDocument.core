@@ -86,6 +86,8 @@ public:
   [[nodiscard]] pugi::xml_node font_face_node(const std::string &name) const;
 
   [[nodiscard]] pugi::xml_node list_style_node(const std::string &name) const;
+  /// The document's `text:outline-style`, which numbers its headings.
+  [[nodiscard]] pugi::xml_node outline_style_node() const;
 
   [[nodiscard]] ElementIdentifier master_page(const std::string &name) const;
   [[nodiscard]] ElementIdentifier first_master_page() const;

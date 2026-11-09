@@ -7,6 +7,7 @@
 #include <odr/internal/odf/odf_style.hpp>
 
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -61,7 +62,8 @@ ListLevel read_level(const pugi::xml_node level_style,
 
   const std::string name = level_style.name();
 
-  if (name == "text:list-level-style-number") {
+  if (name == "text:list-level-style-number" ||
+      name == "text:outline-level-style") {
     result.format =
         parse_number_format(level_style.attribute("style:num-format").value());
     result.start = level_style.attribute("text:start-value").as_uint(1);
@@ -118,6 +120,12 @@ public:
       case ElementType::list_item:
         walk_list_item_(child_id, element);
         break;
+      case ElementType::paragraph:
+        if (m_open_lists.empty()) {
+          number_heading_(child_id, element);
+        }
+        walk(element.first_child_id);
+        break;
       default:
         walk(element.first_child_id);
         break;
@@ -130,6 +138,8 @@ private:
   const StyleRegistry *m_styles{nullptr};
 
   std::unordered_map<std::string, ListCounter> m_counters;
+  /// The headings' counters, which run through the whole document.
+  ListCounter m_outline;
   std::vector<std::string> m_open_lists;
 
   [[nodiscard]] ListLevel level_at_(const std::string &style_name,
@@ -164,6 +174,40 @@ private:
     m_open_lists.push_back(std::move(style_name));
     walk(element.first_child_id);
     m_open_lists.pop_back();
+  }
+
+  /// Numbers a heading after the outline style at its `text:outline-level`.
+  void number_heading_(const ElementIdentifier id,
+                       const ElementRegistry::Element &element) {
+    const pugi::xml_node node = element.node;
+    if (std::string_view(node.name()) != "text:h" ||
+        node.attribute("text:is-list-header").as_bool()) {
+      return;
+    }
+    const std::uint32_t outline_level =
+        node.attribute("text:outline-level").as_uint(1);
+    const pugi::xml_node outline_style = m_styles->outline_style_node();
+    if (outline_level == 0 || !outline_style) {
+      return;
+    }
+    const std::uint32_t level = outline_level - 1;
+
+    ListLevel list_level =
+        read_level(level_style_node(outline_style, level), level);
+    if (node.attribute("text:restart-numbering").as_bool()) {
+      list_level.start = node.attribute("text:start-value").as_uint(1);
+      m_outline.restart(level, 0);
+    }
+
+    ListMarker marker;
+    marker.text = m_outline.advance(level, list_level);
+    if (marker.text.empty()) {
+      return;
+    }
+    if (is_ordered(list_level.format)) {
+      marker.number = m_outline.number(level);
+    }
+    m_registry->set_list_marker(id, std::move(marker));
   }
 
   void walk_list_item_(const ElementIdentifier id,

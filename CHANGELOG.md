@@ -49,6 +49,9 @@ The release run heads these entries with the version and opens a fresh
   and many odg and ods do, is set in that family rather than the browser's
   default serif. `style:font-name` still outranks it, and PowerPoint's
   unresolved theme fonts such as `+mn-lt` are no family.
+- The headings of an odt are numbered after its `text:outline-style`, "1",
+  "1.1", "1.2.1", as Word and LibreOffice number chapters. The new
+  `Paragraph::marker` returns that number, empty for any other paragraph.
 
 ## v7.7.0 - 2026-10-31
 
