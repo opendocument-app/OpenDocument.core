@@ -1,6 +1,7 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
 #include <odr/file.hpp>
+#include <odr/html.hpp>
 #include <odr/odr.hpp>
 #include <odr/style.hpp>
 
@@ -13,6 +14,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -94,4 +96,21 @@ TEST(OdfStroke, the_stroke_kind_and_its_color_cascade_independently) {
   ASSERT_TRUE(styles.at(2).stroke_color.has_value());
   EXPECT_EQ(styles.at(2).stroke_color->alpha, 255);
   EXPECT_EQ(styles.at(2).stroke_color->rgb(), 0x808080u);
+}
+
+TEST(OdfStroke, stroke_none_with_no_colour_anywhere_draws_no_stroke) {
+  const std::string path =
+      write_odg("odf_stroke_none.odg",
+                R"(<style:style style:name="bare" style:family="graphic">)"
+                R"(<style:graphic-properties draw:stroke="none"/>)"
+                R"(</style:style>)",
+                rect("bare"));
+
+  std::ostringstream html;
+  html::translate(odr::open(path), HtmlConfig())
+      .list_views()
+      .at(0)
+      .write_html(html);
+  EXPECT_NE(html.str().find("stroke:none"), std::string::npos);
+  EXPECT_EQ(html.str().find("stroke:#"), std::string::npos);
 }
