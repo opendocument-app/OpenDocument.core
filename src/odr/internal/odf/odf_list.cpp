@@ -56,10 +56,12 @@ pugi::xml_node level_style_node(const pugi::xml_node list_style,
   return result;
 }
 
-ListLevel read_level(const pugi::xml_node level_style,
+/// Level @p level (counted from 0) of @p list_style, as LibreOffice labels it.
+ListLevel read_level(const pugi::xml_node list_style,
                      const std::uint32_t level) {
   ListLevel result;
 
+  const pugi::xml_node level_style = level_style_node(list_style, level);
   const std::string name = level_style.name();
 
   if (name == "text:list-level-style-number" ||
@@ -68,19 +70,26 @@ ListLevel read_level(const pugi::xml_node level_style,
         parse_number_format(level_style.attribute("style:num-format").value());
     result.start = level_style.attribute("text:start-value").as_uint(1);
 
-    // ODF spells the label out as prefix, the numbers of the last
-    // `text:display-levels` levels joined by a period, then suffix.
-    const auto display_levels =
-        level_style.attribute("text:display-levels").as_uint(1);
-    const std::uint32_t first =
-        display_levels > level ? 0 : level - display_levels + 1;
-
     result.label = level_style.attribute("style:num-prefix").value();
-    for (std::uint32_t i = first; i <= level; ++i) {
-      if (i > first) {
-        result.label += ".";
+    if (result.format != ListNumberFormat::none) {
+      const auto display_levels =
+          level_style.attribute("text:display-levels").as_uint(1);
+      const std::uint32_t first =
+          display_levels > level ? 0 : level - display_levels + 1;
+      bool joined = false;
+      for (std::uint32_t i = first; i <= level; ++i) {
+        if (i < level &&
+            parse_number_format(level_style_node(list_style, i)
+                                    .attribute("style:num-format")
+                                    .value()) == ListNumberFormat::none) {
+          continue;
+        }
+        if (joined) {
+          result.label += ".";
+        }
+        result.label += "%" + std::to_string(i + 1);
+        joined = true;
       }
-      result.label += "%" + std::to_string(i + 1);
     }
     result.label += level_style.attribute("style:num-suffix").value();
 
@@ -210,10 +219,30 @@ private:
     m_registry->set_list_marker(id, std::move(marker));
   }
 
+  /// Whether a list item has a paragraph of its own to carry a number. Word
+  /// writes an item of a deeper level as an item of each level above that
+  /// holds nothing but the nested list. LibreOffice numbers paragraphs, so
+  /// such an item is neither labelled nor counted.
+  static bool has_own_paragraph(const pugi::xml_node list_item) {
+    for (const pugi::xml_node child : list_item.children()) {
+      if (child.type() != pugi::node_element) {
+        continue;
+      }
+      const std::string_view name = child.name();
+      // the label a producer cached for us
+      if (name == "text:number") {
+        continue;
+      }
+      return name == "text:p" || name == "text:h";
+    }
+    return false;
+  }
+
   void walk_list_item_(const ElementIdentifier id,
                        const ElementRegistry::Element &element) {
     if (!m_open_lists.empty() &&
-        std::string(element.node.name()) != "text:list-header") {
+        std::string(element.node.name()) != "text:list-header" &&
+        has_own_paragraph(element.node)) {
       const auto level = static_cast<std::uint32_t>(m_open_lists.size() - 1);
       const std::string &style_name = m_open_lists.back();
 

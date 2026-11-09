@@ -52,6 +52,9 @@ The release run heads these entries with the version and opens a fresh
 - The headings of an odt are numbered after its `text:outline-style`, "1",
   "1.1", "1.2.1", as Word and LibreOffice number chapters. The new
   `Paragraph::marker` returns that number, empty for any other paragraph.
+- A list item of an odt that holds no paragraph, only a nested list, is no
+  longer counted. Word writes each item of level 2 that way, so its items
+  read "2.1.", "3.1." where Word and LibreOffice show "1.1.", "1.2.".
 
 ## v7.7.0 - 2026-10-31
 

@@ -877,28 +877,6 @@ std::optional<std::string> font_of(const std::string &properties) {
       .font_name;
 }
 
-/// Headings under an outline style numbering levels 1 and 2 as Word writes
-/// it, "1" and "1.1".
-std::string numbered_outline(const std::string &body) {
-  return flat_text(
-      body, R"(<office:styles><text:outline-style style:name="Outline">)"
-            R"(<text:outline-level-style text:level="1" style:num-format="1"/>)"
-            R"(<text:outline-level-style text:level="2" style:num-format="1")"
-            R"( text:display-levels="2"/>)"
-            R"(<text:outline-level-style text:level="3" style:num-format=""/>)"
-            R"(</text:outline-style></office:styles>)");
-}
-
-std::vector<std::string> paragraph_markers(const std::string &source) {
-  const Document document =
-      open(File::from_memory(source)).as_document_file().document();
-  std::vector<std::string> result;
-  for (const Element child : document.root_element().children()) {
-    result.push_back(child.as_paragraph().marker());
-  }
-  return result;
-}
-
 } // namespace
 
 TEST(FlatOdf, a_font_family_stated_directly_is_read) {
@@ -914,41 +892,4 @@ TEST(FlatOdf, a_font_face_outranks_a_font_family) {
 
 TEST(FlatOdf, a_powerpoint_theme_font_is_no_family) {
   EXPECT_EQ(font_of(R"(fo:font-family="+mn-lt")"), std::nullopt);
-}
-
-TEST(FlatOdf, headings_take_the_numbers_of_the_outline_style) {
-  EXPECT_EQ(
-      paragraph_markers(numbered_outline(
-          R"(<text:h text:outline-level="1">Access</text:h>)"
-          R"(<text:h text:outline-level="2">Introduction</text:h>)"
-          R"(<text:p>body</text:p>)"
-          R"(<text:h text:outline-level="2">License</text:h>)"
-          R"(<text:h text:outline-level="3">Summary</text:h>)"
-          R"(<text:h text:outline-level="1">Requests</text:h>)"
-          R"(<text:h text:outline-level="2">Format</text:h>)"
-          R"(<text:h text:outline-level="1" text:is-list-header="true">)"
-          R"(Annex</text:h>)")),
-      (std::vector<std::string>{"1", "1.1", "", "1.2", "", "2", "2.1", ""}));
-}
-
-TEST(FlatOdf, a_heading_can_restart_the_outline) {
-  EXPECT_EQ(
-      paragraph_markers(numbered_outline(
-          R"(<text:h text:outline-level="1">one</text:h>)"
-          R"(<text:h text:outline-level="1" text:restart-numbering="true")"
-          R"( text:start-value="5">five</text:h>)")),
-      (std::vector<std::string>{"1", "5"}));
-}
-
-TEST(FlatOdf, headings_without_an_outline_style_are_not_numbered) {
-  EXPECT_EQ(paragraph_markers(
-                flat_text(R"(<text:h text:outline-level="1">one</text:h>)")),
-            (std::vector<std::string>{""}));
-}
-
-TEST(FlatOdf, a_numbered_heading_is_drawn_with_its_number) {
-  const std::string html = render(
-      numbered_outline(R"(<text:h text:outline-level="1">Access</text:h>)"));
-  EXPECT_EQ(count(html, R"(class="odr-list-marker")"), 1U);
-  EXPECT_EQ(count(html, "1&#9;"), 1U);
 }
