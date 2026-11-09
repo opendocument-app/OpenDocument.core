@@ -31,6 +31,10 @@ The release run heads these entries with the version and opens a fresh
 - A doc, xls or ppt opens when its storage directory gives a stream a child or
   links to an unused slot. A link past the directory throws `CfbFileCorrupted`,
   not a `std::invalid_argument` with an empty message.
+- A slide no longer shows its master page's placeholders: the prompts of
+  PowerPoint and Impress layouts such as "Click to edit Master title style"
+  drew over the slide's own title and text. Like LibreOffice, a master page
+  object with a `presentation:class` is not drawn.
 
 ## v7.7.0 - 2026-10-31
 
