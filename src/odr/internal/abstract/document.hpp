@@ -508,8 +508,8 @@ public:
   paragraph_text_style(ElementIdentifier element_id) const = 0;
   /// The master page whose page this paragraph opens; null where it names
   /// none.
-  [[nodiscard]] virtual ElementIdentifier
-  paragraph_master_page([[maybe_unused]] ElementIdentifier element_id) const {
+  [[nodiscard]] virtual ElementIdentifier paragraph_master_page(
+      [[maybe_unused]] const ElementIdentifier element_id) const {
     return null_element_id;
   }
   /// Writes `text_align` of @p style, which is set, on the paragraph.
