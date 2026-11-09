@@ -28,6 +28,10 @@ The release run heads these entries with the version and opens a fresh
 
 ### Fixes
 
+- An odt whose page layout states no paper size, as LibreOffice's letter
+  templates do, is laid out on A4 (turned for a landscape layout). Its page
+  had no width, so with `text_document_margin` no line wrapped. A sheet still
+  takes none and prints to the printer's paper.
 - A doc, xls or ppt opens when its storage directory gives a stream a child or
   links to an unused slot. A link past the directory throws `CfbFileCorrupted`,
   not a `std::invalid_argument` with an empty message.
