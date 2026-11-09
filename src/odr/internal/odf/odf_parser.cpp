@@ -22,10 +22,16 @@ using ChildrenParser =
 std::tuple<ElementIdentifier, pugi::xml_node>
 parse_any_element_tree(ElementRegistry &registry, pugi::xml_node node);
 
-void parse_any_element_children(ElementRegistry &registry,
-                                const ElementIdentifier parent_id,
-                                const pugi::xml_node node) {
+/// Parses the children of @p node that @p keep accepts.
+template <typename Keep>
+void parse_element_children(ElementRegistry &registry,
+                            const ElementIdentifier parent_id,
+                            const pugi::xml_node node, const Keep &keep) {
   for (pugi::xml_node child_node = node.first_child(); child_node;) {
+    if (!keep(child_node)) {
+      child_node = child_node.next_sibling();
+      continue;
+    }
     if (auto [child_id, next_sibling] =
             parse_any_element_tree(registry, child_node);
         child_id == null_element_id) {
@@ -35,6 +41,13 @@ void parse_any_element_children(ElementRegistry &registry,
       child_node = next_sibling;
     }
   }
+}
+
+void parse_any_element_children(ElementRegistry &registry,
+                                const ElementIdentifier parent_id,
+                                const pugi::xml_node node) {
+  parse_element_children(registry, parent_id, node,
+                         [](const pugi::xml_node) { return true; });
 }
 
 std::tuple<ElementIdentifier, pugi::xml_node>
@@ -319,29 +332,14 @@ void parse_presentation_children(ElementRegistry &registry,
   }
 }
 
-/// A master page's objects with a `presentation:class` are the placeholders
-/// the slides fill in: their text is the prompt ("Click to edit the title
-/// text format") and their frames are the layout. LibreOffice draws none of
-/// them on a slide. The footer, date and slide number ones show only where a
-/// slide's `presentation:display-*` asks for them, with text from the slide,
-/// which is not read here either.
+/// Leaves out the placeholders (`presentation:class`) the slides fill in.
 void parse_master_page_children(ElementRegistry &registry,
                                 const ElementIdentifier master_page_id,
                                 const pugi::xml_node node) {
-  for (pugi::xml_node child_node = node.first_child(); child_node;) {
-    if (child_node.attribute("presentation:class")) {
-      child_node = child_node.next_sibling();
-      continue;
-    }
-    if (auto [child_id, next_sibling] =
-            parse_any_element_tree(registry, child_node);
-        child_id == null_element_id) {
-      child_node = child_node.next_sibling();
-    } else {
-      registry.append_child(master_page_id, child_id);
-      child_node = next_sibling;
-    }
-  }
+  parse_element_children(registry, master_page_id, node,
+                         [](const pugi::xml_node child) {
+                           return !child.attribute("presentation:class");
+                         });
 }
 
 void parse_spreadsheet_children(ElementRegistry &registry,

@@ -32,6 +32,12 @@ children. Many tags collapse onto a generic type: `text:h` is a paragraph,
 `text:section`, `text:table-of-content` and date fields are a `group`,
 `draw:g` is a frame. A container gets its own children parser
 (`parse_presentation_children` walks only `draw:page`).
+`parse_master_page_children` leaves out the objects with a
+`presentation:class`: they are the placeholders the slides fill in, their text
+the prompt ("Click to edit the title text format"). LibreOffice draws title,
+outline and the like on no slide. It draws the footer, date and slide number
+ones where a slide's `presentation:display-*` asks for them, with text the
+slide declares, which is not read, so they are left out as well.
 
 **Every `draw:*` shape is a `frame`.** `create_shape_element` records the kind
 in `m_shape_types`, and `frame_shape_type` reads it back. `draw:rect` and
