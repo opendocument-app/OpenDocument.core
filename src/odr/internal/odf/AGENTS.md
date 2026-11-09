@@ -98,6 +98,8 @@ independently, and LibreOffice writes a `draw:fill-color` with no `draw:fill`
 beside it. So the fill state rides in the resolved colour's alpha. `draw:fill`
 sets it, `draw:fill-color` sets the rgb and keeps it, and `draw:fill` defaults
 to none, so a colour with no fill anywhere in the chain paints nothing.
+`draw:stroke` and `svg:stroke-color` ride the same way in the stroke colour's
+alpha, but `draw:stroke` defaults to solid.
 
 **A flat document is the same `Document`, minus the package.** Its
 `office:document` root carries what `content.xml` and `styles.xml` carry
