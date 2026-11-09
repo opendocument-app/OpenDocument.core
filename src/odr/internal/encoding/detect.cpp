@@ -2,7 +2,10 @@
 
 #include <odr/internal/encoding/text_encoding_table.hpp>
 #include <odr/internal/util/stream_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 
+#include <algorithm>
+#include <bit>
 #include <istream>
 #include <string_view>
 
@@ -39,48 +42,34 @@ TextEncoding encoding_by_bom(const std::string_view probe) {
   return TextEncoding::unknown;
 }
 
-/// Whether @p probe holds non-ascii bytes and all of them form well formed
-/// utf-8 sequences. A sequence the probe's end cuts off counts as well formed,
-/// since the probe is a prefix of the file.
-bool is_utf8_beyond_ascii(const std::string_view probe) {
-  bool beyond_ascii = false;
-  for (std::size_t i = 0; i < probe.size();) {
-    const auto lead = static_cast<unsigned char>(probe[i]);
-    if (lead < 0x80) {
-      ++i;
-      continue;
-    }
-    beyond_ascii = true;
-    std::size_t length = 0;
-    // the bounds of the second byte rule out overlong forms, surrogates and
-    // code points past U+10FFFF
-    unsigned char low = 0x80;
-    unsigned char high = 0xbf;
-    if (lead >= 0xc2 && lead <= 0xdf) {
-      length = 2;
-    } else if (lead >= 0xe0 && lead <= 0xef) {
-      length = 3;
-      low = lead == 0xe0 ? 0xa0 : 0x80;
-      high = lead == 0xed ? 0x9f : 0xbf;
-    } else if (lead >= 0xf0 && lead <= 0xf4) {
-      length = 4;
-      low = lead == 0xf0 ? 0x90 : 0x80;
-      high = lead == 0xf4 ? 0x8f : 0xbf;
-    } else {
-      return false;
-    }
-    for (std::size_t k = 1; k < length; ++k) {
-      if (i + k >= probe.size()) {
-        return true;
+/// Whether @p probe holds a byte beyond ascii and is well formed utf-8. A
+/// probe that is @p cut_off from a longer file may end inside a sequence,
+/// which is left out of the test.
+bool is_utf8_beyond_ascii(std::string_view probe, const bool cut_off) {
+  if (cut_off) {
+    // a sequence is at most four bytes, so its lead is among the last four
+    const std::size_t tail = std::min<std::size_t>(4, probe.size());
+    for (std::size_t back = 1; back <= tail; ++back) {
+      const auto byte = static_cast<unsigned char>(probe[probe.size() - back]);
+      if (byte < 0x80) {
+        break;
       }
-      const auto next = static_cast<unsigned char>(probe[i + k]);
-      if (next < (k == 1 ? low : 0x80) || next > (k == 1 ? high : 0xbf)) {
-        return false;
+      if (byte >= 0xc0) {
+        // the length the lead states in its leading ones, at most four
+        const auto length =
+            static_cast<std::size_t>(std::min(std::countl_one(byte), 4));
+        if (length > back) {
+          probe.remove_suffix(back);
+        }
+        break;
       }
     }
-    i += length;
   }
-  return beyond_ascii;
+  return std::ranges::any_of(probe,
+                             [](const char c) {
+                               return static_cast<unsigned char>(c) >= 0x80;
+                             }) &&
+         util::string::is_valid_utf8(probe);
 }
 
 /// Whether NUL bytes are ordinary characters in @p encoding.
@@ -97,16 +86,16 @@ std::string encoding::read_probe(std::istream &in,
   return util::stream::read(in, max_bytes);
 }
 
-TextEncoding encoding::detect(const std::string_view probe) {
+TextEncoding encoding::detect(const std::string_view probe,
+                              const bool cut_off) {
   if (const TextEncoding by_bom = encoding_by_bom(probe);
       by_bom != TextEncoding::unknown) {
     return by_bom;
   }
-  // uchardet weighs a few non-ascii characters among much ascii by
-  // single-byte statistics and names such utf-8 MAC-CENTRALEUROPE, IBM852 or
-  // ISO-8859-11; text in a legacy single-byte encoding is well formed utf-8
-  // only by rare accident
-  if (is_utf8_beyond_ascii(probe)) {
+  // uchardet weighs a few such bytes among much ascii by single-byte
+  // statistics; text in a single-byte encoding is well formed utf-8 only by
+  // rare accident
+  if (is_utf8_beyond_ascii(probe, cut_off)) {
     return TextEncoding::utf8;
   }
 

@@ -16,7 +16,8 @@ TextFile::TextFile(std::shared_ptr<abstract::File> file)
     : m_file{std::move(file)} {
   const std::unique_ptr<std::istream> in = m_file->stream();
   const std::string probe = encoding::read_probe(*in);
-  m_encoding = encoding::detect(probe);
+  m_encoding =
+      encoding::detect(probe, probe.size() == encoding::default_probe_size);
   // text is the fallback, so it is the only place that can call a file
   // unreadable
   if (!encoding::is_text(probe, m_encoding)) {
