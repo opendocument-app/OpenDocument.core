@@ -838,3 +838,43 @@ TEST(FlatOpenDocumentFile, a_percentage_margin_is_resolved_before_the_css) {
   EXPECT_EQ(0U, count(html, "margin-left:100%"));
   EXPECT_EQ(1U, count(html, "margin-left:2cm"));
 }
+
+namespace {
+
+/// The font a paragraph whose style states @p properties is set in.
+std::optional<std::string> font_of(const std::string &properties) {
+  const Document document =
+      open(File::from_memory(flat_text(
+               R"(<text:p text:style-name="P1">one</text:p>)",
+               R"(<office:font-face-decls><style:font-face style:name="Face")"
+               R"( svg:font-family="'Liberation Serif'"/>)"
+               R"(</office:font-face-decls><office:automatic-styles>)"
+               R"(<style:style style:name="P1" style:family="paragraph">)"
+               R"(<style:text-properties )" +
+                   properties +
+                   R"(/></style:style></office:automatic-styles>)")))
+          .as_document_file()
+          .document();
+  return document.root_element()
+      .first_child()
+      .as_paragraph()
+      .text_style()
+      .font_name;
+}
+
+} // namespace
+
+TEST(FlatOdf, a_font_family_stated_directly_is_read) {
+  EXPECT_EQ(font_of(R"(fo:font-family="Arial")"), "Arial");
+  EXPECT_EQ(font_of(R"(fo:font-family="'Times New Roman'")"),
+            "'Times New Roman'");
+}
+
+TEST(FlatOdf, a_font_face_outranks_a_font_family) {
+  EXPECT_EQ(font_of(R"(style:font-name="Face" fo:font-family="Arial")"),
+            "'Liberation Serif'");
+}
+
+TEST(FlatOdf, a_powerpoint_theme_font_is_no_family) {
+  EXPECT_EQ(font_of(R"(fo:font-family="+mn-lt")"), std::nullopt);
+}

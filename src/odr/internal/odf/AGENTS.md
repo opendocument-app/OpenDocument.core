@@ -84,8 +84,12 @@ every entry: each one resolves its `style:parent-style-name` (else the
 `style:family` default) first, copies that resolved base and overlays its own
 properties. A second cascade runs at query time: `get_intermediate_style`
 walks the element parent chain and overrides partial styles down to the
-target. Font names go through `style:font-face` to `svg:font-family`. Master
-pages are parsed into the element tree and into the style index.
+target. Font names go through `style:font-face` to `svg:font-family`. A text
+style without `style:font-name` names its family in `fo:font-family`, as
+PowerPoint's odp and many odg and ods do. PowerPoint writes the fonts of its
+theme there unresolved (`+mn-lt`, `+mj-ea`); LibreOffice knows no such family
+and falls back to its default, so they name none here either. Master pages are
+parsed into the element tree and into the style index.
 
 **Percent units.** A percent font size, and the relative size of
 `style:text-position`, multiply the inherited size. A percent line height
@@ -229,6 +233,6 @@ Larger tables fall back to the embedded replacement image.
 6. **Formula evaluation is partial.** Recalculation reports unsupported,
    repeated and array formulas as unevaluated; their stale results are dropped.
 7. **A font name keeps its quotes.** `TextStyle::font_name` comes from
-   `svg:font-family`, which is a css value, so `Liberation Serif` arrives as
-   `'Liberation Serif'`. The renderer copes, but the public value shows the
-   quotes.
+   `svg:font-family` or `fo:font-family`, which are css values, so
+   `Liberation Serif` arrives as `'Liberation Serif'`. The renderer copes,
+   but the public value shows the quotes.
