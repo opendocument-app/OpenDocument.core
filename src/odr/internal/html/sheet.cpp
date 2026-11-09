@@ -203,11 +203,29 @@ std::string shown_text(const Element &element) {
   return result;
 }
 
-/// The value a number cell shows where its file cached no text, as
-/// `SheetCell::value` spells it. Nothing for any cell with text.
+/// The value a cell shows where its file cached no text, as `SheetCell::value`
+/// spells it. Nothing where @p cell shows text outside the frames in it.
 std::optional<std::string> uncached_text(const CellValue &value,
+                                         const SheetCell &cell,
                                          const std::string_view shown) {
-  if (!shown.empty() || !value.has_text() || value.text().empty()) {
+  if (!value.has_text() || value.text().empty()) {
+    return std::nullopt;
+  }
+  if (shown.empty()) {
+    return value.text();
+  }
+  // the text shown may be that of a frame anchored in the cell; only then is
+  // it read again
+  const auto is_frame = [](const Element &child) {
+    return child.type() == ElementType::frame;
+  };
+  if (std::ranges::none_of(cell.children(), is_frame) ||
+      std::ranges::any_of(cell.children(), [&](const Element &child) {
+        if (child.type() == ElementType::text) {
+          return !child.as_text().content().empty();
+        }
+        return !is_frame(child) && !shown_text(child).empty();
+      })) {
     return std::nullopt;
   }
   return value.text();
@@ -704,18 +722,14 @@ void write_row(const SheetRows &rows, RowCursor &at, const WritingState &state,
     const bool numeric = cell_value_type == ValueType::date ||
                          cell_value_type == ValueType::time ||
                          cell_value_type == ValueType::float_number;
-    // read once: a number's value is asked for its spelling and its text
-    const CellValue read_value =
-        state.config().editable || numeric ? cell.value() : CellValue();
+    // the types a file may state a value of without its text
+    const bool valued = numeric || cell_value_type == ValueType::boolean;
     const CellValue cell_value =
-        state.config().editable ? read_value : CellValue();
-    const std::string shown =
-        state.config().editable || numeric ? shown_text(cell) : std::string();
+        state.config().editable || valued ? cell.value() : CellValue();
+    const std::string shown = valued ? shown_text(cell) : std::string();
     // a formatted cell's text need not state the number a sort needs
     const std::optional<std::string> value_spelling =
-        state.config().editable ? formatted_value(cell_value, shown)
-        : numeric               ? formatted_value(read_value, shown)
-                                : std::nullopt;
+        formatted_value(cell_value, shown);
     const std::optional<TableDimensions> array =
         state.config().editable ? cell.array_span() : std::nullopt;
     if (array.has_value()) {
@@ -820,9 +834,16 @@ void write_row(const SheetRows &rows, RowCursor &at, const WritingState &state,
     if (folded.has_value()) {
       state.out().out() << folded->text;
     } else if (const std::optional<std::string> uncached =
-                   numeric ? uncached_text(read_value, shown) : std::nullopt;
+                   valued ? uncached_text(cell_value, cell, shown)
+                          : std::nullopt;
                uncached.has_value()) {
       state.out().out() << xml::escape_text(*uncached);
+      // in place of the empty paragraphs; a frame anchored in the cell stays
+      for (const Element child : cell.children()) {
+        if (child.type() != ElementType::paragraph) {
+          translate_element(child, state);
+        }
+      }
     } else {
       translate_cell_children(cell, state);
     }
