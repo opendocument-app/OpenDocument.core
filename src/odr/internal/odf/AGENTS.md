@@ -29,13 +29,19 @@ StoredId>` with the payload tables `m_texts`, `m_tables`, `m_sheets`,
 **Parsing is a name-keyed dispatch table.** `odf_parser.cpp` maps an XML tag to
 a `TreeParser`. An unknown tag is skipped, and the recursion continues into its
 children. Many tags collapse onto a generic type: `text:h` is a paragraph,
-`text:section`, `text:table-of-content` and date fields are a `group`,
-`draw:g` is a frame. A container gets its own children parser
+`text:section`, `text:table-of-content` and the fields (`is_text_field`) are a
+`group`, `draw:g` is a frame. A container gets its own children parser
 (`parse_presentation_children` walks only `draw:page`).
 `parse_master_page_children` leaves out the placeholders
 (`presentation:class`), as LibreOffice draws none of them on a slide. The
 footer, date and slide number ones need `presentation:display-*`, which is not
 read.
+
+**A field shows the text its producer saved**, read-only, as LibreOffice
+shows it until it updates the field. A field that shows nothing keeps an
+element without children, so an edit moves it with its paragraph: one with
+`text:display="none"`, hidden text saved as hidden, a page field in a header or
+footer, and Impress's uncomputed `<number>`. A ruby shows its base text.
 
 **Every `draw:*` shape is a `frame`.** `create_shape_element` records the kind
 in `m_shape_types`, and `frame_shape_type` reads it back. `draw:rect` and

@@ -662,6 +662,11 @@ public:
     if (element.type == ElementType::sheet_cell) {
       return !m_registry->sheet_cell_element_at(element_id).is_repeated;
     }
+    // a field's text is computed, and LibreOffice computes it again
+    if (element.type == ElementType::group &&
+        is_text_field(element.node.name())) {
+      return false;
+    }
     if (element.parent_id != null_element_id) {
       return element_is_editable(element.parent_id);
     }

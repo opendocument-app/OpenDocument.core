@@ -108,6 +108,16 @@ The release run heads these entries with the version and opens a fresh
   ▪), not as a box or a letter. In a docx, the bullet's font now tells the
   fonts apart, so Symbol's dot is a dot on every level. Any other private-use
   bullet, such as one of OpenSymbol, takes the level's default.
+- The fields of an odt, odp or odg show the text their producer saved,
+  read-only; only date and time did, and those were editable like the text
+  around them, as the dates of `Din_5008_business_letter.ott` and
+  `XYZ-Rechnung.odt`. A field displayed as `none`, hidden text saved as
+  hidden, and a page number, page variable or page continuation in a header
+  or footer stay empty. So does a page number an odp or odg saved as its
+  placeholder, such as `<number>`. A field that shows nothing moves with its
+  paragraph when an edit merges or splits it, and a paragraph holding only
+  such a field keeps the height of an empty line.
+- An odt's ruby shows its base text; it showed nothing.
 
 ## v7.7.0 - 2026-10-31
 

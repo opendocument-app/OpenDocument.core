@@ -153,6 +153,7 @@ bool html::has_content(const ElementRange &children) {
       break;
     case ElementType::span:
     case ElementType::link:
+    case ElementType::group:
       if (has_content(child.children())) {
         return true;
       }

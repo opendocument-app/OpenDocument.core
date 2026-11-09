@@ -6,6 +6,7 @@
 
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <pugixml.hpp>
 
@@ -342,6 +343,66 @@ void parse_master_page_children(ElementRegistry &registry,
                          });
 }
 
+/// Whether @p name is a master page's header or footer, of any page.
+bool is_page_marginal(const std::string_view name) {
+  return name == "style:header" || name == "style:footer" ||
+         name == "style:header-left" || name == "style:footer-left" ||
+         name == "style:header-first" || name == "style:footer-first" ||
+         name == "loext:header-first" || name == "loext:footer-first";
+}
+
+/// Whether @p name is a slide, a drawing page or a master page.
+bool is_drawing_page(const std::string_view name) {
+  return name == "draw:page" || name == "style:master-page";
+}
+
+/// Whether an ancestor of @p node has a name @p is_named accepts.
+bool has_ancestor(const pugi::xml_node node,
+                  bool (*const is_named)(std::string_view)) {
+  for (pugi::xml_node parent = node.parent(); parent;
+       parent = parent.parent()) {
+    if (is_named(parent.name())) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/// Whether @p node shows the page it is on where there is no one page: in a
+/// header or footer, or as Impress's uncomputed `<number>`.
+bool has_no_page_to_show(const pugi::xml_node node) {
+  const std::string_view name = node.name();
+  if (name != "text:page-number" && name != "text:page-variable-get" &&
+      name != "text:page-continuation") {
+    return false;
+  }
+  const std::string_view text = node.child_value();
+  return has_ancestor(node, is_page_marginal) ||
+         (name == "text:page-number" && text.size() >= 2 &&
+          text.front() == '<' && text.back() == '>' &&
+          has_ancestor(node, is_drawing_page));
+}
+
+/// Whether @p node is hidden text its producer saved as hidden.
+bool is_hidden_text(const pugi::xml_node node) {
+  return std::string_view(node.name()) == "text:hidden-text" &&
+         std::string_view(node.attribute("text:is-hidden").value()) == "true";
+}
+
+/// A field as the text its producer saved; one that shows nothing keeps an
+/// element without children, so an edit moves it with its paragraph.
+std::tuple<ElementIdentifier, pugi::xml_node>
+parse_field(ElementRegistry &registry, const pugi::xml_node node) {
+  if (std::string_view(node.attribute("text:display").value()) == "none" ||
+      has_no_page_to_show(node) || is_hidden_text(node)) {
+    return parse_element_tree(
+        registry, ElementType::group, node,
+        [](ElementRegistry &, ElementIdentifier, pugi::xml_node) {});
+  }
+  return parse_element_tree(registry, ElementType::group, node,
+                            parse_any_element_children);
+}
+
 void parse_spreadsheet_children(ElementRegistry &registry,
                                 const ElementIdentifier root_id,
                                 const pugi::xml_node node) {
@@ -410,8 +471,9 @@ parse_any_element_tree(ElementRegistry &registry, const pugi::xml_node node) {
       // No `text:soft-page-break`: [OpenDocument] 5.1.1 records the
       // producer's own layout there, not an authored break, which is
       // `fo:break-before` on the paragraph style.
-      {"text:date", create_default_tree_parser(ElementType::group)},
-      {"text:time", create_default_tree_parser(ElementType::group)},
+      // a ruby's annotation is not drawn, its base text is
+      {"text:ruby", create_default_tree_parser(ElementType::group)},
+      {"text:ruby-base", create_default_tree_parser(ElementType::group)},
       {"text:section", create_default_tree_parser(ElementType::group)},
       {"style:header", create_default_tree_parser(ElementType::group)},
       {"style:footer", create_default_tree_parser(ElementType::group)},
@@ -420,8 +482,6 @@ parse_any_element_tree(ElementRegistry &registry, const pugi::xml_node node) {
       {"style:footer-first", create_default_tree_parser(ElementType::group)},
       {"loext:header-first", create_default_tree_parser(ElementType::group)},
       {"loext:footer-first", create_default_tree_parser(ElementType::group)},
-      //{"text:page-number", create_tree_parser(ElementType::group)},
-      //{"text:page-continuation", create_tree_parser(ElementType::group)},
       {"table:table", parse_table},
       {"table:table-column",
        create_default_tree_parser(ElementType::table_column)},
@@ -461,6 +521,9 @@ parse_any_element_tree(ElementRegistry &registry, const pugi::xml_node node) {
       constructor_it != std::end(parser_table)) {
     return constructor_it->second(registry, node);
   }
+  if (is_text_field(node.name())) {
+    return parse_field(registry, node);
+  }
 
   return {null_element_id, pugi::xml_node()};
 }
@@ -475,6 +538,86 @@ ElementIdentifier odf::parse_tree(ElementRegistry &registry,
                                   const pugi::xml_node node) {
   auto [root, _] = parse_any_element_tree(registry, node);
   return root;
+}
+
+bool odf::is_text_field(const std::string_view name) {
+  // [OpenDocument] 7, with the marks that show text of their own
+  static const std::unordered_set<std::string_view> fields{
+      "text:author-initials",
+      "text:author-name",
+      "text:bibliography-mark",
+      "text:bookmark-ref",
+      "text:chapter",
+      "text:character-count",
+      "text:conditional-text",
+      "text:creation-date",
+      "text:creation-time",
+      "text:creator",
+      "text:database-display",
+      "text:database-name",
+      "text:database-row-number",
+      "text:date",
+      "text:dde-connection",
+      "text:description",
+      "text:drop-down",
+      "text:editing-cycles",
+      "text:editing-duration",
+      "text:execute-macro",
+      "text:expression",
+      "text:file-name",
+      "text:hidden-text",
+      "text:image-count",
+      "text:initial-creator",
+      "text:keywords",
+      "text:meta-field",
+      "text:modification-date",
+      "text:modification-time",
+      "text:note-ref",
+      "text:object-count",
+      "text:page-continuation",
+      "text:page-count",
+      "text:page-number",
+      "text:page-variable-get",
+      "text:paragraph-count",
+      "text:placeholder",
+      "text:print-date",
+      "text:print-time",
+      "text:printed-by",
+      "text:reference-ref",
+      "text:sender-city",
+      "text:sender-company",
+      "text:sender-country",
+      "text:sender-email",
+      "text:sender-fax",
+      "text:sender-firstname",
+      "text:sender-initials",
+      "text:sender-lastname",
+      "text:sender-phone-private",
+      "text:sender-phone-work",
+      "text:sender-position",
+      "text:sender-postal-code",
+      "text:sender-state-or-province",
+      "text:sender-street",
+      "text:sender-title",
+      "text:sequence",
+      "text:sequence-ref",
+      "text:sheet-name",
+      "text:subject",
+      "text:table-count",
+      "text:table-formula",
+      "text:template-name",
+      "text:text-input",
+      "text:time",
+      "text:title",
+      "text:user-defined",
+      "text:user-field-get",
+      "text:user-field-input",
+      "text:variable-get",
+      "text:variable-input",
+      "text:variable-set",
+      "text:word-count",
+  };
+  return fields.contains(name);
 }
 
 void odf::reindex_sheet(ElementRegistry &registry,
