@@ -563,19 +563,20 @@ public:
         master_page_id != null_element_id) {
       return with_default_paper(master_page_page_layout(master_page_id));
     }
+    // no master page at all: the text flows on no paper, and prints to the
+    // printer's
     return {};
   }
 
-  /// A layout stating no size takes the application's paper; LibreOffice the
-  /// locale's. A4 here, so a text page has a width to set its lines in and a
-  /// drawing page a box to hold its shapes. A sheet keeps none, and prints to
-  /// the printer's paper.
+  /// A layout stating no size takes the application's paper, which
+  /// LibreOffice takes from the locale (Letter in the US). With no locale to
+  /// ask, A4 portrait, which LibreOffice keeps for a landscape layout too; so
+  /// a text page has a width to set its lines in and a drawing page a box to
+  /// hold its shapes. A sheet keeps none, and prints to the printer's paper.
   static PageLayout with_default_paper(PageLayout layout) {
     if (!layout.width.has_value() && !layout.height.has_value()) {
-      const bool landscape =
-          layout.print_orientation == PrintOrientation::landscape;
-      layout.width = Measure(landscape ? "29.7cm" : "21cm");
-      layout.height = Measure(landscape ? "21cm" : "29.7cm");
+      layout.width = Measure(21, DynamicUnit("cm"));
+      layout.height = Measure(29.7, DynamicUnit("cm"));
     }
     return layout;
   }
@@ -650,7 +651,7 @@ public:
         master_page_id != null_element_id) {
       return with_default_paper(master_page_page_layout(master_page_id));
     }
-    return {};
+    return with_default_paper({});
   }
   [[nodiscard]] ElementIdentifier
   page_master_page(const ElementIdentifier element_id) const override {

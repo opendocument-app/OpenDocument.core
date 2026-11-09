@@ -77,13 +77,14 @@ TEST(OdfPageLayout, a_layout_stating_no_size_takes_a4) {
   EXPECT_EQ(layout.margin.left->to_string(), "4.5cm");
 }
 
-TEST(OdfPageLayout, a_landscape_layout_stating_no_size_takes_a4_turned) {
+TEST(OdfPageLayout, a_landscape_layout_stating_no_size_stays_upright) {
+  // LibreOffice keeps A4 portrait for it
   const PageLayout layout =
       page_layout_of(write_odt("odf_page_layout_no_size_landscape.odt",
                                R"(style:print-orientation="landscape")"));
 
-  EXPECT_EQ(layout.width->to_string(), "29.7cm");
-  EXPECT_EQ(layout.height->to_string(), "21cm");
+  EXPECT_EQ(layout.width->to_string(), "21cm");
+  EXPECT_EQ(layout.height->to_string(), "29.7cm");
 }
 
 TEST(OdfPageLayout, a_stated_size_is_kept) {

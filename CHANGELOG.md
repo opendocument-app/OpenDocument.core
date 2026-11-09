@@ -29,8 +29,8 @@ The release run heads these entries with the version and opens a fresh
 ### Fixes
 
 - An odt or odg whose page layout states no paper size, as LibreOffice's
-  letter and BPMN templates do, is laid out on A4 (turned for a landscape
-  layout). A text page had no width, so with `text_document_margin` no line
+  letter and BPMN templates do, is laid out on A4 portrait, LibreOffice's
+  paper in an A4 locale. A text page had no width, so with `text_document_margin` no line
   wrapped, and the pages of a drawing had no box and were drawn over each
   other. A sheet still takes none and prints to the printer's paper.
 - A doc, xls or ppt opens when its storage directory gives a stream a child or
