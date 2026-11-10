@@ -598,8 +598,7 @@ std::string html::translate_drawing_style(const GraphicStyle &graphic_style) {
   std::string result;
   if (const std::optional<Measure> stroke_width = graphic_style.stroke_width;
       stroke_width.has_value()) {
-    // A width of zero is a hairline, as LibreOffice draws it; svg would not
-    // draw it at all.
+    // a zero width is a hairline; svg would draw nothing
     result.append("stroke-width:")
         .append(stroke_width->magnitude() == 0 ? "1px"
                                                : css_length(*stroke_width))

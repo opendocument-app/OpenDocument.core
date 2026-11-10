@@ -32,12 +32,10 @@ children. Many tags collapse onto a generic type: `text:h` is a paragraph,
 `text:section`, `text:table-of-content` and date fields are a `group`,
 `draw:g` is a frame. A container gets its own children parser
 (`parse_presentation_children` walks only `draw:page`).
-`parse_master_page_children` leaves out the objects with a
-`presentation:class`: they are the placeholders the slides fill in, their text
-the prompt ("Click to edit the title text format"). LibreOffice draws title,
-outline and the like on no slide. It draws the footer, date and slide number
-ones where a slide's `presentation:display-*` asks for them, with text the
-slide declares, which is not read, so they are left out as well.
+`parse_master_page_children` leaves out the placeholders
+(`presentation:class`), as LibreOffice draws none of them on a slide. The
+footer, date and slide number ones need `presentation:display-*`, which is not
+read.
 
 **Every `draw:*` shape is a `frame`.** `create_shape_element` records the kind
 in `m_shape_types`, and `frame_shape_type` reads it back. `draw:rect` and
@@ -90,19 +88,15 @@ every entry: each one resolves its `style:parent-style-name` (else the
 `style:family` default) first, copies that resolved base and overlays its own
 properties. A second cascade runs at query time: `get_intermediate_style`
 walks the element parent chain and overrides partial styles down to the
-target. Font names go through `style:font-face` to `svg:font-family`. A text
-style without `style:font-name` names its family in `fo:font-family`, as
-PowerPoint's odp and many odg and ods do. PowerPoint writes the fonts of its
-theme there unresolved (`+mn-lt`, `+mj-ea`); LibreOffice knows no such family
-and falls back to its default, so they name none here either. Master pages are
+target. Font names go through `style:font-face` to `svg:font-family`. Without
+`style:font-name`, `fo:font-family` names the family. PowerPoint's unresolved
+theme fonts (`+mn-lt`) name none, as in LibreOffice. Master pages are
 parsed into the element tree and into the style index.
 
 **A page layout stating no paper size is on A4 portrait.** LibreOffice takes
-the application's paper, from the locale (Letter in the US), and keeps it
-upright for a landscape layout; with no locale to ask, A4. Its
-`XMLPageMasterContext` completes the width and the height each on its own.
-So a text page has a width to set its lines in and a drawing page a box to
-hold its shapes. A sheet keeps none and prints to the printer's paper.
+the locale's paper, upright also for a landscape layout, and completes the
+width and the height each on its own (`XMLPageMasterContext`). A sheet keeps
+no paper size and prints to the printer's paper.
 
 **Percent units.** A percent font size, and the relative size of
 `style:text-position`, multiply the inherited size. A percent line height

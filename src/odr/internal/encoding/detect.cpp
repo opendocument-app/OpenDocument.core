@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <bit>
+#include <cstdint>
 #include <istream>
 #include <string_view>
 
@@ -43,19 +44,16 @@ TextEncoding encoding_by_bom(const std::string_view probe) {
 }
 
 /// Whether @p probe holds a byte beyond ascii and is well formed utf-8. A
-/// probe that is @p cut_off from a longer file may end inside a sequence,
-/// which is left out of the test.
+/// trailing partial sequence of a @p cut_off probe is ignored.
 bool is_utf8_beyond_ascii(std::string_view probe, const bool cut_off) {
   if (cut_off) {
-    // a sequence is at most four bytes, so its lead is among the last four
     const std::size_t tail = std::min<std::size_t>(4, probe.size());
     for (std::size_t back = 1; back <= tail; ++back) {
-      const auto byte = static_cast<unsigned char>(probe[probe.size() - back]);
+      const auto byte = static_cast<std::uint8_t>(probe[probe.size() - back]);
       if (byte < 0x80) {
         break;
       }
       if (byte >= 0xc0) {
-        // the length the lead states in its leading ones, at most four
         const auto length =
             static_cast<std::size_t>(std::min(std::countl_one(byte), 4));
         if (length > back) {
@@ -67,7 +65,7 @@ bool is_utf8_beyond_ascii(std::string_view probe, const bool cut_off) {
   }
   return std::ranges::any_of(probe,
                              [](const char c) {
-                               return static_cast<unsigned char>(c) >= 0x80;
+                               return static_cast<std::uint8_t>(c) >= 0x80;
                              }) &&
          util::string::is_valid_utf8(probe);
 }
@@ -92,9 +90,7 @@ TextEncoding encoding::detect(const std::string_view probe,
       by_bom != TextEncoding::unknown) {
     return by_bom;
   }
-  // uchardet weighs a few such bytes among much ascii by single-byte
-  // statistics; text in a single-byte encoding is well formed utf-8 only by
-  // rare accident
+  // uchardet misjudges a few utf-8 sequences among much ascii
   if (is_utf8_beyond_ascii(probe, cut_off)) {
     return TextEncoding::utf8;
   }
