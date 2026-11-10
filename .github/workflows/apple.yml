@@ -275,6 +275,8 @@ jobs:
               echo "no iPhone simulator for the iOS $sdk simulator SDK" >&2
               exit 1
             fi
+            # xcodebuild can miss every simulator on a fresh runner
+            xcrun simctl bootstatus "$id" -b
             destination="platform=iOS Simulator,id=$id"
           fi
           echo "destination: $destination"
