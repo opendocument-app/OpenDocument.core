@@ -235,6 +235,8 @@ struct TableCellStyle final {
 /// Represents a style for graphics.
 struct GraphicStyle final {
   std::optional<Measure> stroke_width;
+  /// An alpha of 0 is no stroke (`draw:stroke="none"`), as it is no fill for
+  /// @ref fill_color: the state and the color cascade independently.
   std::optional<Color> stroke_color;
   std::optional<Color> fill_color;
   std::optional<VerticalAlign> vertical_align;

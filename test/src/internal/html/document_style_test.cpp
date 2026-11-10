@@ -170,6 +170,22 @@ TEST(html_document_style, block_font_style_of_a_style_naming_no_font) {
   EXPECT_EQ(ihtml::translate_block_font_style(TextStyle()), "");
 }
 
+TEST(html_document_style, drawing_style_draws_a_zero_width_as_a_hairline) {
+  GraphicStyle style;
+  style.stroke_width = Measure("0cm");
+  style.stroke_color = Color(128, 128, 128);
+  EXPECT_EQ(ihtml::translate_drawing_style(style),
+            "stroke-width:1px;stroke:#808080;");
+}
+
+TEST(html_document_style, drawing_style_writes_none_for_a_stroke_turned_off) {
+  GraphicStyle style;
+  style.stroke_width = Measure("0.1cm");
+  style.stroke_color = Color(128, 128, 128, 0);
+  EXPECT_EQ(ihtml::translate_drawing_style(style),
+            "stroke-width:0.1cm;stroke:none;");
+}
+
 TEST(html_document_style, drawing_transform_of_nothing_is_nothing) {
   EXPECT_EQ(ihtml::translate_drawing_transform(std::nullopt), "");
 }

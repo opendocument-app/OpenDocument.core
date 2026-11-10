@@ -619,10 +619,21 @@ void Style::resolve_graphic_style_(const pugi::xml_node node,
       stroke_width.has_value()) {
     result.stroke_width = stroke_width;
   }
+  // `draw:stroke` and `svg:stroke-color` cascade independently, so the stroke
+  // state rides in the alpha, as the fill's does
+  if (const pugi::xml_attribute stroke =
+          graphic_properties.attribute("draw:stroke")) {
+    const Color previous = result.stroke_color.value_or(Color());
+    result.stroke_color =
+        Color(previous.red, previous.green, previous.blue,
+              std::strcmp("none", stroke.value()) == 0 ? 0 : 255);
+  }
   if (const std::optional<Color> stroke_color =
           read_color(graphic_properties.attribute("svg:stroke-color"));
       stroke_color.has_value()) {
-    result.stroke_color = stroke_color;
+    result.stroke_color = Color(
+        stroke_color->red, stroke_color->green, stroke_color->blue,
+        result.stroke_color.has_value() ? result.stroke_color->alpha : 255);
   }
   // `draw:fill` and `draw:fill-color` cascade independently, so the fill state
   // rides in the alpha — see AGENTS.md
