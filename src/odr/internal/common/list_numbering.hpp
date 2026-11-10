@@ -22,13 +22,17 @@ enum class ListNumberFormat {
 ///
 /// `label` is OOXML's `w:lvlText`: literal text in which `%N` stands for the
 /// counter of level N, counted from 1. ODF has no such template — its
-/// prefix / suffix / `text:display-levels` compose into one, and as it has a
-/// tenth level, `%{N}` stands for level N too.
+/// prefix / suffix / `text:display-levels` compose into one, with
+/// `level_placeholder` for its ten levels.
 struct ListLevel final {
   ListNumberFormat format{ListNumberFormat::none};
   std::string label;
   std::uint32_t start{1};
 };
+
+/// In a `ListLevel::label`, this byte and a byte holding N stand for level N.
+/// XML cannot carry it, so a literal `w:lvlText` never contains it.
+inline constexpr char level_placeholder = '\x01';
 
 /// A resolved list item label.
 struct ListMarker final {
@@ -49,6 +53,8 @@ public:
   [[nodiscard]] std::uint32_t number(std::uint32_t level) const;
 
   void restart(std::uint32_t level, std::uint32_t number);
+
+  [[nodiscard]] bool is_open(std::uint32_t level) const;
 
   /// Opens `level` at its start, unless it is open already, without counting
   /// an item on it.

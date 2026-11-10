@@ -113,16 +113,12 @@ to none, so a colour with no fill anywhere in the chain paints nothing.
 `draw:stroke` and `svg:stroke-color` ride the same way in the stroke colour's
 alpha, but `draw:stroke` defaults to solid.
 
-**Lists and the outline count as LibreOffice does.** A label follows
-`SwNumRule::MakeNumString`: prefix, the numbers of the last
-`text:display-levels` levels joined by a period, suffix. A shown level
-without a format drops out with its period, and a level without one itself
-keeps only prefix and suffix. LibreOffice numbers paragraphs, not items, and
-Word writes a deeper item inside an item of each level above that holds only
-the nested list. So an item counts only where a `text:p` or `text:h` comes
-before any nested list. A level an item skips opens at its start: 1, 1.1.1,
-then 1.2. A heading in a `text:list` is numbered as an item, not by the
-outline.
+**Lists and the outline count as LibreOffice does**
+(`SwNumRule::MakeNumString`). A level without a format drops out of the label.
+Only an item with a `text:p` or `text:h` before any nested list counts; Word
+nests deeper items that way. A skipped level opens at its start. There are ten
+levels; a deeper one is the tenth. A heading in a `text:list` is numbered as an
+item.
 
 **A flat document is the same `Document`, minus the package.** Its
 `office:document` root carries what `content.xml` and `styles.xml` carry

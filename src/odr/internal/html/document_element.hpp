@@ -42,10 +42,11 @@ void translate_text(const Element &element, const WritingState &state);
 void translate_line_break(const Element &element, const WritingState &state);
 /// A manual page break carried as an element, which only rtf and `.doc` do.
 void translate_page_break(const Element &element, const WritingState &state);
-/// `marker`, when set, is written inside the paragraph ahead of its content.
-/// Without it, the paragraph's own `Paragraph::marker`, a heading's number, is.
+/// `marker`, when set, is written inside the paragraph ahead of its content,
+/// in an element of class `marker_class`.
 void translate_paragraph(const Element &element, const WritingState &state,
-                         std::string marker = "");
+                         const std::string &marker,
+                         const std::string &marker_class);
 void translate_span(const Element &element, const WritingState &state);
 void translate_link(const Element &element, const WritingState &state);
 void translate_bookmark(const Element &element, const WritingState &state);

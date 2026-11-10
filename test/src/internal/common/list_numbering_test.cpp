@@ -129,16 +129,20 @@ TEST(ListCounter, rejects_overflow) {
   EXPECT_THROW(counter.restart(maximum, 0), std::overflow_error);
 }
 
-TEST(ListCounter, expands_a_braced_placeholder) {
+TEST(ListCounter, expands_the_level_placeholder) {
   ListCounter counter;
-  const ListLevel level = decimal_level("%{1}.%{10}%{x}%{}");
+  const ListLevel level = decimal_level(
+      std::string{level_placeholder, '\x01', '.', level_placeholder, '\x0a'});
 
   for (std::uint32_t skipped = 0; skipped < 9; ++skipped) {
     counter.start(skipped, level);
   }
-  EXPECT_EQ("1.1%{x}%{}", counter.advance(9, level));
-  // one digit after the percent sign stays one level, as in `w:lvlText`
-  EXPECT_EQ("10", counter.advance(9, decimal_level("%10")));
+  EXPECT_EQ("1.1", counter.advance(9, level));
+}
+
+TEST(ListCounter, leaves_a_braced_level_in_lvl_text_alone) {
+  ListCounter counter;
+  EXPECT_EQ("%{1}1", counter.advance(0, decimal_level("%{1}%1")));
 }
 
 TEST(ListCounter, starts_a_level_without_counting) {
@@ -149,7 +153,7 @@ TEST(ListCounter, starts_a_level_without_counting) {
   counter.start(0, outer);
   EXPECT_EQ("3.1", counter.advance(1, inner));
   EXPECT_EQ("4.", counter.advance(0, outer));
-  // an open level is not reopened
+  EXPECT_TRUE(counter.is_open(0));
   counter.start(0, outer);
   EXPECT_EQ("5.", counter.advance(0, outer));
 }

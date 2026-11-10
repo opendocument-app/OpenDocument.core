@@ -420,7 +420,7 @@ final class ElementTreeTests: XCTestCase {
     XCTAssertNotNil(root.firstDescendant(ofType: Paragraph.self))
   }
 
-  /// The fixture's outline has no number format, so no heading is numbered.
+  /// The fixture has no heading, so no marker.
   func testAParagraphOutsideANumberedOutlineHasNoMarker() throws {
     let root = try XCTUnwrap(try document().rootElement())
     let paragraphs = Array(root.descendants(ofType: Paragraph.self))

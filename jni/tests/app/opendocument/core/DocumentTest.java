@@ -66,7 +66,7 @@ class DocumentTest {
   void aParagraphOutsideANumberedOutlineHasNoMarker() throws IOException {
     Document document = openDocument();
 
-    // The fixture's outline has no number format, so no heading is numbered.
+    // The fixture has no heading, so no marker.
     List<Element> paragraphs =
         document.rootElement().children().stream()
             .filter(child -> child.type() == ElementType.PARAGRAPH)

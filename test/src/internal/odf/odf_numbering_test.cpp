@@ -88,7 +88,7 @@ std::vector<std::string> item_markers(const std::string &source) {
 
 std::string render(const std::string &source) {
   const HtmlConfig config(
-      (std::filesystem::current_path() / "odf_numbering").string());
+      (std::filesystem::temp_directory_path() / "odf_numbering").string());
   std::ostringstream out;
   html::translate(open(File::from_memory(source)), config)
       .list_views()
@@ -140,14 +140,12 @@ TEST(OdfOutline, headings_take_the_numbers_of_the_outline_style) {
 }
 
 TEST(OdfOutline, a_skipped_level_opens_at_its_start_and_counts_on) {
-  // LibreOffice: 1, 1.1.1, then the skipped level's second, 1.2
   EXPECT_EQ(heading_markers(numbered_outline(heading(1, "a") + heading(3, "b") +
                                              heading(2, "c"))),
             (std::vector<std::string>{"1", "1.1.1", "1.2"}));
 }
 
 TEST(OdfOutline, a_level_without_a_format_is_left_out_with_its_period) {
-  // LibreOffice: level 2 shows its prefix and suffix only, level 3 skips it
   EXPECT_EQ(heading_markers(numbered_outline(
                 heading(1, "a") + heading(2, "b") + heading(3, "c"),
                 R"(style:num-format="" style:num-prefix="(")"
@@ -166,8 +164,6 @@ TEST(OdfOutline, a_heading_can_restart_the_outline) {
 }
 
 TEST(OdfOutline, a_level_deeper_than_ten_is_the_tenth) {
-  // the level sizes the counters, so four billion must not allocate them;
-  // the tenth level takes the deepest style stated, which shows three levels
   EXPECT_EQ(heading_markers(numbered_outline(heading(1, "a") +
                                              heading(4000000000, "deep"))),
             (std::vector<std::string>{"1", "1.1.1"}));
@@ -204,7 +200,6 @@ TEST(OdfOutline, a_list_may_number_by_the_outline) {
 
 TEST(OdfOutline, a_numbered_heading_is_drawn_with_its_number_in_front) {
   const std::string html = render(numbered_outline(heading(1, "Access")));
-  // not as a list item's label, which hangs into an indent a heading lacks
   EXPECT_EQ(count(html, R"(class="odr-heading-marker")"), 1U);
   EXPECT_EQ(count(html, R"(class="odr-list-marker")"), 0U);
   EXPECT_EQ(count(html, "1&#9;"), 1U);
@@ -222,7 +217,6 @@ TEST(OdfList, an_item_without_a_paragraph_is_not_counted) {
 }
 
 TEST(OdfList, a_list_opening_on_a_deeper_level_counts_the_skipped_one) {
-  // LibreOffice: 1.1. E, 1.2. F, 2. G
   EXPECT_EQ(item_markers(flat_text(
                 list(item(list(item(paragraph("E")) + item(paragraph("F")))) +
                      item(paragraph("G"))),
@@ -241,4 +235,16 @@ TEST(OdfList, a_table_page_break_or_cached_label_before_the_paragraph_count) {
                      item("<text:number>4.</text:number>" + paragraph("d"))),
                 numbered_list_style)),
             (std::vector<std::string>{"1.", "2.", "3.", "4."}));
+}
+
+TEST(OdfList, a_list_deeper_than_ten_levels_counts_on_the_tenth) {
+  std::string nested = item(paragraph("11")) + item(paragraph("12"));
+  for (int depth = 10; depth > 0; --depth) {
+    nested = item(paragraph(std::to_string(depth)) + list(nested));
+  }
+  std::vector<std::string> expected{"1."};
+  expected.insert(expected.end(), 9, "1.1.");
+  expected.insert(expected.end(), {"1.2.", "1.3."});
+  EXPECT_EQ(item_markers(flat_text(list(nested), numbered_list_style)),
+            expected);
 }

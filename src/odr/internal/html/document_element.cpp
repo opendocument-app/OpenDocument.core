@@ -96,7 +96,8 @@ void html::translate_element(const Element &element,
     translate_line_break(element, state);
     break;
   case ElementType::paragraph:
-    translate_paragraph(element, state);
+    translate_paragraph(element, state, element.as_paragraph().marker(),
+                        "odr-heading-marker");
     break;
   case ElementType::span:
     translate_span(element, state);
@@ -276,13 +277,10 @@ void html::translate_page_break(const Element & /*element*/,
 }
 
 void html::translate_paragraph(const Element &element,
-                               const WritingState &state, std::string marker) {
+                               const WritingState &state,
+                               const std::string &marker,
+                               const std::string &marker_class) {
   const Paragraph paragraph = element.as_paragraph();
-  // a heading's number has no list indent to hang into
-  const bool heading = marker.empty();
-  if (heading) {
-    marker = paragraph.marker();
-  }
 
   state.out().write_element_begin(
       "x-p",
@@ -298,11 +296,10 @@ void html::translate_paragraph(const Element &element,
                      state.styles()));
   if (!marker.empty()) {
     state.out().write_element_begin(
-        "x-s",
-        HtmlElementOptions()
-            .set_inline(true)
-            .set_class(heading ? "odr-heading-marker" : "odr-list-marker")
-            .set_style(translate_text_style(paragraph.text_style())));
+        "x-s", HtmlElementOptions()
+                   .set_inline(true)
+                   .set_class(marker_class)
+                   .set_style(translate_text_style(paragraph.text_style())));
     // The tab separates label from text once copied.
     state.out().out() << escape_text(marker) << "&#9;";
     state.out().write_element_end("x-s");
@@ -383,7 +380,7 @@ void html::translate_list_item(const Element &element,
   std::string marker = list_item.marker();
   for (const Element child : list_item.children()) {
     if (!marker.empty() && child.type() == ElementType::paragraph) {
-      translate_paragraph(child, state, marker);
+      translate_paragraph(child, state, marker, "odr-list-marker");
       marker.clear();
       continue;
     }

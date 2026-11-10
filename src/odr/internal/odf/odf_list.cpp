@@ -88,7 +88,8 @@ ListLevel read_level(const pugi::xml_node list_style,
         if (joined) {
           result.label += ".";
         }
-        result.label += "%{" + std::to_string(i + 1) + "}";
+        result.label += level_placeholder;
+        result.label += static_cast<char>(i + 1);
         joined = true;
       }
     }
@@ -108,8 +109,13 @@ ListLevel read_level(const pugi::xml_node list_style,
   return result;
 }
 
-/// LibreOffice's outline has ten levels and reads a deeper one as the tenth.
-constexpr std::uint32_t max_outline_level = 10;
+/// LibreOffice's lists and outline have ten levels, a deeper one is the tenth.
+constexpr std::uint32_t max_level = 10;
+
+std::uint32_t clamp_level(const std::size_t depth) {
+  return static_cast<std::uint32_t>(
+      std::min(depth, static_cast<std::size_t>(max_level - 1)));
+}
 
 bool is_ordered(const ListNumberFormat format) {
   return format != ListNumberFormat::bullet && format != ListNumberFormat::none;
@@ -119,7 +125,9 @@ bool is_ordered(const ListNumberFormat format) {
 void start_skipped_levels(ListCounter &counter, const pugi::xml_node list_style,
                           const std::uint32_t level) {
   for (std::uint32_t skipped = 0; skipped < level; ++skipped) {
-    counter.start(skipped, read_level(list_style, skipped));
+    if (!counter.is_open(skipped)) {
+      counter.start(skipped, read_level(list_style, skipped));
+    }
   }
 }
 
@@ -173,7 +181,6 @@ private:
   const StyleRegistry *m_styles{nullptr};
 
   std::unordered_map<std::string, ListCounter> m_counters;
-  /// The headings' counters, which run through the whole document.
   ListCounter m_outline;
   std::vector<std::string> m_open_lists;
 
@@ -184,7 +191,7 @@ private:
 
   void walk_list_(const ElementIdentifier id,
                   const ElementRegistry::Element &element) {
-    const auto level = static_cast<std::uint32_t>(m_open_lists.size());
+    const std::uint32_t level = clamp_level(m_open_lists.size());
 
     // A nested list usually carries no style of its own and stays on the one
     // its ancestor opened.
@@ -224,8 +231,7 @@ private:
     if (outline_level == 0 || !outline_style) {
       return;
     }
-    // the level sizes the counters, so a file must not choose it freely
-    const std::uint32_t level = std::min(outline_level, max_outline_level) - 1;
+    const std::uint32_t level = clamp_level(outline_level - 1);
 
     ListLevel list_level = read_level(outline_style, level);
     if (node.attribute("text:restart-numbering").as_bool()) {
@@ -247,7 +253,7 @@ private:
     if (!m_open_lists.empty() &&
         std::string(element.node.name()) != "text:list-header" &&
         has_own_paragraph(element.node)) {
-      const auto level = static_cast<std::uint32_t>(m_open_lists.size() - 1);
+      const std::uint32_t level = clamp_level(m_open_lists.size() - 1);
       const std::string &style_name = m_open_lists.back();
 
       ListLevel list_level = level_at_(style_name, level);

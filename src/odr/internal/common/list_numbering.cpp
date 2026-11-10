@@ -1,14 +1,10 @@
 #include <odr/internal/common/list_numbering.hpp>
 
-#include <odr/internal/util/number_util.hpp>
-
 #include <algorithm>
 #include <array>
 #include <limits>
-#include <optional>
 #include <ranges>
 #include <stdexcept>
-#include <string_view>
 
 namespace odr::internal {
 
@@ -104,27 +100,15 @@ std::string ListCounter::advance(const std::uint32_t level,
   std::string result;
   const std::string &label = list_level.label;
   for (std::size_t i = 0; i < label.size();) {
-    // `%N` with one digit, or `%{N}`
     std::uint32_t placeholder = 0;
-    std::size_t length = 0;
-    if (label[i] == '%' && i + 1 < label.size()) {
-      if (label[i + 1] >= '1' && label[i + 1] <= '9') {
+    if (i + 1 < label.size()) {
+      if (label[i] == '%' && label[i + 1] >= '1' && label[i + 1] <= '9') {
         placeholder = static_cast<std::uint32_t>(label[i + 1] - '0');
-        length = 2;
-      } else if (label[i + 1] == '{') {
-        if (const std::size_t close = label.find('}', i + 2);
-            close != std::string::npos) {
-          if (const std::optional<std::uint32_t> number =
-                  util::number::parse_integer<std::uint32_t>(
-                      std::string_view(label).substr(i + 2, close - i - 2));
-              number.has_value() && *number > 0) {
-            placeholder = *number;
-            length = close - i + 1;
-          }
-        }
+      } else if (label[i] == level_placeholder) {
+        placeholder = static_cast<std::uint8_t>(label[i + 1]);
       }
     }
-    if (length == 0) {
+    if (placeholder == 0) {
       result.push_back(label[i]);
       ++i;
       continue;
@@ -133,7 +117,7 @@ std::string ListCounter::advance(const std::uint32_t level,
       result.append(format_list_number(m_formats[placeholder - 1],
                                        m_numbers[placeholder - 1].value_or(1)));
     }
-    i += length;
+    i += 2;
   }
   return result;
 }
@@ -146,6 +130,10 @@ void ListCounter::restart(const std::uint32_t level,
                           const std::uint32_t number) {
   grow_(level);
   m_numbers[level] = number == 0 ? std::nullopt : std::optional(number);
+}
+
+bool ListCounter::is_open(const std::uint32_t level) const {
+  return level < m_numbers.size() && m_numbers[level].has_value();
 }
 
 void ListCounter::start(const std::uint32_t level,

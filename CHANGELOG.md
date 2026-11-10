@@ -36,7 +36,7 @@ The release run heads these entries with the version and opens a fresh
   skips opens at its start; and a level without a number format is left out of
   the label with its period. A form saved by Word numbered its fields "2.1.",
   "3.1." where Word and LibreOffice show "1.1.", "1.2.". A list may name the
-  outline as its style.
+  outline as its style. A list deeper than ten levels counts on the tenth.
 
 ### API, files and saving
 
