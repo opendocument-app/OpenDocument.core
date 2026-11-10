@@ -93,6 +93,13 @@ walks the element parent chain and overrides partial styles down to the
 target. Font names go through `style:font-face` to `svg:font-family`. Master
 pages are parsed into the element tree and into the style index.
 
+**A page layout stating no paper size is on A4 portrait.** LibreOffice takes
+the application's paper, from the locale (Letter in the US), and keeps it
+upright for a landscape layout; with no locale to ask, A4. Its
+`XMLPageMasterContext` completes the width and the height each on its own.
+So a text page has a width to set its lines in and a drawing page a box to
+hold its shapes. A sheet keeps none and prints to the printer's paper.
+
 **Percent units.** A percent font size, and the relative size of
 `style:text-position`, multiply the inherited size. A percent line height
 passes through, and the renderer writes it as a unitless CSS ratio. A percent
@@ -104,6 +111,8 @@ independently, and LibreOffice writes a `draw:fill-color` with no `draw:fill`
 beside it. So the fill state rides in the resolved colour's alpha. `draw:fill`
 sets it, `draw:fill-color` sets the rgb and keeps it, and `draw:fill` defaults
 to none, so a colour with no fill anywhere in the chain paints nothing.
+`draw:stroke` and `svg:stroke-color` ride the same way in the stroke colour's
+alpha, but `draw:stroke` defaults to solid.
 
 **A flat document is the same `Document`, minus the package.** Its
 `office:document` root carries what `content.xml` and `styles.xml` carry
