@@ -45,6 +45,10 @@ The release run heads these entries with the version and opens a fresh
   example a flat odt with a single soft hyphen or umlaut, opens. uchardet
   named it MAC-CENTRALEUROPE, IBM852 or ISO-8859-11, and the file was
   `UnknownFileType`.
+- A text style that names its family in `fo:font-family`, as PowerPoint's odp
+  and many odg and ods do, is set in that family rather than the browser's
+  default serif. `style:font-name` still outranks it, and PowerPoint's
+  unresolved theme fonts such as `+mn-lt` are no family.
 
 ## v7.7.0 - 2026-10-31
 

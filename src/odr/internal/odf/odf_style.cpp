@@ -316,6 +316,12 @@ PageLayout read_page_layout(const pugi::xml_node node) {
   return result;
 }
 
+/// Whether an `fo:font-family` of @p family names none: empty, or a theme
+/// font of PowerPoint such as `+mn-lt`.
+bool names_no_family(const std::string_view family) {
+  return family.empty() || family.starts_with('+');
+}
+
 void read_font_face(const char *name, const pugi::xml_node node,
                     TextStyle &result) {
   if (!node) {
@@ -371,6 +377,10 @@ void Style::resolve_text_style_(const StyleRegistry *registry,
           text_properties.attribute("style:font-name")) {
     read_font_face(font_name.value(),
                    registry->font_face_node(font_name.value()), result);
+  } else if (const pugi::xml_attribute font_family =
+                 text_properties.attribute("fo:font-family");
+             font_family && !names_no_family(font_family.value())) {
+    result.font_name = font_family.value();
   }
   if (const std::optional<Measure> font_size =
           read_measure(text_properties.attribute("fo:font-size"));
