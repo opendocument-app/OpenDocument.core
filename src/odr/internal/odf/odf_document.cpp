@@ -7,6 +7,7 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/common/page_anchor.hpp>
 #include <odr/internal/common/sheet_dependencies.hpp>
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
@@ -83,6 +84,11 @@ void Document::init_(const pugi::xml_node content_root,
   m_style_registry = StyleRegistry(*this, content_root, styles_root);
 
   resolve_list_numbering(m_element_registry, m_style_registry, m_root_element);
+  // a header or footer numbers its lists of its own
+  for (const auto &[_, master_page_id] : m_style_registry.master_pages()) {
+    resolve_list_numbering(m_element_registry, m_style_registry,
+                           master_page_id);
+  }
 
   m_element_adapter = create_element_adapter(*this, m_element_registry);
 }
@@ -256,6 +262,27 @@ void remove_value_attributes(pugi::xml_node node) {
   for (const char *attribute : stated) {
     node.remove_attribute(attribute);
   }
+}
+
+bool states_text(const pugi::xml_node node) {
+  return std::ranges::any_of(node.children(), [](const pugi::xml_node child) {
+    if (child.type() == pugi::node_pcdata || child.type() == pugi::node_cdata) {
+      return *child.value() != '\0';
+    }
+    const std::string_view name = child.name();
+    if (name == "text:s" || name == "text:tab") {
+      return true;
+    }
+    return name != "office:annotation" && !name.starts_with("draw:") &&
+           states_text(child);
+  });
+}
+
+bool states_value(const pugi::xml_node cell) {
+  return !cell.attribute("office:value").empty() ||
+         !cell.attribute("office:date-value").empty() ||
+         !cell.attribute("office:time-value").empty() ||
+         !cell.attribute("office:boolean-value").empty();
 }
 
 /// Boolean `&` uses words from LibreOffice 27.2 (commit 5663da9fa7).
@@ -580,44 +607,29 @@ public:
     }
     return {};
   }
-  static bool is_anchored_frame(const pugi::xml_node node) {
-    return std::strcmp(node.name(), "draw:frame") == 0;
-  }
-
-  /// Whether laying this out would put a word on the page; a frame is anchored,
-  /// not written.
-  static bool writes_text(const pugi::xml_node node) {
-    for (const pugi::xml_node child : node.children()) {
-      if (child.type() == pugi::node_pcdata &&
-          !std::string_view(child.value()).empty()) {
-        return true;
-      }
-      if (!is_anchored_frame(child) && writes_text(child)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   [[nodiscard]] ElementIdentifier text_root_first_master_page(
       const ElementIdentifier element_id) const override {
-    // A paragraph may name the master page its page uses (20.283). One page box
-    // is all we lay out, so only a name ahead of every written word counts.
-    for (const pugi::xml_node child : get_node(element_id).children()) {
-      if (is_anchored_frame(child)) {
+    // page one is the first content's, as in LibreOffice
+    for (ElementIdentifier child = element_first_child(element_id);
+         child != null_element_id; child = element_next_sibling(child)) {
+      if (is_page_anchored(Element(this, child))) {
         continue;
       }
       if (const ElementIdentifier master_page_id =
-              m_document->style_registry().master_page_of_style(
-                  child.attribute("text:style-name").value());
+              element_type(child) == ElementType::paragraph
+                  ? paragraph_master_page(child)
+                  : null_element_id;
           master_page_id != null_element_id) {
         return master_page_id;
       }
-      if (writes_text(child)) {
-        break;
-      }
+      break;
     }
-    return m_document->style_registry().first_master_page();
+    const StyleRegistry &styles = m_document->style_registry();
+    if (const ElementIdentifier standard = styles.master_page("Standard");
+        standard != null_element_id) {
+      return standard;
+    }
+    return styles.first_master_page();
   }
 
   [[nodiscard]] PageLayout
@@ -702,8 +714,8 @@ public:
     for_each_cell_run(element_id, [&](const ElementRegistry::Sheet::Cell &cell,
                                       const std::uint32_t row,
                                       const TableDimensions &repeated) {
-      if (!cell.node.first_child() || row >= limit.rows ||
-          cell.begin >= limit.columns) {
+      if ((!cell.node.first_child() && !states_value(cell.node)) ||
+          row >= limit.rows || cell.begin >= limit.columns) {
         return;
       }
       const std::uint32_t colspan = std::max(
@@ -1827,7 +1839,43 @@ public:
     if (const pugi::xml_attribute formula = node.attribute("table:formula")) {
       result = result.with_formula(formula.value());
     }
+    if (const std::optional<std::string> text =
+            uncached_text(element_id, result);
+        text.has_value()) {
+      result = result.with_text(*text);
+    }
     return result;
+  }
+
+  /// LibreOffice formats the value of a cell saved without its text when it
+  /// loads the file.
+  [[nodiscard]] std::optional<std::string>
+  uncached_text(const ElementIdentifier element_id,
+                const CellValue &value) const {
+    if (!value.has_number() ||
+        (value.type() != ValueType::float_number &&
+         value.type() != ValueType::date && value.type() != ValueType::time &&
+         value.type() != ValueType::boolean)) {
+      return std::nullopt;
+    }
+    if (states_text(get_node(element_id))) {
+      return std::nullopt;
+    }
+    if (value.type() == ValueType::boolean) {
+      return value.number() != 0 ? "TRUE" : "FALSE";
+    }
+    if (std::optional<std::string> shown =
+            shown_value(element_parent(element_id), element_id,
+                        sheet_cell_position(element_id), value);
+        shown.has_value()) {
+      return shown;
+    }
+    if (value.type() != ValueType::float_number) {
+      return std::nullopt;
+    }
+    return number_format::Format().format(
+        value.number(), number_format::Epoch::from_1900,
+        number_format::symbols_of(m_document->locale().value_or("")));
   }
 
   [[nodiscard]] PageLayout
@@ -1839,6 +1887,58 @@ public:
       return m_document->style_registry().page_layout(attribute.value());
     }
     return {};
+  }
+
+  [[nodiscard]] ElementIdentifier
+  master_page_header(const ElementIdentifier element_id) const override {
+    return master_page_child(element_id, "style:header");
+  }
+
+  [[nodiscard]] ElementIdentifier
+  master_page_footer(const ElementIdentifier element_id) const override {
+    return master_page_child(element_id, "style:footer");
+  }
+
+  [[nodiscard]] ElementIdentifier
+  master_page_first_header(const ElementIdentifier element_id) const override {
+    if (const ElementIdentifier header =
+            master_page_child(element_id, "style:header-first");
+        header != null_element_id) {
+      return header;
+    }
+    return master_page_child(element_id, "loext:header-first");
+  }
+
+  [[nodiscard]] ElementIdentifier
+  master_page_first_footer(const ElementIdentifier element_id) const override {
+    if (const ElementIdentifier footer =
+            master_page_child(element_id, "style:footer-first");
+        footer != null_element_id) {
+      return footer;
+    }
+    return master_page_child(element_id, "loext:footer-first");
+  }
+
+  [[nodiscard]] ElementIdentifier
+  master_page_next(const ElementIdentifier element_id) const override {
+    if (const pugi::xml_attribute next =
+            get_node(element_id).attribute("style:next-style-name")) {
+      return m_document->style_registry().master_page(next.value());
+    }
+    return null_element_id;
+  }
+
+  /// The child of a master page parsed from the node named @p name.
+  [[nodiscard]] ElementIdentifier
+  master_page_child(const ElementIdentifier element_id,
+                    const char *name) const {
+    for (ElementIdentifier child = element_first_child(element_id);
+         child != null_element_id; child = element_next_sibling(child)) {
+      if (std::strcmp(get_node(child).name(), name) == 0) {
+        return child;
+      }
+    }
+    return null_element_id;
   }
 
   [[nodiscard]] TextStyle
@@ -1877,6 +1977,14 @@ public:
   [[nodiscard]] std::string
   paragraph_marker(const ElementIdentifier element_id) const override {
     return m_registry->list_marker(element_id).text;
+  }
+  [[nodiscard]] ElementIdentifier
+  paragraph_master_page(const ElementIdentifier element_id) const override {
+    const char *style_name = get_style_name(element_id);
+    return style_name == nullptr
+               ? null_element_id
+               : m_document->style_registry().master_page_of_style(style_name,
+                                                                   true);
   }
   void paragraph_set_style(const ElementIdentifier element_id,
                            const ParagraphStyle &style) const override {
@@ -2205,7 +2313,12 @@ public:
   }
   [[nodiscard]] GraphicStyle
   frame_style(const ElementIdentifier element_id) const override {
-    return get_intermediate_style(element_id).graphic_style;
+    GraphicStyle result = get_intermediate_style(element_id).graphic_style;
+    if (const std::optional<TextWrap> wrap =
+            wrap_by_position(element_id, result)) {
+      result.text_wrap = wrap;
+    }
+    return result;
   }
 
   [[nodiscard]] bool
@@ -2256,6 +2369,35 @@ public:
   }
 
 private:
+  [[nodiscard]] std::optional<TextWrap>
+  wrap_by_position(const ElementIdentifier element_id,
+                   const GraphicStyle &style) const {
+    if (!style.horizontal_position.has_value() ||
+        !style.text_wrap.has_value() ||
+        (*style.text_wrap != TextWrap::before &&
+         *style.text_wrap != TextWrap::after)) {
+      return std::nullopt;
+    }
+    const std::string_view wrap =
+        m_document->style_registry()
+            .graphic_attribute(get_style_name(element_id), "style:wrap")
+            .value();
+    if (wrap.empty()) {
+      return std::nullopt;
+    }
+    // LibreOffice does not read `biggest`
+    const bool both =
+        wrap == "dynamic" || wrap == "parallel" || wrap == "biggest";
+    switch (*style.horizontal_position) {
+    case HorizontalAlign::left:
+      return both || wrap == "right" ? TextWrap::after : TextWrap::none;
+    case HorizontalAlign::right:
+      return both || wrap == "left" ? TextWrap::before : TextWrap::none;
+    default:
+      return TextWrap::none;
+    }
+  }
+
   Document *m_document{nullptr};
   mutable std::mutex m_charts_mutex;
   mutable std::unordered_map<ElementIdentifier, std::optional<std::string>>

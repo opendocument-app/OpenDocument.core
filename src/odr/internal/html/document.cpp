@@ -10,6 +10,7 @@
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/abstract/html_service.hpp>
 #include <odr/internal/common/null_stream.hpp>
+#include <odr/internal/common/page_anchor.hpp>
 #include <odr/internal/formula/formula_parser.hpp>
 #include <odr/internal/html/common.hpp>
 #include <odr/internal/html/document_element.hpp>
@@ -23,6 +24,8 @@
 
 #include <algorithm>
 #include <mutex>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace odr::internal::html {
@@ -634,6 +637,160 @@ bool breaks_page_after(const Element &element) {
          breaks_page(element.as_paragraph().style().break_after);
 }
 
+/// One page box per run of content between the author's manual breaks, or
+/// opened by a paragraph naming a master page, with that page's header and
+/// footer. Not pagination: nothing computes where a page ends, so the boxes
+/// differ in height. `.odr-pages` stacks them.
+class PageBoxWriter final {
+public:
+  PageBoxWriter(HtmlWriter &out, const WritingState &state,
+                const TextRoot &root)
+      : m_out{&out}, m_state{&state}, m_root{root}, m_marginal_state{state},
+        m_master_page{m_root.first_master_page()} {
+    // a header or footer repeats per box
+    m_marginal_state.set_editable_markup(false);
+    m_marginal_state.set_shared_images(&m_shared_images);
+  }
+
+  void write() {
+    begin_box_();
+    // Otherwise a leading or doubled break opens an empty sheet.
+    bool empty = true;
+    bool pending_break = false;
+    // a master page named after only frames anchored to the page keeps them
+    bool flows = false;
+
+    for (const Element child : m_root.children()) {
+      if (child.type() == ElementType::page_break) {
+        // The node is the break, not content.
+        pending_break = true;
+        continue;
+      }
+      const MasterPage named = child.type() == ElementType::paragraph
+                                   ? child.as_paragraph().master_page()
+                                   : MasterPage();
+      if (((pending_break || breaks_page_before(child)) && !empty) ||
+          (named && flows)) {
+        const MasterPage previous = m_master_page;
+        end_box_();
+        // naming the master page in use again opens a page, not a run
+        if (named) {
+          m_master_page = named;
+          m_opens_run = named != previous;
+        }
+        begin_box_();
+        flows = false;
+      }
+      pending_break = breaks_page_after(child);
+      translate_element(child, *m_state);
+      empty = false;
+      flows = flows || !is_page_anchored(child);
+    }
+
+    end_box_();
+  }
+
+private:
+  HtmlWriter *m_out;
+  const WritingState *m_state;
+  TextRoot m_root;
+  WritingState m_marginal_state;
+  std::unordered_map<std::string, std::string> m_shared_images;
+
+  MasterPage m_master_page;
+  /// Whether the box opens a run of its master page.
+  bool m_opens_run{true};
+  bool m_first_box{true};
+  PageLayout m_page_layout;
+  Element m_footer;
+  bool m_marginals{false};
+
+  /// A later box takes its own layout, the size completed from the first's.
+  [[nodiscard]] PageLayout box_layout_() const {
+    PageLayout result = m_root.page_layout();
+    if (m_first_box || !m_master_page) {
+      return result;
+    }
+    PageLayout own = m_master_page.page_layout();
+    if (!own.width.has_value()) {
+      own.width = result.width;
+    }
+    if (!own.height.has_value()) {
+      own.height = result.height;
+    }
+    return own;
+  }
+
+  void write_marginal_(const Element &marginal, const char *clazz,
+                       std::string style) {
+    HtmlElementOptions options;
+    options.set_class(clazz).set_style(std::move(style));
+    if (m_state->config().editable) {
+      options.set_attributes(
+          HtmlAttributesVector{{"contenteditable", "false"}});
+    }
+    m_out->write_element_begin("div", options);
+    translate_children(marginal.children(), m_marginal_state);
+    m_out->write_element_end("div");
+  }
+
+  void begin_box_() {
+    m_page_layout = box_layout_();
+    m_first_box = false;
+    Element header = m_master_page.header();
+    m_footer = m_master_page.footer();
+    // a first page's header or footer only where the page has one at all
+    if (m_opens_run) {
+      if (const Element first = m_master_page.first_header(); first && header) {
+        header = first;
+      }
+      if (const Element first = m_master_page.first_footer();
+          first && m_footer) {
+        m_footer = first;
+      }
+    }
+    m_marginals = header || m_footer;
+    m_out->write_element_begin(
+        "div",
+        HtmlElementOptions()
+            .set_class("odr-page-outer")
+            .set_style(translate_outer_flowing_page_style(m_page_layout)));
+    std::string inner_style = translate_inner_page_style(m_page_layout);
+    if (m_marginals) {
+      // a column, so the footer sits at the foot of the box
+      inner_style += "display:flex;flex-direction:column;";
+    }
+    m_out->write_element_begin("div", HtmlElementOptions()
+                                          .set_class("odr-page-inner")
+                                          .set_style(std::move(inner_style)));
+    if (!m_marginals) {
+      return;
+    }
+    if (header) {
+      write_marginal_(header, "odr-page-header",
+                      translate_page_header_style(m_page_layout));
+    }
+    m_out->write_element_begin("div", HtmlElementOptions()
+                                          .set_class("odr-page-body")
+                                          .set_style("flex:1 0 auto;"));
+  }
+
+  void end_box_() {
+    if (m_marginals) {
+      m_out->write_element_end("div");
+      if (m_footer) {
+        write_marginal_(m_footer, "odr-page-footer",
+                        translate_page_footer_style(m_page_layout));
+      }
+    }
+    m_out->write_element_end("div");
+    m_out->write_element_end("div");
+    const MasterPage next = m_master_page.next_master_page();
+    m_opens_run = next != m_master_page;
+    m_master_page = next;
+  }
+};
+
 class TextHtmlFragment final : public HtmlFragmentBase {
 public:
   explicit TextHtmlFragment(std::string name, const std::size_t index,
@@ -653,61 +810,13 @@ public:
     const TextRoot element = root.as_text_root();
 
     if (state.config().text_document_margin) {
-      write_pages(out, state, element);
+      PageBoxWriter(out, state, element).write();
     } else {
       out.write_element_begin("div",
                               HtmlElementOptions().set_class("odr-text-flow"));
       translate_children(element.children(), state);
       out.write_element_end("div");
     }
-  }
-
-private:
-  /// One page box per run of content between the author's manual breaks. Not
-  /// pagination: nothing computes where a page ends, so the boxes differ in
-  /// height. `.odr-pages` stacks them.
-  static void write_pages(HtmlWriter &out, const WritingState &state,
-                          const TextRoot &element) {
-    const PageLayout page_layout = element.page_layout();
-
-    const auto begin_page = [&] {
-      out.write_element_begin(
-          "div",
-          HtmlElementOptions()
-              .set_class("odr-page-outer")
-              .set_style(translate_outer_flowing_page_style(page_layout)));
-      out.write_element_begin(
-          "div", HtmlElementOptions()
-                     .set_class("odr-page-inner")
-                     .set_style(translate_inner_page_style(page_layout)));
-    };
-    const auto end_page = [&] {
-      out.write_element_end("div");
-      out.write_element_end("div");
-    };
-
-    begin_page();
-    // Otherwise a leading or doubled break opens an empty sheet.
-    bool empty = true;
-    bool pending_break = false;
-
-    for (const Element child : element.children()) {
-      if (child.type() == ElementType::page_break) {
-        // The node is the break, not content.
-        pending_break = true;
-        continue;
-      }
-      if ((pending_break || breaks_page_before(child)) && !empty) {
-        end_page();
-        begin_page();
-        empty = true;
-      }
-      pending_break = breaks_page_after(child);
-      translate_element(child, state);
-      empty = false;
-    }
-
-    end_page();
   }
 
 protected:

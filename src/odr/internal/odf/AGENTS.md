@@ -43,6 +43,11 @@ in `m_shape_types`, and `frame_shape_type` reads it back. `draw:rect` and
 `draw:circle` and `draw:ellipse` are `ellipse` unless `draw:kind` cuts them,
 and every shape whose geometry is drawn rather than named is `custom`.
 
+**A frame floats by its stated position, not by its wrap.** As in
+LibreOffice, `style:horizontal-pos` places the frame and `style:wrap` only
+names the sides text may flow on. `wrap_by_position` derives `TextWrap` from
+both.
+
 **Text runs are coalesced.** A maximal run of consecutive text nodes
 (`node_pcdata`, `text:s`, `text:tab`) is one `text` element spanning
 `[first, last]` (`Text.last`). `text:line-break` is its own element and ends
@@ -67,6 +72,10 @@ and `RegistryElementAdapter` navigates through `element_at`, so nothing else
 knows. Consequences: `SheetCell::position()` and the id name the cell asked
 for; a handle follows the index, so a run can be split under it; children are
 shared, so a run inside a repeated cell belongs to the anchor.
+
+**A value cell without text shows its value.** LibreOffice formats a
+number, date, time or boolean on loading, so `sheet_cell_value` states that
+text where the file saved none, each copy of a repeated cell too.
 
 **The sheet containers are sorted vectors, not maps.** Parsing appends in
 document order, so the keys only grow, and a vector costs less than a tree
@@ -119,6 +128,14 @@ Only an item with a `text:p` or `text:h` before any nested list counts; Word
 nests deeper items that way. A skipped level opens at its start. There are ten
 levels; a deeper one is the tenth. A heading in a `text:list` is numbered as an
 item.
+
+**A page box carries the header and footer of its master page**, as
+LibreOffice picks them. Page one takes the master page of the first content
+that is not anchored to the page, else "Standard", else the first. A paragraph
+naming a master page opens a box; any other box takes `style:next-style-name`.
+A box opening a run takes the first page's variants. The header height holds
+the spacing (`PROP_HeaderHeight`). The header and footer carry no editing
+address, and an embedded image in them is written once.
 
 **A flat document is the same `Document`, minus the package.** Its
 `office:document` root carries what `content.xml` and `styles.xml` carry

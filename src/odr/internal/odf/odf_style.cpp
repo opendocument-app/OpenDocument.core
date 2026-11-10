@@ -313,6 +313,25 @@ PageLayout read_page_layout(const pugi::xml_node node) {
     result.margin.bottom = read_measure(margin_bottom);
   }
 
+  // a fixed height reads as the least
+  const auto marginal_height = [](const pugi::xml_node properties) {
+    return read_measure(properties.attribute("svg:height")).or_else([&] {
+      return read_measure(properties.attribute("fo:min-height"));
+    });
+  };
+  if (const pugi::xml_node header =
+          node.child("style:header-style")
+              .child("style:header-footer-properties")) {
+    result.header_min_height = marginal_height(header);
+    result.header_spacing = read_measure(header.attribute("fo:margin-bottom"));
+  }
+  if (const pugi::xml_node footer =
+          node.child("style:footer-style")
+              .child("style:header-footer-properties")) {
+    result.footer_min_height = marginal_height(footer);
+    result.footer_spacing = read_measure(footer.attribute("fo:margin-top"));
+  }
+
   return result;
 }
 
@@ -1152,6 +1171,36 @@ pugi::xml_node StyleRegistry::outline_style_node() const {
              : std::begin(m_index_outline_style)->second;
 }
 
+pugi::xml_attribute StyleRegistry::graphic_attribute(const char *style_name,
+                                                     const char *name) const {
+  const auto it = m_index_style.find(style_name != nullptr ? style_name : "");
+  return graphic_attribute(
+      it == std::end(m_index_style) ? pugi::xml_node() : it->second, name);
+}
+
+pugi::xml_attribute StyleRegistry::graphic_attribute(const pugi::xml_node style,
+                                                     const char *name) const {
+  pugi::xml_node node = style;
+  // bounded, so a cycle of parents ends
+  for (std::size_t remaining = m_index_style.size() + 1; node && remaining > 0;
+       --remaining) {
+    if (const pugi::xml_attribute attribute =
+            node.child("style:graphic-properties").attribute(name)) {
+      return attribute;
+    }
+    const pugi::xml_attribute parent =
+        node.attribute("style:parent-style-name");
+    if (!parent) {
+      break;
+    }
+    const auto it = m_index_style.find(parent.value());
+    node = it == std::end(m_index_style) ? pugi::xml_node() : it->second;
+  }
+  return default_style_node("graphic")
+      .child("style:graphic-properties")
+      .attribute(name);
+}
+
 ElementIdentifier StyleRegistry::master_page(const std::string &name) const {
   if (const auto master_page_elements_it = m_master_page_elements.find(name);
       master_page_elements_it != std::end(m_master_page_elements)) {
@@ -1164,8 +1213,14 @@ ElementIdentifier StyleRegistry::first_master_page() const {
   return m_first_master_page_element;
 }
 
+const std::unordered_map<std::string, ElementIdentifier> &
+StyleRegistry::master_pages() const {
+  return m_master_page_elements;
+}
+
 ElementIdentifier
-StyleRegistry::master_page_of_style(const char *style_name) const {
+StyleRegistry::master_page_of_style(const char *style_name,
+                                    const bool empty_opens_none) const {
   // Bounded against a style naming itself as its own parent.
   for (std::uint32_t depth = 0; depth < 16 && style_name[0] != '\0'; ++depth) {
     const auto style_it = m_index_style.find(style_name);
@@ -1173,10 +1228,13 @@ StyleRegistry::master_page_of_style(const char *style_name) const {
       break;
     }
     const pugi::xml_node node = style_it->second;
-    if (const pugi::xml_attribute master_page_name =
-            node.attribute("style:master-page-name");
-        master_page_name && master_page_name.value()[0] != '\0') {
+    const pugi::xml_attribute master_page_name =
+        node.attribute("style:master-page-name");
+    if (master_page_name.value()[0] != '\0') {
       return master_page(master_page_name.value());
+    }
+    if (master_page_name && empty_opens_none) {
+      return null_element_id;
     }
     style_name = node.attribute("style:parent-style-name").value();
   }

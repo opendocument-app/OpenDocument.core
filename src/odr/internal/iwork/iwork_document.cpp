@@ -95,6 +95,10 @@ public:
         .margin = {},
         .background_color = {},
         .direction = {},
+        .header_min_height = {},
+        .header_spacing = {},
+        .footer_min_height = {},
+        .footer_spacing = {},
     };
   }
   [[nodiscard]] ElementIdentifier slide_master_page(

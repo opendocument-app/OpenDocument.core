@@ -43,6 +43,14 @@ The release run heads these entries with the version and opens a fresh
 - The new `Paragraph::marker` returns a heading's number in a numbered
   outline, empty for any other paragraph, in Python, Java and Objective-C
   too.
+- With `text_document_margin`, an odt's page box shows the header and footer
+  of its master page, the first page's where it differs; a paragraph naming a
+  master page opens a box of that page. `style:header-left` and the headers'
+  own margins, border and background are not read.
+- `MasterPage` has `header()`, `footer()`, `first_header()`, `first_footer()`
+  and `next_master_page()`, `Paragraph` has `master_page()`, and `PageLayout`
+  the `header_min_height`, `header_spacing`, `footer_min_height` and
+  `footer_spacing` the layout states.
 
 ### Fixes
 
@@ -53,6 +61,9 @@ The release run heads these entries with the version and opens a fresh
   then has an alpha of 0.
 - An odt or odg whose page layout states no paper size is laid out on A4; one
   stating only its width or height takes the other from A4.
+- An odt frame stands at its `style:horizontal-pos` whatever its
+  `style:wrap`, as in LibreOffice. A header logo wrapped `dynamic` and
+  positioned `left` floated right.
 - A doc, xls or ppt opens when its storage directory gives a stream a child or
   links to an unused slot. A link past the directory throws `CfbFileCorrupted`,
   not a `std::invalid_argument` with an empty message.
@@ -67,6 +78,9 @@ The release run heads these entries with the version and opens a fresh
   and many odg and ods do, is set in that family rather than the browser's
   default serif. `style:font-name` still outranks it, and PowerPoint's
   unresolved theme fonts such as `+mn-lt` are no family.
+- An ods cell saved with a value but without its text, as LibreOffice 4.2
+  saved a row of sums, shows the value in its data style and counts as
+  content of the sheet. It was blank. `SheetCell::value` states that text.
 
 ## v7.7.0 - 2026-10-31
 
