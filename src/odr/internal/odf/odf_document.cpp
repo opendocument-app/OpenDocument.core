@@ -2202,7 +2202,10 @@ public:
   [[nodiscard]] GraphicStyle
   frame_style(const ElementIdentifier element_id) const override {
     GraphicStyle result = get_intermediate_style(element_id).graphic_style;
-    place_by_position(element_id, result);
+    if (const std::optional<TextWrap> wrap =
+            wrap_by_position(element_id, result)) {
+      result.text_wrap = wrap;
+    }
     return result;
   }
 
@@ -2254,37 +2257,32 @@ public:
   }
 
 private:
-  /// Derives `text_wrap` from a stated `style:horizontal-pos`; see AGENTS.md.
-  void place_by_position(const ElementIdentifier element_id,
-                         GraphicStyle &style) const {
+  [[nodiscard]] std::optional<TextWrap>
+  wrap_by_position(const ElementIdentifier element_id,
+                   const GraphicStyle &style) const {
     if (!style.horizontal_position.has_value() ||
         !style.text_wrap.has_value() ||
         (*style.text_wrap != TextWrap::before &&
          *style.text_wrap != TextWrap::after)) {
-      return;
+      return std::nullopt;
     }
     const std::string_view wrap =
         m_document->style_registry()
             .graphic_attribute(get_style_name(element_id), "style:wrap")
             .value();
     if (wrap.empty()) {
-      return;
+      return std::nullopt;
     }
-    // `biggest` LibreOffice does not read; it is the widest side
+    // LibreOffice does not read `biggest`
     const bool both =
         wrap == "dynamic" || wrap == "parallel" || wrap == "biggest";
     switch (*style.horizontal_position) {
     case HorizontalAlign::left:
-      style.text_wrap =
-          both || wrap == "right" ? TextWrap::after : TextWrap::none;
-      break;
+      return both || wrap == "right" ? TextWrap::after : TextWrap::none;
     case HorizontalAlign::right:
-      style.text_wrap =
-          both || wrap == "left" ? TextWrap::before : TextWrap::none;
-      break;
+      return both || wrap == "left" ? TextWrap::before : TextWrap::none;
     default:
-      style.text_wrap = TextWrap::none;
-      break;
+      return TextWrap::none;
     }
   }
 
