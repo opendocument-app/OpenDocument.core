@@ -578,8 +578,6 @@ public:
         master_page_id != null_element_id) {
       return with_default_paper(master_page_page_layout(master_page_id));
     }
-    // no master page at all: the text flows on no paper, and prints to the
-    // printer's
     return {};
   }
   static bool is_anchored_frame(const pugi::xml_node node) {

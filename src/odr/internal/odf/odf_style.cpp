@@ -629,8 +629,7 @@ void Style::resolve_graphic_style_(const pugi::xml_node node,
       stroke_width.has_value()) {
     result.stroke_width = stroke_width;
   }
-  // `draw:stroke` and `svg:stroke-color` cascade independently, so the stroke
-  // state rides in the alpha, as the fill's does
+  // the stroke state rides in the alpha, as the fill's does
   if (const pugi::xml_attribute stroke =
           graphic_properties.attribute("draw:stroke")) {
     const Color previous = result.stroke_color.value_or(Color());
