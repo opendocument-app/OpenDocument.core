@@ -80,7 +80,7 @@ std::size_t count(const std::string &haystack, const std::string &needle) {
 }
 
 /// A row of sums as LibreOffice 4.2 saved it: the value, but no text.
-const std::string uncached_sums =
+constexpr const char *uncached_sums =
     R"(<table:table-cell table:style-name="ce1" table:formula="of:=1+1")"
     R"( office:value-type="float" office:value="55281.25"><text:p/>)"
     R"(</table:table-cell>)"
