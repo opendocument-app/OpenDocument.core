@@ -471,6 +471,22 @@ public:
 
   [[nodiscard]] virtual PageLayout
   master_page_page_layout(ElementIdentifier element_id) const = 0;
+  /// The header group of a text master page; null where it has none.
+  [[nodiscard]] virtual ElementIdentifier
+  master_page_header(ElementIdentifier element_id) const = 0;
+  /// The footer group of a text master page; null where it has none.
+  [[nodiscard]] virtual ElementIdentifier
+  master_page_footer(ElementIdentifier element_id) const = 0;
+  /// The first page's header, where it differs; null where it does not.
+  [[nodiscard]] virtual ElementIdentifier
+  master_page_first_header(ElementIdentifier element_id) const = 0;
+  /// The first page's footer, where it differs; null where it does not.
+  [[nodiscard]] virtual ElementIdentifier
+  master_page_first_footer(ElementIdentifier element_id) const = 0;
+  /// The master page the page after this one takes; null where it names
+  /// none, which keeps this one.
+  [[nodiscard]] virtual ElementIdentifier
+  master_page_next(ElementIdentifier element_id) const = 0;
 };
 
 class LineBreakAdapter {
@@ -489,6 +505,12 @@ public:
   paragraph_style(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual TextStyle
   paragraph_text_style(ElementIdentifier element_id) const = 0;
+  /// The master page whose page this paragraph opens; null where it names
+  /// none.
+  [[nodiscard]] virtual ElementIdentifier paragraph_master_page(
+      [[maybe_unused]] const ElementIdentifier element_id) const {
+    return null_element_id;
+  }
   /// Writes `text_align` of @p style, which is set, on the paragraph.
   virtual void
   paragraph_set_style([[maybe_unused]] const ElementIdentifier element_id,

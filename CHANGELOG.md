@@ -26,6 +26,20 @@ The release run heads these entries with the version and opens a fresh
   and iOS, for example `server bind failed: 127.0.0.1:29665 (Address already
   in use)`.
 
+### Text documents and presentations
+
+- With `text_document_margin`, an odt's page box shows the header and footer
+  of its master page, the first page's where it differs; a paragraph naming a
+  master page opens a box of that page. `style:header-left` and the headers'
+  own margins, border and background are not read.
+
+### API, files and saving
+
+- `MasterPage` has `header()`, `footer()`, `first_header()`, `first_footer()`
+  and `next_master_page()`, `Paragraph` has `master_page()`, and `PageLayout`
+  the `header_min_height`, `header_spacing`, `footer_min_height` and
+  `footer_spacing` the layout states.
+
 ### Fixes
 
 - A shape or connector with a stroke width of zero is drawn with a hairline,

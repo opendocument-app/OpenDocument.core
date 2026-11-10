@@ -313,6 +313,25 @@ PageLayout read_page_layout(const pugi::xml_node node) {
     result.margin.bottom = read_measure(margin_bottom);
   }
 
+  // a fixed height reads as the least
+  const auto marginal_height = [](const pugi::xml_node properties) {
+    return read_measure(properties.attribute("svg:height")).or_else([&] {
+      return read_measure(properties.attribute("fo:min-height"));
+    });
+  };
+  if (const pugi::xml_node header =
+          node.child("style:header-style")
+              .child("style:header-footer-properties")) {
+    result.header_min_height = marginal_height(header);
+    result.header_spacing = read_measure(header.attribute("fo:margin-bottom"));
+  }
+  if (const pugi::xml_node footer =
+          node.child("style:footer-style")
+              .child("style:header-footer-properties")) {
+    result.footer_min_height = marginal_height(footer);
+    result.footer_spacing = read_measure(footer.attribute("fo:margin-top"));
+  }
+
   return result;
 }
 
@@ -1182,8 +1201,14 @@ ElementIdentifier StyleRegistry::first_master_page() const {
   return m_first_master_page_element;
 }
 
+const std::unordered_map<std::string, ElementIdentifier> &
+StyleRegistry::master_pages() const {
+  return m_master_page_elements;
+}
+
 ElementIdentifier
-StyleRegistry::master_page_of_style(const char *style_name) const {
+StyleRegistry::master_page_of_style(const char *style_name,
+                                    const bool empty_opens_none) const {
   // Bounded against a style naming itself as its own parent.
   for (std::uint32_t depth = 0; depth < 16 && style_name[0] != '\0'; ++depth) {
     const auto style_it = m_index_style.find(style_name);
@@ -1191,10 +1216,13 @@ StyleRegistry::master_page_of_style(const char *style_name) const {
       break;
     }
     const pugi::xml_node node = style_it->second;
-    if (const pugi::xml_attribute master_page_name =
-            node.attribute("style:master-page-name");
-        master_page_name && master_page_name.value()[0] != '\0') {
+    const pugi::xml_attribute master_page_name =
+        node.attribute("style:master-page-name");
+    if (master_page_name.value()[0] != '\0') {
       return master_page(master_page_name.value());
+    }
+    if (master_page_name && empty_opens_none) {
+      return null_element_id;
     }
     style_name = node.attribute("style:parent-style-name").value();
   }

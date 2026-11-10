@@ -609,6 +609,39 @@ PageLayout MasterPage::page_layout() const {
                    : PageLayout();
 }
 
+Element MasterPage::header() const {
+  return exists_()
+             ? Element(m_adapter, m_adapter2->master_page_header(m_identifier))
+             : Element();
+}
+
+Element MasterPage::footer() const {
+  return exists_()
+             ? Element(m_adapter, m_adapter2->master_page_footer(m_identifier))
+             : Element();
+}
+
+Element MasterPage::first_header() const {
+  return exists_() ? Element(m_adapter,
+                             m_adapter2->master_page_first_header(m_identifier))
+                   : Element();
+}
+
+Element MasterPage::first_footer() const {
+  return exists_() ? Element(m_adapter,
+                             m_adapter2->master_page_first_footer(m_identifier))
+                   : Element();
+}
+
+MasterPage MasterPage::next_master_page() const {
+  if (!exists_()) {
+    return {};
+  }
+  const ElementIdentifier next = m_adapter2->master_page_next(m_identifier);
+  return next == null_element_id ? *this
+                                 : Element(m_adapter, next).as_master_page();
+}
+
 TextStyle LineBreak::style() const {
   return exists_() ? m_adapter2->line_break_style(m_identifier) : TextStyle();
 }
@@ -616,6 +649,15 @@ TextStyle LineBreak::style() const {
 ParagraphStyle Paragraph::style() const {
   return exists_() ? m_adapter2->paragraph_style(m_identifier)
                    : ParagraphStyle();
+}
+
+MasterPage Paragraph::master_page() const {
+  if (!exists_()) {
+    return {};
+  }
+  const ElementIdentifier master_page_id =
+      m_adapter2->paragraph_master_page(m_identifier);
+  return Element(m_adapter, master_page_id).as_master_page();
 }
 
 void Paragraph::set_style(const ParagraphStyle &style) const {

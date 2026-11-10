@@ -121,6 +121,14 @@ to none, so a colour with no fill anywhere in the chain paints nothing.
 `draw:stroke` and `svg:stroke-color` ride the same way in the stroke colour's
 alpha, but `draw:stroke` defaults to solid.
 
+**A page box carries the header and footer of its master page**, as
+LibreOffice picks them. Page one takes the master page of the first content
+that is not anchored to the page, else "Standard", else the first. A paragraph
+naming a master page opens a box; any other box takes `style:next-style-name`.
+A box opening a run takes the first page's variants. The header height holds
+the spacing (`PROP_HeaderHeight`). The header and footer carry no editing
+address, and an embedded image in them is written once.
+
 **A flat document is the same `Document`, minus the package.** Its
 `office:document` root carries what `content.xml` and `styles.xml` carry
 between them, so the flat constructor passes that root as both roots. Images

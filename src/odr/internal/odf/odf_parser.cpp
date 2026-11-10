@@ -413,6 +413,13 @@ parse_any_element_tree(ElementRegistry &registry, const pugi::xml_node node) {
       {"text:date", create_default_tree_parser(ElementType::group)},
       {"text:time", create_default_tree_parser(ElementType::group)},
       {"text:section", create_default_tree_parser(ElementType::group)},
+      {"style:header", create_default_tree_parser(ElementType::group)},
+      {"style:footer", create_default_tree_parser(ElementType::group)},
+      // LibreOffice writes `loext:` below ODF 1.3
+      {"style:header-first", create_default_tree_parser(ElementType::group)},
+      {"style:footer-first", create_default_tree_parser(ElementType::group)},
+      {"loext:header-first", create_default_tree_parser(ElementType::group)},
+      {"loext:footer-first", create_default_tree_parser(ElementType::group)},
       //{"text:page-number", create_tree_parser(ElementType::group)},
       //{"text:page-continuation", create_tree_parser(ElementType::group)},
       {"table:table", parse_table},
