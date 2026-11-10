@@ -31,7 +31,7 @@ struct ListLevel final {
 };
 
 /// In a `ListLevel::label`, this byte and a byte holding N stand for level N.
-/// XML cannot carry it, so a literal `w:lvlText` never contains it.
+/// Well formed XML cannot carry it, so a valid `w:lvlText` never contains it.
 inline constexpr char level_placeholder = '\x01';
 
 /// A resolved list item label.
