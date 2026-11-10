@@ -2201,7 +2201,12 @@ public:
   }
   [[nodiscard]] GraphicStyle
   frame_style(const ElementIdentifier element_id) const override {
-    return get_intermediate_style(element_id).graphic_style;
+    GraphicStyle result = get_intermediate_style(element_id).graphic_style;
+    if (const std::optional<TextWrap> wrap =
+            wrap_by_position(element_id, result)) {
+      result.text_wrap = wrap;
+    }
+    return result;
   }
 
   [[nodiscard]] bool
@@ -2252,6 +2257,35 @@ public:
   }
 
 private:
+  [[nodiscard]] std::optional<TextWrap>
+  wrap_by_position(const ElementIdentifier element_id,
+                   const GraphicStyle &style) const {
+    if (!style.horizontal_position.has_value() ||
+        !style.text_wrap.has_value() ||
+        (*style.text_wrap != TextWrap::before &&
+         *style.text_wrap != TextWrap::after)) {
+      return std::nullopt;
+    }
+    const std::string_view wrap =
+        m_document->style_registry()
+            .graphic_attribute(get_style_name(element_id), "style:wrap")
+            .value();
+    if (wrap.empty()) {
+      return std::nullopt;
+    }
+    // LibreOffice does not read `biggest`
+    const bool both =
+        wrap == "dynamic" || wrap == "parallel" || wrap == "biggest";
+    switch (*style.horizontal_position) {
+    case HorizontalAlign::left:
+      return both || wrap == "right" ? TextWrap::after : TextWrap::none;
+    case HorizontalAlign::right:
+      return both || wrap == "left" ? TextWrap::before : TextWrap::none;
+    default:
+      return TextWrap::none;
+    }
+  }
+
   Document *m_document{nullptr};
   mutable std::mutex m_charts_mutex;
   mutable std::unordered_map<ElementIdentifier, std::optional<std::string>>

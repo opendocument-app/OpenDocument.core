@@ -81,6 +81,12 @@ public:
   [[nodiscard]] pugi::xml_node
   default_style_node(const std::string &family) const;
 
+  /// Falls back to the bases of @p style, then to the `graphic` default style.
+  [[nodiscard]] pugi::xml_attribute graphic_attribute(pugi::xml_node style,
+                                                      const char *name) const;
+  [[nodiscard]] pugi::xml_attribute graphic_attribute(const char *style_name,
+                                                      const char *name) const;
+
   [[nodiscard]] PageLayout page_layout(const std::string &name) const;
 
   [[nodiscard]] pugi::xml_node font_face_node(const std::string &name) const;

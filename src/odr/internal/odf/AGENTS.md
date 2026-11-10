@@ -43,6 +43,11 @@ in `m_shape_types`, and `frame_shape_type` reads it back. `draw:rect` and
 `draw:circle` and `draw:ellipse` are `ellipse` unless `draw:kind` cuts them,
 and every shape whose geometry is drawn rather than named is `custom`.
 
+**A frame floats by its stated position, not by its wrap.** As in
+LibreOffice, `style:horizontal-pos` places the frame and `style:wrap` only
+names the sides text may flow on. `wrap_by_position` derives `TextWrap` from
+both.
+
 **Text runs are coalesced.** A maximal run of consecutive text nodes
 (`node_pcdata`, `text:s`, `text:tab`) is one `text` element spanning
 `[first, last]` (`Text.last`). `text:line-break` is its own element and ends
