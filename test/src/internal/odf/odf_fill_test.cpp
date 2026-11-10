@@ -1,0 +1,367 @@
+#include <odr/document.hpp>
+#include <odr/document_element.hpp>
+#include <odr/file.hpp>
+#include <odr/html.hpp>
+#include <odr/odr.hpp>
+#include <odr/style.hpp>
+
+#include <odr/internal/abstract/filesystem.hpp>
+#include <odr/internal/common/file.hpp>
+#include <odr/internal/common/path.hpp>
+#include <odr/internal/odf/odf_document.hpp>
+#include <odr/internal/zip/zip_archive.hpp>
+#include <odr/internal/zip/zip_file.hpp>
+
+#include <gtest/gtest.h>
+
+#include <filesystem>
+#include <fstream>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <vector>
+
+using namespace odr;
+using namespace odr::internal;
+
+namespace {
+
+constexpr const char *namespaces =
+    R"(xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" )"
+    R"(xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" )"
+    R"(xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" )"
+    R"(xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" )"
+    R"(xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0")";
+
+/// A drawing whose `styles.xml` holds @p styles under `office:styles` and
+/// whose page holds @p body; with @p generator, a `meta.xml` naming it, and
+/// stating ODF @p version, none where it is empty.
+std::string write_odg(const std::string &name, const std::string &styles,
+                      const std::string &body,
+                      const std::string &generator = {},
+                      const std::string &version = "1.3") {
+  const std::string content =
+      std::string(R"(<?xml version="1.0" encoding="UTF-8"?>)") +
+      "<office:document-content " + namespaces +
+      (version.empty() ? std::string()
+                       : R"( office:version=")" + version + R"(")") +
+      ">" + R"(<office:body><office:drawing><draw:page>)" + body +
+      R"(</draw:page></office:drawing></office:body>)"
+      R"(</office:document-content>)";
+  const std::string styles_xml =
+      std::string(R"(<?xml version="1.0" encoding="UTF-8"?>)") +
+      "<office:document-styles " + namespaces + "><office:styles>" + styles +
+      "</office:styles></office:document-styles>";
+
+  const std::string path =
+      (std::filesystem::temp_directory_path() / name).string();
+
+  zip::ZipArchive zip;
+  zip.insert_file(std::end(zip), RelPath("mimetype"),
+                  std::make_shared<MemoryFile>(
+                      "application/vnd.oasis.opendocument.graphics"));
+  zip.insert_file(std::end(zip), RelPath("content.xml"),
+                  std::make_shared<MemoryFile>(content));
+  zip.insert_file(std::end(zip), RelPath("styles.xml"),
+                  std::make_shared<MemoryFile>(styles_xml));
+  if (!generator.empty()) {
+    zip.insert_file(
+        std::end(zip), RelPath("meta.xml"),
+        std::make_shared<MemoryFile>(
+            R"(<?xml version="1.0" encoding="UTF-8"?><office:document-meta )"
+            R"(xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" )"
+            R"(xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0">)"
+            R"(<office:meta><meta:generator>)" +
+            generator +
+            R"(</meta:generator></office:meta></office:document-meta>)"));
+  }
+  std::ofstream out(path, std::ios::binary);
+  zip.save(out);
+
+  return path;
+}
+
+std::vector<GraphicStyle> styles_of(const odr::Document &document) {
+  std::vector<GraphicStyle> result;
+  for (const Element child : document.root_element().first_child().children()) {
+    result.push_back(child.as_frame().style());
+  }
+  return result;
+}
+
+std::string rect(const std::string &style) {
+  return R"(<draw:rect draw:style-name=")" + style +
+         R"(" svg:x="1cm" svg:y="1cm" svg:width="4cm" svg:height="2cm"/>)";
+}
+
+/// The html of the first view of the file at @p path.
+std::string render(const std::string &path) {
+  std::ostringstream html;
+  html::translate(odr::open(path), HtmlConfig())
+      .list_views()
+      .at(0)
+      .write_html(html);
+  return html.str();
+}
+
+} // namespace
+
+TEST(OdfFill, a_gradient_is_read_with_its_intensities_and_its_angle) {
+  const std::string path = write_odg(
+      "odf_fill_gradient.odg",
+      R"(<draw:gradient draw:name="G" draw:style="axial" )"
+      R"(draw:start-color="#ff0000" draw:end-color="#0000ff" )"
+      R"(draw:start-intensity="50%" draw:end-intensity="100%" )"
+      R"(draw:angle="300" draw:border="20%" draw:cx="10%" draw:cy="90%"/>)"
+      R"(<style:style style:name="g" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="gradient" )"
+      R"(draw:fill-gradient-name="G"/></style:style>)",
+      rect("g"),
+      "LibreOffice/6.4.7.2$Linux_X86_64 LibreOffice_project/40$Build-2", "1.2");
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const GraphicStyle style = styles_of(document).at(0);
+
+  ASSERT_TRUE(style.fill_gradient.has_value());
+  EXPECT_FALSE(style.fill_hatch.has_value());
+  const GradientFill &gradient = *style.fill_gradient;
+  EXPECT_EQ(gradient.style, GradientStyle::axial);
+  EXPECT_EQ(gradient.start_color.rgb(), 0x800000u);
+  EXPECT_EQ(gradient.end_color.rgb(), 0x0000ffu);
+  EXPECT_DOUBLE_EQ(gradient.angle, 30);
+  EXPECT_DOUBLE_EQ(gradient.border, 0.2);
+  EXPECT_DOUBLE_EQ(gradient.center_x, 0.1);
+  EXPECT_DOUBLE_EQ(gradient.center_y, 0.9);
+}
+
+TEST(OdfFill, a_gradient_angle_with_a_unit_is_read_in_that_unit) {
+  const std::string path =
+      write_odg("odf_fill_gradient_angle.odg",
+                R"(<draw:gradient draw:name="D" draw:angle="27deg"/>)"
+                R"(<draw:gradient draw:name="G" draw:angle="100grad"/>)"
+                R"(<style:style style:name="d" style:family="graphic">)"
+                R"(<style:graphic-properties draw:fill="gradient" )"
+                R"(draw:fill-gradient-name="D"/></style:style>)"
+                R"(<style:style style:name="g" style:family="graphic">)"
+                R"(<style:graphic-properties draw:fill="gradient" )"
+                R"(draw:fill-gradient-name="G"/></style:style>)",
+                rect("d") + rect("g"));
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const std::vector<GraphicStyle> styles = styles_of(document);
+
+  EXPECT_DOUBLE_EQ(styles.at(0).fill_gradient.value().angle, 27);
+  EXPECT_DOUBLE_EQ(styles.at(1).fill_gradient.value().angle, 90);
+}
+
+TEST(OdfFill, the_fill_kind_and_the_gradient_name_cascade_independently) {
+  const std::string path = write_odg(
+      "odf_fill_cascade.odg",
+      R"(<draw:gradient draw:name="G" draw:style="linear"/>)"
+      R"(<style:style style:name="base" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill-gradient-name="G"/>)"
+      R"(</style:style>)"
+      R"(<style:style style:name="gradient" style:family="graphic" )"
+      R"(style:parent-style-name="base">)"
+      R"(<style:graphic-properties draw:fill="gradient"/></style:style>)"
+      R"(<style:style style:name="solid" style:family="graphic" )"
+      R"(style:parent-style-name="gradient">)"
+      R"(<style:graphic-properties draw:fill="solid" )"
+      R"(draw:fill-color="#00ff00"/></style:style>)",
+      rect("gradient") + rect("solid"));
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const std::vector<GraphicStyle> styles = styles_of(document);
+
+  EXPECT_TRUE(styles.at(0).fill_gradient.has_value());
+  EXPECT_FALSE(styles.at(1).fill_gradient.has_value());
+  ASSERT_TRUE(styles.at(1).fill_color.has_value());
+  EXPECT_EQ(styles.at(1).fill_color->alpha, 255);
+}
+
+TEST(OdfFill, a_solid_hatch_paints_its_fill_color_behind_the_lines) {
+  const std::string path = write_odg(
+      "odf_fill_hatch.odg",
+      R"(<draw:hatch draw:name="H" draw:style="double" draw:color="#3465a4" )"
+      R"(draw:distance="0.15cm" draw:rotation="450"/>)"
+      R"(<style:style style:name="solid" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="hatch" draw:fill-hatch-name="H" )"
+      R"(draw:fill-hatch-solid="true" draw:fill-color="#009eda"/>)"
+      R"(</style:style>)"
+      R"(<style:style style:name="lines" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="hatch" draw:fill-hatch-name="H" )"
+      R"(draw:fill-color="#009eda"/></style:style>)",
+      rect("solid") + rect("lines"));
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const std::vector<GraphicStyle> styles = styles_of(document);
+
+  ASSERT_TRUE(styles.at(0).fill_hatch.has_value());
+  const HatchFill &hatch = *styles.at(0).fill_hatch;
+  EXPECT_EQ(hatch.style, HatchStyle::crossed);
+  EXPECT_EQ(hatch.color.rgb(), 0x3465a4u);
+  EXPECT_EQ(hatch.distance.to_string(), "0.15cm");
+  EXPECT_DOUBLE_EQ(hatch.rotation, 45);
+  ASSERT_TRUE(styles.at(0).fill_color.has_value());
+  EXPECT_EQ(styles.at(0).fill_color->alpha, 255);
+
+  ASSERT_TRUE(styles.at(1).fill_hatch.has_value());
+  ASSERT_TRUE(styles.at(1).fill_color.has_value());
+  EXPECT_EQ(styles.at(1).fill_color->alpha, 0);
+}
+
+TEST(OdfFill, a_gradient_that_names_nothing_paints_nothing) {
+  const std::string path = write_odg(
+      "odf_fill_missing.odg",
+      R"(<style:style style:name="g" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="gradient" )"
+      R"(draw:fill-gradient-name="missing" draw:fill-color="#00ff00"/>)"
+      R"(</style:style>)",
+      rect("g"));
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const GraphicStyle style = styles_of(document).at(0);
+
+  EXPECT_FALSE(style.fill_gradient.has_value());
+  ASSERT_TRUE(style.fill_color.has_value());
+  EXPECT_EQ(style.fill_color->alpha, 0);
+}
+
+TEST(OdfFill,
+     a_unitless_gradient_angle_is_in_degrees_unless_its_producer_wrote_tenths) {
+  const std::string styles =
+      R"(<draw:gradient draw:name="G" draw:angle="300"/>)"
+      R"(<style:style style:name="g" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="gradient" )"
+      R"(draw:fill-gradient-name="G"/></style:style>)";
+  const auto angle = [&](const std::string &name, const std::string &generator,
+                         const std::string &version) {
+    const odr::Document document =
+        odr::open(write_odg(name, styles, rect("g"), generator, version))
+            .as_document_file()
+            .document();
+    return styles_of(document).at(0).fill_gradient.value().angle;
+  };
+  const std::string lo6 =
+      "LibreOffice/6.4.7.2$Linux_X86_64 LibreOffice_project/40$Build-2";
+  const std::string lo7 =
+      "LibreOffice/7.3.7.2$Linux_X86_64 LibreOffice_project/30$Build-2";
+
+  // at ODF 1.2 the producer decides
+  EXPECT_DOUBLE_EQ(angle("odf_fill_angle_unknown.odg", "", "1.2"), 300);
+  EXPECT_DOUBLE_EQ(angle("odf_fill_angle_lo7.odg", lo7, "1.2"), 300);
+  EXPECT_DOUBLE_EQ(angle("odf_fill_angle_lo6.odg", lo6, "1.2"), 30);
+  EXPECT_DOUBLE_EQ(angle("odf_fill_angle_collabora.odg",
+                         "CollaboraOffice/6.4.10.4$Linux_X86_64 "
+                         "LibreOffice_project/fb2$Build-4",
+                         "1.2"),
+                   30);
+  EXPECT_DOUBLE_EQ(
+      angle("odf_fill_angle_aoo.odg", "Apache_OpenOffice/4.1.15$Win32", "1.2"),
+      30);
+  // below it tenths, as an Excel ods stating no version writes them
+  EXPECT_DOUBLE_EQ(angle("odf_fill_angle_none.odg", "", ""), 30);
+  EXPECT_DOUBLE_EQ(angle("odf_fill_angle_1_1.odg", lo7, "1.1"), 30);
+  // above it degrees, whoever wrote it
+  EXPECT_DOUBLE_EQ(angle("odf_fill_angle_1_3.odg", lo6, "1.3"), 300);
+}
+
+TEST(OdfFill, a_gradient_stating_nothing_is_black_with_its_center_at_zero) {
+  // as LibreOffice's XMLGradientStyleImport starts from
+  const std::string path =
+      write_odg("odf_fill_gradient_bare.odg",
+                R"(<draw:gradient draw:name="G" draw:style="radial"/>)"
+                R"(<style:style style:name="g" style:family="graphic">)"
+                R"(<style:graphic-properties draw:fill="gradient" )"
+                R"(draw:fill-gradient-name="G"/></style:style>)",
+                rect("g"));
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const GraphicStyle style = styles_of(document).at(0);
+
+  ASSERT_TRUE(style.fill_gradient.has_value());
+  EXPECT_EQ(style.fill_gradient->start_color.rgb(), 0x000000u);
+  EXPECT_EQ(style.fill_gradient->end_color.rgb(), 0x000000u);
+  EXPECT_DOUBLE_EQ(style.fill_gradient->center_x, 0);
+  EXPECT_DOUBLE_EQ(style.fill_gradient->center_y, 0);
+}
+
+TEST(OdfFill, a_hatch_without_a_distance_is_drawn_at_the_minimum) {
+  const std::string path = write_odg(
+      "odf_fill_hatch_zero.odg",
+      R"(<draw:hatch draw:name="H" draw:style="single" draw:color="#000000")"
+      R"( draw:distance="0cm"/>)"
+      R"(<style:style style:name="g" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="hatch" )"
+      R"(draw:fill-hatch-name="H"/></style:style>)",
+      rect("g"));
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  ASSERT_TRUE(styles_of(document).at(0).fill_hatch.has_value());
+
+  // the lines 2px apart, percent-encoded in the pattern
+  EXPECT_NE(render(path).find("width=%222px%22"), std::string::npos);
+}
+
+TEST(OdfFill, a_shape_paints_its_gradient_on_a_layer_masked_to_it) {
+  const std::string path =
+      write_odg("odf_fill_html.odg",
+                R"(<draw:gradient draw:name="G" draw:style="linear" )"
+                R"(draw:start-color="#ff0000" draw:end-color="#0000ff"/>)"
+                R"(<style:style style:name="g" style:family="graphic">)"
+                R"(<style:graphic-properties draw:fill="gradient" )"
+                R"(draw:fill-gradient-name="G"/></style:style>)",
+                R"(<draw:ellipse draw:style-name="g" svg:x="1cm" svg:y="1cm" )"
+                R"(svg:width="4cm" svg:height="2cm"/>)"
+                R"(<draw:path draw:style-name="g" svg:x="1cm" svg:y="4cm" )"
+                R"(svg:width="4cm" svg:height="2cm" svg:viewBox="0 0 400 200" )"
+                R"(svg:d="M0 0 L400 200"/>)");
+
+  const std::string page = render(path);
+
+  // one layer, for the closed ellipse; the open path is not filled
+  const std::size_t layer = page.find(R"(class="odr-fill")");
+  ASSERT_NE(layer, std::string::npos);
+  EXPECT_EQ(page.find(R"(class="odr-fill")", layer + 1), std::string::npos);
+  EXPECT_NE(page.find("linear-gradient(180deg,#ff0000 0%,#0000ff 100%)"),
+            std::string::npos);
+  EXPECT_NE(page.find("mask-image:url('data:image/svg+xml,"),
+            std::string::npos);
+  // the shape's svg only strokes
+  EXPECT_NE(page.find("fill:none;"), std::string::npos);
+}
+
+TEST(OdfFill, a_solid_hatch_with_no_color_paints_libreoffices_default) {
+  const std::string path = write_odg(
+      "odf_fill_hatch_no_color.odg",
+      R"(<draw:hatch draw:name="H" draw:color="#000000" )"
+      R"(draw:distance="0.1cm"/>)"
+      R"(<style:style style:name="g" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="hatch" draw:fill-hatch-name="H" )"
+      R"(draw:fill-hatch-solid="true"/></style:style>)",
+      rect("g"));
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const GraphicStyle style = styles_of(document).at(0);
+
+  ASSERT_TRUE(style.fill_color.has_value());
+  EXPECT_EQ(style.fill_color->rgb(), 0x729fcfu);
+  EXPECT_EQ(style.fill_color->alpha, 255);
+}
+
+TEST(OdfFill, a_malformed_meta_xml_names_no_producer) {
+  const std::string path =
+      write_odg("odf_fill_meta_broken.odg",
+                R"(<draw:gradient draw:name="G" draw:angle="300"/>)"
+                R"(<style:style style:name="g" style:family="graphic">)"
+                R"(<style:graphic-properties draw:fill="gradient" )"
+                R"(draw:fill-gradient-name="G"/></style:style>)",
+                rect("g"), "<broken", "1.2");
+
+  // past the open, which reads `meta.xml` for its statistics
+  const odr::Document document(std::make_shared<odf::Document>(
+      FileType::opendocument_graphics, DocumentType::drawing,
+      zip::ZipFile(std::make_shared<DiskFile>(path)).archive()->as_filesystem(),
+      EncryptionState::not_encrypted));
+  EXPECT_DOUBLE_EQ(styles_of(document).at(0).fill_gradient.value().angle, 300);
+}

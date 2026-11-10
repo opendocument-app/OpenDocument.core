@@ -141,6 +141,16 @@ NS_ASSUME_NONNULL_BEGIN
     (const std::optional<odr::DrawingTransform> &)handle;
 @end
 
+@interface ODRGradientFill (Private)
++ (nullable instancetype)gradientWithHandle:
+    (const std::optional<odr::GradientFill> &)handle;
+@end
+
+@interface ODRHatchFill (Private)
++ (nullable instancetype)hatchWithHandle:
+    (const std::optional<odr::HatchFill> &)handle;
+@end
+
 @interface ODRGraphicStyle (Private)
 + (instancetype)styleWithHandle:(const odr::GraphicStyle &)handle;
 @end

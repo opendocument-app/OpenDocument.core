@@ -37,6 +37,11 @@ The release run heads these entries with the version and opens a fresh
   the label with its period. A form saved by Word numbered its fields "2.1.",
   "3.1." where Word and LibreOffice show "1.1.", "1.2.". A list may name the
   outline as its style. A list deeper than ten levels counts on the tenth.
+- An odf shape or text box filled with a gradient or a hatch is painted as
+  LibreOffice paints it; square and rectangular gradients are drawn as an
+  ellipse, and a solid hatch with no fill color is backed by LibreOffice's
+  default blue. Multi-color and transparency gradients are not read. The dark
+  sheet clears a gradient or hatch as it clears a solid fill.
 
 ### API, files and saving
 
@@ -51,6 +56,8 @@ The release run heads these entries with the version and opens a fresh
   and `next_master_page()`, `Paragraph` has `master_page()`, and `PageLayout`
   the `header_min_height`, `header_spacing`, `footer_min_height` and
   `footer_spacing` the layout states.
+- `GraphicStyle` carries the new `fill_gradient` (`GradientFill`) and
+  `fill_hatch` (`HatchFill`), in Python, Java and Objective-C too.
 
 ### Fixes
 

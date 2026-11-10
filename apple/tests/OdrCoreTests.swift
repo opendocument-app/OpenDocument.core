@@ -426,6 +426,60 @@ final class ElementTreeTests: XCTestCase {
     let paragraphs = Array(root.descendants(ofType: Paragraph.self))
     XCTAssertEqual(paragraphs.map(\.marker), ["", "", "", ""])
   }
+
+  func testFrameStyleCarriesGradientAndHatchFills() throws {
+    let path = try write(
+      #"<?xml version="1.0" encoding="UTF-8"?>"#
+        + #"<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0""#
+        + #" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0""#
+        + #" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0""#
+        + #" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0""#
+        + #" office:version="1.3""#
+        + #" office:mimetype="application/vnd.oasis.opendocument.graphics">"#
+        + #"<office:styles>"#
+        + #"<draw:gradient draw:name="G" draw:style="radial""#
+        + ##" draw:start-color="#ff0000" draw:end-color="#0000ff""##
+        + #" draw:angle="45deg" draw:border="20%" draw:cx="25%" draw:cy="75%"/>"#
+        + ##"<draw:hatch draw:name="H" draw:style="triple" draw:color="#3465a4""##
+        + #" draw:distance="0.2cm" draw:rotation="450"/>"#
+        + #"<style:style style:name="g" style:family="graphic">"#
+        + #"<style:graphic-properties draw:fill="gradient" draw:fill-gradient-name="G"/>"#
+        + #"</style:style>"#
+        + #"<style:style style:name="h" style:family="graphic">"#
+        + #"<style:graphic-properties draw:fill="hatch" draw:fill-hatch-name="H"/>"#
+        + #"</style:style>"#
+        + #"</office:styles>"#
+        + #"<office:body><office:drawing><draw:page>"#
+        + #"<draw:rect draw:style-name="g" svg:width="4cm" svg:height="2cm"/>"#
+        + #"<draw:rect draw:style-name="h" svg:width="4cm" svg:height="2cm"/>"#
+        + #"</draw:page></office:drawing></office:body></office:document>"#,
+      as: "filled.fodg")
+    let root = try XCTUnwrap(
+      try DecodedFile.decode(path: path).asDocumentFile().document().rootElement())
+    let frames = Array(root.descendants(ofType: Frame.self))
+    XCTAssertEqual(frames.count, 2)
+
+    XCTAssertNil(frames[0].style.fillHatch)
+    let gradient = try XCTUnwrap(frames[0].style.fillGradient)
+    XCTAssertEqual(gradient.style, .radial)
+    XCTAssertEqual(
+      [gradient.startColor.red, gradient.startColor.green, gradient.startColor.blue],
+      [0xFF, 0x00, 0x00])
+    XCTAssertEqual(
+      [gradient.endColor.red, gradient.endColor.green, gradient.endColor.blue],
+      [0x00, 0x00, 0xFF])
+    XCTAssertEqual(gradient.angle, 45, accuracy: 1e-9)
+    XCTAssertEqual(gradient.border, 0.2, accuracy: 1e-9)
+    XCTAssertEqual(gradient.centerX, 0.25, accuracy: 1e-9)
+    XCTAssertEqual(gradient.centerY, 0.75, accuracy: 1e-9)
+
+    XCTAssertNil(frames[1].style.fillGradient)
+    let hatch = try XCTUnwrap(frames[1].style.fillHatch)
+    XCTAssertEqual(hatch.style, .triple)
+    XCTAssertEqual([hatch.color.red, hatch.color.green, hatch.color.blue], [0x34, 0x65, 0xA4])
+    XCTAssertEqual(hatch.distance.stringValue, "0.2cm")
+    XCTAssertEqual(hatch.rotation, 45, accuracy: 1e-9)
+  }
 }
 
 final class DocumentSaveTests: XCTestCase {

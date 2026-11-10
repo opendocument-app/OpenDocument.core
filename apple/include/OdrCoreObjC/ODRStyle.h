@@ -67,6 +67,23 @@ typedef NS_ENUM(NSInteger, ODRTextWrap) {
   ODRTextWrapRunThrough,
 } NS_SWIFT_NAME(TextWrap);
 
+/// The shape of a gradient — `odr::GradientStyle`.
+typedef NS_ENUM(NSInteger, ODRGradientStyle) {
+  ODRGradientStyleLinear = 0,
+  ODRGradientStyleAxial,
+  ODRGradientStyleRadial,
+  ODRGradientStyleEllipsoid,
+  ODRGradientStyleSquare,
+  ODRGradientStyleRectangular,
+} NS_SWIFT_NAME(GradientStyle);
+
+/// The pattern of a hatch — `odr::HatchStyle`.
+typedef NS_ENUM(NSInteger, ODRHatchStyle) {
+  ODRHatchStyleSingle = 0,
+  ODRHatchStyleCrossed,
+  ODRHatchStyleTriple,
+} NS_SWIFT_NAME(HatchStyle);
+
 /// An RGBA colour — `odr::Color`.
 ///
 /// Swift sees `ODRColor`; see the note in ODRTable.h.
@@ -239,6 +256,40 @@ NS_SWIFT_NAME(TableCellStyle)
 - (instancetype)init;
 @end
 
+/// Gradient fill — `odr::GradientFill`.
+NS_SWIFT_NAME(GradientFill)
+@interface ODRGradientFill : NSObject
+@property(nonatomic, readonly) ODRGradientStyle style;
+/// The colors with their intensities applied.
+@property(nonatomic, readonly) ODRColor startColor;
+@property(nonatomic, readonly) ODRColor endColor;
+/// Degrees, counterclockwise. At 0 a linear gradient runs from the start
+/// color at the top to the end color at the bottom.
+@property(nonatomic, readonly) double angle;
+/// The fraction of the gradient painted in the start color only.
+@property(nonatomic, readonly) double border;
+/// The center as fractions of the width and height.
+@property(nonatomic, readonly) double centerX;
+@property(nonatomic, readonly) double centerY;
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+@end
+
+/// Hatch fill — `odr::HatchFill`.
+NS_SWIFT_NAME(HatchFill)
+@interface ODRHatchFill : NSObject
+@property(nonatomic, readonly) ODRHatchStyle style;
+@property(nonatomic, readonly) ODRColor color;
+/// The distance between two lines.
+@property(nonatomic, readonly) ODRMeasure *distance;
+/// Degrees, counterclockwise. At 0 the lines run horizontally.
+@property(nonatomic, readonly) double rotation;
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+@end
+
 /// Graphic style — `odr::GraphicStyle`.
 NS_SWIFT_NAME(GraphicStyle)
 @interface ODRGraphicStyle : NSObject
@@ -253,6 +304,9 @@ NS_SWIFT_NAME(GraphicStyle)
 @property(nonatomic, readonly, nullable) NSNumber *textWrap;
 /// `ODRHorizontalAlign`, boxed.
 @property(nonatomic, readonly, nullable) NSNumber *horizontalPosition;
+/// Paints over `fillColor`.
+@property(nonatomic, readonly, nullable) ODRGradientFill *fillGradient;
+@property(nonatomic, readonly, nullable) ODRHatchFill *fillHatch;
 
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;

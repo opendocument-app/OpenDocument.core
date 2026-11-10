@@ -232,18 +232,67 @@ struct TableCellStyle final {
   void override(const TableCellStyle &other);
 };
 
+/// Collection of gradient shapes.
+enum class GradientStyle {
+  linear,
+  axial,
+  radial,
+  ellipsoid,
+  square,
+  rectangular,
+};
+
+/// A gradient fill.
+struct GradientFill final {
+  GradientStyle style{GradientStyle::linear};
+  /// The colors with their intensities applied.
+  Color start_color;
+  Color end_color;
+  /// Degrees, counterclockwise. At 0 a linear gradient runs from the start
+  /// color at the top to the end color at the bottom.
+  double angle{0};
+  /// The fraction of the gradient painted in the start color only.
+  double border{0};
+  /// The center as fractions of the width and height; 0 where unstated, as
+  /// in LibreOffice.
+  double center_x{0};
+  double center_y{0};
+};
+
+/// Collection of hatch patterns.
+enum class HatchStyle {
+  single,  ///< parallel lines
+  crossed, ///< the lines and their perpendicular
+  triple,  ///< crossed, plus the diagonal between them
+};
+
+/// A hatch fill.
+struct HatchFill final {
+  HatchStyle style{HatchStyle::single};
+  Color color;
+  /// The distance between two lines.
+  Measure distance{0, DynamicUnit()};
+  /// Degrees, counterclockwise. At 0 the lines run horizontally.
+  double rotation{0};
+};
+
 /// Represents a style for graphics.
 struct GraphicStyle final {
   std::optional<Measure> stroke_width;
   /// An alpha of 0 is no stroke (`draw:stroke="none"`), as it is no fill for
   /// @ref fill_color: the state and the color cascade independently.
   std::optional<Color> stroke_color;
+  /// Also behind a solid hatch. The alpha, 0 or 255, says whether it paints.
   std::optional<Color> fill_color;
   std::optional<VerticalAlign> vertical_align;
   std::optional<TextWrap> text_wrap;
   /// The side a frame sits on; unset where its offset decides instead.
   std::optional<HorizontalAlign> horizontal_position;
+  /// Paints over @ref fill_color.
+  std::optional<GradientFill> fill_gradient;
+  std::optional<HatchFill> fill_hatch;
 
+  /// Takes what @p other sets; any fill it sets replaces gradient and hatch.
   void override(const GraphicStyle &other);
 };
 

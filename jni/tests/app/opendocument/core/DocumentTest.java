@@ -492,4 +492,66 @@ class DocumentTest {
     assertTrue(result.unevaluated().isEmpty());
     assertTrue(document.recalculate().changed().isEmpty());
   }
+
+  private static final String FILLED_DRAWING =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+          + "<office:document"
+          + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+          + " xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\""
+          + " xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\""
+          + " xmlns:svg=\"urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0\""
+          + " office:version=\"1.3\""
+          + " office:mimetype=\"application/vnd.oasis.opendocument.graphics\">"
+          + "<office:styles>"
+          + "<draw:gradient draw:name=\"G\" draw:style=\"radial\""
+          + " draw:start-color=\"#ff0000\" draw:end-color=\"#0000ff\""
+          + " draw:angle=\"45deg\" draw:border=\"20%\" draw:cx=\"25%\" draw:cy=\"75%\"/>"
+          + "<draw:hatch draw:name=\"H\" draw:style=\"triple\" draw:color=\"#3465a4\""
+          + " draw:distance=\"0.2cm\" draw:rotation=\"450\"/>"
+          + "<style:style style:name=\"g\" style:family=\"graphic\">"
+          + "<style:graphic-properties draw:fill=\"gradient\" draw:fill-gradient-name=\"G\"/>"
+          + "</style:style>"
+          + "<style:style style:name=\"h\" style:family=\"graphic\">"
+          + "<style:graphic-properties draw:fill=\"hatch\" draw:fill-hatch-name=\"H\"/>"
+          + "</style:style>"
+          + "</office:styles>"
+          + "<office:body><office:drawing><draw:page>"
+          + "<draw:rect draw:style-name=\"g\" svg:width=\"4cm\" svg:height=\"2cm\"/>"
+          + "<draw:rect draw:style-name=\"h\" svg:width=\"4cm\" svg:height=\"2cm\"/>"
+          + "</draw:page></office:drawing></office:body></office:document>";
+
+  @Test
+  void frameStyleCarriesGradientAndHatchFills() throws IOException {
+    Path path = tempDir.resolve("filled.fodg");
+    Files.writeString(path, FILLED_DRAWING);
+    Document document = Odr.open(path.toString()).asDocumentFile().document();
+    List<Element> frames = document.rootElement().firstChild().children();
+
+    GraphicStyle gradientStyle = frames.get(0).asFrame().style();
+    assertNull(gradientStyle.fillHatch);
+    GradientFill gradient = gradientStyle.fillGradient;
+    assertNotNull(gradient);
+    assertEquals(GradientStyle.RADIAL, gradient.style);
+    assertEquals(0xff0000, gradient.startColor.rgb());
+    assertEquals(0x0000ff, gradient.endColor.rgb());
+    assertEquals(45, gradient.angle, 1e-9);
+    assertEquals(0.2, gradient.border, 1e-9);
+    assertEquals(0.25, gradient.centerX, 1e-9);
+    assertEquals(0.75, gradient.centerY, 1e-9);
+    GradientFill gradientAgain = frames.get(0).asFrame().style().fillGradient;
+    assertEquals(gradient, gradientAgain);
+    assertEquals(gradient.hashCode(), gradientAgain.hashCode());
+
+    GraphicStyle hatchStyle = frames.get(1).asFrame().style();
+    assertNull(hatchStyle.fillGradient);
+    HatchFill hatch = hatchStyle.fillHatch;
+    assertNotNull(hatch);
+    assertEquals(HatchStyle.TRIPLE, hatch.style);
+    assertEquals(0x3465a4, hatch.color.rgb());
+    assertEquals(new Measure(0.2, "cm"), hatch.distance);
+    assertEquals(45, hatch.rotation, 1e-9);
+    HatchFill hatchAgain = frames.get(1).asFrame().style().fillHatch;
+    assertEquals(hatch, hatchAgain);
+    assertEquals(hatch.hashCode(), hatchAgain.hashCode());
+  }
 }

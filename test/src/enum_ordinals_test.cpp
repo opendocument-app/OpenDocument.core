@@ -326,3 +326,18 @@ TEST(EnumOrdinals, text_wrap) {
   EXPECT_EQ(ordinal(TextWrap::after), 2);
   EXPECT_EQ(ordinal(TextWrap::run_through), 3);
 }
+
+TEST(EnumOrdinals, gradient_style) {
+  EXPECT_EQ(ordinal(GradientStyle::linear), 0);
+  EXPECT_EQ(ordinal(GradientStyle::axial), 1);
+  EXPECT_EQ(ordinal(GradientStyle::radial), 2);
+  EXPECT_EQ(ordinal(GradientStyle::ellipsoid), 3);
+  EXPECT_EQ(ordinal(GradientStyle::square), 4);
+  EXPECT_EQ(ordinal(GradientStyle::rectangular), 5);
+}
+
+TEST(EnumOrdinals, hatch_style) {
+  EXPECT_EQ(ordinal(HatchStyle::single), 0);
+  EXPECT_EQ(ordinal(HatchStyle::crossed), 1);
+  EXPECT_EQ(ordinal(HatchStyle::triple), 2);
+}

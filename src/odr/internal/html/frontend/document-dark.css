@@ -12,5 +12,7 @@ td{background-color:var(--odr-dark-fill,transparent)!important}
 /* A shape's fill is an svg `fill` (`translate_drawing_style`), not a
    background, and gives way like one. The stroke stays: it is the line. */
 svg,svg *{fill:transparent!important}
+/* A gradient or hatch is a fill too (`odr-fill`), not a picture. */
+.odr-fill{background-image:none!important}
 td,x-p,x-s{color:#e6edf3!important}
 a,a x-p,a x-s{color:#6cb6ff!important}
