@@ -413,12 +413,9 @@ parse_any_element_tree(ElementRegistry &registry, const pugi::xml_node node) {
       {"text:date", create_default_tree_parser(ElementType::group)},
       {"text:time", create_default_tree_parser(ElementType::group)},
       {"text:section", create_default_tree_parser(ElementType::group)},
-      // A master page's header and footer, each its own group, so the
-      // renderer can tell them apart (`MasterPage::header`).
       {"style:header", create_default_tree_parser(ElementType::group)},
       {"style:footer", create_default_tree_parser(ElementType::group)},
-      // the first page's, where it differs ([OpenDocument] 16.11; LibreOffice
-      // writes `loext:` below ODF 1.3)
+      // LibreOffice writes `loext:` below ODF 1.3
       {"style:header-first", create_default_tree_parser(ElementType::group)},
       {"style:footer-first", create_default_tree_parser(ElementType::group)},
       {"loext:header-first", create_default_tree_parser(ElementType::group)},

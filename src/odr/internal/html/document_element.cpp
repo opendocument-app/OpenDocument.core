@@ -18,6 +18,9 @@
 #include <algorithm>
 #include <optional>
 #include <string>
+#include <unordered_map>
+
+#include <fmt/format.h>
 
 namespace odr::internal {
 
@@ -449,6 +452,49 @@ void html::translate_table(const Element &element, const WritingState &state) {
   state.out().write_element_end("table");
 }
 
+namespace html {
+namespace {
+
+/// An embedded image that repeats: an svg `image` where first written, a
+/// `use` of it after.
+void write_shared_image(const Image &image, const WritingState &state) {
+  std::unordered_map<std::string, std::string> &ids = *state.shared_images();
+  const auto [id, first] = ids.try_emplace(
+      image.href(), fmt::format("odr-shared-image-{}", ids.size()));
+
+  state.out().write_element_begin(
+      "svg", HtmlElementOptions().set_style(
+                 "position:absolute;left:0;top:0;width:100%;height:100%"));
+  if (first) {
+    state.out().write_element_begin(
+        "image",
+        HtmlElementOptions()
+            .set_close_type(HtmlCloseType::trailing)
+            .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
+              clb("id", id->second);
+              clb("width", "100%");
+              clb("height", "100%");
+              clb("preserveAspectRatio", "none");
+              clb("href", [&](std::ostream &o) {
+                // reached only for internal images, which have a file
+                // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
+                translate_image_src(image.file().value(), o, state.config(),
+                                    state.logger());
+              });
+            }));
+  } else {
+    state.out().write_element_begin(
+        "use",
+        HtmlElementOptions()
+            .set_close_type(HtmlCloseType::trailing)
+            .set_attributes(HtmlAttributesVector{{"href", "#" + id->second}}));
+  }
+  state.out().write_element_end("svg");
+}
+
+} // namespace
+} // namespace html
+
 void html::translate_image(const Element &element, const WritingState &state) {
   const Image image = element.as_image();
 
@@ -493,6 +539,11 @@ void html::translate_image(const Element &element, const WritingState &state) {
     return;
   }
   state.resources().emplace_back(std::move(resource), resource_location);
+
+  if (!resource_location.has_value() && state.shared_images() != nullptr) {
+    write_shared_image(image, state);
+    return;
+  }
 
   state.out().write_element_begin(
       "img",

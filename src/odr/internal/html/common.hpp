@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include <odr/html.hpp>
@@ -87,6 +88,17 @@ struct WritingState {
     m_page_chunk_near = near;
   }
 
+  /// The ids of the embedded images written so far, by their path, where an
+  /// image that repeats is written once and then referenced; null where each
+  /// is written in full.
+  [[nodiscard]] std::unordered_map<std::string, std::string> *
+  shared_images() const {
+    return m_shared_images;
+  }
+  void set_shared_images(std::unordered_map<std::string, std::string> *images) {
+    m_shared_images = images;
+  }
+
 private:
   HtmlWriter *m_out;
   const HtmlConfig *m_config;
@@ -99,6 +111,7 @@ private:
   std::optional<formula::Syntax> m_formula_syntax;
   const std::vector<formula::Name> *m_formula_names{nullptr};
   std::optional<bool> m_page_chunk_near;
+  std::unordered_map<std::string, std::string> *m_shared_images{nullptr};
 };
 
 /// Writes viewport metadata: explicit content, then mode override, then config.

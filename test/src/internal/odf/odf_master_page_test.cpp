@@ -340,3 +340,85 @@ TEST(OdfMasterPage, a_footer_numbers_its_lists) {
   EXPECT_EQ(list.first_child().as_list_item().marker(), "1.");
   EXPECT_EQ(list.first_child().next_sibling().as_list_item().marker(), "2.");
 }
+
+TEST(OdfMasterPage, a_link_around_a_page_anchored_frame_keeps_the_first_page) {
+  const std::string html = html_of(flat_pages(
+      R"(<draw:a xlink:href="https://example.com/"><draw:frame)"
+      R"( text:anchor-type="page" svg:width="2cm" svg:height="1cm">)"
+      R"(<draw:text-box><text:p>Logo</text:p></draw:text-box></draw:frame>)"
+      R"(</draw:a><text:p text:style-name="Opening">Dear reader</text:p>)",
+      opening("Opening", "First"),
+      R"(<style:master-page style:name="Standard"><style:header>)"
+      R"(<text:p>Standard head</text:p></style:header></style:master-page>)"
+      R"(<style:master-page style:name="First"><style:header>)"
+      R"(<text:p>First head</text:p></style:header></style:master-page>)"));
+  EXPECT_EQ(count(html, "First head"), 1U);
+  EXPECT_EQ(count(html, "Standard head"), 0U);
+  EXPECT_EQ(count(html, R"(class="odr-page-outer")"), 1U);
+}
+
+TEST(OdfMasterPage, a_header_image_is_embedded_once) {
+  constexpr const char *png_base64 =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGA"
+      "hKmMIQAAAABJRU5ErkJggg==";
+  const std::string html = html_of(flat_pages(
+      R"(<text:p>one</text:p><text:p text:style-name="Break">two</text:p>)"
+      R"(<text:p text:style-name="Break">three</text:p>)",
+      R"(<style:style style:name="Break" style:family="paragraph">)"
+      R"(<style:paragraph-properties fo:break-before="page"/></style:style>)",
+      std::string(R"(<style:master-page style:name="Standard"><style:header>)"
+                  R"(<text:p><draw:frame svg:width="2cm" svg:height="1cm">)"
+                  R"(<draw:image><office:binary-data>)") +
+          png_base64 +
+          R"(</office:binary-data></draw:image></draw:frame></text:p>)"
+          R"(</style:header></style:master-page>)"));
+  EXPECT_EQ(count(html, R"(class="odr-page-header")"), 3U);
+  EXPECT_EQ(count(html, "data:image/png;base64,"), 1U);
+  EXPECT_EQ(count(html, R"(<use href="#odr-shared-image-0")"), 2U);
+}
+
+namespace {
+
+/// A spreadsheet whose one table has the style @p table_style, among the
+/// master pages "Default" 10cm wide and "Standard" 20cm wide.
+PageLayout sheet_layout(const std::string &table_style) {
+  return document_of(
+             R"(<?xml version="1.0" encoding="UTF-8"?>)"
+             R"(<office:document office:mimetype=")"
+             R"(application/vnd.oasis.opendocument.spreadsheet">)"
+             R"(<office:automatic-styles>)"
+             R"(<style:style style:name="Parent" style:family="table")"
+             R"( style:master-page-name="Standard"/>)"
+             R"(<style:style style:name="Child" style:family="table")"
+             R"( style:parent-style-name="Parent")"
+             R"( style:master-page-name=""/>)"
+             R"(<style:page-layout style:name="pm1">)"
+             R"(<style:page-layout-properties fo:page-width="10cm"/>)"
+             R"(</style:page-layout><style:page-layout style:name="pm2">)"
+             R"(<style:page-layout-properties fo:page-width="20cm"/>)"
+             R"(</style:page-layout></office:automatic-styles>)"
+             R"(<office:master-styles>)"
+             R"(<style:master-page style:name="Default")"
+             R"( style:page-layout-name="pm1"/>)"
+             R"(<style:master-page style:name="Standard")"
+             R"( style:page-layout-name="pm2"/>)"
+             R"(</office:master-styles><office:body><office:spreadsheet>)"
+             R"(<table:table table:name="s" table:style-name=")" +
+             table_style +
+             R"("/></office:spreadsheet></office:body></office:document>)")
+      .root_element()
+      .first_child()
+      .as_sheet()
+      .page_layout();
+}
+
+} // namespace
+
+TEST(OdfMasterPage, a_sheet_keeps_the_first_master_page_and_its_parents) {
+  // the text document's rules, "Standard" and an empty name opening none,
+  // are not a spreadsheet's
+  ASSERT_TRUE(sheet_layout("").width.has_value());
+  EXPECT_EQ(sheet_layout("").width->to_string(), "10cm");
+  ASSERT_TRUE(sheet_layout("Child").width.has_value());
+  EXPECT_EQ(sheet_layout("Child").width->to_string(), "20cm");
+}

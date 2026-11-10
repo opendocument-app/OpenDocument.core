@@ -313,8 +313,7 @@ PageLayout read_page_layout(const pugi::xml_node node) {
     result.margin.bottom = read_measure(margin_bottom);
   }
 
-  // `svg:height` fixes the height, `fo:min-height` lets it grow; both read as
-  // the least height
+  // a fixed height reads as the least
   const auto marginal_height = [](const pugi::xml_node properties) {
     return read_measure(properties.attribute("svg:height")).or_else([&] {
       return read_measure(properties.attribute("fo:min-height"));
@@ -739,9 +738,7 @@ void StyleRegistry::generate_indices_(const pugi::xml_node node) {
     } else if (name == "style:master-page") {
       std::string master_page_name = e.attribute("style:name").value();
       m_index_master_page[master_page_name] = e;
-      // where nothing names one, LibreOffice's default, "Standard", else
-      // the first
-      if (!m_first_master_page.has_value() || master_page_name == "Standard") {
+      if (!m_first_master_page.has_value()) {
         m_first_master_page = master_page_name;
       }
     }
@@ -1180,7 +1177,8 @@ StyleRegistry::master_pages() const {
 }
 
 ElementIdentifier
-StyleRegistry::master_page_of_style(const char *style_name) const {
+StyleRegistry::master_page_of_style(const char *style_name,
+                                    const bool empty_opens_none) const {
   // Bounded against a style naming itself as its own parent.
   for (std::uint32_t depth = 0; depth < 16 && style_name[0] != '\0'; ++depth) {
     const auto style_it = m_index_style.find(style_name);
@@ -1188,13 +1186,13 @@ StyleRegistry::master_page_of_style(const char *style_name) const {
       break;
     }
     const pugi::xml_node node = style_it->second;
-    // an empty name states that the paragraph opens no page, as LibreOffice
-    // reads it, rather than leaving the question to the parent
-    if (const pugi::xml_attribute master_page_name =
-            node.attribute("style:master-page-name")) {
-      return master_page_name.value()[0] != '\0'
-                 ? master_page(master_page_name.value())
-                 : null_element_id;
+    const pugi::xml_attribute master_page_name =
+        node.attribute("style:master-page-name");
+    if (master_page_name.value()[0] != '\0') {
+      return master_page(master_page_name.value());
+    }
+    if (master_page_name && empty_opens_none) {
+      return null_element_id;
     }
     style_name = node.attribute("style:parent-style-name").value();
   }

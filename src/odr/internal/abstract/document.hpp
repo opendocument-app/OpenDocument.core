@@ -477,11 +477,10 @@ public:
   /// The footer group of a text master page; null where it has none.
   [[nodiscard]] virtual ElementIdentifier
   master_page_footer(ElementIdentifier element_id) const = 0;
-  /// The header of the first page of a run of this master page, where it
-  /// differs from the others; null where it does not.
+  /// The first page's header, where it differs; null where it does not.
   [[nodiscard]] virtual ElementIdentifier
   master_page_first_header(ElementIdentifier element_id) const = 0;
-  /// The same for the footer.
+  /// The first page's footer, where it differs; null where it does not.
   [[nodiscard]] virtual ElementIdentifier
   master_page_first_footer(ElementIdentifier element_id) const = 0;
   /// The master page the page after this one takes; null where it names

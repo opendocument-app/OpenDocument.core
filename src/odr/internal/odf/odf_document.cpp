@@ -7,6 +7,7 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/common/page_anchor.hpp>
 #include <odr/internal/common/sheet_dependencies.hpp>
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
@@ -585,40 +586,29 @@ public:
     }
     return {};
   }
-  /// Whether @p node is a frame or shape anchored to the page, not content.
-  static bool is_anchored_shape(const pugi::xml_node node) {
-    return std::string_view(node.name()).starts_with("draw:");
-  }
-
-  /// Whether @p node declares rather than lays out: the variables, sequences
-  /// and forms a text states ahead of its first paragraph, and its tracked
-  /// changes.
-  static bool is_declaration(const pugi::xml_node node) {
-    const std::string_view name = node.name();
-    return name.ends_with("-decls") || name == "office:forms" ||
-           name == "text:tracked-changes";
-  }
-
   [[nodiscard]] ElementIdentifier text_root_first_master_page(
       const ElementIdentifier element_id) const override {
-    // A paragraph may name the master page its page uses (20.283). The first
-    // page is the first content's: an empty paragraph before one that names a
-    // master page keeps the default on page one, as in LibreOffice.
-    const auto children = get_node(element_id).children();
-    if (const auto content = std::ranges::find_if(
-            children,
-            [](const pugi::xml_node child) {
-              return !is_anchored_shape(child) && !is_declaration(child);
-            });
-        content != children.end()) {
+    // page one is the first content's, as in LibreOffice
+    for (ElementIdentifier child = element_first_child(element_id);
+         child != null_element_id; child = element_next_sibling(child)) {
+      if (is_page_anchored(Element(this, child))) {
+        continue;
+      }
       if (const ElementIdentifier master_page_id =
-              m_document->style_registry().master_page_of_style(
-                  content->attribute("text:style-name").value());
+              element_type(child) == ElementType::paragraph
+                  ? paragraph_master_page(child)
+                  : null_element_id;
           master_page_id != null_element_id) {
         return master_page_id;
       }
+      break;
     }
-    return m_document->style_registry().first_master_page();
+    const StyleRegistry &styles = m_document->style_registry();
+    if (const ElementIdentifier standard = styles.master_page("Standard");
+        standard != null_element_id) {
+      return standard;
+    }
+    return styles.first_master_page();
   }
 
   [[nodiscard]] PageLayout
@@ -1932,7 +1922,8 @@ public:
     const char *style_name = get_style_name(element_id);
     return style_name == nullptr
                ? null_element_id
-               : m_document->style_registry().master_page_of_style(style_name);
+               : m_document->style_registry().master_page_of_style(style_name,
+                                                                   true);
   }
   void paragraph_set_style(const ElementIdentifier element_id,
                            const ParagraphStyle &style) const override {
