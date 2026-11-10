@@ -104,6 +104,7 @@ add_executable(odr_test
         "src/internal/odf/odf_frame_test.cpp"
         "src/internal/odf/odf_geometry_test.cpp"
         "src/internal/odf/odf_page_layout_test.cpp"
+        "src/internal/odf/odf_presentation_test.cpp"
         "src/internal/odf/odf_sheet_charts_test.cpp"
         "src/internal/odf/odf_sheet_columns_test.cpp"
         "src/internal/odf/odf_sheet_repeat_test.cpp"
