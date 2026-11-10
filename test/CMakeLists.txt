@@ -112,6 +112,7 @@ add_executable(odr_test
         "src/internal/odf/odf_sheet_value_test.cpp"
         "src/internal/odf/odf_sheet_style_test.cpp"
         "src/internal/odf/odf_sheet_write_test.cpp"
+        "src/internal/odf/odf_stroke_test.cpp"
         "src/internal/odf/odf_table_test.cpp"
 
         "src/internal/oldms/doc_test.cpp"
