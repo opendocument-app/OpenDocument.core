@@ -230,7 +230,7 @@ jobs:
       matrix:
         include:
           - { name: macos, destination: 'platform=macOS,arch=arm64' }
-          - { name: simulator, destination: 'platform=iOS Simulator,name=iPhone 16' }
+          - { name: simulator, destination: '' }
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -246,6 +246,27 @@ jobs:
       - name: unpack
         run: ditto -x -k OdrCoreObjC.xcframework.zip .
 
+      # The simulators of a runner image change with it, so a device name does
+      # not stay valid. Take the iPhone of the newest OS the selected Xcode runs.
+      - name: pick the destination
+        env:
+          ODR_XCFRAMEWORK: OdrCoreObjC.xcframework
+          MATRIX_DESTINATION: ${{ matrix.destination }}
+        run: |
+          destination=$MATRIX_DESTINATION
+          if [ -z "$destination" ]; then
+            id=$(xcodebuild -showdestinations -scheme OdrCore -skipPackagePluginValidation |
+              sed -n -E '/Ineligible destinations/q; s/.*platform:iOS Simulator,.*id:([0-9A-F-]+), OS:([0-9.]+), name:iPhone.*/\2 \1/p' |
+              sort -t. -k1,1nr -k2,2nr -k3,3nr | head -n 1 | cut -d' ' -f2)
+            if [ -z "$id" ]; then
+              xcrun simctl list devices available
+              echo "no iPhone simulator for the selected Xcode" >&2
+              exit 1
+            fi
+            destination="platform=iOS Simulator,id=$id"
+          fi
+          echo "DESTINATION=$destination" >> "$GITHUB_ENV"
+
       # `swift test` cannot target a simulator; `xcodebuild` on a package can.
       - name: test
         env:
@@ -253,7 +274,7 @@ jobs:
         run: >
           xcodebuild test
           -scheme OdrCore
-          -destination '${{ matrix.destination }}'
+          -destination "$DESTINATION"
           -skipPackagePluginValidation
 
   # The only check that would catch a submodule creeping back into the package
