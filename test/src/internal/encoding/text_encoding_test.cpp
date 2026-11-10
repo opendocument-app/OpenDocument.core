@@ -151,3 +151,53 @@ TEST(Detect, a_byte_order_mark_wins) {
   EXPECT_EQ(encoding::detect(std::string("\xff\xfeh\0", 4)),
             TextEncoding::utf16le);
 }
+
+namespace {
+
+/// Much ascii, among which uchardet misjudges a few bytes beyond it.
+std::string ascii_run() { return std::string(4096, 'a'); }
+
+} // namespace
+
+TEST(Detect, well_formed_utf8_beyond_ascii_is_utf8) {
+  // one soft hyphen among much ascii, as LibreOffice's tdf129357.fodt
+  EXPECT_EQ(encoding::detect(ascii_run() + "hyphena\xc2\xadtion"),
+            TextEncoding::utf8);
+  EXPECT_EQ(encoding::detect(ascii_run() + "Gr\xc3\xbc\xc3\x9f"
+                                           "e"),
+            TextEncoding::utf8);
+  EXPECT_EQ(encoding::detect(ascii_run() + "\xe2\x82\xac \xf0\x9f\x98\x80"),
+            TextEncoding::utf8);
+}
+
+TEST(Detect, a_sequence_the_probe_cuts_off_is_still_utf8) {
+  EXPECT_EQ(encoding::detect(ascii_run() + "\xc3\xbc\xe2\x82", true),
+            TextEncoding::utf8);
+  EXPECT_EQ(encoding::detect(ascii_run() + "\xc3\xbc\xf0\x9f\x98", true),
+            TextEncoding::utf8);
+}
+
+TEST(Detect, a_whole_file_ending_inside_a_sequence_is_not_utf8) {
+  // a short latin-1 file whose one byte beyond ascii is its last
+  EXPECT_NE(encoding::detect("Caf\xe9"), TextEncoding::utf8);
+  EXPECT_NE(encoding::detect(ascii_run() + "\xc3\xbc\xe2\x82"),
+            TextEncoding::utf8);
+}
+
+TEST(Detect, malformed_utf8_is_left_to_uchardet) {
+  // a lone latin-1 umlaut, an overlong slash, an encoded surrogate, a code
+  // point past U+10FFFF and an overlong three-byte form
+  EXPECT_NE(encoding::detect(ascii_run() + "\xe4 "), TextEncoding::utf8);
+  EXPECT_NE(encoding::detect(ascii_run() + "\xc0\xaf "), TextEncoding::utf8);
+  EXPECT_NE(encoding::detect(ascii_run() + "\xed\xa0\x80 "),
+            TextEncoding::utf8);
+  EXPECT_NE(encoding::detect(ascii_run() + "\xf4\x90\x80\x80 "),
+            TextEncoding::utf8);
+  EXPECT_NE(encoding::detect(ascii_run() + "\xe0\x80\xaf "),
+            TextEncoding::utf8);
+}
+
+TEST(Detect, ascii_reads_as_utf8) {
+  // uchardet names it ASCII, a name of utf-8 in the table
+  EXPECT_EQ(encoding::detect(ascii_run()), TextEncoding::utf8);
+}
