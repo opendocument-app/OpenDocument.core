@@ -258,8 +258,6 @@ void remove_value_attributes(pugi::xml_node node) {
   }
 }
 
-/// Whether @p node holds any text, a space or a tab, outside the comments and
-/// the drawings anchored in it.
 bool states_text(const pugi::xml_node node) {
   return std::ranges::any_of(node.children(), [](const pugi::xml_node child) {
     if (child.type() == pugi::node_pcdata || child.type() == pugi::node_cdata) {
@@ -274,8 +272,6 @@ bool states_text(const pugi::xml_node node) {
   });
 }
 
-/// Whether @p cell states a value, which LibreOffice shows whether or not the
-/// file cached its text.
 bool states_value(const pugi::xml_node cell) {
   return !cell.attribute("office:value").empty() ||
          !cell.attribute("office:date-value").empty() ||
@@ -1860,8 +1856,8 @@ public:
     return result;
   }
 
-  /// What a value cell without text shows: its value in its data style or
-  /// `General`, a boolean as `write_result` does. None for a positional cell.
+  /// LibreOffice formats the value of a cell saved without its text when it
+  /// loads the file.
   [[nodiscard]] std::optional<std::string>
   uncached_text(const ElementIdentifier element_id,
                 const CellValue &value) const {
@@ -1871,7 +1867,7 @@ public:
          value.type() != ValueType::boolean)) {
       return std::nullopt;
     }
-    if (positional_id::holds(element_id) || states_text(get_node(element_id))) {
+    if (states_text(get_node(element_id))) {
       return std::nullopt;
     }
     if (value.type() == ValueType::boolean) {

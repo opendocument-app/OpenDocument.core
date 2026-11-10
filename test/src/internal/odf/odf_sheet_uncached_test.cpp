@@ -17,9 +17,8 @@ using namespace odr;
 
 namespace {
 
-/// A flat spreadsheet whose one row holds @p cells, with a data style N4 of
-/// two decimals and grouping in German and a cell style ce1 using it.
-std::string sheet_of(const std::string &cells) {
+std::string sheet_of(const std::string &cells,
+                     const std::string &row_attributes = "") {
   return R"(<?xml version="1.0" encoding="UTF-8"?>)"
          R"(<office:document office:mimetype=")"
          R"(application/vnd.oasis.opendocument.spreadsheet">)"
@@ -38,13 +37,12 @@ std::string sheet_of(const std::string &cells) {
          R"(<style:style style:name="ce2" style:family="table-cell")"
          R"( style:data-style-name="N36"/>)"
          R"(</office:automatic-styles><office:body><office:spreadsheet>)"
-         R"(<table:table table:name="Sheet1"><table:table-row>)" +
-         cells +
+         R"(<table:table table:name="Sheet1"><table:table-row )" +
+         row_attributes + ">" + cells +
          R"(</table:table-row></table:table></office:spreadsheet>)"
          R"(</office:body></office:document>)";
 }
 
-/// What `SheetCell::value` states as the text of each cell of the row.
 std::vector<std::optional<std::string>> texts_of(const std::string &source,
                                                  const std::uint32_t columns) {
   const Document document =
@@ -79,7 +77,7 @@ std::size_t count(const std::string &haystack, const std::string &needle) {
   return result;
 }
 
-/// A row of sums as LibreOffice 4.2 saved it: the value, but no text.
+// as LibreOffice 4.2 saved it
 constexpr const char *uncached_sums =
     R"(<table:table-cell table:style-name="ce1" table:formula="of:=1+1")"
     R"( office:value-type="float" office:value="55281.25"><text:p/>)"
@@ -92,8 +90,6 @@ constexpr const char *uncached_sums =
 } // namespace
 
 TEST(OdfSheetUncached, a_number_without_text_shows_its_value) {
-  // in its data style and language, else as General; the string cell shows
-  // its own text, which is none
   EXPECT_EQ(
       texts_of(sheet_of(uncached_sums), 3),
       (std::vector<std::optional<std::string>>{"55.281,25", "474.6", ""}));
@@ -116,6 +112,27 @@ TEST(OdfSheetUncached, a_date_time_or_boolean_without_text_shows_its_value) {
       (std::vector<std::optional<std::string>>{"17.03.2015", "TRUE", "FALSE"}));
 }
 
+TEST(OdfSheetUncached, each_copy_of_a_repeated_cell_shows_its_value) {
+  const std::string columns =
+      sheet_of(R"(<table:table-cell table:style-name="ce1")"
+               R"( office:value-type="float" office:value="55281.25")"
+               R"( table:number-columns-repeated="3"><text:p/>)"
+               R"(</table:table-cell>)");
+  EXPECT_EQ(texts_of(columns, 3), (std::vector<std::optional<std::string>>{
+                                      "55.281,25", "55.281,25", "55.281,25"}));
+  EXPECT_EQ(count(render(columns), "55.281,25"), 3U);
+
+  const std::string rows =
+      sheet_of(R"(<table:table-cell table:style-name="ce1")"
+               R"( office:value-type="float" office:value="55281.25"/>)",
+               R"(table:number-rows-repeated="2")");
+  const Document document =
+      open(File::from_memory(rows)).as_document_file().document();
+  const Sheet sheet = document.root_element().first_child().as_sheet();
+  EXPECT_EQ(sheet.cell(0, 1).value().text(), "55.281,25");
+  EXPECT_EQ(count(render(rows), "55.281,25"), 2U);
+}
+
 TEST(OdfSheetUncached, a_cached_text_is_shown_as_the_file_has_it) {
   const std::string stale =
       sheet_of(R"(<table:table-cell table:style-name="ce1")"
@@ -135,7 +152,6 @@ TEST(OdfSheetUncached, a_comment_is_no_text_of_the_cell) {
 }
 
 TEST(OdfSheetUncached, a_frame_anchored_in_the_cell_is_no_text_of_it) {
-  // the value shows beside the frame, which keeps its own text
   const std::string source =
       sheet_of(R"(<table:table-cell office:value-type="float")"
                R"( office:value="7"><draw:frame svg:width="2cm")"
@@ -149,7 +165,6 @@ TEST(OdfSheetUncached, a_frame_anchored_in_the_cell_is_no_text_of_it) {
 }
 
 TEST(OdfSheetUncached, a_value_without_text_is_content_of_the_sheet) {
-  // a column of uncached sums at the edge stays in the sheet
   const Document document =
       open(File::from_memory(
                sheet_of(R"(<table:table-cell office:value-type="string">)"

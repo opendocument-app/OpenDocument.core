@@ -203,8 +203,6 @@ std::string shown_text(const Element &element) {
   return result;
 }
 
-/// The value a cell shows where its file cached no text, as `SheetCell::value`
-/// spells it. Nothing where @p cell shows text outside the frames in it.
 std::optional<std::string> uncached_text(const CellValue &value,
                                          const SheetCell &cell,
                                          const std::string_view shown) {
@@ -214,8 +212,7 @@ std::optional<std::string> uncached_text(const CellValue &value,
   if (shown.empty()) {
     return value.text();
   }
-  // the text shown may be that of a frame anchored in the cell; only then is
-  // it read again
+  // the text shown may be that of a frame anchored in the cell
   const auto is_frame = [](const Element &child) {
     return child.type() == ElementType::frame;
   };
@@ -722,7 +719,6 @@ void write_row(const SheetRows &rows, RowCursor &at, const WritingState &state,
     const bool numeric = cell_value_type == ValueType::date ||
                          cell_value_type == ValueType::time ||
                          cell_value_type == ValueType::float_number;
-    // the types a file may state a value of without its text
     const bool valued = numeric || cell_value_type == ValueType::boolean;
     const CellValue cell_value =
         state.config().editable || valued ? cell.value() : CellValue();
@@ -838,7 +834,6 @@ void write_row(const SheetRows &rows, RowCursor &at, const WritingState &state,
                           : std::nullopt;
                uncached.has_value()) {
       state.out().out() << xml::escape_text(*uncached);
-      // in place of the empty paragraphs; a frame anchored in the cell stays
       for (const Element child : cell.children()) {
         if (child.type() != ElementType::paragraph) {
           translate_element(child, state);
