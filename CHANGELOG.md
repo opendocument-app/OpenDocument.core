@@ -31,6 +31,10 @@ The release run heads these entries with the version and opens a fresh
 - A doc, xls or ppt opens when its storage directory gives a stream a child or
   links to an unused slot. A link past the directory throws `CfbFileCorrupted`,
   not a `std::invalid_argument` with an empty message.
+- A text file in utf-8 with few non-ascii characters among much ascii, for
+  example a flat odt with a single soft hyphen or umlaut, opens. uchardet
+  named it MAC-CENTRALEUROPE, IBM852 or ISO-8859-11, and the file was
+  `UnknownFileType`.
 - A text style that names its family in `fo:font-family`, as PowerPoint's odp
   and many odg and ods do, is set in that family rather than the browser's
   default serif. `style:font-name` still outranks it, and PowerPoint's
