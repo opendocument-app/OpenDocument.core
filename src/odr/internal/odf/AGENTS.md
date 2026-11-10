@@ -73,6 +73,10 @@ knows. Consequences: `SheetCell::position()` and the id name the cell asked
 for; a handle follows the index, so a run can be split under it; children are
 shared, so a run inside a repeated cell belongs to the anchor.
 
+**A value cell without text shows its value.** LibreOffice formats a
+number, date, time or boolean on loading, so `sheet_cell_value` states that
+text where the file saved none, each copy of a repeated cell too.
+
 **The sheet containers are sorted vectors, not maps.** Parsing appends in
 document order, so the keys only grow, and a vector costs less than a tree
 node per entry. The cells of every row live in one array per sheet, and each

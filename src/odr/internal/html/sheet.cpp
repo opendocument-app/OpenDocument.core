@@ -203,10 +203,35 @@ std::string shown_text(const Element &element) {
   return result;
 }
 
+std::optional<std::string> uncached_text(const CellValue &value,
+                                         const SheetCell &cell,
+                                         const std::string_view shown) {
+  if (!value.has_text() || value.text().empty()) {
+    return std::nullopt;
+  }
+  if (shown.empty()) {
+    return value.text();
+  }
+  // the text shown may be that of a frame anchored in the cell
+  const auto is_frame = [](const Element &child) {
+    return child.type() == ElementType::frame;
+  };
+  if (std::ranges::none_of(cell.children(), is_frame) ||
+      std::ranges::any_of(cell.children(), [&](const Element &child) {
+        if (child.type() == ElementType::text) {
+          return !child.as_text().content().empty();
+        }
+        return !is_frame(child) && !shown_text(child).empty();
+      })) {
+    return std::nullopt;
+  }
+  return value.text();
+}
+
 /// The number the editor opens a cell on and a sort orders it by, where the
 /// cell shows it formatted: a date and a time always.
 std::optional<std::string> formatted_value(const CellValue &value,
-                                           const SheetCell &cell) {
+                                           const std::string_view shown) {
   if (!value.has_number()) {
     return std::nullopt;
   }
@@ -217,7 +242,7 @@ std::optional<std::string> formatted_value(const CellValue &value,
     return std::nullopt;
   }
   std::string plain = fmt::format("{}", value.number());
-  if (shown_text(cell) == plain) {
+  if (shown == plain) {
     return std::nullopt;
   }
   return plain;
@@ -691,16 +716,16 @@ void write_row(const SheetRows &rows, RowCursor &at, const WritingState &state,
     const std::optional<FoldedCell> folded =
         fold_cell(cell, state, wraps, anchors_shapes, table_row_style.height);
 
+    const bool numeric = cell_value_type == ValueType::date ||
+                         cell_value_type == ValueType::time ||
+                         cell_value_type == ValueType::float_number;
+    const bool valued = numeric || cell_value_type == ValueType::boolean;
     const CellValue cell_value =
-        state.config().editable ? cell.value() : CellValue();
+        state.config().editable || valued ? cell.value() : CellValue();
+    const std::string shown = valued ? shown_text(cell) : std::string();
     // a formatted cell's text need not state the number a sort needs
     const std::optional<std::string> value_spelling =
-        state.config().editable ? formatted_value(cell_value, cell)
-        : cell_value_type == ValueType::date ||
-                cell_value_type == ValueType::time ||
-                cell_value_type == ValueType::float_number
-            ? formatted_value(cell.value(), cell)
-            : std::nullopt;
+        formatted_value(cell_value, shown);
     const std::optional<TableDimensions> array =
         state.config().editable ? cell.array_span() : std::nullopt;
     if (array.has_value()) {
@@ -804,6 +829,16 @@ void write_row(const SheetRows &rows, RowCursor &at, const WritingState &state,
     }
     if (folded.has_value()) {
       state.out().out() << folded->text;
+    } else if (const std::optional<std::string> uncached =
+                   valued ? uncached_text(cell_value, cell, shown)
+                          : std::nullopt;
+               uncached.has_value()) {
+      state.out().out() << xml::escape_text(*uncached);
+      for (const Element child : cell.children()) {
+        if (child.type() != ElementType::paragraph) {
+          translate_element(child, state);
+        }
+      }
     } else {
       translate_cell_children(cell, state);
     }

@@ -111,6 +111,7 @@ add_executable(odr_test
         "src/internal/odf/odf_sheet_repeat_test.cpp"
         "src/internal/odf/odf_sheet_rows_test.cpp"
         "src/internal/odf/odf_sheet_stale_test.cpp"
+        "src/internal/odf/odf_sheet_uncached_test.cpp"
         "src/internal/odf/odf_sheet_value_test.cpp"
         "src/internal/odf/odf_sheet_style_test.cpp"
         "src/internal/odf/odf_sheet_write_test.cpp"

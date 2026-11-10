@@ -52,6 +52,9 @@ The release run heads these entries with the version and opens a fresh
   and many odg and ods do, is set in that family rather than the browser's
   default serif. `style:font-name` still outranks it, and PowerPoint's
   unresolved theme fonts such as `+mn-lt` are no family.
+- An ods cell saved with a value but without its text, as LibreOffice 4.2
+  saved a row of sums, shows the value in its data style and counts as
+  content of the sheet. It was blank. `SheetCell::value` states that text.
 
 ## v7.7.0 - 2026-10-31
 
