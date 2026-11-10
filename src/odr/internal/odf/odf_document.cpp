@@ -538,6 +538,21 @@ using AdapterBase = internal::RegistryElementAdapter<
     abstract::TableColumnAdapter, abstract::TableRowAdapter,
     abstract::TableCellAdapter, abstract::FrameAdapter, abstract::ImageAdapter>;
 
+/// The paper of a layout stating no size: A4 portrait.
+constexpr double default_paper_width_cm = 21;
+constexpr double default_paper_height_cm = 29.7;
+
+/// @p layout with the default paper's width and height where it states none.
+PageLayout with_default_paper(PageLayout layout) {
+  if (!layout.width.has_value()) {
+    layout.width = Measure(default_paper_width_cm, DynamicUnit("cm"));
+  }
+  if (!layout.height.has_value()) {
+    layout.height = Measure(default_paper_height_cm, DynamicUnit("cm"));
+  }
+  return layout;
+}
+
 class ElementAdapter final : public AdapterBase {
 public:
   ElementAdapter(Document &document, ElementRegistry &registry)
@@ -561,8 +576,10 @@ public:
     if (const ElementIdentifier master_page_id =
             text_root_first_master_page(element_id);
         master_page_id != null_element_id) {
-      return master_page_page_layout(master_page_id);
+      return with_default_paper(master_page_page_layout(master_page_id));
     }
+    // no master page at all: the text flows on no paper, and prints to the
+    // printer's
     return {};
   }
   static bool is_anchored_frame(const pugi::xml_node node) {
@@ -634,9 +651,9 @@ public:
   page_layout(const ElementIdentifier element_id) const override {
     if (const ElementIdentifier master_page_id = page_master_page(element_id);
         master_page_id != null_element_id) {
-      return master_page_page_layout(master_page_id);
+      return with_default_paper(master_page_page_layout(master_page_id));
     }
-    return {};
+    return with_default_paper({});
   }
   [[nodiscard]] ElementIdentifier
   page_master_page(const ElementIdentifier element_id) const override {
