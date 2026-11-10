@@ -320,3 +320,17 @@ TEST(html_document_style, fill_mask_scales_the_shape_to_the_box) {
   EXPECT_NE(mask.find("preserveAspectRatio=%22none%22"), std::string::npos);
   EXPECT_NE(mask.find("mask-size:100% 100%;"), std::string::npos);
 }
+
+TEST(html_document_style, shadow_is_not_part_of_the_drawing_style) {
+  GraphicStyle style;
+  style.shadow = Shadow{.offset_x = Measure("0.2cm"),
+                        .offset_y = Measure("0.1cm"),
+                        .color = Color(128, 128, 128),
+                        .blur = Measure("0.4cm")};
+  EXPECT_EQ(ihtml::translate_drawing_style(style), "");
+  // the same blur: drop-shadow takes the standard deviation, half the radius
+  EXPECT_EQ(ihtml::translate_shadow(style, false),
+            "filter:drop-shadow(0.2cm 0.1cm 0.2cm #808080);");
+  EXPECT_EQ(ihtml::translate_shadow(style, true),
+            "box-shadow:0.2cm 0.1cm 0.4cm #808080;");
+}

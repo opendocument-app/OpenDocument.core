@@ -454,6 +454,23 @@ odr::Color unbox_color(NSValue *const value) {
 
 @end
 
+@implementation ODRShadow
+
++ (nullable instancetype)shadowWithHandle:
+    (const std::optional<odr::Shadow> &)handle {
+  if (!handle.has_value()) {
+    return nil;
+  }
+  ODRShadow *const result = [[ODRShadow alloc] init];
+  result->_offsetX = [ODRMeasure measureWithHandle:handle->offset_x];
+  result->_offsetY = [ODRMeasure measureWithHandle:handle->offset_y];
+  result->_color = make_color(handle->color);
+  result->_blur = [ODRMeasure measureWithHandle:handle->blur];
+  return result;
+}
+
+@end
+
 @implementation ODRGraphicStyle
 
 + (instancetype)styleWithHandle:(const odr::GraphicStyle &)handle {
@@ -468,6 +485,7 @@ odr::Color unbox_color(NSValue *const value) {
       [ODRGradientFill gradientWithHandle:handle.fill_gradient];
   result->_fillHatch = [ODRHatchFill hatchWithHandle:handle.fill_hatch];
   result->_fillBitmap = [ODRBitmapFill bitmapWithHandle:handle.fill_bitmap];
+  result->_shadow = [ODRShadow shadowWithHandle:handle.shadow];
   return result;
 }
 

@@ -2416,6 +2416,10 @@ public:
             wrap_by_position(element_id, result)) {
       result.text_wrap = wrap;
     }
+    if (std::strcmp(get_node(element_id).name(), "draw:g") == 0) {
+      // LibreOffice casts no shadow from the style of a group
+      result.shadow.reset();
+    }
     return result;
   }
 

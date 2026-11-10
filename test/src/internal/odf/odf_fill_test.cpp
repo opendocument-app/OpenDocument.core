@@ -95,12 +95,10 @@ std::string rect(const std::string &style) {
 }
 
 /// The html of the first view of the file at @p path.
-std::string render(const std::string &path) {
+std::string render(const std::string &path,
+                   const HtmlConfig &config = HtmlConfig()) {
   std::ostringstream html;
-  html::translate(odr::open(path), HtmlConfig())
-      .list_views()
-      .at(0)
-      .write_html(html);
+  html::translate(odr::open(path), config).list_views().at(0).write_html(html);
   return html.str();
 }
 
@@ -364,4 +362,305 @@ TEST(OdfFill, a_malformed_meta_xml_names_no_producer) {
       zip::ZipFile(std::make_shared<DiskFile>(path)).archive()->as_filesystem(),
       EncryptionState::not_encrypted));
   EXPECT_DOUBLE_EQ(styles_of(document).at(0).fill_gradient.value().angle, 300);
+}
+
+TEST(OdfShadow, a_visible_shadow_is_read_with_its_offsets_and_opacity) {
+  const std::string path = write_odg(
+      "odf_fill_shadow.odg",
+      R"(<style:style style:name="base" style:family="graphic">)"
+      R"(<style:graphic-properties draw:shadow-offset-x="0cm" )"
+      R"(draw:shadow-offset-y="-0.07cm" draw:shadow-color="#f49100" )"
+      R"(draw:shadow-opacity="50%"/></style:style>)"
+      R"(<style:style style:name="shadow" style:family="graphic" )"
+      R"(style:parent-style-name="base">)"
+      R"(<style:graphic-properties draw:shadow="visible"/></style:style>)"
+      R"(<style:style style:name="hidden" style:family="graphic" )"
+      R"(style:parent-style-name="shadow">)"
+      R"(<style:graphic-properties draw:shadow="hidden"/></style:style>)",
+      rect("shadow") + rect("hidden"));
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const std::vector<GraphicStyle> styles = styles_of(document);
+
+  ASSERT_TRUE(styles.at(0).shadow.has_value());
+  const Shadow &shadow = *styles.at(0).shadow;
+  EXPECT_EQ(shadow.offset_x.to_string(), "0cm");
+  EXPECT_EQ(shadow.offset_y.to_string(), "-0.07cm");
+  EXPECT_EQ(shadow.color.rgb(), 0xf49100u);
+  EXPECT_EQ(shadow.color.alpha, 128);
+  EXPECT_FALSE(styles.at(1).shadow.has_value());
+}
+
+TEST(OdfShadow, a_visible_shadow_stating_nothing_else_is_black_and_unshifted) {
+  const std::string path = write_odg(
+      "odf_fill_shadow_frame.odg",
+      R"(<style:style style:name="s" style:family="graphic">)"
+      R"(<style:graphic-properties draw:shadow="visible"/></style:style>)",
+      R"(<draw:frame draw:style-name="s" svg:x="1cm" svg:y="1cm" )"
+      R"(svg:width="4cm" svg:height="2cm"><draw:text-box>)"
+      R"(<text:p>A</text:p></draw:text-box></draw:frame>)");
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const Frame frame =
+      document.root_element().first_child().first_child().as_frame();
+
+  ASSERT_TRUE(frame.style().shadow.has_value());
+  EXPECT_EQ(frame.style().shadow->offset_x.to_string(), "0cm");
+  EXPECT_EQ(frame.style().shadow->color.rgb(), 0x000000u);
+}
+
+TEST(OdfShadow, a_shape_with_a_fill_layer_casts_one_shadow) {
+  const std::string path =
+      write_odg("odf_fill_shadow_layer.odg",
+                R"(<draw:gradient draw:name="G" draw:style="linear" )"
+                R"(draw:start-color="#ff0000" draw:end-color="#0000ff"/>)"
+                R"(<style:style style:name="g" style:family="graphic">)"
+                R"(<style:graphic-properties draw:fill="gradient" )"
+                R"(draw:fill-gradient-name="G" draw:shadow="visible" )"
+                R"(draw:shadow-offset-x="0.1cm"/></style:style>)",
+                R"(<draw:ellipse draw:style-name="g" svg:x="1cm" svg:y="1cm" )"
+                R"(svg:width="4cm" svg:height="2cm"/>)"
+                R"(<draw:path draw:style-name="g" svg:x="1cm" svg:y="4cm" )"
+                R"(svg:width="4cm" svg:height="2cm" svg:viewBox="0 0 400 200" )"
+                R"(svg:d="M0 0 L400 200"/>)");
+
+  const std::string page = render(path);
+
+  // from a box around the layer and the svg, which the layer's mask does not
+  // clip; none on the shape's own box
+  EXPECT_EQ(page.find("box-shadow", page.find("<body")), std::string::npos);
+  const std::string shadow = "filter:drop-shadow(0.1cm 0cm 0cm #000000)";
+  std::size_t shadows = 0;
+  for (std::size_t at = page.find(shadow, page.find("<body"));
+       at != std::string::npos; at = page.find(shadow, at + 1)) {
+    ++shadows;
+  }
+  EXPECT_EQ(shadows, 2U);
+  const std::size_t layer = page.find(R"(class="odr-fill")");
+  ASSERT_NE(layer, std::string::npos);
+  const std::size_t layer_end = page.find('>', layer);
+  EXPECT_EQ(page.substr(layer, layer_end - layer).find("drop-shadow"),
+            std::string::npos);
+}
+
+TEST(OdfShadow, a_shape_casting_no_shadow_opens_no_box_around_its_layer) {
+  const std::string path =
+      write_odg("odf_fill_shadow_none.odg",
+                R"(<draw:gradient draw:name="G" draw:style="linear" )"
+                R"(draw:start-color="#ff0000" draw:end-color="#0000ff"/>)"
+                R"(<style:style style:name="g" style:family="graphic">)"
+                R"(<style:graphic-properties draw:fill="gradient" )"
+                R"(draw:fill-gradient-name="G"/></style:style>)",
+                R"(<draw:ellipse draw:style-name="g" svg:x="1cm" svg:y="1cm" )"
+                R"(svg:width="4cm" svg:height="2cm"/>)");
+
+  const std::string page = render(path);
+
+  ASSERT_NE(page.find(R"(class="odr-fill")"), std::string::npos);
+  EXPECT_EQ(page.find("<div style=\"z-index:-1;"), std::string::npos);
+}
+
+TEST(OdfShadow, what_a_frame_holds_does_not_cast_its_shadow) {
+  const std::string path = write_odg(
+      "odf_fill_shadow_held.odg",
+      R"(<style:style style:name="s" style:family="graphic">)"
+      R"(<style:graphic-properties draw:shadow="visible"/></style:style>)"
+      R"(<style:style style:name="h" style:family="graphic">)"
+      R"(<style:graphic-properties draw:shadow="hidden"/></style:style>)",
+      R"(<draw:frame draw:style-name="s" svg:width="8cm" svg:height="4cm">)"
+      R"(<draw:text-box><text:p>)" +
+          rect("h") +
+          R"(<draw:rect svg:width="1cm" svg:height="1cm"/>)"
+          R"(</text:p></draw:text-box></draw:frame>)");
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const Element frame = document.root_element().first_child().first_child();
+  std::vector<GraphicStyle> held;
+  // the shapes in the paragraph of the frame's text box
+  for (const Element child : frame.first_child().first_child().children()) {
+    held.push_back(child.as_frame().style());
+  }
+
+  ASSERT_TRUE(frame.as_frame().style().shadow.has_value());
+  ASSERT_EQ(held.size(), 2U);
+  EXPECT_FALSE(held.at(0).shadow.has_value());
+  EXPECT_FALSE(held.at(1).shadow.has_value());
+}
+
+TEST(OdfShadow, a_shadow_cascades_through_the_parent_and_default_styles) {
+  const std::string path = write_odg(
+      "odf_fill_shadow_cascade.odg",
+      R"(<style:default-style style:family="graphic">)"
+      R"(<style:graphic-properties draw:shadow="visible" )"
+      R"(draw:shadow-offset-x="0.3cm"/></style:default-style>)"
+      R"(<style:style style:name="p" style:family="graphic">)"
+      R"(<style:graphic-properties draw:shadow="visible" )"
+      R"(draw:shadow-offset-x="0.2cm"/></style:style>)"
+      R"(<style:style style:name="c" style:family="graphic" )"
+      R"(style:parent-style-name="p">)"
+      R"(<style:graphic-properties draw:fill="none"/></style:style>)"
+      R"(<style:style style:name="e" style:family="graphic" )"
+      R"(style:parent-style-name="p"/>)"
+      R"(<style:style style:name="h" style:family="graphic" )"
+      R"(style:parent-style-name="p">)"
+      R"(<style:graphic-properties draw:shadow="hidden"/></style:style>)"
+      R"(<style:style style:name="d" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="none"/></style:style>)",
+      rect("c") + rect("e") + rect("h") + rect("d"));
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const std::vector<GraphicStyle> styles = styles_of(document);
+
+  ASSERT_TRUE(styles.at(0).shadow.has_value());
+  EXPECT_EQ(styles.at(0).shadow->offset_x.to_string(), "0.2cm");
+  ASSERT_TRUE(styles.at(1).shadow.has_value());
+  EXPECT_EQ(styles.at(1).shadow->offset_x.to_string(), "0.2cm");
+  EXPECT_FALSE(styles.at(2).shadow.has_value());
+  ASSERT_TRUE(styles.at(3).shadow.has_value());
+  EXPECT_EQ(styles.at(3).shadow->offset_x.to_string(), "0.3cm");
+}
+
+TEST(OdfShadow, a_group_casts_no_shadow_but_its_children_cast_theirs) {
+  const std::string path = write_odg(
+      "odf_fill_shadow_group.odg",
+      R"(<style:style style:name="s" style:family="graphic">)"
+      R"(<style:graphic-properties draw:shadow="visible"/></style:style>)"
+      R"(<style:style style:name="n" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="solid"/></style:style>)"
+      R"(<style:style style:name="o" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="solid" draw:shadow="visible" )"
+      R"(draw:shadow-offset-x="0.4cm"/></style:style>)",
+      R"(<draw:g draw:style-name="s">)" + rect("n") + rect("o") +
+          R"(</draw:g>)");
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const Element group = document.root_element().first_child().first_child();
+  const Element own = group.first_child().next_sibling();
+
+  EXPECT_FALSE(group.as_frame().style().shadow.has_value());
+  EXPECT_FALSE(group.first_child().as_frame().style().shadow.has_value());
+  ASSERT_TRUE(own.as_frame().style().shadow.has_value());
+  EXPECT_EQ(own.as_frame().style().shadow->offset_x.to_string(), "0.4cm");
+}
+
+TEST(OdfShadow, a_negative_blur_is_none) {
+  const std::string path =
+      write_odg("odf_fill_shadow_blur.odg",
+                R"(<style:style style:name="s" style:family="graphic">)"
+                R"(<style:graphic-properties draw:shadow="visible" )"
+                R"(loext:shadow-blur="-0.2cm"/></style:style>)",
+                rect("s"));
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+
+  EXPECT_EQ(styles_of(document).at(0).shadow.value().blur.to_string(), "0cm");
+  EXPECT_NE(render(path).find("drop-shadow(0cm 0cm 0cm #000000)"),
+            std::string::npos);
+}
+
+TEST(OdfShadow, a_frame_that_paints_no_area_casts_the_shadow_of_its_text) {
+  const std::string path = write_odg(
+      "odf_fill_shadow_text.odg",
+      R"(<style:style style:name="t" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="none" draw:shadow="visible" )"
+      R"(draw:shadow-offset-x="0.1cm"/></style:style>)"
+      R"(<style:style style:name="f" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="solid" draw:fill-color="#ffffff" )"
+      R"(draw:shadow="visible" draw:shadow-offset-x="0.2cm"/></style:style>)",
+      R"(<draw:frame draw:style-name="t" svg:width="4cm" svg:height="2cm">)"
+      R"(<draw:text-box><text:p>A</text:p></draw:text-box></draw:frame>)"
+      R"(<draw:frame draw:style-name="f" svg:width="4cm" svg:height="2cm">)"
+      R"(<draw:text-box><text:p>B</text:p></draw:text-box></draw:frame>)");
+
+  const std::string page = render(path);
+
+  EXPECT_NE(page.find("filter:drop-shadow(0.1cm 0cm 0cm #000000);"),
+            std::string::npos);
+  EXPECT_EQ(page.find("box-shadow:0.1cm"), std::string::npos);
+  EXPECT_NE(page.find("box-shadow:0.2cm 0cm 0cm #000000;"), std::string::npos);
+}
+
+TEST(OdfShadow, a_fontwork_shape_casts_the_shadow_of_its_text) {
+  const std::string path = write_odg(
+      "odf_fill_shadow_fontwork.odg",
+      R"(<style:style style:name="s" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="solid" draw:shadow="visible" )"
+      R"(draw:shadow-offset-x="0.1cm"/></style:style>)",
+      R"(<draw:custom-shape draw:style-name="s" svg:width="8cm" )"
+      R"(svg:height="2cm"><text:p>Fontwork</text:p>)"
+      R"(<draw:enhanced-geometry svg:viewBox="0 0 21600 21600" )"
+      R"(draw:enhanced-path="M 0 0 L 21600 0 N" draw:text-path="true"/>)"
+      R"(</draw:custom-shape>)");
+
+  const std::string page = render(path);
+
+  const std::size_t text = page.find(R"(class="odr-text-path")");
+  ASSERT_NE(text, std::string::npos);
+  const std::size_t svg = page.rfind("<svg", text);
+  ASSERT_NE(svg, std::string::npos);
+  EXPECT_NE(page.substr(svg, text - svg)
+                .find("filter:drop-shadow(0.1cm 0cm 0cm #000000);"),
+            std::string::npos);
+}
+
+TEST(OdfShadow, the_dark_sheet_clears_every_shadow) {
+  const std::string path = write_odg(
+      "odf_fill_shadow_dark.odg",
+      R"(<style:style style:name="s" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="solid" draw:shadow="visible"/>)"
+      R"(</style:style>)"
+      R"(<style:style style:name="t" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="none" draw:shadow="visible"/>)"
+      R"(</style:style>)"
+      R"(<style:style style:name="n" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="solid"/></style:style>)",
+      R"(<draw:frame draw:style-name="s" svg:width="4cm" svg:height="2cm">)"
+      R"(<draw:text-box><text:p>A</text:p></draw:text-box></draw:frame>)"
+      R"(<draw:frame draw:style-name="t" svg:width="4cm" svg:height="2cm">)"
+      R"(<draw:text-box><text:p>B</text:p></draw:text-box></draw:frame>)"
+      R"(<draw:line draw:style-name="s" svg:x1="0cm" svg:y1="0cm" )"
+      R"(svg:x2="4cm" svg:y2="2cm"/>)" +
+          rect("s") + rect("n"));
+  HtmlConfig config;
+  config.color_scheme = HtmlColorScheme::dark;
+
+  const std::string page = render(path, config);
+
+  std::size_t marked = 0;
+  for (std::size_t at = page.find(R"(class="odr-shadow")");
+       at != std::string::npos;
+       at = page.find(R"(class="odr-shadow")", at + 1)) {
+    ++marked;
+  }
+  // a box with and without a fill, a line, a shape
+  EXPECT_EQ(marked, 4U);
+  EXPECT_NE(page.find(".odr-shadow,.odr-shadow>*{box-shadow:none!important;"
+                      "filter:none!important}"),
+            std::string::npos);
+}
+
+TEST(OdfShadow, a_frame_with_a_bare_hatch_casts_the_shadow_of_its_lines) {
+  const std::string path = write_odg(
+      "odf_fill_shadow_hatch.odg",
+      R"(<draw:hatch draw:name="H" draw:style="single" draw:color="#000000" )"
+      R"(draw:distance="0.2cm" draw:rotation="0"/>)"
+      R"(<style:style style:name="h" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="hatch" draw:fill-hatch-name="H" )"
+      R"(draw:shadow="visible" draw:shadow-offset-x="0.1cm"/></style:style>)"
+      R"(<style:style style:name="s" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="hatch" draw:fill-hatch-name="H" )"
+      R"(draw:fill-hatch-solid="true" draw:fill-color="#ffffff" )"
+      R"(draw:shadow="visible" draw:shadow-offset-x="0.2cm"/></style:style>)",
+      R"(<draw:frame draw:style-name="h" svg:width="4cm" svg:height="2cm">)"
+      R"(<draw:text-box><text:p>A</text:p></draw:text-box></draw:frame>)"
+      R"(<draw:frame draw:style-name="s" svg:width="4cm" svg:height="2cm">)"
+      R"(<draw:text-box><text:p>B</text:p></draw:text-box></draw:frame>)");
+
+  const std::string page = render(path);
+
+  // the bare hatch paints only its lines; on a solid ground it covers the box
+  EXPECT_NE(page.find("filter:drop-shadow(0.1cm 0cm 0cm #000000);"),
+            std::string::npos);
+  EXPECT_EQ(page.find("box-shadow:0.1cm"), std::string::npos);
+  EXPECT_NE(page.find("box-shadow:0.2cm 0cm 0cm #000000;"), std::string::npos);
 }

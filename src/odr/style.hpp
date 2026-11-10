@@ -292,6 +292,15 @@ struct BitmapFill final {
   BitmapRepeat repeat{BitmapRepeat::repeat};
 };
 
+/// The shadow a shape casts.
+struct Shadow final {
+  Measure offset_x{0, DynamicUnit()};
+  Measure offset_y{0, DynamicUnit()};
+  /// The color, with the opacity in its alpha.
+  Color color;
+  Measure blur{0, DynamicUnit()};
+};
+
 /// Represents a style for graphics.
 struct GraphicStyle final {
   std::optional<Measure> stroke_width;
@@ -308,9 +317,12 @@ struct GraphicStyle final {
   std::optional<GradientFill> fill_gradient;
   std::optional<HatchFill> fill_hatch;
   std::optional<BitmapFill> fill_bitmap;
+  /// Unset where the shape casts none.
+  std::optional<Shadow> shadow;
 
   /// Takes what @p other sets; any fill it sets replaces gradient, hatch and
-  /// bitmap.
+  /// bitmap. The shadow does not pass down the element tree: it is @p other's,
+  /// set or not.
   void override(const GraphicStyle &other);
 };
 

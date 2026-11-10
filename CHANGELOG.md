@@ -52,6 +52,10 @@ The release run heads these entries with the version and opens a fresh
   With `draw:text-path-mode="shape"` each line is stretched to fill the shape,
   with `path` to its width. Text on a curve (arch, wave, circle) is laid out
   straight.
+- An odf shape or text box casts the shadow its style states
+  (`draw:shadow`), with its offsets, color, opacity and blur; a text box
+  without a covering fill casts the shadow of what it holds. The dark sheet
+  clears every shadow.
 
 ### API, files and saving
 
@@ -73,6 +77,8 @@ The release run heads these entries with the version and opens a fresh
   `File` and its `BitmapRepeat`), in Python, Java and Objective-C too.
 - `Frame::text_path()` returns the `TextPathMode` of a Fontwork shape, none for
   any other frame, in Python, Java and Objective-C too.
+- `GraphicStyle` carries the new `shadow` (`Shadow`), in Python, Java and
+  Objective-C too.
 
 ### Fixes
 

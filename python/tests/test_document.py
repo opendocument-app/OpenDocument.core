@@ -647,3 +647,47 @@ def test_frame_text_path_is_set_for_fontwork_only():
 
     assert frames[0].as_frame().text_path() == pyodr.TextPathMode.shape
     assert frames[1].as_frame().text_path() is None
+
+
+SHADOWED_DRAWING = b"""<office:document
+    xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+    xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"
+    xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"
+    xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0"
+    xmlns:loext="urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0"
+    office:version="1.3"
+    office:mimetype="application/vnd.oasis.opendocument.graphics">
+  <office:styles>
+    <style:style style:name="s" style:family="graphic">
+      <style:graphic-properties draw:shadow="visible"
+          draw:shadow-offset-x="0.3cm" draw:shadow-offset-y="-0.1cm"
+          draw:shadow-color="#f49100" draw:shadow-opacity="40%"
+          loext:shadow-blur="0.05cm"/>
+    </style:style>
+    <style:style style:name="n" style:family="graphic">
+      <style:graphic-properties draw:fill="none"/>
+    </style:style>
+  </office:styles>
+  <office:body><office:drawing><draw:page>
+    <draw:rect draw:style-name="s" svg:width="4cm" svg:height="2cm"/>
+    <draw:rect draw:style-name="n" svg:width="4cm" svg:height="2cm"/>
+  </draw:page></office:drawing></office:body>
+</office:document>"""
+
+
+def test_frame_style_carries_its_shadow():
+    document = (
+        pyodr.open(pyodr.File.from_memory(SHADOWED_DRAWING))
+        .as_document_file()
+        .document()
+    )
+    frames = list(document.root_element().first_child())
+
+    shadow = frames[0].as_frame().style().shadow
+    assert str(shadow.offset_x) == "0.3cm"
+    assert str(shadow.offset_y) == "-0.1cm"
+    assert shadow.color.rgb() == 0xF49100
+    assert shadow.color.alpha == 102
+    assert str(shadow.blur) == "0.05cm"
+
+    assert frames[1].as_frame().style().shadow is None

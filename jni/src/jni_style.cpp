@@ -587,6 +587,18 @@ jobject make_bitmap_fill(JNIEnv *env,
   return result;
 }
 
+jobject make_shadow(JNIEnv *env, const std::optional<odr::Shadow> &shadow) {
+  if (!shadow.has_value()) {
+    return nullptr;
+  }
+  return new_object(
+      env, "app/opendocument/core/Shadow",
+      "(Lapp/opendocument/core/Measure;Lapp/opendocument/core/Measure;"
+      "Lapp/opendocument/core/Color;Lapp/opendocument/core/Measure;)V",
+      make_measure(env, shadow->offset_x), make_measure(env, shadow->offset_y),
+      make_color(env, shadow->color), make_measure(env, shadow->blur));
+}
+
 } // namespace
 
 jobject make_graphic_style(JNIEnv *env, const odr::GraphicStyle &style) {
@@ -596,14 +608,15 @@ jobject make_graphic_style(JNIEnv *env, const odr::GraphicStyle &style) {
       "Lapp/opendocument/core/Color;III"
       "Lapp/opendocument/core/GradientFill;"
       "Lapp/opendocument/core/HatchFill;"
-      "Lapp/opendocument/core/BitmapFill;)V",
+      "Lapp/opendocument/core/BitmapFill;"
+      "Lapp/opendocument/core/Shadow;)V",
       make_measure(env, style.stroke_width),
       make_color(env, style.stroke_color), make_color(env, style.fill_color),
       enum_code(style.vertical_align), enum_code(style.text_wrap),
       enum_code(style.horizontal_position),
       make_gradient_fill(env, style.fill_gradient),
       make_hatch_fill(env, style.fill_hatch),
-      make_bitmap_fill(env, style.fill_bitmap));
+      make_bitmap_fill(env, style.fill_bitmap), make_shadow(env, style.shadow));
 }
 
 jobject make_page_layout(JNIEnv *env, const odr::PageLayout &layout) {
