@@ -12,6 +12,17 @@ ListLevel decimal_level(std::string label, const std::uint32_t start = 1) {
   return {ListNumberFormat::decimal, std::move(label), start};
 }
 
+constexpr const char *symbol_dot = "\uF0B7";
+constexpr const char *symbol_minus = "\uF02D";
+constexpr const char *square = "\uF0A7";
+constexpr const char *arrow = "\uF0D8";
+constexpr const char *check = "\uF0FC";
+constexpr const char *diamond = "\uF075";
+constexpr const char *clover = "\uF076";
+constexpr const char *white_square = "\uF0A8";
+constexpr const char *unmapped = "\uF021";
+constexpr const char *private_use = "\uE000";
+
 } // namespace
 
 TEST(FormatListNumber, decimal) {
@@ -156,4 +167,49 @@ TEST(ListCounter, starts_a_level_without_counting) {
   EXPECT_TRUE(counter.is_open(0));
   counter.start(0, outer);
   EXPECT_EQ("5.", counter.advance(0, outer));
+}
+
+TEST(ResolveBullet, a_symbol_font_bullet_becomes_its_unicode_character) {
+  EXPECT_EQ("•", resolve_bullet(symbol_dot, 0, "Symbol"));
+  EXPECT_EQ("•", resolve_bullet(symbol_dot, 1, "'Symbol'"));
+  EXPECT_EQ("−", resolve_bullet(symbol_minus, 0, "symbol"));
+  EXPECT_EQ("▪", resolve_bullet(square, 1, "Wingdings"));
+  EXPECT_EQ("➢", resolve_bullet(arrow, 0, "Wingdings"));
+  EXPECT_EQ("✓", resolve_bullet(check, 0, "Wingdings"));
+  EXPECT_EQ("◆", resolve_bullet(diamond, 0, "Wingdings"));
+  EXPECT_EQ("❖", resolve_bullet(clover, 0, "Wingdings"));
+  EXPECT_EQ("◻", resolve_bullet(white_square, 0, "Wingdings"));
+}
+
+TEST(ResolveBullet, the_font_tells_the_same_byte_apart) {
+  EXPECT_EQ("♣", resolve_bullet(square, 0, "Symbol"));
+  EXPECT_EQ("▪", resolve_bullet(square, 0, "Wingdings"));
+}
+
+TEST(ResolveBullet, a_symbol_font_is_read_at_its_byte_too) {
+  EXPECT_EQ("❖", resolve_bullet("v", 0, "Wingdings"));
+  EXPECT_EQ("▪", resolve_bullet("§", 0, "Wingdings"));
+  EXPECT_EQ("■", resolve_bullet("n", 0, "ZapfDingbats"));
+  EXPECT_EQ("−", resolve_bullet("-", 0, "Symbol"));
+}
+
+TEST(ResolveBullet, an_unmapped_symbol_takes_the_level_default) {
+  EXPECT_EQ("◦", resolve_bullet(unmapped, 1, "Wingdings"));
+  EXPECT_EQ("▪", resolve_bullet("x", 2, "Wingdings"));
+  // Wingdings 2 has a table of its own
+  EXPECT_EQ("•", resolve_bullet(square, 0, "Wingdings 2"));
+}
+
+TEST(ResolveBullet, a_private_use_bullet_in_another_font_takes_the_default) {
+  EXPECT_EQ("•", resolve_bullet(private_use, 0, "OpenSymbol"));
+  EXPECT_EQ("◦", resolve_bullet(square, 1, ""));
+  EXPECT_EQ("▪", resolve_bullet(square, 2, "Marlett"));
+}
+
+TEST(ResolveBullet, other_text_is_kept) {
+  EXPECT_EQ("–", resolve_bullet("–", 0, "Symbol"));
+  EXPECT_EQ("o", resolve_bullet("o", 1, "Courier New"));
+  EXPECT_EQ("v", resolve_bullet("v", 1, ""));
+  EXPECT_EQ("◦", resolve_bullet("", 1));
+  EXPECT_EQ("•", resolve_bullet("\xff", 0));
 }
