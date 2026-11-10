@@ -505,6 +505,11 @@ public:
   paragraph_style(ElementIdentifier element_id) const = 0;
   [[nodiscard]] virtual TextStyle
   paragraph_text_style(ElementIdentifier element_id) const = 0;
+  /// A heading's number in a numbered outline, "1.2"; else empty.
+  [[nodiscard]] virtual std::string
+  paragraph_marker([[maybe_unused]] const ElementIdentifier element_id) const {
+    return {};
+  }
   /// The master page whose page this paragraph opens; null where it names
   /// none.
   [[nodiscard]] virtual ElementIdentifier paragraph_master_page(

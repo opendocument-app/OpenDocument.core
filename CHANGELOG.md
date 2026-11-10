@@ -28,13 +28,25 @@ The release run heads these entries with the version and opens a fresh
 
 ### Text documents and presentations
 
+- The headings of an odt are numbered after its `text:outline-style`, "1",
+  "1.1", "1.2.1", as Word and LibreOffice number chapters, up to the ten
+  levels LibreOffice has. The HTML writes the number before the heading.
+- Lists and the outline of an odt count as LibreOffice does: a list item that
+  holds no paragraph, only a nested list, is not counted; a level an item
+  skips opens at its start; and a level without a number format is left out of
+  the label with its period. A form saved by Word numbered its fields "2.1.",
+  "3.1." where Word and LibreOffice show "1.1.", "1.2.". A list may name the
+  outline as its style. A list deeper than ten levels counts on the tenth.
+
+### API, files and saving
+
+- The new `Paragraph::marker` returns a heading's number in a numbered
+  outline, empty for any other paragraph, in Python, Java and Objective-C
+  too.
 - With `text_document_margin`, an odt's page box shows the header and footer
   of its master page, the first page's where it differs; a paragraph naming a
   master page opens a box of that page. `style:header-left` and the headers'
   own margins, border and background are not read.
-
-### API, files and saving
-
 - `MasterPage` has `header()`, `footer()`, `first_header()`, `first_footer()`
   and `next_master_page()`, `Paragraph` has `master_page()`, and `PageLayout`
   the `header_min_height`, `header_spacing`, `footer_min_height` and

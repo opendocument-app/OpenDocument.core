@@ -63,6 +63,21 @@ class DocumentTest {
   }
 
   @Test
+  void aParagraphOutsideANumberedOutlineHasNoMarker() throws IOException {
+    Document document = openDocument();
+
+    // The fixture has no heading, so no marker.
+    List<Element> paragraphs =
+        document.rootElement().children().stream()
+            .filter(child -> child.type() == ElementType.PARAGRAPH)
+            .toList();
+    assertEquals(4, paragraphs.size());
+    for (Element paragraph : paragraphs) {
+      assertEquals("", paragraph.asParagraph().marker());
+    }
+  }
+
+  @Test
   void elementNavigation() throws IOException {
     Document document = openDocument();
     Element root = document.rootElement();

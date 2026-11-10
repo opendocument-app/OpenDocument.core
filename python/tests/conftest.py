@@ -57,6 +57,40 @@ ODT_MANIFEST_XML = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
+ODT_OUTLINE_CONTENT_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<office:document-content
+    xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+    xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"
+    office:version="1.2">
+  <office:body>
+    <office:text>
+      <text:h text:outline-level="1">Chapter</text:h>
+      <text:h text:outline-level="2">Section</text:h>
+      <text:p>Body</text:p>
+    </office:text>
+  </office:body>
+</office:document-content>
+"""
+
+ODT_OUTLINE_STYLES_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<office:document-styles
+    xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+    xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"
+    xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"
+    office:version="1.2">
+  <office:styles>
+    <text:outline-style style:name="Outline">
+      <text:outline-level-style text:level="1" style:num-format="1"/>
+      <text:outline-level-style text:level="2" style:num-format="1"
+          text:display-levels="2"/>
+    </text:outline-style>
+  </office:styles>
+  <office:automatic-styles/>
+  <office:master-styles/>
+</office:document-styles>
+"""
+
+
 ODS_CONTENT_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <office:document-content
     xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
@@ -109,6 +143,22 @@ def odt_path(tmp_path):
         )
         archive.writestr("content.xml", ODT_CONTENT_XML)
         archive.writestr("styles.xml", ODT_STYLES_XML)
+        archive.writestr("META-INF/manifest.xml", ODT_MANIFEST_XML)
+    return path
+
+
+@pytest.fixture
+def outline_odt_path(tmp_path):
+    """An OpenDocument text whose two headings are numbered by its outline."""
+    path = tmp_path / "outline.odt"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr(
+            "mimetype",
+            "application/vnd.oasis.opendocument.text",
+            compress_type=zipfile.ZIP_STORED,
+        )
+        archive.writestr("content.xml", ODT_OUTLINE_CONTENT_XML)
+        archive.writestr("styles.xml", ODT_OUTLINE_STYLES_XML)
         archive.writestr("META-INF/manifest.xml", ODT_MANIFEST_XML)
     return path
 

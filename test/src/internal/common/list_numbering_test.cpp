@@ -128,3 +128,32 @@ TEST(ListCounter, rejects_overflow) {
                std::overflow_error);
   EXPECT_THROW(counter.restart(maximum, 0), std::overflow_error);
 }
+
+TEST(ListCounter, expands_the_level_placeholder) {
+  ListCounter counter;
+  const ListLevel level = decimal_level(
+      std::string{level_placeholder, '\x01', '.', level_placeholder, '\x0a'});
+
+  for (std::uint32_t skipped = 0; skipped < 9; ++skipped) {
+    counter.start(skipped, level);
+  }
+  EXPECT_EQ("1.1", counter.advance(9, level));
+}
+
+TEST(ListCounter, leaves_a_braced_level_in_lvl_text_alone) {
+  ListCounter counter;
+  EXPECT_EQ("%{1}1", counter.advance(0, decimal_level("%{1}%1")));
+}
+
+TEST(ListCounter, starts_a_level_without_counting) {
+  ListCounter counter;
+  const ListLevel outer = decimal_level("%1.", 3);
+  const ListLevel inner = decimal_level("%1.%2");
+
+  counter.start(0, outer);
+  EXPECT_EQ("3.1", counter.advance(1, inner));
+  EXPECT_EQ("4.", counter.advance(0, outer));
+  EXPECT_TRUE(counter.is_open(0));
+  counter.start(0, outer);
+  EXPECT_EQ("5.", counter.advance(0, outer));
+}

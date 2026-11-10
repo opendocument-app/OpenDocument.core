@@ -1974,6 +1974,10 @@ public:
   paragraph_text_style(const ElementIdentifier element_id) const override {
     return get_intermediate_style(element_id).text_style;
   }
+  [[nodiscard]] std::string
+  paragraph_marker(const ElementIdentifier element_id) const override {
+    return m_registry->list_marker(element_id).text;
+  }
   [[nodiscard]] ElementIdentifier
   paragraph_master_page(const ElementIdentifier element_id) const override {
     const char *style_name = get_style_name(element_id);

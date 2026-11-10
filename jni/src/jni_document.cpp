@@ -751,6 +751,14 @@ Java_app_opendocument_core_Paragraph_textStyleNative(JNIEnv *env, jobject,
   });
 }
 
+extern "C" JNIEXPORT jstring JNICALL
+Java_app_opendocument_core_Paragraph_markerNative(JNIEnv *env, jobject,
+                                                  jlong handle) {
+  return guarded(env, [&] {
+    return to_jstring(env, element(handle).as_paragraph().marker());
+  });
+}
+
 // app.opendocument.core.Span
 
 extern "C" JNIEXPORT jobject JNICALL

@@ -570,6 +570,14 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
       nil);
 }
 
+- (NSString *)marker {
+  return guarded_value(
+      [&]() -> NSString * {
+        return to_nsstring(self.handle.as_paragraph().marker());
+      },
+      @"");
+}
+
 - (BOOL)setStyle:(ODRParagraphStyle *)style error:(NSError **)error {
   return guarded(error, [&] {
     self.handle.as_paragraph().set_style([style handle]);

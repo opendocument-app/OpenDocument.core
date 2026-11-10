@@ -100,17 +100,22 @@ std::string ListCounter::advance(const std::uint32_t level,
   std::string result;
   const std::string &label = list_level.label;
   for (std::size_t i = 0; i < label.size();) {
-    const char c = label[i];
-    if (c != '%' || i + 1 >= label.size() || label[i + 1] < '1' ||
-        label[i + 1] > '9') {
-      result.push_back(c);
+    std::uint32_t placeholder = 0;
+    if (i + 1 < label.size()) {
+      if (label[i] == '%' && label[i + 1] >= '1' && label[i + 1] <= '9') {
+        placeholder = static_cast<std::uint32_t>(label[i + 1] - '0');
+      } else if (label[i] == level_placeholder) {
+        placeholder = static_cast<std::uint8_t>(label[i + 1]);
+      }
+    }
+    if (placeholder == 0) {
+      result.push_back(label[i]);
       ++i;
       continue;
     }
-    const auto placeholder = static_cast<std::uint32_t>(label[i + 1] - '1');
-    if (placeholder < m_numbers.size()) {
-      result.append(format_list_number(m_formats[placeholder],
-                                       m_numbers[placeholder].value_or(1)));
+    if (placeholder - 1 < m_numbers.size()) {
+      result.append(format_list_number(m_formats[placeholder - 1],
+                                       m_numbers[placeholder - 1].value_or(1)));
     }
     i += 2;
   }
@@ -125,6 +130,19 @@ void ListCounter::restart(const std::uint32_t level,
                           const std::uint32_t number) {
   grow_(level);
   m_numbers[level] = number == 0 ? std::nullopt : std::optional(number);
+}
+
+bool ListCounter::is_open(const std::uint32_t level) const {
+  return level < m_numbers.size() && m_numbers[level].has_value();
+}
+
+void ListCounter::start(const std::uint32_t level,
+                        const ListLevel &list_level) {
+  grow_(level);
+  if (!m_numbers[level].has_value()) {
+    m_numbers[level] = list_level.start;
+    m_formats[level] = list_level.format;
+  }
 }
 
 void ListCounter::grow_(const std::uint32_t level) {

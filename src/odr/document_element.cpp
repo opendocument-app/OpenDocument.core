@@ -728,6 +728,10 @@ TextStyle ListItem::style() const {
   return exists_() ? m_adapter2->list_item_style(m_identifier) : TextStyle();
 }
 
+std::string Paragraph::marker() const {
+  return exists_() ? m_adapter2->paragraph_marker(m_identifier) : "";
+}
+
 std::string ListItem::marker() const {
   return exists_() ? m_adapter2->list_item_marker(m_identifier) : "";
 }

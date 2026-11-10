@@ -6,7 +6,9 @@
 #include <odr/internal/odf/odf_element_registry.hpp>
 #include <odr/internal/odf/odf_style.hpp>
 
+#include <algorithm>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -55,30 +57,41 @@ pugi::xml_node level_style_node(const pugi::xml_node list_style,
   return result;
 }
 
-ListLevel read_level(const pugi::xml_node level_style,
+/// Level @p level (counted from 0) of @p list_style, as LibreOffice labels it.
+ListLevel read_level(const pugi::xml_node list_style,
                      const std::uint32_t level) {
   ListLevel result;
 
+  const pugi::xml_node level_style = level_style_node(list_style, level);
   const std::string name = level_style.name();
 
-  if (name == "text:list-level-style-number") {
+  if (name == "text:list-level-style-number" ||
+      name == "text:outline-level-style") {
     result.format =
         parse_number_format(level_style.attribute("style:num-format").value());
     result.start = level_style.attribute("text:start-value").as_uint(1);
 
-    // ODF spells the label out as prefix, the numbers of the last
-    // `text:display-levels` levels joined by a period, then suffix.
-    const auto display_levels =
-        level_style.attribute("text:display-levels").as_uint(1);
-    const std::uint32_t first =
-        display_levels > level ? 0 : level - display_levels + 1;
-
     result.label = level_style.attribute("style:num-prefix").value();
-    for (std::uint32_t i = first; i <= level; ++i) {
-      if (i > first) {
-        result.label += ".";
+    if (result.format != ListNumberFormat::none) {
+      const auto display_levels =
+          level_style.attribute("text:display-levels").as_uint(1);
+      const std::uint32_t first =
+          display_levels > level ? 0 : level - display_levels + 1;
+      bool joined = false;
+      for (std::uint32_t i = first; i <= level; ++i) {
+        if (i < level &&
+            parse_number_format(level_style_node(list_style, i)
+                                    .attribute("style:num-format")
+                                    .value()) == ListNumberFormat::none) {
+          continue;
+        }
+        if (joined) {
+          result.label += ".";
+        }
+        result.label += level_placeholder;
+        result.label += static_cast<char>(i + 1);
+        joined = true;
       }
-      result.label += "%" + std::to_string(i + 1);
     }
     result.label += level_style.attribute("style:num-suffix").value();
 
@@ -96,8 +109,40 @@ ListLevel read_level(const pugi::xml_node level_style,
   return result;
 }
 
+/// LibreOffice's lists and outline have ten levels, a deeper one is the tenth.
+constexpr std::uint32_t max_level = 10;
+
+std::uint32_t clamp_level(const std::size_t depth) {
+  return static_cast<std::uint32_t>(
+      std::min(depth, static_cast<std::size_t>(max_level - 1)));
+}
+
 bool is_ordered(const ListNumberFormat format) {
   return format != ListNumberFormat::bullet && format != ListNumberFormat::none;
+}
+
+/// Opens each level above @p level that no item has opened yet at its start.
+void start_skipped_levels(ListCounter &counter, const pugi::xml_node list_style,
+                          const std::uint32_t level) {
+  for (std::uint32_t skipped = 0; skipped < level; ++skipped) {
+    if (!counter.is_open(skipped)) {
+      counter.start(skipped, read_level(list_style, skipped));
+    }
+  }
+}
+
+/// Whether @p list_item has a paragraph to number before any nested list.
+bool has_own_paragraph(const pugi::xml_node list_item) {
+  for (const pugi::xml_node child : list_item.children()) {
+    const std::string_view name = child.name();
+    if (name == "text:p" || name == "text:h") {
+      return true;
+    }
+    if (name == "text:list") {
+      return false;
+    }
+  }
+  return false;
 }
 
 class Resolver final {
@@ -118,6 +163,12 @@ public:
       case ElementType::list_item:
         walk_list_item_(child_id, element);
         break;
+      case ElementType::paragraph:
+        if (m_open_lists.empty()) {
+          number_heading_(child_id, element);
+        }
+        walk(element.first_child_id);
+        break;
       default:
         walk(element.first_child_id);
         break;
@@ -130,17 +181,17 @@ private:
   const StyleRegistry *m_styles{nullptr};
 
   std::unordered_map<std::string, ListCounter> m_counters;
+  ListCounter m_outline;
   std::vector<std::string> m_open_lists;
 
   [[nodiscard]] ListLevel level_at_(const std::string &style_name,
                                     const std::uint32_t level) const {
-    return read_level(
-        level_style_node(m_styles->list_style_node(style_name), level), level);
+    return read_level(m_styles->list_style_node(style_name), level);
   }
 
   void walk_list_(const ElementIdentifier id,
                   const ElementRegistry::Element &element) {
-    const auto level = static_cast<std::uint32_t>(m_open_lists.size());
+    const std::uint32_t level = clamp_level(m_open_lists.size());
 
     // A nested list usually carries no style of its own and stays on the one
     // its ancestor opened.
@@ -166,11 +217,43 @@ private:
     m_open_lists.pop_back();
   }
 
+  /// Numbers a heading after the outline style at its `text:outline-level`.
+  void number_heading_(const ElementIdentifier id,
+                       const ElementRegistry::Element &element) {
+    const pugi::xml_node node = element.node;
+    if (std::string_view(node.name()) != "text:h" ||
+        node.attribute("text:is-list-header").as_bool()) {
+      return;
+    }
+    const std::uint32_t outline_level =
+        node.attribute("text:outline-level").as_uint(1);
+    const pugi::xml_node outline_style = m_styles->outline_style_node();
+    if (outline_level == 0 || !outline_style) {
+      return;
+    }
+    const std::uint32_t level = clamp_level(outline_level - 1);
+
+    ListLevel list_level = read_level(outline_style, level);
+    if (node.attribute("text:restart-numbering").as_bool()) {
+      list_level.start =
+          node.attribute("text:start-value").as_uint(list_level.start);
+      m_outline.restart(level, 0);
+    }
+
+    start_skipped_levels(m_outline, outline_style, level);
+    ListMarker marker;
+    marker.text = m_outline.advance(level, list_level);
+    if (!marker.text.empty()) {
+      m_registry->set_list_marker(id, std::move(marker));
+    }
+  }
+
   void walk_list_item_(const ElementIdentifier id,
                        const ElementRegistry::Element &element) {
     if (!m_open_lists.empty() &&
-        std::string(element.node.name()) != "text:list-header") {
-      const auto level = static_cast<std::uint32_t>(m_open_lists.size() - 1);
+        std::string(element.node.name()) != "text:list-header" &&
+        has_own_paragraph(element.node)) {
+      const std::uint32_t level = clamp_level(m_open_lists.size() - 1);
       const std::string &style_name = m_open_lists.back();
 
       ListLevel list_level = level_at_(style_name, level);
@@ -182,6 +265,8 @@ private:
         counter.restart(level, 0);
       }
 
+      start_skipped_levels(counter, m_styles->list_style_node(style_name),
+                           level);
       ListMarker marker;
       marker.text = counter.advance(level, list_level);
       if (is_ordered(list_level.format)) {
