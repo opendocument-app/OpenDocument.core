@@ -8,6 +8,9 @@ public final class GraphicStyle {
   public final VerticalAlign verticalAlign;
   public final TextWrap textWrap;
   public final HorizontalAlign horizontalPosition;
+  /** Paints over {@link #fillColor}. */
+  public final GradientFill fillGradient;
+  public final HatchFill fillHatch;
 
   GraphicStyle(
       Measure strokeWidth,
@@ -15,12 +18,16 @@ public final class GraphicStyle {
       Color fillColor,
       int verticalAlign,
       int textWrap,
-      int horizontalPosition) {
+      int horizontalPosition,
+      GradientFill fillGradient,
+      HatchFill fillHatch) {
     this.strokeWidth = strokeWidth;
     this.strokeColor = strokeColor;
     this.fillColor = fillColor;
     this.verticalAlign = VerticalAlign.fromNative(verticalAlign);
     this.textWrap = TextWrap.fromNative(textWrap);
     this.horizontalPosition = HorizontalAlign.fromNative(horizontalPosition);
+    this.fillGradient = fillGradient;
+    this.fillHatch = fillHatch;
   }
 }

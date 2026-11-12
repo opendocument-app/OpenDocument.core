@@ -76,6 +76,19 @@ void odr_python::bind_style(py::module_ &m) {
       .value("after", odr::TextWrap::after)
       .value("run_through", odr::TextWrap::run_through);
 
+  py::enum_<odr::GradientStyle>(m, "GradientStyle")
+      .value("linear", odr::GradientStyle::linear)
+      .value("axial", odr::GradientStyle::axial)
+      .value("radial", odr::GradientStyle::radial)
+      .value("ellipsoid", odr::GradientStyle::ellipsoid)
+      .value("square", odr::GradientStyle::square)
+      .value("rectangular", odr::GradientStyle::rectangular);
+
+  py::enum_<odr::HatchStyle>(m, "HatchStyle")
+      .value("single", odr::HatchStyle::single)
+      .value("crossed", odr::HatchStyle::crossed)
+      .value("triple", odr::HatchStyle::triple);
+
   py::class_<odr::DynamicUnit>(m, "DynamicUnit")
       .def(py::init<>())
       .def(py::init([](const std::string &name) {
@@ -183,6 +196,23 @@ void odr_python::bind_style(py::module_ &m) {
       .def_readwrite("text_rotation", &odr::TableCellStyle::text_rotation)
       .def_readwrite("wrap_text", &odr::TableCellStyle::wrap_text);
 
+  py::class_<odr::GradientFill>(m, "GradientFill")
+      .def(py::init<>())
+      .def_readwrite("style", &odr::GradientFill::style)
+      .def_readwrite("start_color", &odr::GradientFill::start_color)
+      .def_readwrite("end_color", &odr::GradientFill::end_color)
+      .def_readwrite("angle", &odr::GradientFill::angle)
+      .def_readwrite("border", &odr::GradientFill::border)
+      .def_readwrite("center_x", &odr::GradientFill::center_x)
+      .def_readwrite("center_y", &odr::GradientFill::center_y);
+
+  py::class_<odr::HatchFill>(m, "HatchFill")
+      .def(py::init<>())
+      .def_readwrite("style", &odr::HatchFill::style)
+      .def_readwrite("color", &odr::HatchFill::color)
+      .def_readwrite("distance", &odr::HatchFill::distance)
+      .def_readwrite("rotation", &odr::HatchFill::rotation);
+
   py::class_<odr::GraphicStyle>(m, "GraphicStyle")
       .def(py::init<>())
       .def_readwrite("stroke_width", &odr::GraphicStyle::stroke_width)
@@ -191,7 +221,9 @@ void odr_python::bind_style(py::module_ &m) {
       .def_readwrite("vertical_align", &odr::GraphicStyle::vertical_align)
       .def_readwrite("text_wrap", &odr::GraphicStyle::text_wrap)
       .def_readwrite("horizontal_position",
-                     &odr::GraphicStyle::horizontal_position);
+                     &odr::GraphicStyle::horizontal_position)
+      .def_readwrite("fill_gradient", &odr::GraphicStyle::fill_gradient)
+      .def_readwrite("fill_hatch", &odr::GraphicStyle::fill_hatch);
 
   py::class_<odr::PageLayout>(m, "PageLayout")
       .def(py::init<>())

@@ -51,7 +51,9 @@ namespace odr::internal::odf {
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
 create_element_adapter(Document &document, ElementRegistry &registry);
-}
+bool gradient_angles_in_tenths(std::string_view office_version,
+                               std::string_view generator);
+} // namespace
 
 Document::Document(const FileType file_type, const DocumentType document_type,
                    std::shared_ptr<abstract::ReadableFilesystem> files,
@@ -81,7 +83,9 @@ void Document::init_(const pugi::xml_node content_root,
   m_root_element = parse_tree(m_element_registry,
                               content_root.child("office:body").first_child());
 
-  m_style_registry = StyleRegistry(*this, content_root, styles_root);
+  m_style_registry = StyleRegistry(*this, content_root, styles_root, [this] {
+    return gradient_angles_in_tenths_();
+  });
 
   resolve_list_numbering(m_element_registry, m_style_registry, m_root_element);
   // a header or footer numbers its lists of its own
@@ -91,6 +95,28 @@ void Document::init_(const pugi::xml_node content_root,
   }
 
   m_element_adapter = create_element_adapter(*this, m_element_registry);
+}
+
+bool Document::gradient_angles_in_tenths_() const {
+  if (!m_gradient_angles_in_tenths.has_value()) {
+    const pugi::xml_node content_root = m_content_xml.document_element();
+    pugi::xml_document meta_xml;
+    pugi::xml_node meta = content_root.child("office:meta");
+    try {
+      if (!meta && m_files != nullptr &&
+          m_files->is_file(AbsPath("/meta.xml"))) {
+        meta_xml = xml::parse(*m_files, AbsPath("/meta.xml"));
+        meta = meta_xml.document_element().child("office:meta");
+      }
+    } catch (const std::exception &) {
+      // a malformed `meta.xml` names no generator
+      meta = pugi::xml_node();
+    }
+    m_gradient_angles_in_tenths = gradient_angles_in_tenths(
+        content_root.attribute("office:version").value(),
+        meta.child("meta:generator").text().get());
+  }
+  return *m_gradient_angles_in_tenths;
 }
 
 ElementRegistry &Document::element_registry() { return m_element_registry; }
@@ -283,6 +309,33 @@ bool states_value(const pugi::xml_node cell) {
          !cell.attribute("office:date-value").empty() ||
          !cell.attribute("office:time-value").empty() ||
          !cell.attribute("office:boolean-value").empty();
+}
+
+/// As LibreOffice's `GradientStyle.cxx` reads it; see AGENTS.md.
+bool gradient_angles_in_tenths(const std::string_view office_version,
+                               const std::string_view generator) {
+  const std::optional<double> version = util::number::parse(office_version);
+  if (!version.has_value() || *version < 1.2) {
+    return true;
+  }
+  if (*version > 1.2) {
+    return false;
+  }
+  for (const std::string_view name :
+       {"OpenOffice.org", "StarOffice", "Apache_OpenOffice", "OpenOffice/"}) {
+    if (generator.starts_with(name)) {
+      return true;
+    }
+  }
+  if (generator.find("LibreOffice_project/") == std::string_view::npos) {
+    return false;
+  }
+  const std::size_t slash = generator.find('/');
+  std::uint32_t major = 0;
+  return std::from_chars(generator.data() + slash + 1,
+                         generator.data() + generator.size(), major)
+                 .ec == std::errc{} &&
+         major < 7;
 }
 
 /// Boolean `&` uses words from LibreOffice 27.2 (commit 5663da9fa7).

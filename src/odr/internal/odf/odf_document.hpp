@@ -8,6 +8,7 @@
 #include <pugixml.hpp>
 
 #include <memory>
+#include <optional>
 #include <unordered_map>
 
 namespace odr::internal::odf {
@@ -49,9 +50,13 @@ public:
 
 private:
   void init_(pugi::xml_node content_root, pugi::xml_node styles_root);
+  /// Whether a unitless gradient angle counts tenths of a degree, which
+  /// `meta.xml` decides; read once a gradient asks.
+  [[nodiscard]] bool gradient_angles_in_tenths_() const;
 
   pugi::xml_document m_content_xml;
   pugi::xml_document m_styles_xml;
+  mutable std::optional<bool> m_gradient_angles_in_tenths;
   /// The parts besides `content.xml` that `save` writes back.
   std::unordered_map<AbsPath, pugi::xml_document> m_parts;
 

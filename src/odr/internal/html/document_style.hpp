@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/quantity.hpp>
+
 #include <optional>
 #include <string>
 #include <string_view>
@@ -63,6 +65,14 @@ std::string translate_table_row_style(const TableRowStyle &table_row_style);
 std::string translate_table_cell_style(const TableCellStyle &table_cell_style,
                                        bool dark_fill);
 std::string translate_drawing_style(const GraphicStyle &graphic_style);
+/// The `background-image` of a gradient or hatch fill; empty for any other.
+std::string translate_fill_image(const GraphicStyle &graphic_style,
+                                 const std::optional<Measure> &width = {},
+                                 const std::optional<Measure> &height = {});
+/// A css mask that keeps only what @p svg_shape, an svg element in a
+/// `preserveAspectRatio="none"` view box @p view_box, covers.
+std::string translate_fill_mask(std::string_view view_box,
+                                std::string_view svg_shape);
 /// Empty for a transform that moves nothing.
 std::string
 translate_drawing_transform(const std::optional<DrawingTransform> &transform);

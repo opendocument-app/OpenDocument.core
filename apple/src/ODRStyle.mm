@@ -44,6 +44,15 @@ ODR_SAME_ENUM(ODRTextWrapNone, odr::TextWrap::none);
 ODR_SAME_ENUM(ODRTextWrapBefore, odr::TextWrap::before);
 ODR_SAME_ENUM(ODRTextWrapAfter, odr::TextWrap::after);
 ODR_SAME_ENUM(ODRTextWrapRunThrough, odr::TextWrap::run_through);
+ODR_SAME_ENUM(ODRGradientStyleLinear, odr::GradientStyle::linear);
+ODR_SAME_ENUM(ODRGradientStyleAxial, odr::GradientStyle::axial);
+ODR_SAME_ENUM(ODRGradientStyleRadial, odr::GradientStyle::radial);
+ODR_SAME_ENUM(ODRGradientStyleEllipsoid, odr::GradientStyle::ellipsoid);
+ODR_SAME_ENUM(ODRGradientStyleSquare, odr::GradientStyle::square);
+ODR_SAME_ENUM(ODRGradientStyleRectangular, odr::GradientStyle::rectangular);
+ODR_SAME_ENUM(ODRHatchStyleSingle, odr::HatchStyle::single);
+ODR_SAME_ENUM(ODRHatchStyleCrossed, odr::HatchStyle::crossed);
+ODR_SAME_ENUM(ODRHatchStyleTriple, odr::HatchStyle::triple);
 
 static_assert(sizeof(ODRColor) == sizeof(odr::Color),
               "ODRColor drifted from odr::Color");
@@ -86,6 +95,10 @@ NSNumber *_Nullable box_enum(const std::optional<Enum> &value) {
 
 NSString *_Nullable box_string(const std::optional<std::string> &value) {
   return value.has_value() ? to_nsstring(*value) : nil;
+}
+
+ODRColor make_color(const odr::Color &color) {
+  return ODRColorMake(color.red, color.green, color.blue, color.alpha);
 }
 
 odr::Color unbox_color(NSValue *const value) {
@@ -385,6 +398,43 @@ odr::Color unbox_color(NSValue *const value) {
 
 @end
 
+@implementation ODRGradientFill
+
++ (nullable instancetype)gradientWithHandle:
+    (const std::optional<odr::GradientFill> &)handle {
+  if (!handle.has_value()) {
+    return nil;
+  }
+  ODRGradientFill *const result = [[ODRGradientFill alloc] init];
+  result->_style = static_cast<ODRGradientStyle>(handle->style);
+  result->_startColor = make_color(handle->start_color);
+  result->_endColor = make_color(handle->end_color);
+  result->_angle = handle->angle;
+  result->_border = handle->border;
+  result->_centerX = handle->center_x;
+  result->_centerY = handle->center_y;
+  return result;
+}
+
+@end
+
+@implementation ODRHatchFill
+
++ (nullable instancetype)hatchWithHandle:
+    (const std::optional<odr::HatchFill> &)handle {
+  if (!handle.has_value()) {
+    return nil;
+  }
+  ODRHatchFill *const result = [[ODRHatchFill alloc] init];
+  result->_style = static_cast<ODRHatchStyle>(handle->style);
+  result->_color = make_color(handle->color);
+  result->_distance = [ODRMeasure measureWithHandle:handle->distance];
+  result->_rotation = handle->rotation;
+  return result;
+}
+
+@end
+
 @implementation ODRGraphicStyle
 
 + (instancetype)styleWithHandle:(const odr::GraphicStyle &)handle {
@@ -395,6 +445,9 @@ odr::Color unbox_color(NSValue *const value) {
   result->_verticalAlign = box_enum(handle.vertical_align);
   result->_textWrap = box_enum(handle.text_wrap);
   result->_horizontalPosition = box_enum(handle.horizontal_position);
+  result->_fillGradient =
+      [ODRGradientFill gradientWithHandle:handle.fill_gradient];
+  result->_fillHatch = [ODRHatchFill hatchWithHandle:handle.fill_hatch];
   return result;
 }
 

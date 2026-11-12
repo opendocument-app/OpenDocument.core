@@ -122,6 +122,17 @@ to none, so a colour with no fill anywhere in the chain paints nothing.
 `draw:stroke` and `svg:stroke-color` ride the same way in the stroke colour's
 alpha, but `draw:stroke` defaults to solid.
 
+**Gradients and hatches follow LibreOffice, not the spec's wording**
+(`basegfx/source/tools/gradienttools.cxx`,
+`drawinglayer/source/primitive2d/fillhatchprimitive2d.cxx`): a hatch turns
+counterclockwise, and a radial gradient has its end color at the center. A
+unitless hatch `draw:rotation` is in tenths (tdf#161327). A unitless gradient
+`draw:angle` is in degrees, except where LibreOffice reads tenths
+(`xmloff/source/style/GradientStyle.cxx`): below ODF 1.2, and at 1.2 from
+OpenOffice.org and its kin or a LibreOffice before 7. That asks `meta.xml`,
+which is read only then. The fill kind and the gradient or hatch name cascade
+independently, through `StyleRegistry::graphic_attribute`.
+
 **Lists and the outline count as LibreOffice does**
 (`SwNumRule::MakeNumString`). A level without a format drops out of the label.
 Only an item with a `text:p` or `text:h` before any nested list counts; Word

@@ -529,3 +529,57 @@ def test_frame_line_exposes_its_endpoints():
         "4cm",
     ]
     assert frames[1].as_frame().line() is None
+
+
+FILLED_DRAWING = b"""<office:document
+    xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+    xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"
+    xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"
+    xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0"
+    office:version="1.3"
+    office:mimetype="application/vnd.oasis.opendocument.graphics">
+  <office:styles>
+    <draw:gradient draw:name="G" draw:style="radial"
+        draw:start-color="#ff0000" draw:end-color="#0000ff"
+        draw:angle="45deg" draw:border="20%" draw:cx="25%" draw:cy="75%"/>
+    <draw:hatch draw:name="H" draw:style="triple" draw:color="#3465a4"
+        draw:distance="0.2cm" draw:rotation="450"/>
+    <style:style style:name="g" style:family="graphic">
+      <style:graphic-properties draw:fill="gradient"
+          draw:fill-gradient-name="G"/>
+    </style:style>
+    <style:style style:name="h" style:family="graphic">
+      <style:graphic-properties draw:fill="hatch" draw:fill-hatch-name="H"/>
+    </style:style>
+  </office:styles>
+  <office:body><office:drawing><draw:page>
+    <draw:rect draw:style-name="g" svg:width="4cm" svg:height="2cm"/>
+    <draw:rect draw:style-name="h" svg:width="4cm" svg:height="2cm"/>
+  </draw:page></office:drawing></office:body>
+</office:document>"""
+
+
+def test_frame_style_carries_gradient_and_hatch_fills():
+    document = (
+        pyodr.open(pyodr.File.from_memory(FILLED_DRAWING)).as_document_file().document()
+    )
+    frames = list(document.root_element().first_child())
+
+    gradient_style = frames[0].as_frame().style()
+    assert gradient_style.fill_hatch is None
+    gradient = gradient_style.fill_gradient
+    assert gradient.style == pyodr.GradientStyle.radial
+    assert gradient.start_color.rgb() == 0xFF0000
+    assert gradient.end_color.rgb() == 0x0000FF
+    assert gradient.angle == pytest.approx(45)
+    assert gradient.border == pytest.approx(0.2)
+    assert gradient.center_x == pytest.approx(0.25)
+    assert gradient.center_y == pytest.approx(0.75)
+
+    hatch_style = frames[1].as_frame().style()
+    assert hatch_style.fill_gradient is None
+    hatch = hatch_style.fill_hatch
+    assert hatch.style == pyodr.HatchStyle.triple
+    assert hatch.color.rgb() == 0x3465A4
+    assert str(hatch.distance) == "0.2cm"
+    assert hatch.rotation == pytest.approx(45)

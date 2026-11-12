@@ -6,6 +6,7 @@
 
 #include <any>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -61,14 +62,16 @@ private:
                                        TableRowStyle &result);
   static void resolve_table_cell_style_(pugi::xml_node node,
                                         TableCellStyle &result);
-  static void resolve_graphic_style_(pugi::xml_node node, GraphicStyle &result);
+  static void resolve_graphic_style_(const StyleRegistry *registry,
+                                     pugi::xml_node node, GraphicStyle &result);
 };
 
 class StyleRegistry final {
 public:
   StyleRegistry();
   StyleRegistry(Document &document, pugi::xml_node content_root,
-                pugi::xml_node styles_root);
+                pugi::xml_node styles_root,
+                std::function<bool()> gradient_angles_in_tenths);
 
   [[nodiscard]] Style *style(const char *name) const;
   /// The data style (`number:number-style` and its kin) named @p name, null
@@ -94,6 +97,15 @@ public:
   [[nodiscard]] pugi::xml_node list_style_node(const std::string &name) const;
   /// The document's `text:outline-style`, which numbers its headings.
   [[nodiscard]] pugi::xml_node outline_style_node() const;
+
+  /// The `draw:gradient` named @p name, null where there is none.
+  [[nodiscard]] pugi::xml_node gradient_node(const std::string &name) const;
+  /// The `draw:hatch` named @p name, null where there is none.
+  [[nodiscard]] pugi::xml_node hatch_node(const std::string &name) const;
+  /// Whether a unitless gradient angle counts tenths of a degree.
+  [[nodiscard]] bool gradient_angles_in_tenths() const {
+    return m_gradient_angles_in_tenths && m_gradient_angles_in_tenths();
+  }
 
   [[nodiscard]] ElementIdentifier master_page(const std::string &name) const;
   [[nodiscard]] ElementIdentifier first_master_page() const;
@@ -139,6 +151,9 @@ private:
   std::unordered_map<std::string, pugi::xml_node> m_index_outline_style;
   std::unordered_map<std::string, pugi::xml_node> m_index_page_layout;
   std::unordered_map<std::string, pugi::xml_node> m_index_master_page;
+  std::unordered_map<std::string, pugi::xml_node> m_index_gradient;
+  std::unordered_map<std::string, pugi::xml_node> m_index_hatch;
+  std::function<bool()> m_gradient_angles_in_tenths;
   std::optional<std::string> m_first_master_page;
 
   std::unordered_map<std::string, std::unique_ptr<Style>> m_default_styles;

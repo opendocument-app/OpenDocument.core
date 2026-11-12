@@ -538,15 +538,49 @@ jobject make_table_cell_style(JNIEnv *env, const odr::TableCellStyle &style) {
       box_double(env, style.text_rotation), box_boolean(env, style.wrap_text));
 }
 
+namespace {
+
+jobject make_gradient_fill(JNIEnv *env,
+                           const std::optional<odr::GradientFill> &gradient) {
+  if (!gradient.has_value()) {
+    return nullptr;
+  }
+  return new_object(
+      env, "app/opendocument/core/GradientFill",
+      "(ILapp/opendocument/core/Color;Lapp/opendocument/core/Color;DDDD)V",
+      static_cast<jint>(gradient->style),
+      make_color(env, gradient->start_color),
+      make_color(env, gradient->end_color), gradient->angle, gradient->border,
+      gradient->center_x, gradient->center_y);
+}
+
+jobject make_hatch_fill(JNIEnv *env,
+                        const std::optional<odr::HatchFill> &hatch) {
+  if (!hatch.has_value()) {
+    return nullptr;
+  }
+  return new_object(
+      env, "app/opendocument/core/HatchFill",
+      "(ILapp/opendocument/core/Color;Lapp/opendocument/core/Measure;D)V",
+      static_cast<jint>(hatch->style), make_color(env, hatch->color),
+      make_measure(env, hatch->distance), hatch->rotation);
+}
+
+} // namespace
+
 jobject make_graphic_style(JNIEnv *env, const odr::GraphicStyle &style) {
   return new_object(
       env, "app/opendocument/core/GraphicStyle",
       "(Lapp/opendocument/core/Measure;Lapp/opendocument/core/Color;"
-      "Lapp/opendocument/core/Color;III)V",
+      "Lapp/opendocument/core/Color;III"
+      "Lapp/opendocument/core/GradientFill;"
+      "Lapp/opendocument/core/HatchFill;)V",
       make_measure(env, style.stroke_width),
       make_color(env, style.stroke_color), make_color(env, style.fill_color),
       enum_code(style.vertical_align), enum_code(style.text_wrap),
-      enum_code(style.horizontal_position));
+      enum_code(style.horizontal_position),
+      make_gradient_fill(env, style.fill_gradient),
+      make_hatch_fill(env, style.fill_hatch));
 }
 
 jobject make_page_layout(JNIEnv *env, const odr::PageLayout &layout) {
