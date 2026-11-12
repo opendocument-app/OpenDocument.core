@@ -53,6 +53,13 @@ typedef NS_ENUM(NSInteger, ODRShapeType) {
   ODRShapeTypeCustom,
 } NS_SWIFT_NAME(ShapeType);
 
+/// How a Fontwork shape fits its text — `odr::TextPathMode`.
+typedef NS_ENUM(NSInteger, ODRTextPathMode) {
+  ODRTextPathModeNormal = 0,
+  ODRTextPathModePath,
+  ODRTextPathModeShape,
+} NS_SWIFT_NAME(TextPathMode);
+
 typedef NS_ENUM(NSInteger, ODRAnchorType) {
   /// The frame does not exist, so it is anchored nowhere.
   ODRAnchorTypeNone = 0,
@@ -375,6 +382,9 @@ NS_SWIFT_NAME(Frame)
 @property(nonatomic, readonly, nullable) ODRDrawingPath *path;
 /// The ends of an `ODRShapeTypeLine`, which states them instead of a box.
 @property(nonatomic, readonly, nullable) ODRDrawingLine *line;
+/// `ODRTextPathMode`, boxed; `nil` for any frame but a Fontwork shape, whose
+/// path guides the text and is not drawn.
+@property(nonatomic, readonly, nullable) NSNumber *textPath;
 @property(nonatomic, readonly) ODRGraphicStyle *style;
 @end
 

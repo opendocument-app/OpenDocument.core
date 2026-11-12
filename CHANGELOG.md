@@ -72,7 +72,7 @@ The release run heads these entries with the version and opens a fresh
   filled with, and `GraphicStyle` the new `fill_bitmap` (`BitmapFill`, a
   `File` and its `BitmapRepeat`), in Python, Java and Objective-C too.
 - `Frame::text_path()` returns the `TextPathMode` of a Fontwork shape, none for
-  any other frame. Not bound in Python, Java or Objective-C yet.
+  any other frame, in Python, Java and Objective-C too.
 
 ### Fixes
 

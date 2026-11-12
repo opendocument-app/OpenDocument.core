@@ -48,6 +48,14 @@ public final class Frame extends Element {
     return lineNative(handle());
   }
 
+  /**
+   * How a Fontwork shape fits its text; {@code null} for any other frame. The path of a Fontwork
+   * shape guides the text and is not drawn.
+   */
+  public TextPathMode textPath() {
+    return TextPathMode.fromNative(textPathNative(handle()));
+  }
+
   public GraphicStyle style() {
     return styleNative(handle());
   }
@@ -71,6 +79,8 @@ public final class Frame extends Element {
   private native DrawingPath pathNative(long handle);
 
   private native DrawingLine lineNative(long handle);
+
+  private native int textPathNative(long handle);
 
   private native GraphicStyle styleNative(long handle);
 }

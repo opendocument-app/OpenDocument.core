@@ -16,6 +16,7 @@
 #include <odr/internal/xml/xml_util.hpp>
 
 #include <algorithm>
+#include <iterator>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -801,31 +802,37 @@ struct TextPathLine {
   std::optional<TextStyle> style;
 };
 
-void append_text_path_text(const Element &element, TextPathLine &line) {
+TextPathLine text_path_line(const Element &element) {
+  TextPathLine line;
   for (const Element child : element.children()) {
+    TextPathLine part;
     if (child.type() == ElementType::text) {
       const Text text = child.as_text();
-      line.text += text.content();
-      if (!line.style.has_value()) {
-        line.style = text.style();
-      }
+      part = {.text = text.content(), .style = text.style()};
     } else {
-      append_text_path_text(child, line);
+      part = text_path_line(child);
+    }
+    line.text += part.text;
+    if (!line.style.has_value()) {
+      line.style = std::move(part.style);
     }
   }
+  return line;
 }
 
-void collect_text_path_lines(const Element &element,
-                             std::vector<TextPathLine> &lines) {
+/// One line per paragraph under @p element.
+std::vector<TextPathLine> text_path_lines(const Element &element) {
+  std::vector<TextPathLine> lines;
   for (const Element child : element.children()) {
     if (child.type() == ElementType::paragraph) {
-      TextPathLine line;
-      append_text_path_text(child, line);
-      lines.push_back(std::move(line));
+      lines.push_back(text_path_line(child));
     } else {
-      collect_text_path_lines(child, lines);
+      std::vector<TextPathLine> nested = text_path_lines(child);
+      lines.insert(std::end(lines), std::make_move_iterator(std::begin(nested)),
+                   std::make_move_iterator(std::end(nested)));
     }
   }
+  return lines;
 }
 
 /// The paint of a Fontwork shape's glyphs: its fill and its outline, as
@@ -862,8 +869,7 @@ std::string text_path_paint(const GraphicStyle &style,
 void translate_text_path_shape(const Frame &frame, const GraphicStyle &style,
                                const TextPathMode mode,
                                const WritingState &state) {
-  std::vector<TextPathLine> lines;
-  collect_text_path_lines(frame, lines);
+  std::vector<TextPathLine> lines = text_path_lines(frame);
   std::erase_if(lines,
                 [](const TextPathLine &line) { return line.text.empty(); });
 
@@ -921,6 +927,7 @@ void translate_text_path_shape(const Frame &frame, const GraphicStyle &style,
       attributes.emplace_back("vector-effect", "non-scaling-stroke");
       state.out().write_element_begin(
           "text", HtmlElementOptions()
+                      .set_class("odr-text-path")
                       .set_attributes(std::move(attributes))
                       .set_style(text_style + "white-space:pre;" +
                                  text_path_paint(style, line.style)));

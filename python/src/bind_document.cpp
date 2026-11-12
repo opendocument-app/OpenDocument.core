@@ -77,6 +77,11 @@ void odr_python::bind_document(py::module_ &m) {
       .value("line", odr::ShapeType::line)
       .value("custom", odr::ShapeType::custom);
 
+  py::enum_<odr::TextPathMode>(m, "TextPathMode")
+      .value("normal", odr::TextPathMode::normal)
+      .value("path", odr::TextPathMode::path)
+      .value("shape", odr::TextPathMode::shape);
+
   py::enum_<odr::AnchorType>(m, "AnchorType")
       .value("none", odr::AnchorType::none)
       .value("as_char", odr::AnchorType::as_char)
@@ -342,6 +347,7 @@ void odr_python::bind_document(py::module_ &m) {
       .def("transform", &odr::Frame::transform)
       .def("path", &odr::Frame::path)
       .def("line", &odr::Frame::line)
+      .def("text_path", &odr::Frame::text_path)
       .def("style", &odr::Frame::style);
 
   bind_element<odr::Image>(m, "Image")

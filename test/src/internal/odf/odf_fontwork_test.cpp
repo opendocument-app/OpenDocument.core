@@ -120,4 +120,6 @@ TEST(OdfFontwork, the_text_is_painted_with_the_shape_and_the_path_is_not) {
   EXPECT_NE(element.find("fill:#990000"), std::string::npos);
   EXPECT_NE(element.find("stroke:#ffff00"), std::string::npos);
   EXPECT_NE(element.find(">Courtesy"), std::string::npos);
+  // the dark sheet keeps it legible, as text
+  EXPECT_NE(element.find(R"(class="odr-text-path")"), std::string::npos);
 }

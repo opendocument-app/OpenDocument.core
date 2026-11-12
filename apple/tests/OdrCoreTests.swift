@@ -512,6 +512,29 @@ final class ElementTreeTests: XCTestCase {
     XCTAssertEqual(bitmap.file.size, 69)
     XCTAssertEqual(bitmap.href, "")
   }
+
+  func testFrameTextPathIsSetForFontworkOnly() throws {
+    let path = try write(
+      #"<?xml version="1.0" encoding="UTF-8"?>"#
+        + #"<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0""#
+        + #" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0""#
+        + #" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0""#
+        + #" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0""#
+        + #" office:version="1.3""#
+        + #" office:mimetype="application/vnd.oasis.opendocument.graphics">"#
+        + #"<office:body><office:drawing><draw:page>"#
+        + #"<draw:custom-shape svg:width="8cm" svg:height="2cm"><text:p>Fontwork</text:p><draw:enhanced-geometry svg:viewBox="0 0 21600 21600" draw:enhanced-path="M 0 0 L 21600 0 N M 0 21600 L 21600 21600 N" draw:text-path="true" draw:text-path-mode="shape"/></draw:custom-shape>"#
+        + #"<draw:custom-shape svg:width="8cm" svg:height="2cm"><draw:enhanced-geometry svg:viewBox="0 0 21600 21600" draw:enhanced-path="M 0 0 L 21600 0 L 21600 21600 Z N"/></draw:custom-shape>"#
+        + #"</draw:page></office:drawing></office:body></office:document>"#,
+      as: "fontwork.fodg")
+    let root = try XCTUnwrap(
+      try DecodedFile.decode(path: path).asDocumentFile().document().rootElement())
+    let frames = Array(root.descendants(ofType: Frame.self))
+    XCTAssertEqual(frames.count, 2)
+
+    XCTAssertEqual(frames[0].textPath?.intValue, TextPathMode.shape.rawValue)
+    XCTAssertNil(frames[1].textPath)
+  }
 }
 
 final class DocumentSaveTests: XCTestCase {

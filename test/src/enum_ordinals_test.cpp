@@ -347,3 +347,9 @@ TEST(EnumOrdinals, bitmap_repeat) {
   EXPECT_EQ(ordinal(BitmapRepeat::stretch), 1);
   EXPECT_EQ(ordinal(BitmapRepeat::no_repeat), 2);
 }
+
+TEST(EnumOrdinals, text_path_mode) {
+  EXPECT_EQ(ordinal(TextPathMode::normal), 0);
+  EXPECT_EQ(ordinal(TextPathMode::path), 1);
+  EXPECT_EQ(ordinal(TextPathMode::shape), 2);
+}

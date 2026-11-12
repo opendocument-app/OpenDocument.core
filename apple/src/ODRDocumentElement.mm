@@ -48,6 +48,9 @@ ODR_SAME_ENUM(ODRShapeTypeRect, odr::ShapeType::rect);
 ODR_SAME_ENUM(ODRShapeTypeEllipse, odr::ShapeType::ellipse);
 ODR_SAME_ENUM(ODRShapeTypeLine, odr::ShapeType::line);
 ODR_SAME_ENUM(ODRShapeTypeCustom, odr::ShapeType::custom);
+ODR_SAME_ENUM(ODRTextPathModeNormal, odr::TextPathMode::normal);
+ODR_SAME_ENUM(ODRTextPathModePath, odr::TextPathMode::path);
+ODR_SAME_ENUM(ODRTextPathModeShape, odr::TextPathMode::shape);
 
 ODR_SAME_ENUM(ODRAnchorTypeNone, odr::AnchorType::none);
 ODR_SAME_ENUM(ODRAnchorTypeAsChar, odr::AnchorType::as_char);
@@ -882,6 +885,16 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
   return guarded_value(
       [&]() -> ODRDrawingLine * {
         return [ODRDrawingLine lineWithHandle:self.handle.as_frame().line()];
+      },
+      nil);
+}
+
+- (nullable NSNumber *)textPath {
+  return guarded_value(
+      [&]() -> NSNumber * {
+        const std::optional<odr::TextPathMode> mode =
+            self.handle.as_frame().text_path();
+        return mode.has_value() ? @(static_cast<NSInteger>(*mode)) : nil;
       },
       nil);
 }
