@@ -647,4 +647,3 @@ def test_frame_text_path_is_set_for_fontwork_only():
 
     assert frames[0].as_frame().text_path() == pyodr.TextPathMode.shape
     assert frames[1].as_frame().text_path() is None
-
