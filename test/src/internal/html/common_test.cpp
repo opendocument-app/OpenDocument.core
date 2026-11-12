@@ -492,6 +492,6 @@ TEST(html_common, an_external_source_loads_only_with_external_content) {
 
 TEST(html_common, css_url_cannot_end_the_url_or_its_style) {
   EXPECT_EQ(ihtml::css_url("Pictures/a b.png"), R"(url("Pictures/a b.png"))");
-  EXPECT_EQ(ihtml::css_url(R"(a"b\c)"), R"(url("a\"b\\c"))");
+  EXPECT_EQ(ihtml::css_url("a\"b\\c"), "url(\"a\\\"b\\\\c\")");
   EXPECT_EQ(ihtml::css_url("a\nb</style>"), R"(url("a\a b\3c /style>"))");
 }
