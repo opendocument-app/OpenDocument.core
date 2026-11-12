@@ -277,7 +277,7 @@ struct HatchFill final {
   double rotation{0};
 };
 
-/// How a bitmap fills its area ([OpenDocument] 20.341).
+/// How a bitmap fills its area.
 enum class BitmapRepeat {
   repeat,    ///< tiled at its own size
   stretch,   ///< scaled to the area
@@ -295,8 +295,8 @@ struct BitmapFill final {
 /// Represents a style for graphics.
 struct GraphicStyle final {
   std::optional<Measure> stroke_width;
-  /// An alpha of 0 is no stroke (`draw:stroke="none"`), as it is no fill for
-  /// @ref fill_color: the state and the color cascade independently.
+  /// An alpha of 0 is no stroke, as it is no fill for @ref fill_color: whether
+  /// there is one and its color cascade independently.
   std::optional<Color> stroke_color;
   /// Also behind a solid hatch. The alpha, 0 or 255, says whether it paints.
   std::optional<Color> fill_color;
@@ -324,7 +324,7 @@ struct PageLayout final {
   std::optional<Color> background_color;
   /// The base direction, inherited by paragraphs stating none of their own.
   std::optional<TextDirection> direction;
-  /// The least height of the header ([OpenDocument] 17.5).
+  /// The least height of the header.
   std::optional<Measure> header_min_height;
   /// The space between the header and the body.
   std::optional<Measure> header_spacing;

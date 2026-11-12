@@ -119,7 +119,7 @@ enum class ShapeType {
   custom, ///< an outline of its own, read from @ref Frame::path
 };
 
-/// How a Fontwork shape fits its text to its path (`draw:text-path-mode`).
+/// How a Fontwork or WordArt shape fits its text to its path.
 enum class TextPathMode {
   normal, ///< the text at its own size
   path,   ///< each line stretched along the path
@@ -511,8 +511,8 @@ public:
   using ElementBase::ElementBase;
 
   [[nodiscard]] ParagraphStyle style() const;
-  /// The master page whose page this paragraph opens ([OpenDocument] 19.501);
-  /// an absent one where it names none.
+  /// The master page whose page this paragraph opens; an absent one where it
+  /// names none.
   [[nodiscard]] MasterPage master_page() const;
   /// States the set fields of @p style on the paragraph and leaves the rest.
   /// Only `text_align` is written; any other field refuses with
