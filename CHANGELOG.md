@@ -47,6 +47,11 @@ The release run heads these entries with the version and opens a fresh
   page's unless `presentation:background-visible` is false. A picture is
   stretched, tiled or centered after `style:repeat`. The dark sheet keeps a
   picture and clears a gradient or hatch.
+- Fontwork in an odf document is drawn as its text, in the shape's fill color
+  and outline, and no longer as the shape's guide lines with plain text inside.
+  With `draw:text-path-mode="shape"` each line is stretched to fill the shape,
+  with `path` to its width. Text on a curve (arch, wave, circle) is laid out
+  straight.
 
 ### API, files and saving
 
@@ -66,6 +71,8 @@ The release run heads these entries with the version and opens a fresh
 - `Slide` and `Page` have `background()`, the `GraphicStyle` the page is
   filled with, and `GraphicStyle` the new `fill_bitmap` (`BitmapFill`, a
   `File` and its `BitmapRepeat`), in Python, Java and Objective-C too.
+- `Frame::text_path()` returns the `TextPathMode` of a Fontwork shape, none for
+  any other frame, in Python, Java and Objective-C too.
 
 ### Fixes
 

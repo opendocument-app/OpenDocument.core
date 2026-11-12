@@ -81,6 +81,10 @@ variants. Design and open work are in [`AGENTS.md`](AGENTS.md). Relies on
     - [ ] `draw:text-areas` (text is laid out in the whole box)
     - [ ] `draw:handle` (the interactive control points)
     - [ ] `F` / `S`: one subpath painted differently from the rest
+    - [x] Fontwork (`draw:text-path`): the text in the shape's fill and
+      outline, stretched after `draw:text-path-mode`; the path not drawn
+    - [ ] Fontwork text on a curve, `draw:text-path-same-letter-heights`,
+      and a gradient on the glyphs (its first color is used)
   - [x] graphic style: stroke width/color, fill color, vertical align, text wrap
   - [x] gradient fills (`draw:gradient`; square and rectangular drawn as an
     ellipse, an ellipsoid not turned by `draw:angle`) and hatch fills

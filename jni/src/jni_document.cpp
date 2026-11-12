@@ -1071,6 +1071,14 @@ Java_app_opendocument_core_Frame_lineNative(JNIEnv *env, jobject,
   });
 }
 
+extern "C" JNIEXPORT jint JNICALL
+Java_app_opendocument_core_Frame_textPathNative(JNIEnv *env, jobject,
+                                                jlong handle) {
+  return guarded(env, [&] {
+    return odr_jni::enum_code(element(handle).as_frame().text_path());
+  });
+}
+
 extern "C" JNIEXPORT jobject JNICALL
 Java_app_opendocument_core_Frame_styleNative(JNIEnv *env, jobject,
                                              jlong handle) {

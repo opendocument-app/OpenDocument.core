@@ -621,3 +621,29 @@ def test_page_background_carries_its_master_page_bitmap():
     assert background.fill_bitmap.repeat == pyodr.BitmapRepeat.no_repeat
     assert background.fill_bitmap.file.size() == 69
     assert background.fill_bitmap.href == ""
+
+
+FONTWORK_DRAWING = b"""<office:document
+    xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+    xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"
+    xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"
+    xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0"
+    office:version="1.3"
+    office:mimetype="application/vnd.oasis.opendocument.graphics">
+  <office:body><office:drawing><draw:page>
+    <draw:custom-shape svg:width="8cm" svg:height="2cm"><text:p>Fontwork</text:p><draw:enhanced-geometry svg:viewBox="0 0 21600 21600" draw:enhanced-path="M 0 0 L 21600 0 N M 0 21600 L 21600 21600 N" draw:text-path="true" draw:text-path-mode="shape"/></draw:custom-shape>
+    <draw:custom-shape svg:width="8cm" svg:height="2cm"><draw:enhanced-geometry svg:viewBox="0 0 21600 21600" draw:enhanced-path="M 0 0 L 21600 0 L 21600 21600 Z N"/></draw:custom-shape>
+  </draw:page></office:drawing></office:body>
+</office:document>"""
+
+
+def test_frame_text_path_is_set_for_fontwork_only():
+    document = (
+        pyodr.open(pyodr.File.from_memory(FONTWORK_DRAWING))
+        .as_document_file()
+        .document()
+    )
+    frames = list(document.root_element().first_child())
+
+    assert frames[0].as_frame().text_path() == pyodr.TextPathMode.shape
+    assert frames[1].as_frame().text_path() is None

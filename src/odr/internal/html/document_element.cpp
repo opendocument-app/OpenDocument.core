@@ -16,6 +16,7 @@
 #include <odr/internal/xml/xml_util.hpp>
 
 #include <algorithm>
+#include <iterator>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -23,6 +24,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include <fmt/format.h>
 
@@ -793,6 +795,151 @@ void translate_line(const Frame &frame, const GraphicStyle &style,
   }
 }
 
+/// A line of a Fontwork shape: a paragraph's text, and the style of its first
+/// run.
+struct TextPathLine {
+  std::string text;
+  std::optional<TextStyle> style;
+};
+
+TextPathLine text_path_line(const Element &element) {
+  TextPathLine line;
+  for (const Element child : element.children()) {
+    TextPathLine part;
+    if (child.type() == ElementType::text) {
+      const Text text = child.as_text();
+      part = {.text = text.content(), .style = text.style()};
+    } else {
+      part = text_path_line(child);
+    }
+    line.text += part.text;
+    if (!line.style.has_value()) {
+      line.style = std::move(part.style);
+    }
+  }
+  return line;
+}
+
+/// One line per paragraph under @p element.
+std::vector<TextPathLine> text_path_lines(const Element &element) {
+  std::vector<TextPathLine> lines;
+  for (const Element child : element.children()) {
+    if (child.type() == ElementType::paragraph) {
+      lines.push_back(text_path_line(child));
+    } else {
+      std::vector<TextPathLine> nested = text_path_lines(child);
+      lines.insert(std::end(lines), std::make_move_iterator(std::begin(nested)),
+                   std::make_move_iterator(std::end(nested)));
+    }
+  }
+  return lines;
+}
+
+/// The paint of a Fontwork shape's glyphs: its fill and its outline, as
+/// LibreOffice paints them. A gradient or hatch gives its first color.
+std::string text_path_paint(const GraphicStyle &style,
+                            const std::optional<TextStyle> &text_style) {
+  std::string result = "fill:";
+  if (style.fill_gradient.has_value()) {
+    result += color(style.fill_gradient->start_color);
+  } else if (style.fill_hatch.has_value()) {
+    result += color(style.fill_hatch->color);
+  } else if (style.fill_color.has_value()) {
+    result += style.fill_color->alpha == 0 ? "none" : color(*style.fill_color);
+  } else if (text_style.has_value() && text_style->font_color.has_value()) {
+    result += color(*text_style->font_color);
+  } else {
+    result += "#000000";
+  }
+  result += ";";
+  if (style.stroke_color.has_value() && style.stroke_color->alpha != 0) {
+    result +=
+        "stroke:" + color(*style.stroke_color) + ";stroke-width:" +
+        (style.stroke_width.has_value() && style.stroke_width->magnitude() != 0
+             ? css_length(*style.stroke_width)
+             : std::string("1px")) +
+        ";";
+  }
+  return result;
+}
+
+/// A Fontwork shape: its text, one svg line per paragraph, painted with the
+/// shape's fill and outline. The path only guides the text, so it is not
+/// drawn. Text on a curve is laid out straight.
+void translate_text_path_shape(const Frame &frame, const GraphicStyle &style,
+                               const TextPathMode mode,
+                               const WritingState &state) {
+  std::vector<TextPathLine> lines = text_path_lines(frame);
+  std::erase_if(lines,
+                [](const TextPathLine &line) { return line.text.empty(); });
+
+  state.out().write_element_begin(
+      "div", HtmlElementOptions()
+                 .set_attributes(frame_attributes(frame, state))
+                 .set_style(translate_shape_properties(frame)));
+
+  const std::optional<double> width = css_pixels(frame.width());
+  const std::optional<double> height = css_pixels(frame.height());
+  if (!lines.empty() && width.has_value() && height.has_value() && *width > 0 &&
+      *height > 0) {
+    const auto number = [](const double value) {
+      return util::number::to_string_significant(value, 7);
+    };
+    state.out().write_new_line();
+    state.out().write_element_begin(
+        "svg",
+        HtmlElementOptions()
+            .set_attributes(HtmlAttributesVector{
+                {"xmlns", "http://www.w3.org/2000/svg"},
+                {"version", "1.1"},
+                {"overflow", "visible"},
+                {"preserveAspectRatio", "none"},
+                {"viewBox", "0 0 " + number(*width) + " " + number(*height)}})
+            .set_style("position:absolute;top:0;left:0;width:100%;"
+                       "height:100%;"));
+    const double line_height = *height / static_cast<double>(lines.size());
+    for (std::size_t i = 0; i < lines.size(); ++i) {
+      const TextPathLine &line = lines[i];
+      const double top = line_height * static_cast<double>(i);
+      HtmlAttributesVector attributes;
+      std::string text_style = line.style.has_value()
+                                   ? translate_text_style(*line.style)
+                                   : std::string();
+      if (mode == TextPathMode::normal) {
+        attributes.emplace_back("x", number(*width / 2));
+        attributes.emplace_back("y", number(top + line_height / 2));
+        attributes.emplace_back("text-anchor", "middle");
+        attributes.emplace_back("dominant-baseline", "central");
+      } else {
+        attributes.emplace_back("x", "0");
+        attributes.emplace_back("textLength", number(*width));
+        attributes.emplace_back("lengthAdjust", "spacingAndGlyphs");
+        if (mode == TextPathMode::shape) {
+          // the line's ascent and descent fill its share of the height
+          const double font_size = line_height / 1.15;
+          attributes.emplace_back("y", number(top + font_size * 0.92));
+          text_style += "font-size:" + number(font_size) + "px;";
+        } else {
+          attributes.emplace_back("y", number(top + line_height / 2));
+          attributes.emplace_back("dominant-baseline", "central");
+        }
+      }
+      attributes.emplace_back("vector-effect", "non-scaling-stroke");
+      state.out().write_element_begin(
+          "text", HtmlElementOptions()
+                      .set_class("odr-text-path")
+                      .set_attributes(std::move(attributes))
+                      .set_style(text_style + "white-space:pre;" +
+                                 text_path_paint(style, line.style)));
+      state.out().write_raw(escape_text(line.text));
+      state.out().write_element_end("text");
+    }
+    state.out().write_element_end("svg");
+  }
+
+  state.out().write_element_end("div");
+}
+
 void translate_custom_shape(const Frame &frame, const GraphicStyle &style,
                             const WritingState &state) {
   state.out().write_element_begin(
@@ -871,7 +1018,12 @@ void html::translate_frame(const Element &element, const WritingState &state) {
     translate_line(frame, style, state);
     break;
   case ShapeType::custom:
-    translate_custom_shape(frame, style, state);
+    if (const std::optional<TextPathMode> text_path = frame.text_path();
+        text_path.has_value()) {
+      translate_text_path_shape(frame, style, *text_path, state);
+    } else {
+      translate_custom_shape(frame, style, state);
+    }
     break;
   }
 }

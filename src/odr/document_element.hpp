@@ -119,6 +119,13 @@ enum class ShapeType {
   custom, ///< an outline of its own, read from @ref Frame::path
 };
 
+/// How a Fontwork or WordArt shape fits its text to its path.
+enum class TextPathMode {
+  normal, ///< the text at its own size
+  path,   ///< each line stretched along the path
+  shape,  ///< each line stretched to fill the shape
+};
+
 /// Collection of anchor types.
 enum class AnchorType {
   none, ///< the frame does not exist, so it is anchored nowhere
@@ -504,8 +511,8 @@ public:
   using ElementBase::ElementBase;
 
   [[nodiscard]] ParagraphStyle style() const;
-  /// The master page whose page this paragraph opens ([OpenDocument] 19.501);
-  /// an absent one where it names none.
+  /// The master page whose page this paragraph opens; an absent one where it
+  /// names none.
   [[nodiscard]] MasterPage master_page() const;
   /// States the set fields of @p style on the paragraph and leaves the rest.
   /// Only `text_align` is written; any other field refuses with
@@ -676,6 +683,9 @@ public:
   [[nodiscard]] std::optional<DrawingPath> path() const;
   /// The ends of a @ref ShapeType::line, which states them instead of a box.
   [[nodiscard]] std::optional<DrawingLine> line() const;
+  /// How a Fontwork shape fits its text; none for any other frame. The path
+  /// of a Fontwork shape guides the text and is not drawn.
+  [[nodiscard]] std::optional<TextPathMode> text_path() const;
 
   [[nodiscard]] GraphicStyle style() const;
 };

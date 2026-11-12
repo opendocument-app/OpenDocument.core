@@ -591,4 +591,29 @@ class DocumentTest {
     assertEquals(69, bitmap.file.size());
     assertEquals("", bitmap.href);
   }
+
+  private static final String FONTWORK_DRAWING =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+          + "<office:document"
+          + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+          + " xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\""
+          + " xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\""
+          + " xmlns:svg=\"urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0\""
+          + " office:version=\"1.3\""
+          + " office:mimetype=\"application/vnd.oasis.opendocument.graphics\">"
+          + "<office:body><office:drawing><draw:page>"
+          + "<draw:custom-shape svg:width=\"8cm\" svg:height=\"2cm\"><text:p>Fontwork</text:p><draw:enhanced-geometry svg:viewBox=\"0 0 21600 21600\" draw:enhanced-path=\"M 0 0 L 21600 0 N M 0 21600 L 21600 21600 N\" draw:text-path=\"true\" draw:text-path-mode=\"shape\"/></draw:custom-shape>"
+          + "<draw:custom-shape svg:width=\"8cm\" svg:height=\"2cm\"><draw:enhanced-geometry svg:viewBox=\"0 0 21600 21600\" draw:enhanced-path=\"M 0 0 L 21600 0 L 21600 21600 Z N\"/></draw:custom-shape>"
+          + "</draw:page></office:drawing></office:body></office:document>";
+
+  @Test
+  void frameTextPathIsSetForFontworkOnly() throws IOException {
+    Path path = tempDir.resolve("fontwork.fodg");
+    Files.writeString(path, FONTWORK_DRAWING);
+    Document document = Odr.open(path.toString()).asDocumentFile().document();
+    List<Element> frames = document.rootElement().firstChild().children();
+
+    assertEquals(TextPathMode.SHAPE, frames.get(0).asFrame().textPath());
+    assertNull(frames.get(1).asFrame().textPath());
+  }
 }

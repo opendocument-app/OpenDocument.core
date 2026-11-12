@@ -698,6 +698,10 @@ public:
   frame_line([[maybe_unused]] const ElementIdentifier element_id) const {
     return {};
   }
+  [[nodiscard]] virtual std::optional<TextPathMode>
+  frame_text_path([[maybe_unused]] const ElementIdentifier element_id) const {
+    return {};
+  }
 
   [[nodiscard]] virtual AnchorType
   frame_anchor_type(ElementIdentifier element_id) const = 0;
