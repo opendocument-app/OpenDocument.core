@@ -366,10 +366,10 @@ double read_fraction(const pugi::xml_attribute attribute,
   return std::clamp(percentage->magnitude() / 100.0, 0.0, 1.0);
 }
 
-/// [OpenDocument] 18.3.1 `angle` in degrees; @p tenths, asked only for a
-/// unitless one, says whether it counts tenths.
+/// [OpenDocument] 18.3.1 `angle` in degrees; a unitless one counts tenths
+/// where @p unitless_in_tenths.
 double read_angle(const pugi::xml_attribute attribute,
-                  const std::function<bool()> &tenths) {
+                  const bool unitless_in_tenths) {
   const std::optional<Measure> angle = read_measure(attribute);
   if (!angle.has_value() || !std::isfinite(angle->magnitude())) {
     return 0;
@@ -385,7 +385,7 @@ double read_angle(const pugi::xml_attribute attribute,
   if (unit == "grad") {
     return value * 0.9;
   }
-  return tenths() ? value / 10.0 : value;
+  return unitless_in_tenths ? value / 10.0 : value;
 }
 
 /// @p color scaled by an intensity such as `80%`.
@@ -442,9 +442,8 @@ read_hatch_style(const pugi::xml_attribute attribute) {
   return {};
 }
 
-std::optional<GradientFill>
-read_gradient(const pugi::xml_node node,
-              const std::function<bool()> &angle_in_tenths) {
+std::optional<GradientFill> read_gradient(const pugi::xml_node node,
+                                          const bool angle_in_tenths) {
   if (!node) {
     return {};
   }
@@ -481,8 +480,7 @@ std::optional<HatchFill> read_hatch(const pugi::xml_node node) {
   result.color = read_color(node.attribute("draw:color")).value_or(Color());
   result.distance = *distance;
   // unitless tenths, whoever wrote it (tdf#161327)
-  result.rotation =
-      read_angle(node.attribute("draw:rotation"), [] { return true; });
+  result.rotation = read_angle(node.attribute("draw:rotation"), true);
   return result;
 }
 
@@ -826,7 +824,7 @@ void Style::resolve_graphic_style_(const StyleRegistry *registry,
           registry->gradient_node(
               registry->graphic_attribute(node, "draw:fill-gradient-name")
                   .value()),
-          [registry] { return registry->gradient_angles_in_tenths(); });
+          registry->gradient_angles_in_tenths());
     } else if (fill == "hatch") {
       result.fill_hatch = read_hatch(registry->hatch_node(
           registry->graphic_attribute(node, "draw:fill-hatch-name").value()));
@@ -865,8 +863,8 @@ StyleRegistry::StyleRegistry() = default;
 StyleRegistry::StyleRegistry(Document &document,
                              const pugi::xml_node content_root,
                              const pugi::xml_node styles_root,
-                             std::function<bool()> gradient_angles_in_tenths)
-    : m_gradient_angles_in_tenths{std::move(gradient_angles_in_tenths)} {
+                             const bool gradient_angles_in_tenths)
+    : m_gradient_angles_in_tenths{gradient_angles_in_tenths} {
   generate_indices_(content_root, styles_root);
   generate_styles_();
   generate_master_pages_(document);
