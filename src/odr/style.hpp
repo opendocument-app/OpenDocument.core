@@ -1,5 +1,6 @@
 #pragma once
 
+#include <odr/file.hpp>
 #include <odr/quantity.hpp>
 
 #include <cstdint>
@@ -276,6 +277,19 @@ struct HatchFill final {
   double rotation{0};
 };
 
+/// How a bitmap fills its area ([OpenDocument] 20.354).
+enum class BitmapRepeat {
+  repeat,    ///< tiled at its own size
+  stretch,   ///< scaled to the area
+  no_repeat, ///< once, at its own size, in the centre
+};
+
+/// A bitmap fill.
+struct BitmapFill final {
+  File file;
+  BitmapRepeat repeat{BitmapRepeat::repeat};
+};
+
 /// Represents a style for graphics.
 struct GraphicStyle final {
   std::optional<Measure> stroke_width;
@@ -291,8 +305,10 @@ struct GraphicStyle final {
   /// Paints over @ref fill_color.
   std::optional<GradientFill> fill_gradient;
   std::optional<HatchFill> fill_hatch;
+  std::optional<BitmapFill> fill_bitmap;
 
-  /// Takes what @p other sets; any fill it sets replaces gradient and hatch.
+  /// Takes what @p other sets; any fill it sets replaces gradient, hatch and
+  /// bitmap.
   void override(const GraphicStyle &other);
 };
 

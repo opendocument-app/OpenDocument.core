@@ -101,9 +101,10 @@ void GraphicStyle::override(const GraphicStyle &other) {
   override_if_set(stroke_color, other.stroke_color);
   override_if_set(fill_color, other.fill_color);
   if (other.fill_color.has_value() || other.fill_gradient.has_value() ||
-      other.fill_hatch.has_value()) {
+      other.fill_hatch.has_value() || other.fill_bitmap.has_value()) {
     fill_gradient = other.fill_gradient;
     fill_hatch = other.fill_hatch;
+    fill_bitmap = other.fill_bitmap;
   }
   override_if_set(vertical_align, other.vertical_align);
   override_if_set(text_wrap, other.text_wrap);

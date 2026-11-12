@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -201,6 +202,35 @@ html::HtmlAttributeCallback frame_attributes(const Frame &frame,
 
 namespace {
 
+/// The css painting @p background behind a page box of @p layout's size.
+std::string translate_page_background(const GraphicStyle &background,
+                                      const PageLayout &layout,
+                                      const html::WritingState &state) {
+  std::string result;
+  if (background.fill_color.has_value() && background.fill_color->alpha != 0) {
+    result += "background-color:" + html::color(*background.fill_color) + ";";
+  }
+  if (!background.fill_bitmap.has_value()) {
+    return result +
+           html::translate_fill_image(background, layout.width, layout.height);
+  }
+  std::ostringstream source;
+  html::translate_image_src(background.fill_bitmap->file, source,
+                            state.config(), state.logger());
+  result += "background-image:url('" + source.str() + "');";
+  switch (background.fill_bitmap->repeat) {
+  case BitmapRepeat::repeat:
+    break;
+  case BitmapRepeat::stretch:
+    result += "background-size:100% 100%;background-repeat:no-repeat;";
+    break;
+  case BitmapRepeat::no_repeat:
+    result += "background-repeat:no-repeat;background-position:center;";
+    break;
+  }
+  return result;
+}
+
 /// A slide or a drawing page: the master page's content under the page's own,
 /// inside one outer page box. There is no inner (margin) box — unlike a text
 /// document, both anchor their children absolutely at page coordinates.
@@ -208,14 +238,21 @@ template <typename PageLike>
 void translate_page_like(const PageLike &page,
                          const html::WritingState &state) {
   const std::optional<bool> near = state.page_chunk_near();
+  const PageLayout layout = page.page_layout();
+  const GraphicStyle background = page.background();
+  // the dark sheet clears a gradient or hatch, but keeps a picture
+  const bool fill = !background.fill_bitmap.has_value() &&
+                    (background.fill_gradient.has_value() ||
+                     background.fill_hatch.has_value());
   state.out().write_element_begin(
       "div",
       html::HtmlElementOptions()
-          .set_class("odr-page-outer" +
+          .set_class("odr-page-outer" + std::string(fill ? " odr-fill" : "") +
                      (near.has_value()
                           ? html::chunk_classes(state.config(), *near)
                           : std::string()))
-          .set_style(html::translate_outer_page_style(page.page_layout())));
+          .set_style(html::translate_outer_page_style(layout) +
+                     translate_page_background(background, layout, state)));
 
   html::translate_master_page(page.master_page(), state);
   html::translate_children(page.children(), state);

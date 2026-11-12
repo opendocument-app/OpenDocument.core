@@ -6,6 +6,7 @@
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/quantity.hpp>
+#include <odr/style.hpp>
 
 #include <cstdint>
 #include <functional>
@@ -256,6 +257,11 @@ public:
 
   [[nodiscard]] virtual std::string
   slide_name(ElementIdentifier element_id) const = 0;
+  /// The fill the slide shows: its own, else its master page's.
+  [[nodiscard]] virtual GraphicStyle
+  slide_background(ElementIdentifier /*element_id*/) const {
+    return {};
+  }
 };
 
 class PageAdapter {
@@ -270,6 +276,11 @@ public:
 
   [[nodiscard]] virtual std::string
   page_name(ElementIdentifier element_id) const = 0;
+  /// The fill the page shows: its own, else its master page's.
+  [[nodiscard]] virtual GraphicStyle
+  page_background(ElementIdentifier /*element_id*/) const {
+    return {};
+  }
 };
 
 /// A formula's position, repeated or array extent, array flag and expression

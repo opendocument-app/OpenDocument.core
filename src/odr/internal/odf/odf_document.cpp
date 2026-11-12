@@ -623,6 +623,18 @@ using AdapterBase = internal::RegistryElementAdapter<
     abstract::TableColumnAdapter, abstract::TableRowAdapter,
     abstract::TableCellAdapter, abstract::FrameAdapter, abstract::ImageAdapter>;
 
+/// `style:repeat` ([OpenDocument] 20.354); `repeat` where it is missing.
+BitmapRepeat read_bitmap_repeat(const pugi::xml_attribute attribute) {
+  const std::string_view value = attribute.value();
+  if (value == "stretch") {
+    return BitmapRepeat::stretch;
+  }
+  if (value == "no-repeat") {
+    return BitmapRepeat::no_repeat;
+  }
+  return BitmapRepeat::repeat;
+}
+
 /// The paper of a layout stating no size: A4 portrait.
 constexpr double default_paper_width_cm = 21;
 constexpr double default_paper_height_cm = 29.7;
@@ -714,6 +726,79 @@ public:
     const pugi::xml_node node = get_node(element_id);
     return node.attribute("draw:name").value();
   }
+  [[nodiscard]] GraphicStyle
+  slide_background(const ElementIdentifier element_id) const override {
+    return page_like_background(element_id, slide_master_page(element_id));
+  }
+
+  /// A page's own fill, else its master page's unless
+  /// `presentation:background-visible` turns that off ([OpenDocument] 19.413).
+  [[nodiscard]] GraphicStyle
+  page_like_background(const ElementIdentifier element_id,
+                       const ElementIdentifier master_page_id) const {
+    const StyleRegistry &styles = m_document->style_registry();
+    const pugi::xml_node properties = styles.drawing_page_properties(
+        get_node(element_id).attribute("draw:style-name").value());
+    if (std::optional<GraphicStyle> own = drawing_page_fill(properties);
+        own.has_value()) {
+      return *std::move(own);
+    }
+    if (master_page_id == null_element_id ||
+        std::strcmp(
+            properties.attribute("presentation:background-visible").value(),
+            "false") == 0) {
+      return {};
+    }
+    return drawing_page_fill(
+               styles.drawing_page_properties(get_node(master_page_id)
+                                                  .attribute("draw:style-name")
+                                                  .value()))
+        .value_or(GraphicStyle());
+  }
+
+  /// What @p properties fill a page with; none where they state no fill.
+  [[nodiscard]] std::optional<GraphicStyle>
+  drawing_page_fill(const pugi::xml_node properties) const {
+    const std::string_view fill = drawing_page_fill_kind(properties);
+    if (fill == "none") {
+      return std::nullopt;
+    }
+    const StyleRegistry &styles = m_document->style_registry();
+    GraphicStyle result = styles.drawing_page_fill(properties);
+    if (fill == "bitmap") {
+      if (std::optional<File> file = fill_image_file(styles.fill_image_node(
+              properties.attribute("draw:fill-image-name").value()));
+          file.has_value()) {
+        result.fill_bitmap = BitmapFill{
+            .file = *std::move(file),
+            .repeat = read_bitmap_repeat(properties.attribute("style:repeat"))};
+      }
+    }
+    return result;
+  }
+
+  /// The image of a `draw:fill-image`: its `office:binary-data`, else the
+  /// package file it names. None where neither is there.
+  [[nodiscard]] std::optional<File>
+  fill_image_file(const pugi::xml_node fill_image) const {
+    if (const pugi::xml_node data = fill_image.child("office:binary-data")) {
+      return File(std::make_shared<MemoryFile>(
+          crypto::util::base64_decode(data.text().get())));
+    }
+    const std::string_view href = fill_image.attribute("xlink:href").value();
+    if (href.empty() || m_document->as_filesystem() == nullptr) {
+      return std::nullopt;
+    }
+    try {
+      const AbsPath path = Path(href).make_absolute();
+      if (!m_document->as_filesystem()->is_file(path)) {
+        return std::nullopt;
+      }
+      return File(m_document->as_filesystem()->open(path));
+    } catch (...) { // NOLINT(bugprone-empty-catch): an unusable path is none
+    }
+    return std::nullopt;
+  }
 
   [[nodiscard]] PageLayout
   page_layout(const ElementIdentifier element_id) const override {
@@ -737,6 +822,10 @@ public:
   [[nodiscard]] std::string
   page_name(const ElementIdentifier element_id) const override {
     return get_node(element_id).attribute("draw:name").value();
+  }
+  [[nodiscard]] GraphicStyle
+  page_background(const ElementIdentifier element_id) const override {
+    return page_like_background(element_id, page_master_page(element_id));
   }
 
   [[nodiscard]] std::string

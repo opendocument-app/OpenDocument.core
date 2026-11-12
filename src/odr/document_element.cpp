@@ -350,6 +350,11 @@ std::string Slide::name() const {
   return exists_() ? m_adapter2->slide_name(m_identifier) : "";
 }
 
+GraphicStyle Slide::background() const {
+  return exists_() ? m_adapter2->slide_background(m_identifier)
+                   : GraphicStyle();
+}
+
 PageLayout Slide::page_layout() const {
   return exists_() ? m_adapter2->slide_page_layout(m_identifier) : PageLayout();
 }
@@ -589,6 +594,10 @@ CellValue SheetCell::value() const {
 
 std::string Page::name() const {
   return exists_() ? m_adapter2->page_name(m_identifier) : "";
+}
+
+GraphicStyle Page::background() const {
+  return exists_() ? m_adapter2->page_background(m_identifier) : GraphicStyle();
 }
 
 PageLayout Page::page_layout() const {
