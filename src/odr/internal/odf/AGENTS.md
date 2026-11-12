@@ -129,8 +129,9 @@ counterclockwise, and a radial gradient has its end color at the center. A
 unitless hatch `draw:rotation` is in tenths (tdf#161327). A unitless gradient
 `draw:angle` is in degrees, except where LibreOffice reads tenths
 (`xmloff/source/style/GradientStyle.cxx`): below ODF 1.2, and at 1.2 from
-OpenOffice.org and its kin or a LibreOffice before 7. That asks `meta.xml`,
-which is read only then. The fill kind and the gradient or hatch name cascade
+OpenOffice.org and its kin or a LibreOffice before 7. `StyleRegistry` asks
+`meta.xml` once, before the styles resolve, and only where a gradient states a
+unitless angle at 1.2. The fill kind and the gradient or hatch name cascade
 independently, through `StyleRegistry::graphic_attribute`.
 
 **Lists and the outline count as LibreOffice does**

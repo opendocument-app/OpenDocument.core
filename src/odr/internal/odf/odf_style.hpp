@@ -6,7 +6,6 @@
 
 #include <any>
 #include <cstdint>
-#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -70,8 +69,7 @@ class StyleRegistry final {
 public:
   StyleRegistry();
   StyleRegistry(Document &document, pugi::xml_node content_root,
-                pugi::xml_node styles_root,
-                std::function<bool()> gradient_angles_in_tenths);
+                pugi::xml_node styles_root);
 
   [[nodiscard]] Style *style(const char *name) const;
   /// The data style (`number:number-style` and its kin) named @p name, null
@@ -104,7 +102,7 @@ public:
   [[nodiscard]] pugi::xml_node hatch_node(const std::string &name) const;
   /// Whether a unitless gradient angle counts tenths of a degree.
   [[nodiscard]] bool gradient_angles_in_tenths() const {
-    return m_gradient_angles_in_tenths && m_gradient_angles_in_tenths();
+    return m_gradient_angles_in_tenths;
   }
 
   [[nodiscard]] ElementIdentifier master_page(const std::string &name) const;
@@ -153,7 +151,7 @@ private:
   std::unordered_map<std::string, pugi::xml_node> m_index_master_page;
   std::unordered_map<std::string, pugi::xml_node> m_index_gradient;
   std::unordered_map<std::string, pugi::xml_node> m_index_hatch;
-  std::function<bool()> m_gradient_angles_in_tenths;
+  bool m_gradient_angles_in_tenths{false};
   std::optional<std::string> m_first_master_page;
 
   std::unordered_map<std::string, std::unique_ptr<Style>> m_default_styles;

@@ -48,15 +48,15 @@ public:
   /// @throws std::exception if the part cannot be parsed.
   [[nodiscard]] pugi::xml_node part(const AbsPath &path);
 
+  /// Whether a unitless gradient angle counts tenths of a degree, as
+  /// LibreOffice decides from the version and, at 1.2, `meta.xml`.
+  [[nodiscard]] bool gradient_angles_in_tenths() const;
+
 private:
   void init_(pugi::xml_node content_root, pugi::xml_node styles_root);
-  /// Whether a unitless gradient angle counts tenths of a degree, which
-  /// `meta.xml` decides; read once a gradient asks.
-  [[nodiscard]] bool gradient_angles_in_tenths_() const;
 
   pugi::xml_document m_content_xml;
   pugi::xml_document m_styles_xml;
-  mutable std::optional<bool> m_gradient_angles_in_tenths;
   /// The parts besides `content.xml` that `save` writes back.
   std::unordered_map<AbsPath, pugi::xml_document> m_parts;
 
