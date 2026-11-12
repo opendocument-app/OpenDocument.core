@@ -133,6 +133,14 @@ OpenOffice.org and its kin or a LibreOffice before 7. `Document` reads
 `meta:generator` once, on construction. The fill kind and the gradient or hatch name cascade
 independently, through `StyleRegistry::graphic_attribute`.
 
+**A page shows its own fill, else its master page's**, as LibreOffice
+renders it. The fill is the `style:drawing-page-properties` of the page's
+`draw:style-name`, then of the master page's. A `draw:fill-color` without a
+`draw:fill` is solid (`XFillStyleItem` defaults to solid), and a solid fill
+without a color is `#729fcf` (`XFillColorItem`), not the master's. An explicit
+`none`, a fill image name alone, and no fill attribute at all fall through to
+the master, unless `presentation:background-visible="false"`.
+
 **Lists and the outline count as LibreOffice does**
 (`SwNumRule::MakeNumString`). A level without a format drops out of the label.
 Only an item with a `text:p` or `text:h` before any nested list counts; Word

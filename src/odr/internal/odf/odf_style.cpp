@@ -771,6 +771,38 @@ void Style::resolve_table_cell_style_(const pugi::xml_node node,
                   result.border.bottom);
 }
 
+namespace {
+
+/// LibreOffice's `XFillColorItem` default, where no color is stated.
+Color default_fill_color() { return {0x72, 0x9f, 0xcf}; }
+
+/// The gradient or hatch that `draw:fill` names, and the color behind a solid
+/// hatch. @p attribute looks up an attribute by name.
+template <typename Lookup>
+void read_fill_paint(const StyleRegistry &registry, const Lookup &attribute,
+                     GraphicStyle &result) {
+  const std::string_view fill = attribute("draw:fill").value();
+  result.fill_gradient.reset();
+  result.fill_hatch.reset();
+  if (fill == "gradient") {
+    result.fill_gradient = read_gradient(
+        registry.gradient_node(attribute("draw:fill-gradient-name").value()),
+        registry.gradient_angles_in_tenths());
+  } else if (fill == "hatch") {
+    result.fill_hatch = read_hatch(
+        registry.hatch_node(attribute("draw:fill-hatch-name").value()));
+    if (result.fill_hatch.has_value() &&
+        std::strcmp(attribute("draw:fill-hatch-solid").value(), "true") == 0) {
+      const Color color = attribute("draw:fill-color")
+                              ? result.fill_color.value_or(Color())
+                              : default_fill_color();
+      result.fill_color = Color(color.red, color.green, color.blue, 255);
+    }
+  }
+}
+
+} // namespace
+
 void Style::resolve_graphic_style_(const StyleRegistry *registry,
                                    const pugi::xml_node node,
                                    GraphicStyle &result) {
@@ -815,30 +847,12 @@ void Style::resolve_graphic_style_(const StyleRegistry *registry,
   }
   // the fill kind and the gradient or hatch it names cascade independently
   if (registry != nullptr && graphic_properties) {
-    const std::string_view fill =
-        registry->graphic_attribute(node, "draw:fill").value();
-    result.fill_gradient.reset();
-    result.fill_hatch.reset();
-    if (fill == "gradient") {
-      result.fill_gradient = read_gradient(
-          registry->gradient_node(
-              registry->graphic_attribute(node, "draw:fill-gradient-name")
-                  .value()),
-          registry->gradient_angles_in_tenths());
-    } else if (fill == "hatch") {
-      result.fill_hatch = read_hatch(registry->hatch_node(
-          registry->graphic_attribute(node, "draw:fill-hatch-name").value()));
-      if (result.fill_hatch.has_value() &&
-          std::strcmp(registry->graphic_attribute(node, "draw:fill-hatch-solid")
-                          .value(),
-                      "true") == 0) {
-        // LibreOffice's `XFillColorItem` default where no color is stated
-        const Color color = registry->graphic_attribute(node, "draw:fill-color")
-                                ? result.fill_color.value_or(Color())
-                                : Color(0x72, 0x9f, 0xcf);
-        result.fill_color = Color(color.red, color.green, color.blue, 255);
-      }
-    }
+    read_fill_paint(
+        *registry,
+        [&](const char *name) {
+          return registry->graphic_attribute(node, name);
+        },
+        result);
   }
   if (const std::optional<VerticalAlign> vertical_align = read_vertical_align(
           graphic_properties.attribute("draw:textarea-vertical-align"));
@@ -902,6 +916,8 @@ void StyleRegistry::generate_indices_(const pugi::xml_node node) {
       m_index_gradient[e.attribute("draw:name").value()] = e;
     } else if (name == "draw:hatch") {
       m_index_hatch[e.attribute("draw:name").value()] = e;
+    } else if (name == "draw:fill-image") {
+      m_index_fill_image[e.attribute("draw:name").value()] = e;
     } else if (name == "style:master-page") {
       std::string master_page_name = e.attribute("style:name").value();
       m_index_master_page[master_page_name] = e;
@@ -1348,6 +1364,36 @@ pugi::xml_node StyleRegistry::hatch_node(const std::string &name) const {
   return it == std::end(m_index_hatch) ? pugi::xml_node() : it->second;
 }
 
+pugi::xml_node StyleRegistry::fill_image_node(const std::string &name) const {
+  const auto it = m_index_fill_image.find(name);
+  return it == std::end(m_index_fill_image) ? pugi::xml_node() : it->second;
+}
+
+pugi::xml_node
+StyleRegistry::drawing_page_properties(const char *style_name) const {
+  const auto it = m_index_style.find(style_name != nullptr ? style_name : "");
+  return it == std::end(m_index_style)
+             ? pugi::xml_node()
+             : it->second.child("style:drawing-page-properties");
+}
+
+GraphicStyle StyleRegistry::drawing_page_fill(
+    const pugi::xml_node drawing_page_properties) const {
+  GraphicStyle result;
+  const bool solid = drawing_page_fill_kind(drawing_page_properties) == "solid";
+  const std::optional<Color> color =
+      read_color(drawing_page_properties.attribute("draw:fill-color"));
+  if (color.has_value() || solid) {
+    const Color rgb = color.value_or(default_fill_color());
+    result.fill_color = Color(rgb.red, rgb.green, rgb.blue, solid ? 255 : 0);
+  }
+  read_fill_paint(
+      *this,
+      [&](const char *name) { return drawing_page_properties.attribute(name); },
+      result);
+  return result;
+}
+
 pugi::xml_attribute StyleRegistry::graphic_attribute(const char *style_name,
                                                      const char *name) const {
   const auto it = m_index_style.find(style_name != nullptr ? style_name : "");
@@ -1419,3 +1465,18 @@ StyleRegistry::master_page_of_style(const char *style_name,
 }
 
 } // namespace odr::internal::odf
+
+namespace odr::internal {
+
+std::string_view
+odf::drawing_page_fill_kind(const pugi::xml_node drawing_page_properties) {
+  if (const pugi::xml_attribute fill =
+          drawing_page_properties.attribute("draw:fill")) {
+    return fill.value();
+  }
+  // LibreOffice's `XFillStyleItem` defaults to solid
+  return drawing_page_properties.attribute("draw:fill-color") ? "solid"
+                                                              : "none";
+}
+
+} // namespace odr::internal

@@ -11,6 +11,7 @@ public final class GraphicStyle {
   /** Paints over {@link #fillColor}. */
   public final GradientFill fillGradient;
   public final HatchFill fillHatch;
+  public final BitmapFill fillBitmap;
 
   GraphicStyle(
       Measure strokeWidth,
@@ -20,7 +21,8 @@ public final class GraphicStyle {
       int textWrap,
       int horizontalPosition,
       GradientFill fillGradient,
-      HatchFill fillHatch) {
+      HatchFill fillHatch,
+      BitmapFill fillBitmap) {
     this.strokeWidth = strokeWidth;
     this.strokeColor = strokeColor;
     this.fillColor = fillColor;
@@ -29,5 +31,6 @@ public final class GraphicStyle {
     this.horizontalPosition = HorizontalAlign.fromNative(horizontalPosition);
     this.fillGradient = fillGradient;
     this.fillHatch = fillHatch;
+    this.fillBitmap = fillBitmap;
   }
 }

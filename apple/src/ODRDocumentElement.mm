@@ -300,6 +300,15 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
       nil);
 }
 
+- (ODRGraphicStyle *)background {
+  return guarded_value(
+      [&]() -> ODRGraphicStyle * {
+        return [ODRGraphicStyle
+            styleWithHandle:self.handle.as_slide().background()];
+      },
+      nil);
+}
+
 @end
 
 @implementation ODRSheet
@@ -518,6 +527,15 @@ NSArray<ODRElement *> *to_nsarray(ODRElement *const source,
   return guarded_value(
       [&]() -> ODRElement * {
         return [self derive:self.handle.as_page().master_page()];
+      },
+      nil);
+}
+
+- (ODRGraphicStyle *)background {
+  return guarded_value(
+      [&]() -> ODRGraphicStyle * {
+        return [ODRGraphicStyle
+            styleWithHandle:self.handle.as_page().background()];
       },
       nil);
 }

@@ -350,6 +350,10 @@ public:
   [[nodiscard]] PageLayout page_layout() const;
 
   [[nodiscard]] MasterPage master_page() const;
+
+  /// The fill the page shows: its own, else its master page's unless the page
+  /// hides that.
+  [[nodiscard]] GraphicStyle background() const;
 };
 
 /// Represents a sheet element in a document.
@@ -459,6 +463,10 @@ public:
   [[nodiscard]] PageLayout page_layout() const;
 
   [[nodiscard]] MasterPage master_page() const;
+
+  /// The fill the page shows: its own, else its master page's unless the page
+  /// hides that.
+  [[nodiscard]] GraphicStyle background() const;
 };
 
 /// Represents a master page element in a document.

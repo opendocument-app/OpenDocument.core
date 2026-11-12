@@ -89,6 +89,11 @@ void odr_python::bind_style(py::module_ &m) {
       .value("crossed", odr::HatchStyle::crossed)
       .value("triple", odr::HatchStyle::triple);
 
+  py::enum_<odr::BitmapRepeat>(m, "BitmapRepeat")
+      .value("repeat", odr::BitmapRepeat::repeat)
+      .value("stretch", odr::BitmapRepeat::stretch)
+      .value("no_repeat", odr::BitmapRepeat::no_repeat);
+
   py::class_<odr::DynamicUnit>(m, "DynamicUnit")
       .def(py::init<>())
       .def(py::init([](const std::string &name) {
@@ -213,6 +218,12 @@ void odr_python::bind_style(py::module_ &m) {
       .def_readwrite("distance", &odr::HatchFill::distance)
       .def_readwrite("rotation", &odr::HatchFill::rotation);
 
+  py::class_<odr::BitmapFill>(m, "BitmapFill")
+      .def(py::init<>())
+      .def_readwrite("file", &odr::BitmapFill::file)
+      .def_readwrite("href", &odr::BitmapFill::href)
+      .def_readwrite("repeat", &odr::BitmapFill::repeat);
+
   py::class_<odr::GraphicStyle>(m, "GraphicStyle")
       .def(py::init<>())
       .def_readwrite("stroke_width", &odr::GraphicStyle::stroke_width)
@@ -223,7 +234,8 @@ void odr_python::bind_style(py::module_ &m) {
       .def_readwrite("horizontal_position",
                      &odr::GraphicStyle::horizontal_position)
       .def_readwrite("fill_gradient", &odr::GraphicStyle::fill_gradient)
-      .def_readwrite("fill_hatch", &odr::GraphicStyle::fill_hatch);
+      .def_readwrite("fill_hatch", &odr::GraphicStyle::fill_hatch)
+      .def_readwrite("fill_bitmap", &odr::GraphicStyle::fill_bitmap);
 
   py::class_<odr::PageLayout>(m, "PageLayout")
       .def(py::init<>())

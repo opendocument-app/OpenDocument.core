@@ -1,5 +1,7 @@
 #import <Foundation/Foundation.h>
 
+@class ODRFile;
+
 NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSInteger, ODRFontWeight) {
@@ -83,6 +85,13 @@ typedef NS_ENUM(NSInteger, ODRHatchStyle) {
   ODRHatchStyleCrossed,
   ODRHatchStyleTriple,
 } NS_SWIFT_NAME(HatchStyle);
+
+/// How a bitmap fills its area — `odr::BitmapRepeat`.
+typedef NS_ENUM(NSInteger, ODRBitmapRepeat) {
+  ODRBitmapRepeatRepeat = 0,
+  ODRBitmapRepeatStretch,
+  ODRBitmapRepeatNoRepeat,
+} NS_SWIFT_NAME(BitmapRepeat);
 
 /// An RGBA colour — `odr::Color`.
 ///
@@ -290,6 +299,18 @@ NS_SWIFT_NAME(HatchFill)
 + (instancetype)new NS_UNAVAILABLE;
 @end
 
+/// Bitmap fill — `odr::BitmapFill`.
+NS_SWIFT_NAME(BitmapFill)
+@interface ODRBitmapFill : NSObject
+@property(nonatomic, readonly) ODRFile *file;
+/// Where the document holds the image; empty where it is embedded.
+@property(nonatomic, readonly, copy) NSString *href;
+@property(nonatomic, readonly) ODRBitmapRepeat repeat;
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+@end
+
 /// Graphic style — `odr::GraphicStyle`.
 NS_SWIFT_NAME(GraphicStyle)
 @interface ODRGraphicStyle : NSObject
@@ -307,6 +328,7 @@ NS_SWIFT_NAME(GraphicStyle)
 /// Paints over `fillColor`.
 @property(nonatomic, readonly, nullable) ODRGradientFill *fillGradient;
 @property(nonatomic, readonly, nullable) ODRHatchFill *fillHatch;
+@property(nonatomic, readonly, nullable) ODRBitmapFill *fillBitmap;
 
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;

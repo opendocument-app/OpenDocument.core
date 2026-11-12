@@ -566,6 +566,27 @@ jobject make_hatch_fill(JNIEnv *env,
       make_measure(env, hatch->distance), hatch->rotation);
 }
 
+jobject make_bitmap_fill(JNIEnv *env,
+                         const std::optional<odr::BitmapFill> &bitmap) {
+  if (!bitmap.has_value()) {
+    return nullptr;
+  }
+  jstring href = to_jstring(env, bitmap->href);
+  if (href == nullptr) {
+    return nullptr;
+  }
+  HandleGuard<odr::File> guard(1);
+  jobject result = new_object(
+      env, "app/opendocument/core/BitmapFill", "(JLjava/lang/String;I)V",
+      guard.add(bitmap->file), href, static_cast<jint>(bitmap->repeat));
+  env->DeleteLocalRef(href);
+  if (result != nullptr) {
+    // the Java `File` owns the handle now
+    guard.release();
+  }
+  return result;
+}
+
 } // namespace
 
 jobject make_graphic_style(JNIEnv *env, const odr::GraphicStyle &style) {
@@ -574,13 +595,15 @@ jobject make_graphic_style(JNIEnv *env, const odr::GraphicStyle &style) {
       "(Lapp/opendocument/core/Measure;Lapp/opendocument/core/Color;"
       "Lapp/opendocument/core/Color;III"
       "Lapp/opendocument/core/GradientFill;"
-      "Lapp/opendocument/core/HatchFill;)V",
+      "Lapp/opendocument/core/HatchFill;"
+      "Lapp/opendocument/core/BitmapFill;)V",
       make_measure(env, style.stroke_width),
       make_color(env, style.stroke_color), make_color(env, style.fill_color),
       enum_code(style.vertical_align), enum_code(style.text_wrap),
       enum_code(style.horizontal_position),
       make_gradient_fill(env, style.fill_gradient),
-      make_hatch_fill(env, style.fill_hatch));
+      make_hatch_fill(env, style.fill_hatch),
+      make_bitmap_fill(env, style.fill_bitmap));
 }
 
 jobject make_page_layout(JNIEnv *env, const odr::PageLayout &layout) {

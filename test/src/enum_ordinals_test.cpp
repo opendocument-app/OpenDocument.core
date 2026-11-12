@@ -341,3 +341,9 @@ TEST(EnumOrdinals, hatch_style) {
   EXPECT_EQ(ordinal(HatchStyle::crossed), 1);
   EXPECT_EQ(ordinal(HatchStyle::triple), 2);
 }
+
+TEST(EnumOrdinals, bitmap_repeat) {
+  EXPECT_EQ(ordinal(BitmapRepeat::repeat), 0);
+  EXPECT_EQ(ordinal(BitmapRepeat::stretch), 1);
+  EXPECT_EQ(ordinal(BitmapRepeat::no_repeat), 2);
+}

@@ -67,6 +67,8 @@ add_jar(odr_java
         "java/app/opendocument/core/AnchorType.java"
         "java/app/opendocument/core/Archive.java"
         "java/app/opendocument/core/ArchiveFile.java"
+        "java/app/opendocument/core/BitmapFill.java"
+        "java/app/opendocument/core/BitmapRepeat.java"
         "java/app/opendocument/core/Bookmark.java"
         "java/app/opendocument/core/BreakType.java"
         "java/app/opendocument/core/Color.java"

@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <iosfwd>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -99,6 +100,14 @@ struct WritingState {
     m_shared_images = images;
   }
 
+  /// The class of each page background image written so far, by its href or
+  /// data url, so that every page of a view showing it shares one rule. The
+  /// copies of a state share it.
+  [[nodiscard]] std::unordered_map<std::string, std::string> &
+  page_backgrounds() const {
+    return *m_page_backgrounds;
+  }
+
 private:
   HtmlWriter *m_out;
   const HtmlConfig *m_config;
@@ -112,6 +121,9 @@ private:
   const std::vector<formula::Name> *m_formula_names{nullptr};
   std::optional<bool> m_page_chunk_near;
   std::unordered_map<std::string, std::string> *m_shared_images{nullptr};
+  std::shared_ptr<std::unordered_map<std::string, std::string>>
+      m_page_backgrounds{
+          std::make_shared<std::unordered_map<std::string, std::string>>()};
 };
 
 /// Writes viewport metadata: explicit content, then mode override, then config.
@@ -158,6 +170,9 @@ void write_content_margin_style(HtmlWriter &out, const HtmlConfig &config);
 /// Escapes text and preserves whitespace with entities. Editable runs use
 /// `xml::escape_text`; attributes use `xml::escape_attribute`.
 std::string escape_text(std::string text);
+/// @p url as a css `url()`, quoted so nothing in it can end the url or a
+/// `<style>` around it.
+std::string css_url(std::string_view url);
 
 /// What a target is, as an `href` would be dispatched. Whitespace and control
 /// bytes are skipped while reading the scheme, as browsers strip them first.

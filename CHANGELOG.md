@@ -42,6 +42,11 @@ The release run heads these entries with the version and opens a fresh
   ellipse, and a solid hatch with no fill color is backed by LibreOffice's
   default blue. Multi-color and transparency gradients are not read. The dark
   sheet clears a gradient or hatch as it clears a solid fill.
+- A slide or drawing page of an odp or odg shows its background: the color,
+  gradient, hatch or picture of its own drawing-page style, else its master
+  page's unless `presentation:background-visible` is false. A picture is
+  stretched, tiled or centered after `style:repeat`. The dark sheet keeps a
+  picture and clears a gradient or hatch.
 
 ### API, files and saving
 
@@ -58,6 +63,9 @@ The release run heads these entries with the version and opens a fresh
   `footer_spacing` the layout states.
 - `GraphicStyle` carries the new `fill_gradient` (`GradientFill`) and
   `fill_hatch` (`HatchFill`), in Python, Java and Objective-C too.
+- `Slide` and `Page` have `background()`, the `GraphicStyle` the page is
+  filled with, and `GraphicStyle` the new `fill_bitmap` (`BitmapFill`, a
+  `File` and its `BitmapRepeat`), in Python, Java and Objective-C too.
 
 ### Fixes
 

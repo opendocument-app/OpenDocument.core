@@ -65,6 +65,11 @@ private:
                                      pugi::xml_node node, GraphicStyle &result);
 };
 
+/// The `draw:fill` of @p drawing_page_properties: `solid` where it states only
+/// a `draw:fill-color`, `none` where it states neither.
+[[nodiscard]] std::string_view
+drawing_page_fill_kind(pugi::xml_node drawing_page_properties);
+
 class StyleRegistry final {
 public:
   StyleRegistry();
@@ -102,6 +107,16 @@ public:
   [[nodiscard]] pugi::xml_node gradient_node(const std::string &name) const;
   /// The `draw:hatch` named @p name, null where there is none.
   [[nodiscard]] pugi::xml_node hatch_node(const std::string &name) const;
+  /// The `draw:fill-image` named @p name, null where there is none.
+  [[nodiscard]] pugi::xml_node fill_image_node(const std::string &name) const;
+  /// The `style:drawing-page-properties` of the style named @p style_name,
+  /// null where there is none.
+  [[nodiscard]] pugi::xml_node
+  drawing_page_properties(const char *style_name) const;
+  /// The color, gradient or hatch that @p drawing_page_properties fill with.
+  /// A bitmap is left to the caller, which can open its file.
+  [[nodiscard]] GraphicStyle
+  drawing_page_fill(pugi::xml_node drawing_page_properties) const;
   /// Whether a unitless gradient angle counts tenths of a degree.
   [[nodiscard]] bool gradient_angles_in_tenths() const {
     return m_gradient_angles_in_tenths;
@@ -153,6 +168,7 @@ private:
   std::unordered_map<std::string, pugi::xml_node> m_index_master_page;
   std::unordered_map<std::string, pugi::xml_node> m_index_gradient;
   std::unordered_map<std::string, pugi::xml_node> m_index_hatch;
+  std::unordered_map<std::string, pugi::xml_node> m_index_fill_image;
   bool m_gradient_angles_in_tenths{false};
   std::optional<std::string> m_first_master_page;
 

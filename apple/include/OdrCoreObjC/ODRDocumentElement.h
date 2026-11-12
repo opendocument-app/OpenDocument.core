@@ -122,6 +122,8 @@ NS_SWIFT_NAME(Slide)
 @property(nonatomic, readonly, copy) NSString *name;
 @property(nonatomic, readonly) ODRPageLayout *pageLayout;
 @property(nonatomic, readonly, nullable) ODRElement *masterPage;
+/// The fill the page shows: its own, else its master page's.
+@property(nonatomic, readonly) ODRGraphicStyle *background;
 @end
 
 /// `odr::Sheet`.
@@ -207,6 +209,8 @@ NS_SWIFT_NAME(Page)
 @property(nonatomic, readonly, copy) NSString *name;
 @property(nonatomic, readonly) ODRPageLayout *pageLayout;
 @property(nonatomic, readonly, nullable) ODRElement *masterPage;
+/// The fill the page shows: its own, else its master page's.
+@property(nonatomic, readonly) ODRGraphicStyle *background;
 @end
 
 /// `odr::MasterPage`.

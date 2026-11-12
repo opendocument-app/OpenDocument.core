@@ -480,6 +480,38 @@ final class ElementTreeTests: XCTestCase {
     XCTAssertEqual(hatch.distance.stringValue, "0.2cm")
     XCTAssertEqual(hatch.rotation, 45, accuracy: 1e-9)
   }
+
+  func testPageBackgroundCarriesItsMasterPageBitmap() throws {
+    let path = try write(
+      #"<?xml version="1.0" encoding="UTF-8"?>"#
+        + #"<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0""#
+        + #" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0""#
+        + #" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0""#
+        + #" office:version="1.3""#
+        + #" office:mimetype="application/vnd.oasis.opendocument.graphics">"#
+        + #"<office:styles><draw:fill-image draw:name="Red"><office:binary-data>"#
+        + "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC"
+        + #"</office:binary-data></draw:fill-image></office:styles>"#
+        + #"<office:automatic-styles>"#
+        + #"<style:style style:name="Mdp" style:family="drawing-page">"#
+        + #"<style:drawing-page-properties draw:fill="bitmap""#
+        + #" draw:fill-image-name="Red" style:repeat="no-repeat"/>"#
+        + #"</style:style></office:automatic-styles>"#
+        + #"<office:master-styles><style:master-page style:name="M" draw:style-name="Mdp"/>"#
+        + #"</office:master-styles>"#
+        + #"<office:body><office:drawing><draw:page draw:master-page-name="M"/>"#
+        + #"</office:drawing></office:body></office:document>"#,
+      as: "bitmap.fodg")
+    let root = try XCTUnwrap(
+      try DecodedFile.decode(path: path).asDocumentFile().document().rootElement())
+    let page = try XCTUnwrap(Array(root.descendants(ofType: Page.self)).first)
+
+    XCTAssertNil(page.background.fillGradient)
+    let bitmap = try XCTUnwrap(page.background.fillBitmap)
+    XCTAssertEqual(bitmap.repeat, .noRepeat)
+    XCTAssertEqual(bitmap.file.size, 69)
+    XCTAssertEqual(bitmap.href, "")
+  }
 }
 
 final class DocumentSaveTests: XCTestCase {

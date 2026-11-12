@@ -17,9 +17,12 @@
 
 #include <algorithm>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <unordered_map>
+#include <utility>
 
 #include <fmt/format.h>
 
@@ -201,6 +204,95 @@ html::HtmlAttributeCallback frame_attributes(const Frame &frame,
 
 namespace {
 
+/// The image at @p href in the document as a resource, and where it is linked
+/// from; no location where it is embedded instead.
+std::pair<odr::HtmlResource, HtmlResourceLocation>
+locate_internal_image(const std::string &href, const std::optional<File> &file,
+                      const html::WritingState &state) {
+  // the location is resolved against the document, so an engine naming the
+  // image by its absolute path in the container has to lose the root
+  const std::string path = Path(href).make_relative().string();
+  odr::HtmlResource resource =
+      file.has_value()
+          ? html::linked_image_resource(*file, path, state.logger())
+          : html::HtmlResource::create(HtmlResourceType::image, "image/jpg",
+                                       path, path, file, false, false, true);
+  HtmlResourceLocation location =
+      state.config().resource_locator(resource, state.config());
+  if (location.has_value()) {
+    // a location taken by anything but this same image embeds instead
+    const odr::HtmlResource *existing =
+        html::resource_at(state.resources(), *location);
+    const bool same_image = existing != nullptr && !existing->is_shipped() &&
+                            existing->path() == resource.path();
+    if (html::uri_kind(*location) == html::UriKind::refused ||
+        (!same_image &&
+         html::resource_location_taken(state.resources(), *location))) {
+      location.reset();
+    }
+  }
+  return {std::move(resource), std::move(location)};
+}
+
+/// The class that shows @p bitmap behind a page box. The first page of a view
+/// to show an image writes its rule, and the others share it.
+std::string page_bitmap_class(const BitmapFill &bitmap,
+                              const html::WritingState &state) {
+  const auto data_url = [&] {
+    std::ostringstream source;
+    html::translate_image_src(bitmap.file, source, state.config(),
+                              state.logger());
+    return std::move(source).str();
+  };
+  std::string url = bitmap.href.empty() ? data_url() : std::string();
+  std::unordered_map<std::string, std::string> &classes =
+      state.page_backgrounds();
+  const auto [it, first] =
+      classes.try_emplace(bitmap.href.empty() ? url : bitmap.href,
+                          fmt::format("odr-page-bg-{}", classes.size()));
+  if (!first) {
+    return it->second;
+  }
+  if (!bitmap.href.empty()) {
+    auto [resource, location] =
+        locate_internal_image(bitmap.href, bitmap.file, state);
+    url = location.has_value() ? *location : data_url();
+    state.resources().emplace_back(std::move(resource), std::move(location));
+  }
+  // more specific than the page box's own `background`
+  state.out().write_element_begin("style");
+  state.out().write_raw(".odr-page-outer." + it->second +
+                            "{background-image:" + html::css_url(url) + "}",
+                        false);
+  state.out().write_element_end("style");
+  return it->second;
+}
+
+/// The css painting @p background behind a page box of @p layout's size, but
+/// for a bitmap's image, which `page_bitmap_class` gives.
+std::string translate_page_background(const GraphicStyle &background,
+                                      const PageLayout &layout) {
+  std::string result;
+  if (background.fill_color.has_value() && background.fill_color->alpha != 0) {
+    result += "background-color:" + html::color(*background.fill_color) + ";";
+  }
+  if (!background.fill_bitmap.has_value()) {
+    return result +
+           html::translate_fill_image(background, layout.width, layout.height);
+  }
+  switch (background.fill_bitmap->repeat) {
+  case BitmapRepeat::repeat:
+    break;
+  case BitmapRepeat::stretch:
+    result += "background-size:100% 100%;background-repeat:no-repeat;";
+    break;
+  case BitmapRepeat::no_repeat:
+    result += "background-repeat:no-repeat;background-position:center;";
+    break;
+  }
+  return result;
+}
+
 /// A slide or a drawing page: the master page's content under the page's own,
 /// inside one outer page box. There is no inner (margin) box — unlike a text
 /// document, both anchor their children absolutely at page coordinates.
@@ -208,14 +300,23 @@ template <typename PageLike>
 void translate_page_like(const PageLike &page,
                          const html::WritingState &state) {
   const std::optional<bool> near = state.page_chunk_near();
+  const PageLayout layout = page.page_layout();
+  const GraphicStyle background = page.background();
+  std::string classes = "odr-page-outer";
+  if (background.fill_bitmap.has_value()) {
+    classes += " " + page_bitmap_class(*background.fill_bitmap, state);
+  } else if (background.fill_gradient.has_value() ||
+             background.fill_hatch.has_value()) {
+    // the dark sheet clears a gradient or hatch, but keeps a picture
+    classes += " odr-fill";
+  }
+  if (near.has_value()) {
+    classes += html::chunk_classes(state.config(), *near);
+  }
   state.out().write_element_begin(
-      "div",
-      html::HtmlElementOptions()
-          .set_class("odr-page-outer" +
-                     (near.has_value()
-                          ? html::chunk_classes(state.config(), *near)
-                          : std::string()))
-          .set_style(html::translate_outer_page_style(page.page_layout())));
+      "div", html::HtmlElementOptions().set_class(classes).set_style(
+                 html::translate_outer_page_style(layout) +
+                 translate_page_background(background, layout)));
 
   html::translate_master_page(page.master_page(), state);
   html::translate_children(page.children(), state);
@@ -504,28 +605,8 @@ void html::translate_image(const Element &element, const WritingState &state) {
   odr::HtmlResource resource;
   HtmlResourceLocation resource_location;
   if (image.is_internal()) {
-    // the location is resolved against the document, so an engine naming the
-    // image by its absolute path in the container has to lose the root
-    const std::string path = Path(image.href()).make_relative().string();
-    const std::optional<File> file = image.file();
-    resource = file.has_value()
-                   ? linked_image_resource(*file, path, state.logger())
-                   : HtmlResource::create(HtmlResourceType::image, "image/jpg",
-                                          path, path, file, false, false, true);
-    resource_location =
-        state.config().resource_locator(resource, state.config());
-    if (resource_location.has_value()) {
-      // a location taken by anything but this same image embeds instead
-      const odr::HtmlResource *existing =
-          resource_at(state.resources(), *resource_location);
-      const bool same_image = existing != nullptr && !existing->is_shipped() &&
-                              existing->path() == resource.path();
-      if (uri_kind(*resource_location) == UriKind::refused ||
-          (!same_image &&
-           resource_location_taken(state.resources(), *resource_location))) {
-        resource_location.reset();
-      }
-    }
+    std::tie(resource, resource_location) =
+        locate_internal_image(image.href(), image.file(), state);
   } else if (loads_external_source(image.href(), state.config())) {
     resource =
         HtmlResource::create(HtmlResourceType::image, "image/jpg", "image",

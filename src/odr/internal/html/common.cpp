@@ -313,6 +313,28 @@ std::string html::escape_text(std::string text) {
   return text;
 }
 
+std::string html::css_url(const std::string_view url) {
+  std::string result = "url(\"";
+  for (const char c : url) {
+    switch (c) {
+    case '"':
+    case '\\':
+      result += '\\';
+      result += c;
+      break;
+    case '\n':
+      result += "\\a ";
+      break;
+    case '<':
+      result += "\\3c ";
+      break;
+    default:
+      result += c;
+    }
+  }
+  return result + "\")";
+}
+
 html::UriKind html::uri_kind(const std::string_view uri) {
   std::string scheme;
   for (const char ch : uri) {

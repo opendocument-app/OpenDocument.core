@@ -94,6 +94,10 @@ variants. Design and open work are in [`AGENTS.md`](AGENTS.md). Relies on
   - [ ] mirror (`style:mirror`, and `draw:mirror-*` on a shape with no
     enhanced geometry)
 - [x] page layout (size, orientation, margins, base direction)
+- [x] page background (`style:drawing-page-properties` of the page, else of
+  its master page; color, gradient, hatch, bitmap after `style:repeat`)
+  - [ ] `draw:fill-image-width` / `-height`, `draw:fill-image-ref-point`, and
+    bitmap fills on shapes
 - [ ] annotations (`office:annotation`)
 
 ### Text documents (`.odt`)
