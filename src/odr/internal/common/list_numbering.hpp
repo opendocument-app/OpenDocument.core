@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace odr::internal {
@@ -41,6 +42,11 @@ struct ListMarker final {
 };
 
 std::string format_list_number(ListNumberFormat format, std::uint32_t number);
+
+/// The bullet @p text, set in @p font_family (empty if unknown), in Unicode,
+/// or the default for @p level (counted from 0) where it would show wrong.
+std::string resolve_bullet(const std::string &text, std::uint32_t level,
+                           std::string_view font_family = {});
 
 /// The counters of one list, indexed by level.
 class ListCounter final {

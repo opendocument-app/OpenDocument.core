@@ -7,8 +7,8 @@
 #include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
-#include <array>
 #include <limits>
+#include <string_view>
 
 namespace odr::internal::ooxml::text {
 
@@ -58,36 +58,15 @@ std::uint32_t read_number(
   return *result;
 }
 
-/// Map private-use symbol-font bullets to Unicode.
-std::string resolve_bullet(const std::string &text, const std::uint32_t level) {
-  static constexpr std::array<const char *, 3> defaults{"•", "◦", "▪"};
-
-  if (text.empty() || !util::string::is_valid_utf8(text)) {
-    return defaults[level % defaults.size()];
+std::string_view bullet_font(const pugi::xml_node level) {
+  const pugi::xml_node fonts = level.child("w:rPr").child("w:rFonts");
+  for (const char *name : {"w:ascii", "w:hAnsi", "w:cs"}) {
+    if (const std::string_view font = fonts.attribute(name).value();
+        !font.empty()) {
+      return font;
+    }
   }
-
-  std::string_view remaining = text;
-  const char32_t first = util::string::next_utf8(remaining);
-  if (first < 0xE000 || first > 0xF8FF) {
-    return text;
-  }
-
-  switch (first) {
-  case 0xF06E:
-    return "■";
-  case 0xF075:
-    return "❖";
-  case 0xF0A7:
-    return "▪";
-  case 0xF0A8:
-    return "◆";
-  case 0xF0D8:
-    return "➢";
-  case 0xF0FC:
-    return "✔";
-  default:
-    return defaults[level % defaults.size()];
-  }
+  return {};
 }
 
 pugi::xml_node level_node(const pugi::xml_node abstract_numbering,
@@ -114,7 +93,7 @@ ListLevel read_level(const pugi::xml_node node, const std::uint32_t level) {
   result.label = node.child("w:lvlText").attribute("w:val").value();
 
   if (result.format == ListNumberFormat::bullet) {
-    result.label = resolve_bullet(result.label, level);
+    result.label = resolve_bullet(result.label, level, bullet_font(node));
   }
   return result;
 }

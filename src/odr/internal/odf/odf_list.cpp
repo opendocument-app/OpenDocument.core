@@ -57,9 +57,24 @@ pugi::xml_node level_style_node(const pugi::xml_node list_style,
   return result;
 }
 
+// `style:font-name` names a font face, `fo:font-family` the family itself.
+std::string bullet_font_family(const pugi::xml_node level_style,
+                               const StyleRegistry &styles) {
+  const pugi::xml_node properties = level_style.child("style:text-properties");
+  if (const pugi::xml_attribute font_name =
+          properties.attribute("style:font-name")) {
+    if (const pugi::xml_node font_face =
+            styles.font_face_node(font_name.value())) {
+      return font_face.attribute("svg:font-family").value();
+    }
+    return font_name.value();
+  }
+  return properties.attribute("fo:font-family").value();
+}
+
 /// Level @p level (counted from 0) of @p list_style, as LibreOffice labels it.
-ListLevel read_level(const pugi::xml_node list_style,
-                     const std::uint32_t level) {
+ListLevel read_level(const pugi::xml_node list_style, const std::uint32_t level,
+                     const StyleRegistry &styles) {
   ListLevel result;
 
   const pugi::xml_node level_style = level_style_node(list_style, level);
@@ -102,6 +117,10 @@ ListLevel read_level(const pugi::xml_node list_style,
   if (name == "text:list-level-style-bullet") {
     result.label = level_style.attribute("text:bullet-char").value();
   }
+  if (!result.label.empty()) {
+    result.label = resolve_bullet(result.label, level,
+                                  bullet_font_family(level_style, styles));
+  }
   if (result.label.empty()) {
     // A bullet without a character, and the image variant, still want a mark.
     result.label = "•";
@@ -123,10 +142,11 @@ bool is_ordered(const ListNumberFormat format) {
 
 /// Opens each level above @p level that no item has opened yet at its start.
 void start_skipped_levels(ListCounter &counter, const pugi::xml_node list_style,
-                          const std::uint32_t level) {
+                          const std::uint32_t level,
+                          const StyleRegistry &styles) {
   for (std::uint32_t skipped = 0; skipped < level; ++skipped) {
     if (!counter.is_open(skipped)) {
-      counter.start(skipped, read_level(list_style, skipped));
+      counter.start(skipped, read_level(list_style, skipped, styles));
     }
   }
 }
@@ -186,7 +206,7 @@ private:
 
   [[nodiscard]] ListLevel level_at_(const std::string &style_name,
                                     const std::uint32_t level) const {
-    return read_level(m_styles->list_style_node(style_name), level);
+    return read_level(m_styles->list_style_node(style_name), level, *m_styles);
   }
 
   void walk_list_(const ElementIdentifier id,
@@ -233,14 +253,14 @@ private:
     }
     const std::uint32_t level = clamp_level(outline_level - 1);
 
-    ListLevel list_level = read_level(outline_style, level);
+    ListLevel list_level = read_level(outline_style, level, *m_styles);
     if (node.attribute("text:restart-numbering").as_bool()) {
       list_level.start =
           node.attribute("text:start-value").as_uint(list_level.start);
       m_outline.restart(level, 0);
     }
 
-    start_skipped_levels(m_outline, outline_style, level);
+    start_skipped_levels(m_outline, outline_style, level, *m_styles);
     ListMarker marker;
     marker.text = m_outline.advance(level, list_level);
     if (!marker.text.empty()) {
@@ -266,7 +286,7 @@ private:
       }
 
       start_skipped_levels(counter, m_styles->list_style_node(style_name),
-                           level);
+                           level, *m_styles);
       ListMarker marker;
       marker.text = counter.advance(level, list_level);
       if (is_ordered(list_level.format)) {

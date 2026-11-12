@@ -1,10 +1,16 @@
 #include <odr/internal/common/list_numbering.hpp>
 
+#include <odr/internal/util/string_util.hpp>
+
 #include <algorithm>
 #include <array>
 #include <limits>
+#include <optional>
 #include <ranges>
+#include <span>
 #include <stdexcept>
+#include <string_view>
+#include <utility>
 
 namespace odr::internal {
 
@@ -47,6 +53,85 @@ std::string format_roman(std::uint32_t number, const bool upper) {
   return result;
 }
 
+constexpr std::array<std::pair<char32_t, std::string_view>, 11>
+    symbol_characters{{
+        {0x2A, "∗"},
+        {0x2D, "−"},
+        {0x3E, ">"},
+        {0xA7, "♣"},
+        {0xA8, "♦"},
+        {0xAE, "→"},
+        {0xB7, "•"},
+        {0xBE, "⎯"},
+        {0xD8, "¬"},
+        {0xDE, "⇒"},
+        {0xE0, "◊"},
+    }};
+
+constexpr std::array<std::pair<char32_t, std::string_view>, 14>
+    wingdings_characters{{
+        {0x6C, "●"},
+        {0x6E, "■"},
+        {0x6F, "□"},
+        {0x71, "❑"},
+        {0x75, "◆"},
+        {0x76, "❖"},
+        {0x77, "⬥"},
+        {0xA7, "▪"},
+        {0xA8, "◻"},
+        {0xD8, "➢"},
+        {0xF0, "⇨"},
+        {0xFC, "✓"},
+        {0xFD, "☒"},
+        {0xFE, "☑"},
+    }};
+
+constexpr std::array<std::pair<char32_t, std::string_view>, 6>
+    zapf_dingbats_characters{{
+        {0x6C, "●"},
+        {0x6E, "■"},
+        {0x6F, "❏"},
+        {0x71, "❑"},
+        {0x75, "◆"},
+        {0x76, "❖"},
+    }};
+
+using CharacterTable = std::span<const std::pair<char32_t, std::string_view>>;
+
+CharacterTable symbol_font_table(std::string_view font_family) {
+  font_family = util::string::trim_view(font_family, [](const char c) {
+    return c == '\'' || c == '"' || util::string::is_ascii_whitespace(c);
+  });
+  if (util::string::equals_ignore_case(font_family, "Symbol")) {
+    return symbol_characters;
+  }
+  if (util::string::equals_ignore_case(font_family, "Wingdings")) {
+    return wingdings_characters;
+  }
+  if (util::string::equals_ignore_case(font_family, "ZapfDingbats") ||
+      util::string::equals_ignore_case(font_family, "Zapf Dingbats") ||
+      util::string::equals_ignore_case(font_family, "ITC Zapf Dingbats")) {
+    return zapf_dingbats_characters;
+  }
+  return {};
+}
+
+// Word writes a symbol font's byte as such or at U+F0xx.
+std::optional<char32_t> symbol_font_byte(const char32_t character) {
+  if (character >= 0xF020 && character <= 0xF0FF) {
+    return character - 0xF000;
+  }
+  if (character >= 0x20 && character <= 0xFF) {
+    return character;
+  }
+  return std::nullopt;
+}
+
+std::string_view default_bullet(const std::uint32_t level) {
+  static constexpr std::array<std::string_view, 3> defaults{"•", "◦", "▪"};
+  return defaults[level % defaults.size()];
+}
+
 } // namespace
 
 } // namespace odr::internal
@@ -73,6 +158,29 @@ std::string internal::format_list_number(const ListNumberFormat format,
   default:
     return "";
   }
+}
+
+std::string internal::resolve_bullet(const std::string &text,
+                                     const std::uint32_t level,
+                                     const std::string_view font_family) {
+  if (text.empty() || !util::string::is_valid_utf8(text)) {
+    return std::string(default_bullet(level));
+  }
+
+  std::string_view remaining = text;
+  const char32_t first = util::string::next_utf8(remaining);
+  const CharacterTable table = symbol_font_table(font_family);
+  const std::optional<char32_t> byte = symbol_font_byte(first);
+  if (table.empty() || !byte.has_value()) {
+    // a private-use character means nothing outside its font
+    return first >= 0xE000 && first <= 0xF8FF
+               ? std::string(default_bullet(level))
+               : text;
+  }
+  const auto it = std::ranges::find(
+      table, *byte, &std::pair<char32_t, std::string_view>::first);
+  return std::string(it != std::end(table) ? it->second
+                                           : default_bullet(level));
 }
 
 } // namespace odr

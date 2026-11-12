@@ -159,3 +159,35 @@ TEST(DocumentList, docx_reads_zero_starts_and_ignores_invalid_values) {
   level.child("w:lvlText").attribute("w:val").set_value("\xf0");
   EXPECT_EQ("\xe2\x80\xa2", numbering.level("1", 0).label);
 }
+
+namespace {
+
+std::string docx_bullet(const std::string &fonts) {
+  const std::string numbering =
+      R"(<w:numbering><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0">)"
+      R"(<w:numFmt w:val="bullet"/><w:lvlText w:val="&#xF0A7;"/>)"
+      R"(<w:rPr><w:rFonts )" +
+      fonts +
+      R"(/></w:rPr></w:lvl></w:abstractNum><w:num w:numId="1">)"
+      R"(<w:abstractNumId w:val="1"/></w:num></w:numbering>)";
+  pugi::xml_document document;
+  EXPECT_TRUE(document.load_string(numbering.c_str()));
+  return odr::internal::ooxml::text::NumberingRegistry(document.first_child(),
+                                                       {})
+      .level("1", 0)
+      .label;
+}
+
+} // namespace
+
+TEST(DocumentList, docx_maps_a_bullet_by_its_font) {
+  EXPECT_EQ("♣", docx_bullet(R"(w:ascii="Symbol")"));
+  EXPECT_EQ("▪", docx_bullet(R"(w:ascii="Wingdings")"));
+}
+
+TEST(DocumentList, docx_falls_back_to_the_hansi_then_the_cs_font) {
+  EXPECT_EQ("▪", docx_bullet(R"(w:hAnsi="Wingdings")"));
+  EXPECT_EQ("▪", docx_bullet(R"(w:cs="Wingdings")"));
+  EXPECT_EQ("♣", docx_bullet(R"(w:ascii="Symbol" w:hAnsi="Wingdings")"));
+  EXPECT_EQ("▪", docx_bullet(R"(w:hAnsi="Wingdings" w:cs="Symbol")"));
+}

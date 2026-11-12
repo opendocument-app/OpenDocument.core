@@ -893,3 +893,35 @@ TEST(FlatOdf, a_font_face_outranks_a_font_family) {
 TEST(FlatOdf, a_powerpoint_theme_font_is_no_family) {
   EXPECT_EQ(font_of(R"(fo:font-family="+mn-lt")"), std::nullopt);
 }
+
+namespace {
+
+std::string bullet_of(const std::string &bullet,
+                      const std::string &properties) {
+  const Document document =
+      open(File::from_memory(flat_text(
+               R"(<text:list text:style-name="L1"><text:list-item>)"
+               R"(<text:p>one</text:p></text:list-item></text:list>)",
+               R"(<office:font-face-decls><style:font-face)"
+               R"( style:name="Symbol" svg:font-family="Symbol"/>)"
+               R"(</office:font-face-decls><office:automatic-styles>)"
+               R"(<text:list-style style:name="L1">)"
+               R"(<text:list-level-style-bullet text:level="1")"
+               R"( text:bullet-char=")" +
+                   bullet + R"("><style:text-properties )" + properties +
+                   R"(/></text:list-level-style-bullet></text:list-style>)"
+                   R"(</office:automatic-styles>)")))
+          .as_document_file()
+          .document();
+  return first_of_type(document.root_element(), ElementType::list_item)
+      .as_list_item()
+      .marker();
+}
+
+} // namespace
+
+TEST(FlatOdf, a_symbol_font_bullet_is_its_unicode_character) {
+  EXPECT_EQ(bullet_of("", R"(style:font-name="Symbol")"), "•");
+  EXPECT_EQ(bullet_of("§", R"(fo:font-family="Wingdings")"), "▪");
+  EXPECT_EQ(bullet_of("–", R"(style:font-name="Symbol")"), "–");
+}
