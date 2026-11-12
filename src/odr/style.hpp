@@ -277,11 +277,11 @@ struct HatchFill final {
   double rotation{0};
 };
 
-/// How a bitmap fills its area ([OpenDocument] 20.354).
+/// How a bitmap fills its area ([OpenDocument] 20.341).
 enum class BitmapRepeat {
   repeat,    ///< tiled at its own size
   stretch,   ///< scaled to the area
-  no_repeat, ///< once, at its own size, in the centre
+  no_repeat, ///< once, at its own size, in the center
 };
 
 /// A bitmap fill.

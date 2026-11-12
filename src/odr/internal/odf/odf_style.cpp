@@ -773,6 +773,9 @@ void Style::resolve_table_cell_style_(const pugi::xml_node node,
 
 namespace {
 
+/// LibreOffice's `XFillColorItem` default, where no color is stated.
+Color default_fill_color() { return {0x72, 0x9f, 0xcf}; }
+
 /// The gradient or hatch that `draw:fill` names, and the color behind a solid
 /// hatch. @p attribute looks up an attribute by name.
 template <typename Lookup>
@@ -790,10 +793,9 @@ void read_fill_paint(const StyleRegistry &registry, const Lookup &attribute,
         registry.hatch_node(attribute("draw:fill-hatch-name").value()));
     if (result.fill_hatch.has_value() &&
         std::strcmp(attribute("draw:fill-hatch-solid").value(), "true") == 0) {
-      // LibreOffice's `XFillColorItem` default where no color is stated
       const Color color = attribute("draw:fill-color")
                               ? result.fill_color.value_or(Color())
-                              : Color(0x72, 0x9f, 0xcf);
+                              : default_fill_color();
       result.fill_color = Color(color.red, color.green, color.blue, 255);
     }
   }
@@ -1379,11 +1381,11 @@ GraphicStyle StyleRegistry::drawing_page_fill(
     const pugi::xml_node drawing_page_properties) const {
   GraphicStyle result;
   const bool solid = drawing_page_fill_kind(drawing_page_properties) == "solid";
-  if (const std::optional<Color> color =
-          read_color(drawing_page_properties.attribute("draw:fill-color"));
-      color.has_value()) {
-    result.fill_color =
-        Color(color->red, color->green, color->blue, solid ? 255 : 0);
+  const std::optional<Color> color =
+      read_color(drawing_page_properties.attribute("draw:fill-color"));
+  if (color.has_value() || solid) {
+    const Color rgb = color.value_or(default_fill_color());
+    result.fill_color = Color(rgb.red, rgb.green, rgb.blue, solid ? 255 : 0);
   }
   read_fill_paint(
       *this,

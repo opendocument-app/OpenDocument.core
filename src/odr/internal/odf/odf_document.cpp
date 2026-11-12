@@ -623,7 +623,7 @@ using AdapterBase = internal::RegistryElementAdapter<
     abstract::TableColumnAdapter, abstract::TableRowAdapter,
     abstract::TableCellAdapter, abstract::FrameAdapter, abstract::ImageAdapter>;
 
-/// `style:repeat` ([OpenDocument] 20.354); `repeat` where it is missing.
+/// `style:repeat` ([OpenDocument] 20.341); `repeat` where it is missing.
 BitmapRepeat read_bitmap_repeat(const pugi::xml_attribute attribute) {
   const std::string_view value = attribute.value();
   if (value == "stretch") {
@@ -2448,7 +2448,7 @@ public:
 
 private:
   /// A page's own fill, else its master page's unless
-  /// `presentation:background-visible` turns that off ([OpenDocument] 19.413).
+  /// `presentation:background-visible` turns that off ([OpenDocument] 20.232).
   [[nodiscard]] GraphicStyle
   page_like_background(const ElementIdentifier element_id,
                        const ElementIdentifier master_page_id) const {

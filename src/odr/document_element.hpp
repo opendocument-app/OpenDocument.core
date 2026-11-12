@@ -351,7 +351,8 @@ public:
 
   [[nodiscard]] MasterPage master_page() const;
 
-  /// The fill the page shows: its own, else its master page's.
+  /// The fill the page shows: its own, else its master page's unless the page
+  /// hides that.
   [[nodiscard]] GraphicStyle background() const;
 };
 
@@ -463,7 +464,8 @@ public:
 
   [[nodiscard]] MasterPage master_page() const;
 
-  /// The fill the page shows: its own, else its master page's.
+  /// The fill the page shows: its own, else its master page's unless the page
+  /// hides that.
   [[nodiscard]] GraphicStyle background() const;
 };
 

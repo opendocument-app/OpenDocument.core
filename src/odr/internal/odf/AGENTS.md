@@ -136,7 +136,8 @@ independently, through `StyleRegistry::graphic_attribute`.
 **A page shows its own fill, else its master page's**, as LibreOffice
 renders it. The fill is the `style:drawing-page-properties` of the page's
 `draw:style-name`, then of the master page's. A `draw:fill-color` without a
-`draw:fill` is solid (`XFillStyleItem` defaults to solid). An explicit
+`draw:fill` is solid (`XFillStyleItem` defaults to solid), and a solid fill
+without a color is `#729fcf` (`XFillColorItem`), not the master's. An explicit
 `none`, a fill image name alone, and no fill attribute at all fall through to
 the master, unless `presentation:background-visible="false"`.
 

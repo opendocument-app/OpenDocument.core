@@ -207,6 +207,21 @@ TEST(OdfPageBackground, a_slide_without_a_fill_shows_its_master_page_fill) {
   EXPECT_NE(html.find(R"(class="odr-page-outer odr-fill)"), std::string::npos);
 }
 
+// As LibreOffice renders it: its default fill color, not the master's.
+TEST(OdfPageBackground, a_solid_fill_without_a_color_is_the_default_blue) {
+  const std::string path =
+      write_odp("odf_page_background_solid.odp",
+                R"(draw:fill="gradient" draw:fill-gradient-name="G")",
+                {R"(draw:fill="solid")"});
+
+  const GraphicStyle background = backgrounds_of(path).at(0);
+
+  EXPECT_FALSE(background.fill_gradient.has_value());
+  ASSERT_TRUE(background.fill_color.has_value());
+  EXPECT_EQ(background.fill_color->rgb(), 0x729fcfu);
+  EXPECT_EQ(background.fill_color->alpha, 255);
+}
+
 TEST(OdfPageBackground, background_visible_false_hides_the_master_page_fill) {
   const std::string path =
       write_odp("odf_page_background_hidden.odp",
