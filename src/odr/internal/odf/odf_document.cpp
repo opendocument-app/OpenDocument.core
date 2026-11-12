@@ -2498,6 +2498,7 @@ private:
     if (const pugi::xml_node data = fill_image.child("office:binary-data")) {
       return BitmapFill{.file = File(std::make_shared<MemoryFile>(
                             crypto::util::base64_decode(data.text().get()))),
+                        .href = {},
                         .repeat = repeat};
     }
     std::string href = fill_image.attribute("xlink:href").value();

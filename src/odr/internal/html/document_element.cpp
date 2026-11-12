@@ -234,29 +234,6 @@ locate_internal_image(const std::string &href, const std::optional<File> &file,
   return {std::move(resource), std::move(location)};
 }
 
-/// @p url as a css `url()`.
-std::string css_url(const std::string_view url) {
-  std::string result = "url(\"";
-  for (const char c : url) {
-    switch (c) {
-    case '"':
-    case '\\':
-      result += '\\';
-      result += c;
-      break;
-    case '\n':
-      result += "\\a ";
-      break;
-    case '<':
-      result += "\\3c ";
-      break;
-    default:
-      result += c;
-    }
-  }
-  return result + "\")";
-}
-
 /// The class that shows @p bitmap behind a page box. The first page of a view
 /// to show an image writes its rule, and the others share it.
 std::string page_bitmap_class(const BitmapFill &bitmap,
@@ -285,7 +262,7 @@ std::string page_bitmap_class(const BitmapFill &bitmap,
   // more specific than the page box's own `background`
   state.out().write_element_begin("style");
   state.out().write_raw(".odr-page-outer." + it->second +
-                            "{background-image:" + css_url(url) + "}",
+                            "{background-image:" + html::css_url(url) + "}",
                         false);
   state.out().write_element_end("style");
   return it->second;

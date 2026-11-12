@@ -170,6 +170,9 @@ void write_content_margin_style(HtmlWriter &out, const HtmlConfig &config);
 /// Escapes text and preserves whitespace with entities. Editable runs use
 /// `xml::escape_text`; attributes use `xml::escape_attribute`.
 std::string escape_text(std::string text);
+/// @p url as a css `url()`, quoted so nothing in it can end the url or a
+/// `<style>` around it.
+std::string css_url(std::string_view url);
 
 /// What a target is, as an `href` would be dispatched. Whitespace and control
 /// bytes are skipped while reading the scheme, as browsers strip them first.
