@@ -65,8 +65,7 @@ The release run heads these entries with the version and opens a fresh
   `fill_hatch` (`HatchFill`), in Python, Java and Objective-C too.
 - `Slide` and `Page` have `background()`, the `GraphicStyle` the page is
   filled with, and `GraphicStyle` the new `fill_bitmap` (`BitmapFill`, a
-  `File` and its `BitmapRepeat`). Not bound in Python, Java or Objective-C
-  yet.
+  `File` and its `BitmapRepeat`), in Python, Java and Objective-C too.
 
 ### Fixes
 

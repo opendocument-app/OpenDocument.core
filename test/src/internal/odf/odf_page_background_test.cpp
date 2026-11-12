@@ -110,14 +110,26 @@ std::vector<GraphicStyle> backgrounds_of(const std::string &path) {
   return result;
 }
 
-/// The html of the first slide of the file at @p path.
-std::string render(const std::string &path) {
+/// The html of view @p view of the file at @p path: the whole document, then
+/// each slide.
+std::string render(const std::string &path, const std::size_t view = 1,
+                   const HtmlConfig &config = HtmlConfig()) {
   std::ostringstream html;
-  html::translate(odr::open(path), HtmlConfig())
+  html::translate(odr::open(path), config)
       .list_views()
-      .at(1)
+      .at(view)
       .write_html(html);
   return html.str();
+}
+
+std::size_t count(const std::string_view haystack,
+                  const std::string_view needle) {
+  std::size_t result = 0;
+  for (std::size_t at = haystack.find(needle); at != std::string_view::npos;
+       at = haystack.find(needle, at + needle.size())) {
+    ++result;
+  }
+  return result;
 }
 
 } // namespace
@@ -133,13 +145,41 @@ TEST(OdfPageBackground, a_slide_takes_its_own_bitmap) {
   ASSERT_TRUE(background.fill_bitmap.has_value());
   EXPECT_EQ(background.fill_bitmap->repeat, BitmapRepeat::stretch);
   EXPECT_EQ(background.fill_bitmap->file.size(), png.size());
+  EXPECT_EQ(background.fill_bitmap->href, "Pictures/red.png");
 
   const std::string html = render(path);
-  EXPECT_NE(html.find("background-image:url('data:image/png;base64,"),
+  EXPECT_NE(html.find(".odr-page-outer.odr-page-bg-0{background-image:url("
+                      "\"data:image/png;base64,"),
+            std::string::npos);
+  EXPECT_NE(html.find(R"(class="odr-page-outer odr-page-bg-0)"),
             std::string::npos);
   EXPECT_NE(html.find("background-size:100% 100%"), std::string::npos);
   // the dark sheet keeps a picture
   EXPECT_EQ(html.find("odr-fill"), std::string::npos);
+}
+
+TEST(OdfPageBackground, the_slides_showing_one_bitmap_share_its_rule) {
+  const std::string path = write_odp(
+      "odf_page_background_shared.odp",
+      R"(draw:fill="bitmap" draw:fill-image-name="Red")", {"", "", ""});
+
+  const std::string html = render(path, 0);
+
+  EXPECT_EQ(count(html, "data:image/png;base64,"), 1);
+  EXPECT_EQ(count(html, R"(class="odr-page-outer odr-page-bg-0)"), 3);
+}
+
+TEST(OdfPageBackground, a_linked_bitmap_is_a_resource) {
+  const std::string path =
+      write_odp("odf_page_background_linked.odp",
+                R"(draw:fill="bitmap" draw:fill-image-name="Red")", {"", ""});
+  HtmlConfig config;
+  config.embed_images = false;
+
+  const std::string html = render(path, 0, config);
+
+  EXPECT_EQ(html.find("data:image/png"), std::string::npos);
+  EXPECT_EQ(count(html, R"(background-image:url("Pictures/red.png"))"), 1);
 }
 
 // As LibreOffice renders them: a fill color alone is solid, a fill image name

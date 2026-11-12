@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <iosfwd>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -99,6 +100,14 @@ struct WritingState {
     m_shared_images = images;
   }
 
+  /// The class of each page background image written so far, by its href or
+  /// data url, so that every page of a view showing it shares one rule. The
+  /// copies of a state share it.
+  [[nodiscard]] std::unordered_map<std::string, std::string> &
+  page_backgrounds() const {
+    return *m_page_backgrounds;
+  }
+
 private:
   HtmlWriter *m_out;
   const HtmlConfig *m_config;
@@ -112,6 +121,9 @@ private:
   const std::vector<formula::Name> *m_formula_names{nullptr};
   std::optional<bool> m_page_chunk_near;
   std::unordered_map<std::string, std::string> *m_shared_images{nullptr};
+  std::shared_ptr<std::unordered_map<std::string, std::string>>
+      m_page_backgrounds{
+          std::make_shared<std::unordered_map<std::string, std::string>>()};
 };
 
 /// Writes viewport metadata: explicit content, then mode override, then config.

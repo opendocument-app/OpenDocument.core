@@ -287,6 +287,8 @@ enum class BitmapRepeat {
 /// A bitmap fill.
 struct BitmapFill final {
   File file;
+  /// Where the document holds the image; empty where it is embedded.
+  std::string href;
   BitmapRepeat repeat{BitmapRepeat::repeat};
 };
 

@@ -19,9 +19,16 @@ public final class Slide extends Element {
     return h == 0 ? null : new MasterPage(h, owner());
   }
 
+  /** The fill the page shows: its own, else its master page's. */
+  public GraphicStyle background() {
+    return backgroundNative(handle());
+  }
+
   private native String nameNative(long handle);
 
   private native PageLayout pageLayoutNative(long handle);
 
   private native long masterPageNative(long handle);
+
+  private native GraphicStyle backgroundNative(long handle);
 }

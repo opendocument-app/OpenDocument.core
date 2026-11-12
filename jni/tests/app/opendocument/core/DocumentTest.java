@@ -554,4 +554,41 @@ class DocumentTest {
     assertEquals(hatch, hatchAgain);
     assertEquals(hatch.hashCode(), hatchAgain.hashCode());
   }
+
+  private static final String BITMAP_PAGE_DRAWING =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+          + "<office:document"
+          + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+          + " xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\""
+          + " xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\""
+          + " office:version=\"1.3\""
+          + " office:mimetype=\"application/vnd.oasis.opendocument.graphics\">"
+          + "<office:styles><draw:fill-image draw:name=\"Red\"><office:binary-data>"
+          + "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC"
+          + "</office:binary-data></draw:fill-image></office:styles>"
+          + "<office:automatic-styles>"
+          + "<style:style style:name=\"Mdp\" style:family=\"drawing-page\">"
+          + "<style:drawing-page-properties draw:fill=\"bitmap\""
+          + " draw:fill-image-name=\"Red\" style:repeat=\"no-repeat\"/>"
+          + "</style:style></office:automatic-styles>"
+          + "<office:master-styles>"
+          + "<style:master-page style:name=\"M\" draw:style-name=\"Mdp\"/>"
+          + "</office:master-styles>"
+          + "<office:body><office:drawing><draw:page draw:master-page-name=\"M\"/>"
+          + "</office:drawing></office:body></office:document>";
+
+  @Test
+  void pageBackgroundCarriesItsMasterPageBitmap() throws IOException {
+    Path path = tempDir.resolve("bitmap.fodg");
+    Files.writeString(path, BITMAP_PAGE_DRAWING);
+    Document document = Odr.open(path.toString()).asDocumentFile().document();
+
+    GraphicStyle background = document.rootElement().firstChild().asPage().background();
+    assertNull(background.fillGradient);
+    BitmapFill bitmap = background.fillBitmap;
+    assertNotNull(bitmap);
+    assertEquals(BitmapRepeat.NO_REPEAT, bitmap.repeat);
+    assertEquals(69, bitmap.file.size());
+    assertEquals("", bitmap.href);
+  }
 }

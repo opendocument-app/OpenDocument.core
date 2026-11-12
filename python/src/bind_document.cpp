@@ -197,7 +197,8 @@ void odr_python::bind_document(py::module_ &m) {
   bind_element<odr::Slide>(m, "Slide")
       .def("name", &odr::Slide::name)
       .def("page_layout", &odr::Slide::page_layout)
-      .def("master_page", &odr::Slide::master_page, keep_self_alive);
+      .def("master_page", &odr::Slide::master_page, keep_self_alive)
+      .def("background", &odr::Slide::background);
 
   bind_element<odr::Sheet>(m, "Sheet")
       .def("name", &odr::Sheet::name)
@@ -242,7 +243,8 @@ void odr_python::bind_document(py::module_ &m) {
   bind_element<odr::Page>(m, "Page")
       .def("name", &odr::Page::name)
       .def("page_layout", &odr::Page::page_layout)
-      .def("master_page", &odr::Page::master_page, keep_self_alive);
+      .def("master_page", &odr::Page::master_page, keep_self_alive)
+      .def("background", &odr::Page::background);
 
   bind_element<odr::MasterPage>(m, "MasterPage")
       .def("page_layout", &odr::MasterPage::page_layout);

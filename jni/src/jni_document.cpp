@@ -445,6 +445,15 @@ Java_app_opendocument_core_Slide_masterPageNative(JNIEnv *env, jobject,
   });
 }
 
+extern "C" JNIEXPORT jobject JNICALL
+Java_app_opendocument_core_Slide_backgroundNative(JNIEnv *env, jobject,
+                                                  jlong handle) {
+  return guarded(env, [&] {
+    return odr_jni::make_graphic_style(env,
+                                       element(handle).as_slide().background());
+  });
+}
+
 // app.opendocument.core.Sheet
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -696,6 +705,15 @@ Java_app_opendocument_core_Page_masterPageNative(JNIEnv *env, jobject,
                                                  jlong handle) {
   return guarded(env, [&] {
     return wrap_element(element(handle).as_page().master_page());
+  });
+}
+
+extern "C" JNIEXPORT jobject JNICALL
+Java_app_opendocument_core_Page_backgroundNative(JNIEnv *env, jobject,
+                                                 jlong handle) {
+  return guarded(env, [&] {
+    return odr_jni::make_graphic_style(env,
+                                       element(handle).as_page().background());
   });
 }
 

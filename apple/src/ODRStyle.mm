@@ -53,6 +53,9 @@ ODR_SAME_ENUM(ODRGradientStyleRectangular, odr::GradientStyle::rectangular);
 ODR_SAME_ENUM(ODRHatchStyleSingle, odr::HatchStyle::single);
 ODR_SAME_ENUM(ODRHatchStyleCrossed, odr::HatchStyle::crossed);
 ODR_SAME_ENUM(ODRHatchStyleTriple, odr::HatchStyle::triple);
+ODR_SAME_ENUM(ODRBitmapRepeatRepeat, odr::BitmapRepeat::repeat);
+ODR_SAME_ENUM(ODRBitmapRepeatStretch, odr::BitmapRepeat::stretch);
+ODR_SAME_ENUM(ODRBitmapRepeatNoRepeat, odr::BitmapRepeat::no_repeat);
 
 static_assert(sizeof(ODRColor) == sizeof(odr::Color),
               "ODRColor drifted from odr::Color");
@@ -435,6 +438,22 @@ odr::Color unbox_color(NSValue *const value) {
 
 @end
 
+@implementation ODRBitmapFill
+
++ (nullable instancetype)bitmapWithHandle:
+    (const std::optional<odr::BitmapFill> &)handle {
+  if (!handle.has_value()) {
+    return nil;
+  }
+  ODRBitmapFill *const result = [[ODRBitmapFill alloc] init];
+  result->_file = [ODRFile fileWithHandle:handle->file];
+  result->_href = to_nsstring(handle->href);
+  result->_repeat = static_cast<ODRBitmapRepeat>(handle->repeat);
+  return result;
+}
+
+@end
+
 @implementation ODRGraphicStyle
 
 + (instancetype)styleWithHandle:(const odr::GraphicStyle &)handle {
@@ -448,6 +467,7 @@ odr::Color unbox_color(NSValue *const value) {
   result->_fillGradient =
       [ODRGradientFill gradientWithHandle:handle.fill_gradient];
   result->_fillHatch = [ODRHatchFill hatchWithHandle:handle.fill_hatch];
+  result->_fillBitmap = [ODRBitmapFill bitmapWithHandle:handle.fill_bitmap];
   return result;
 }
 

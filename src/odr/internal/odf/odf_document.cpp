@@ -731,75 +731,6 @@ public:
     return page_like_background(element_id, slide_master_page(element_id));
   }
 
-  /// A page's own fill, else its master page's unless
-  /// `presentation:background-visible` turns that off ([OpenDocument] 19.413).
-  [[nodiscard]] GraphicStyle
-  page_like_background(const ElementIdentifier element_id,
-                       const ElementIdentifier master_page_id) const {
-    const StyleRegistry &styles = m_document->style_registry();
-    const pugi::xml_node properties = styles.drawing_page_properties(
-        get_node(element_id).attribute("draw:style-name").value());
-    if (std::optional<GraphicStyle> own = drawing_page_fill(properties);
-        own.has_value()) {
-      return *std::move(own);
-    }
-    if (master_page_id == null_element_id ||
-        std::strcmp(
-            properties.attribute("presentation:background-visible").value(),
-            "false") == 0) {
-      return {};
-    }
-    return drawing_page_fill(
-               styles.drawing_page_properties(get_node(master_page_id)
-                                                  .attribute("draw:style-name")
-                                                  .value()))
-        .value_or(GraphicStyle());
-  }
-
-  /// What @p properties fill a page with; none where they state no fill.
-  [[nodiscard]] std::optional<GraphicStyle>
-  drawing_page_fill(const pugi::xml_node properties) const {
-    const std::string_view fill = drawing_page_fill_kind(properties);
-    if (fill == "none") {
-      return std::nullopt;
-    }
-    const StyleRegistry &styles = m_document->style_registry();
-    GraphicStyle result = styles.drawing_page_fill(properties);
-    if (fill == "bitmap") {
-      if (std::optional<File> file = fill_image_file(styles.fill_image_node(
-              properties.attribute("draw:fill-image-name").value()));
-          file.has_value()) {
-        result.fill_bitmap = BitmapFill{
-            .file = *std::move(file),
-            .repeat = read_bitmap_repeat(properties.attribute("style:repeat"))};
-      }
-    }
-    return result;
-  }
-
-  /// The image of a `draw:fill-image`: its `office:binary-data`, else the
-  /// package file it names. None where neither is there.
-  [[nodiscard]] std::optional<File>
-  fill_image_file(const pugi::xml_node fill_image) const {
-    if (const pugi::xml_node data = fill_image.child("office:binary-data")) {
-      return File(std::make_shared<MemoryFile>(
-          crypto::util::base64_decode(data.text().get())));
-    }
-    const std::string_view href = fill_image.attribute("xlink:href").value();
-    if (href.empty() || m_document->as_filesystem() == nullptr) {
-      return std::nullopt;
-    }
-    try {
-      const AbsPath path = Path(href).make_absolute();
-      if (!m_document->as_filesystem()->is_file(path)) {
-        return std::nullopt;
-      }
-      return File(m_document->as_filesystem()->open(path));
-    } catch (...) { // NOLINT(bugprone-empty-catch): an unusable path is none
-    }
-    return std::nullopt;
-  }
-
   [[nodiscard]] PageLayout
   page_layout(const ElementIdentifier element_id) const override {
     if (const ElementIdentifier master_page_id = page_master_page(element_id);
@@ -2516,6 +2447,84 @@ public:
   }
 
 private:
+  /// A page's own fill, else its master page's unless
+  /// `presentation:background-visible` turns that off ([OpenDocument] 19.413).
+  [[nodiscard]] GraphicStyle
+  page_like_background(const ElementIdentifier element_id,
+                       const ElementIdentifier master_page_id) const {
+    const StyleRegistry &styles = m_document->style_registry();
+    const pugi::xml_node properties = styles.drawing_page_properties(
+        get_node(element_id).attribute("draw:style-name").value());
+    if (std::optional<GraphicStyle> own = drawing_page_fill(properties);
+        own.has_value()) {
+      return *std::move(own);
+    }
+    if (master_page_id == null_element_id ||
+        std::strcmp(
+            properties.attribute("presentation:background-visible").value(),
+            "false") == 0) {
+      return {};
+    }
+    return drawing_page_fill(
+               styles.drawing_page_properties(get_node(master_page_id)
+                                                  .attribute("draw:style-name")
+                                                  .value()))
+        .value_or(GraphicStyle());
+  }
+
+  /// What @p properties fill a page with; none where they state no fill.
+  [[nodiscard]] std::optional<GraphicStyle>
+  drawing_page_fill(const pugi::xml_node properties) const {
+    const std::string_view fill = drawing_page_fill_kind(properties);
+    if (fill == "none") {
+      return std::nullopt;
+    }
+    const StyleRegistry &styles = m_document->style_registry();
+    GraphicStyle result = styles.drawing_page_fill(properties);
+    if (fill == "bitmap") {
+      result.fill_bitmap =
+          bitmap_fill(styles.fill_image_node(
+                          properties.attribute("draw:fill-image-name").value()),
+                      read_bitmap_repeat(properties.attribute("style:repeat")));
+    }
+    return result;
+  }
+
+  /// The image of a `draw:fill-image`: its `office:binary-data`, else the
+  /// package file it names. None where neither is there.
+  [[nodiscard]] std::optional<BitmapFill>
+  bitmap_fill(const pugi::xml_node fill_image,
+              const BitmapRepeat repeat) const {
+    if (const pugi::xml_node data = fill_image.child("office:binary-data")) {
+      return BitmapFill{.file = File(std::make_shared<MemoryFile>(
+                            crypto::util::base64_decode(data.text().get()))),
+                        .repeat = repeat};
+    }
+    std::string href = fill_image.attribute("xlink:href").value();
+    std::optional<File> file = package_file(href);
+    if (!file.has_value()) {
+      return std::nullopt;
+    }
+    return BitmapFill{
+        .file = *std::move(file), .href = std::move(href), .repeat = repeat};
+  }
+
+  /// The file at @p href in the package; none where there is no such file.
+  [[nodiscard]] std::optional<File>
+  package_file(const std::string_view href) const {
+    if (href.empty() || m_document->as_filesystem() == nullptr) {
+      return std::nullopt;
+    }
+    try {
+      const AbsPath path = Path(href).make_absolute();
+      if (m_document->as_filesystem()->is_file(path)) {
+        return File(m_document->as_filesystem()->open(path));
+      }
+    } catch (...) { // NOLINT(bugprone-empty-catch): an unusable path is none
+    }
+    return std::nullopt;
+  }
+
   [[nodiscard]] std::optional<TextWrap>
   wrap_by_position(const ElementIdentifier element_id,
                    const GraphicStyle &style) const {
@@ -2937,15 +2946,7 @@ private:
       return File(std::make_shared<MemoryFile>(*svg));
     }
     const std::optional<std::string> replacement = replacement_href(element_id);
-    if (!replacement.has_value()) {
-      return std::nullopt;
-    }
-    try {
-      const AbsPath path = Path(*replacement).make_absolute();
-      return File(m_document->as_filesystem()->open(path));
-    } catch (...) { // NOLINT(bugprone-empty-catch): no replacement either
-    }
-    return std::nullopt;
+    return replacement.has_value() ? package_file(*replacement) : std::nullopt;
   }
 
   [[nodiscard]] std::optional<AbsPath>

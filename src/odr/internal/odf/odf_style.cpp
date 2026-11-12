@@ -773,8 +773,8 @@ void Style::resolve_table_cell_style_(const pugi::xml_node node,
 
 namespace {
 
-/// The gradient or hatch that the `draw:fill` @p attribute answers names, and
-/// the color behind a solid hatch.
+/// The gradient or hatch that `draw:fill` names, and the color behind a solid
+/// hatch. @p attribute looks up an attribute by name.
 template <typename Lookup>
 void read_fill_paint(const StyleRegistry &registry, const Lookup &attribute,
                      GraphicStyle &result) {
