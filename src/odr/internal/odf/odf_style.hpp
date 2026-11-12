@@ -68,8 +68,10 @@ private:
 class StyleRegistry final {
 public:
   StyleRegistry();
+  /// @p gradient_angles_in_tenths says whether a unitless gradient angle
+  /// counts tenths of a degree.
   StyleRegistry(Document &document, pugi::xml_node content_root,
-                pugi::xml_node styles_root);
+                pugi::xml_node styles_root, bool gradient_angles_in_tenths);
 
   [[nodiscard]] Style *style(const char *name) const;
   /// The data style (`number:number-style` and its kin) named @p name, null

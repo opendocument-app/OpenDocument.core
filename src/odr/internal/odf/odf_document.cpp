@@ -51,7 +51,10 @@ namespace odr::internal::odf {
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
 create_element_adapter(Document &document, ElementRegistry &registry);
-bool generator_writes_tenths(std::string_view generator);
+std::string read_generator(pugi::xml_node content_root,
+                           const abstract::ReadableFilesystem *files);
+bool gradient_angles_in_tenths(std::string_view office_version,
+                               std::string_view generator);
 } // namespace
 
 Document::Document(const FileType file_type, const DocumentType document_type,
@@ -82,7 +85,11 @@ void Document::init_(const pugi::xml_node content_root,
   m_root_element = parse_tree(m_element_registry,
                               content_root.child("office:body").first_child());
 
-  m_style_registry = StyleRegistry(*this, content_root, styles_root);
+  m_generator = read_generator(content_root, m_files.get());
+  m_style_registry = StyleRegistry(
+      *this, content_root, styles_root,
+      gradient_angles_in_tenths(
+          content_root.attribute("office:version").value(), m_generator));
 
   resolve_list_numbering(m_element_registry, m_style_registry, m_root_element);
   // a header or footer numbers its lists of its own
@@ -92,31 +99,6 @@ void Document::init_(const pugi::xml_node content_root,
   }
 
   m_element_adapter = create_element_adapter(*this, m_element_registry);
-}
-
-bool Document::gradient_angles_in_tenths() const {
-  const pugi::xml_node content_root = m_content_xml.document_element();
-  const std::optional<double> version =
-      util::number::parse(content_root.attribute("office:version").value());
-  if (!version.has_value() || *version < 1.2) {
-    return true;
-  }
-  if (*version > 1.2) {
-    return false;
-  }
-
-  pugi::xml_document meta_xml;
-  pugi::xml_node meta = content_root.child("office:meta");
-  try {
-    if (!meta && m_files != nullptr && m_files->is_file(AbsPath("/meta.xml"))) {
-      meta_xml = xml::parse(*m_files, AbsPath("/meta.xml"));
-      meta = meta_xml.document_element().child("office:meta");
-    }
-  } catch (const std::exception &) {
-    // a malformed `meta.xml` names no generator
-    meta = pugi::xml_node();
-  }
-  return generator_writes_tenths(meta.child("meta:generator").text().get());
 }
 
 ElementRegistry &Document::element_registry() { return m_element_registry; }
@@ -311,9 +293,39 @@ bool states_value(const pugi::xml_node cell) {
          !cell.attribute("office:boolean-value").empty();
 }
 
-/// Whether @p generator wrote a unitless gradient angle at ODF 1.2 in tenths,
-/// as LibreOffice's `GradientStyle.cxx` reads it; see AGENTS.md.
-bool generator_writes_tenths(const std::string_view generator) {
+/// [ODF 1.2] 4.3.2.1 `meta:generator`, from the flat document or `meta.xml`.
+std::string read_generator(const pugi::xml_node content_root,
+                           const abstract::ReadableFilesystem *files) {
+  if (const pugi::xml_node meta = content_root.child("office:meta")) {
+    return meta.child("meta:generator").text().get();
+  }
+  if (files == nullptr || !files->is_file(AbsPath("/meta.xml"))) {
+    return {};
+  }
+  try {
+    const pugi::xml_document meta_xml =
+        xml::parse(*files, AbsPath("/meta.xml"));
+    return meta_xml.document_element()
+        .child("office:meta")
+        .child("meta:generator")
+        .text()
+        .get();
+  } catch (const std::exception &) {
+    // a malformed `meta.xml` names no generator
+    return {};
+  }
+}
+
+/// As LibreOffice's `GradientStyle.cxx` reads it; see AGENTS.md.
+bool gradient_angles_in_tenths(const std::string_view office_version,
+                               const std::string_view generator) {
+  const std::optional<double> version = util::number::parse(office_version);
+  if (!version.has_value() || *version < 1.2) {
+    return true;
+  }
+  if (*version > 1.2) {
+    return false;
+  }
   for (const std::string_view name :
        {"OpenOffice.org", "StarOffice", "Apache_OpenOffice", "OpenOffice/"}) {
     if (generator.starts_with(name)) {
@@ -3115,16 +3127,8 @@ formula::Settings Document::formula_settings() const {
       days.has_value()) {
     result.null_date = static_cast<std::int64_t>(*days);
   }
-  // [ODF 1.2] 4.3.2.1 `meta:generator`, the application that computed the
-  // cached results
-  pugi::xml_document meta_xml;
-  pugi::xml_node meta = m_content_xml.document_element().child("office:meta");
-  if (!meta && m_files != nullptr && m_files->is_file(AbsPath("/meta.xml"))) {
-    meta_xml = xml::parse(*m_files, AbsPath("/meta.xml"));
-    meta = meta_xml.document_element().child("office:meta");
-  }
-  result.boolean_word =
-      boolean_word_of(meta.child("meta:generator").text().get());
+  // the application that computed the cached results
+  result.boolean_word = boolean_word_of(m_generator);
   // [ODF 1.2] 19.636 `table:iteration`
   if (const pugi::xml_node iteration = settings.child("table:iteration");
       std::string_view(iteration.attribute("table:status").value()) ==

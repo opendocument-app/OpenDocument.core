@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <unordered_map>
 
 namespace odr::internal::odf {
@@ -48,15 +49,13 @@ public:
   /// @throws std::exception if the part cannot be parsed.
   [[nodiscard]] pugi::xml_node part(const AbsPath &path);
 
-  /// Whether a unitless gradient angle counts tenths of a degree, as
-  /// LibreOffice decides from the version and, at 1.2, `meta.xml`.
-  [[nodiscard]] bool gradient_angles_in_tenths() const;
-
 private:
   void init_(pugi::xml_node content_root, pugi::xml_node styles_root);
 
   pugi::xml_document m_content_xml;
   pugi::xml_document m_styles_xml;
+  /// `meta:generator`, empty where unstated.
+  std::string m_generator;
   /// The parts besides `content.xml` that `save` writes back.
   std::unordered_map<AbsPath, pugi::xml_document> m_parts;
 

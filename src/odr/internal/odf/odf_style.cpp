@@ -366,16 +366,6 @@ double read_fraction(const pugi::xml_attribute attribute,
   return std::clamp(percentage->magnitude() / 100.0, 0.0, 1.0);
 }
 
-/// Whether @p attribute is an [OpenDocument] 18.3.1 `angle` stating no unit.
-bool is_unitless_angle(const pugi::xml_attribute attribute) {
-  const std::optional<Measure> angle = read_measure(attribute);
-  if (!angle.has_value() || !std::isfinite(angle->magnitude())) {
-    return false;
-  }
-  const std::string &unit = angle->unit().name();
-  return unit != "deg" && unit != "rad" && unit != "grad";
-}
-
 /// [OpenDocument] 18.3.1 `angle` in degrees; a unitless one counts tenths
 /// where @p unitless_in_tenths.
 double read_angle(const pugi::xml_attribute attribute,
@@ -872,16 +862,10 @@ StyleRegistry::StyleRegistry() = default;
 
 StyleRegistry::StyleRegistry(Document &document,
                              const pugi::xml_node content_root,
-                             const pugi::xml_node styles_root) {
+                             const pugi::xml_node styles_root,
+                             const bool gradient_angles_in_tenths)
+    : m_gradient_angles_in_tenths{gradient_angles_in_tenths} {
   generate_indices_(content_root, styles_root);
-  // before the styles resolve, and `meta.xml` only where a gradient needs it
-  m_gradient_angles_in_tenths =
-      std::ranges::any_of(m_index_gradient | std::views::values,
-                          [](const pugi::xml_node gradient) {
-                            return is_unitless_angle(
-                                gradient.attribute("draw:angle"));
-                          }) &&
-      document.gradient_angles_in_tenths();
   generate_styles_();
   generate_master_pages_(document);
 }
