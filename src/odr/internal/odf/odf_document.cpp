@@ -2376,6 +2376,26 @@ public:
     }
     return read_path(get_node(element_id));
   }
+  [[nodiscard]] std::optional<TextPathMode>
+  frame_text_path(const ElementIdentifier element_id) const override {
+    if (m_registry->shape_type(element_id) != ShapeType::custom) {
+      return {};
+    }
+    const pugi::xml_node geometry =
+        get_node(element_id).child("draw:enhanced-geometry");
+    if (!geometry.attribute("draw:text-path").as_bool()) {
+      return {};
+    }
+    const std::string_view mode =
+        geometry.attribute("draw:text-path-mode").value();
+    if (mode == "shape") {
+      return TextPathMode::shape;
+    }
+    if (mode == "path") {
+      return TextPathMode::path;
+    }
+    return TextPathMode::normal;
+  }
   [[nodiscard]] std::optional<DrawingLine>
   frame_line(const ElementIdentifier element_id) const override {
     if (m_registry->shape_type(element_id) != ShapeType::line) {

@@ -857,6 +857,10 @@ std::optional<DrawingTransform> Frame::transform() const {
                    : std::optional<DrawingTransform>();
 }
 
+std::optional<TextPathMode> Frame::text_path() const {
+  return exists_() ? m_adapter2->frame_text_path(m_identifier) : std::nullopt;
+}
+
 std::optional<DrawingPath> Frame::path() const {
   return exists_() ? m_adapter2->frame_path(m_identifier)
                    : std::optional<DrawingPath>();
