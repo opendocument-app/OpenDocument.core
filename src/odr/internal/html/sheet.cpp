@@ -193,39 +193,17 @@ bool holds_plain_cell(const ElementRange &children) {
   });
 }
 
-/// The text of the runs under @p element.
+/// The cell's text, excluding its anchored drawings.
 std::string shown_text(const Element &element) {
   std::string result;
   for (const Element child : element.children()) {
+    if (child.type() == ElementType::frame) {
+      continue;
+    }
     result += child.type() == ElementType::text ? child.as_text().content()
                                                 : shown_text(child);
   }
   return result;
-}
-
-std::optional<std::string> uncached_text(const CellValue &value,
-                                         const SheetCell &cell,
-                                         const std::string_view shown) {
-  if (!value.has_text() || value.text().empty()) {
-    return std::nullopt;
-  }
-  if (shown.empty()) {
-    return value.text();
-  }
-  // the text shown may be that of a frame anchored in the cell
-  const auto is_frame = [](const Element &child) {
-    return child.type() == ElementType::frame;
-  };
-  if (std::ranges::none_of(cell.children(), is_frame) ||
-      std::ranges::any_of(cell.children(), [&](const Element &child) {
-        if (child.type() == ElementType::text) {
-          return !child.as_text().content().empty();
-        }
-        return !is_frame(child) && !shown_text(child).empty();
-      })) {
-    return std::nullopt;
-  }
-  return value.text();
 }
 
 /// The number the editor opens a cell on and a sort orders it by, where the
@@ -829,13 +807,12 @@ void write_row(const SheetRows &rows, RowCursor &at, const WritingState &state,
     }
     if (folded.has_value()) {
       state.out().out() << folded->text;
-    } else if (const std::optional<std::string> uncached =
-                   valued ? uncached_text(cell_value, cell, shown)
-                          : std::nullopt;
-               uncached.has_value()) {
-      state.out().out() << xml::escape_text(*uncached);
+    } else if (valued && shown.empty() && cell_value.has_text() &&
+               !cell_value.text().empty()) {
+      state.out().out() << xml::escape_text(cell_value.text());
       for (const Element child : cell.children()) {
-        if (child.type() != ElementType::paragraph) {
+        if (child.type() != ElementType::paragraph ||
+            has_content(child.children())) {
           translate_element(child, state);
         }
       }
