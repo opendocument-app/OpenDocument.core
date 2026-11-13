@@ -28,6 +28,8 @@ The release run heads these entries with the version and opens a fresh
 
 ### Text documents and presentations
 
+- Fontwork preserves explicit line breaks and blank lines.
+
 - The headings of an odt are numbered after its `text:outline-style`, "1",
   "1.1", "1.2.1", as Word and LibreOffice number chapters, up to the ten
   levels LibreOffice has. The HTML writes the number before the heading.
@@ -86,6 +88,9 @@ The release run heads these entries with the version and opens a fresh
   Objective-C too.
 
 ### Fixes
+
+- An uncached spreadsheet value stays visible beside a drawing nested in a
+  paragraph, and the drawing is retained.
 
 - A shape or connector with a stroke width of zero is drawn with a hairline,
   as LibreOffice draws it. It was invisible.

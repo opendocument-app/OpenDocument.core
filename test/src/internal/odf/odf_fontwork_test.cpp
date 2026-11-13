@@ -123,3 +123,27 @@ TEST(OdfFontwork, the_text_is_painted_with_the_shape_and_the_path_is_not) {
   // the dark sheet keeps it legible, as text
   EXPECT_NE(element.find(R"(class="odr-text-path")"), std::string::npos);
 }
+
+TEST(OdfFontwork, explicit_breaks_split_lines_inside_spans) {
+  for (const std::string mode : {"normal", "path", "shape"}) {
+    const std::string html = render(write_odg(
+        "odf_fontwork_breaks.odg",
+        shape(R"(draw:text-path="true" draw:text-path-mode=")" + mode + R"(")",
+              "<text:span>First<text:line-break/>Second</text:span>")));
+    EXPECT_NE(html.find(">First</text>"), std::string::npos);
+    EXPECT_NE(html.find(">Second</text>"), std::string::npos);
+    EXPECT_EQ(html.find("FirstSecond"), std::string::npos);
+  }
+}
+
+TEST(OdfFontwork, blank_lines_keep_their_share_of_the_height) {
+  const std::string html =
+      render(write_odg("odf_fontwork_blank_lines.odg",
+                       shape(R"(draw:text-path="true")",
+                             "First<text:line-break/><text:line-break/>Last")));
+  // 2cm is 75.59055px: the first and third of three equal lines.
+  EXPECT_NE(html.find(R"(y="12.59843")"), std::string::npos);
+  EXPECT_NE(html.find(R"(y="62.99213")"), std::string::npos);
+  EXPECT_NE(html.find(">First</text>"), std::string::npos);
+  EXPECT_NE(html.find(">Last</text>"), std::string::npos);
+}

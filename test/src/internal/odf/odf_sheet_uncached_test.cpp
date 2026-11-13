@@ -185,3 +185,34 @@ TEST(OdfSheetUncached, a_text_cell_keeps_its_paragraphs) {
   EXPECT_EQ(count(html, ">Line 1"), 1U);
   EXPECT_EQ(count(html, "<x-p"), 2U);
 }
+
+TEST(OdfSheetUncached, a_drawing_nested_in_a_paragraph_keeps_the_value) {
+  for (const std::string text : {"", "Note"}) {
+    const std::string source = sheet_of(
+        R"(<table:table-cell office:value-type="float" office:value="7">)"
+        R"(<text:p><text:span><draw:frame svg:width="2cm" svg:height="1cm">)"
+        R"(<draw:text-box><text:p>)" +
+        text +
+        R"(</text:p></draw:text-box></draw:frame></text:span></text:p>)"
+        R"(</table:table-cell>)");
+    EXPECT_EQ(texts_of(source, 1)[0], "7");
+    const std::string html = render(source);
+    EXPECT_EQ(count(html, ">7<"), 1U);
+    EXPECT_EQ(count(html, "width:2cm;height:1cm;"), 1U);
+    if (!text.empty()) {
+      EXPECT_EQ(count(html, ">Note<"), 1U);
+    }
+  }
+}
+
+TEST(OdfSheetUncached, cached_text_beside_a_nested_drawing_is_not_replaced) {
+  const std::string source = sheet_of(
+      R"(<table:table-cell office:value-type="float" office:value="7">)"
+      R"(<text:p>Cached<draw:frame svg:width="2cm" svg:height="1cm">)"
+      R"(<draw:text-box><text:p>Note</text:p></draw:text-box></draw:frame>)"
+      R"(</text:p></table:table-cell>)");
+  const std::string html = render(source);
+  EXPECT_EQ(count(html, ">7<"), 0U);
+  EXPECT_EQ(count(html, ">Cached<"), 1U);
+  EXPECT_EQ(count(html, ">Note<"), 1U);
+}

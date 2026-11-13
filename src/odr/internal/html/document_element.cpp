@@ -16,7 +16,6 @@
 #include <odr/internal/xml/xml_util.hpp>
 
 #include <algorithm>
-#include <iterator>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -785,8 +784,9 @@ void translate_plain_frame(const Frame &frame, const GraphicStyle &style,
   state.out().write_element_end("div");
 }
 
-void translate_rect(const Frame &frame, const GraphicStyle &style,
-                    const WritingState &state) {
+void translate_simple_shape(const Frame &frame, const GraphicStyle &style,
+                            const WritingState &state) {
+  const bool ellipse = frame.shape_type() == ShapeType::ellipse;
   state.out().write_element_begin(
       "div",
       HtmlElementOptions()
@@ -795,33 +795,16 @@ void translate_rect(const Frame &frame, const GraphicStyle &style,
           .set_style(translate_shape_properties(frame) + shape_style(style)));
   translate_children(frame.children(), state);
   const std::string svg_shadow = begin_shape_shadow(frame, style, state);
-  translate_fill_layer(frame, style, {}, {}, state);
+  translate_fill_layer(
+      frame, style, ellipse ? "0 0 2 2" : "",
+      ellipse ? R"(<ellipse cx="1" cy="1" rx="1" ry="1"/>)" : "", state);
   state.out().write_new_line();
   state.out().write_raw(
       R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;)" +
-      svg_shadow +
-      R"("><rect x="0" y="0" width="100%" height="100%" /></svg>)");
-  end_shape_shadow(style, state);
-  state.out().write_element_end("div");
-}
-
-void translate_ellipse(const Frame &frame, const GraphicStyle &style,
-                       const WritingState &state) {
-  state.out().write_element_begin(
-      "div",
-      HtmlElementOptions()
-          .set_class(shadow_class(style))
-          .set_attributes(frame_attributes(frame, state))
-          .set_style(translate_shape_properties(frame) + shape_style(style)));
-  state.out().write_new_line();
-  translate_children(frame.children(), state);
-  const std::string svg_shadow = begin_shape_shadow(frame, style, state);
-  translate_fill_layer(frame, style, "0 0 2 2",
-                       R"(<ellipse cx="1" cy="1" rx="1" ry="1"/>)", state);
-  state.out().write_raw(
-      R"(<svg xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" preserveAspectRatio="none" style="z-index:-1;width:inherit;height:inherit;position:absolute;top:0;left:0;padding:inherit;)" +
-      svg_shadow +
-      R"("><ellipse cx="50%" cy="50%" rx="50%" ry="50%" /></svg>)");
+      svg_shadow + R"(">)" +
+      (ellipse ? R"(<ellipse cx="50%" cy="50%" rx="50%" ry="50%" />)"
+               : R"(<rect x="0" y="0" width="100%" height="100%" />)") +
+      "</svg>");
   end_shape_shadow(style, state);
   state.out().write_element_end("div");
 }
@@ -871,44 +854,30 @@ void translate_line(const Frame &frame, const GraphicStyle &style,
   }
 }
 
-/// A line of a Fontwork shape: a paragraph's text, and the style of its first
-/// run.
+/// A Fontwork line and the style of its first run.
 struct TextPathLine {
   std::string text;
   std::optional<TextStyle> style;
 };
 
-TextPathLine text_path_line(const Element &element) {
-  TextPathLine line;
+/// Paragraphs and explicit line breaks each start a line, including empty ones.
+void text_path_lines(const Element &element, std::vector<TextPathLine> &lines) {
   for (const Element child : element.children()) {
-    TextPathLine part;
-    if (child.type() == ElementType::text) {
+    if (child.type() == ElementType::paragraph ||
+        child.type() == ElementType::line_break) {
+      lines.emplace_back();
+    }
+    if (child.type() == ElementType::text && !lines.empty()) {
       const Text text = child.as_text();
-      part = {.text = text.content(), .style = text.style()};
+      TextPathLine &line = lines.back();
+      line.text += text.content();
+      if (!line.style.has_value()) {
+        line.style = text.style();
+      }
     } else {
-      part = text_path_line(child);
-    }
-    line.text += part.text;
-    if (!line.style.has_value()) {
-      line.style = std::move(part.style);
+      text_path_lines(child, lines);
     }
   }
-  return line;
-}
-
-/// One line per paragraph under @p element.
-std::vector<TextPathLine> text_path_lines(const Element &element) {
-  std::vector<TextPathLine> lines;
-  for (const Element child : element.children()) {
-    if (child.type() == ElementType::paragraph) {
-      lines.push_back(text_path_line(child));
-    } else {
-      std::vector<TextPathLine> nested = text_path_lines(child);
-      lines.insert(std::end(lines), std::make_move_iterator(std::begin(nested)),
-                   std::make_move_iterator(std::end(nested)));
-    }
-  }
-  return lines;
 }
 
 /// The paint of a Fontwork shape's glyphs: its fill and its outline, as
@@ -939,15 +908,14 @@ std::string text_path_paint(const GraphicStyle &style,
   return result;
 }
 
-/// A Fontwork shape: its text, one svg line per paragraph, painted with the
+/// A Fontwork shape: its text, one svg element per line, painted with the
 /// shape's fill and outline. The path only guides the text, so it is not
 /// drawn. Text on a curve is laid out straight.
 void translate_text_path_shape(const Frame &frame, const GraphicStyle &style,
                                const TextPathMode mode,
                                const WritingState &state) {
-  std::vector<TextPathLine> lines = text_path_lines(frame);
-  std::erase_if(lines,
-                [](const TextPathLine &line) { return line.text.empty(); });
+  std::vector<TextPathLine> lines;
+  text_path_lines(frame, lines);
 
   state.out().write_element_begin(
       "div", HtmlElementOptions()
@@ -978,6 +946,9 @@ void translate_text_path_shape(const Frame &frame, const GraphicStyle &style,
     const double line_height = *height / static_cast<double>(lines.size());
     for (std::size_t i = 0; i < lines.size(); ++i) {
       const TextPathLine &line = lines[i];
+      if (line.text.empty()) {
+        continue;
+      }
       const double top = line_height * static_cast<double>(i);
       HtmlAttributesVector attributes;
       std::string text_style = line.style.has_value()
@@ -1091,10 +1062,8 @@ void html::translate_frame(const Element &element, const WritingState &state) {
     translate_plain_frame(frame, style, state);
     break;
   case ShapeType::rect:
-    translate_rect(frame, style, state);
-    break;
   case ShapeType::ellipse:
-    translate_ellipse(frame, style, state);
+    translate_simple_shape(frame, style, state);
     break;
   case ShapeType::line:
     translate_line(frame, style, state);
