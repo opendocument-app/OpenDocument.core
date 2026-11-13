@@ -771,8 +771,6 @@ void Style::resolve_table_cell_style_(const pugi::xml_node node,
                   result.border.bottom);
 }
 
-Color default_fill_color() { return {0x72, 0x9f, 0xcf}; }
-
 namespace {
 
 /// The gradient or hatch that `draw:fill` names, and the color behind a solid
@@ -1493,6 +1491,8 @@ StyleRegistry::master_page_of_style(const char *style_name,
 } // namespace odr::internal::odf
 
 namespace odr::internal {
+
+Color odf::default_fill_color() { return {0x72, 0x9f, 0xcf}; }
 
 std::string_view
 odf::drawing_page_fill_kind(const pugi::xml_node drawing_page_properties) {

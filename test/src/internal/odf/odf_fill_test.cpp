@@ -817,3 +817,20 @@ TEST(OdfDefaultFill, an_open_path_shows_no_fill) {
                 .find(R"(fill="none")"),
             std::string::npos);
 }
+
+TEST(OdfShadow, a_turned_shape_casts_its_shadow_where_the_page_says) {
+  const std::string transform = "rotate(1.5708) translate(2cm, 6cm)";
+  const std::string path = write_odg(
+      "odf_fill_shadow_turned.odg",
+      R"(<style:style style:name="s" style:family="graphic">)"
+      R"(<style:graphic-properties draw:shadow="visible" )"
+      R"(draw:shadow-offset-x="0.5cm" draw:shadow-offset-y="0cm"/>)"
+      R"(</style:style>)",
+      R"(<draw:rect draw:style-name="s" svg:width="4cm" svg:height="2cm" )"
+      R"(draw:transform=")" +
+          transform + R"("/>)");
+
+  // the shape's y runs to the right on the page
+  EXPECT_NE(render(path).find("filter:drop-shadow(0px 18.898px 0cm"),
+            std::string::npos);
+}

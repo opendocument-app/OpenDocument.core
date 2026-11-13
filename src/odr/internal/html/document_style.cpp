@@ -759,6 +759,31 @@ std::string translate_hatch(const HatchFill &hatch) {
       patterns + "</defs>" + layers + "</svg>");
 }
 
+/// @p measure in css pixels, signed; zero where it has no absolute unit.
+double shadow_pixels(const Measure &measure) {
+  const double magnitude = measure.magnitude();
+  const std::optional<double> pixels =
+      html::css_pixels(Measure(std::abs(magnitude), measure.unit()));
+  return magnitude < 0 ? -pixels.value_or(0) : pixels.value_or(0);
+}
+
+/// Rounded, so a turn by a rounded angle leaves no residue on the other axis.
+std::string pixel_length(const double pixels) {
+  // `+ 0.0` turns a rounded -0 into 0
+  return util::number::to_string_significant(
+             std::round(pixels * 1000) / 1000 + 0.0, 7) +
+         "px";
+}
+
+/// A shadow length; a `%` or a font-relative one reads as nothing in a shadow,
+/// so it is zero.
+std::string shadow_length(const Measure &measure) {
+  if (measure.magnitude() != 0 && shadow_pixels(measure) == 0) {
+    return "0";
+  }
+  return html::css_length(measure);
+}
+
 } // namespace
 
 std::string html::translate_fill_image(const GraphicStyle &graphic_style,
@@ -781,8 +806,9 @@ std::string html::translate_fill_image(const GraphicStyle &graphic_style,
   return {};
 }
 
-std::string html::translate_shadow(const GraphicStyle &graphic_style,
-                                   const bool box) {
+std::string
+html::translate_shadow(const GraphicStyle &graphic_style, const bool box,
+                       const std::optional<DrawingTransform> &transform) {
   const std::optional<Shadow> &shadow = graphic_style.shadow;
   if (!shadow.has_value()) {
     return {};
@@ -792,9 +818,25 @@ std::string html::translate_shadow(const GraphicStyle &graphic_style,
   const Measure blur =
       box ? shadow->blur
           : Measure(shadow->blur.magnitude() / 2, shadow->blur.unit());
-  const std::string offsets = css_length(shadow->offset_x) + " " +
-                              css_length(shadow->offset_y) + " " +
-                              css_length(blur) + " " + color(shadow->color);
+  std::string offset_x = shadow_length(shadow->offset_x);
+  std::string offset_y = shadow_length(shadow->offset_y);
+  // css shadows the element before it transforms it, and LibreOffice offsets
+  // the shadow on the page, so the offset goes through the inverse
+  if (transform.has_value() && (transform->a != 1 || transform->b != 0 ||
+                                transform->c != 0 || transform->d != 1)) {
+    const double determinant =
+        transform->a * transform->d - transform->b * transform->c;
+    if (std::isfinite(determinant) && determinant != 0) {
+      const double x = shadow_pixels(shadow->offset_x);
+      const double y = shadow_pixels(shadow->offset_y);
+      offset_x =
+          pixel_length((transform->d * x - transform->c * y) / determinant);
+      offset_y =
+          pixel_length((transform->a * y - transform->b * x) / determinant);
+    }
+  }
+  const std::string offsets = offset_x + " " + offset_y + " " +
+                              shadow_length(blur) + " " + color(shadow->color);
   return box ? "box-shadow:" + offsets + ";"
              : "filter:drop-shadow(" + offsets + ");";
 }
