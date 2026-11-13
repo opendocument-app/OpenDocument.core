@@ -12,6 +12,8 @@ public final class GraphicStyle {
   public final GradientFill fillGradient;
   public final HatchFill fillHatch;
   public final BitmapFill fillBitmap;
+  /** {@code null} where the shape casts none. */
+  public final Shadow shadow;
 
   GraphicStyle(
       Measure strokeWidth,
@@ -22,7 +24,8 @@ public final class GraphicStyle {
       int horizontalPosition,
       GradientFill fillGradient,
       HatchFill fillHatch,
-      BitmapFill fillBitmap) {
+      BitmapFill fillBitmap,
+      Shadow shadow) {
     this.strokeWidth = strokeWidth;
     this.strokeColor = strokeColor;
     this.fillColor = fillColor;
@@ -32,5 +35,6 @@ public final class GraphicStyle {
     this.fillGradient = fillGradient;
     this.fillHatch = fillHatch;
     this.fillBitmap = fillBitmap;
+    this.shadow = shadow;
   }
 }

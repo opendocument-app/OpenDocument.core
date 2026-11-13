@@ -535,6 +535,48 @@ final class ElementTreeTests: XCTestCase {
     XCTAssertEqual(frames[0].textPath?.intValue, TextPathMode.shape.rawValue)
     XCTAssertNil(frames[1].textPath)
   }
+
+  func testFrameStyleCarriesItsShadow() throws {
+    let path = try write(
+      #"<?xml version="1.0" encoding="UTF-8"?>"#
+        + #"<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0""#
+        + #" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0""#
+        + #" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0""#
+        + #" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0""#
+        + #" xmlns:loext="urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0""#
+        + #" office:version="1.3""#
+        + #" office:mimetype="application/vnd.oasis.opendocument.graphics">"#
+        + #"<office:styles>"#
+        + #"<style:style style:name="s" style:family="graphic">"#
+        + #"<style:graphic-properties draw:shadow="visible""#
+        + #" draw:shadow-offset-x="0.3cm" draw:shadow-offset-y="-0.1cm""#
+        + ##" draw:shadow-color="#f49100" draw:shadow-opacity="40%""##
+        + #" loext:shadow-blur="0.05cm"/>"#
+        + #"</style:style>"#
+        + #"<style:style style:name="n" style:family="graphic">"#
+        + #"<style:graphic-properties draw:fill="none"/>"#
+        + #"</style:style>"#
+        + #"</office:styles>"#
+        + #"<office:body><office:drawing><draw:page>"#
+        + #"<draw:rect draw:style-name="s" svg:width="4cm" svg:height="2cm"/>"#
+        + #"<draw:rect draw:style-name="n" svg:width="4cm" svg:height="2cm"/>"#
+        + #"</draw:page></office:drawing></office:body></office:document>"#,
+      as: "shadowed.fodg")
+    let root = try XCTUnwrap(
+      try DecodedFile.decode(path: path).asDocumentFile().document().rootElement())
+    let frames = Array(root.descendants(ofType: Frame.self))
+    XCTAssertEqual(frames.count, 2)
+
+    let shadow = try XCTUnwrap(frames[0].style.shadow)
+    XCTAssertEqual(shadow.offsetX.stringValue, "0.3cm")
+    XCTAssertEqual(shadow.offsetY.stringValue, "-0.1cm")
+    XCTAssertEqual(
+      [shadow.color.red, shadow.color.green, shadow.color.blue, shadow.color.alpha],
+      [0xF4, 0x91, 0x00, 102])
+    XCTAssertEqual(shadow.blur.stringValue, "0.05cm")
+
+    XCTAssertNil(frames[1].style.shadow)
+  }
 }
 
 final class DocumentSaveTests: XCTestCase {

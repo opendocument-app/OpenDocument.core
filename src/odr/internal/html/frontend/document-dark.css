@@ -16,5 +16,8 @@ svg,svg *{fill:transparent!important}
 .odr-text-path{fill:#e6edf3!important}
 /* A gradient or hatch is a fill too (`odr-fill`), not a picture. */
 .odr-fill{background-image:none!important}
+/* On a dark page a shadow has nothing to darken, so every one gives way
+   (`odr-shadow`). */
+.odr-shadow,.odr-shadow>*{box-shadow:none!important;filter:none!important}
 td,x-p,x-s{color:#e6edf3!important}
 a,a x-p,a x-s{color:#6cb6ff!important}

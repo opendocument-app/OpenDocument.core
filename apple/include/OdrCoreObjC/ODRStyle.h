@@ -311,6 +311,19 @@ NS_SWIFT_NAME(BitmapFill)
 + (instancetype)new NS_UNAVAILABLE;
 @end
 
+/// The shadow a shape casts — `odr::Shadow`.
+NS_SWIFT_NAME(Shadow)
+@interface ODRShadow : NSObject
+@property(nonatomic, readonly) ODRMeasure *offsetX;
+@property(nonatomic, readonly) ODRMeasure *offsetY;
+/// The color, with the opacity in its alpha.
+@property(nonatomic, readonly) ODRColor color;
+@property(nonatomic, readonly) ODRMeasure *blur;
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+@end
+
 /// Graphic style — `odr::GraphicStyle`.
 NS_SWIFT_NAME(GraphicStyle)
 @interface ODRGraphicStyle : NSObject
@@ -329,6 +342,8 @@ NS_SWIFT_NAME(GraphicStyle)
 @property(nonatomic, readonly, nullable) ODRGradientFill *fillGradient;
 @property(nonatomic, readonly, nullable) ODRHatchFill *fillHatch;
 @property(nonatomic, readonly, nullable) ODRBitmapFill *fillBitmap;
+/// `nil` where the shape casts none.
+@property(nonatomic, readonly, nullable) ODRShadow *shadow;
 
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;

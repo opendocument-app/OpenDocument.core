@@ -156,6 +156,11 @@ NS_ASSUME_NONNULL_BEGIN
     (const std::optional<odr::BitmapFill> &)handle;
 @end
 
+@interface ODRShadow (Private)
++ (nullable instancetype)shadowWithHandle:
+    (const std::optional<odr::Shadow> &)handle;
+@end
+
 @interface ODRGraphicStyle (Private)
 + (instancetype)styleWithHandle:(const odr::GraphicStyle &)handle;
 @end

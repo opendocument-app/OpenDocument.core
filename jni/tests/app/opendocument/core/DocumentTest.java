@@ -616,4 +616,51 @@ class DocumentTest {
     assertEquals(TextPathMode.SHAPE, frames.get(0).asFrame().textPath());
     assertNull(frames.get(1).asFrame().textPath());
   }
+
+  private static final String SHADOWED_DRAWING =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+          + "<office:document"
+          + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+          + " xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\""
+          + " xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\""
+          + " xmlns:svg=\"urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0\""
+          + " xmlns:loext=\"urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0\""
+          + " office:version=\"1.3\""
+          + " office:mimetype=\"application/vnd.oasis.opendocument.graphics\">"
+          + "<office:styles>"
+          + "<style:style style:name=\"s\" style:family=\"graphic\">"
+          + "<style:graphic-properties draw:shadow=\"visible\""
+          + " draw:shadow-offset-x=\"0.3cm\" draw:shadow-offset-y=\"-0.1cm\""
+          + " draw:shadow-color=\"#f49100\" draw:shadow-opacity=\"40%\""
+          + " loext:shadow-blur=\"0.05cm\"/>"
+          + "</style:style>"
+          + "<style:style style:name=\"n\" style:family=\"graphic\">"
+          + "<style:graphic-properties draw:fill=\"none\"/>"
+          + "</style:style>"
+          + "</office:styles>"
+          + "<office:body><office:drawing><draw:page>"
+          + "<draw:rect draw:style-name=\"s\" svg:width=\"4cm\" svg:height=\"2cm\"/>"
+          + "<draw:rect draw:style-name=\"n\" svg:width=\"4cm\" svg:height=\"2cm\"/>"
+          + "</draw:page></office:drawing></office:body></office:document>";
+
+  @Test
+  void frameStyleCarriesItsShadow() throws IOException {
+    Path path = tempDir.resolve("shadowed.fodg");
+    Files.writeString(path, SHADOWED_DRAWING);
+    Document document = Odr.open(path.toString()).asDocumentFile().document();
+    List<Element> frames = document.rootElement().firstChild().children();
+
+    Shadow shadow = frames.get(0).asFrame().style().shadow;
+    assertNotNull(shadow);
+    assertEquals(new Measure(0.3, "cm"), shadow.offsetX);
+    assertEquals(new Measure(-0.1, "cm"), shadow.offsetY);
+    assertEquals(0xf49100, shadow.color.rgb());
+    assertEquals(102, shadow.color.alpha);
+    assertEquals(new Measure(0.05, "cm"), shadow.blur);
+    Shadow shadowAgain = frames.get(0).asFrame().style().shadow;
+    assertEquals(shadow, shadowAgain);
+    assertEquals(shadow.hashCode(), shadowAgain.hashCode());
+
+    assertNull(frames.get(1).asFrame().style().shadow);
+  }
 }

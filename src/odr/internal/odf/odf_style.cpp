@@ -844,8 +844,35 @@ void Style::resolve_graphic_style_(const StyleRegistry *registry,
         Color(fill_color->red, fill_color->green, fill_color->blue,
               result.fill_color.has_value() ? result.fill_color->alpha : 0);
   }
-  // the fill kind and the gradient or hatch it names cascade independently
+  // the shadow, the fill kind and the gradient or hatch it names cascade
+  // independently
   if (registry != nullptr && graphic_properties) {
+    result.shadow.reset();
+    if (std::strcmp(registry->graphic_attribute(node, "draw:shadow").value(),
+                    "visible") == 0) {
+      const auto measure = [&](const char *name) {
+        return read_measure(registry->graphic_attribute(node, name))
+            .value_or(Measure(0, DynamicUnit("cm")));
+      };
+      // unstated is LibreOffice's item default: no offset, black
+      Shadow shadow;
+      shadow.offset_x = measure("draw:shadow-offset-x");
+      shadow.offset_y = measure("draw:shadow-offset-y");
+      shadow.blur = measure("loext:shadow-blur");
+      // a negative blur is no blur, and no valid css
+      if (shadow.blur.magnitude() < 0) {
+        shadow.blur = Measure(0, shadow.blur.unit());
+      }
+      shadow.color =
+          read_color(registry->graphic_attribute(node, "draw:shadow-color"))
+              .value_or(Color(0, 0, 0));
+      shadow.color.alpha = static_cast<std::uint8_t>(std::lround(
+          255 *
+          read_fraction(
+              registry->graphic_attribute(node, "draw:shadow-opacity"), 1.0)));
+      result.shadow = shadow;
+    }
+
     read_fill_paint(
         *registry,
         [&](const char *name) {
