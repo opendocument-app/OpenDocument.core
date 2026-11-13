@@ -41,7 +41,8 @@ read.
 shows it until it updates the field. A field that shows nothing keeps an
 element without children, so an edit moves it with its paragraph: one with
 `text:display="none"`, hidden text saved as hidden, a page field in a header or
-footer, and Impress's uncomputed `<number>`. A ruby shows its base text.
+footer, and Impress's uncomputed `<number>`. A ruby shows its base text,
+read-only like a field: a split cannot pass through its groups.
 
 **Every `draw:*` shape is a `frame`.** `create_shape_element` records the kind
 in `m_shape_types`, and `frame_shape_type` reads it back. `draw:rect` and
