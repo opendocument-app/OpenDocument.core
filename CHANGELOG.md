@@ -52,6 +52,10 @@ The release run heads these entries with the version and opens a fresh
   With `draw:text-path-mode="shape"` each line is stretched to fill the shape,
   with `path` to its width. Text on a curve (arch, wave, circle) is laid out
   straight.
+- An odf shape whose styles state no `draw:fill` is filled solid, as
+  LibreOffice draws it, in #729fcf where no style states a color. A text
+  frame still fills only as told, and a line, measure, polyline or connector
+  takes no default fill.
 
 ### API, files and saving
 

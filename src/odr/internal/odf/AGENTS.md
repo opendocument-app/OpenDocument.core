@@ -122,6 +122,16 @@ to none, so a colour with no fill anywhere in the chain paints nothing.
 `draw:stroke` and `svg:stroke-color` ride the same way in the stroke colour's
 alpha, but `draw:stroke` defaults to solid.
 
+**A shape takes LibreOffice's fill defaults, a frame does not.** ODF states
+no default for `draw:fill`. The resolved style takes none, as above, but a
+shape is then filled solid as LibreOffice fills it, in #729fcf
+(`XFillColorItem`) where no style it composes states `draw:fill-color`. For
+the files of OpenOffice.org and Apache OpenOffice it keeps their older color
+(`XMLGraphicsDefaultStyle.cxx`, fdo#75872); that is not followed here. A
+`draw:frame` fills only as its style says, a shape enclosing no area (line,
+measure, polyline, connector) never (`viewcontactofsdredgeobj.cxx`,
+`sdrpathprimitive2d.cxx`).
+
 **Gradients and hatches follow LibreOffice, not the spec's wording**
 (`basegfx/source/tools/gradienttools.cxx`,
 `drawinglayer/source/primitive2d/fillhatchprimitive2d.cxx`): a hatch turns

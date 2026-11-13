@@ -29,6 +29,9 @@ namespace odr::internal::odf {
 class Document;
 class StyleRegistry;
 
+/// LibreOffice's `XFillColorItem` default, where no color is stated.
+Color default_fill_color();
+
 class Style final {
 public:
   Style();
