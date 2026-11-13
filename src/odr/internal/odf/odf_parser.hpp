@@ -2,6 +2,8 @@
 
 #include <odr/definitions.hpp>
 
+#include <string_view>
+
 namespace pugi {
 class xml_node;
 } // namespace pugi
@@ -10,6 +12,10 @@ namespace odr::internal::odf {
 class ElementRegistry;
 
 ElementIdentifier parse_tree(ElementRegistry &registry, pugi::xml_node node);
+
+/// Whether @p name is a text field, whose text its producer computed and
+/// whose element is parsed as a group.
+bool is_text_field(std::string_view name);
 
 /// Rebuilds the row and cell index of @p sheet_id off its dom, for a write
 /// that split a repeat. A cell node keeps the element it already carries.
