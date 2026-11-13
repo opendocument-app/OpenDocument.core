@@ -151,7 +151,10 @@ stack blur of radius `loext:shadow-blur`
 `box-shadow` of that blur; `drop-shadow` takes the standard deviation, half
 of it. A frame whose fill leaves it open, none or a hatch without its
 ground, casts the shadow of what it paints and holds, as a `drop-shadow`. A
-group casts none from its style; its children cast their own.
+group casts none from its style; its children cast their own. css shadows an
+element before its `transform`, and LibreOffice offsets a shadow on the page,
+so a turned or mirrored shape's offset goes through the inverse of its
+transform.
 
 **A page shows its own fill, else its master page's**, as LibreOffice
 renders it. The fill is the `style:drawing-page-properties` of the page's

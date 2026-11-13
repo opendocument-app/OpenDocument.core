@@ -329,8 +329,34 @@ TEST(html_document_style, shadow_is_not_part_of_the_drawing_style) {
                         .blur = Measure("0.4cm")};
   EXPECT_EQ(ihtml::translate_drawing_style(style), "");
   // the same blur: drop-shadow takes the standard deviation, half the radius
-  EXPECT_EQ(ihtml::translate_shadow(style, false),
+  EXPECT_EQ(ihtml::translate_shadow(style, false, {}),
             "filter:drop-shadow(0.2cm 0.1cm 0.2cm #808080);");
-  EXPECT_EQ(ihtml::translate_shadow(style, true),
+  EXPECT_EQ(ihtml::translate_shadow(style, true, {}),
             "box-shadow:0.2cm 0.1cm 0.4cm #808080;");
+}
+
+TEST(html_document_style, shadow_keeps_its_offset_on_the_page) {
+  GraphicStyle style;
+  style.shadow = Shadow{.offset_x = Measure("0.2cm"),
+                        .offset_y = Measure("0.1cm"),
+                        .color = Color(0, 0, 0),
+                        .blur = Measure("0cm")};
+  // turned a quarter: the shape's x runs up the page, its y to the right
+  const DrawingTransform quarter{.a = 0, .b = -1, .c = 1, .d = 0};
+  EXPECT_EQ(ihtml::translate_shadow(style, true, quarter),
+            "box-shadow:-3.78px 7.559px 0cm #000000;");
+  // mirrored: the shape's x runs to the left
+  const DrawingTransform mirrored{.a = -1, .b = 0, .c = 0, .d = 1};
+  EXPECT_EQ(ihtml::translate_shadow(style, true, mirrored),
+            "box-shadow:-7.559px 3.78px 0cm #000000;");
+}
+
+TEST(html_document_style, shadow_reads_a_relative_length_as_zero) {
+  GraphicStyle style;
+  style.shadow = Shadow{.offset_x = Measure("10%"),
+                        .offset_y = Measure("0.1cm"),
+                        .color = Color(0, 0, 0),
+                        .blur = Measure("1em")};
+  EXPECT_EQ(ihtml::translate_shadow(style, true, {}),
+            "box-shadow:0 0.1cm 0 #000000;");
 }

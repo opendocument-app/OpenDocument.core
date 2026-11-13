@@ -70,9 +70,10 @@ std::string translate_fill_image(const GraphicStyle &graphic_style,
                                  const std::optional<Measure> &width = {},
                                  const std::optional<Measure> &height = {});
 /// The shadow a shape casts: with @p box a box shadow, else a drop shadow of
-/// what the element paints. A shape sets it on its svg, or on a box around its
-/// fill layer and svg, so its box stays in the page's stacking order.
-std::string translate_shadow(const GraphicStyle &graphic_style, bool box);
+/// what the element paints. @p transform is the one the element is drawn
+/// under, which the offset must not turn with.
+std::string translate_shadow(const GraphicStyle &graphic_style, bool box,
+                             const std::optional<DrawingTransform> &transform);
 /// A css mask that keeps only what @p svg_shape, an svg element in a
 /// `preserveAspectRatio="none"` view box @p view_box, covers.
 std::string translate_fill_mask(std::string_view view_box,

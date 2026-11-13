@@ -53,9 +53,10 @@ The release run heads these entries with the version and opens a fresh
   with `path` to its width. Text on a curve (arch, wave, circle) is laid out
   straight.
 - An odf shape or text box casts the shadow its style states
-  (`draw:shadow`), with its offsets, color, opacity and blur; a text box
-  without a covering fill casts the shadow of what it holds. The dark sheet
-  clears every shadow.
+  (`draw:shadow`), with its offsets, color, opacity and blur, offset on the
+  page also where the shape is turned or mirrored; a text box without a
+  covering fill casts the shadow of what it holds. The dark sheet clears every
+  shadow.
 - An odf shape whose styles state no `draw:fill` is filled solid, as
   LibreOffice draws it, in #729fcf where no style states a color. A text
   frame still fills only as told, and a line, measure, polyline or connector

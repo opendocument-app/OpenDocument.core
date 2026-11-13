@@ -91,8 +91,8 @@ variants. Design and open work are in [`AGENTS.md`](AGENTS.md). Relies on
     (`draw:hatch`, with `draw:fill-hatch-solid`)
   - [x] shadows (`draw:shadow`, its offsets, color, opacity and
     `loext:shadow-blur`)
-  - [ ] the shadow of the text in a shape, which LibreOffice casts where the
-    shape has no fill
+  - [ ] the shadow of the text in a rect, ellipse or custom shape, which
+    LibreOffice casts where the shape has no fill (a text box casts it)
   - [ ] `draw:gradient-step-count`, multi-color gradients
     (`loext:gradient-stop`)
   - [ ] `draw:opacity` / `draw:opacity-name`, and the dash a `draw:stroke`

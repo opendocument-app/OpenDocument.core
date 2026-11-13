@@ -705,17 +705,17 @@ bool has_shadow_box(const GraphicStyle &style) {
 /// Opens the box that casts the shadow of a shape with a fill layer, so the
 /// shape casts one shadow that the layer's mask does not clip. Otherwise,
 /// returns the shadow the svg casts itself.
-std::string begin_shape_shadow(const GraphicStyle &style,
+std::string begin_shape_shadow(const Frame &frame, const GraphicStyle &style,
                                const WritingState &state) {
   if (!has_shadow_box(style)) {
-    return translate_shadow(style, false);
+    return translate_shadow(style, false, frame.transform());
   }
   state.out().write_new_line();
   state.out().write_element_begin(
       "div", HtmlElementOptions().set_style(
                  "z-index:-1;width:inherit;height:inherit;position:absolute;"
                  "top:0;left:0;padding:inherit;" +
-                 translate_shadow(style, false)));
+                 translate_shadow(style, false, frame.transform())));
   return {};
 }
 
@@ -749,8 +749,8 @@ void translate_plain_frame(const Frame &frame, const GraphicStyle &style,
   background += image;
   // a box that paints all of itself casts its shadow, else what it holds and
   // the lines of a hatch cast one
-  background +=
-      translate_shadow(style, solid || style.fill_gradient.has_value());
+  background += translate_shadow(
+      style, solid || style.fill_gradient.has_value(), frame.transform());
   HtmlElementOptions options;
   if (!image.empty()) {
     options.set_class(style.shadow.has_value() ? "odr-fill odr-shadow"
@@ -775,7 +775,7 @@ void translate_rect(const Frame &frame, const GraphicStyle &style,
           .set_attributes(frame_attributes(frame, state))
           .set_style(translate_shape_properties(frame) + shape_style(style)));
   translate_children(frame.children(), state);
-  const std::string svg_shadow = begin_shape_shadow(style, state);
+  const std::string svg_shadow = begin_shape_shadow(frame, style, state);
   translate_fill_layer(frame, style, {}, {}, state);
   state.out().write_new_line();
   state.out().write_raw(
@@ -796,7 +796,7 @@ void translate_ellipse(const Frame &frame, const GraphicStyle &style,
           .set_style(translate_shape_properties(frame) + shape_style(style)));
   state.out().write_new_line();
   translate_children(frame.children(), state);
-  const std::string svg_shadow = begin_shape_shadow(style, state);
+  const std::string svg_shadow = begin_shape_shadow(frame, style, state);
   translate_fill_layer(frame, style, "0 0 2 2",
                        R"(<ellipse cx="1" cy="1" rx="1" ry="1"/>)", state);
   state.out().write_raw(
@@ -822,7 +822,7 @@ void translate_line(const Frame &frame, const GraphicStyle &style,
                  })
                  .set_style("z-index:-1;position:absolute;top:0;left:0;" +
                             translate_drawing_style(style) +
-                            translate_shadow(style, false) +
+                            translate_shadow(style, false, frame.transform()) +
                             translate_drawing_transform(frame.transform())));
 
   state.out().write_element_begin(
@@ -955,7 +955,7 @@ void translate_text_path_shape(const Frame &frame, const GraphicStyle &style,
                 {"viewBox", "0 0 " + number(*width) + " " + number(*height)}})
             .set_style("position:absolute;top:0;left:0;width:100%;"
                        "height:100%;" +
-                       translate_shadow(style, false)));
+                       translate_shadow(style, false, frame.transform())));
     const double line_height = *height / static_cast<double>(lines.size());
     for (std::size_t i = 0; i < lines.size(); ++i) {
       const TextPathLine &line = lines[i];
@@ -1016,7 +1016,7 @@ void translate_custom_shape(const Frame &frame, const GraphicStyle &style,
     // An outline that never closes is a line, which svg would else fill as if
     // it did.
     const bool open = path->data.find_first_of("Zz") == std::string::npos;
-    const std::string svg_shadow = begin_shape_shadow(style, state);
+    const std::string svg_shadow = begin_shape_shadow(frame, style, state);
     if (!open) {
       translate_fill_layer(frame, style,
                            number(path->x) + " " + number(path->y) + " " +
