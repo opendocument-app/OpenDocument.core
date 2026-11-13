@@ -121,8 +121,8 @@ The release run heads these entries with the version and opens a fresh
   bullet, such as one of OpenSymbol, takes the level's default.
 - The fields of an odt, odp or odg show the text their producer saved,
   read-only; only date and time did, and those were editable like the text
-  around them, as the dates of `Din_5008_business_letter.ott` and
-  `XYZ-Rechnung.odt`. A field displayed as `none`, hidden text saved as
+  around them. A ruby shows its base text, read-only too, without its
+  annotation. A field displayed as `none`, hidden text saved as
   hidden, and a page number, page variable or page continuation in a header
   or footer stay empty. So does a page number an odp or odg saved as its
   placeholder, such as `<number>`. A field that shows nothing moves with its

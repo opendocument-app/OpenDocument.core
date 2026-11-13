@@ -117,7 +117,7 @@ variants. Design and open work are in [`AGENTS.md`](AGENTS.md). Relies on
 - [x] fields of [OpenDocument] 7: the text the producer saved, read-only;
   `text:display="none"`, hidden text saved as hidden, a page field in a
   header or footer and Impress's `<number>` show nothing
-- [x] ruby (the base text; the annotation is not drawn)
+- [x] ruby (the base text, read-only; the annotation is not drawn)
 - [x] table of contents / indices (rendered as generic groups)
 - [x] manual page breaks (`fo:break-before`, `fo:break-after`)
 - [x] headers and footers (`style:header`, `style:footer`, `-first`; not

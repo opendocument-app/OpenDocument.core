@@ -119,6 +119,32 @@ TEST(OdfRuby, shows_its_base_text) {
             "漢字");
 }
 
+TEST(OdfRuby, is_not_editable_and_moves_whole) {
+  const Document document =
+      open(File::from_memory(flat_document(
+               "application/vnd.oasis.opendocument.text",
+               R"(<office:text><text:p>A<text:ruby><text:ruby-base>漢字)"
+               R"(</text:ruby-base><text:ruby-text>かんじ</text:ruby-text>)"
+               R"(</text:ruby>B</text:p></office:text>)")))
+          .as_document_file()
+          .document();
+  const Element paragraph = document.root_element().first_child();
+  const Element ruby = paragraph.first_child().next_sibling();
+  ASSERT_EQ(ruby.type(), ElementType::group);
+  EXPECT_FALSE(ruby.is_editable());
+  EXPECT_FALSE(ruby.first_child().first_child().is_editable());
+  EXPECT_TRUE(ruby.next_sibling().is_editable());
+
+  const Paragraph second =
+      document.split_paragraph(paragraph.as_paragraph(), ruby);
+  EXPECT_EQ(text_under(second), "B");
+  const std::string saved(document.save_to_memory().memory_data().value());
+  EXPECT_NE(saved.find(R"(<text:p>A<text:ruby><text:ruby-base>漢字)"
+                       R"(</text:ruby-base><text:ruby-text>かんじ)"
+                       R"(</text:ruby-text></text:ruby></text:p><text:p>B)"),
+            std::string::npos);
+}
+
 TEST(OdfField, a_page_number_impress_left_uncomputed_shows_nothing) {
   const Document document =
       open(File::from_memory(flat_document(
