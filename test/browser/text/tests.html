@@ -13,9 +13,9 @@
     <!-- A text document as `translate` writes one, cut down to the shapes the
          editor has to tell apart: runs beside each other, a run under a link,
          a run under a style-only wrapper, a paragraph holding a picture and no
-         run at all, and the `<wbr>` / `<br>` line box the renderer ends every
-         paragraph with. The whole fixture is rebuilt before each group of
-         checks, because every edit is a real edit. -->
+         run at all, fields, and the `<wbr>` / `<br>` line box the renderer
+         ends every paragraph with. The whole fixture is rebuilt before each
+         group of checks, because every edit is a real edit. -->
     <div class="odr-text-flow" id="flow">
       <x-p data-odr-id="10" style="display:block"
         ><x-s data-odr-id="11">first run </x-s
@@ -59,6 +59,36 @@
           ><x-p data-odr-id="63"><x-s data-odr-id="64">boxed</x-s><wbr></x-p
         ></div
         ><x-s data-odr-id="65"> right</x-s><wbr></x-p
+      >
+      <!-- A field: its text has no address, and the wrapper keeps the caret
+           out of it. -->
+      <x-p data-odr-id="70" style="display:block"
+        ><x-s data-odr-id="71">Page </x-s
+        ><x-s contenteditable="false"><x-s>5</x-s></x-s
+        ><x-s data-odr-id="72"> of</x-s><wbr></x-p
+      >
+      <!-- A field at the end, as a letter's date or e-mail line: a caret
+           after it sits past the line box. -->
+      <x-p data-odr-id="75" style="display:block"
+        ><x-s data-odr-id="76">Date: </x-s
+        ><x-s contenteditable="false"><x-s>today</x-s></x-s><wbr></x-p
+      >
+      <x-p data-odr-id="77" style="display:block"
+        ><x-s data-odr-id="78">next line</x-s><wbr></x-p
+      >
+      <!-- A paragraph that is only a field, and one ending in two. -->
+      <x-p data-odr-id="80" style="display:block"
+        ><x-s contenteditable="false"><x-s>02/14/25</x-s></x-s><wbr></x-p
+      >
+      <x-p data-odr-id="85" style="display:block"
+        ><x-s data-odr-id="86">Two: </x-s
+        ><x-s contenteditable="false"><x-s>F</x-s></x-s
+        ><x-s contenteditable="false"><x-s>G</x-s></x-s><wbr></x-p
+      >
+      <!-- A paragraph a field leads. -->
+      <x-p data-odr-id="90" style="display:block"
+        ><x-s contenteditable="false"><x-s>F</x-s></x-s
+        ><x-s data-odr-id="91"> leads</x-s><wbr></x-p
       >
     </div>
 
@@ -114,6 +144,12 @@
       }
       function paragraph(id) {
         return document.querySelector('x-p[data-odr-id="' + id + '"]');
+      }
+      /// The index in paragraph 70 of the node right after its field.
+      function afterFieldIndex() {
+        var holder = paragraph(70);
+        var wrapper = holder.querySelector('x-s[contenteditable="false"]');
+        return Array.prototype.indexOf.call(holder.childNodes, wrapper) + 1;
       }
       function ops() {
         return JSON.parse(odr.editing.getOperations()).ops;
@@ -1116,6 +1152,293 @@
       check("so the paragraph stays whole", texts() === "first run a link and a tail|bold|third|", texts());
       document.body.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
       document.body.removeAttribute("data-odr-editing-scope");
+
+      // ------------------------------------------------------------ a field
+
+      reset();
+      var field = paragraph(70).querySelector('x-s[contenteditable="false"]');
+      check(
+        "a field is not editable in an editable page",
+        field.isContentEditable === false && paragraph(70).isContentEditable
+      );
+      select(field.firstChild.firstChild, 1);
+      check(
+        "typing with the caret in a field writes nothing",
+        input("insertText", "x") === "refused" &&
+          paragraph(70).textContent === "Page 5 of" &&
+          ops().length === 0,
+        paragraph(70).textContent
+      );
+      select(run(72).firstChild, 0);
+      check(
+        "typing after it goes into the run after it",
+        input("insertText", "X") === "taken" &&
+          run(72).textContent === "X of" &&
+          field.textContent === "5",
+        paragraph(70).textContent
+      );
+
+      // An edit that reaches into a field, or over one, is refused: the
+      // field's text has no address, and the text around it is not the
+      // reader's to take with it.
+      reset();
+      field = paragraph(70).querySelector('x-s[contenteditable="false"]');
+      select(field.firstChild.firstChild, 0, run(72).firstChild, 2);
+      check(
+        "a selection that starts in a field is refused",
+        // the same refusal twice within two seconds is reported once
+        input("insertText", "X") !== null &&
+          prevented === true &&
+          paragraph(70).textContent === "Page 5 of" &&
+          ops().length === 0,
+        paragraph(70).textContent
+      );
+      select(run(71).firstChild, 3, field.firstChild.firstChild, 1);
+      check(
+        "as is one that ends in it",
+        // the same refusal twice within two seconds is reported once
+        input("deleteContentBackward") !== null &&
+          prevented === true &&
+          paragraph(70).textContent === "Page 5 of" &&
+          ops().length === 0,
+        paragraph(70).textContent
+      );
+      selectRuns(71, 3, 72, 2);
+      check(
+        "and one over it",
+        input("insertText", "X") !== null &&
+          prevented === true &&
+          paragraph(70).textContent === "Page 5 of" &&
+          ops().length === 0,
+        paragraph(70).textContent
+      );
+
+      // A browser states the range of a Backspace as a `StaticRange`; one over
+      // the field is refused like a selection over it.
+      if (typeof StaticRange === "function") {
+        // a selection the stated range overrides: read instead, it would take
+        // the space before "of"
+        select(run(72).firstChild, 1);
+        var stated = new InputEvent("beforeinput", {
+          inputType: "deleteContentBackward",
+          bubbles: true,
+          cancelable: true,
+          targetRanges: [
+            new StaticRange({
+              startContainer: paragraph(70),
+              startOffset: afterFieldIndex() - 1,
+              endContainer: paragraph(70),
+              endOffset: afterFieldIndex(),
+            }),
+          ],
+        });
+        document.body.dispatchEvent(stated);
+        check(
+          "a stated range over a field is refused",
+          stated.defaultPrevented &&
+            paragraph(70).textContent === "Page 5 of" &&
+            ops().length === 0,
+          paragraph(70).textContent
+        );
+      }
+
+      // Backspace or Delete beside a field takes nothing: not the field, and
+      // not the character beyond it.
+      select(run(72).firstChild, 0);
+      input("deleteContentBackward");
+      check(
+        "Backspace right after a field takes nothing",
+        paragraph(70).textContent === "Page 5 of" && ops().length === 0,
+        paragraph(70).textContent
+      );
+      select(run(71).firstChild, 5);
+      input("deleteContentForward");
+      check(
+        "Delete right before one takes nothing",
+        paragraph(70).textContent === "Page 5 of" && ops().length === 0,
+        paragraph(70).textContent
+      );
+      select(run(72).firstChild, 1);
+      check(
+        "while Backspace one character on still takes that character",
+        input("deleteContentBackward") === "taken" &&
+          paragraph(70).textContent === "Page 5of",
+        paragraph(70).textContent
+      );
+
+      // A caret beside a field at the paragraph's level, as a browser may
+      // leave it after a click, is the edge of the run on its side.
+      reset();
+      field = paragraph(70).querySelector('x-s[contenteditable="false"]');
+      var afterField = afterFieldIndex();
+      select(paragraph(70), afterField);
+      check(
+        "typing at the paragraph's level after a field goes into the next run",
+        input("insertText", "X") === "taken" &&
+          paragraph(70).textContent === "Page 5X of",
+        paragraph(70).textContent
+      );
+      reset();
+      field = paragraph(70).querySelector('x-s[contenteditable="false"]');
+      select(paragraph(70), afterField);
+      input("deleteContentBackward");
+      check(
+        "and Backspace there takes nothing",
+        paragraph(70).textContent === "Page 5 of" && ops().length === 0,
+        paragraph(70).textContent
+      );
+      select(paragraph(70), afterField - 1);
+      check(
+        "and before a field into the run before it",
+        input("insertText", "X") === "taken" &&
+          paragraph(70).textContent === "Page X5 of",
+        paragraph(70).textContent
+      );
+
+      // A caret past a field that ends its paragraph is the paragraph's end:
+      // typing opens a run there, Enter opens the paragraph after it.
+      reset();
+      var date = paragraph(75);
+      select(date, date.childNodes.length);
+      check(
+        "typing after a field that ends its paragraph goes after the field",
+        input("insertText", "Q") === "taken" &&
+          date.textContent === "Date: todayQ",
+        date.textContent
+      );
+      reset();
+      date = paragraph(75);
+      select(date, date.childNodes.length);
+      input("deleteContentBackward");
+      check(
+        "Backspace there takes nothing",
+        date.textContent === "Date: today" && ops().length === 0,
+        date.textContent
+      );
+      reset();
+      date = paragraph(75);
+      var paragraphs = date.parentElement.querySelectorAll("x-p").length;
+      select(date, date.childNodes.length);
+      check(
+        "and Enter there opens a paragraph after it",
+        input("insertParagraph") === "taken" &&
+          date.textContent === "Date: today" &&
+          date.nextElementSibling.tagName === "X-P" &&
+          date.nextElementSibling.textContent === "" &&
+          date.parentElement.querySelectorAll("x-p").length === paragraphs + 1,
+        JSON.stringify(ops())
+      );
+
+      // Enter right after a field would split before it: the split is named
+      // after a run, and the field has no address.
+      reset();
+      select(run(72).firstChild, 0);
+      check(
+        "Enter right after a field is refused",
+        input("insertParagraph") === "refused" &&
+          paragraph(70).textContent === "Page 5 of" &&
+          ops().length === 0,
+        texts()
+      );
+
+      // Formatting over a field is not an edit of it.
+      reset();
+      selectRuns(71, 0, 72, 3);
+      check(
+        "bold over a field is taken",
+        odr.editing.format({ bold: true }) === true && ops().length > 0,
+        JSON.stringify(ops())
+      );
+
+      // A caret before a field with no run after it has no run to land in:
+      // its paragraph's end lies past the field.
+      reset();
+      select(paragraph(80), 0);
+      check(
+        "typing before a field that holds its paragraph alone is refused",
+        input("insertText", "X") === "refused" &&
+          paragraph(80).textContent === "02/14/25" &&
+          ops().length === 0,
+        paragraph(80).textContent
+      );
+      reset();
+      select(paragraph(85), 2);
+      check(
+        "as is typing between two fields",
+        input("insertText", "X") !== null &&
+          prevented === true &&
+          paragraph(85).textContent === "Two: FG" &&
+          ops().length === 0,
+        paragraph(85).textContent
+      );
+
+      // A selection that ends in a field, as a triple click leaves it, still
+      // formats: the field's edge is the end.
+      reset();
+      field = paragraph(70).querySelector('x-s[contenteditable="false"]');
+      select(run(71).firstChild, 0, field.firstChild.firstChild, 0);
+      check(
+        "bold up to a field is taken",
+        odr.editing.format({ bold: true }) === true && ops().length > 0,
+        JSON.stringify(ops())
+      );
+
+      // The boundary after a paragraph that ends in a field merges; the field
+      // moves with its paragraph.
+      reset();
+      select(run(78).firstChild, 0);
+      input("deleteContentBackward");
+      check(
+        "Backspace after a paragraph that ends in a field merges the two",
+        paragraph(75).textContent === "Date: todaynext line" &&
+          paragraph(77) === null,
+        texts() + " / " + paragraph(75).textContent
+      );
+      // Typing over that boundary would leave the field inside the text that
+      // replaces the selection.
+      reset();
+      selectRuns(76, 6, 78, 0);
+      check(
+        "typing over a field and the boundary after it is refused",
+        input("insertText", "X") === "refused" &&
+          paragraph(75).textContent === "Date: today" &&
+          paragraph(77) !== null &&
+          ops().length === 0,
+        texts()
+      );
+      // Backspace or Delete beside a field at a paragraph's edge takes
+      // nothing either: not the boundary beyond it.
+      reset();
+      select(run(91).firstChild, 0);
+      input("deleteContentBackward");
+      check(
+        "Backspace right after a field that leads its paragraph takes nothing",
+        paragraph(90) !== null &&
+          paragraph(90).textContent === "F leads" &&
+          ops().length === 0,
+        paragraph(85).textContent
+      );
+      select(run(76).firstChild, run(76).textContent.length);
+      input("deleteContentForward");
+      check(
+        "Delete right before a field that ends its paragraph takes nothing",
+        paragraph(77) !== null &&
+          paragraph(75).textContent === "Date: today" &&
+          ops().length === 0,
+        paragraph(75).textContent
+      );
+
+      // Enter over a selection right after a field is refused before the
+      // selection goes, so no half of it stays on the page.
+      reset();
+      select(run(72).firstChild, 0, run(72).firstChild, 2);
+      check(
+        "Enter over a selection right after a field is refused",
+        input("insertParagraph") === "refused" &&
+          paragraph(70).textContent === "Page 5 of" &&
+          ops().length === 0,
+        JSON.stringify(ops())
+      );
 
       // ---------------------------------------------- what is not an edit
 

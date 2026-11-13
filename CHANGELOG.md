@@ -117,6 +117,13 @@ The release run heads these entries with the version and opens a fresh
   placeholder, such as `<number>`. A field that shows nothing moves with its
   paragraph when an edit merges or splits it, and a paragraph holding only
   such a field keeps the height of an empty line.
+- In the editable view a field cannot take the caret. A point in a field is
+  its edge, and an edit that would take a field's text, or the text around it
+  while the field stays, is refused, as is Enter right after a field.
+  Backspace or Delete beside a field takes nothing, not the character or the
+  paragraph boundary beyond it. Formatting over a field is taken; the field's
+  own text is not formatted. Typing after a field that ends its paragraph
+  goes after it, and Enter there opens a paragraph after it.
 - An odt's ruby shows its base text; it showed nothing.
 
 ## v7.7.0 - 2026-10-31

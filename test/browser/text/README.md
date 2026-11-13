@@ -21,10 +21,11 @@ of its own.
 
 `tests.html` holds the shapes the editor handles: two runs beside each other,
 a run under a link, a run under a style-only wrapper, a paragraph with a
-picture and no run, and the `<wbr>` / `<br>` line box the renderer ends every
-paragraph with. The checks drive `beforeinput`, which a browser fires before
-it changes anything. The editor cancels the event and splices the page itself,
-so the markup stays what the renderer wrote and every change has an operation.
+picture and no run, fields, and the `<wbr>` / `<br>` line box the renderer
+ends every paragraph with. The checks drive `beforeinput`, which a browser
+fires before it changes anything. The editor cancels the event and splices the
+page itself, so the markup stays what the renderer wrote and every change has
+an operation.
 
 Rules the checks follow:
 

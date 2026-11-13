@@ -86,6 +86,24 @@ const char *element_type_name(const ElementType type) {
   return "?";
 }
 
+/// A group the editor cannot change inside one it can, a field, is kept from
+/// the caret.
+void translate_group(const Element &element, const html::WritingState &state) {
+  const Element parent = element.parent();
+  const bool locked = !html::writes_edit_markup(element, state) && parent &&
+                      html::writes_edit_markup(parent, state) &&
+                      html::has_content(element.children());
+  if (locked) {
+    state.out().write_element_begin(
+        "x-s", html::HtmlElementOptions().set_inline(true).set_attributes(
+                   html::HtmlAttributesVector{{"contenteditable", "false"}}));
+  }
+  html::translate_children(element.children(), state);
+  if (locked) {
+    state.out().write_element_end("x-s");
+  }
+}
+
 } // namespace
 
 void html::translate_children(const ElementRange &range,
@@ -136,7 +154,7 @@ void html::translate_element(const Element &element,
     translate_page_break(element, state);
     break;
   case ElementType::group:
-    translate_children(element.children(), state);
+    translate_group(element, state);
     break;
   default:
     // Dropped with its whole subtree; a renderer shows what it can.

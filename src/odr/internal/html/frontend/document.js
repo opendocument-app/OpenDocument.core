@@ -39,6 +39,21 @@
     return element === null ? null : element.closest("x-s[data-odr-id]");
   }
 
+  /// What wraps a field: its text has no address, so no edit reaches into it.
+  var FIELD = 'x-s[contenteditable="false"]';
+
+  /// What a paragraph shows that no edit names: its list or heading marker.
+  var MARKER = "x-s.odr-list-marker,x-s.odr-heading-marker";
+
+  /// The field @p node sits in, or null.
+  function fieldOf(node) {
+    if (node === null || node === undefined) {
+      return null;
+    }
+    var element = node.nodeType === 1 ? node : node.parentElement;
+    return element === null ? null : element.closest(FIELD);
+  }
+
   function paragraphOf(node) {
     if (node === null || node === undefined) {
       return null;
@@ -1060,8 +1075,18 @@
   }
 
   /// Where an edit lands, in the terms an operation is written in: a run and
-  /// an offset into its text. Null outside every run and every paragraph.
-  function placeOf(container, offset) {
+  /// an offset into its text. Null outside every run and every paragraph. A
+  /// point in a field is the field's edge on the @p side of the range, `"end"`
+  /// or the start.
+  function placeOf(container, offset, side) {
+    var field = fieldOf(container);
+    if (field !== null) {
+      container = field.parentNode;
+      offset = Array.prototype.indexOf.call(container.childNodes, field);
+      if (side === "end") {
+        offset += 1;
+      }
+    }
     var run = runOf(container);
     if (run !== null) {
       return {
@@ -1075,18 +1100,130 @@
     if (paragraph === null) {
       return null;
     }
-    // beside the line box: the end of the last run is where a reader means,
-    // and a paragraph holding none is where the first run goes
+    var point = document.createRange();
+    point.setStart(container, offset);
     var runs = runsOf(paragraph);
-    if (runs.length === 0) {
-      return { run: null, offset: 0, paragraph: paragraph };
+    var before = null;
+    var after = null;
+    for (var i = 0; i < runs.length; ++i) {
+      if (point.comparePoint(runs[i], 0) < 0) {
+        before = runs[i];
+      } else {
+        after = runs[i];
+        break;
+      }
     }
-    var last = runs[runs.length - 1];
-    return {
-      run: last,
-      offset: last.textContent.length,
-      paragraph: paragraph,
-    };
+    if (!holdsField(gapOf(paragraph, before, after))) {
+      // beside the line box: the end of the last run is where a reader
+      // means, and a paragraph holding none is where the first run goes
+      if (runs.length === 0) {
+        return { run: null, offset: 0, paragraph: paragraph };
+      }
+      var last = runs[runs.length - 1];
+      return {
+        run: last,
+        offset: last.textContent.length,
+        paragraph: paragraph,
+      };
+    }
+    // a field between the runs: the end of the run before, else the start of
+    // the run after, where nothing but wrappers and the line box lies
+    // between; past everything, the paragraph's end, where a new run goes
+    if (before !== null) {
+      point.setStartAfter(before);
+      if (!holdsContent(point)) {
+        return {
+          run: before,
+          offset: before.textContent.length,
+          paragraph: paragraph,
+        };
+      }
+      point.collapse(false);
+    }
+    if (after !== null) {
+      point.setEndBefore(after);
+      if (!holdsContent(point)) {
+        return { run: after, offset: 0, paragraph: paragraph };
+      }
+      point.collapse(true);
+    }
+    point.setEnd(paragraph, paragraph.childNodes.length);
+    return holdsContent(point)
+      ? null
+      : { run: null, offset: 0, paragraph: paragraph };
+  }
+
+  /// What lies in @p paragraph between the runs @p before and @p after; a
+  /// null one is the paragraph's edge.
+  function gapOf(paragraph, before, after) {
+    var gap = document.createRange();
+    if (before === null) {
+      gap.setStart(paragraph, 0);
+    } else {
+      gap.setStartAfter(before);
+    }
+    if (after === null) {
+      gap.setEnd(paragraph, paragraph.childNodes.length);
+    } else {
+      gap.setEndBefore(after);
+    }
+    return gap;
+  }
+
+  /// What lies between @p run and the run beside it on the @p direction side,
+  /// or its paragraph's edge where it is the last that way.
+  function besideOf(run, direction) {
+    var paragraph = paragraphOf(run);
+    var runs = runsOf(paragraph);
+    var next = runs[runs.indexOf(run) + direction];
+    return direction < 0
+      ? gapOf(paragraph, next === undefined ? null : next, run)
+      : gapOf(paragraph, run, next === undefined ? null : next);
+  }
+
+  /// @p range's contents, without what matches @p selector.
+  function contentsOf(range, selector) {
+    var fragment = range.cloneContents();
+    var dropped = fragment.querySelectorAll(selector);
+    for (var i = 0; i < dropped.length; ++i) {
+      dropped[i].parentNode.removeChild(dropped[i]);
+    }
+    return fragment;
+  }
+
+  /// Whether @p range holds a field, whole or in part.
+  function holdsField(range) {
+    return range.cloneContents().querySelector(FIELD) !== null;
+  }
+
+  /// Whether @p range holds what a caret does not pass silently: text, a
+  /// field, something addressed such as a picture, or a line break. A marker
+  /// and the line box a paragraph ends with do not count.
+  function holdsContent(range) {
+    var fragment = contentsOf(range, MARKER);
+    if (
+      /\S/.test(fragment.textContent) ||
+      fragment.querySelector(FIELD + ",[data-odr-id]") !== null
+    ) {
+      return true;
+    }
+    var paragraph = paragraphOf(range.commonAncestorContainer);
+    var breaks = paragraph === null ? [] : paragraph.querySelectorAll("br");
+    for (var i = 0; i < breaks.length; ++i) {
+      var line = breaks[i];
+      if (line !== paragraph.lastChild && range.intersectsNode(line)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Whether a field lies between the runs @p from and @p to.
+  function fieldBetween(from, to) {
+    var probe = document.createRange();
+    probe.setStartAfter(from);
+    probe.setEndBefore(to);
+    return holdsField(probe);
   }
 
   /// The range an event states, or the selection where it states none - which
@@ -1102,8 +1239,8 @@
       }
       range = selection.getRangeAt(0);
     }
-    var start = placeOf(range.startContainer, range.startOffset);
-    var end = placeOf(range.endContainer, range.endOffset);
+    var start = placeOf(range.startContainer, range.startOffset, "start");
+    var end = placeOf(range.endContainer, range.endOffset, "end");
     if (start === null || end === null) {
       return null;
     }
@@ -1134,6 +1271,14 @@
         return null;
       }
       if (!coversOnlyText(start.run, end.run)) {
+        return null;
+      }
+      // a field would stay while the text around it goes; the boundary alone
+      // merges, and a field beside it moves with its paragraph
+      if (
+        fieldBetween(start.run, end.run) &&
+        !(text === "" && onlyBoundary(start, end))
+      ) {
         return null;
       }
     }
@@ -1186,6 +1331,33 @@
     perform(mergeParagraph(start.paragraph));
 
     return caret;
+  }
+
+  /// Whether @p start is the end of a paragraph and @p end the start of the
+  /// next, with nothing between them but fields, markers and line boxes.
+  function onlyBoundary(start, end) {
+    if (
+      start.paragraph === end.paragraph ||
+      start.paragraph.nextElementSibling !== end.paragraph ||
+      end.offset !== 0 ||
+      start.offset < start.run.textContent.length
+    ) {
+      return false;
+    }
+    var probe = document.createRange();
+    probe.setStartAfter(start.run);
+    probe.setEndBefore(end.run);
+    var fragment = contentsOf(probe, FIELD + "," + MARKER);
+    if (/\S/.test(fragment.textContent)) {
+      return false;
+    }
+    var addressed = fragment.querySelectorAll("[data-odr-id]");
+    for (var i = 0; i < addressed.length; ++i) {
+      if (addressed[i].tagName !== "X-P") {
+        return false;
+      }
+    }
+    return true;
   }
 
   /// What @p paragraph holds that an operation can name, in document order:
@@ -1280,6 +1452,15 @@
   /// then sits. Answers where the caret lands, which is the head of the new
   /// paragraph.
   function splitAt(at) {
+    // the split goes after a run, so a field right before the caret would
+    // move; refused before anything changes
+    if (
+      at.start.run !== null &&
+      at.start.offset === 0 &&
+      holdsField(besideOf(at.start.run, -1))
+    ) {
+      return null;
+    }
     var caret = replaceRange(at, "");
     if (caret === null) {
       return null;
@@ -1423,6 +1604,10 @@
           end: place,
         };
       }
+      // a field takes no character, and the one beyond it is not the key's
+      if (holdsField(besideOf(place.run, -1))) {
+        return null;
+      }
       var before = runBefore(place.run);
       if (before === null) {
         return null;
@@ -1448,6 +1633,9 @@
           paragraph: place.paragraph,
         },
       };
+    }
+    if (holdsField(besideOf(place.run, 1))) {
+      return null;
     }
     var after = runAfter(place.run);
     if (after === null) {
