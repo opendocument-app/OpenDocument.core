@@ -664,3 +664,156 @@ TEST(OdfShadow, a_frame_with_a_bare_hatch_casts_the_shadow_of_its_lines) {
   EXPECT_EQ(page.find("box-shadow:0.1cm"), std::string::npos);
   EXPECT_NE(page.find("box-shadow:0.2cm 0cm 0cm #000000;"), std::string::npos);
 }
+
+TEST(OdfDefaultFill, a_shape_stating_no_fill_is_filled_and_a_frame_is_not) {
+  // As LibreOffice writes a Writer header's shape: a fill color, no
+  // `draw:fill`, the solid default left unwritten.
+  const std::string path = write_odg(
+      "odf_fill_default.odg",
+      R"(<style:style style:name="g" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill-color="#fffc00"/>)"
+      R"(</style:style>)",
+      rect("g") + R"(<draw:frame draw:style-name="g" svg:x="1cm" svg:y="1cm" )"
+                  R"(svg:width="4cm" svg:height="2cm"/>)");
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const std::vector<GraphicStyle> styles = styles_of(document);
+
+  ASSERT_TRUE(styles.at(0).fill_color.has_value());
+  EXPECT_EQ(styles.at(0).fill_color->alpha, 255);
+  ASSERT_TRUE(styles.at(1).fill_color.has_value());
+  EXPECT_EQ(styles.at(1).fill_color->alpha, 0);
+}
+
+TEST(OdfDefaultFill, a_shape_stating_no_fill_and_no_color_takes_libreoffices) {
+  const std::string path =
+      write_odg("odf_fill_default_color.odg",
+                R"(<style:style style:name="g" style:family="graphic">)"
+                R"(<style:graphic-properties svg:stroke-color="#000000"/>)"
+                R"(</style:style>)",
+                rect("g"));
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const GraphicStyle style = styles_of(document).at(0);
+
+  ASSERT_TRUE(style.fill_color.has_value());
+  EXPECT_EQ(style.fill_color->rgb(), 0x729fcfu);
+  EXPECT_EQ(style.fill_color->alpha, 255);
+}
+
+TEST(OdfDefaultFill, a_shape_filled_solid_with_no_color_takes_libreoffices) {
+  // `draw:fill` stated, `draw:fill-color` nowhere in the chain
+  const std::string path =
+      write_odg("odf_fill_solid_no_color.odg",
+                R"(<style:style style:name="solid" style:family="graphic">)"
+                R"(<style:graphic-properties draw:fill="solid"/></style:style>)"
+                R"(<style:style style:name="none" style:family="graphic">)"
+                R"(<style:graphic-properties draw:fill="none"/></style:style>)",
+                rect("solid") + rect("none"));
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const std::vector<GraphicStyle> styles = styles_of(document);
+
+  ASSERT_TRUE(styles.at(0).fill_color.has_value());
+  EXPECT_EQ(styles.at(0).fill_color->rgb(), 0x729fcfu);
+  EXPECT_EQ(styles.at(0).fill_color->alpha, 255);
+  ASSERT_TRUE(styles.at(1).fill_color.has_value());
+  EXPECT_EQ(styles.at(1).fill_color->alpha, 0);
+}
+
+TEST(OdfDefaultFill, a_fill_stated_above_the_shape_is_kept) {
+  // the group's style is part of the shape's, as `get_intermediate_style`
+  // reads it
+  const std::string path = write_odg(
+      "odf_fill_default_group.odg",
+      R"(<style:style style:name="none" style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="none"/></style:style>)"
+      R"(<style:style style:name="plain" style:family="graphic">)"
+      R"(<style:graphic-properties svg:stroke-color="#000000"/>)"
+      R"(</style:style>)",
+      R"(<draw:g draw:style-name="none">)" + rect("plain") + "</draw:g>");
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const GraphicStyle style = document.root_element()
+                                 .first_child()
+                                 .first_child()
+                                 .first_child()
+                                 .as_frame()
+                                 .style();
+
+  ASSERT_TRUE(style.fill_color.has_value());
+  EXPECT_EQ(style.fill_color->alpha, 0);
+}
+
+TEST(OdfDefaultFill, a_default_style_stating_a_fill_is_kept) {
+  const std::string path = write_odg(
+      "odf_fill_default_style.odg",
+      R"(<style:default-style style:family="graphic">)"
+      R"(<style:graphic-properties draw:fill="none"/></style:default-style>)"
+      R"(<style:style style:name="plain" style:family="graphic">)"
+      R"(<style:graphic-properties svg:stroke-color="#000000"/>)"
+      R"(</style:style>)",
+      rect("plain"));
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const GraphicStyle style = styles_of(document).at(0);
+
+  ASSERT_TRUE(style.fill_color.has_value());
+  EXPECT_EQ(style.fill_color->alpha, 0);
+}
+
+TEST(OdfDefaultFill, a_shape_enclosing_no_area_takes_no_default_fill) {
+  // A line, a measure, a polyline and a connector show no fill, so the
+  // default would only add markup; a polygon encloses its area and keeps it.
+  const std::string path = write_odg(
+      "odf_fill_default_lines.odg",
+      R"(<style:style style:name="plain" style:family="graphic">)"
+      R"(<style:graphic-properties svg:stroke-color="#000000"/>)"
+      R"(</style:style>)",
+      R"(<draw:line draw:style-name="plain" svg:x1="1cm" svg:y1="1cm" )"
+      R"(svg:x2="5cm" svg:y2="1cm"/>)"
+      R"(<draw:measure draw:style-name="plain" svg:x1="1cm" svg:y1="2cm" )"
+      R"(svg:x2="5cm" svg:y2="2cm"/>)"
+      R"(<draw:polyline draw:style-name="plain" svg:x="1cm" svg:y="3cm" )"
+      R"(svg:width="4cm" svg:height="2cm" svg:viewBox="0 0 4000 2000" )"
+      R"(draw:points="0,0 2000,2000 4000,0"/>)"
+      R"(<draw:connector draw:style-name="plain" svg:x1="1cm" svg:y1="6cm" )"
+      R"(svg:x2="5cm" svg:y2="7cm"/>)"
+      R"(<draw:polygon draw:style-name="plain" svg:x="1cm" svg:y="8cm" )"
+      R"(svg:width="4cm" svg:height="2cm" svg:viewBox="0 0 4000 2000" )"
+      R"(draw:points="0,0 2000,2000 4000,0"/>)");
+
+  const odr::Document document = odr::open(path).as_document_file().document();
+  const std::vector<GraphicStyle> styles = styles_of(document);
+
+  ASSERT_EQ(styles.size(), 5);
+  for (std::size_t i = 0; i < 4; ++i) {
+    EXPECT_TRUE(!styles.at(i).fill_color.has_value() ||
+                styles.at(i).fill_color->alpha == 0)
+        << "shape " << i;
+  }
+  ASSERT_TRUE(styles.at(4).fill_color.has_value());
+  EXPECT_EQ(styles.at(4).fill_color->rgb(), 0x729fcfu);
+  EXPECT_EQ(styles.at(4).fill_color->alpha, 255);
+}
+
+TEST(OdfDefaultFill, an_open_path_shows_no_fill) {
+  const std::string path = write_odg(
+      "odf_fill_default_paths.odg", "",
+      R"(<draw:path svg:x="1cm" svg:y="1cm" svg:width="4cm" svg:height="2cm" )"
+      R"(svg:viewBox="0 0 4000 2000" svg:d="M 0 0 L 2000 2000 4000 0"/>)"
+      R"(<draw:path svg:x="1cm" svg:y="4cm" svg:width="4cm" svg:height="2cm" )"
+      R"(svg:viewBox="0 0 4000 2000" svg:d="M 0 0 L 2000 2000 4000 0 Z"/>)");
+
+  const std::string html = render(path);
+  const std::size_t open = html.find("<path");
+  ASSERT_NE(open, std::string::npos);
+  const std::size_t closed = html.find("<path", open + 1);
+  ASSERT_NE(closed, std::string::npos);
+
+  EXPECT_NE(html.substr(open, closed - open).find(R"(fill="none")"),
+            std::string::npos);
+  EXPECT_EQ(html.substr(closed, html.find('>', closed) - closed)
+                .find(R"(fill="none")"),
+            std::string::npos);
+}

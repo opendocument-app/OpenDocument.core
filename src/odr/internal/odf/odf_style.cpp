@@ -771,10 +771,9 @@ void Style::resolve_table_cell_style_(const pugi::xml_node node,
                   result.border.bottom);
 }
 
-namespace {
-
-/// LibreOffice's `XFillColorItem` default, where no color is stated.
 Color default_fill_color() { return {0x72, 0x9f, 0xcf}; }
+
+namespace {
 
 /// The gradient or hatch that `draw:fill` names, and the color behind a solid
 /// hatch. @p attribute looks up an attribute by name.

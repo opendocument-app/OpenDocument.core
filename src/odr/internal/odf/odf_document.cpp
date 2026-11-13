@@ -2420,7 +2420,52 @@ public:
       // LibreOffice casts no shadow from the style of a group
       result.shadow.reset();
     }
+    if (shows_a_fill(element_id)) {
+      result.fill_color = default_fill(element_id, result.fill_color);
+    }
     return result;
+  }
+
+  /// Whether a default fill can show on @p element_id: not on a frame, nor on
+  /// a shape that encloses no area.
+  [[nodiscard]] bool shows_a_fill(const ElementIdentifier element_id) const {
+    const ShapeType type = frame_shape_type(element_id);
+    if (type == ShapeType::none || type == ShapeType::line) {
+      return false;
+    }
+    const std::string_view name = get_node(element_id).name();
+    return name != "draw:polyline" && name != "draw:connector";
+  }
+
+  /// LibreOffice's fill of a shape where no style states one: solid, and in
+  /// its default color where none states a color.
+  [[nodiscard]] std::optional<Color>
+  default_fill(const ElementIdentifier element_id,
+               std::optional<Color> fill_color) const {
+    const Color fallback = default_fill_color();
+    if (!states_graphic(element_id, "draw:fill")) {
+      const Color color = fill_color.value_or(fallback);
+      fill_color = Color(color.red, color.green, color.blue, 255);
+    }
+    if (fill_color.has_value() && fill_color->alpha != 0 &&
+        !states_graphic(element_id, "draw:fill-color")) {
+      fill_color = fallback;
+    }
+    return fill_color;
+  }
+
+  /// Whether a style `get_intermediate_style` takes for @p element_id, or the
+  /// `graphic` default style, states the graphic property @p name.
+  [[nodiscard]] bool states_graphic(const ElementIdentifier element_id,
+                                    const char *name) const {
+    const StyleRegistry &registry = m_document->style_registry();
+    for (ElementIdentifier id = element_id; id != null_element_id;
+         id = element_parent(id)) {
+      if (registry.graphic_attribute(get_style_name(id), name)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   [[nodiscard]] bool
