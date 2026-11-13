@@ -781,6 +781,24 @@ std::string html::translate_fill_image(const GraphicStyle &graphic_style,
   return {};
 }
 
+std::string html::translate_shadow(const GraphicStyle &graphic_style,
+                                   const bool box) {
+  const std::optional<Shadow> &shadow = graphic_style.shadow;
+  if (!shadow.has_value()) {
+    return {};
+  }
+  // LibreOffice blurs as `box-shadow` does; `drop-shadow` takes the standard
+  // deviation, half the blur radius
+  const Measure blur =
+      box ? shadow->blur
+          : Measure(shadow->blur.magnitude() / 2, shadow->blur.unit());
+  const std::string offsets = css_length(shadow->offset_x) + " " +
+                              css_length(shadow->offset_y) + " " +
+                              css_length(blur) + " " + color(shadow->color);
+  return box ? "box-shadow:" + offsets + ";"
+             : "filter:drop-shadow(" + offsets + ");";
+}
+
 std::string html::translate_fill_mask(const std::string_view view_box,
                                       const std::string_view svg_shape) {
   const std::string svg =

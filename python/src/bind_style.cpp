@@ -224,6 +224,13 @@ void odr_python::bind_style(py::module_ &m) {
       .def_readwrite("href", &odr::BitmapFill::href)
       .def_readwrite("repeat", &odr::BitmapFill::repeat);
 
+  py::class_<odr::Shadow>(m, "Shadow")
+      .def(py::init<>())
+      .def_readwrite("offset_x", &odr::Shadow::offset_x)
+      .def_readwrite("offset_y", &odr::Shadow::offset_y)
+      .def_readwrite("color", &odr::Shadow::color)
+      .def_readwrite("blur", &odr::Shadow::blur);
+
   py::class_<odr::GraphicStyle>(m, "GraphicStyle")
       .def(py::init<>())
       .def_readwrite("stroke_width", &odr::GraphicStyle::stroke_width)
@@ -235,7 +242,8 @@ void odr_python::bind_style(py::module_ &m) {
                      &odr::GraphicStyle::horizontal_position)
       .def_readwrite("fill_gradient", &odr::GraphicStyle::fill_gradient)
       .def_readwrite("fill_hatch", &odr::GraphicStyle::fill_hatch)
-      .def_readwrite("fill_bitmap", &odr::GraphicStyle::fill_bitmap);
+      .def_readwrite("fill_bitmap", &odr::GraphicStyle::fill_bitmap)
+      .def_readwrite("shadow", &odr::GraphicStyle::shadow);
 
   py::class_<odr::PageLayout>(m, "PageLayout")
       .def(py::init<>())

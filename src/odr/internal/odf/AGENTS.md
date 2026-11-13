@@ -128,6 +128,16 @@ to none, so a colour with no fill anywhere in the chain paints nothing.
 `draw:stroke` and `svg:stroke-color` ride the same way in the stroke colour's
 alpha, but `draw:stroke` defaults to solid.
 
+**A shape takes LibreOffice's fill defaults, a frame does not.** ODF states
+no default for `draw:fill`. The resolved style takes none, as above, but a
+shape is then filled solid as LibreOffice fills it, in #729fcf
+(`XFillColorItem`) where no style it composes states `draw:fill-color`. For
+the files of OpenOffice.org and Apache OpenOffice it keeps their older color
+(`XMLGraphicsDefaultStyle.cxx`, fdo#75872); that is not followed here. A
+`draw:frame` fills only as its style says, a shape enclosing no area (line,
+measure, polyline, connector) never (`viewcontactofsdredgeobj.cxx`,
+`sdrpathprimitive2d.cxx`).
+
 **Gradients and hatches follow LibreOffice, not the spec's wording**
 (`basegfx/source/tools/gradienttools.cxx`,
 `drawinglayer/source/primitive2d/fillhatchprimitive2d.cxx`): a hatch turns
@@ -137,7 +147,17 @@ unitless hatch `draw:rotation` is in tenths (tdf#161327). A unitless gradient
 (`xmloff/source/style/GradientStyle.cxx`): below ODF 1.2, and at 1.2 from
 OpenOffice.org and its kin or a LibreOffice before 7. `Document` reads
 `meta:generator` once, on construction. The fill kind and the gradient or hatch name cascade
-independently, through `StyleRegistry::graphic_attribute`.
+independently, through `StyleRegistry::graphic_attribute`. So does
+`draw:shadow`, through the parent and default styles, but it does not pass
+down the element tree: `GraphicStyle::override` takes it whole from the
+element's own style, so what a frame holds does not cast the frame's shadow
+again, and `draw:shadow="hidden"` clears it. LibreOffice blurs a shadow with a
+stack blur of radius `loext:shadow-blur`
+(`drawinglayer/source/primitive2d/shadowprimitive2d.cxx`), close to a css
+`box-shadow` of that blur; `drop-shadow` takes the standard deviation, half
+of it. A frame whose fill leaves it open, none or a hatch without its
+ground, casts the shadow of what it paints and holds, as a `drop-shadow`. A
+group casts none from its style; its children cast their own.
 
 **A page shows its own fill, else its master page's**, as LibreOffice
 renders it. The fill is the `style:drawing-page-properties` of the page's

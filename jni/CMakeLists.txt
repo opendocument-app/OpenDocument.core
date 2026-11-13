@@ -148,6 +148,7 @@ add_jar(odr_java
         "java/app/opendocument/core/PdfPermissions.java"
         "java/app/opendocument/core/PdfTextMode.java"
         "java/app/opendocument/core/PrintOrientation.java"
+        "java/app/opendocument/core/Shadow.java"
         "java/app/opendocument/core/ShapeType.java"
         "java/app/opendocument/core/Sheet.java"
         "java/app/opendocument/core/SheetCell.java"

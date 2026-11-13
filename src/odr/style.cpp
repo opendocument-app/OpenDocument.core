@@ -106,6 +106,7 @@ void GraphicStyle::override(const GraphicStyle &other) {
     fill_hatch = other.fill_hatch;
     fill_bitmap = other.fill_bitmap;
   }
+  shadow = other.shadow;
   override_if_set(vertical_align, other.vertical_align);
   override_if_set(text_wrap, other.text_wrap);
   override_if_set(horizontal_position, other.horizontal_position);
