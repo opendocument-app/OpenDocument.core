@@ -89,6 +89,9 @@ The release run heads these entries with the version and opens a fresh
 
 ### Fixes
 
+- Java and Android: `Document.rootElement()` returns `null` for a missing root.
+  It returned a wrapper around a null native handle, crashing on element access.
+
 - An uncached spreadsheet value stays visible beside a drawing nested in a
   paragraph, and the drawing is retained.
 

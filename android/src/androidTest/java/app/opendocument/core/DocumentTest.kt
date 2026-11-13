@@ -8,6 +8,7 @@ import java.nio.file.Paths
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -39,6 +40,15 @@ class DocumentTest {
         }
         for (child in element.children()) {
             addAll(walkText(child))
+        }
+    }
+
+    @Test
+    fun missingRootReturnsNull() {
+        val path = TestFiles.missingRootFile(tempDir)
+        Odr.open(path.toString()).asDocumentFile().document().use { document ->
+            assertEquals(DocumentType.TEXT, document.documentType())
+            assertNull(document.rootElement())
         }
     }
 

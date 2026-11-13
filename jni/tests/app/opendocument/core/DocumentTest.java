@@ -45,6 +45,15 @@ class DocumentTest {
   }
 
   @Test
+  void missingRootReturnsNull() throws IOException {
+    Path path = TestFiles.missingRootFile(tempDir);
+    try (Document document = Odr.open(path.toString()).asDocumentFile().document()) {
+      assertEquals(DocumentType.TEXT, document.documentType());
+      assertNull(document.rootElement());
+    }
+  }
+
+  @Test
   void elementTree() throws IOException {
     Document document = openDocument();
     assertEquals(DocumentType.TEXT, document.documentType());

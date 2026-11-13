@@ -82,6 +82,17 @@ final class TestFiles {
     return path;
   }
 
+  static Path missingRootFile(Path directory) throws IOException {
+    Path path = directory.resolve("missing-root.fodt");
+    write(
+        path,
+        "<?xml version=\"1.0\"?>"
+            + "<office:document xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+            + " office:mimetype=\"application/vnd.oasis.opendocument.text\" office:version=\"1.3\">"
+            + "<office:body/></office:document>");
+    return path;
+  }
+
   /** A one-page pdf, its cross-reference offsets computed so they are right. */
   static Path pdfFile(Path directory) throws IOException {
     Path path = directory.resolve("minimal.pdf");

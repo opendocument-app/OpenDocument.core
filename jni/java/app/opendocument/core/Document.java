@@ -48,9 +48,10 @@ public final class Document extends NativeResource {
     return localeNative(handle());
   }
 
-  /** Root of the element tree; keeps this document reachable. */
+  /** Root of the element tree, or {@code null} if absent; retains this document. */
   public Element rootElement() {
-    return new Element(rootElementNative(handle()), this);
+    long h = rootElementNative(handle());
+    return h == 0 ? null : new Element(h, this);
   }
 
   public Filesystem asFilesystem() {
