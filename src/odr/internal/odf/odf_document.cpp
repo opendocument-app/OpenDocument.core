@@ -2291,6 +2291,49 @@ public:
     return slide_id;
   }
 
+  /// A `draw:frame` holding a `draw:text-box` with one empty paragraph,
+  /// ahead of the slide's notes, which LibreOffice keeps last.
+  [[nodiscard]] ElementIdentifier
+  element_insert_text_box(const ElementIdentifier element_id, const Measure &x,
+                          const Measure &y, const Measure &width,
+                          const Measure &height) const override {
+    if (const ElementType type = element_type(element_id);
+        type != ElementType::slide && type != ElementType::page) {
+      throw UnsupportedOperation();
+    }
+    pugi::xml_node page = get_node(element_id);
+    const pugi::xml_node notes = page.child("presentation:notes");
+    pugi::xml_node frame = notes ? page.insert_child_before("draw:frame", notes)
+                                 : page.append_child("draw:frame");
+    frame.append_attribute("draw:style-name")
+        .set_value(m_document->style_registry()
+                       .create_text_box_style(automatic_styles_of(page))
+                       .c_str());
+    frame.append_attribute("draw:layer").set_value("layout");
+    frame.append_attribute("svg:width").set_value(width.to_string().c_str());
+    frame.append_attribute("svg:height").set_value(height.to_string().c_str());
+    frame.append_attribute("svg:x").set_value(x.to_string().c_str());
+    frame.append_attribute("svg:y").set_value(y.to_string().c_str());
+    frame.append_child("draw:text-box").append_child("text:p");
+
+    const ElementIdentifier frame_id = parse_tree(*m_registry, frame);
+    // what the notes hold is parsed into the slide too, after its shapes
+    ElementIdentifier before = null_element_id;
+    for (ElementIdentifier id = element_first_child(element_id);
+         notes && id != null_element_id; id = element_next_sibling(id)) {
+      if (get_node(id).parent() == notes) {
+        before = id;
+        break;
+      }
+    }
+    if (before != null_element_id) {
+      m_registry->insert_sibling_before(before, frame_id);
+    } else {
+      m_registry->append_child(element_id, frame_id);
+    }
+    return frame_id;
+  }
+
   /// A `table:table` with one column and one row, as a new document has
   /// (ODF 1.3 part 3, 9.1.2), before the sheet at @p index or after the last.
   [[nodiscard]] ElementIdentifier

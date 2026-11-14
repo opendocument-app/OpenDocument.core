@@ -231,6 +231,9 @@ unknown mimetype are tolerated.
   `list_slide_layouts` (`odf_slide_layout`): the file's layouts, then each
   built-in it lacks, which `write_slide_layout` puts into `office:styles` on
   first use. See `docs/design/structure-editing.md`.
+- **A text box.** `element_insert_text_box` adds a `draw:frame` with a
+  `draw:text-box` to a slide or a drawing page, styled by the one
+  `StyleRegistry::create_text_box_style` makes.
 - **Cells.** `sheet_set_cell` writes `office:value-type`, `office:value` and
   the `text:p` under the cell, because the file states the value and shows a
   rendering of it. It writes through the run the cell holds, so the run keeps

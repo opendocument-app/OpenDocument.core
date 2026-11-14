@@ -153,7 +153,12 @@ public:
                                      const char *base_name,
                                      const ParagraphStyle &style);
 
+  /// A graphic style under @p automatic_styles for a text box: no stroke, no
+  /// fill, growing with its text. Made once, then answered again.
+  std::string create_text_box_style(pugi::xml_node automatic_styles);
+
 private:
+  std::string m_text_box_style;
   /// Where the search for a free `T<n>` name starts.
   std::uint32_t m_next_text_style{1};
   std::uint32_t m_next_cell_style{1};

@@ -89,13 +89,20 @@ placeholders, each with one empty paragraph for the caret.
 
 ## 4. Insert a text box
 
-`Frame Document::insert_text_box(const Element &page, Measure x, Measure y,
-Measure width, Measure height)` on a slide or a drawing page. The frame holds
-one empty paragraph.
+`Frame Document::insert_text_box(const Element &page, const Measure &x,
+const Measure &y, const Measure &width, const Measure &height)` on a slide
+or a drawing page. Every length needs a fixed unit (`cm`, `mm`, `in`, `pt`,
+`pc`, `px`) and the size must be positive. The frame draws no fill and no
+outline and holds one empty paragraph.
 
-- odf: `draw:frame` with a `draw:text-box`.
-- pptx: `p:sp` with `p:cNvSpPr txBox="1"`, a rectangle geometry and a
-  `p:txBody`. The shape id is the next free `p:cNvPr/@id` on the slide.
+- odf: `draw:frame` with a `draw:text-box`, ahead of `presentation:notes`.
+  Its graphic style `odrTextBox<n>` (no stroke, no fill, growing with its
+  text) is made once per document: LibreOffice's default graphic style would
+  paint the frame.
+- pptx: `p:sp` with `p:cNvSpPr txBox="1"`, a rectangle with `a:noFill`, an
+  `a:spAutoFit` text body, and the next free `p:cNvPr/@id` on the slide. Its
+  text follows `p:defaultTextStyle`, which a new pptx states as PowerPoint
+  does: the theme's body font at 18pt.
 
 Moving and resizing a frame are not covered.
 

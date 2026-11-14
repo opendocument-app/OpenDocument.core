@@ -2,6 +2,7 @@
 
 #include <odr/definitions.hpp>
 #include <odr/logger.hpp>
+#include <odr/quantity.hpp>
 
 #include <odr/sheet_position.hpp>
 
@@ -22,6 +23,7 @@ enum class FileType;
 enum class DocumentType;
 class DocumentFile;
 class Element;
+class Frame;
 class File;
 class Filesystem;
 class Paragraph;
@@ -147,6 +149,15 @@ public:
   /// past the list.
   [[nodiscard]] Slide insert_slide(std::uint32_t index,
                                    std::uint32_t layout) const;
+
+  /// A text box on @p page, a slide or a drawing page, at @p x and @p y and
+  /// @p width by @p height, holding one empty paragraph. It draws no fill and
+  /// no outline.
+  /// @throws std::invalid_argument for a length in a unit of no fixed size,
+  /// or a size that is not positive.
+  [[nodiscard]] Frame insert_text_box(const Element &page, const Measure &x,
+                                      const Measure &y, const Measure &width,
+                                      const Measure &height) const;
 
   /// @}
 

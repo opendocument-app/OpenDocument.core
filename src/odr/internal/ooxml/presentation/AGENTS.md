@@ -86,6 +86,9 @@ writes the slides, every part in `m_written_parts`, and `presentation.xml`
 once an edit changed it, and byte-copies the rest. The `p:sld` dispatch walks
 `parse_slide_children`, so a new slide parses on its own.
 
+`Document::insert_text_box` appends a `p:sp` text box (`txBox="1"`) to the
+slide's shape tree.
+
 `paragraph_set_style` writes `algn` on the `a:pPr` of the paragraph and
 refuses `start` and `end`, which `ST_TextAlignType` does not name. The
 slides are held by `r:id`, so `save` keeps the path to `r:id` map to know

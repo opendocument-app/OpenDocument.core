@@ -492,6 +492,62 @@ ElementIdentifier Document::insert_slide(const std::uint32_t index,
   return slide_id;
 }
 
+ElementIdentifier Document::insert_text_box(const ElementIdentifier slide_id,
+                                            const Measure &x, const Measure &y,
+                                            const Measure &width,
+                                            const Measure &height) {
+  pugi::xml_node tree =
+      m_element_registry.element_at(slide_id).node.child("p:cSld").child(
+          "p:spTree");
+  if (!tree) {
+    throw UnsupportedOperation();
+  }
+
+  // [ECMA-376] 19.3.1.12: a shape id is unique on its slide
+  std::uint32_t shape_id = 1;
+  for (const pugi::xpath_node properties : tree.select_nodes(".//p:cNvPr")) {
+    shape_id =
+        std::max(shape_id, properties.node().attribute("id").as_uint() + 1);
+  }
+  const auto emus = [](const Measure &length) {
+    return std::to_string(std::llround(points(length) * 12700.0));
+  };
+
+  pugi::xml_node shape = tree.append_child("p:sp");
+  pugi::xml_node non_visual = shape.append_child("p:nvSpPr");
+  pugi::xml_node properties = non_visual.append_child("p:cNvPr");
+  properties.append_attribute("id").set_value(shape_id);
+  properties.append_attribute("name").set_value(
+      ("TextBox " + std::to_string(shape_id - 1)).c_str());
+  non_visual.append_child("p:cNvSpPr").append_attribute("txBox").set_value("1");
+  non_visual.append_child("p:nvPr");
+
+  pugi::xml_node shape_properties = shape.append_child("p:spPr");
+  pugi::xml_node transform = shape_properties.append_child("a:xfrm");
+  pugi::xml_node offset = transform.append_child("a:off");
+  offset.append_attribute("x").set_value(emus(x).c_str());
+  offset.append_attribute("y").set_value(emus(y).c_str());
+  pugi::xml_node extent = transform.append_child("a:ext");
+  extent.append_attribute("cx").set_value(emus(width).c_str());
+  extent.append_attribute("cy").set_value(emus(height).c_str());
+  pugi::xml_node geometry = shape_properties.append_child("a:prstGeom");
+  geometry.append_attribute("prst").set_value("rect");
+  geometry.append_child("a:avLst");
+  shape_properties.append_child("a:noFill");
+
+  pugi::xml_node body = shape.append_child("p:txBody");
+  pugi::xml_node body_properties = body.append_child("a:bodyPr");
+  body_properties.append_attribute("wrap").set_value("square");
+  body_properties.append_child("a:spAutoFit");
+  body.append_child("a:lstStyle");
+  body.append_child("a:p");
+
+  const ElementIdentifier frame_id =
+      parse_tree(m_element_registry, ParseContext(m_slides_xml), shape);
+  m_element_registry.append_child(slide_id, frame_id);
+  return frame_id;
+}
+
 const LayoutStyle *
 Document::slide_style(const ElementIdentifier element_id) const {
   const auto it = m_slide_styles.find(element_id);
@@ -609,6 +665,16 @@ public:
                        const std::uint32_t index,
                        const std::uint32_t layout) const override {
     return m_document->insert_slide(index, layout);
+  }
+
+  [[nodiscard]] ElementIdentifier
+  element_insert_text_box(const ElementIdentifier element_id, const Measure &x,
+                          const Measure &y, const Measure &width,
+                          const Measure &height) const override {
+    if (element_type(element_id) != ElementType::slide) {
+      throw UnsupportedOperation();
+    }
+    return m_document->insert_text_box(element_id, x, y, width, height);
   }
 
   [[nodiscard]] PageLayout

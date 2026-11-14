@@ -40,6 +40,12 @@ public:
   /// a new part with its relationships and content type, and an entry in
   /// `p:sldIdLst`.
   ElementIdentifier insert_slide(std::uint32_t index, std::uint32_t layout);
+  /// A `p:sp` text box with one empty paragraph, last on the slide
+  /// @p slide_id.
+  ElementIdentifier insert_text_box(ElementIdentifier slide_id,
+                                    const Measure &x, const Measure &y,
+                                    const Measure &width,
+                                    const Measure &height);
   /// The layout, master and theme of the slide @p element_id, or null where
   /// it relates no layout.
   [[nodiscard]] const LayoutStyle *

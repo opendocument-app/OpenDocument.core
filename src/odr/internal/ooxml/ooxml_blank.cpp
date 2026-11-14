@@ -388,6 +388,8 @@ Parts presentation_parts() {
           R"(<p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>)"
           R"(<p:sldIdLst><p:sldId id="256" r:id="rId2"/></p:sldIdLst>)"
           R"(<p:sldSz cx="{}" cy="{}"/><p:notesSz cx="6858000" cy="9144000"/>)"
+          // [ECMA-376] 19.2.1.8: the text of a shape that is no placeholder
+          R"(<p:defaultTextStyle><a:lvl1pPr marL="0" algn="l"><a:defRPr sz="1800" kern="1200"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill><a:latin typeface="+mn-lt"/><a:ea typeface="+mn-ea"/><a:cs typeface="+mn-cs"/></a:defRPr></a:lvl1pPr></p:defaultTextStyle>)"
           R"(</p:presentation>)",
           xml_declaration, presentation_namespaces, emus(blank_slide_width),
           emus(blank_slide_height)));
