@@ -13,8 +13,9 @@ rules are in [document creation](document-creation.md).
 | 2 | `Document::insert_sheet` for ods and xlsx |
 | 3 | `Document::slide_layouts` and `Document::insert_slide` for odp and pptx |
 | 4 | `Document::insert_text_box` on a slide or drawing page |
-| 5 | envelope ops `insertSheet`, `insertSlide`, `insertTextBox`, and the page side |
-| 6 | python, java, swift and npm bindings |
+| 5 | envelope ops `insertSheet`, `insertSlide`, `insertTextBox` |
+| 6 | the page side: the gestures in the editable page |
+| 7 | python, java, swift and npm bindings |
 
 ## 1. New presentations
 
@@ -106,7 +107,7 @@ outline and holds one empty paragraph.
 
 Moving and resizing a frame are not covered.
 
-## 5. Ops and the page
+## 5. Ops
 
 | op | fields |
 |---|---|
@@ -114,14 +115,29 @@ Moving and resizing a frame are not covered.
 | `insertSlide` | `index`, `layout`, `id`, `frames`, `paragraphs` |
 | `insertTextBox` | `page`, `x`, `y`, `width`, `height`, `id`, `paragraph` |
 
-`frames` and `paragraphs` are negative ids for the created placeholders, in
-document order, so later ops can type into them. Sheets keep their positional
-address, so an insert renumbers the sheets after it.
+`id` is the negative id of the created slide or frame. `frames` lists one
+negative id per placeholder of the new slide, in document order, and
+`paragraphs` one per placeholder's empty paragraph, so later ops can type into
+them. Both are optional. A list whose length is not the layout's placeholder
+count throws before the slide is made, because the page drew a different slide
+than replay would make. `name` may be left out for the next free `SheetN`. The
+lengths of `insertTextBox` are strings as `Measure` spells them, such as
+`"2.5cm"`. A later op types into a placeholder by its paragraph id:
 
-The page applies the edit itself ([editing](editing.md) decision 1). An
-editable presentation page carries its layouts' placeholder geometry, so the
-script can draw a new slide. The new gestures obey the editing scope: under
-`paragraph` they refuse with `outOfScope`.
+```json
+{"op": "insertText", "parent": -4, "text": "Agenda", "id": -6}
+```
+
+Sheets keep their positional address, so an op after an `insertSheet` counts
+the new sheet.
+
+## 6. The page
+
+The page applies the edit itself ([editing](editing.md) decision 1), so an
+editable presentation page has to know what a new slide looks like:
+`slide_layouts()` gives each layout's placeholders and their places. The new
+gestures obey the editing scope: under `paragraph` they refuse with
+`outOfScope`.
 
 ## Validation
 

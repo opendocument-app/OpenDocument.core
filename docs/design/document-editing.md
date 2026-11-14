@@ -106,6 +106,9 @@ Version 2. Version 1 addressed by path, and replay refuses it.
 | `setTextStyle` | `id`, `style` | states the listed properties on one run; see [Inline formatting](#inline-formatting) |
 | `setParagraphStyle` | `id`, `style` | states the alignment of one paragraph; see [Paragraph alignment](#paragraph-alignment) |
 | `setCell` | `sheet`, `column`, `row`, `value` | see [`spreadsheet-editing.md`](spreadsheet-editing.md) |
+| `insertSheet` | `index`, `name` (optional) | see [`structure-editing.md`](structure-editing.md) |
+| `insertSlide` | `index`, `layout`, `id`, `frames`, `paragraphs` (optional) | see [`structure-editing.md`](structure-editing.md) |
+| `insertTextBox` | `page`, `x`, `y`, `width`, `height`, `id`, `paragraph` (optional) | see [`structure-editing.md`](structure-editing.md) |
 
 Every `id` on an op that creates an element is negative (decision 4). Every
 other id is one the page wrote.

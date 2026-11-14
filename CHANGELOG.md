@@ -46,6 +46,13 @@ The release run heads these entries with the version and opens a fresh
   state them. Theme fonts (`+mj-lt`, `+mn-lt`) resolve to the theme's
   typefaces, and the presentation's default text style applies to every shape.
 
+### Editing
+
+- The edit envelope takes `insertSheet`, `insertSlide` and `insertTextBox`.
+  `insertSlide` and `insertTextBox` name the slide, its placeholders and the
+  text box's paragraph by negative ids, so later operations can type into
+  them.
+
 ## v7.8.0 - 2026-11-14
 
 ### HTTP server
