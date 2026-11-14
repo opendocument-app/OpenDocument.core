@@ -34,6 +34,76 @@ namespace {
 std::unique_ptr<abstract::ElementAdapter>
 create_element_adapter(Document &document, ElementRegistry &registry);
 
+/// [ECMA-376] 19.7.10: the placeholders a slide types into; a graphic one
+/// (`pic`, `chart`, `tbl`, ...) and the date, footer and number are left out.
+bool takes_text(const pugi::xml_node placeholder) {
+  const pugi::xml_attribute type = placeholder.attribute("type");
+  if (!type) {
+    return true;
+  }
+  constexpr std::array<std::string_view, 5> text_types{
+      "title", "ctrTitle", "subTitle", "body", "obj"};
+  return std::ranges::find(text_types, std::string_view(type.value())) !=
+         text_types.end();
+}
+
+/// Fills @p slide with a copy of each text placeholder of @p layout, holding
+/// one empty paragraph and inheriting its position.
+void write_placeholder_slide(pugi::xml_document &slide,
+                             const pugi::xml_document &layout) {
+  pugi::xml_node root = slide.append_child("p:sld");
+  for (const pugi::xml_attribute attribute :
+       layout.document_element().attributes()) {
+    if (std::string_view(attribute.name()).starts_with("xmlns")) {
+      root.append_attribute(attribute.name()).set_value(attribute.value());
+    }
+  }
+  pugi::xml_node tree = root.append_child("p:cSld").append_child("p:spTree");
+  pugi::xml_node group = tree.append_child("p:nvGrpSpPr");
+  pugi::xml_node group_properties = group.append_child("p:cNvPr");
+  group_properties.append_attribute("id").set_value(1);
+  group_properties.append_attribute("name").set_value("");
+  group.append_child("p:cNvGrpSpPr");
+  group.append_child("p:nvPr");
+  tree.append_child("p:grpSpPr");
+
+  std::uint32_t shape_id = 2;
+  for (const pugi::xml_node shape : layout.document_element()
+                                        .child("p:cSld")
+                                        .child("p:spTree")
+                                        .children("p:sp")) {
+    const pugi::xml_node placeholder =
+        shape.child("p:nvSpPr").child("p:nvPr").child("p:ph");
+    if (!placeholder || !takes_text(placeholder)) {
+      continue;
+    }
+    // the position and the text style come from the layout
+    pugi::xml_node copy = tree.append_child("p:sp");
+    pugi::xml_node non_visual = copy.append_child("p:nvSpPr");
+    pugi::xml_node properties = non_visual.append_child("p:cNvPr");
+    properties.append_attribute("id").set_value(shape_id++);
+    properties.append_attribute("name").set_value(
+        shape.child("p:nvSpPr").child("p:cNvPr").attribute("name").value());
+    non_visual.append_child("p:cNvSpPr")
+        .append_child("a:spLocks")
+        .append_attribute("noGrp")
+        .set_value("1");
+    pugi::xml_node ph = non_visual.append_child("p:nvPr").append_child("p:ph");
+    for (const char *name : {"type", "orient", "sz", "idx"}) {
+      if (const pugi::xml_attribute attribute = placeholder.attribute(name)) {
+        ph.append_attribute(name).set_value(attribute.value());
+      }
+    }
+    copy.append_child("p:spPr");
+    pugi::xml_node body = copy.append_child("p:txBody");
+    body.append_child("a:bodyPr");
+    body.append_child("a:lstStyle");
+    body.append_child("a:p");
+  }
+
+  root.append_child("p:clrMapOvr").append_child("a:masterClrMapping");
+}
+
 } // namespace
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
@@ -365,10 +435,9 @@ ElementIdentifier Document::insert_slide(const std::uint32_t index,
     m_element_registry.append_child(m_root_element, slide_id);
   }
 
-  const LayoutStyle style =
-      load_layout_style(*m_files, layout_path, m_themes, m_style_parts);
+  const LayoutStyle &style = m_layout_styles.get(*m_files, layout_path);
   if (style.layout) {
-    m_slide_styles[slide_id] = style;
+    m_slide_styles[slide_id] = &style;
   }
   if (style.background.has_value()) {
     m_slide_backgrounds[slide_id] = *style.background;
@@ -403,78 +472,6 @@ const ElementRegistry &Document::element_registry() const {
 namespace {
 
 using TreeEditor = xml::TreeEditor<ElementRegistry>;
-
-/// [ECMA-376] 19.7.10: the placeholders a slide types into; a graphic one
-/// (`pic`, `chart`, `tbl`, ...) and the date, footer and number are left out.
-bool takes_text(const pugi::xml_node placeholder) {
-  const pugi::xml_attribute type = placeholder.attribute("type");
-  if (!type) {
-    return true;
-  }
-  constexpr std::array<std::string_view, 5> text_types{
-      "title", "ctrTitle", "subTitle", "body", "obj"};
-  return std::ranges::find(text_types, std::string_view(type.value())) !=
-         text_types.end();
-}
-
-} // namespace
-
-void write_placeholder_slide(pugi::xml_document &slide,
-                             const pugi::xml_document &layout) {
-  pugi::xml_node root = slide.append_child("p:sld");
-  for (const pugi::xml_attribute attribute :
-       layout.document_element().attributes()) {
-    if (std::string_view(attribute.name()).starts_with("xmlns")) {
-      root.append_attribute(attribute.name()).set_value(attribute.value());
-    }
-  }
-  pugi::xml_node tree = root.append_child("p:cSld").append_child("p:spTree");
-  pugi::xml_node group = tree.append_child("p:nvGrpSpPr");
-  pugi::xml_node group_properties = group.append_child("p:cNvPr");
-  group_properties.append_attribute("id").set_value(1);
-  group_properties.append_attribute("name").set_value("");
-  group.append_child("p:cNvGrpSpPr");
-  group.append_child("p:nvPr");
-  tree.append_child("p:grpSpPr");
-
-  std::uint32_t shape_id = 2;
-  for (const pugi::xml_node shape : layout.document_element()
-                                        .child("p:cSld")
-                                        .child("p:spTree")
-                                        .children("p:sp")) {
-    const pugi::xml_node placeholder =
-        shape.child("p:nvSpPr").child("p:nvPr").child("p:ph");
-    if (!placeholder || !takes_text(placeholder)) {
-      continue;
-    }
-    // the position and the text style come from the layout
-    pugi::xml_node copy = tree.append_child("p:sp");
-    pugi::xml_node non_visual = copy.append_child("p:nvSpPr");
-    pugi::xml_node properties = non_visual.append_child("p:cNvPr");
-    properties.append_attribute("id").set_value(shape_id++);
-    properties.append_attribute("name").set_value(
-        shape.child("p:nvSpPr").child("p:cNvPr").attribute("name").value());
-    non_visual.append_child("p:cNvSpPr")
-        .append_child("a:spLocks")
-        .append_attribute("noGrp")
-        .set_value("1");
-    pugi::xml_node ph = non_visual.append_child("p:nvPr").append_child("p:ph");
-    for (const char *name : {"type", "orient", "sz", "idx"}) {
-      if (const pugi::xml_attribute attribute = placeholder.attribute(name)) {
-        ph.append_attribute(name).set_value(attribute.value());
-      }
-    }
-    copy.append_child("p:spPr");
-    pugi::xml_node body = copy.append_child("p:txBody");
-    body.append_child("a:bodyPr");
-    body.append_child("a:lstStyle");
-    body.append_child("a:p");
-  }
-
-  root.append_child("p:clrMapOvr").append_child("a:masterClrMapping");
-}
-
-namespace {
 
 /// [ECMA-376] 21.1.2.3.9 `CT_TextCharacterProperties`: the children are a
 /// sequence, one fill among them.

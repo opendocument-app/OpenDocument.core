@@ -75,9 +75,4 @@ private:
   pugi::xml_node written_part_(const AbsPath &path);
 };
 
-/// Fills @p slide with a copy of each text placeholder of @p layout, holding
-/// one empty paragraph and inheriting its position.
-void write_placeholder_slide(pugi::xml_document &slide,
-                             const pugi::xml_document &layout);
-
 } // namespace odr::internal::ooxml::presentation
