@@ -40,43 +40,6 @@ NS_SWIFT_NAME(Recalculation)
 
 @end
 
-/// What a text placeholder of a slide layout holds —
-/// `odr::SlidePlaceholderKind`.
-typedef NS_ENUM(NSInteger, ODRSlidePlaceholderKind) {
-  ODRSlidePlaceholderKindTitle,
-  ODRSlidePlaceholderKindSubtitle,
-  ODRSlidePlaceholderKindBody,
-} NS_SWIFT_NAME(SlidePlaceholderKind);
-
-/// A text placeholder of a slide layout, positioned on the page —
-/// `odr::SlidePlaceholder`.
-NS_SWIFT_NAME(SlidePlaceholder)
-@interface ODRSlidePlaceholder : NSObject
-
-- (instancetype)init NS_UNAVAILABLE;
-+ (instancetype)new NS_UNAVAILABLE;
-
-@property(nonatomic, readonly) ODRSlidePlaceholderKind kind;
-@property(nonatomic, readonly) ODRMeasure *x;
-@property(nonatomic, readonly) ODRMeasure *y;
-@property(nonatomic, readonly) ODRMeasure *width;
-@property(nonatomic, readonly) ODRMeasure *height;
-
-@end
-
-/// A layout a slide can start from — `odr::SlideLayout`: its name, and the
-/// text placeholders a slide made from it holds, in document order.
-NS_SWIFT_NAME(SlideLayout)
-@interface ODRSlideLayout : NSObject
-
-- (instancetype)init NS_UNAVAILABLE;
-+ (instancetype)new NS_UNAVAILABLE;
-
-@property(nonatomic, readonly, copy) NSString *name;
-@property(nonatomic, readonly) NSArray<ODRSlidePlaceholder *> *placeholders;
-
-@end
-
 /// A decoded document — `odr::Document`. Obtained from `ODRDocumentFile`.
 NS_SWIFT_NAME(Document)
 @interface ODRDocument : NSObject
@@ -192,13 +155,14 @@ NS_SWIFT_NAME(Document)
                                     error:(NSError **)error
     NS_SWIFT_NAME(insertSheet(at:name:));
 
-/// The layouts `insertSlide` starts a slide from; empty where the engine
+/// The layouts `insertSlide` starts a slide from, each the empty slide it
+/// makes, outside the document and refusing edits; empty where the engine
 /// cannot insert a slide.
-- (nullable NSArray<ODRSlideLayout *> *)slideLayoutsWithError:(NSError **)error
+- (nullable NSArray<ODRSlide *> *)slideLayoutsWithError:(NSError **)error
     NS_SWIFT_NAME(slideLayouts());
 
-/// An empty slide at `index` among the slides, holding the text placeholders
-/// of the `layout`-th of `slideLayouts`, each with one empty paragraph.
+/// An empty slide at `index` among the slides, as the `layout`-th of
+/// `slideLayouts`.
 - (nullable ODRSlide *)insertSlideAtIndex:(uint32_t)index
                                    layout:(uint32_t)layout
                                     error:(NSError **)error

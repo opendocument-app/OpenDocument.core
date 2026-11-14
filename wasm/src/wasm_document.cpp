@@ -5,7 +5,8 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/quantity.hpp>
-#include <odr/slide_layout.hpp>
+
+#include <odr/internal/util/document_util.hpp>
 
 #include <emscripten/bind.h>
 
@@ -268,20 +269,6 @@ emscripten::val insert_paragraph_after(const Handle handle,
   });
 }
 
-/// The first paragraph under @p element, depth first; null where it holds
-/// none.
-Element first_paragraph_in(const Element &element) {
-  for (const Element child : element.children()) {
-    if (child.type() == ElementType::paragraph) {
-      return child;
-    }
-    if (const Element found = first_paragraph_in(child); found) {
-      return found;
-    }
-  }
-  return {};
-}
-
 /// A new sheet or slide is a new view, so the next `listViews` translates
 /// again.
 void drop_views(Session &session) {
@@ -300,21 +287,23 @@ emscripten::val insert_sheet(const Handle handle, const double index,
   });
 }
 
-/// `[{name, placeholders: [{kind, x, y, width, height}]}]`, the lengths as
-/// `Measure` spells them.
+/// `[{name, placeholders: [{x, y, width, height}]}]`: each layout's frames,
+/// the lengths as `Measure` spells them.
 emscripten::val slide_layouts(const Handle handle) {
+  const auto length = [](const std::optional<Measure> &value) {
+    return value.has_value() ? value->to_string() : std::string();
+  };
   return guarded([&] {
     emscripten::val result = emscripten::val::array();
-    for (const SlideLayout &layout :
-         document_of(session(handle)).slide_layouts()) {
+    for (const Slide &layout : document_of(session(handle)).slide_layouts()) {
       emscripten::val placeholders = emscripten::val::array();
-      for (const SlidePlaceholder &placeholder : layout.placeholders()) {
+      for (const Element child : layout.children()) {
+        const Frame frame = child.as_frame();
         emscripten::val entry = emscripten::val::object();
-        entry.set("kind", static_cast<std::int32_t>(placeholder.kind()));
-        entry.set("x", placeholder.x().to_string());
-        entry.set("y", placeholder.y().to_string());
-        entry.set("width", placeholder.width().to_string());
-        entry.set("height", placeholder.height().to_string());
+        entry.set("x", length(frame.x()));
+        entry.set("y", length(frame.y()));
+        entry.set("width", length(frame.width()));
+        entry.set("height", length(frame.height()));
         placeholders.call<void>("push", entry);
       }
       emscripten::val entry = emscripten::val::object();
@@ -339,7 +328,8 @@ emscripten::val insert_slide(const Handle handle, const double index,
     emscripten::val paragraphs = emscripten::val::array();
     for (const Element child : slide.children()) {
       frames.call<void>("push", id_of(child));
-      paragraphs.call<void>("push", id_of(first_paragraph_in(child)));
+      paragraphs.call<void>(
+          "push", id_of(internal::util::document::first_paragraph_in(child)));
     }
     emscripten::val result = emscripten::val::object();
     result.set("id", id_of(slide));
@@ -362,7 +352,8 @@ emscripten::val insert_text_box(const Handle handle, const double page,
         Measure(height));
     emscripten::val result = emscripten::val::object();
     result.set("id", id_of(box));
-    result.set("paragraph", id_of(first_paragraph_in(box)));
+    result.set("paragraph",
+               id_of(internal::util::document::first_paragraph_in(box)));
     return ok(result);
   });
 }

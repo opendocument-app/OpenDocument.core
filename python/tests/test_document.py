@@ -1,3 +1,4 @@
+import gc
 import pyodr
 import pytest
 
@@ -483,8 +484,7 @@ def test_a_slide_from_a_layout_and_a_text_box(file_type, suffix, tmp_path):
         "Title Only",
         "Blank",
     ]
-    kinds = [placeholder.kind() for placeholder in layouts[1].placeholders()]
-    assert kinds == [pyodr.SlidePlaceholderKind.title, pyodr.SlidePlaceholderKind.body]
+    assert len(children_of(layouts[1])) == 2
 
     slide = document.insert_slide(1, 1)
     frames = children_of(slide)
@@ -514,6 +514,15 @@ def test_a_slide_from_a_layout_and_a_text_box(file_type, suffix, tmp_path):
     slides = children_of(reloaded.root_element())
     assert len(slides) == 2
     assert walk_text(slides[1]) == ["Agenda", "note"]
+
+
+def test_a_slide_layout_keeps_its_document_alive():
+    layouts = pyodr.create_document(
+        pyodr.FileType.office_open_xml_presentation
+    ).slide_layouts()
+    gc.collect()
+    assert layouts[0].name() == "Title Slide"
+    assert len(children_of(layouts[0])) == 2
 
 
 def test_a_text_document_offers_no_slide_layout():

@@ -15,7 +15,6 @@ export interface EnumTables {
   HtmlEditingScope: Record<string, number>;
   PdfTextMode: Record<string, number>;
   EncryptionState: Record<string, number>;
-  SlidePlaceholderKind: Record<string, number>;
   LogLevel: Record<string, number>;
 }
 
@@ -109,8 +108,6 @@ export interface SheetCut {
 /** A text placeholder of a slide layout; lengths as `Measure` spells them
  * (`2.1cm`). */
 export interface SlidePlaceholder {
-  /** An `enums.SlidePlaceholderKind` ordinal. */
-  kind: number;
   x: string;
   y: string;
   width: string;

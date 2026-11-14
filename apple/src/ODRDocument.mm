@@ -6,7 +6,6 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
 #include <odr/odr.hpp>
-#include <odr/slide_layout.hpp>
 
 #include <optional>
 #include <sstream>
@@ -15,7 +14,6 @@
 
 using odr::apple::guarded;
 using odr::apple::guarded_value;
-using odr::apple::to_nsstring;
 using odr::apple::to_string;
 
 @implementation ODRSheetPosition
@@ -74,47 +72,6 @@ using odr::apple::to_string;
     _changed = list(result.changed());
     _circular = list(result.circular());
     _unevaluated = list(result.unevaluated());
-  }
-  return self;
-}
-
-@end
-
-@interface ODRSlidePlaceholder ()
-- (instancetype)initWithPlaceholder:(const odr::SlidePlaceholder &)placeholder;
-@end
-
-@implementation ODRSlidePlaceholder
-
-- (instancetype)initWithPlaceholder:(const odr::SlidePlaceholder &)placeholder {
-  if ((self = [super init])) {
-    _kind = static_cast<ODRSlidePlaceholderKind>(placeholder.kind());
-    _x = [ODRMeasure measureWithHandle:placeholder.x()];
-    _y = [ODRMeasure measureWithHandle:placeholder.y()];
-    _width = [ODRMeasure measureWithHandle:placeholder.width()];
-    _height = [ODRMeasure measureWithHandle:placeholder.height()];
-  }
-  return self;
-}
-
-@end
-
-@interface ODRSlideLayout ()
-- (instancetype)initWithLayout:(const odr::SlideLayout &)layout;
-@end
-
-@implementation ODRSlideLayout
-
-- (instancetype)initWithLayout:(const odr::SlideLayout &)layout {
-  if ((self = [super init])) {
-    _name = to_nsstring(layout.name());
-    NSMutableArray<ODRSlidePlaceholder *> *const placeholders =
-        [NSMutableArray arrayWithCapacity:layout.placeholders().size()];
-    for (const odr::SlidePlaceholder &placeholder : layout.placeholders()) {
-      [placeholders addObject:[[ODRSlidePlaceholder alloc]
-                                  initWithPlaceholder:placeholder]];
-    }
-    _placeholders = [placeholders copy];
   }
   return self;
 }
@@ -327,14 +284,14 @@ using odr::apple::to_string;
   });
 }
 
-- (nullable NSArray<ODRSlideLayout *> *)slideLayoutsWithError:
-    (NSError **)error {
-  return guarded(error, [&]() -> NSArray<ODRSlideLayout *> * {
-    const std::vector<odr::SlideLayout> layouts = _handle->slide_layouts();
-    NSMutableArray<ODRSlideLayout *> *const result =
+- (nullable NSArray<ODRSlide *> *)slideLayoutsWithError:(NSError **)error {
+  return guarded(error, [&]() -> NSArray<ODRSlide *> * {
+    const std::vector<odr::Slide> layouts = _handle->slide_layouts();
+    NSMutableArray<ODRSlide *> *const result =
         [NSMutableArray arrayWithCapacity:layouts.size()];
-    for (const odr::SlideLayout &layout : layouts) {
-      [result addObject:[[ODRSlideLayout alloc] initWithLayout:layout]];
+    for (const odr::Slide &layout : layouts) {
+      [result addObject:static_cast<ODRSlide *>(
+                            [ODRElement elementWithHandle:layout owner:self])];
     }
     return [result copy];
   });

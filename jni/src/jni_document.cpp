@@ -6,7 +6,6 @@
 #include <odr/filesystem.hpp>
 #include <odr/html.hpp>
 #include <odr/quantity.hpp>
-#include <odr/slide_layout.hpp>
 
 #include <optional>
 #include <sstream>
@@ -21,7 +20,6 @@ using odr_jni::from_handle;
 using odr_jni::guarded;
 using odr_jni::HandleGuard;
 using odr_jni::make_handle;
-using odr_jni::make_slide_layout;
 using odr_jni::measure_from_java;
 using odr_jni::to_jbytes;
 using odr_jni::to_jstring;
@@ -40,7 +38,8 @@ jlong wrap_element(const odr::Element value) {
   return make_handle(value);
 }
 
-jlongArray wrap_elements(JNIEnv *env, const odr::ElementRange &range) {
+template <typename Range>
+jlongArray wrap_elements(JNIEnv *env, const Range &range) {
   HandleGuard<odr::Element> guard;
   for (const odr::Element &value : range) {
     guard.add(value);
@@ -292,32 +291,12 @@ Java_app_opendocument_core_Document_insertSheetNative(JNIEnv *env, jobject,
   });
 }
 
-extern "C" JNIEXPORT jobjectArray JNICALL
+extern "C" JNIEXPORT jlongArray JNICALL
 Java_app_opendocument_core_Document_slideLayoutsNative(JNIEnv *env, jobject,
                                                        jlong handle) {
-  return guarded(env, [&]() -> jobjectArray {
-    const std::vector<odr::SlideLayout> layouts =
-        from_handle<odr::Document>(handle)->slide_layouts();
-    jclass cls = env->FindClass("app/opendocument/core/SlideLayout");
-    if (cls == nullptr) {
-      return nullptr;
-    }
-    jobjectArray result = env->NewObjectArray(
-        checked_integer<jsize>(layouts.size()), cls, nullptr);
-    env->DeleteLocalRef(cls);
-    if (result == nullptr) {
-      return nullptr;
-    }
-    for (std::size_t i = 0; i < layouts.size(); ++i) {
-      jobject layout = make_slide_layout(env, layouts[i]);
-      if (layout == nullptr) {
-        env->DeleteLocalRef(result);
-        return nullptr;
-      }
-      env->SetObjectArrayElement(result, checked_integer<jsize>(i), layout);
-      env->DeleteLocalRef(layout);
-    }
-    return result;
+  return guarded(env, [&] {
+    return wrap_elements(env,
+                         from_handle<odr::Document>(handle)->slide_layouts());
   });
 }
 

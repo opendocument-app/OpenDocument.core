@@ -238,10 +238,10 @@ class DocumentTest {
         List.of(FileType.OPENDOCUMENT_PRESENTATION, FileType.OFFICE_OPEN_XML_PRESENTATION)) {
       Document document = Odr.createDocument(type);
 
-      List<SlideLayout> layouts = document.slideLayouts();
+      List<Slide> layouts = document.slideLayouts();
       List<String> names = new ArrayList<>();
-      for (SlideLayout layout : layouts) {
-        names.add(layout.name);
+      for (Slide layout : layouts) {
+        names.add(layout.name());
       }
       assertEquals(
           List.of(
@@ -252,8 +252,7 @@ class DocumentTest {
               "Title Only",
               "Blank"),
           names);
-      assertEquals(SlidePlaceholderKind.TITLE, layouts.get(1).placeholders.get(0).kind);
-      assertEquals(SlidePlaceholderKind.BODY, layouts.get(1).placeholders.get(1).kind);
+      assertEquals(2, layouts.get(1).children().size());
 
       Slide slide = document.insertSlide(1, 1);
       assertEquals(2, slide.children().size());

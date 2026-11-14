@@ -1060,7 +1060,7 @@ final class DocumentCreateTests: XCTestCase {
           "Title Slide", "Title and Content", "Section Header", "Two Content", "Title Only",
           "Blank",
         ])
-      XCTAssertEqual(layouts[1].placeholders.map { $0.kind }, [.title, .body])
+      XCTAssertEqual(layouts[1].children.count, 2)
 
       let slide = try document.insertSlide(at: 1, layout: 1)
       XCTAssertEqual(slide.children.count, 2)

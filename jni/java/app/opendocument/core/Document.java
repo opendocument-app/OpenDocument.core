@@ -1,6 +1,6 @@
 package app.opendocument.core;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -173,14 +173,22 @@ public final class Document extends NativeResource {
     return new Sheet(insertSheetNative(handle(), index, name), this);
   }
 
-  /** The layouts {@link #insertSlide} starts a slide from; empty where the engine cannot. */
-  public List<SlideLayout> slideLayouts() {
-    return Collections.unmodifiableList(Arrays.asList(slideLayoutsNative(handle())));
+  /**
+   * The layouts {@link #insertSlide} starts a slide from, each the empty slide it makes, outside
+   * the document and refusing edits; empty where the engine cannot insert a slide.
+   */
+  public List<Slide> slideLayouts() {
+    long[] handles = slideLayoutsNative(handle());
+    List<Slide> result = new ArrayList<>(handles.length);
+    for (long layout : handles) {
+      result.add(new Slide(layout, this));
+    }
+    return Collections.unmodifiableList(result);
   }
 
   /**
-   * An empty slide at {@code index} among the slides, holding the text placeholders of the
-   * {@code layout}-th of {@link #slideLayouts}, each with one empty paragraph.
+   * An empty slide at {@code index} among the slides, as the {@code layout}-th of {@link
+   * #slideLayouts}.
    */
   public Slide insertSlide(int index, int layout) {
     return new Slide(insertSlideNative(handle(), index, layout), this);
@@ -202,7 +210,7 @@ public final class Document extends NativeResource {
 
   private native long insertSheetNative(long handle, int index, String name);
 
-  private native SlideLayout[] slideLayoutsNative(long handle);
+  private native long[] slideLayoutsNative(long handle);
 
   private native long insertSlideNative(long handle, int index, int layout);
 
