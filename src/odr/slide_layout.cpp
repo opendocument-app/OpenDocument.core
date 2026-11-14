@@ -4,10 +4,10 @@
 
 namespace odr {
 
-SlidePlaceholder::SlidePlaceholder(const SlidePlaceholderKind kind, Measure x,
-                                   Measure y, Measure width, Measure height)
-    : m_kind{kind}, m_x{std::move(x)}, m_y{std::move(y)},
-      m_width{std::move(width)}, m_height{std::move(height)} {}
+SlidePlaceholder::SlidePlaceholder(const SlidePlaceholderKind kind,
+                                   const Measure &x, const Measure &y,
+                                   const Measure &width, const Measure &height)
+    : m_kind{kind}, m_x{x}, m_y{y}, m_width{width}, m_height{height} {}
 
 SlidePlaceholderKind SlidePlaceholder::kind() const noexcept { return m_kind; }
 

@@ -180,6 +180,18 @@ public:
     throw UnsupportedOperation();
   }
 
+  /// A text box holding one empty paragraph on the slide or drawing page
+  /// @p element_id. The caller checked that every length has a fixed size.
+  /// @throws UnsupportedOperation where the engine cannot write.
+  virtual ElementIdentifier
+  element_insert_text_box([[maybe_unused]] const ElementIdentifier element_id,
+                          [[maybe_unused]] const Measure &x,
+                          [[maybe_unused]] const Measure &y,
+                          [[maybe_unused]] const Measure &width,
+                          [[maybe_unused]] const Measure &height) const {
+    throw UnsupportedOperation();
+  }
+
   [[nodiscard]] virtual const TextRootAdapter *
   text_root_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;

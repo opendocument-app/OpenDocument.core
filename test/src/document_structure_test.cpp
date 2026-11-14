@@ -3,7 +3,9 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/odr.hpp>
+#include <odr/quantity.hpp>
 #include <odr/slide_layout.hpp>
+#include <odr/style.hpp>
 
 #include <test_util.hpp>
 
@@ -297,4 +299,111 @@ TEST(DocumentStructure, a_pptx_with_two_masters_numbers_a_repeated_layout) {
   EXPECT_EQ(children_of(saved.root_element()).size(),
             children_of(document.root_element()).size());
   EXPECT_EQ(children_of(added).size(), 2);
+}
+
+namespace {
+
+class DocumentInsertTextBox : public testing::TestWithParam<FileType> {};
+
+} // namespace
+
+INSTANTIATE_TEST_SUITE_P(
+    DocumentStructure, DocumentInsertTextBox,
+    testing::Values(FileType::opendocument_presentation,
+                    FileType::office_open_xml_presentation),
+    [](const testing::TestParamInfo<FileType> &info) {
+      return file_type_to_string(info.param);
+    });
+
+TEST_P(DocumentInsertTextBox, sits_where_it_was_put_and_draws_nothing) {
+  const Document document = create_document(GetParam());
+  const Element slide = *document.root_element().children().begin();
+
+  const Frame box = document.insert_text_box(
+      slide, Measure("2cm"), Measure("3cm"), Measure("10cm"), Measure("1.5cm"));
+
+  const std::vector<Element> frames = children_of(slide);
+  ASSERT_EQ(frames.size(), 3);
+  EXPECT_EQ(frames[2], Element(box));
+  EXPECT_NEAR(centimetres(*box.x()), 2, 1e-3);
+  EXPECT_NEAR(centimetres(*box.y()), 3, 1e-3);
+  EXPECT_NEAR(centimetres(*box.width()), 10, 1e-3);
+  EXPECT_NEAR(centimetres(*box.height()), 1.5, 1e-3);
+  EXPECT_TRUE(first_paragraph(box));
+  const GraphicStyle style = box.style();
+  EXPECT_TRUE(!style.fill_color.has_value() || style.fill_color->alpha == 0);
+}
+
+TEST_P(DocumentInsertTextBox, takes_text_and_survives_a_save) {
+  const Document document = create_document(GetParam());
+  const Slide added = document.insert_slide(1, 5);
+
+  const Frame box = document.insert_text_box(
+      added, Measure("1in"), Measure("1in"), Measure("4in"), Measure("1in"));
+  std::ignore = document.append_text(first_paragraph(box), "note");
+  std::ignore = document.insert_text_box(added, Measure("1in"), Measure("3in"),
+                                         Measure("4in"), Measure("1in"));
+
+  const Document saved = reopen(document);
+  const std::vector<Element> slides = children_of(saved.root_element());
+  ASSERT_EQ(slides.size(), 2);
+  const std::vector<Element> frames = children_of(slides[1]);
+  ASSERT_EQ(frames.size(), 2);
+  EXPECT_EQ(text_of(frames[0]), "note");
+  EXPECT_NEAR(centimetres(*frames[1].as_frame().y()), 3 * 2.54, 1e-3);
+}
+
+TEST_P(DocumentInsertTextBox, refuses_a_relative_length_or_an_empty_size) {
+  const Document document = create_document(GetParam());
+  const Element slide = *document.root_element().children().begin();
+
+  EXPECT_THROW(std::ignore = document.insert_text_box(
+                   slide, Measure("1em"), Measure("0cm"), Measure("1cm"),
+                   Measure("1cm")),
+               std::invalid_argument);
+  EXPECT_THROW(std::ignore = document.insert_text_box(
+                   slide, Measure("0cm"), Measure("0cm"), Measure("0cm"),
+                   Measure("1cm")),
+               std::invalid_argument);
+  EXPECT_THROW(std::ignore = document.insert_text_box(
+                   first_paragraph(*slide.children().begin()), Measure("0cm"),
+                   Measure("0cm"), Measure("1cm"), Measure("1cm")),
+               UnsupportedOperation);
+  EXPECT_EQ(children_of(slide).size(), 2);
+}
+
+TEST(DocumentStructure, a_text_document_refuses_a_text_box) {
+  const Document document = create_document(FileType::opendocument_text);
+  EXPECT_THROW(std::ignore = document.insert_text_box(
+                   *document.root_element().children().begin(), Measure("0cm"),
+                   Measure("0cm"), Measure("1cm"), Measure("1cm")),
+               UnsupportedOperation);
+}
+
+TEST(DocumentStructure, an_odg_page_takes_a_text_box) {
+  const Document document =
+      open(test::TestData::test_file_path("odr-public/odg/empty.odg"))
+          .as_document_file()
+          .document();
+  const Element page = *document.root_element().children().begin();
+  ASSERT_EQ(page.type(), ElementType::page);
+
+  const Frame box = document.insert_text_box(
+      page, Measure("2cm"), Measure("2cm"), Measure("8cm"), Measure("2cm"));
+  std::ignore = document.append_text(first_paragraph(box), "drawn");
+
+  const Document saved = reopen(document);
+  EXPECT_EQ(text_of(*saved.root_element().children().begin()), "drawn");
+}
+
+TEST(DocumentStructure, a_pptx_text_box_takes_the_theme_body_font) {
+  const Document document =
+      create_document(FileType::office_open_xml_presentation);
+  const Frame box = document.insert_text_box(
+      *document.root_element().children().begin(), Measure("1cm"),
+      Measure("1cm"), Measure("5cm"), Measure("1cm"));
+
+  const TextStyle style = first_paragraph(box).as_paragraph().text_style();
+  EXPECT_EQ(style.font_name, "Calibri");
+  EXPECT_EQ(style.font_size->to_string(), "18pt");
 }

@@ -1334,6 +1334,33 @@ std::string StyleRegistry::create_text_style(pugi::xml_node automatic_styles,
   return name;
 }
 
+std::string
+StyleRegistry::create_text_box_style(pugi::xml_node automatic_styles) {
+  if (!m_text_box_style.empty()) {
+    return m_text_box_style;
+  }
+  std::string name;
+  for (std::uint32_t number = 1;; ++number) {
+    name = "odrTextBox" + std::to_string(number);
+    if (!m_index_style.contains(name)) {
+      break;
+    }
+  }
+
+  pugi::xml_node node = automatic_styles.append_child("style:style");
+  node.append_attribute("style:name").set_value(name.c_str());
+  node.append_attribute("style:family").set_value("graphic");
+  pugi::xml_node properties = node.append_child("style:graphic-properties");
+  properties.append_attribute("draw:stroke").set_value("none");
+  properties.append_attribute("draw:fill").set_value("none");
+  properties.append_attribute("draw:auto-grow-height").set_value("true");
+
+  m_index_style[name] = node;
+  generate_style_(name, node);
+  m_text_box_style = name;
+  return name;
+}
+
 Style *StyleRegistry::style(const char *name) const {
   if (const auto style_it = m_styles.find(name);
       style_it != std::end(m_styles)) {

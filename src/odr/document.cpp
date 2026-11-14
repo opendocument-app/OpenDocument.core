@@ -702,6 +702,27 @@ Slide Document::insert_slide(const std::uint32_t index,
   return {adapter, identifier, adapter->slide_adapter(identifier)};
 }
 
+Frame Document::insert_text_box(const Element &page, const Measure &x,
+                                const Measure &y, const Measure &width,
+                                const Measure &height) const {
+  constexpr std::array<std::string_view, 6> fixed{"cm", "mm", "in",
+                                                  "pt", "pc", "px"};
+  for (const Measure *length : {&x, &y, &width, &height}) {
+    if (std::ranges::find(fixed, length->unit().name()) == fixed.end()) {
+      throw std::invalid_argument("length " + length->to_string() +
+                                  " has no fixed size");
+    }
+  }
+  if (width.magnitude() <= 0 || height.magnitude() <= 0) {
+    throw std::invalid_argument("a text box needs a positive size");
+  }
+
+  const internal::abstract::ElementAdapter *adapter = m_impl->element_adapter();
+  const ElementIdentifier identifier =
+      adapter->element_insert_text_box(check_(page), x, y, width, height);
+  return {adapter, identifier, adapter->frame_adapter(identifier)};
+}
+
 std::vector<SheetPosition>
 Document::dependents(const SheetPosition &position) const {
   return dependents(std::vector<SheetPosition>{position});

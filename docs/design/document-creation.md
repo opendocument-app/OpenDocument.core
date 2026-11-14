@@ -39,7 +39,7 @@ differently from an opened one.
 | docx | Calibri 11pt, line spacing 1.08, 8pt after | A4, margins 1 inch |
 | xlsx | Calibri 11pt | A4, Excel margins |
 | odp | Liberation Sans; title 44pt, subtitle 32pt, outline 28pt | 28 cm × 15.75 cm |
-| pptx | Calibri Light titles, Calibri text; title 44pt, body 28pt | 28 cm × 15.75 cm |
+| pptx | Calibri Light titles, Calibri text; title 44pt, body 28pt, other text 18pt | 28 cm × 15.75 cm |
 
 Word 365 uses Aptos. We use Calibri because more systems map it to a
 metric-compatible font (Carlito). `meta:generator` and `Application` are

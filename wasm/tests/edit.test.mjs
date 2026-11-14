@@ -472,7 +472,7 @@ describe('edit', () => {
   });
 
   it('refuses to create a type that cannot be created', () => {
-    assert.throws(() => odr.create(odr.enums.FileType.pptx), (error) => {
+    assert.throws(() => odr.create(odr.enums.FileType.doc), (error) => {
       assert.ok(error instanceof OdrError);
       assert.equal(error.name, 'UnsupportedFileType');
       return true;
