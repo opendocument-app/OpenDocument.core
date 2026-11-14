@@ -26,6 +26,7 @@ class File;
 class Filesystem;
 class Paragraph;
 class Sheet;
+class Slide;
 class Text;
 
 /// What @ref Document::recalculate did. Each list is sorted by sheet, then
@@ -133,6 +134,18 @@ public:
   /// case, or one Excel and LibreOffice refuse.
   [[nodiscard]] Sheet insert_sheet(std::uint32_t index,
                                    const std::string &name) const;
+
+  /// The layouts @ref insert_slide starts a slide from, by name; empty where
+  /// the engine cannot insert a slide.
+  [[nodiscard]] std::vector<std::string> slide_layouts() const;
+
+  /// An empty slide at @p index among the slides, holding the text
+  /// placeholders of the @p layout -th of @ref slide_layouts, each with one
+  /// empty paragraph.
+  /// @throws std::out_of_range for an index past the slide count or a layout
+  /// past the list.
+  [[nodiscard]] Slide insert_slide(std::uint32_t index,
+                                   std::uint32_t layout) const;
 
   /// @}
 

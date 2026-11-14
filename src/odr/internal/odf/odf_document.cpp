@@ -5,6 +5,7 @@
 #include <odr/sheet_position.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
+#include <odr/internal/common/blank_slide_layouts.hpp>
 #include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/page_anchor.hpp>
@@ -21,6 +22,7 @@
 #include <odr/internal/odf/odf_number_format.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
 #include <odr/internal/odf/odf_sheet_references.hpp>
+#include <odr/internal/odf/odf_slide_layout.hpp>
 #include <odr/internal/odf/odf_table.hpp>
 #include <odr/internal/util/number_util.hpp>
 #include <odr/internal/util/string_util.hpp>
@@ -85,6 +87,7 @@ void Document::init_(const pugi::xml_node content_root,
   m_root_element = parse_tree(m_element_registry,
                               content_root.child("office:body").first_child());
 
+  m_styles_root = styles_root;
   m_generator = read_generator(content_root, m_files.get());
   m_style_registry = StyleRegistry(
       *this, content_root, styles_root,
@@ -100,6 +103,8 @@ void Document::init_(const pugi::xml_node content_root,
 
   m_element_adapter = create_element_adapter(*this, m_element_registry);
 }
+
+pugi::xml_node Document::styles_root() const { return m_styles_root; }
 
 ElementRegistry &Document::element_registry() { return m_element_registry; }
 
@@ -2140,6 +2145,140 @@ public:
       m_registry->insert_sibling_before(element_id, new_id);
     }
     return new_id;
+  }
+
+  [[nodiscard]] std::vector<std::string>
+  element_slide_layouts(const ElementIdentifier element_id) const override {
+    if (std::string_view(get_node(element_id).name()) !=
+        "office:presentation") {
+      return {};
+    }
+    std::vector<std::string> result;
+    for (SlideLayout &layout :
+         list_slide_layouts(m_document->styles_root().child("office:styles"))) {
+      result.push_back(std::move(layout.name));
+    }
+    return result;
+  }
+
+  /// A `draw:page` on the master of the slide before it, else the first
+  /// master, holding a frame with one empty paragraph per text placeholder.
+  /// A built-in layout the file lacks is written into `office:styles`.
+  [[nodiscard]] ElementIdentifier
+  element_insert_slide(const ElementIdentifier element_id,
+                       const std::uint32_t index,
+                       const std::uint32_t layout_index) const override {
+    pugi::xml_node presentation = get_node(element_id);
+    pugi::xml_node styles = m_document->styles_root().child("office:styles");
+    if (std::string_view(presentation.name()) != "office:presentation" ||
+        !styles) {
+      throw UnsupportedOperation();
+    }
+
+    std::vector<ElementIdentifier> slides;
+    for (ElementIdentifier id = element_first_child(element_id);
+         id != null_element_id; id = element_next_sibling(id)) {
+      if (element_type(id) == ElementType::slide) {
+        slides.push_back(id);
+      }
+    }
+
+    ElementIdentifier master_id = null_element_id;
+    if (!slides.empty()) {
+      master_id = slide_master_page(slides[index == 0 ? 0 : index - 1]);
+    }
+    if (master_id == null_element_id) {
+      master_id = m_document->style_registry().first_master_page();
+    }
+    if (master_id == null_element_id) {
+      throw UnsupportedOperation();
+    }
+    const std::string master =
+        get_node(master_id).attribute("style:name").value();
+
+    const SlideLayout layout = list_slide_layouts(styles).at(layout_index);
+    pugi::xml_node layout_node = layout.node;
+    if (!layout_node) {
+      const PageLayout page = master_page_page_layout(master_id);
+      const auto centimetres = [](const std::optional<Measure> &length,
+                                  const double fallback) {
+        if (!length.has_value()) {
+          return fallback;
+        }
+        const double per = centimetres_per(length->unit().name());
+        return per == 0.0 ? fallback : length->magnitude() * per;
+      };
+      layout_node = write_slide_layout(
+          styles, *layout.builtin,
+          centimetres(page.width, blank_slide_width / 100.0),
+          centimetres(page.height, blank_slide_height / 100.0));
+    }
+
+    pugi::xml_node page;
+    if (index < slides.size()) {
+      page = presentation.insert_child_before("draw:page",
+                                              get_node(slides[index]));
+    } else if (!slides.empty()) {
+      page =
+          presentation.insert_child_after("draw:page", get_node(slides.back()));
+    } else {
+      page = presentation.prepend_child("draw:page");
+    }
+    std::string name;
+    for (std::uint32_t number = 1;; ++number) {
+      name = "page" + std::to_string(number);
+      if (!presentation.find_child_by_attribute("draw:page", "draw:name",
+                                                name.c_str())) {
+        break;
+      }
+    }
+    page.append_attribute("draw:name").set_value(name.c_str());
+    page.append_attribute("draw:master-page-name").set_value(master.c_str());
+    page.append_attribute("presentation:presentation-page-layout-name")
+        .set_value(layout_node.attribute("style:name").value());
+
+    // LibreOffice names a master's presentation styles `<master>-<kind>`
+    const auto presentation_style = [&](const std::string_view object) {
+      const std::string kind = object == "title"      ? "title"
+                               : object == "subtitle" ? "subtitle"
+                                                      : "outline1";
+      const std::string style = master + "-" + kind;
+      return styles.find_child_by_attribute("style:style", "style:name",
+                                            style.c_str())
+                 ? style
+                 : std::string();
+    };
+    for (const pugi::xml_node placeholder :
+         layout_node.children("presentation:placeholder")) {
+      const std::string_view object =
+          placeholder.attribute("presentation:object").value();
+      if (object != "title" && object != "subtitle" && object != "outline" &&
+          object != "text") {
+        continue;
+      }
+      pugi::xml_node frame = page.append_child("draw:frame");
+      if (const std::string style = presentation_style(object);
+          !style.empty()) {
+        frame.append_attribute("presentation:style-name")
+            .set_value(style.c_str());
+      }
+      for (const char *attribute :
+           {"svg:x", "svg:y", "svg:width", "svg:height"}) {
+        frame.append_attribute(attribute).set_value(
+            placeholder.attribute(attribute).value());
+      }
+      frame.append_attribute("presentation:class")
+          .set_value(std::string(object).c_str());
+      frame.append_child("draw:text-box").append_child("text:p");
+    }
+
+    const ElementIdentifier slide_id = parse_slide_tree(*m_registry, page);
+    if (index < slides.size()) {
+      m_registry->insert_sibling_before(slides[index], slide_id);
+    } else {
+      m_registry->append_child(element_id, slide_id);
+    }
+    return slide_id;
   }
 
   /// A `table:table` with one column and one row, as a new document has

@@ -17,6 +17,10 @@ ElementIdentifier parse_tree(ElementRegistry &registry, pugi::xml_node node);
 ElementIdentifier parse_sheet_tree(ElementRegistry &registry,
                                    pugi::xml_node node);
 
+/// Registers the `draw:page` @p node of a presentation as a slide, unlinked.
+ElementIdentifier parse_slide_tree(ElementRegistry &registry,
+                                   pugi::xml_node node);
+
 /// Whether @p name is a text field, whose text its producer computed and
 /// whose element is parsed as a group.
 bool is_text_field(std::string_view name);

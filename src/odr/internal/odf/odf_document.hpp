@@ -44,6 +44,10 @@ public:
   void save(std::ostream &out) const override;
   void save(std::ostream &out, const char *password) const override;
 
+  /// The element holding `office:styles` and `office:master-styles`: the
+  /// root of `styles.xml`, or the flat document.
+  [[nodiscard]] pugi::xml_node styles_root() const;
+
   /// Loads and caches the XML part at @p path for `save`; null if absent or
   /// flat.
   /// @throws std::exception if the part cannot be parsed.
@@ -54,6 +58,7 @@ private:
 
   pugi::xml_document m_content_xml;
   pugi::xml_document m_styles_xml;
+  pugi::xml_node m_styles_root;
   /// `meta:generator`, empty where unstated.
   std::string m_generator;
   /// The parts besides `content.xml` that `save` writes back.

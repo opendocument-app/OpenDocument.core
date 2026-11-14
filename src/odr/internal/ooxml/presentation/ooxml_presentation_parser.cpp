@@ -163,7 +163,8 @@ parse_any_element_tree(ElementRegistry &registry, const ParseContext &context,
   static std::unordered_map<std::string, TreeParser> parser_table{
       {"p:presentation", create_default_tree_parser(
                              ElementType::root, parse_presentation_children)},
-      {"p:sld", create_default_tree_parser(ElementType::slide)},
+      {"p:sld",
+       create_default_tree_parser(ElementType::slide, parse_slide_children)},
       {"p:sp", create_default_tree_parser(ElementType::frame)},
       {"p:graphicFrame", create_default_tree_parser(
                              ElementType::frame, parse_graphic_frame_children)},

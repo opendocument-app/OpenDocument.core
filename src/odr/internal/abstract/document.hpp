@@ -162,6 +162,23 @@ public:
     throw UnsupportedOperation();
   }
 
+  /// The names of the layouts a slide can start from, for the root
+  /// @p element_id; none where the engine cannot insert a slide.
+  [[nodiscard]] virtual std::vector<std::string> element_slide_layouts(
+      [[maybe_unused]] const ElementIdentifier element_id) const {
+    return {};
+  }
+  /// An empty slide at @p index among the slides of the root @p element_id,
+  /// from the @p layout -th of @ref element_slide_layouts. The caller checked
+  /// both.
+  /// @throws UnsupportedOperation where the engine cannot write.
+  virtual ElementIdentifier
+  element_insert_slide([[maybe_unused]] const ElementIdentifier element_id,
+                       [[maybe_unused]] const std::uint32_t index,
+                       [[maybe_unused]] const std::uint32_t layout) const {
+    throw UnsupportedOperation();
+  }
+
   [[nodiscard]] virtual const TextRootAdapter *
   text_root_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;
