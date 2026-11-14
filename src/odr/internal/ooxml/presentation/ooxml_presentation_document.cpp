@@ -368,8 +368,9 @@ const std::vector<std::pair<SlideLayout, AbsPath>> &Document::slide_layouts() {
         name += " (" + std::to_string(count + 1) + ")";
       }
       std::vector<SlidePlaceholder> placeholders;
-      for (LayoutPlaceholder &placeholder : text_placeholders(layout, master)) {
-        placeholders.push_back(std::move(placeholder.placeholder));
+      for (const LayoutPlaceholder &placeholder :
+           text_placeholders(layout, master)) {
+        placeholders.push_back(placeholder.placeholder);
       }
       result.emplace_back(SlideLayout(std::move(name), std::move(placeholders)),
                           std::move(layout_path));
