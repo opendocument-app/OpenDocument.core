@@ -8,7 +8,6 @@
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/filesystem.hpp>
 #include <odr/quantity.hpp>
-#include <odr/slide_layout.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/common/sheet_dependencies.hpp>
@@ -555,9 +554,13 @@ void Document::edit(const std::string_view operations,
       const auto layout = integer<std::uint32_t>(operation.at("layout"));
       // the page drew the slide it expected, and a different one would leave
       // later operations naming the wrong placeholder
-      if (const std::vector<SlideLayout> layouts = slide_layouts();
+      if (const std::vector<Slide> layouts = slide_layouts();
           layout < layouts.size()) {
-        const std::size_t count = layouts[layout].placeholders().size();
+        std::size_t count = 0;
+        for ([[maybe_unused]] const Element child :
+             layouts[layout].children()) {
+          ++count;
+        }
         if ((operation.contains("frames") && frames.size() != count) ||
             (operation.contains("paragraphs") && paragraphs.size() != count)) {
           throw std::invalid_argument(
@@ -629,6 +632,14 @@ Element Document::element_by_id(const ElementIdentifier identifier) const {
 ElementIdentifier Document::check_(const Element &element) const {
   if (!element || element_by_id(element.identifier()) != element) {
     throw std::invalid_argument("element is not this document's");
+  }
+  // a slide layout sits outside the root and takes no edit
+  Element top = element;
+  while (const Element parent = top.parent()) {
+    top = parent;
+  }
+  if (top != root_element()) {
+    throw std::invalid_argument("element is not in the document's tree");
   }
   return element.identifier();
 }
@@ -777,9 +788,15 @@ Sheet Document::insert_sheet(const std::uint32_t index,
   return {adapter, identifier, adapter->sheet_adapter(identifier)};
 }
 
-std::vector<SlideLayout> Document::slide_layouts() const {
-  return m_impl->element_adapter()->element_slide_layouts(
-      m_impl->root_element());
+std::vector<Slide> Document::slide_layouts() const {
+  const internal::abstract::ElementAdapter *adapter = m_impl->element_adapter();
+  std::vector<Slide> result;
+  for (const ElementIdentifier identifier :
+       adapter->element_slide_layouts(m_impl->root_element())) {
+    result.emplace_back(adapter, identifier,
+                        adapter->slide_adapter(identifier));
+  }
+  return result;
 }
 
 Slide Document::insert_slide(const std::uint32_t index,

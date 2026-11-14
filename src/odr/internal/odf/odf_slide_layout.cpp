@@ -7,9 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
-#include <optional>
 #include <ranges>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -69,34 +67,6 @@ std::string centimetres(const double value) {
   return fmt::format("{}cm", util::number::to_string_significant(value, 6));
 }
 
-/// ODF 1.3 part 3, 19.427 `presentation:object`; none for a graphic object.
-std::optional<SlidePlaceholderKind> text_kind(const std::string_view object) {
-  if (object == "title") {
-    return SlidePlaceholderKind::title;
-  }
-  if (object == "subtitle") {
-    return SlidePlaceholderKind::subtitle;
-  }
-  if (object == "outline" || object == "text") {
-    return SlidePlaceholderKind::body;
-  }
-  return std::nullopt;
-}
-
-SlidePlaceholderKind slide_kind(const BlankPlaceholderKind kind) {
-  switch (kind) {
-  case BlankPlaceholderKind::title:
-  case BlankPlaceholderKind::centered_title:
-    return SlidePlaceholderKind::title;
-  case BlankPlaceholderKind::subtitle:
-    return SlidePlaceholderKind::subtitle;
-  case BlankPlaceholderKind::content:
-  case BlankPlaceholderKind::text:
-    return SlidePlaceholderKind::body;
-  }
-  throw std::invalid_argument("unknown placeholder kind");
-}
-
 /// x, y, width and height of @p placeholder in centimetres, scaled from the
 /// built-in page onto a page of @p width by @p height.
 std::array<double, 4> scaled(const BlankPlaceholder &placeholder,
@@ -113,32 +83,31 @@ std::array<double, 4> scaled(const BlankPlaceholder &placeholder,
 
 namespace odr::internal {
 
-std::optional<SlidePlaceholder>
-odf::read_text_placeholder(const pugi::xml_node node) {
-  const std::optional<SlidePlaceholderKind> kind =
-      text_kind(node.attribute("presentation:object").value());
-  const std::array attributes{node.attribute("svg:x"), node.attribute("svg:y"),
-                              node.attribute("svg:width"),
-                              node.attribute("svg:height")};
-  if (!kind.has_value() ||
-      !std::ranges::all_of(attributes, [](const pugi::xml_attribute a) {
-        return static_cast<bool>(a);
-      })) {
-    return std::nullopt;
+std::vector<pugi::xml_node>
+odf::text_placeholders(const pugi::xml_node layout) {
+  std::vector<pugi::xml_node> result;
+  for (const pugi::xml_node placeholder :
+       layout.children("presentation:placeholder")) {
+    // ODF 1.3 part 3, 19.427 `presentation:object`
+    const std::string_view object =
+        placeholder.attribute("presentation:object").value();
+    if ((object == "title" || object == "subtitle" || object == "outline" ||
+         object == "text") &&
+        placeholder.attribute("svg:x") && placeholder.attribute("svg:y") &&
+        placeholder.attribute("svg:width") &&
+        placeholder.attribute("svg:height")) {
+      result.push_back(placeholder);
+    }
   }
-  return SlidePlaceholder(
-      *kind, Measure(attributes[0].value()), Measure(attributes[1].value()),
-      Measure(attributes[2].value()), Measure(attributes[3].value()));
+  return result;
 }
 
 std::vector<odf::SlideLayoutSource>
-odf::list_slide_layouts(const pugi::xml_node styles, const double width,
-                        const double height) {
+odf::list_slide_layouts(const pugi::xml_node styles) {
   std::vector<SlideLayoutSource> result;
   const auto count_named = [&](const std::string &name) {
     return std::ranges::count_if(result, [&](const SlideLayoutSource &source) {
-      const std::string &taken = source.layout.name();
-      return taken == name || taken.starts_with(name + " (");
+      return source.name == name || source.name.starts_with(name + " (");
     });
   };
 
@@ -155,35 +124,15 @@ odf::list_slide_layouts(const pugi::xml_node styles, const double width,
     if (const auto count = count_named(name); count > 0) {
       name += fmt::format(" ({})", count + 1);
     }
-    std::vector<SlidePlaceholder> placeholders;
-    for (const pugi::xml_node child :
-         node.children("presentation:placeholder")) {
-      if (const std::optional<SlidePlaceholder> placeholder =
-              read_text_placeholder(child);
-          placeholder.has_value()) {
-        placeholders.push_back(*placeholder);
-      }
-    }
     result.push_back(
-        {.layout = SlideLayout(std::move(name), std::move(placeholders)),
-         .node = node,
-         .builtin = nullptr});
+        {.name = std::move(name), .node = node, .builtin = nullptr});
   }
   for (const BlankSlideLayout &builtin : blank_slide_layouts) {
-    if (count_named(std::string(builtin.name)) > 0) {
-      continue;
+    if (count_named(std::string(builtin.name)) == 0) {
+      result.push_back({.name = std::string(builtin.name),
+                        .node = pugi::xml_node(),
+                        .builtin = &builtin});
     }
-    std::vector<SlidePlaceholder> placeholders;
-    for (const BlankPlaceholder &placeholder : builtin.placeholders) {
-      const auto [x, y, w, h] = scaled(placeholder, width, height);
-      const DynamicUnit cm("cm");
-      placeholders.emplace_back(slide_kind(placeholder.kind), Measure(x, cm),
-                                Measure(y, cm), Measure(w, cm), Measure(h, cm));
-    }
-    result.push_back({.layout = SlideLayout(std::string(builtin.name),
-                                            std::move(placeholders)),
-                      .node = pugi::xml_node(),
-                      .builtin = &builtin});
   }
   return result;
 }

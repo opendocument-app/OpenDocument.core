@@ -40,6 +40,7 @@
 #include <limits>
 #include <mutex>
 #include <ostream>
+#include <ranges>
 #include <span>
 #include <sstream>
 #include <string_view>
@@ -57,6 +58,75 @@ std::string read_generator(pugi::xml_node content_root,
                            const abstract::ReadableFilesystem *files);
 bool gradient_angles_in_tenths(std::string_view office_version,
                                std::string_view generator);
+
+/// The page of the master @p master_id in centimetres, else the built-in page.
+std::pair<double, double> page_size(const abstract::ElementAdapter &adapter,
+                                    const ElementIdentifier master_id) {
+  const auto centimetres = [](const std::optional<Measure> &length,
+                              const double fallback) {
+    if (!length.has_value()) {
+      return fallback;
+    }
+    const double per = centimetres_per(length->unit().name());
+    return per == 0.0 ? fallback : length->magnitude() * per;
+  };
+  const abstract::MasterPageAdapter *master =
+      adapter.master_page_adapter(master_id);
+  const PageLayout page = master == nullptr
+                              ? PageLayout()
+                              : master->master_page_page_layout(master_id);
+  return {centimetres(page.width, blank_slide_width / 100.0),
+          centimetres(page.height, blank_slide_height / 100.0)};
+}
+
+/// Fills @p page as a slide named @p name on @p master with a frame and an
+/// empty paragraph per text placeholder of @p layout, styled by the master's
+/// presentation styles in @p styles.
+void write_slide(pugi::xml_node page, const std::string &name,
+                 const std::string &master, const pugi::xml_node layout,
+                 const pugi::xml_node styles) {
+  page.append_attribute("draw:name").set_value(name.c_str());
+  page.append_attribute("draw:master-page-name").set_value(master.c_str());
+  page.append_attribute("presentation:presentation-page-layout-name")
+      .set_value(layout.attribute("style:name").value());
+
+  for (const pugi::xml_node placeholder : text_placeholders(layout)) {
+    const std::string_view object =
+        placeholder.attribute("presentation:object").value();
+    pugi::xml_node frame = page.append_child("draw:frame");
+    // LibreOffice names a master's presentation styles `<master>-<kind>`
+    const std::string style = master + (object == "title"      ? "-title"
+                                        : object == "subtitle" ? "-subtitle"
+                                                               : "-outline1");
+    if (styles.find_child_by_attribute("style:style", "style:name",
+                                       style.c_str())) {
+      frame.append_attribute("presentation:style-name")
+          .set_value(style.c_str());
+    }
+    for (const char *attribute :
+         {"svg:x", "svg:y", "svg:width", "svg:height"}) {
+      frame.append_attribute(attribute).set_value(
+          placeholder.attribute(attribute).value());
+    }
+    frame.append_attribute("presentation:class")
+        .set_value(std::string(object).c_str());
+    frame.append_child("draw:text-box").append_child("text:p");
+  }
+}
+
+/// Fills @p frame as a text box of graphic style @p style holding one empty
+/// paragraph, at @p x and @p y and @p width by @p height.
+void write_text_box(pugi::xml_node frame, const std::string &style,
+                    const Measure &x, const Measure &y, const Measure &width,
+                    const Measure &height) {
+  frame.append_attribute("draw:style-name").set_value(style.c_str());
+  frame.append_attribute("draw:layer").set_value("layout");
+  frame.append_attribute("svg:width").set_value(width.to_string().c_str());
+  frame.append_attribute("svg:height").set_value(height.to_string().c_str());
+  frame.append_attribute("svg:x").set_value(x.to_string().c_str());
+  frame.append_attribute("svg:y").set_value(y.to_string().c_str());
+  frame.append_child("draw:text-box").append_child("text:p");
+}
 } // namespace
 
 Document::Document(const FileType file_type, const DocumentType document_type,
@@ -102,6 +172,72 @@ void Document::init_(const pugi::xml_node content_root,
   }
 
   m_element_adapter = create_element_adapter(*this, m_element_registry);
+  load_layouts_(content_root.child("office:body").first_child());
+}
+
+void Document::load_layouts_(const pugi::xml_node body) {
+  const std::string_view kind = body.name();
+  const ElementIdentifier master_id = m_style_registry.first_master_page();
+  if ((kind != "office:presentation" && kind != "office:drawing") ||
+      master_id == null_element_id) {
+    return;
+  }
+  const std::string master = m_element_registry.element_at(master_id)
+                                 .node.attribute("style:name")
+                                 .value();
+  const pugi::xml_node styles = m_styles_root.child("office:styles");
+
+  pugi::xml_node root = m_layouts_xml.append_child("office:document");
+  const pugi::xml_node automatic_styles =
+      root.append_child("office:automatic-styles");
+  const pugi::xml_node builtin_styles = root.append_child("office:styles");
+  pugi::xml_node pages = root.append_child(body.name());
+
+  if (kind == "office:presentation") {
+    const auto [width, height] = page_size(*m_element_adapter, master_id);
+    for (const SlideLayoutSource &source : list_slide_layouts(styles)) {
+      const pugi::xml_node layout =
+          source.node ? source.node
+                      : write_slide_layout(builtin_styles, *source.builtin,
+                                           width, height);
+      pugi::xml_node page = pages.append_child("draw:page");
+      write_slide(page, source.name, master, layout, styles);
+      m_slide_layouts.push_back(
+          {.slide = parse_slide_tree(m_element_registry, page),
+           .node = source.node,
+           .builtin = source.builtin});
+    }
+  }
+
+  pugi::xml_node page = pages.append_child("draw:page");
+  page.append_attribute("draw:master-page-name").set_value(master.c_str());
+  write_text_box(page.append_child("draw:frame"),
+                 m_style_registry.create_text_box_style(automatic_styles),
+                 Measure("0cm"), Measure("0cm"), Measure("0cm"),
+                 Measure("0cm"));
+  m_text_box_layout =
+      m_element_registry.element_at(parse_slide_tree(m_element_registry, page))
+          .first_child_id;
+}
+
+std::vector<ElementIdentifier> Document::slide_layouts() const {
+  return m_slide_layouts | std::views::transform(&SlideLayout::slide) |
+         std::ranges::to<std::vector>();
+}
+
+ElementIdentifier Document::text_box_layout() const {
+  return m_text_box_layout;
+}
+
+pugi::xml_node Document::slide_layout_node(const std::size_t index,
+                                           const double width,
+                                           const double height) {
+  SlideLayout &layout = m_slide_layouts.at(index);
+  if (!layout.node) {
+    layout.node = write_slide_layout(m_styles_root.child("office:styles"),
+                                     *layout.builtin, width, height);
+  }
+  return layout.node;
 }
 
 pugi::xml_node Document::styles_root() const { return m_styles_root; }
@@ -2147,39 +2283,17 @@ public:
     return new_id;
   }
 
-  [[nodiscard]] std::vector<SlideLayout>
+  [[nodiscard]] std::vector<ElementIdentifier>
   element_slide_layouts(const ElementIdentifier element_id) const override {
     if (std::string_view(get_node(element_id).name()) !=
         "office:presentation") {
       return {};
     }
-    const auto [width, height] =
-        page_size(m_document->style_registry().first_master_page());
-    std::vector<SlideLayout> result;
-    for (SlideLayoutSource &source : list_slide_layouts(
-             m_document->styles_root().child("office:styles"), width, height)) {
-      result.push_back(std::move(source.layout));
-    }
-    return result;
+    return m_document->slide_layouts();
   }
-
-  /// The page of the master @p master_id in centimetres, else the built-in
-  /// page.
-  [[nodiscard]] std::pair<double, double>
-  page_size(const ElementIdentifier master_id) const {
-    const auto centimetres = [](const std::optional<Measure> &length,
-                                const double fallback) {
-      if (!length.has_value()) {
-        return fallback;
-      }
-      const double per = centimetres_per(length->unit().name());
-      return per == 0.0 ? fallback : length->magnitude() * per;
-    };
-    const PageLayout page = master_id == null_element_id
-                                ? PageLayout()
-                                : master_page_page_layout(master_id);
-    return {centimetres(page.width, blank_slide_width / 100.0),
-            centimetres(page.height, blank_slide_height / 100.0)};
+  [[nodiscard]] ElementIdentifier element_text_box_layout(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return m_document->text_box_layout();
   }
 
   /// A `draw:page` on the master of the slide before it, else the first
@@ -2217,13 +2331,9 @@ public:
     const std::string master =
         get_node(master_id).attribute("style:name").value();
 
-    const auto [width, height] = page_size(master_id);
-    const SlideLayoutSource source =
-        list_slide_layouts(styles, width, height).at(layout_index);
-    const pugi::xml_node layout_node =
-        source.node
-            ? source.node
-            : write_slide_layout(styles, *source.builtin, width, height);
+    const auto [width, height] = page_size(*this, master_id);
+    const pugi::xml_node layout =
+        m_document->slide_layout_node(layout_index, width, height);
 
     pugi::xml_node page;
     if (index < slides.size()) {
@@ -2243,44 +2353,7 @@ public:
         break;
       }
     }
-    page.append_attribute("draw:name").set_value(name.c_str());
-    page.append_attribute("draw:master-page-name").set_value(master.c_str());
-    page.append_attribute("presentation:presentation-page-layout-name")
-        .set_value(layout_node.attribute("style:name").value());
-
-    // LibreOffice names a master's presentation styles `<master>-<kind>`
-    const auto presentation_style = [&](const SlidePlaceholderKind kind) {
-      const std::string style =
-          master + (kind == SlidePlaceholderKind::title      ? "-title"
-                    : kind == SlidePlaceholderKind::subtitle ? "-subtitle"
-                                                             : "-outline1");
-      return styles.find_child_by_attribute("style:style", "style:name",
-                                            style.c_str())
-                 ? style
-                 : std::string();
-    };
-    for (const pugi::xml_node placeholder :
-         layout_node.children("presentation:placeholder")) {
-      const std::optional<SlidePlaceholder> text =
-          read_text_placeholder(placeholder);
-      if (!text.has_value()) {
-        continue;
-      }
-      pugi::xml_node frame = page.append_child("draw:frame");
-      if (const std::string style = presentation_style(text->kind());
-          !style.empty()) {
-        frame.append_attribute("presentation:style-name")
-            .set_value(style.c_str());
-      }
-      for (const char *attribute :
-           {"svg:x", "svg:y", "svg:width", "svg:height"}) {
-        frame.append_attribute(attribute).set_value(
-            placeholder.attribute(attribute).value());
-      }
-      frame.append_attribute("presentation:class")
-          .set_value(placeholder.attribute("presentation:object").value());
-      frame.append_child("draw:text-box").append_child("text:p");
-    }
+    write_slide(page, name, master, layout, styles);
 
     const ElementIdentifier slide_id = parse_slide_tree(*m_registry, page);
     if (index < slides.size()) {
@@ -2305,16 +2378,10 @@ public:
     const pugi::xml_node notes = page.child("presentation:notes");
     pugi::xml_node frame = notes ? page.insert_child_before("draw:frame", notes)
                                  : page.append_child("draw:frame");
-    frame.append_attribute("draw:style-name")
-        .set_value(m_document->style_registry()
-                       .create_text_box_style(automatic_styles_of(page))
-                       .c_str());
-    frame.append_attribute("draw:layer").set_value("layout");
-    frame.append_attribute("svg:width").set_value(width.to_string().c_str());
-    frame.append_attribute("svg:height").set_value(height.to_string().c_str());
-    frame.append_attribute("svg:x").set_value(x.to_string().c_str());
-    frame.append_attribute("svg:y").set_value(y.to_string().c_str());
-    frame.append_child("draw:text-box").append_child("text:p");
+    write_text_box(frame,
+                   m_document->style_registry().create_text_box_style(
+                       automatic_styles_of(page)),
+                   x, y, width, height);
 
     const ElementIdentifier frame_id = parse_tree(*m_registry, frame);
     // what the notes hold is parsed into the slide too, after its shapes

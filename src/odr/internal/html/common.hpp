@@ -40,8 +40,6 @@ struct WritingState {
 
   [[nodiscard]] HtmlWriter &out() const { return *m_out; }
   [[nodiscard]] const HtmlConfig &config() const { return *m_config; }
-  /// @p config outlives the state.
-  void set_config(const HtmlConfig &config) { m_config = &config; }
   [[nodiscard]] HtmlResources &resources() const { return *m_resources; }
   [[nodiscard]] const Logger &logger() const { return *m_logger; }
   /// Where repeated style blocks are deduplicated, or null where they are not.

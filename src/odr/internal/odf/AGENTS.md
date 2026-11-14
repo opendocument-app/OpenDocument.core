@@ -227,13 +227,15 @@ unknown mimetype are tolerated.
 - **A sheet.** `element_insert_sheet` adds a `table:table` with one column
   and one row before the sheet at the index, and registers it through
   `parse_sheet_tree`.
-- **A slide.** `element_insert_slide` adds a `draw:page` from one of
-  `list_slide_layouts` (`odf_slide_layout`): the file's layouts, then each
-  built-in it lacks, which `write_slide_layout` puts into `office:styles` on
-  first use. See `docs/design/structure-editing.md`.
+- **A slide.** At open, a presentation gets a detached `draw:page` per layout
+  of `list_slide_layouts` (`odf_slide_layout`) in `m_layouts_xml`, which is
+  never saved. `element_insert_slide` writes a `draw:page` the same way
+  (`write_slide`); a built-in goes into `office:styles` on first use. See
+  `docs/design/structure-editing.md`.
 - **A text box.** `element_insert_text_box` adds a `draw:frame` with a
-  `draw:text-box` to a slide or a drawing page, styled by the one
-  `StyleRegistry::create_text_box_style` makes.
+  `draw:text-box` to a slide or a drawing page (`write_text_box`), styled by
+  the one `StyleRegistry::create_text_box_style` makes per automatic-styles
+  element.
 - **Cells.** `sheet_set_cell` writes `office:value-type`, `office:value` and
   the `text:p` under the cell, because the file states the value and shows a
   rendering of it. It writes through the run the cell holds, so the run keeps

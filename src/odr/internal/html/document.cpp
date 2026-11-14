@@ -6,9 +6,7 @@
 #include <odr/file.hpp>
 #include <odr/html.hpp>
 #include <odr/logger.hpp>
-#include <odr/odr.hpp>
 #include <odr/quantity.hpp>
-#include <odr/slide_layout.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/abstract/document.hpp>
@@ -30,7 +28,6 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <exception>
 #include <mutex>
 #include <optional>
 #include <span>
@@ -404,53 +401,30 @@ std::string identifiers(const std::span<const ElementIdentifier> list) {
   return result;
 }
 
-/// A `<template>` per slide layout and one for a text box, rendered from a
-/// copy that took the edit, so the page draws what replay makes.
+/// A `<template>` per slide layout and one for a text box, rendered from what
+/// an insert copies, so the page draws what replay makes.
 void write_edit_templates(const Document &document, const WritingState &state) {
-  const DocumentType type = document.document_type();
-  if (type != DocumentType::presentation && type != DocumentType::drawing) {
+  const abstract::Document &impl = *document.impl();
+  const Frame box =
+      document
+          .element_by_id(impl.element_adapter()->element_text_box_layout(
+              impl.root_element()))
+          .as_frame();
+  if (!box) {
     return;
   }
 
-  std::optional<Document> copy;
-  try {
-    copy =
-        open(document.save_to_memory(), DecodeOptions::as(document.file_type()))
-            .as_document_file()
-            .document();
-  } catch (const std::exception &e) {
-    ODR_WARNING(state.logger(), "html: no edit templates: " << e.what());
-    return;
-  }
-
-  // the copy's resources are not served
-  HtmlConfig config = state.config();
-  config.embed_images = true;
   // shares the view's background classes, so no two images get one
   WritingState template_state = state;
-  template_state.set_config(config);
   template_state.set_page_chunk_near(true);
   template_state.set_repeat_page_backgrounds(true);
   HtmlWriter &out = state.out();
 
-  std::uint32_t count = 0;
-  for ([[maybe_unused]] const Element child : copy->root_element().children()) {
-    ++count;
-  }
-  if (count == 0) {
-    return;
-  }
-
-  Element last_page;
-  const std::vector<SlideLayout> layouts = type == DocumentType::presentation
-                                               ? copy->slide_layouts()
-                                               : std::vector<SlideLayout>();
+  const std::vector<Slide> layouts = document.slide_layouts();
   for (std::uint32_t layout = 0; layout < layouts.size(); ++layout) {
-    const Slide slide = copy->insert_slide(count++, layout);
-    last_page = slide;
     std::vector<ElementIdentifier> frames;
     std::vector<ElementIdentifier> paragraphs;
-    for (const Element child : slide.children()) {
+    for (const Element child : layouts[layout].children()) {
       frames.push_back(child.identifier());
       paragraphs.push_back(
           util::document::first_paragraph_in(child).identifier());
@@ -464,16 +438,10 @@ void write_edit_templates(const Document &document, const WritingState &state) {
                              xml::escape_attribute(layouts[layout].name())},
                             {"data-odr-frames", identifiers(frames)},
                             {"data-odr-paragraphs", identifiers(paragraphs)}}));
-    translate_slide(slide, template_state);
+    translate_slide(layouts[layout], template_state);
     out.write_element_end("template");
   }
 
-  if (!last_page) {
-    last_page = *copy->root_element().children().begin();
-  }
-  const Frame box =
-      copy->insert_text_box(last_page, Measure("0cm"), Measure("0cm"),
-                            Measure("6cm"), Measure("1cm"));
   out.write_element_begin(
       "template",
       HtmlElementOptions()

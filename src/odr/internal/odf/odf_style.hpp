@@ -6,6 +6,7 @@
 
 #include <any>
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -154,11 +155,11 @@ public:
                                      const ParagraphStyle &style);
 
   /// A graphic style under @p automatic_styles for a text box: no stroke, no
-  /// fill, growing with its text. Made once, then answered again.
+  /// fill, growing with its text. Made once per @p automatic_styles.
   std::string create_text_box_style(pugi::xml_node automatic_styles);
 
 private:
-  std::string m_text_box_style;
+  std::map<pugi::xml_node, std::string> m_text_box_styles;
   /// Where the search for a free `T<n>` name starts.
   std::uint32_t m_next_text_style{1};
   std::uint32_t m_next_cell_style{1};
