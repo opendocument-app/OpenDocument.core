@@ -91,17 +91,11 @@ std::vector<Part> package(const std::string &layout, const std::string &master,
   };
 }
 
-/// What `load_layout_style` caches, which the returned style points into.
-struct Cache final {
-  std::unordered_map<std::string, Theme> themes;
-  std::unordered_map<std::string, pugi::xml_document> parts;
-};
-
-/// @p cache owns what the returned style points at, so it outlives it.
-LayoutStyle layout_style_of(const std::vector<Part> &parts, Cache &cache) {
+/// @p styles owns what the returned style points at, so it outlives it.
+LayoutStyle layout_style_of(const std::vector<Part> &parts,
+                            LayoutStyles &styles) {
   const VirtualFilesystem filesystem = filesystem_of(parts);
-  return load_layout_style(filesystem, AbsPath(layout_path), cache.themes,
-                           cache.parts);
+  return styles.get(filesystem, AbsPath(layout_path));
 }
 
 /// The run properties of @p run, through a theme of @p scheme alone.
@@ -211,14 +205,14 @@ TEST(ooxml_presentation_style, a_ground_stated_as_a_literal) {
 }
 
 TEST(ooxml_presentation_style, a_layout_takes_its_masters_scheme_and_ground) {
-  Cache cache;
+  LayoutStyles styles;
   const LayoutStyle style = layout_style_of(
       package("<p:sldLayout><p:cSld/></p:sldLayout>",
               R"(<p:sldMaster><p:clrMap bg1="lt1" tx1="dk1"/><p:cSld>)" +
                   solid_background(R"(<a:schemeClr val="bg1"/>)") +
                   "</p:cSld></p:sldMaster>",
               light_and_dark),
-      cache);
+      styles);
 
   ASSERT_NE(nullptr, style.theme);
   ASSERT_TRUE(style.theme->color_scheme.resolve("tx1").has_value());
@@ -228,7 +222,7 @@ TEST(ooxml_presentation_style, a_layout_takes_its_masters_scheme_and_ground) {
 }
 
 TEST(ooxml_presentation_style, a_layouts_own_ground_beats_its_masters) {
-  Cache cache;
+  LayoutStyles styles;
   const LayoutStyle style = layout_style_of(
       package("<p:sldLayout><p:cSld>" +
                   solid_background(R"(<a:srgbClr val="00ff00"/>)") +
@@ -237,14 +231,14 @@ TEST(ooxml_presentation_style, a_layouts_own_ground_beats_its_masters) {
                   solid_background(R"(<a:srgbClr val="ff0000"/>)") +
                   "</p:cSld></p:sldMaster>",
               light_and_dark),
-      cache);
+      styles);
 
   ASSERT_TRUE(style.background.has_value());
   EXPECT_EQ(0xff00ff00u, style.background->argb());
 }
 
 TEST(ooxml_presentation_style, a_layout_whose_ground_we_cannot_read) {
-  Cache cache;
+  LayoutStyles styles;
   const LayoutStyle style = layout_style_of(
       package("<p:sldLayout><p:cSld><p:bg><p:bgPr><a:gradFill/></p:bgPr>"
               "</p:bg></p:cSld></p:sldLayout>",
@@ -252,7 +246,7 @@ TEST(ooxml_presentation_style, a_layout_whose_ground_we_cannot_read) {
                   solid_background(R"(<a:srgbClr val="ff0000"/>)") +
                   "</p:cSld></p:sldMaster>",
               light_and_dark),
-      cache);
+      styles);
 
   EXPECT_FALSE(style.background.has_value());
 }
@@ -266,33 +260,31 @@ TEST(ooxml_presentation_style, one_scheme_per_master_however_many_layouts) {
       relationship("slideMaster", "../slideMasters/slideMaster1.xml"));
   const VirtualFilesystem filesystem = filesystem_of(parts);
 
-  Cache cache;
-  const LayoutStyle first = load_layout_style(filesystem, AbsPath(layout_path),
-                                              cache.themes, cache.parts);
-  const LayoutStyle second = load_layout_style(
-      filesystem, AbsPath("/ppt/slideLayouts/slideLayout2.xml"), cache.themes,
-      cache.parts);
+  LayoutStyles styles;
+  const LayoutStyle &first = styles.get(filesystem, AbsPath(layout_path));
+  const LayoutStyle &second =
+      styles.get(filesystem, AbsPath("/ppt/slideLayouts/slideLayout2.xml"));
 
-  EXPECT_EQ(1u, cache.themes.size());
+  EXPECT_NE(&first, &second);
   EXPECT_EQ(first.theme, second.theme);
 }
 
 TEST(ooxml_presentation_style, a_layout_relating_no_master_stays_unstyled) {
-  Cache cache;
+  LayoutStyles styles;
   const LayoutStyle style =
-      layout_style_of({{layout_path, "<p:sldLayout/>"}}, cache);
+      layout_style_of({{layout_path, "<p:sldLayout/>"}}, styles);
 
   EXPECT_EQ(nullptr, style.theme);
   EXPECT_FALSE(style.background.has_value());
 }
 
 TEST(ooxml_presentation_style, a_layout_part_that_is_not_xml_stays_unstyled) {
-  Cache cache;
+  LayoutStyles styles;
   const LayoutStyle style = layout_style_of(
       {{layout_path, "not xml at all"},
        {layout_rels_path,
         relationship("slideMaster", "../slideMasters/slideMaster1.xml")}},
-      cache);
+      styles);
 
   EXPECT_EQ(nullptr, style.theme);
   EXPECT_FALSE(style.background.has_value());

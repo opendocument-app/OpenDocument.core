@@ -129,14 +129,11 @@ void Document::save(std::ostream & /*out*/, const char * /*password*/) const {
 }
 
 /// slide → layout → master → theme; the master's `p:clrMap` says which slot
-/// each name stands for. Layouts are shared, so a layout, its master and its
-/// theme are read once rather than once per slide.
+/// each name stands for.
 void Document::load_slide_styles_(const std::vector<AbsPath> &slides) {
   if (m_root_element == null_element_id) {
     return;
   }
-
-  std::unordered_map<std::string, LayoutStyle> by_layout;
 
   // `parse_presentation_children` appends one slide per `p:sldId`, so the
   // root's children carry the same order `slides` was built in.
@@ -153,24 +150,17 @@ void Document::load_slide_styles_(const std::vector<AbsPath> &slides) {
 
     const std::optional<AbsPath> layout_path =
         parse_relationship_target(*m_files, slide_path, "slideLayout");
-    LayoutStyle layout_style;
-    if (layout_path.has_value()) {
-      const auto [layout_it, inserted] =
-          by_layout.try_emplace(layout_path->string());
-      if (inserted) {
-        layout_it->second =
-            load_layout_style(*m_files, *layout_path, m_themes, m_style_parts);
-      }
-      layout_style = layout_it->second;
+    const LayoutStyle no_layout;
+    const LayoutStyle &layout_style =
+        layout_path.has_value() ? m_layout_styles.get(*m_files, *layout_path)
+                                : no_layout;
+    if (layout_style.layout) {
+      m_slide_styles[current_id] = &layout_style;
     }
 
     const ColorScheme *color_scheme = layout_style.theme == nullptr
                                           ? nullptr
                                           : &layout_style.theme->color_scheme;
-    if (layout_style.layout) {
-      m_slide_styles[current_id] = layout_style;
-    }
-
     std::optional<Color> background = layout_style.background;
     if (const std::optional<std::optional<Color>> stated =
             read_background_color(slide_node, color_scheme);
@@ -186,7 +176,7 @@ void Document::load_slide_styles_(const std::vector<AbsPath> &slides) {
 const LayoutStyle *
 Document::slide_style(const ElementIdentifier element_id) const {
   const auto it = m_slide_styles.find(element_id);
-  return it == std::end(m_slide_styles) ? nullptr : &it->second;
+  return it == std::end(m_slide_styles) ? nullptr : it->second;
 }
 
 pugi::xml_node Document::default_text_style() const {

@@ -46,11 +46,9 @@ private:
   /// the other way round, which is what `save` walks
   std::map<AbsPath, std::string> m_slide_ids_by_path;
   PageLayout m_slide_layout;
-  /// by slide master path; a slide points into this, so it has to outlive them
-  std::unordered_map<std::string, Theme> m_themes;
-  /// the layouts and masters by path, which a slide's style points into
-  std::unordered_map<std::string, pugi::xml_document> m_style_parts;
-  std::unordered_map<ElementIdentifier, LayoutStyle> m_slide_styles;
+  /// declared before `m_slide_styles`, which points into it
+  LayoutStyles m_layout_styles;
+  std::unordered_map<ElementIdentifier, const LayoutStyle *> m_slide_styles;
   std::unordered_map<ElementIdentifier, Color> m_slide_backgrounds;
 
   ElementRegistry m_element_registry;

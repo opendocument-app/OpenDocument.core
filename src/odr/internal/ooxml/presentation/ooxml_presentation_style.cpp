@@ -103,59 +103,70 @@ presentation::read_background_color(const pugi::xml_node slide_like,
                             color_scheme);
 }
 
-presentation::LayoutStyle presentation::load_layout_style(
-    const abstract::ReadableFilesystem &files, const AbsPath &layout_path,
-    std::unordered_map<std::string, Theme> &themes,
-    std::unordered_map<std::string, pugi::xml_document> &parts) {
-  LayoutStyle result;
+pugi::xml_node
+presentation::LayoutStyles::part(const abstract::ReadableFilesystem &files,
+                                 const AbsPath &path) {
+  const auto [it, inserted] = m_parts.try_emplace(path.string());
+  if (inserted && !parse_optional_part(files, path, it->second)) {
+    it->second.reset();
+  }
+  return it->second.document_element();
+}
 
-  // `unordered_map` keeps its elements put, so the nodes and the theme
-  // pointer outlive the inserts that follow
-  const auto resident = [&](const AbsPath &path) {
-    const auto [it, inserted] = parts.try_emplace(path.string());
-    if (inserted && !parse_optional_part(files, path, it->second)) {
-      it->second.reset();
-    }
-    return it->second.document_element();
-  };
+const presentation::Theme &
+presentation::LayoutStyles::theme(const abstract::ReadableFilesystem &files,
+                                  const AbsPath &master_path,
+                                  const pugi::xml_node master) {
+  const auto [it, inserted] = m_themes.try_emplace(master_path.string());
+  if (!inserted) {
+    return it->second;
+  }
+  pugi::xml_document document;
+  if (const std::optional<AbsPath> theme_path =
+          parse_relationship_target(files, master_path, "theme");
+      theme_path.has_value() &&
+      parse_optional_part(files, *theme_path, document)) {
+    const pugi::xml_node elements =
+        document.document_element().child("a:themeElements");
+    it->second.color_scheme =
+        ColorScheme(elements.child("a:clrScheme"), master.child("p:clrMap"));
+    const pugi::xml_node fonts = elements.child("a:fontScheme");
+    it->second.major_font = fonts.child("a:majorFont")
+                                .child("a:latin")
+                                .attribute("typeface")
+                                .value();
+    it->second.minor_font = fonts.child("a:minorFont")
+                                .child("a:latin")
+                                .attribute("typeface")
+                                .value();
+  }
+  return it->second;
+}
 
-  result.layout = resident(layout_path);
+const presentation::LayoutStyle &
+presentation::LayoutStyles::get(const abstract::ReadableFilesystem &files,
+                                const AbsPath &layout_path) {
+  const auto [it, inserted] = m_layouts.try_emplace(layout_path.string());
+  LayoutStyle &result = it->second;
+  if (!inserted) {
+    return result;
+  }
+
+  result.layout = part(files, layout_path);
   if (!result.layout) {
     return result;
   }
 
-  const std::optional<AbsPath> master_path =
-      parse_relationship_target(files, layout_path, "slideMaster");
-  if (master_path.has_value()) {
-    result.master = resident(*master_path);
-  }
-  if (master_path.has_value() && result.master) {
-    const auto [theme_it, inserted] = themes.try_emplace(master_path->string());
-    if (inserted) {
-      pugi::xml_document theme;
-      if (const std::optional<AbsPath> theme_path =
-              parse_relationship_target(files, *master_path, "theme");
-          theme_path.has_value() &&
-          parse_optional_part(files, *theme_path, theme)) {
-        const pugi::xml_node elements =
-            theme.document_element().child("a:themeElements");
-        theme_it->second.color_scheme = ColorScheme(
-            elements.child("a:clrScheme"), result.master.child("p:clrMap"));
-        const pugi::xml_node fonts = elements.child("a:fontScheme");
-        theme_it->second.major_font = fonts.child("a:majorFont")
-                                          .child("a:latin")
-                                          .attribute("typeface")
-                                          .value();
-        theme_it->second.minor_font = fonts.child("a:minorFont")
-                                          .child("a:latin")
-                                          .attribute("typeface")
-                                          .value();
-      }
+  if (const std::optional<AbsPath> master_path =
+          parse_relationship_target(files, layout_path, "slideMaster");
+      master_path.has_value()) {
+    result.master = part(files, *master_path);
+    if (result.master) {
+      result.theme = &theme(files, *master_path, result.master);
+      result.background =
+          read_background_color(result.master, &result.theme->color_scheme)
+              .value_or(std::optional<Color>());
     }
-    result.theme = &theme_it->second;
-    result.background =
-        read_background_color(result.master, &result.theme->color_scheme)
-            .value_or(std::optional<Color>());
   }
 
   if (const std::optional<std::optional<Color>> stated = read_background_color(
