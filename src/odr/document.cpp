@@ -609,8 +609,8 @@ Paragraph Document::insert_paragraph_after(const Paragraph &paragraph) const {
 
 namespace {
 
-/// [MS-XLSX] 2.2.2 and ODF 1.3 part 3, 9.1.2 refuse these in a sheet name;
-/// Excel's limit of 31 characters is the stricter.
+/// [MS-XLSX] 2.2.2 `sheet-name-base-character`, which LibreOffice also
+/// enforces, and Excel's cap of 31 characters.
 void check_sheet_name(const std::string &name) {
   if (name.find_first_of("[]*?:/\\") != std::string::npos) {
     throw std::invalid_argument("sheet name " + name +
