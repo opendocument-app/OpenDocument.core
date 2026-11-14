@@ -9,7 +9,11 @@
   // A view with no addressed paragraph or run is not this editor's: a sheet's
   // editing is an overlay, and its cells state no id. A new document has one
   // empty paragraph and no run.
-  if (document.querySelector("x-p[data-odr-id], x-s[data-odr-id]") === null) {
+  if (
+    document.querySelector(
+      "x-p[data-odr-id], x-s[data-odr-id], template.odr-text-box-template"
+    ) === null
+  ) {
     return;
   }
 
@@ -154,7 +158,8 @@
       op.after === id ||
       op.before === id ||
       op.parent === id ||
-      op.paragraph === id
+      op.paragraph === id ||
+      op.page === id
     );
   }
 
@@ -2001,6 +2006,217 @@
 
   // ------------------------------------------------------------------ mode
 
+  // -------------------------------------------------------------- structure
+
+  // A new slide or text box is a clone of a template the renderer drew from a
+  // copy of the document that took the same edit, so the page shows what
+  // replay makes (`structure-editing.md` section 6).
+
+  var FIXED_LENGTH = /^-?(\d+\.?\d*|\.\d+)(cm|mm|in|pt|pc|px)$/;
+
+  function pages() {
+    return Array.prototype.slice.call(
+      document.querySelectorAll(".odr-pages > [data-odr-page]")
+    );
+  }
+
+  function slideTemplates() {
+    return Array.prototype.slice.call(
+      document.querySelectorAll("template.odr-slide-template")
+    );
+  }
+
+  /// The page the selection starts in, or null.
+  function selectedPage() {
+    var selection = window.getSelection();
+    if (selection === null || selection.rangeCount === 0) {
+      return null;
+    }
+    var node = selection.getRangeAt(0).startContainer;
+    var element = node.nodeType === 1 ? node : node.parentElement;
+    return element === null ? null : element.closest("[data-odr-page]");
+  }
+
+  /// @p template's content with a fresh negative id on each element its
+  /// @p attributes list, in that order, and no other address: the copy's ids
+  /// name nothing here.
+  function instantiate(template, attributes) {
+    var fragment = template.content.cloneNode(true);
+    var fresh = {};
+    var minted = {};
+    attributes.forEach(function (attribute) {
+      minted[attribute] = (template.getAttribute(attribute) || "")
+        .split(" ")
+        .filter(function (id) {
+          return id !== "";
+        })
+        .map(function (id) {
+          var element = fragment.querySelector('[data-odr-id="' + id + '"]');
+          var created = mint();
+          if (element !== null) {
+            fresh[created] = element;
+          }
+          return created;
+        });
+    });
+    Array.prototype.forEach.call(
+      fragment.querySelectorAll("[data-odr-id]"),
+      function (element) {
+        element.removeAttribute("data-odr-id");
+      }
+    );
+    Object.keys(fresh).forEach(function (id) {
+      fresh[id].setAttribute("data-odr-id", id);
+    });
+    return { fragment: fragment, ids: minted, elements: fresh };
+  }
+
+  /// Puts the caret into the first paragraph of @p element, if it holds one.
+  function caretInto(element) {
+    var paragraph = element.querySelector("x-p[data-odr-id]");
+    if (paragraph !== null) {
+      restore({ run: null, paragraph: paragraph, offset: 0 });
+    }
+  }
+
+  /// Whether a structure gesture may go ahead, refusing where not.
+  function structureAllowed(detail) {
+    recordWritten();
+    if (!odr.editing.isEnabled()) {
+      return false;
+    }
+    if (odr.editing.scope() === "paragraph") {
+      odr.editing.refuse("outOfScope", detail);
+      return false;
+    }
+    return true;
+  }
+
+  /// A slide of the @p layout -th template at @p index among the slides;
+  /// without an index, after the selected slide, else last.
+  function insertSlide(request) {
+    var layout = request.layout === undefined ? 0 : request.layout;
+    var detail = { layout: layout };
+    if (!structureAllowed(detail)) {
+      return false;
+    }
+    var all = pages();
+    var selected = selectedPage();
+    var index =
+      request.index !== undefined
+        ? request.index
+        : selected !== null
+          ? all.indexOf(selected) + 1
+          : all.length;
+    var template = slideTemplates()[layout];
+    if (
+      template === undefined ||
+      all.length === 0 ||
+      typeof index !== "number" ||
+      index < 0 ||
+      index > all.length ||
+      index !== Math.floor(index)
+    ) {
+      odr.editing.refuse("unsupportedEdit", detail);
+      return false;
+    }
+
+    gesture += 1;
+    var page = instantiate(template, [
+      "data-odr-frames",
+      "data-odr-paragraphs",
+    ]);
+    var id = mint();
+    var slide = page.fragment.querySelector(".odr-page-outer");
+    slide.setAttribute("data-odr-page", String(id));
+    // a page background's rule may come with it
+    var nodes = Array.prototype.slice.call(page.fragment.childNodes);
+    var parent = all[0].parentNode;
+    var before = index < all.length ? all[index] : all[all.length - 1].nextSibling;
+    perform({
+      ops: [
+        {
+          op: "insertSlide",
+          index: index,
+          layout: layout,
+          id: id,
+          frames: page.ids["data-odr-frames"],
+          paragraphs: page.ids["data-odr-paragraphs"],
+        },
+      ],
+      apply: function () {
+        nodes.forEach(function (node) {
+          parent.insertBefore(node, before);
+        });
+      },
+      revert: function () {
+        nodes.forEach(function (node) {
+          parent.removeChild(node);
+        });
+      },
+    });
+    slide.scrollIntoView({ block: "nearest" });
+    caretInto(slide);
+    return true;
+  }
+
+  /// A text box on the @p page -th page, or the selected one, at @p x and
+  /// @p y and @p width by @p height, each a CSS length in a fixed unit.
+  function insertTextBox(request) {
+    var detail = { page: request.page === undefined ? null : request.page };
+    if (!structureAllowed(detail)) {
+      return false;
+    }
+    var page =
+      request.page === undefined ? selectedPage() : pages()[request.page];
+    var template = document.querySelector("template.odr-text-box-template");
+    var lengths = [request.x, request.y, request.width, request.height];
+    var valid =
+      page !== null &&
+      page !== undefined &&
+      template !== null &&
+      lengths.every(function (length) {
+        return typeof length === "string" && FIXED_LENGTH.test(length);
+      }) &&
+      parseFloat(request.width) > 0 &&
+      parseFloat(request.height) > 0;
+    if (!valid) {
+      odr.editing.refuse("unsupportedEdit", detail);
+      return false;
+    }
+
+    gesture += 1;
+    var box = instantiate(template, ["data-odr-frame", "data-odr-paragraph"]);
+    var frameId = box.ids["data-odr-frame"][0];
+    var frame = box.elements[frameId];
+    frame.style.left = request.x;
+    frame.style.top = request.y;
+    frame.style.width = request.width;
+    frame.style.height = request.height;
+    perform({
+      ops: [
+        {
+          op: "insertTextBox",
+          page: Number(page.getAttribute("data-odr-page")),
+          x: request.x,
+          y: request.y,
+          width: request.width,
+          height: request.height,
+          id: frameId,
+          paragraph: box.ids["data-odr-paragraph"][0],
+        },
+      ],
+      apply: function () {
+        page.appendChild(frame);
+      },
+      revert: function () {
+        page.removeChild(frame);
+      },
+    });
+    caretInto(frame);
+    return true;
+  }
+
   odr.editing.attach({
     enable: function () {
       root.setAttribute("contenteditable", "true");
@@ -2010,6 +2226,8 @@
       root.removeAttribute("contenteditable");
     },
     operations: operations,
+    insertSlide: insertSlide,
+    insertTextBox: insertTextBox,
     format: function (style) {
       recordWritten();
       return format(style, rangeOf({}));

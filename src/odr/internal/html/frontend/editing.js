@@ -199,6 +199,33 @@
       return delegate("insertRows", where);
     },
 
+    /// The layouts `insertSlide` takes, by name, in the order it counts
+    /// them; empty where the page offers none.
+    slideLayouts: function () {
+      return Array.prototype.map.call(
+        document.querySelectorAll("template.odr-slide-template"),
+        function (template) {
+          return template.getAttribute("data-odr-name");
+        }
+      );
+    },
+
+    /// Inserts a slide of `layout`, an index into `slideLayouts()` (0 by
+    /// default), at `index` among the slides; without one, after the slide
+    /// holding the selection, else last. The caret moves into its first
+    /// placeholder. False where refused.
+    insertSlide: function (request) {
+      return delegate("insertSlide", request || {});
+    },
+
+    /// Inserts an empty text box on the `page` -th slide or drawing page, or
+    /// the one holding the selection, at `x` and `y` and `width` by
+    /// `height`: CSS lengths in cm, mm, in, pt, pc or px, the size positive.
+    /// The caret moves into it. False where refused.
+    insertTextBox: function (request) {
+      return delegate("insertTextBox", request || {});
+    },
+
     /// Removes the rows the selection spans. False where refused.
     deleteRows: function () {
       return delegate("deleteRows");

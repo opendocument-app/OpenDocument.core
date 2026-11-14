@@ -40,6 +40,8 @@ struct WritingState {
 
   [[nodiscard]] HtmlWriter &out() const { return *m_out; }
   [[nodiscard]] const HtmlConfig &config() const { return *m_config; }
+  /// @p config outlives the state.
+  void set_config(const HtmlConfig &config) { m_config = &config; }
   [[nodiscard]] HtmlResources &resources() const { return *m_resources; }
   [[nodiscard]] const Logger &logger() const { return *m_logger; }
   /// Where repeated style blocks are deduplicated, or null where they are not.
@@ -108,6 +110,15 @@ struct WritingState {
     return *m_page_backgrounds;
   }
 
+  /// Whether each page states its background rule again, as an edit
+  /// template must: the page that stated it first may never be drawn.
+  [[nodiscard]] bool repeat_page_backgrounds() const {
+    return m_repeat_page_backgrounds;
+  }
+  void set_repeat_page_backgrounds(const bool repeat) {
+    m_repeat_page_backgrounds = repeat;
+  }
+
 private:
   HtmlWriter *m_out;
   const HtmlConfig *m_config;
@@ -121,6 +132,7 @@ private:
   const std::vector<formula::Name> *m_formula_names{nullptr};
   std::optional<bool> m_page_chunk_near;
   std::unordered_map<std::string, std::string> *m_shared_images{nullptr};
+  bool m_repeat_page_backgrounds{false};
   std::shared_ptr<std::unordered_map<std::string, std::string>>
       m_page_backgrounds{
           std::make_shared<std::unordered_map<std::string, std::string>>()};

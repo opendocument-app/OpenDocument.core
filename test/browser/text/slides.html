@@ -1,0 +1,207 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>text editing checks: slides</title>
+    <link rel="stylesheet" href="document.css" />
+  </head>
+  <body
+    class="odr-body odr-background"
+    data-odr-editable="true"
+    data-odr-editing-scope="document"
+    data-odr-keyboard="navigation shortcuts"
+  >
+    <!-- A presentation as `translate` writes an editable one, cut down: two
+         slides addressed by `data-odr-page`, then a template per layout and
+         one for a text box, rendered from a copy whose ids mean nothing
+         here. -->
+    <div class="odr-pages" id="pages">
+      <div class="odr-page-outer" style="width:28cm;height:15.75cm;" data-odr-page="2">
+        <div style="position:absolute;left:2cm;top:2cm;width:24cm;height:5cm;" data-odr-id="3">
+          <x-p style="display:block;" data-odr-id="5"><x-s data-odr-id="6">Hello</x-s><wbr></x-p>
+        </div>
+      </div>
+      <div class="odr-page-outer" style="width:28cm;height:15.75cm;" data-odr-page="7">
+        <div style="position:absolute;left:2cm;top:2cm;width:24cm;height:5cm;" data-odr-id="8">
+          <x-p style="display:block;" data-odr-id="10"><br></x-p>
+        </div>
+      </div>
+    </div>
+    <template class="odr-slide-template" data-odr-layout="0" data-odr-name="Title Slide" data-odr-frames="11 14" data-odr-paragraphs="13 16">
+      <div class="odr-page-outer" style="width:28cm;height:15.75cm;" data-odr-page="9">
+        <div style="position:absolute;left:2cm;top:2cm;width:24cm;height:5cm;" data-odr-id="11">
+          <x-p style="display:block;font-size:44pt;" data-odr-id="13"><br></x-p>
+        </div>
+        <div style="position:absolute;left:3cm;top:8cm;width:22cm;height:4cm;" data-odr-id="14">
+          <x-p style="display:block;font-size:32pt;" data-odr-id="16"><br></x-p>
+        </div>
+      </div>
+    </template>
+    <template class="odr-slide-template" data-odr-layout="1" data-odr-name="Blank" data-odr-frames="" data-odr-paragraphs="">
+      <div class="odr-page-outer" style="width:28cm;height:15.75cm;" data-odr-page="17"></div>
+    </template>
+    <template class="odr-text-box-template" data-odr-frame="18" data-odr-paragraph="20">
+      <div style="position:absolute;left:0cm;top:0cm;width:6cm;height:1cm;" data-odr-id="18">
+        <x-p style="display:block;font-size:18pt;" data-odr-id="20"><br></x-p>
+      </div>
+    </template>
+
+    <div id="out" contenteditable="false"><div id="report"></div></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="document.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var refusals = [];
+      odr.onEditRefused = function (event) {
+        refusals.push(event.reason);
+      };
+
+      function ops() {
+        return JSON.parse(odr.editing.getOperations()).ops;
+      }
+      function slides() {
+        return Array.prototype.slice.call(
+          document.querySelectorAll("#pages > [data-odr-page]")
+        );
+      }
+      function caretIn(paragraph) {
+        var range = document.createRange();
+        range.setStart(paragraph, 0);
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+      }
+      function input(type, data) {
+        var event = new InputEvent("beforeinput", {
+          inputType: type,
+          data: data,
+          bubbles: true,
+          cancelable: true,
+        });
+        document.body.dispatchEvent(event);
+      }
+      // the last refusal since @p before, or null
+      function refusedSince(before) {
+        return refusals.length > before ? refusals[refusals.length - 1] : null;
+      }
+
+      note("off");
+      check("an insert while editing is off does nothing",
+        odr.editing.insertSlide({ layout: 0 }) === false && slides().length === 2);
+
+      note("layouts");
+      check("the mode turns on", odr.editing.enable() === true);
+      check("the layouts are the templates' names",
+        JSON.stringify(odr.editing.slideLayouts()) ===
+          JSON.stringify(["Title Slide", "Blank"]),
+        odr.editing.slideLayouts());
+
+      note("a slide after the selected one");
+      caretIn(document.querySelector('x-p[data-odr-id="5"]'));
+      check("is taken", odr.editing.insertSlide({ layout: 0 }) === true, refusals);
+      var added = slides()[1];
+      check("lands second", slides().length === 3 &&
+        added.getAttribute("data-odr-page") !== "7");
+      var op = ops()[0];
+      check("the log states it with fresh ids for its placeholders",
+        ops().length === 1 && op.op === "insertSlide" && op.index === 1 &&
+          op.layout === 0 && op.id < 0 && op.frames.length === 2 &&
+          op.paragraphs.length === 2 &&
+          op.frames.concat(op.paragraphs).every(function (id) { return id < 0; }),
+        op);
+      check("the page carries the slide's id",
+        added.getAttribute("data-odr-page") === String(op.id));
+      check("the template's ids are gone",
+        added.querySelector('[data-odr-id="11"],[data-odr-id="13"]') === null);
+      var title = added.querySelector('x-p[data-odr-id="' + op.paragraphs[0] + '"]');
+      check("the title paragraph carries its fresh id", title !== null);
+      check("the template stays a template",
+        document.querySelector('template.odr-slide-template').content
+          .querySelector('[data-odr-id="13"]') !== null);
+
+      input("insertText", "Agenda");
+      check("typing goes into the title", title.textContent === "Agenda",
+        title.textContent);
+      var typed = ops()[1];
+      check("as a run its paragraph's fresh id names",
+        ops().length === 2 && typed.op === "insertText" &&
+          typed.parent === op.paragraphs[0] && typed.text === "Agenda", ops());
+
+      odr.editing.undo();
+      odr.editing.undo();
+      check("undo takes the slide away", slides().length === 2 && ops().length === 0);
+      odr.editing.redo();
+      check("redo puts it back", slides().length === 3 && ops().length === 1);
+      odr.editing.redo();
+      check("and the typing", ops().length === 2 && title.textContent === "Agenda");
+
+      note("a slide by index");
+      check("a blank one goes first",
+        odr.editing.insertSlide({ index: 0, layout: 1 }) === true &&
+          slides().length === 4 && slides()[0].children.length === 0);
+      check("as the log says", ops()[2].op === "insertSlide" && ops()[2].index === 0 &&
+        ops()[2].layout === 1 && ops()[2].frames.length === 0, ops()[2]);
+      var before = refusals.length;
+      check("an index past the end is refused",
+        odr.editing.insertSlide({ index: 9, layout: 0 }) === false &&
+          refusedSince(before) === "unsupportedEdit");
+      before = refusals.length;
+      check("a layout past the list is refused",
+        odr.editing.insertSlide({ index: 0, layout: 2 }) === false &&
+          refusedSince(before) === "unsupportedEdit");
+      check("nothing was added", slides().length === 4 && ops().length === 3);
+
+      note("a text box");
+      var count = 0;
+      var page = slides()[3];
+      check("is taken", odr.editing.insertTextBox({
+        page: 3, x: "2cm", y: "3cm", width: "10cm", height: "1.5cm",
+      }) === true, refusals);
+      var box = ops()[3];
+      check("the log states it on the page's id",
+        box.op === "insertTextBox" && box.page === 7 && box.x === "2cm" &&
+          box.y === "3cm" && box.width === "10cm" && box.height === "1.5cm" &&
+          box.id < 0 && box.paragraph < 0, box);
+      var frame = page.querySelector('[data-odr-id="' + box.id + '"]');
+      check("it sits where it was put",
+        frame !== null && frame.style.left === "2cm" && frame.style.top === "3cm" &&
+          frame.style.width === "10cm" && frame.style.height === "1.5cm");
+      input("insertText", "note");
+      check("typing goes into it",
+        frame.textContent.trim() === "note" && ops()[4].parent === box.paragraph,
+        ops()[4]);
+
+      caretIn(document.querySelector('x-p[data-odr-id="5"]'));
+      check("without a page, on the selected one",
+        odr.editing.insertTextBox({ x: "1in", y: "1in", width: "2in", height: "1in" }) === true &&
+          ops()[5].page === 2, ops()[5]);
+      [
+        { page: 0, x: "10%", y: "0cm", width: "1cm", height: "1cm" },
+        { page: 0, x: "0cm", y: "0cm", width: "0cm", height: "1cm" },
+        { page: 0, x: "0cm", y: "0cm", width: "1cm" },
+        { page: 9, x: "0cm", y: "0cm", width: "1cm", height: "1cm" },
+      ].forEach(function (request, i) {
+        // a repeat of one refusal within two seconds is heard once
+        before = refusals.length;
+        count = ops().length;
+        check("refuses " + JSON.stringify(request),
+          odr.editing.insertTextBox(request) === false &&
+            ops().length === count &&
+            (i > 0 || refusedSince(before) === "unsupportedEdit"));
+      });
+
+      note("scope paragraph");
+      document.body.setAttribute("data-odr-editing-scope", "paragraph");
+      count = ops().length;
+      before = refusals.length;
+      check("a slide is out of scope",
+        odr.editing.insertSlide({ layout: 0 }) === false &&
+          refusedSince(before) === "outOfScope");
+      before = refusals.length;
+      check("a text box is out of scope",
+        odr.editing.insertTextBox({ page: 0, x: "0cm", y: "0cm", width: "1cm", height: "1cm" }) === false &&
+          refusedSince(before) === "outOfScope");
+      check("and nothing changed", ops().length === count && slides().length === 4);
+    </script>
+  </body>
+</html>

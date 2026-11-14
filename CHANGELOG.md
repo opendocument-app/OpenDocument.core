@@ -52,6 +52,12 @@ The release run heads these entries with the version and opens a fresh
   `insertSlide` and `insertTextBox` name the slide, its placeholders and the
   text box's paragraph by negative ids, so later operations can type into
   them.
+- An editable presentation or drawing page takes `odr.editing.insertSlide`,
+  `odr.editing.slideLayouts` and `odr.editing.insertTextBox`, and records
+  the ops above. Under editing scope `paragraph` they refuse with
+  `outOfScope`. An editable render of an odp, pptx or odg now carries a
+  `<template>` per slide layout and one for a text box, and each slide or
+  page states `data-odr-page`.
 
 ## v7.8.0 - 2026-11-14
 

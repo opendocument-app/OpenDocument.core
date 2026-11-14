@@ -14,7 +14,7 @@ rules are in [document creation](document-creation.md).
 | 3 | `Document::slide_layouts` and `Document::insert_slide` for odp and pptx |
 | 4 | `Document::insert_text_box` on a slide or drawing page |
 | 5 | envelope ops `insertSheet`, `insertSlide`, `insertTextBox` |
-| 6 | the page side: the gestures in the editable page |
+| 6 | the page side: `insertSlide` and `insertTextBox` in the editable page |
 | 7 | python, java, swift and npm bindings |
 
 ## 1. New presentations
@@ -134,10 +134,53 @@ the new sheet.
 ## 6. The page
 
 The page applies the edit itself ([editing](editing.md) decision 1), so an
-editable presentation page has to know what a new slide looks like:
-`slide_layouts()` gives each layout's placeholders and their places. The new
-gestures obey the editing scope: under `paragraph` they refuse with
-`outOfScope`.
+editable presentation or drawing page has to know what a new slide or text
+box looks like. `slide_layouts()` gives each layout's placeholders and their
+places, which a host's picker can draw. The page draws from templates
+instead, because a position says nothing of the text style a placeholder
+inherits from its layout and master.
+
+- After the pages, the document view carries a `<template>` per layout
+  (`odr-slide-template`, with `data-odr-layout` and `data-odr-name`) and one
+  for a text box (`odr-text-box-template`). The renderer makes them by saving
+  the document into memory, opening the copy, and applying the same edits
+  there: one slide per layout at the end, and a text box on the last of them.
+  A template is what replay makes, in each format, without a second model of
+  layout geometry or placeholder style in the script.
+- The copy's ids name nothing in the page. `data-odr-frames` and
+  `data-odr-paragraphs` (`data-odr-frame` and `data-odr-paragraph` for the
+  text box) say which elements take a fresh negative id; every other address
+  in the clone is dropped.
+- Each slide and drawing page carries its id as `data-odr-page`, not as
+  `data-odr-id`: a range would take an addressed element that holds no run
+  for something it can remove.
+- A template embeds its pictures, because a resource of the copy is not
+  served. It shares the view's background classes and states its own rule,
+  because the slide that stated the rule first may never be drawn.
+
+| Script | What it does |
+|---|---|
+| `odr.editing.slideLayouts()` | the template names, in the order `insertSlide` counts them |
+| `odr.editing.insertSlide({index, layout})` | clones a template before the `index`-th slide; without `index`, after the slide holding the selection, else last |
+| `odr.editing.insertTextBox({page, x, y, width, height})` | clones the text box onto the `page`-th page, or the selected one, and sets its box; lengths are CSS lengths in a fixed unit |
+
+Both move the caret into the first new paragraph, and typing there is the
+existing `insertText` with `parent`. One call is one undo step. Under scope
+`paragraph` both refuse with `outOfScope`; a bad index, layout, page or length
+refuses with `unsupportedEdit`. A view of one slide carries no template, and
+the gestures refuse there.
+
+Not covered: a sheet. A spreadsheet view shows one sheet, so a host adds one
+through `Document::insert_sheet` or the envelope op and renders again.
+
+Known gaps:
+
+- An odp built-in layout takes the master of the slide before it. The
+  templates are made at the end of the copy, so in an odp with several
+  masters a slide inserted elsewhere can show the last slide's master until
+  the next render. The saved file is right.
+- A deck with hundreds of layouts carries hundreds of templates: about 2 KB
+  each, more where a layout or master shows a picture.
 
 ## Validation
 

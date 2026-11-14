@@ -5,6 +5,10 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+#include <odr/logger.hpp>
+#include <odr/odr.hpp>
+#include <odr/quantity.hpp>
+#include <odr/slide_layout.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/abstract/document.hpp>
@@ -21,9 +25,14 @@
 #include <odr/internal/html/sheet.hpp>
 #include <odr/internal/html/style_registry.hpp>
 #include <odr/internal/util/stream_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <algorithm>
+#include <cstdint>
+#include <exception>
 #include <mutex>
+#include <optional>
+#include <span>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -383,6 +392,117 @@ render(const Document &document, const HtmlConfig &config, const Logger &logger,
   return resources;
 }
 
+/// The first paragraph under @p element, depth first; null where it holds
+/// none.
+Element first_paragraph_in(const Element &element) {
+  for (const Element child : element.children()) {
+    if (child.type() == ElementType::paragraph) {
+      return child;
+    }
+    if (const Element found = first_paragraph_in(child); found) {
+      return found;
+    }
+  }
+  return {};
+}
+
+std::string identifiers(const std::span<const ElementIdentifier> list) {
+  std::string result;
+  for (const ElementIdentifier identifier : list) {
+    if (!result.empty()) {
+      result += ' ';
+    }
+    result += std::to_string(identifier);
+  }
+  return result;
+}
+
+/// What a new slide of each layout and a new text box look like, so the page
+/// can draw one itself (`structure-editing.md` section 6). Each is rendered
+/// from a scratch copy that takes the edit, so it is what replay makes. The
+/// copy's ids mean nothing to the page; the attributes say which elements
+/// the page gives a negative id.
+void write_edit_templates(const Document &document, const WritingState &state) {
+  const DocumentType type = document.document_type();
+  if (type != DocumentType::presentation && type != DocumentType::drawing) {
+    return;
+  }
+
+  std::optional<Document> copy;
+  try {
+    copy =
+        open(document.save_to_memory(), DecodeOptions::as(document.file_type()))
+            .as_document_file()
+            .document();
+  } catch (const std::exception &e) {
+    ODR_WARNING(state.logger(), "html: no edit templates: " << e.what());
+    return;
+  }
+
+  // a template is cloned into the page, where a resource of the copy would
+  // not be served
+  HtmlConfig config = state.config();
+  config.embed_images = true;
+  // a copy shares the background classes, so a template's class names no
+  // other image
+  WritingState template_state = state;
+  template_state.set_config(config);
+  template_state.set_page_chunk_near(true);
+  template_state.set_repeat_page_backgrounds(true);
+  HtmlWriter &out = state.out();
+
+  std::uint32_t count = 0;
+  for ([[maybe_unused]] const Element child : copy->root_element().children()) {
+    ++count;
+  }
+  if (count == 0) {
+    return;
+  }
+
+  Element last_page;
+  const std::vector<SlideLayout> layouts = type == DocumentType::presentation
+                                               ? copy->slide_layouts()
+                                               : std::vector<SlideLayout>();
+  for (std::uint32_t layout = 0; layout < layouts.size(); ++layout) {
+    const Slide slide = copy->insert_slide(count++, layout);
+    last_page = slide;
+    std::vector<ElementIdentifier> frames;
+    std::vector<ElementIdentifier> paragraphs;
+    for (const Element child : slide.children()) {
+      frames.push_back(child.identifier());
+      paragraphs.push_back(first_paragraph_in(child).identifier());
+    }
+    out.write_element_begin(
+        "template", HtmlElementOptions()
+                        .set_class("odr-slide-template")
+                        .set_attributes(HtmlAttributesVector{
+                            {"data-odr-layout", std::to_string(layout)},
+                            {"data-odr-name",
+                             xml::escape_attribute(layouts[layout].name())},
+                            {"data-odr-frames", identifiers(frames)},
+                            {"data-odr-paragraphs", identifiers(paragraphs)}}));
+    translate_slide(slide, template_state);
+    out.write_element_end("template");
+  }
+
+  if (!last_page) {
+    last_page = *copy->root_element().children().begin();
+  }
+  const Frame box =
+      copy->insert_text_box(last_page, Measure("0cm"), Measure("0cm"),
+                            Measure("6cm"), Measure("1cm"));
+  out.write_element_begin(
+      "template",
+      HtmlElementOptions()
+          .set_class("odr-text-box-template")
+          .set_attributes(HtmlAttributesVector{
+              {"data-odr-frame", std::to_string(box.identifier())},
+              {"data-odr-paragraph",
+               std::to_string(first_paragraph_in(box).identifier())}}));
+  translate_element(box, template_state);
+  out.write_element_end("template");
+}
+
 class HtmlFragmentBase {
 public:
   HtmlFragmentBase(std::string name, const std::size_t index, std::string path,
@@ -606,6 +726,9 @@ public:
                       fragment_state.set_page_chunk_near(fragment ==
                                                          m_fragments.front());
                       fragment->write_fragment(state.out(), fragment_state);
+                    }
+                    if (state.config().editable && state.document_editable()) {
+                      write_edit_templates(m_document, state);
                     }
                   });
   }
