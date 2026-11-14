@@ -256,6 +256,7 @@ void Document::save(std::ostream &out) const {
     const AbsPath &abs_path = walker->path();
     if (m_slide_ids_by_path.contains(abs_path) ||
         m_written_parts.contains(abs_path) ||
+        std::ranges::find(m_dropped_parts, abs_path) != m_dropped_parts.end() ||
         (m_presentation_changed &&
          abs_path == AbsPath("/ppt/presentation.xml"))) {
       continue;
@@ -538,6 +539,186 @@ ElementIdentifier Document::insert_slide(const std::uint32_t index,
   return slide_id;
 }
 
+std::string
+Document::slide_relationship_id_(const ElementIdentifier slide_id) const {
+  const pugi::xml_node node = m_element_registry.element_at(slide_id).node;
+  for (const auto &[id, xml] : m_slides_xml) {
+    if (xml.document_element() == node) {
+      return id;
+    }
+  }
+  throw UnsupportedOperation();
+}
+
+void Document::drop_part_(const AbsPath &path) {
+  const AbsPath relationships = path.parent()
+                                    .join(RelPath("_rels"))
+                                    .join(RelPath(path.basename() + ".rels"));
+  for (const AbsPath &dropped : {path, relationships}) {
+    m_written_parts.erase(dropped);
+    if (m_files->is_file(dropped)) {
+      m_dropped_parts.push_back(dropped);
+    }
+  }
+  if (pugi::xml_node types = written_part_(AbsPath("/[Content_Types].xml"))) {
+    types.remove_child(types.find_child_by_attribute("Override", "PartName",
+                                                     path.string().c_str()));
+  }
+}
+
+namespace {
+
+/// [MS-PPTX] 2.3.17 `p14:sectionLst`, in the extension list of the
+/// presentation; null where it states no sections.
+pugi::xml_node section_list(const pugi::xml_node presentation) {
+  for (const pugi::xml_node extension :
+       presentation.child("p:extLst").children("p:ext")) {
+    if (const pugi::xml_node list = extension.child("p14:sectionLst")) {
+      return list;
+    }
+  }
+  return {};
+}
+
+/// The `p14:sldId` of the slide numbered @p number in a section.
+pugi::xml_node section_entry(const pugi::xml_node sections,
+                             const std::string &number) {
+  for (const pugi::xml_node section : sections.children("p14:section")) {
+    if (const pugi::xml_node entry =
+            section.child("p14:sldIdLst")
+                .find_child_by_attribute("p14:sldId", "id", number.c_str())) {
+      return entry;
+    }
+  }
+  return {};
+}
+
+} // namespace
+
+void Document::remove_slide(const ElementIdentifier slide_id) {
+  const AbsPath presentation_path("/ppt/presentation.xml");
+  const std::string id = slide_relationship_id_(slide_id);
+  pugi::xml_node relationships =
+      written_part_(AbsPath("/ppt/_rels/presentation.xml.rels"));
+  pugi::xml_node root = m_document_xml.document_element();
+  pugi::xml_node list = root.child("p:sldIdLst");
+  const pugi::xml_node entry =
+      list.find_child_by_attribute("p:sldId", "r:id", id.c_str());
+  if (!relationships || !entry) {
+    throw UnsupportedOperation();
+  }
+  const AbsPath slide_path =
+      resolve_part_path(presentation_path, m_relations.at(id));
+
+  // the notes slide is the slide's alone, and refers back to it
+  std::optional<AbsPath> notes;
+  const AbsPath slide_relationships_path =
+      slide_path.parent()
+          .join(RelPath("_rels"))
+          .join(RelPath(slide_path.basename() + ".rels"));
+  if (m_files->is_file(slide_relationships_path)) {
+    const pugi::xml_document xml =
+        xml::parse(*m_files, slide_relationships_path);
+    for (const pugi::xml_node relationship :
+         xml.document_element().children("Relationship")) {
+      if (std::string_view(relationship.attribute("Type").value())
+              .ends_with("/notesSlide")) {
+        notes = resolve_part_path(slide_path,
+                                  relationship.attribute("Target").value());
+      }
+    }
+  }
+
+  const std::string number = entry.attribute("id").value();
+  if (const pugi::xml_node sections = section_list(root)) {
+    if (const pugi::xml_node listed = section_entry(sections, number)) {
+      listed.parent().remove_child(listed);
+    }
+  }
+  for (const pugi::xml_node show :
+       root.child("p:custShowLst").children("p:custShow")) {
+    pugi::xml_node slides = show.child("p:sldLst");
+    while (const pugi::xml_node shown =
+               slides.find_child_by_attribute("p:sld", "r:id", id.c_str())) {
+      slides.remove_child(shown);
+    }
+  }
+  list.remove_child(entry);
+  m_presentation_changed = true;
+
+  relationships.remove_child(
+      relationships.find_child_by_attribute("Relationship", "Id", id.c_str()));
+  m_relations.erase(id);
+  m_slide_ids_by_path.erase(slide_path);
+  drop_part_(slide_path);
+  if (notes.has_value()) {
+    drop_part_(*notes);
+  }
+
+  m_element_registry.unlink_child(slide_id);
+  m_element_registry.invalidate(slide_id);
+}
+
+void Document::move_slide(const ElementIdentifier slide_id,
+                          const std::uint32_t index) {
+  pugi::xml_node root = m_document_xml.document_element();
+  pugi::xml_node list = root.child("p:sldIdLst");
+  std::vector<pugi::xml_node> entries;
+  for (const pugi::xml_node entry : list.children("p:sldId")) {
+    entries.push_back(entry);
+  }
+  const pugi::xml_node moved = list.find_child_by_attribute(
+      "p:sldId", "r:id", slide_relationship_id_(slide_id).c_str());
+  const auto found = std::ranges::find(entries, moved);
+  if (!moved || index >= entries.size()) {
+    throw UnsupportedOperation();
+  }
+  const auto from = static_cast<std::uint32_t>(found - entries.begin());
+  if (from == index) {
+    return;
+  }
+
+  std::vector<ElementIdentifier> order;
+  for (ElementIdentifier id =
+           m_element_registry.element_at(m_root_element).first_child_id;
+       id != null_element_id;
+       id = m_element_registry.element_at(id).next_sibling_id) {
+    order.push_back(id);
+  }
+  if (order.size() != entries.size()) {
+    throw UnsupportedOperation();
+  }
+  const ElementIdentifier anchor = order[index];
+  m_element_registry.unlink_child(slide_id);
+  if (index < from) {
+    list.insert_move_before(moved, entries[index]);
+    m_element_registry.insert_sibling_before(anchor, slide_id);
+  } else {
+    list.insert_move_after(moved, entries[index]);
+    m_element_registry.insert_sibling_after(anchor, slide_id);
+  }
+  m_presentation_changed = true;
+
+  // PowerPoint repairs sections that do not follow the slide order
+  if (const pugi::xml_node sections = section_list(root)) {
+    const pugi::xml_node own =
+        section_entry(sections, moved.attribute("id").value());
+    if (!own) {
+      return;
+    }
+    const pugi::xml_node previous = moved.previous_sibling("p:sldId");
+    pugi::xml_node target =
+        previous ? section_entry(sections, previous.attribute("id").value())
+                 : pugi::xml_node();
+    if (target) {
+      target.parent().insert_move_after(own, target);
+    } else if (pugi::xml_node first =
+                   sections.child("p14:section").child("p14:sldIdLst")) {
+      first.prepend_move(own);
+    }
+  }
+}
+
 ElementIdentifier Document::insert_text_box(const ElementIdentifier slide_id,
                                             const Measure &x, const Measure &y,
                                             const Measure &width,
@@ -689,6 +870,13 @@ public:
                        const std::uint32_t index,
                        const std::uint32_t layout) const override {
     return m_document->insert_slide(index, layout);
+  }
+  void element_move(const ElementIdentifier element_id,
+                    const std::uint32_t index) const override {
+    if (element_type(element_id) != ElementType::slide) {
+      throw UnsupportedOperation();
+    }
+    m_document->move_slide(element_id, index);
   }
 
   [[nodiscard]] ElementIdentifier
@@ -859,7 +1047,8 @@ public:
 
   void element_remove(const ElementIdentifier element_id) const override {
     if (element_type(element_id) == ElementType::slide) {
-      throw UnsupportedOperation();
+      m_document->remove_slide(element_id);
+      return;
     }
     const ElementIdentifier parent_id = element_parent(element_id);
     if (element_type(element_id) == ElementType::text &&
