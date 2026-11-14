@@ -6,6 +6,7 @@
 #include <odr/html.hpp>
 #include <odr/logger.hpp>
 #include <odr/odr.hpp>
+#include <odr/slide_layout.hpp>
 
 #include <emscripten/bind.h>
 
@@ -141,6 +142,10 @@ emscripten::val enum_tables() {
                    entry("not_encrypted", EncryptionState::not_encrypted),
                    entry("encrypted", EncryptionState::encrypted),
                    entry("decrypted", EncryptionState::decrypted)));
+  result.set("SlidePlaceholderKind",
+             table(entry("title", SlidePlaceholderKind::title),
+                   entry("subtitle", SlidePlaceholderKind::subtitle),
+                   entry("body", SlidePlaceholderKind::body)));
   result.set("LogLevel", table(entry("verbose", LogLevel::verbose),
                                entry("debug", LogLevel::debug),
                                entry("info", LogLevel::info),

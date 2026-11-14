@@ -4,6 +4,8 @@
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+#include <odr/quantity.hpp>
+#include <odr/slide_layout.hpp>
 
 #include <emscripten/bind.h>
 
@@ -11,6 +13,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <tuple>
+#include <vector>
 
 namespace odr::wasm {
 
@@ -264,6 +268,105 @@ emscripten::val insert_paragraph_after(const Handle handle,
   });
 }
 
+/// The first paragraph under @p element, depth first; null where it holds
+/// none.
+Element first_paragraph_in(const Element &element) {
+  for (const Element child : element.children()) {
+    if (child.type() == ElementType::paragraph) {
+      return child;
+    }
+    if (const Element found = first_paragraph_in(child); found) {
+      return found;
+    }
+  }
+  return {};
+}
+
+/// A new sheet or slide is a new view, so the next `listViews` translates
+/// again.
+void drop_views(Session &session) {
+  session.service.reset();
+  session.views.clear();
+}
+
+emscripten::val insert_sheet(const Handle handle, const double index,
+                             const std::string &name) {
+  return guarded([&] {
+    Session &s = session(handle);
+    std::ignore = document_of(s).insert_sheet(
+        checked_integer<std::uint32_t>(index), name);
+    drop_views(s);
+    return ok();
+  });
+}
+
+/// `[{name, placeholders: [{kind, x, y, width, height}]}]`, the lengths as
+/// `Measure` spells them.
+emscripten::val slide_layouts(const Handle handle) {
+  return guarded([&] {
+    emscripten::val result = emscripten::val::array();
+    for (const SlideLayout &layout :
+         document_of(session(handle)).slide_layouts()) {
+      emscripten::val placeholders = emscripten::val::array();
+      for (const SlidePlaceholder &placeholder : layout.placeholders()) {
+        emscripten::val entry = emscripten::val::object();
+        entry.set("kind", static_cast<std::int32_t>(placeholder.kind()));
+        entry.set("x", placeholder.x().to_string());
+        entry.set("y", placeholder.y().to_string());
+        entry.set("width", placeholder.width().to_string());
+        entry.set("height", placeholder.height().to_string());
+        placeholders.call<void>("push", entry);
+      }
+      emscripten::val entry = emscripten::val::object();
+      entry.set("name", layout.name());
+      entry.set("placeholders", placeholders);
+      result.call<void>("push", entry);
+    }
+    return ok(result);
+  });
+}
+
+/// `{id, frames, paragraphs}`, as the `insertSlide` op names them: the slide,
+/// then per placeholder its frame and its empty paragraph.
+emscripten::val insert_slide(const Handle handle, const double index,
+                             const double layout) {
+  return guarded([&] {
+    Session &s = session(handle);
+    const Slide slide =
+        document_of(s).insert_slide(checked_integer<std::uint32_t>(index),
+                                    checked_integer<std::uint32_t>(layout));
+    emscripten::val frames = emscripten::val::array();
+    emscripten::val paragraphs = emscripten::val::array();
+    for (const Element child : slide.children()) {
+      frames.call<void>("push", id_of(child));
+      paragraphs.call<void>("push", id_of(first_paragraph_in(child)));
+    }
+    emscripten::val result = emscripten::val::object();
+    result.set("id", id_of(slide));
+    result.set("frames", frames);
+    result.set("paragraphs", paragraphs);
+    drop_views(s);
+    return ok(result);
+  });
+}
+
+/// `{id, paragraph}`, as the `insertTextBox` op names them.
+emscripten::val insert_text_box(const Handle handle, const double page,
+                                const std::string &x, const std::string &y,
+                                const std::string &width,
+                                const std::string &height) {
+  return guarded([&] {
+    Session &s = session(handle);
+    const Frame box = document_of(s).insert_text_box(
+        element_of(s, page), Measure(x), Measure(y), Measure(width),
+        Measure(height));
+    emscripten::val result = emscripten::val::object();
+    result.set("id", id_of(box));
+    result.set("paragraph", id_of(first_paragraph_in(box)));
+    return ok(result);
+  });
+}
+
 /// The document's bytes; there is no filesystem to save to.
 emscripten::val save(const Handle handle) {
   return guarded([&] {
@@ -318,6 +421,10 @@ EMSCRIPTEN_BINDINGS(odr_document) {
                        &odr::wasm::merge_paragraph_with_next);
   emscripten::function("insertParagraphAfter",
                        &odr::wasm::insert_paragraph_after);
+  emscripten::function("insertSheet", &odr::wasm::insert_sheet);
+  emscripten::function("slideLayouts", &odr::wasm::slide_layouts);
+  emscripten::function("insertSlide", &odr::wasm::insert_slide);
+  emscripten::function("insertTextBox", &odr::wasm::insert_text_box);
   emscripten::function("save", &odr::wasm::save);
   emscripten::function("saveEncrypted", &odr::wasm::save_encrypted);
 }
