@@ -105,6 +105,10 @@ Moving and resizing a frame are not covered.
 | `insertSheet` | `index`, `name` |
 | `insertSlide` | `index`, `layout`, `id`, `frames`, `paragraphs` |
 | `insertTextBox` | `page`, `x`, `y`, `width`, `height`, `id`, `paragraph` |
+| `removeSheet` | `index` |
+| `moveSheet` | `index`, `to` |
+| `removeSlide` | `page` |
+| `moveSlide` | `page`, `index` |
 
 `id` is the negative id of the created slide or frame. `frames` lists one
 negative id per placeholder of the new slide, in document order, and
@@ -119,8 +123,10 @@ lengths of `insertTextBox` are strings as `Measure` spells them, such as
 {"op": "insertText", "parent": -4, "text": "Agenda", "id": -6}
 ```
 
-Sheets keep their positional address, so an op after an `insertSheet` counts
-the new sheet.
+Sheets keep their positional address, so an op after an `insertSheet`,
+`removeSheet` or `moveSheet` counts the sheets as that op left them. `page`
+names a slide by its id, a negative one for a slide inserted earlier in the
+envelope. `to` and `index` of a move count the places after it (section 8).
 
 ## 6. The page
 

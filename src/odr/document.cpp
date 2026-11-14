@@ -352,6 +352,19 @@ void Document::edit(const std::string_view operations,
     return paragraph;
   };
 
+  // the slide @p field names, refusing an element that is not one
+  const auto slide_of = [&](const nlohmann::json &operation,
+                            const char *field) {
+    const Element element = element_of(operation, field);
+    const Slide slide = element.as_slide();
+    if (!slide) {
+      throw std::invalid_argument("element " +
+                                  std::to_string(element.identifier()) +
+                                  " is not a slide");
+    }
+    return slide;
+  };
+
   // the negative id an operation reserves, checked before anything is created
   // so that a refusal changes nothing
   const auto reserve_address = [&](const nlohmann::json &value) {
@@ -538,6 +551,30 @@ void Document::edit(const std::string_view operations,
     if (name == "insertSheet") {
       std::ignore = insert_sheet(integer<std::uint32_t>(operation.at("index")),
                                  operation.value("name", std::string()));
+      continue;
+    }
+
+    if (name == "removeSheet") {
+      remove(sheet_at(root_element(),
+                      integer<std::uint32_t>(operation.at("index"))));
+      continue;
+    }
+
+    if (name == "moveSheet") {
+      move_sheet(sheet_at(root_element(),
+                          integer<std::uint32_t>(operation.at("index"))),
+                 integer<std::uint32_t>(operation.at("to")));
+      continue;
+    }
+
+    if (name == "removeSlide") {
+      remove(slide_of(operation, "page"));
+      continue;
+    }
+
+    if (name == "moveSlide") {
+      move_slide(slide_of(operation, "page"),
+                 integer<std::uint32_t>(operation.at("index")));
       continue;
     }
 

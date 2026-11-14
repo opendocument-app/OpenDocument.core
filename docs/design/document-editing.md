@@ -109,6 +109,10 @@ Version 2. Version 1 addressed by path, and replay refuses it.
 | `insertSheet` | `index`, `name` (optional) | see [`structure-editing.md`](structure-editing.md) |
 | `insertSlide` | `index`, `layout`, `id`, `frames`, `paragraphs` (optional) | see [`structure-editing.md`](structure-editing.md) |
 | `insertTextBox` | `page`, `x`, `y`, `width`, `height`, `id`, `paragraph` (optional) | see [`structure-editing.md`](structure-editing.md) |
+| `removeSheet` | `index` | see [`structure-editing.md`](structure-editing.md) |
+| `moveSheet` | `index`, `to` | see [`structure-editing.md`](structure-editing.md) |
+| `removeSlide` | `page` | see [`structure-editing.md`](structure-editing.md) |
+| `moveSlide` | `page`, `index` | see [`structure-editing.md`](structure-editing.md) |
 
 Every `id` on an op that creates an element is negative (decision 4). Every
 other id is one the page wrote.

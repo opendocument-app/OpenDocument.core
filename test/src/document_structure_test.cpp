@@ -754,3 +754,60 @@ TEST_P(DocumentInsertSheet, an_envelope_inserts_and_fills_a_sheet) {
   const Sheet front = (*saved.root_element().children().begin()).as_sheet();
   EXPECT_EQ(front.cell(0, 0).value().text(), "cover");
 }
+
+TEST_P(DocumentInsertSheet, an_envelope_moves_and_removes_sheets) {
+  const Document document = create_document(GetParam());
+
+  document.edit(R"({"version": 2, "ops": [
+    {"op": "insertSheet", "index": 1, "name": "B"},
+    {"op": "insertSheet", "index": 2, "name": "C"},
+    {"op": "moveSheet", "index": 2, "to": 0},
+    {"op": "removeSheet", "index": 1}
+  ]})");
+
+  EXPECT_EQ(sheet_names(reopen(document)),
+            (std::vector<std::string>{"C", "B"}));
+}
+
+TEST_P(DocumentInsertSheet, an_envelope_refuses_to_remove_the_last_sheet) {
+  const Document document = create_document(GetParam());
+
+  EXPECT_THROW(document.edit(R"({"version": 2, "ops": [
+    {"op": "removeSheet", "index": 0}
+  ]})"),
+               std::invalid_argument);
+}
+
+TEST_P(DocumentStructureEnvelope, moves_and_removes_slides_by_page) {
+  const Document document = create_document(GetParam());
+  const std::string first =
+      std::to_string(children_of(document.root_element())[0].identifier());
+
+  document.edit(R"({"version": 2, "ops": [
+    {"op": "insertSlide", "index": 1, "layout": 1, "id": -1,
+     "frames": [-2, -3], "paragraphs": [-4, -5]},
+    {"op": "insertText", "parent": -4, "text": "moved", "id": -6},
+    {"op": "insertSlide", "index": 2, "layout": 5, "id": -7},
+    {"op": "moveSlide", "page": -1, "index": 0},
+    {"op": "removeSlide", "page": )" +
+                first + R"(}
+  ]})");
+
+  const Document saved = reopen(document);
+  const std::vector<Element> slides = children_of(saved.root_element());
+  ASSERT_EQ(slides.size(), 2);
+  EXPECT_EQ(text_of(slides[0]), "moved");
+  EXPECT_TRUE(children_of(slides[1]).empty());
+}
+
+TEST_P(DocumentStructureEnvelope, refuses_to_move_what_is_no_slide) {
+  const Document document = create_document(GetParam());
+  const Element frame = children_of(children_of(document.root_element())[0])[0];
+
+  EXPECT_THROW(document.edit(R"({"version": 2, "ops": [
+    {"op": "moveSlide", "page": )" +
+                             std::to_string(frame.identifier()) +
+                             R"(, "index": 0}
+  ]})"),
+               std::invalid_argument);
+}
