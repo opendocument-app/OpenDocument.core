@@ -1100,9 +1100,11 @@
     if (paragraph === null) {
       return null;
     }
-    var point = document.createRange();
-    point.setStart(container, offset);
     var runs = runsOf(paragraph);
+    if (runs.length === 0 && !holdsField(gapOf(paragraph, null, null))) {
+      return { run: null, offset: 0, paragraph: paragraph };
+    }
+    var point = pointAt(container, offset, paragraph);
     var before = null;
     var after = null;
     for (var i = 0; i < runs.length; ++i) {
@@ -1113,22 +1115,10 @@
         break;
       }
     }
-    if (!holdsField(gapOf(paragraph, before, after))) {
-      // beside the line box: the end of the last run is where a reader
-      // means, and a paragraph holding none is where the first run goes
-      if (runs.length === 0) {
-        return { run: null, offset: 0, paragraph: paragraph };
-      }
-      var last = runs[runs.length - 1];
-      return {
-        run: last,
-        offset: last.textContent.length,
-        paragraph: paragraph,
-      };
-    }
-    // a field between the runs: the end of the run before, else the start of
-    // the run after, where nothing but wrappers and the line box lies
-    // between; past everything, the paragraph's end, where a new run goes
+    // between the runs: the end of the run before, else the start of the run
+    // after, where nothing but wrappers and the line box lies between; past
+    // everything, the paragraph's end, where a new run goes. A point farther
+    // from every run names no place an operation can.
     if (before !== null) {
       point.setStartAfter(before);
       if (!holdsContent(point)) {
@@ -1151,6 +1141,65 @@
     return holdsContent(point)
       ? null
       : { run: null, offset: 0, paragraph: paragraph };
+  }
+
+  /// (@p container, @p offset) in @p paragraph as a collapsed range. Chrome
+  /// states a point inside a picture, which stands for its edge.
+  function pointAt(container, offset, paragraph) {
+    var point = document.createRange();
+    point.setStart(container, offset);
+    var picture = pictureOf(container, paragraph);
+    if (picture !== null) {
+      var lead = document.createRange();
+      lead.setStart(picture, 0);
+      lead.setEnd(container, offset);
+      if (lead.cloneContents().childNodes.length === 0) {
+        point.setStartBefore(picture);
+      } else {
+        point.setStartAfter(picture);
+      }
+      point.collapse(true);
+    }
+    return point;
+  }
+
+  /// @p range as the paragraph boundary it alone covers: from past all one
+  /// paragraph holds to before all the next holds, as Chrome states a delete
+  /// key there. Null for any other range.
+  function boundaryOf(range) {
+    var from = paragraphOf(range.startContainer);
+    var to = paragraphOf(range.endContainer);
+    if (from === null || to === null || from.nextElementSibling !== to) {
+      return null;
+    }
+    var last = runsOf(from).pop();
+    var first = runsOf(to)[0];
+    if (last === undefined || first === undefined) {
+      return null;
+    }
+    var tail = pointAt(range.startContainer, range.startOffset, from);
+    tail.setEnd(from, from.childNodes.length);
+    var head = pointAt(range.endContainer, range.endOffset, to);
+    head.setStart(to, 0);
+    if (holdsContent(tail) || holdsContent(head)) {
+      return null;
+    }
+    return boundary(
+      { run: last, paragraph: from },
+      { run: first, paragraph: to }
+    );
+  }
+
+  /// The picture in @p paragraph that @p node sits in, or null.
+  function pictureOf(node, paragraph) {
+    var element = node.nodeType === 1 ? node : node.parentElement;
+    while (element !== null && element !== paragraph) {
+      if (removableWhole(element)) {
+        return element;
+      }
+      element = element.parentElement;
+    }
+    return null;
   }
 
   /// What lies in @p paragraph between the runs @p before and @p after; a
@@ -1239,6 +1288,10 @@
       }
       range = selection.getRangeAt(0);
     }
+    var joined = boundaryOf(range);
+    if (joined !== null) {
+      return joined;
+    }
     var start = placeOf(range.startContainer, range.startOffset, "start");
     var end = placeOf(range.endContainer, range.endOffset, "end");
     if (start === null || end === null) {
@@ -1255,6 +1308,14 @@
   function replaceRange(at, text) {
     var start = at.start;
     var end = at.end;
+
+    // the boundary alone goes, so what either paragraph holds moves with it
+    if (at.boundary === true) {
+      perform(mergeParagraph(start.paragraph));
+      return text === ""
+        ? start
+        : replaceRange({ start: start, end: start }, text);
+    }
 
     // Everything the range covers has to be expressible before any of it is
     // applied, or a refusal would leave half an edit on the page.
@@ -1614,11 +1675,13 @@
       }
       // at the start of a paragraph the boundary itself is what goes, so the
       // range takes no character with it
-      var back = before.paragraph === place.paragraph ? -1 : 0;
+      if (before.paragraph !== place.paragraph) {
+        return boundary(before, place);
+      }
       return {
         start: {
           run: before.run,
-          offset: step(before.run, before.run.textContent.length, back),
+          offset: step(before.run, before.run.textContent.length, -1),
           paragraph: before.paragraph,
         },
         end: place,
@@ -1641,10 +1704,27 @@
     if (after === null) {
       return null;
     }
-    var forward = after.paragraph === place.paragraph ? 1 : 0;
+    if (after.paragraph !== place.paragraph) {
+      return boundary(place, after);
+    }
     return {
       start: place,
-      end: { run: after.run, offset: step(after.run, 0, forward), paragraph: after.paragraph },
+      end: { run: after.run, offset: step(after.run, 0, 1), paragraph: after.paragraph },
+    };
+  }
+
+  /// The paragraph boundary between the last run @p from of one paragraph and
+  /// the first run @p to of the next, which a delete key takes alone: what
+  /// either paragraph holds beside it, a picture too, moves with the merge.
+  function boundary(from, to) {
+    return {
+      start: {
+        run: from.run,
+        offset: from.run.textContent.length,
+        paragraph: from.paragraph,
+      },
+      end: { run: to.run, offset: 0, paragraph: to.paragraph },
+      boundary: true,
     };
   }
 
