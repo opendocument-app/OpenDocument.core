@@ -690,6 +690,51 @@ make_file_type_capabilities(JNIEnv *env,
                     static_cast<jboolean>(capabilities.create));
 }
 
+jobject make_slide_layout(JNIEnv *env, const odr::SlideLayout &layout) {
+  jclass placeholder_class =
+      env->FindClass("app/opendocument/core/SlidePlaceholder");
+  if (placeholder_class == nullptr) {
+    return nullptr;
+  }
+  const auto &placeholders = layout.placeholders();
+  jobjectArray array = env->NewObjectArray(
+      checked_integer<jsize>(placeholders.size()), placeholder_class, nullptr);
+  env->DeleteLocalRef(placeholder_class);
+  if (array == nullptr) {
+    return nullptr;
+  }
+  for (std::size_t i = 0; i < placeholders.size(); ++i) {
+    const odr::SlidePlaceholder &placeholder = placeholders[i];
+    jobject x = make_measure(env, placeholder.x());
+    jobject y = make_measure(env, placeholder.y());
+    jobject width = make_measure(env, placeholder.width());
+    jobject height = make_measure(env, placeholder.height());
+    jobject value = new_object(
+        env, "app/opendocument/core/SlidePlaceholder",
+        "(ILapp/opendocument/core/Measure;Lapp/opendocument/core/Measure;"
+        "Lapp/opendocument/core/Measure;Lapp/opendocument/core/Measure;)V",
+        static_cast<jint>(placeholder.kind()), x, y, width, height);
+    env->DeleteLocalRef(x);
+    env->DeleteLocalRef(y);
+    env->DeleteLocalRef(width);
+    env->DeleteLocalRef(height);
+    if (value == nullptr) {
+      env->DeleteLocalRef(array);
+      return nullptr;
+    }
+    env->SetObjectArrayElement(array, checked_integer<jsize>(i), value);
+    env->DeleteLocalRef(value);
+  }
+  jstring name = to_jstring(env, layout.name());
+  jobject result = new_object(
+      env, "app/opendocument/core/SlideLayout",
+      "(Ljava/lang/String;[Lapp/opendocument/core/SlidePlaceholder;)V", name,
+      array);
+  env->DeleteLocalRef(name);
+  env->DeleteLocalRef(array);
+  return result;
+}
+
 jobject make_pdf_permissions(JNIEnv *env,
                              const odr::PdfPermissions &permissions) {
   return new_object(env, "app/opendocument/core/PdfPermissions", "(ZZZZZZZZ)V",

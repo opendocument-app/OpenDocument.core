@@ -15,6 +15,7 @@ export interface EnumTables {
   HtmlEditingScope: Record<string, number>;
   PdfTextMode: Record<string, number>;
   EncryptionState: Record<string, number>;
+  SlidePlaceholderKind: Record<string, number>;
   LogLevel: Record<string, number>;
 }
 
@@ -103,6 +104,49 @@ export interface SheetCut {
   /** The extent the markup carries. */
   renderedRows: number;
   renderedColumns: number;
+}
+
+/** A text placeholder of a slide layout; lengths as `Measure` spells them
+ * (`2.1cm`). */
+export interface SlidePlaceholder {
+  /** An `enums.SlidePlaceholderKind` ordinal. */
+  kind: number;
+  x: string;
+  y: string;
+  width: string;
+  height: string;
+}
+
+/** A layout `Document.insertSlide` starts a slide from. */
+export interface SlideLayout {
+  name: string;
+  /** The text placeholders a slide made from it holds, in document order. */
+  placeholders: SlidePlaceholder[];
+}
+
+/** What `Document.insertSlide` made: the ids an `insertSlide` op names. */
+export interface InsertedSlide {
+  id: number;
+  /** One per placeholder, in document order. */
+  frames: number[];
+  /** The empty paragraph of each placeholder, for `appendText`. */
+  paragraphs: number[];
+}
+
+/** What `Document.insertTextBox` made. */
+export interface InsertedTextBox {
+  id: number;
+  /** Its empty paragraph, for `appendText`. */
+  paragraph: number;
+}
+
+/** Where a text box goes: lengths in a fixed unit (`cm`, `mm`, `in`, `pt`,
+ * `pc`, `px`), the size positive. */
+export interface TextBoxPlacement {
+  x: string;
+  y: string;
+  width: string;
+  height: string;
 }
 
 export interface View {
@@ -313,6 +357,25 @@ export declare class Document {
   splitParagraph(paragraphId: number, afterId?: number): number;
   mergeParagraphWithNext(paragraphId: number): this;
   insertParagraphAfter(paragraphId: number): number;
+  /**
+   * An empty sheet at `index` among the sheets; an empty `name` takes the
+   * first free `SheetN`. The views list it from the next `listViews`.
+   * @throws OdrError `invalid_argument` for a name another sheet has,
+   * ignoring case, or one Excel and LibreOffice refuse.
+   */
+  insertSheet(index: number, name?: string): this;
+  /** The layouts `insertSlide` starts a slide from; empty where the engine
+   * cannot insert a slide. */
+  slideLayouts(): SlideLayout[];
+  /**
+   * An empty slide at `index` among the slides, holding the text
+   * placeholders of the `layout`-th of `slideLayouts`. The views list it
+   * from the next `listViews`.
+   */
+  insertSlide(index: number, layout: number): InsertedSlide;
+  /** An empty text box on a slide or drawing page, drawing no fill and no
+   * outline. */
+  insertTextBox(pageId: number, placement: TextBoxPlacement): InsertedTextBox;
 
   /**
    * Whether this pdf can take annotations — false for one declaring an

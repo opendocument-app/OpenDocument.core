@@ -432,6 +432,95 @@ def test_a_created_sheet_takes_an_edit(tmp_path):
     assert walk_text(cell) == ["12.5"]
 
 
+def children_of(element):
+    return list(element.children())
+
+
+def reopen(document, tmp_path, name):
+    path = tmp_path / name
+    path.write_bytes(document.save_to_memory())
+    return pyodr.open(str(path)).as_document_file().document()
+
+
+@pytest.mark.parametrize(
+    "file_type,suffix",
+    [
+        (pyodr.FileType.opendocument_spreadsheet, "ods"),
+        (pyodr.FileType.office_open_xml_workbook, "xlsx"),
+    ],
+)
+def test_insert_sheet_names_and_places_it(file_type, suffix, tmp_path):
+    document = pyodr.create_document(file_type)
+
+    front = document.insert_sheet(0, "Front")
+    numbered = document.insert_sheet(2)
+
+    assert front.name() == "Front"
+    assert numbered.name() == "Sheet3"
+    with pytest.raises(ValueError):
+        document.insert_sheet(0, "front")
+    reloaded = reopen(document, tmp_path, "sheets." + suffix)
+    names = [child.as_sheet().name() for child in children_of(reloaded.root_element())]
+    assert names == ["Front", "Sheet1", "Sheet3"]
+
+
+@pytest.mark.parametrize(
+    "file_type,suffix",
+    [
+        (pyodr.FileType.opendocument_presentation, "odp"),
+        (pyodr.FileType.office_open_xml_presentation, "pptx"),
+    ],
+)
+def test_a_slide_from_a_layout_and_a_text_box(file_type, suffix, tmp_path):
+    document = pyodr.create_document(file_type)
+
+    layouts = document.slide_layouts()
+    assert [layout.name() for layout in layouts] == [
+        "Title Slide",
+        "Title and Content",
+        "Section Header",
+        "Two Content",
+        "Title Only",
+        "Blank",
+    ]
+    kinds = [placeholder.kind() for placeholder in layouts[1].placeholders()]
+    assert kinds == [pyodr.SlidePlaceholderKind.title, pyodr.SlidePlaceholderKind.body]
+
+    slide = document.insert_slide(1, 1)
+    frames = children_of(slide)
+    assert len(frames) == 2
+    document.append_text(first_paragraph(frames[0]), "Agenda")
+
+    box = document.insert_text_box(
+        slide,
+        pyodr.Measure("2cm"),
+        pyodr.Measure("12cm"),
+        pyodr.Measure("10cm"),
+        pyodr.Measure("1.5cm"),
+    )
+    document.append_text(first_paragraph(box), "note")
+    with pytest.raises(ValueError):
+        document.insert_text_box(
+            slide,
+            pyodr.Measure("2cm"),
+            pyodr.Measure("12cm"),
+            pyodr.Measure("0cm"),
+            pyodr.Measure("1cm"),
+        )
+    with pytest.raises(IndexError):
+        document.insert_slide(9, 0)
+
+    reloaded = reopen(document, tmp_path, "slides." + suffix)
+    slides = children_of(reloaded.root_element())
+    assert len(slides) == 2
+    assert walk_text(slides[1]) == ["Agenda", "note"]
+
+
+def test_a_text_document_offers_no_slide_layout():
+    document = pyodr.create_document(pyodr.FileType.opendocument_text)
+    assert document.slide_layouts() == []
+
+
 FLAT_SPREADSHEET = (
     '<?xml version="1.0" encoding="UTF-8"?>'
     '<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"'

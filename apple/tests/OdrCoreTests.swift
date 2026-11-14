@@ -1025,4 +1025,67 @@ final class DocumentCreateTests: XCTestCase {
     XCTAssertEqual(
       reloadedRoot.descendants(ofType: Text.self).map { $0.content }, ["written in swift"])
   }
+
+  private func reopen(_ document: Document, as name: String) throws -> Document {
+    let path = URL(fileURLWithPath: try temporaryDirectory()).appendingPathComponent(name)
+    try XCTUnwrap(try document.saveToMemory()).write(to: path)
+    return try DecodedFile.decode(path: path.path).asDocumentFile().document()
+  }
+
+  func testInsertSheetNamesAndPlacesIt() throws {
+    for (type, suffix) in [(FileType.openDocumentSpreadsheet, "ods"), (.officeOpenXmlWorkbook, "xlsx")]
+    {
+      let document = try Document.create(fileType: type)
+
+      XCTAssertEqual(try document.insertSheet(at: 0, name: "Front").name, "Front")
+      XCTAssertEqual(try document.insertSheet(at: 2, name: "").name, "Sheet3")
+      XCTAssertThrowsError(try document.insertSheet(at: 0, name: "front"))
+
+      let root = try XCTUnwrap(try reopen(document, as: "sheets.\(suffix)").rootElement())
+      XCTAssertEqual(
+        root.children.compactMap { ($0 as? Sheet)?.name }, ["Front", "Sheet1", "Sheet3"])
+    }
+  }
+
+  func testASlideFromALayoutAndATextBoxSurviveASave() throws {
+    for (type, suffix) in [
+      (FileType.openDocumentPresentation, "odp"), (.officeOpenXmlPresentation, "pptx"),
+    ] {
+      let document = try Document.create(fileType: type)
+
+      let layouts = try document.slideLayouts()
+      XCTAssertEqual(
+        layouts.map { $0.name },
+        [
+          "Title Slide", "Title and Content", "Section Header", "Two Content", "Title Only",
+          "Blank",
+        ])
+      XCTAssertEqual(layouts[1].placeholders.map { $0.kind }, [.title, .body])
+
+      let slide = try document.insertSlide(at: 1, layout: 1)
+      XCTAssertEqual(slide.children.count, 2)
+      let title = try XCTUnwrap(slide.children[0].firstDescendant(ofType: Paragraph.self))
+      XCTAssertNotNil(try document.appendText(to: title, text: "Agenda"))
+
+      let box = try document.insertTextBox(
+        on: slide, x: Measure(magnitude: 2, unit: "cm"), y: Measure(magnitude: 12, unit: "cm"),
+        width: Measure(magnitude: 10, unit: "cm"), height: Measure(magnitude: 1.5, unit: "cm"))
+      let note = try XCTUnwrap(box.firstDescendant(ofType: Paragraph.self))
+      XCTAssertNotNil(try document.appendText(to: note, text: "note"))
+      XCTAssertThrowsError(
+        try document.insertTextBox(
+          on: slide, x: Measure(magnitude: 2, unit: "cm"), y: Measure(magnitude: 12, unit: "cm"),
+          width: Measure(magnitude: 0, unit: "cm"), height: Measure(magnitude: 1, unit: "cm")))
+      XCTAssertThrowsError(try document.insertSlide(at: 9, layout: 0))
+
+      let root = try XCTUnwrap(try reopen(document, as: "slides.\(suffix)").rootElement())
+      XCTAssertEqual(root.children.count, 2)
+      XCTAssertEqual(
+        root.children[1].descendants(ofType: Text.self).map { $0.content }, ["Agenda", "note"])
+    }
+  }
+
+  func testATextDocumentOffersNoSlideLayout() throws {
+    XCTAssertTrue(try Document.create(fileType: .openDocumentText).slideLayouts().isEmpty)
+  }
 }

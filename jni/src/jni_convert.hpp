@@ -3,6 +3,7 @@
 #include <odr/document_element.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
+#include <odr/slide_layout.hpp>
 #include <odr/style.hpp>
 #include <odr/table_dimension.hpp>
 #include <odr/table_position.hpp>
@@ -51,9 +52,12 @@ jobject make_file_meta(JNIEnv *env, const odr::FileMeta &meta);
 jobject make_file_type_capabilities(JNIEnv *env,
                                     const odr::FileTypeCapabilities &);
 jobject make_pdf_permissions(JNIEnv *env, const odr::PdfPermissions &);
+jobject make_slide_layout(JNIEnv *env, const odr::SlideLayout &layout);
 
 jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config);
 odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config);
+/// `nullopt` for a null reference.
+std::optional<odr::Measure> measure_from_java(JNIEnv *env, jobject value);
 /// The fields a Java `TextStyle` states.
 odr::TextStyle text_style_from_java(JNIEnv *env, jobject style);
 /// The fields a Java `TableCellStyle` states; a padding or a border is

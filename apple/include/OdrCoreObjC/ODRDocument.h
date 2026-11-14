@@ -3,6 +3,7 @@
 #import <OdrCoreObjC/ODRDocumentElement.h>
 #import <OdrCoreObjC/ODRFile.h>
 #import <OdrCoreObjC/ODRFilesystem.h>
+#import <OdrCoreObjC/ODRStyle.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -36,6 +37,43 @@ NS_SWIFT_NAME(Recalculation)
 @property(nonatomic, readonly) NSArray<ODRSheetPosition *> *circular;
 /// Stale formula cells the evaluator cannot resolve.
 @property(nonatomic, readonly) NSArray<ODRSheetPosition *> *unevaluated;
+
+@end
+
+/// What a text placeholder of a slide layout holds —
+/// `odr::SlidePlaceholderKind`.
+typedef NS_ENUM(NSInteger, ODRSlidePlaceholderKind) {
+  ODRSlidePlaceholderKindTitle,
+  ODRSlidePlaceholderKindSubtitle,
+  ODRSlidePlaceholderKindBody,
+} NS_SWIFT_NAME(SlidePlaceholderKind);
+
+/// A text placeholder of a slide layout, positioned on the page —
+/// `odr::SlidePlaceholder`.
+NS_SWIFT_NAME(SlidePlaceholder)
+@interface ODRSlidePlaceholder : NSObject
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
+@property(nonatomic, readonly) ODRSlidePlaceholderKind kind;
+@property(nonatomic, readonly) ODRMeasure *x;
+@property(nonatomic, readonly) ODRMeasure *y;
+@property(nonatomic, readonly) ODRMeasure *width;
+@property(nonatomic, readonly) ODRMeasure *height;
+
+@end
+
+/// A layout a slide can start from — `odr::SlideLayout`: its name, and the
+/// text placeholders a slide made from it holds, in document order.
+NS_SWIFT_NAME(SlideLayout)
+@interface ODRSlideLayout : NSObject
+
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
+
+@property(nonatomic, readonly, copy) NSString *name;
+@property(nonatomic, readonly) NSArray<ODRSlidePlaceholder *> *placeholders;
 
 @end
 
@@ -146,6 +184,36 @@ NS_SWIFT_NAME(Document)
 - (nullable ODRParagraph *)insertParagraphAfter:(ODRParagraph *)paragraph
                                           error:(NSError **)error
     NS_SWIFT_NAME(insertParagraph(after:));
+
+/// An empty sheet at `index` among the sheets. An empty `name` takes the
+/// first free `SheetN`; a name another sheet has, ignoring case, fails.
+- (nullable ODRSheet *)insertSheetAtIndex:(uint32_t)index
+                                     name:(NSString *)name
+                                    error:(NSError **)error
+    NS_SWIFT_NAME(insertSheet(at:name:));
+
+/// The layouts `insertSlide` starts a slide from; empty where the engine
+/// cannot insert a slide.
+- (nullable NSArray<ODRSlideLayout *> *)slideLayoutsWithError:(NSError **)error
+    NS_SWIFT_NAME(slideLayouts());
+
+/// An empty slide at `index` among the slides, holding the text placeholders
+/// of the `layout`-th of `slideLayouts`, each with one empty paragraph.
+- (nullable ODRSlide *)insertSlideAtIndex:(uint32_t)index
+                                   layout:(uint32_t)layout
+                                    error:(NSError **)error
+    NS_SWIFT_NAME(insertSlide(at:layout:));
+
+/// A text box with one empty paragraph on a slide or drawing page, drawing no
+/// fill and no outline. Every length needs a fixed unit, and the size must be
+/// positive.
+- (nullable ODRFrame *)insertTextBoxOnPage:(ODRElement *)page
+                                         x:(ODRMeasure *)x
+                                         y:(ODRMeasure *)y
+                                     width:(ODRMeasure *)width
+                                    height:(ODRMeasure *)height
+                                     error:(NSError **)error
+    NS_SWIFT_NAME(insertTextBox(on:x:y:width:height:));
 
 @end
 

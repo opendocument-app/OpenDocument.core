@@ -5,8 +5,12 @@
 #include <odr/document_element.hpp>
 #include <odr/filesystem.hpp>
 #include <odr/html.hpp>
+#include <odr/quantity.hpp>
+#include <odr/slide_layout.hpp>
 
+#include <optional>
 #include <sstream>
+#include <stdexcept>
 #include <vector>
 
 namespace {
@@ -17,6 +21,8 @@ using odr_jni::from_handle;
 using odr_jni::guarded;
 using odr_jni::HandleGuard;
 using odr_jni::make_handle;
+using odr_jni::make_slide_layout;
+using odr_jni::measure_from_java;
 using odr_jni::to_jbytes;
 using odr_jni::to_jstring;
 using odr_jni::to_string;
@@ -273,6 +279,74 @@ Java_app_opendocument_core_Document_insertParagraphAfterNative(
     return wrap_element(
         from_handle<odr::Document>(handle)->insert_paragraph_after(
             element(paragraph_handle).as_paragraph()));
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Document_insertSheetNative(JNIEnv *env, jobject,
+                                                      jlong handle, jint index,
+                                                      jstring name) {
+  return guarded(env, [&] {
+    return wrap_element(from_handle<odr::Document>(handle)->insert_sheet(
+        checked_integer<std::uint32_t>(index), to_string(env, name)));
+  });
+}
+
+extern "C" JNIEXPORT jobjectArray JNICALL
+Java_app_opendocument_core_Document_slideLayoutsNative(JNIEnv *env, jobject,
+                                                       jlong handle) {
+  return guarded(env, [&]() -> jobjectArray {
+    const std::vector<odr::SlideLayout> layouts =
+        from_handle<odr::Document>(handle)->slide_layouts();
+    jclass cls = env->FindClass("app/opendocument/core/SlideLayout");
+    if (cls == nullptr) {
+      return nullptr;
+    }
+    jobjectArray result = env->NewObjectArray(
+        checked_integer<jsize>(layouts.size()), cls, nullptr);
+    env->DeleteLocalRef(cls);
+    if (result == nullptr) {
+      return nullptr;
+    }
+    for (std::size_t i = 0; i < layouts.size(); ++i) {
+      jobject layout = make_slide_layout(env, layouts[i]);
+      if (layout == nullptr) {
+        env->DeleteLocalRef(result);
+        return nullptr;
+      }
+      env->SetObjectArrayElement(result, checked_integer<jsize>(i), layout);
+      env->DeleteLocalRef(layout);
+    }
+    return result;
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Document_insertSlideNative(JNIEnv *env, jobject,
+                                                      jlong handle, jint index,
+                                                      jint layout) {
+  return guarded(env, [&] {
+    return wrap_element(from_handle<odr::Document>(handle)->insert_slide(
+        checked_integer<std::uint32_t>(index),
+        checked_integer<std::uint32_t>(layout)));
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Document_insertTextBoxNative(
+    JNIEnv *env, jobject, jlong handle, jlong page_handle, jobject x, jobject y,
+    jobject width, jobject height) {
+  return guarded(env, [&] {
+    const auto measure = [&](const jobject value) {
+      const std::optional<odr::Measure> result = measure_from_java(env, value);
+      if (!result.has_value()) {
+        throw std::invalid_argument("a text box needs every length");
+      }
+      return *result;
+    };
+    return wrap_element(from_handle<odr::Document>(handle)->insert_text_box(
+        element(page_handle), measure(x), measure(y), measure(width),
+        measure(height)));
   });
 }
 

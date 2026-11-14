@@ -479,6 +479,75 @@ describe('edit', () => {
     });
   });
 
+  it('inserts a sheet and lists it as a view', () => {
+    const doc = odr.create(odr.enums.FileType.xlsx);
+    try {
+      const sheets = () => doc.listViews().map((view) => view.name)
+        .filter((name) => /^(Front|Sheet\d)$/.test(name));
+      assert.deepEqual(sheets(), ['Sheet1']);
+      doc.insertSheet(0, 'Front').insertSheet(2);
+      assert.deepEqual(sheets(), ['Front', 'Sheet1', 'Sheet3']);
+      assert.throws(() => doc.insertSheet(0, 'front'), OdrError);
+    } finally {
+      doc.close();
+    }
+  });
+
+  for (const type of ['odp', 'pptx']) {
+    it(`saves a slide and a text box inserted into ${type}`, () => {
+      const doc = odr.create(odr.enums.FileType[type]);
+      try {
+        const layouts = doc.slideLayouts();
+        assert.deepEqual(layouts.map((layout) => layout.name), [
+          'Title Slide', 'Title and Content', 'Section Header', 'Two Content',
+          'Title Only', 'Blank',
+        ]);
+        const kinds = odr.enums.SlidePlaceholderKind;
+        assert.deepEqual(layouts[1].placeholders.map((p) => p.kind), [kinds.title, kinds.body]);
+        assert.match(layouts[1].placeholders[0].width, /^[\d.]+(cm|in)$/);
+
+        const views = doc.listViews().length;
+        const slide = doc.insertSlide(1, 1);
+        assert.equal(slide.frames.length, 2);
+        assert.equal(slide.paragraphs.length, 2);
+        assert.equal(doc.listViews().length, views + 1);
+        doc.appendText(slide.paragraphs[0], 'Agenda');
+
+        const box = doc.insertTextBox(slide.id,
+          { x: '2cm', y: '12cm', width: '10cm', height: '1.5cm' });
+        doc.appendText(box.paragraph, 'note');
+        assert.throws(() => doc.insertTextBox(slide.id,
+          { x: '2cm', y: '12cm', width: '0cm', height: '1cm' }), OdrError);
+        assert.throws(() => doc.insertSlide(9, 0), OdrError);
+
+        const reopened = odr.open(doc.save());
+        try {
+          const html = reopened.render(0).html;
+          assert.match(html, /Agenda/);
+          assert.match(html, /note/);
+        } finally {
+          reopened.close();
+        }
+      } finally {
+        doc.close();
+      }
+    });
+  }
+
+  it('lists a slide an envelope inserted as a view', () => {
+    const doc = odr.create(odr.enums.FileType.odp);
+    try {
+      const views = doc.listViews().length;
+      doc.edit(JSON.stringify({
+        version: 2,
+        ops: [{ op: 'insertSlide', index: 1, layout: 5, id: -1 }],
+      }));
+      assert.equal(doc.listViews().length, views + 1);
+    } finally {
+      doc.close();
+    }
+  });
+
   it('types into a created document and saves it', () => {
     const doc = odr.create(odr.enums.FileType.odt, { editable: true });
     try {

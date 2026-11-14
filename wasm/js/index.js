@@ -189,6 +189,24 @@ export class Document {
     return unwrap(this.#core.insertParagraphAfter(this.#handle, paragraphId));
   }
 
+  // An empty sheet at `index`; an empty name takes the first free `SheetN`.
+  insertSheet(index, name = '') {
+    unwrap(this.#core.insertSheet(this.#handle, index, name));
+    return this;
+  }
+
+  slideLayouts() {
+    return unwrap(this.#core.slideLayouts(this.#handle));
+  }
+
+  insertSlide(index, layout) {
+    return unwrap(this.#core.insertSlide(this.#handle, index, layout));
+  }
+
+  insertTextBox(pageId, { x, y, width, height }) {
+    return unwrap(this.#core.insertTextBox(this.#handle, pageId, x, y, width, height));
+  }
+
   // Whether this pdf can take annotations.
   isAnnotatable() {
     return unwrap(this.#core.isAnnotatable(this.#handle));
