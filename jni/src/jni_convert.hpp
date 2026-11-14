@@ -54,6 +54,8 @@ jobject make_pdf_permissions(JNIEnv *env, const odr::PdfPermissions &);
 
 jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config);
 odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config);
+/// `nullopt` for a null reference.
+std::optional<odr::Measure> measure_from_java(JNIEnv *env, jobject value);
 /// The fields a Java `TextStyle` states.
 odr::TextStyle text_style_from_java(JNIEnv *env, jobject style);
 /// The fields a Java `TableCellStyle` states; a padding or a border is

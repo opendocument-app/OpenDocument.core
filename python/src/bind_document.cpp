@@ -14,6 +14,7 @@
 
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace py = pybind11;
 
@@ -393,6 +394,35 @@ void odr_python::bind_document(py::module_ &m) {
       .def("insert_paragraph_after", &odr::Document::insert_paragraph_after,
            py::arg("paragraph"), keep_self_alive,
            "An empty paragraph after this one, of the same style.")
+      .def("insert_sheet", &odr::Document::insert_sheet, py::arg("index"),
+           py::arg("name") = std::string(), keep_self_alive,
+           "An empty sheet at an index among the sheets; an empty name takes "
+           "the first free `SheetN`.")
+      .def(
+          "slide_layouts",
+          [](const py::object &self) {
+            py::list result;
+            for (const odr::Slide &layout :
+                 self.cast<const odr::Document &>().slide_layouts()) {
+              py::object item = py::cast(layout);
+              // what `keep_self_alive` does for one returned element
+              py::detail::keep_alive_impl(item, self);
+              result.append(std::move(item));
+            }
+            return result;
+          },
+          "The layouts `insert_slide` starts a slide from, each the empty "
+          "slide it makes, outside the document and refusing edits; empty "
+          "where the engine cannot insert a slide.")
+      .def("insert_slide", &odr::Document::insert_slide, py::arg("index"),
+           py::arg("layout"), keep_self_alive,
+           "An empty slide at an index among the slides, as the layout-th of "
+           "`slide_layouts`.")
+      .def("insert_text_box", &odr::Document::insert_text_box, py::arg("page"),
+           py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"),
+           keep_self_alive,
+           "A text box with one empty paragraph on a slide or drawing page, "
+           "drawing no fill and no outline. Lengths need a fixed unit.")
       .def("recalculate", &odr::Document::recalculate,
            py::call_guard<py::gil_scoped_release>(),
            "Compute the stale formula cells and write each result into the "

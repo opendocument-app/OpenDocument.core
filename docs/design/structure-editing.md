@@ -179,6 +179,17 @@ Known gaps:
 - A deck with hundreds of layouts carries hundreds of templates: about 2 KB
   each, more where a layout or master shows a picture.
 
+## 7. Bindings
+
+python, java and swift mirror the C++ calls and return element handles, a
+layout among them. npm has no element surface, so `slideLayouts` answers
+`[{name, placeholders: [{x, y, width, height}]}]`, the lengths as `Measure`
+strings, `insertSlide` answers `{id, frames, paragraphs}` and `insertTextBox`
+`{id, paragraph}`: the ids the ops of section 5 name, ready for
+`appendText`. An npm session caches its views, so an inserted
+sheet or slide, or an `edit`, drops them and the next `listViews` translates
+again.
+
 ## Validation
 
 `DocumentCreate.*` and the per-feature gtests, then a LibreOffice round trip

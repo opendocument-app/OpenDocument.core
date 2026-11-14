@@ -274,6 +274,54 @@ using odr::apple::to_string;
   });
 }
 
+- (nullable ODRSheet *)insertSheetAtIndex:(uint32_t)index
+                                     name:(NSString *)name
+                                    error:(NSError **)error {
+  return guarded(error, [&]() -> ODRSheet * {
+    return static_cast<ODRSheet *>([ODRElement
+        elementWithHandle:_handle->insert_sheet(index, to_string(name))
+                    owner:self]);
+  });
+}
+
+- (nullable NSArray<ODRSlide *> *)slideLayoutsWithError:(NSError **)error {
+  return guarded(error, [&]() -> NSArray<ODRSlide *> * {
+    const std::vector<odr::Slide> layouts = _handle->slide_layouts();
+    NSMutableArray<ODRSlide *> *const result =
+        [NSMutableArray arrayWithCapacity:layouts.size()];
+    for (const odr::Slide &layout : layouts) {
+      [result addObject:static_cast<ODRSlide *>(
+                            [ODRElement elementWithHandle:layout owner:self])];
+    }
+    return [result copy];
+  });
+}
+
+- (nullable ODRSlide *)insertSlideAtIndex:(uint32_t)index
+                                   layout:(uint32_t)layout
+                                    error:(NSError **)error {
+  return guarded(error, [&]() -> ODRSlide * {
+    return static_cast<ODRSlide *>([ODRElement
+        elementWithHandle:_handle->insert_slide(index, layout)
+                    owner:self]);
+  });
+}
+
+- (nullable ODRFrame *)insertTextBoxOnPage:(ODRElement *)page
+                                         x:(ODRMeasure *)x
+                                         y:(ODRMeasure *)y
+                                     width:(ODRMeasure *)width
+                                    height:(ODRMeasure *)height
+                                     error:(NSError **)error {
+  return guarded(error, [&]() -> ODRFrame * {
+    return static_cast<ODRFrame *>([ODRElement
+        elementWithHandle:_handle->insert_text_box(
+                              page.handle, x.handle.value(), y.handle.value(),
+                              width.handle.value(), height.handle.value())
+                    owner:self]);
+  });
+}
+
 - (nullable ODRFilesystem *)filesystemWithError:(NSError **)error {
   return guarded(error, [&]() -> ODRFilesystem * {
     return [ODRFilesystem filesystemWithHandle:_handle->as_filesystem()];

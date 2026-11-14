@@ -1,5 +1,9 @@
 package app.opendocument.core;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /** A decoded document. Mirrors {@code odr::Document}. */
 public final class Document extends NativeResource {
   Document(long handle) {
@@ -156,7 +160,62 @@ public final class Document extends NativeResource {
     }
   }
 
+  /** An empty sheet at {@code index} among the sheets, named the first free {@code SheetN}. */
+  public Sheet insertSheet(int index) {
+    return insertSheet(index, "");
+  }
+
+  /**
+   * An empty sheet at {@code index} among the sheets. An empty name takes the first free {@code
+   * SheetN}; a name another sheet has, ignoring case, is refused.
+   */
+  public Sheet insertSheet(int index, String name) {
+    return new Sheet(insertSheetNative(handle(), index, name), this);
+  }
+
+  /**
+   * The layouts {@link #insertSlide} starts a slide from, each the empty slide it makes, outside
+   * the document and refusing edits; empty where the engine cannot insert a slide.
+   */
+  public List<Slide> slideLayouts() {
+    long[] handles = slideLayoutsNative(handle());
+    List<Slide> result = new ArrayList<>(handles.length);
+    for (long layout : handles) {
+      result.add(new Slide(layout, this));
+    }
+    return Collections.unmodifiableList(result);
+  }
+
+  /**
+   * An empty slide at {@code index} among the slides, as the {@code layout}-th of {@link
+   * #slideLayouts}.
+   */
+  public Slide insertSlide(int index, int layout) {
+    return new Slide(insertSlideNative(handle(), index, layout), this);
+  }
+
+  /**
+   * A text box with one empty paragraph on a slide or drawing page, drawing no fill and no
+   * outline. Every length needs a fixed unit, and the size must be positive.
+   */
+  public Frame insertTextBox(Element page, Measure x, Measure y, Measure width, Measure height) {
+    try {
+      return new Frame(insertTextBoxNative(handle(), page.handle(), x, y, width, height), this);
+    } finally {
+      page.keepAlive();
+    }
+  }
+
   private static native void destroy(long handle);
+
+  private native long insertSheetNative(long handle, int index, String name);
+
+  private native long[] slideLayoutsNative(long handle);
+
+  private native long insertSlideNative(long handle, int index, int layout);
+
+  private native long insertTextBoxNative(
+      long handle, long pageHandle, Measure x, Measure y, Measure width, Measure height);
 
   private native int[] recalculateNative(long handle);
 
