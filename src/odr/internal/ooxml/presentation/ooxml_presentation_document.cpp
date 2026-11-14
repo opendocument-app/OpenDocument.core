@@ -26,6 +26,8 @@
 #include <string_view>
 #include <vector>
 
+#include <fmt/format.h>
+
 namespace odr::internal::ooxml::presentation {
 
 namespace {
@@ -726,12 +728,9 @@ private:
 
   /// The list styles a paragraph inherits, weakest first: the presentation's
   /// default, the master's title or body style, then the `a:lstStyle` of the
-  /// master's, the layout's and the shape's own text body. [ECMA-376]
-  /// 21.1.2.4.12 and 19.3.1.36
-  [[nodiscard]] std::vector<pugi::xml_node>
+  /// master's, the layout's and the shape's own text body. [ECMA-376] 19.3.1.36
+  [[nodiscard]] std::array<pugi::xml_node, 5>
   get_list_styles(const ElementIdentifier paragraph_id) const {
-    std::vector<pugi::xml_node> result{m_document->default_text_style()};
-
     pugi::xml_node text_body;
     ElementIdentifier frame_id = null_element_id;
     for (ElementIdentifier id = element_parent(paragraph_id);
@@ -746,17 +745,13 @@ private:
       }
     }
 
-    if (frame_id != null_element_id &&
-        std::string_view(get_node(frame_id).name()) == "p:sp") {
-      const PlaceholderSources sources = get_placeholder_sources(frame_id);
-      result.push_back(sources.master_list_style);
-      result.push_back(
-          sources.master_shape.child("p:txBody").child("a:lstStyle"));
-      result.push_back(
-          sources.layout_shape.child("p:txBody").child("a:lstStyle"));
-    }
-    result.push_back(text_body.child("a:lstStyle"));
-    return result;
+    const PlaceholderSources sources = frame_id == null_element_id
+                                           ? PlaceholderSources{}
+                                           : get_placeholder_sources(frame_id);
+    return {m_document->default_text_style(), sources.master_list_style,
+            sources.master_shape.child("p:txBody").child("a:lstStyle"),
+            sources.layout_shape.child("p:txBody").child("a:lstStyle"),
+            text_body.child("a:lstStyle")};
   }
 
   [[nodiscard]] static std::string get_text(const pugi::xml_node node) {
@@ -781,10 +776,8 @@ private:
       const Theme *theme = get_theme(element_id);
       const pugi::xml_node own = element.node.child("a:pPr");
       // [ECMA-376] 21.1.2.2.7: `lvl` 0 to 8 picks `a:lvl1pPr` to `a:lvl9pPr`
-      const std::string level =
-          "a:lvl" +
-          std::to_string(std::clamp(own.attribute("lvl").as_int(0), 0, 8) + 1) +
-          "pPr";
+      const std::string level = fmt::format(
+          "a:lvl{}pPr", std::clamp(own.attribute("lvl").as_int(0), 0, 8) + 1);
       for (const pugi::xml_node list_style : get_list_styles(element_id)) {
         const pugi::xml_node properties = list_style.child(level.c_str());
         resolve_paragraph_properties(properties, result.paragraph_style);
@@ -792,8 +785,6 @@ private:
                                 result.text_style);
       }
       resolve_paragraph_properties(own, result.paragraph_style);
-      resolve_text_properties(element.node.child("a:rPr"), theme,
-                              result.text_style);
       return result;
     }
     if (element.type == ElementType::span) {

@@ -39,7 +39,7 @@ format. A pptx writes the size as `p:sldSz` with no `type`.
   carries its `type` (`title`, `obj`, `secHead`, `twoObj`, `titleOnly`,
   `blank`). The master states `p:txStyles`, and a layout states how a
   placeholder differs from it (`a:lstStyle`), as PowerPoint's layouts do.
-  The reader inherits both since 1b.
+  The reader inherits both.
 
 ## 2. Insert a sheet
 
