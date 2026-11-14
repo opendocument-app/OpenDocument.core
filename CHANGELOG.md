@@ -28,8 +28,6 @@ The release run heads these entries with the version and opens a fresh
 
 ### Text documents and presentations
 
-- Fontwork preserves explicit line breaks and blank lines.
-
 - The headings of an odt are numbered after its `text:outline-style`, "1",
   "1.1", "1.2.1", as Word and LibreOffice number chapters, up to the ten
   levels LibreOffice has. The HTML writes the number before the heading.
@@ -91,10 +89,6 @@ The release run heads these entries with the version and opens a fresh
 
 - Java and Android: `Document.rootElement()` returns `null` for a missing root.
   It returned a wrapper around a null native handle, crashing on element access.
-
-- An uncached spreadsheet value stays visible beside a drawing nested in a
-  paragraph, and the drawing is retained.
-
 - A shape or connector with a stroke width of zero is drawn with a hairline,
   as LibreOffice draws it. It was invisible.
 - An odf shape whose style turns the stroke off (`draw:stroke="none"`) is no
@@ -143,7 +137,6 @@ The release run heads these entries with the version and opens a fresh
   paragraph boundary beyond it. Formatting over a field is taken; the field's
   own text is not formatted. Typing after a field that ends its paragraph
   goes after it, and Enter there opens a paragraph after it.
-- An odt's ruby shows its base text; it showed nothing.
 
 ## v7.7.0 - 2026-10-31
 
