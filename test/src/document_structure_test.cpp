@@ -407,3 +407,143 @@ TEST(DocumentStructure, a_pptx_text_box_takes_the_theme_body_font) {
   EXPECT_EQ(style.font_name, "Calibri");
   EXPECT_EQ(style.font_size->to_string(), "18pt");
 }
+
+namespace {
+
+class DocumentStructureEnvelope : public testing::TestWithParam<FileType> {};
+
+} // namespace
+
+INSTANTIATE_TEST_SUITE_P(
+    DocumentStructure, DocumentStructureEnvelope,
+    testing::Values(FileType::opendocument_presentation,
+                    FileType::office_open_xml_presentation),
+    [](const testing::TestParamInfo<FileType> &info) {
+      return file_type_to_string(info.param);
+    });
+
+TEST_P(DocumentStructureEnvelope, types_into_a_slide_it_inserted) {
+  const Document document = create_document(GetParam());
+
+  document.edit(R"({"version": 2, "ops": [
+    {"op": "insertSlide", "index": 1, "layout": 1, "id": -1,
+     "frames": [-2, -3], "paragraphs": [-4, -5]},
+    {"op": "insertText", "parent": -4, "text": "Agenda", "id": -6},
+    {"op": "insertText", "parent": -5, "text": "First point", "id": -7}
+  ]})");
+
+  const Document saved = reopen(document);
+  const std::vector<Element> slides = children_of(saved.root_element());
+  ASSERT_EQ(slides.size(), 2);
+  const std::vector<Element> frames = children_of(slides[1]);
+  ASSERT_EQ(frames.size(), 2);
+  EXPECT_EQ(text_of(frames[0]), "Agenda");
+  EXPECT_EQ(text_of(frames[1]), "First point");
+}
+
+TEST_P(DocumentStructureEnvelope, a_slide_without_ids_for_its_placeholders) {
+  const Document document = create_document(GetParam());
+
+  document.edit(R"({"version": 2, "ops": [
+    {"op": "insertSlide", "index": 0, "layout": 5, "id": -1}
+  ]})");
+
+  EXPECT_EQ(children_of(document.root_element()).size(), 2);
+}
+
+TEST_P(DocumentStructureEnvelope, refuses_ids_for_other_placeholders) {
+  const Document document = create_document(GetParam());
+
+  // Title Only holds one placeholder
+  EXPECT_THROW(document.edit(R"({"version": 2, "ops": [
+    {"op": "insertSlide", "index": 1, "layout": 4, "id": -1,
+     "frames": [-2, -3]}
+  ]})"),
+               std::invalid_argument);
+  EXPECT_THROW(document.edit(R"({"version": 2, "ops": [
+    {"op": "insertSlide", "index": 1, "layout": 1, "id": -1,
+     "frames": [-2, -1]}
+  ]})"),
+               std::invalid_argument);
+  EXPECT_THROW(document.edit(R"({"version": 2, "ops": [
+    {"op": "insertSlide", "index": 1, "layout": 1, "id": -1,
+     "frames": [-2, 3]}
+  ]})"),
+               std::invalid_argument);
+}
+
+TEST_P(DocumentStructureEnvelope, types_into_a_text_box_it_inserted) {
+  const Document document = create_document(GetParam());
+  const Element slide = *document.root_element().children().begin();
+
+  document.edit(R"({"version": 2, "ops": [
+    {"op": "insertTextBox", "page": )" +
+                std::to_string(slide.identifier()) +
+                R"(, "x": "2cm", "y": "3cm", "width": "10cm",
+     "height": "1.5cm", "id": -1, "paragraph": -2},
+    {"op": "insertText", "parent": -2, "text": "note", "id": -3}
+  ]})");
+
+  const Document saved = reopen(document);
+  const std::vector<Element> frames =
+      children_of(*saved.root_element().children().begin());
+  ASSERT_EQ(frames.size(), 3);
+  EXPECT_EQ(text_of(frames[2]), "note");
+  EXPECT_NEAR(centimetres(*frames[2].as_frame().x()), 2, 1e-3);
+  EXPECT_NEAR(centimetres(*frames[2].as_frame().height()), 1.5, 1e-3);
+}
+
+TEST_P(DocumentStructureEnvelope, a_text_box_on_a_slide_it_inserted) {
+  const Document document = create_document(GetParam());
+
+  document.edit(R"({"version": 2, "ops": [
+    {"op": "insertSlide", "index": 1, "layout": 5, "id": -1},
+    {"op": "insertTextBox", "page": -1, "x": "1in", "y": "1in",
+     "width": "3in", "height": "1in", "id": -2, "paragraph": -3},
+    {"op": "insertText", "parent": -3, "text": "free", "id": -4}
+  ]})");
+
+  const Document saved = reopen(document);
+  const std::vector<Element> slides = children_of(saved.root_element());
+  ASSERT_EQ(slides.size(), 2);
+  const std::vector<Element> frames = children_of(slides[1]);
+  ASSERT_EQ(frames.size(), 1);
+  EXPECT_EQ(text_of(frames[0]), "free");
+}
+
+TEST_P(DocumentStructureEnvelope, refuses_a_text_box_of_no_size) {
+  const Document document = create_document(GetParam());
+  const Element slide = *document.root_element().children().begin();
+
+  EXPECT_THROW(document.edit(R"({"version": 2, "ops": [
+    {"op": "insertTextBox", "page": )" +
+                             std::to_string(slide.identifier()) +
+                             R"(, "x": "2cm", "y": "3cm", "width": "0cm",
+     "height": "1cm", "id": -1}
+  ]})"),
+               std::invalid_argument);
+  EXPECT_THROW(document.edit(R"({"version": 2, "ops": [
+    {"op": "insertTextBox", "page": )" +
+                             std::to_string(slide.identifier()) +
+                             R"(, "x": "2cm", "y": "3cm", "width": "1cm",
+     "height": "1cm", "id": -1, "paragraph": -1}
+  ]})"),
+               std::invalid_argument);
+}
+
+TEST_P(DocumentInsertSheet, an_envelope_inserts_and_fills_a_sheet) {
+  const Document document = create_document(GetParam());
+
+  document.edit(R"({"version": 2, "ops": [
+    {"op": "insertSheet", "index": 0, "name": "Front"},
+    {"op": "insertSheet", "index": 2},
+    {"op": "setCell", "sheet": 0, "column": 0, "row": 0,
+     "value": {"type": "string", "text": "cover"}}
+  ]})");
+
+  const Document saved = reopen(document);
+  EXPECT_EQ(sheet_names(saved),
+            (std::vector<std::string>{"Front", "Sheet1", "Sheet3"}));
+  const Sheet front = (*saved.root_element().children().begin()).as_sheet();
+  EXPECT_EQ(front.cell(0, 0).value().text(), "cover");
+}

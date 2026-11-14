@@ -22,10 +22,12 @@
 #include <cstdlib>
 #include <fstream>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -286,6 +288,20 @@ Sheet sheet_at(const Element root, const std::uint32_t ordinal) {
                               " not found");
 }
 
+/// The first paragraph under @p element, depth first; null where it holds
+/// none.
+Element first_paragraph_in(const Element &element) {
+  for (const Element child : element.children()) {
+    if (child.type() == ElementType::paragraph) {
+      return child;
+    }
+    if (const Element found = first_paragraph_in(child); found) {
+      return found;
+    }
+  }
+  return {};
+}
+
 } // namespace
 
 void Document::edit(const std::string_view operations,
@@ -352,8 +368,8 @@ void Document::edit(const std::string_view operations,
 
   // the negative id an operation reserves, checked before anything is created
   // so that a refusal changes nothing
-  const auto reserve = [&](const nlohmann::json &operation) {
-    const auto address = integer<std::int64_t>(operation.at("id"));
+  const auto reserve_address = [&](const nlohmann::json &value) {
+    const auto address = integer<std::int64_t>(value);
     if (address >= 0) {
       throw std::invalid_argument("a created element needs a negative id");
     }
@@ -362,6 +378,43 @@ void Document::edit(const std::string_view operations,
                                   " has been created twice");
     }
     return address;
+  };
+  const auto reserve = [&](const nlohmann::json &operation) {
+    return reserve_address(operation.at("id"));
+  };
+
+  // the negative ids @p field lists, one per element the operation creates
+  // of that kind, in document order; empty where the operation leaves it out
+  const auto reserve_list = [&](const nlohmann::json &operation,
+                                const char *field) {
+    std::vector<std::int64_t> result;
+    if (!operation.contains(field)) {
+      return result;
+    }
+    const nlohmann::json &list = operation.at(field);
+    if (!list.is_array()) {
+      throw std::invalid_argument(std::string("`") + field +
+                                  "` must be an array");
+    }
+    for (const nlohmann::json &value : list) {
+      result.push_back(reserve_address(value));
+    }
+    return result;
+  };
+
+  // one operation reserving the same id twice
+  const auto check_distinct = [](std::vector<std::int64_t> addresses) {
+    std::ranges::sort(addresses);
+    if (const auto twice = std::ranges::adjacent_find(addresses);
+        twice != std::end(addresses)) {
+      throw std::invalid_argument("element " + std::to_string(*twice) +
+                                  " has been created twice");
+    }
+  };
+
+  const auto measure_of = [](const nlohmann::json &operation,
+                             const char *field) {
+    return Measure(operation.at(field).get<std::string>());
   };
 
   for (const nlohmann::json &operation : json.at("ops")) {
@@ -493,6 +546,68 @@ void Document::edit(const std::string_view operations,
       const std::int64_t address = reserve(operation);
       const Paragraph after = paragraph_of(operation, "after");
       minted.emplace(address, insert_paragraph_after(after).identifier());
+      continue;
+    }
+
+    if (name == "insertSheet") {
+      std::ignore = insert_sheet(integer<std::uint32_t>(operation.at("index")),
+                                 operation.value("name", std::string()));
+      continue;
+    }
+
+    if (name == "insertSlide") {
+      const std::int64_t address = reserve(operation);
+      const std::vector<std::int64_t> frames =
+          reserve_list(operation, "frames");
+      const std::vector<std::int64_t> paragraphs =
+          reserve_list(operation, "paragraphs");
+      std::vector<std::int64_t> all{address};
+      all.insert(std::end(all), std::begin(frames), std::end(frames));
+      all.insert(std::end(all), std::begin(paragraphs), std::end(paragraphs));
+      check_distinct(std::move(all));
+      const Slide slide =
+          insert_slide(integer<std::uint32_t>(operation.at("index")),
+                       integer<std::uint32_t>(operation.at("layout")));
+      minted.emplace(address, slide.identifier());
+
+      std::vector<Element> created;
+      for (const Element child : slide.children()) {
+        created.push_back(child);
+      }
+      // the page drew the slide it expected, and a different one would leave
+      // later operations naming the wrong placeholder
+      if ((operation.contains("frames") && frames.size() != created.size()) ||
+          (operation.contains("paragraphs") &&
+           paragraphs.size() != created.size())) {
+        throw std::invalid_argument(
+            "the layout holds " + std::to_string(created.size()) +
+            " placeholders, not what `frames` and `paragraphs` list");
+      }
+      for (std::size_t i = 0; i < frames.size(); ++i) {
+        minted.emplace(frames[i], created[i].identifier());
+      }
+      for (std::size_t i = 0; i < paragraphs.size(); ++i) {
+        minted.emplace(paragraphs[i],
+                       first_paragraph_in(created[i]).identifier());
+      }
+      continue;
+    }
+
+    if (name == "insertTextBox") {
+      const std::int64_t address = reserve(operation);
+      std::optional<std::int64_t> paragraph;
+      if (operation.contains("paragraph")) {
+        paragraph = reserve_address(operation.at("paragraph"));
+        check_distinct({address, *paragraph});
+      }
+      const Frame frame = insert_text_box(
+          element_of(operation, "page"), measure_of(operation, "x"),
+          measure_of(operation, "y"), measure_of(operation, "width"),
+          measure_of(operation, "height"));
+      minted.emplace(address, frame.identifier());
+      if (paragraph.has_value()) {
+        minted.emplace(*paragraph, first_paragraph_in(frame).identifier());
+      }
       continue;
     }
 
