@@ -152,6 +152,16 @@ public:
     throw UnsupportedOperation();
   }
 
+  /// An empty sheet named @p name at @p index among the sheets of the root
+  /// @p element_id, which the caller checked.
+  /// @throws UnsupportedOperation where the engine cannot write.
+  virtual ElementIdentifier
+  element_insert_sheet([[maybe_unused]] const ElementIdentifier element_id,
+                       [[maybe_unused]] const std::uint32_t index,
+                       [[maybe_unused]] const std::string &name) const {
+    throw UnsupportedOperation();
+  }
+
   [[nodiscard]] virtual const TextRootAdapter *
   text_root_adapter([[maybe_unused]] const ElementIdentifier element_id) const {
     return nullptr;

@@ -13,6 +13,10 @@ class ElementRegistry;
 
 ElementIdentifier parse_tree(ElementRegistry &registry, pugi::xml_node node);
 
+/// Registers the `table:table` @p node as a sheet, unlinked.
+ElementIdentifier parse_sheet_tree(ElementRegistry &registry,
+                                   pugi::xml_node node);
+
 /// Whether @p name is a text field, whose text its producer computed and
 /// whose element is parsed as a group.
 bool is_text_field(std::string_view name);

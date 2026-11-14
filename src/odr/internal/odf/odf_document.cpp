@@ -2142,6 +2142,45 @@ public:
     return new_id;
   }
 
+  /// A `table:table` with one column and one row, as a new document has
+  /// (ODF 1.3 part 3, 9.1.2), before the sheet at @p index or after the last.
+  [[nodiscard]] ElementIdentifier
+  element_insert_sheet(const ElementIdentifier element_id,
+                       const std::uint32_t index,
+                       const std::string &name) const override {
+    pugi::xml_node spreadsheet = get_node(element_id);
+    if (std::string_view(spreadsheet.name()) != "office:spreadsheet") {
+      throw UnsupportedOperation();
+    }
+    const std::vector<ElementIdentifier> sheets = sheets_();
+
+    pugi::xml_node node;
+    if (index < sheets.size()) {
+      node = spreadsheet.insert_child_before("table:table",
+                                             get_node(sheets[index]));
+    } else if (!sheets.empty()) {
+      node = spreadsheet.insert_child_after("table:table",
+                                            get_node(sheets.back()));
+    } else {
+      node = spreadsheet.prepend_child("table:table");
+    }
+    node.append_attribute("table:name").set_value(name.c_str());
+    node.append_child("table:table-column");
+    node.append_child("table:table-row").append_child("table:table-cell");
+
+    const ElementIdentifier sheet_id = parse_sheet_tree(*m_registry, node);
+    if (index < sheets.size()) {
+      m_registry->insert_sibling_before(sheets[index], sheet_id);
+    } else {
+      m_registry->append_child(element_id, sheet_id);
+    }
+
+    // a formula naming the sheet resolves now, and a sheet range may span it
+    m_document->drop_sheet_dependencies();
+    m_document->note_moved();
+    return sheet_id;
+  }
+
   [[nodiscard]] ElementIdentifier
   element_append_text(const ElementIdentifier element_id,
                       const std::string &text) const override {

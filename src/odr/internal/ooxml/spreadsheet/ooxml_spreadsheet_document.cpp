@@ -29,8 +29,10 @@
 #include <ostream>
 #include <ranges>
 #include <sstream>
+#include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include <fmt/format.h>
 
@@ -352,6 +354,112 @@ void Document::drop_empty_calc_chain() {
                                                    path->string().c_str()));
 }
 
+ElementIdentifier Document::insert_sheet(const std::uint32_t index,
+                                         const std::string &name) {
+  const AbsPath workbook_path("/xl/workbook.xml");
+  pugi::xml_node relationships = part(AbsPath("/xl/_rels/workbook.xml.rels"));
+  pugi::xml_node types = part(AbsPath("/[Content_Types].xml"));
+  if (!relationships || !types) {
+    throw UnsupportedOperation();
+  }
+
+  std::string target;
+  AbsPath sheet_path("/");
+  for (std::uint32_t number = 1;; ++number) {
+    target = fmt::format("worksheets/sheet{}.xml", number);
+    sheet_path = resolve_part_path(workbook_path, target);
+    if (!m_files->is_file(sheet_path) &&
+        !m_xml_documents_and_relations.contains(sheet_path)) {
+      break;
+    }
+  }
+  auto &[sheet_xml, sheet_relations] =
+      m_xml_documents_and_relations[sheet_path];
+  sheet_xml.load_string(
+      R"(<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">)"
+      R"(<dimension ref="A1"/><sheetViews><sheetView workbookViewId="0"/></sheetViews>)"
+      R"(<sheetFormatPr defaultRowHeight="15"/><sheetData/>)"
+      R"(<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>)"
+      R"(</worksheet>)");
+  m_written_parts.push_back(sheet_path);
+
+  std::string id;
+  for (std::uint32_t number = 1;; ++number) {
+    id = fmt::format("rId{}", number);
+    if (!relationships.find_child_by_attribute("Relationship", "Id",
+                                               id.c_str())) {
+      break;
+    }
+  }
+  pugi::xml_node relationship = relationships.append_child("Relationship");
+  relationship.append_attribute("Id").set_value(id.c_str());
+  relationship.append_attribute("Type").set_value(
+      "http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
+      "worksheet");
+  relationship.append_attribute("Target").set_value(target.c_str());
+  m_xml_documents_and_relations.at(workbook_path).second[id] = target;
+
+  pugi::xml_node type = types.append_child("Override");
+  type.append_attribute("PartName").set_value(sheet_path.string().c_str());
+  type.append_attribute("ContentType")
+      .set_value("application/vnd.openxmlformats-officedocument.spreadsheetml."
+                 "worksheet+xml");
+
+  // ECMA-376 18.2.19: `sheetId` is unique and need not follow the order
+  pugi::xml_node sheets = workbook().child("sheets");
+  std::uint32_t sheet_id = 0;
+  std::vector<pugi::xml_node> entries;
+  for (const pugi::xml_node entry : sheets.children("sheet")) {
+    sheet_id = std::max(sheet_id, entry.attribute("sheetId").as_uint());
+    entries.push_back(entry);
+  }
+  pugi::xml_node entry =
+      index < entries.size()
+          ? sheets.insert_child_before("sheet", entries[index])
+          : sheets.append_child("sheet");
+  entry.append_attribute("name").set_value(name.c_str());
+  entry.append_attribute("sheetId").set_value(sheet_id + 1);
+  entry.append_attribute("r:id").set_value(id.c_str());
+
+  // what names a sheet by its position moves with the sheets after it
+  const auto shift = [&](pugi::xml_attribute attribute) {
+    if (attribute && attribute.as_uint() >= index) {
+      attribute.set_value(attribute.as_uint() + 1);
+    }
+  };
+  for (const pugi::xml_node defined_name :
+       workbook().child("definedNames").children("definedName")) {
+    shift(defined_name.attribute("localSheetId"));
+  }
+  for (const pugi::xml_node view :
+       workbook().child("bookViews").children("workbookView")) {
+    shift(view.attribute("activeTab"));
+    shift(view.attribute("firstSheet"));
+  }
+
+  const ParseContext context(sheet_path, sheet_relations,
+                             m_xml_documents_and_relations, m_shared_strings);
+  const ElementIdentifier sheet =
+      parse_tree(m_element_registry, context, sheet_xml.document_element());
+  m_element_registry.sheet_element_at(sheet).name = name;
+
+  ElementIdentifier before =
+      m_element_registry.element_at(m_root_element).first_child_id;
+  for (std::uint32_t i = 0; i < index && before != null_element_id; ++i) {
+    before = m_element_registry.element_at(before).next_sibling_id;
+  }
+  if (before != null_element_id) {
+    m_element_registry.insert_sibling_before(before, sheet);
+  } else {
+    m_element_registry.append_child(m_root_element, sheet);
+  }
+
+  // a formula naming the sheet resolves now, and a sheet range may span it
+  drop_sheet_dependencies();
+  note_moved();
+  return sheet;
+}
+
 bool Document::is_editable() const noexcept { return true; }
 
 bool Document::is_savable(const bool encrypted) const noexcept {
@@ -476,6 +584,13 @@ class ElementAdapter final : public AdapterBase {
 public:
   ElementAdapter(Document &document, ElementRegistry &registry)
       : AdapterBase(registry), m_document(&document) {}
+
+  [[nodiscard]] ElementIdentifier
+  element_insert_sheet([[maybe_unused]] const ElementIdentifier element_id,
+                       const std::uint32_t index,
+                       const std::string &name) const override {
+    return m_document->insert_sheet(index, name);
+  }
 
   [[nodiscard]] std::string
   sheet_name(const ElementIdentifier element_id) const override {

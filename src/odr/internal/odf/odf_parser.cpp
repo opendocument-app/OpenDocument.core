@@ -620,6 +620,11 @@ bool odf::is_text_field(const std::string_view name) {
   return fields.contains(name);
 }
 
+ElementIdentifier odf::parse_sheet_tree(ElementRegistry &registry,
+                                        const pugi::xml_node node) {
+  return std::get<0>(parse_sheet(registry, node));
+}
+
 void odf::reindex_sheet(ElementRegistry &registry,
                         const ElementIdentifier sheet_id) {
   ElementRegistry::Sheet &sheet = registry.sheet_element_at(sheet_id);

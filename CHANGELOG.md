@@ -22,6 +22,13 @@ The release run heads these entries with the version and opens a fresh
   page, one title slide, and six slide layouts: Title Slide, Title and
   Content, Section Header, Two Content, Title Only and Blank.
 
+### Spreadsheets
+
+- `Document::insert_sheet(index, name)` adds an empty sheet to an ods or
+  xlsx. An empty name takes the next free `SheetN`. A name another sheet has,
+  ignoring case, or one Excel or LibreOffice refuses throws
+  `std::invalid_argument`. Formulas recompute on the next `recalculate`.
+
 ### Presentations
 
 - A pptx placeholder takes its position, text size, font, alignment and

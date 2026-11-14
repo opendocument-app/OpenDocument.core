@@ -25,6 +25,7 @@ class Element;
 class File;
 class Filesystem;
 class Paragraph;
+class Sheet;
 class Text;
 
 /// What @ref Document::recalculate did. Each list is sorted by sheet, then
@@ -124,6 +125,14 @@ public:
   /// An empty paragraph after @p paragraph, of the same style.
   [[nodiscard]] Paragraph
   insert_paragraph_after(const Paragraph &paragraph) const;
+
+  /// An empty sheet at @p index among the sheets; the sheet count appends.
+  /// An empty @p name takes the first free `SheetN`.
+  /// @throws std::out_of_range for an index past the count.
+  /// @throws std::invalid_argument for a name another sheet has, ignoring
+  /// case, or one Excel and LibreOffice refuse.
+  [[nodiscard]] Sheet insert_sheet(std::uint32_t index,
+                                   const std::string &name) const;
 
   /// @}
 

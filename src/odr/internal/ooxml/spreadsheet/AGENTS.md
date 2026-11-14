@@ -83,6 +83,14 @@ and `dimension` widens around it. The cell map is keyed by position, so an
 insert touches one entry. A covered position refuses first. That check reads
 `mergeCells` again, because the parsed flags exist only for a stated cell.
 
+**A new sheet is a new part.** `Document::insert_sheet` writes
+`worksheets/sheetN.xml` under the first free `N`, a worksheet relationship
+under the first free `rIdN`, its content type, and a `sheet` entry with the
+largest `sheetId` plus one ([ECMA-376] 18.2.19). `definedName/@localSheetId`
+and `workbookView/@activeTab` and `@firstSheet` count sheets by position, so
+each at the new index or after it moves up one. `docProps/app.xml` keeps its
+old sheet titles; no reader checks them.
+
 **`save` writes the parts it can have changed**, every worksheet and
 `workbook.xml`, and byte-copies the rest. pugixml does not parse the xml
 declaration, so `save` writes one itself. Every save sets
