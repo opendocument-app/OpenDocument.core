@@ -1,5 +1,6 @@
 #pragma once
 
+#include <odr/slide_layout.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/common/document.hpp>
@@ -32,8 +33,9 @@ public:
 
   [[nodiscard]] const ElementRegistry &element_registry() const;
 
-  /// The layouts of every master, in `p:sldLayoutIdLst` order, by name.
-  [[nodiscard]] std::vector<std::pair<std::string, AbsPath>> slide_layouts();
+  /// The layouts of every master, in `p:sldLayoutIdLst` order, and their
+  /// parts.
+  [[nodiscard]] std::vector<std::pair<SlideLayout, AbsPath>> slide_layouts();
   /// An empty slide at @p index from the @p layout -th of @ref slide_layouts:
   /// a new part with its relationships and content type, and an entry in
   /// `p:sldIdLst`.

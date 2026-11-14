@@ -60,10 +60,12 @@ characters (Excel's limit, stricter than LibreOffice's).
 
 ## 3. Insert a slide from a layout
 
-`std::vector<std::string> Document::slide_layouts()` lists the layouts, and
-`Slide Document::insert_slide(std::uint32_t index, std::uint32_t layout)`
-adds an empty slide that holds the layout's text placeholders, each with one
-empty paragraph for the caret.
+`std::vector<SlideLayout> Document::slide_layouts()` lists the layouts: a
+name, and per text placeholder its kind (`title`, `subtitle`, `body`) and its
+position, which is where `insert_slide` puts it. A picker or the page can draw
+a layout from that. `Slide Document::insert_slide(std::uint32_t index,
+std::uint32_t layout)` adds an empty slide that holds the layout's text
+placeholders, each with one empty paragraph for the caret.
 
 - pptx: the layouts of every master, in `p:sldLayoutIdLst` order, named by
   `p:cSld/@name`. A second master often repeats the first one's names, so a
@@ -72,14 +74,16 @@ empty paragraph for the caret.
   presentation's relationships and the content types. Each title, subtitle,
   body or content placeholder is copied as a `p:sp` with its `p:ph` and an
   empty `p:spPr`, as PowerPoint writes it: position and text style inherit
-  (1b). Graphic placeholders and the date, footer and number are left out.
+  (1b). Graphic placeholders, the date, footer and number, and a placeholder
+  that neither the layout nor the master positions are left out.
 - odp: the file's `style:presentation-page-layout`s, named by
   `style:display-name`, else by the built-in whose placeholders they hold
   (LibreOffice names its layouts `AL<n>T<m>`), else by `style:name`, a repeat
-  numbered as in pptx; handout and notes layouts are left out. Then each built-in whose name is not taken.
-  A built-in is written into `office:styles` the first time a slide uses it,
-  scaled to the master's page. The new `draw:page` takes the master of the
-  slide before it, and each text placeholder becomes a `draw:frame` with
+  numbered as in pptx; handout and notes layouts are left out. Then each
+  built-in whose name is not taken. A built-in is written into `office:styles`
+  the first time a slide uses it, scaled to the master's page; the list scales
+  it to the first master's. The new `draw:page` takes the master of the slide
+  before it, and each text placeholder becomes a `draw:frame` with
   `presentation:class`, the master's `<master>-title`, `-subtitle` or
   `-outline1` style where it has one, and a `draw:text-box`.
 

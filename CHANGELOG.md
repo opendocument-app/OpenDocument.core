@@ -31,10 +31,11 @@ The release run heads these entries with the version and opens a fresh
 
 ### Presentations
 
-- `Document::slide_layouts()` lists the layouts a slide can start from, and
-  `Document::insert_slide(index, layout)` adds one to an odp or pptx, holding
-  the layout's text placeholders. A pptx offers its own layouts; an odp
-  offers its own and then the six built-in ones it lacks.
+- `Document::slide_layouts()` lists the layouts a slide can start from as
+  `SlideLayout`s: a name and the kind and position of each text placeholder.
+  `Document::insert_slide(index, layout)` adds a slide holding those
+  placeholders to an odp or pptx. A pptx offers its own layouts; an odp offers
+  its own and then the six built-in ones it lacks.
 - A pptx placeholder takes its position, text size, font, alignment and
   vertical anchor from its slide layout and master when the slide does not
   state them. Theme fonts (`+mj-lt`, `+mn-lt`) resolve to the theme's

@@ -2,6 +2,7 @@
 
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+#include <odr/slide_layout.hpp>
 #include <odr/table_dimension.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
@@ -20,10 +21,13 @@
 #include <array>
 #include <cmath>
 #include <iterator>
+#include <optional>
+#include <span>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <fmt/format.h>
@@ -35,22 +39,69 @@ std::unique_ptr<abstract::ElementAdapter>
 create_element_adapter(Document &document, ElementRegistry &registry);
 
 /// [ECMA-376] 19.7.10: the placeholders a slide types into; a graphic one
-/// (`pic`, `chart`, `tbl`, ...) and the date, footer and number are left out.
-bool takes_text(const pugi::xml_node placeholder) {
-  const pugi::xml_attribute type = placeholder.attribute("type");
-  if (!type) {
-    return true;
+/// (`pic`, `chart`, `tbl`, ...) and the date, footer and number are none.
+std::optional<SlidePlaceholderKind>
+text_kind(const pugi::xml_node placeholder) {
+  const std::string_view type = placeholder.attribute("type").value();
+  if (type.empty() || type == "body" || type == "obj") {
+    return SlidePlaceholderKind::body;
   }
-  constexpr std::array<std::string_view, 5> text_types{
-      "title", "ctrTitle", "subTitle", "body", "obj"};
-  return std::ranges::find(text_types, std::string_view(type.value())) !=
-         text_types.end();
+  if (type == "title" || type == "ctrTitle") {
+    return SlidePlaceholderKind::title;
+  }
+  if (type == "subTitle") {
+    return SlidePlaceholderKind::subtitle;
+  }
+  return std::nullopt;
 }
 
-/// Fills @p slide with a copy of each text placeholder of @p layout, holding
+struct LayoutPlaceholder final {
+  pugi::xml_node shape;
+  SlidePlaceholder placeholder;
+};
+
+/// The text placeholders of @p layout, positioned by the layout, else by
+/// @p master. One with no position at all is left out.
+std::vector<LayoutPlaceholder> text_placeholders(const pugi::xml_node layout,
+                                                 const pugi::xml_node master) {
+  std::vector<LayoutPlaceholder> result;
+  for (const pugi::xml_node shape :
+       layout.child("p:cSld").child("p:spTree").children("p:sp")) {
+    const pugi::xml_node ph =
+        shape.child("p:nvSpPr").child("p:nvPr").child("p:ph");
+    const std::optional<SlidePlaceholderKind> kind =
+        ph ? text_kind(ph) : std::nullopt;
+    if (!kind.has_value()) {
+      continue;
+    }
+    pugi::xml_node xfrm = shape.child("p:spPr").child("a:xfrm");
+    if (!xfrm) {
+      xfrm = find_placeholder_sources(shape, layout, master)
+                 .master_shape.child("p:spPr")
+                 .child("a:xfrm");
+    }
+    const std::optional<Measure> x =
+        read_emus_attribute(xfrm.child("a:off").attribute("x"));
+    const std::optional<Measure> y =
+        read_emus_attribute(xfrm.child("a:off").attribute("y"));
+    const std::optional<Measure> width =
+        read_emus_attribute(xfrm.child("a:ext").attribute("cx"));
+    const std::optional<Measure> height =
+        read_emus_attribute(xfrm.child("a:ext").attribute("cy"));
+    if (!x.has_value() || !y.has_value() || !width.has_value() ||
+        !height.has_value()) {
+      continue;
+    }
+    result.push_back({shape, SlidePlaceholder(*kind, *x, *y, *width, *height)});
+  }
+  return result;
+}
+
+/// Fills @p slide with a copy of each of @p placeholders of @p layout, holding
 /// one empty paragraph and inheriting its position.
-void write_placeholder_slide(pugi::xml_document &slide,
-                             const pugi::xml_node layout) {
+void write_placeholder_slide(
+    pugi::xml_document &slide, const pugi::xml_node layout,
+    const std::span<const LayoutPlaceholder> placeholders) {
   pugi::xml_node root = slide.append_child("p:sld");
   for (const pugi::xml_attribute attribute : layout.attributes()) {
     if (std::string_view(attribute.name()).starts_with("xmlns")) {
@@ -67,13 +118,9 @@ void write_placeholder_slide(pugi::xml_document &slide,
   tree.append_child("p:grpSpPr");
 
   std::uint32_t shape_id = 2;
-  for (const pugi::xml_node shape :
-       layout.child("p:cSld").child("p:spTree").children("p:sp")) {
+  for (const auto &[shape, _] : placeholders) {
     const pugi::xml_node placeholder =
         shape.child("p:nvSpPr").child("p:nvPr").child("p:ph");
-    if (!placeholder || !takes_text(placeholder)) {
-      continue;
-    }
     // the position and the text style come from the layout
     pugi::xml_node copy = tree.append_child("p:sp");
     pugi::xml_node non_visual = copy.append_child("p:nvSpPr");
@@ -272,9 +319,9 @@ pugi::xml_node Document::written_part_(const AbsPath &path) {
   return xml.document_element();
 }
 
-std::vector<std::pair<std::string, AbsPath>> Document::slide_layouts() {
+std::vector<std::pair<SlideLayout, AbsPath>> Document::slide_layouts() {
   const AbsPath presentation_path("/ppt/presentation.xml");
-  std::vector<std::pair<std::string, AbsPath>> result;
+  std::vector<std::pair<SlideLayout, AbsPath>> result;
   for (const pugi::xml_node master_id : m_document_xml.document_element()
                                             .child("p:sldMasterIdLst")
                                             .children("p:sldMasterId")) {
@@ -310,12 +357,18 @@ std::vector<std::pair<std::string, AbsPath>> Document::slide_layouts() {
       }
       // a second master often repeats the first one's names
       const auto count = std::ranges::count_if(result, [&](const auto &entry) {
-        return entry.first == name || entry.first.starts_with(name + " (");
+        return entry.first.name() == name ||
+               entry.first.name().starts_with(name + " (");
       });
       if (count > 0) {
         name += " (" + std::to_string(count + 1) + ")";
       }
-      result.emplace_back(std::move(name), std::move(layout_path));
+      std::vector<SlidePlaceholder> placeholders;
+      for (LayoutPlaceholder &placeholder : text_placeholders(layout, master)) {
+        placeholders.push_back(std::move(placeholder.placeholder));
+      }
+      result.emplace_back(SlideLayout(std::move(name), std::move(placeholders)),
+                          std::move(layout_path));
     }
   }
   return result;
@@ -386,7 +439,9 @@ ElementIdentifier Document::insert_slide(const std::uint32_t index,
 
   pugi::xml_document &slide = m_slides_xml[id];
   m_slide_ids_by_path[slide_path] = id;
-  write_placeholder_slide(slide, m_layout_styles.part(*m_files, layout_path));
+  const LayoutStyle &style = m_layout_styles.get(*m_files, layout_path);
+  write_placeholder_slide(slide, style.layout,
+                          text_placeholders(style.layout, style.master));
 
   // [ECMA-376] 19.2.1.33: a slide id is at least 256 and unique
   pugi::xml_node root = m_document_xml.document_element();
@@ -428,7 +483,6 @@ ElementIdentifier Document::insert_slide(const std::uint32_t index,
     m_element_registry.append_child(m_root_element, slide_id);
   }
 
-  const LayoutStyle &style = m_layout_styles.get(*m_files, layout_path);
   if (style.layout) {
     m_slide_styles[slide_id] = &style;
   }
@@ -542,11 +596,11 @@ public:
     return true;
   }
 
-  [[nodiscard]] std::vector<std::string> element_slide_layouts(
+  [[nodiscard]] std::vector<SlideLayout> element_slide_layouts(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    std::vector<std::string> result;
-    for (auto &[name, _] : m_document->slide_layouts()) {
-      result.push_back(std::move(name));
+    std::vector<SlideLayout> result;
+    for (auto &[layout, _] : m_document->slide_layouts()) {
+      result.push_back(std::move(layout));
     }
     return result;
   }

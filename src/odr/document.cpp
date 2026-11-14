@@ -8,6 +8,7 @@
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/filesystem.hpp>
 #include <odr/quantity.hpp>
+#include <odr/slide_layout.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/common/sheet_dependencies.hpp>
@@ -668,7 +669,7 @@ Sheet Document::insert_sheet(const std::uint32_t index,
   return {adapter, identifier, adapter->sheet_adapter(identifier)};
 }
 
-std::vector<std::string> Document::slide_layouts() const {
+std::vector<SlideLayout> Document::slide_layouts() const {
   return m_impl->element_adapter()->element_slide_layouts(
       m_impl->root_element());
 }

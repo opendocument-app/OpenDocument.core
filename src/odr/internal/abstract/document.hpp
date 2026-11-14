@@ -6,6 +6,7 @@
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/quantity.hpp>
+#include <odr/slide_layout.hpp>
 #include <odr/style.hpp>
 
 #include <cstdint>
@@ -162,9 +163,9 @@ public:
     throw UnsupportedOperation();
   }
 
-  /// The names of the layouts a slide can start from, for the root
-  /// @p element_id; none where the engine cannot insert a slide.
-  [[nodiscard]] virtual std::vector<std::string> element_slide_layouts(
+  /// The layouts a slide can start from, for the root @p element_id; none
+  /// where the engine cannot insert a slide.
+  [[nodiscard]] virtual std::vector<SlideLayout> element_slide_layouts(
       [[maybe_unused]] const ElementIdentifier element_id) const {
     return {};
   }

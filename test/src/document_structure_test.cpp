@@ -3,6 +3,7 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/odr.hpp>
+#include <odr/slide_layout.hpp>
 
 #include <test_util.hpp>
 
@@ -21,6 +22,14 @@ std::vector<std::string> sheet_names(const Document &document) {
   std::vector<std::string> result;
   for (const Element child : document.root_element().children()) {
     result.push_back(child.as_sheet().name());
+  }
+  return result;
+}
+
+std::vector<std::string> layout_names(const Document &document) {
+  std::vector<std::string> result;
+  for (const SlideLayout &layout : document.slide_layouts()) {
+    result.push_back(layout.name());
   }
   return result;
 }
@@ -163,7 +172,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST_P(DocumentInsertSlide, a_new_presentation_offers_the_six_layouts) {
   const Document document = create_document(GetParam());
-  EXPECT_EQ(document.slide_layouts(),
+  EXPECT_EQ(layout_names(document),
             (std::vector<std::string>{"Title Slide", "Title and Content",
                                       "Section Header", "Two Content",
                                       "Title Only", "Blank"}));
@@ -184,6 +193,31 @@ TEST_P(DocumentInsertSlide, a_slide_holds_its_layouts_placeholders) {
   }
   EXPECT_NEAR(centimetres(*frames[2].as_frame().x()), 14.3, 1e-3);
   EXPECT_NEAR(centimetres(*frames[2].as_frame().width()), 12.3, 1e-3);
+}
+
+TEST_P(DocumentInsertSlide, a_layout_lists_the_placeholders_a_slide_gets) {
+  const Document document = create_document(GetParam());
+  const std::vector<SlideLayout> layouts = document.slide_layouts();
+
+  const std::vector<SlidePlaceholder> &title = layouts[0].placeholders();
+  ASSERT_EQ(title.size(), 2);
+  EXPECT_EQ(title[0].kind(), SlidePlaceholderKind::title);
+  EXPECT_EQ(title[1].kind(), SlidePlaceholderKind::subtitle);
+  EXPECT_TRUE(layouts[5].placeholders().empty());
+
+  for (std::uint32_t i = 0; i < layouts.size(); ++i) {
+    const std::vector<Element> frames =
+        children_of(document.insert_slide(1, i));
+    const std::vector<SlidePlaceholder> &placeholders =
+        layouts[i].placeholders();
+    ASSERT_EQ(frames.size(), placeholders.size()) << layouts[i].name();
+    for (std::size_t j = 0; j < frames.size(); ++j) {
+      EXPECT_NEAR(centimetres(*frames[j].as_frame().x()),
+                  centimetres(placeholders[j].x()), 1e-3);
+      EXPECT_NEAR(centimetres(*frames[j].as_frame().height()),
+                  centimetres(placeholders[j].height()), 1e-3);
+    }
+  }
 }
 
 TEST_P(DocumentInsertSlide, a_blank_slide_goes_first) {
@@ -233,10 +267,12 @@ TEST(DocumentStructure, an_odp_offers_its_own_layouts_then_the_built_ins) {
           .as_document_file()
           .document();
   // `AL1T0` holds a title and a subtitle; the handout layout is left out
-  EXPECT_EQ(document.slide_layouts(),
+  EXPECT_EQ(layout_names(document),
             (std::vector<std::string>{"Title Slide", "Title and Content",
                                       "Section Header", "Two Content",
                                       "Title Only", "Blank"}));
+
+  EXPECT_EQ(document.slide_layouts()[0].placeholders().size(), 2);
 
   const Slide added = document.insert_slide(1, 3);
   EXPECT_EQ(children_of(added).size(), 3);
@@ -251,7 +287,7 @@ TEST(DocumentStructure, a_pptx_with_two_masters_numbers_a_repeated_layout) {
                                      "odr-public/pptx/style-various-1.pptx"))
                                 .as_document_file()
                                 .document();
-  const std::vector<std::string> layouts = document.slide_layouts();
+  const std::vector<std::string> layouts = layout_names(document);
   ASSERT_EQ(layouts.size(), 24);
   EXPECT_EQ(layouts[1], "Title Slide");
   EXPECT_EQ(layouts[13], "Title Slide (2)");

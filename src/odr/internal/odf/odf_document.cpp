@@ -2147,18 +2147,39 @@ public:
     return new_id;
   }
 
-  [[nodiscard]] std::vector<std::string>
+  [[nodiscard]] std::vector<SlideLayout>
   element_slide_layouts(const ElementIdentifier element_id) const override {
     if (std::string_view(get_node(element_id).name()) !=
         "office:presentation") {
       return {};
     }
-    std::vector<std::string> result;
-    for (SlideLayout &layout :
-         list_slide_layouts(m_document->styles_root().child("office:styles"))) {
-      result.push_back(std::move(layout.name));
+    const auto [width, height] =
+        page_size(m_document->style_registry().first_master_page());
+    std::vector<SlideLayout> result;
+    for (SlideLayoutSource &source : list_slide_layouts(
+             m_document->styles_root().child("office:styles"), width, height)) {
+      result.push_back(std::move(source.layout));
     }
     return result;
+  }
+
+  /// The page of the master @p master_id in centimetres, else the built-in
+  /// page.
+  [[nodiscard]] std::pair<double, double>
+  page_size(const ElementIdentifier master_id) const {
+    const auto centimetres = [](const std::optional<Measure> &length,
+                                const double fallback) {
+      if (!length.has_value()) {
+        return fallback;
+      }
+      const double per = centimetres_per(length->unit().name());
+      return per == 0.0 ? fallback : length->magnitude() * per;
+    };
+    const PageLayout page = master_id == null_element_id
+                                ? PageLayout()
+                                : master_page_page_layout(master_id);
+    return {centimetres(page.width, blank_slide_width / 100.0),
+            centimetres(page.height, blank_slide_height / 100.0)};
   }
 
   /// A `draw:page` on the master of the slide before it, else the first
@@ -2196,23 +2217,13 @@ public:
     const std::string master =
         get_node(master_id).attribute("style:name").value();
 
-    const SlideLayout layout = list_slide_layouts(styles).at(layout_index);
-    pugi::xml_node layout_node = layout.node;
-    if (!layout_node) {
-      const PageLayout page = master_page_page_layout(master_id);
-      const auto centimetres = [](const std::optional<Measure> &length,
-                                  const double fallback) {
-        if (!length.has_value()) {
-          return fallback;
-        }
-        const double per = centimetres_per(length->unit().name());
-        return per == 0.0 ? fallback : length->magnitude() * per;
-      };
-      layout_node = write_slide_layout(
-          styles, *layout.builtin,
-          centimetres(page.width, blank_slide_width / 100.0),
-          centimetres(page.height, blank_slide_height / 100.0));
-    }
+    const auto [width, height] = page_size(master_id);
+    const SlideLayoutSource source =
+        list_slide_layouts(styles, width, height).at(layout_index);
+    const pugi::xml_node layout_node =
+        source.node
+            ? source.node
+            : write_slide_layout(styles, *source.builtin, width, height);
 
     pugi::xml_node page;
     if (index < slides.size()) {
@@ -2238,11 +2249,11 @@ public:
         .set_value(layout_node.attribute("style:name").value());
 
     // LibreOffice names a master's presentation styles `<master>-<kind>`
-    const auto presentation_style = [&](const std::string_view object) {
-      const std::string kind = object == "title"      ? "title"
-                               : object == "subtitle" ? "subtitle"
-                                                      : "outline1";
-      const std::string style = master + "-" + kind;
+    const auto presentation_style = [&](const SlidePlaceholderKind kind) {
+      const std::string style =
+          master + (kind == SlidePlaceholderKind::title      ? "-title"
+                    : kind == SlidePlaceholderKind::subtitle ? "-subtitle"
+                                                             : "-outline1");
       return styles.find_child_by_attribute("style:style", "style:name",
                                             style.c_str())
                  ? style
@@ -2250,14 +2261,13 @@ public:
     };
     for (const pugi::xml_node placeholder :
          layout_node.children("presentation:placeholder")) {
-      const std::string_view object =
-          placeholder.attribute("presentation:object").value();
-      if (object != "title" && object != "subtitle" && object != "outline" &&
-          object != "text") {
+      const std::optional<SlidePlaceholder> text =
+          read_text_placeholder(placeholder);
+      if (!text.has_value()) {
         continue;
       }
       pugi::xml_node frame = page.append_child("draw:frame");
-      if (const std::string style = presentation_style(object);
+      if (const std::string style = presentation_style(text->kind());
           !style.empty()) {
         frame.append_attribute("presentation:style-name")
             .set_value(style.c_str());
@@ -2268,7 +2278,7 @@ public:
             placeholder.attribute(attribute).value());
       }
       frame.append_attribute("presentation:class")
-          .set_value(std::string(object).c_str());
+          .set_value(placeholder.attribute("presentation:object").value());
       frame.append_child("draw:text-box").append_child("text:p");
     }
 

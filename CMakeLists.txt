@@ -188,6 +188,7 @@ set(ODR_SOURCE_FILES
         "src/odr/odr.cpp"
         "src/odr/quantity.cpp"
         "src/odr/sheet_position.cpp"
+        "src/odr/slide_layout.cpp"
         "src/odr/style.cpp"
         "src/odr/table_dimension.cpp"
         "src/odr/table_position.cpp"
