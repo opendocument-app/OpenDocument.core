@@ -1,7 +1,7 @@
 # Document creation design
 
-`odr::create_document(FileType)` creates editable odt, ods, docx and xlsx
-files. Query `FileTypeCapabilities::create` before offering a format.
+`odr::create_document(FileType)` creates editable odt, ods, odp, docx, xlsx
+and pptx files. Query `FileTypeCapabilities::create` before offering a format.
 
 Bindings: `pyodr.create_document`, Java `Odr.createDocument`, Swift
 `Document.create(fileType:)`, and npm `odr.create`.
@@ -15,8 +15,13 @@ ZIP and opens it through `odr::open`, reusing the normal document model,
 because its session holds a decoded file.
 
 Text documents start with one empty paragraph; spreadsheets start with
-`Sheet1`. ODS also requires one column and one row. The argument is a
-`FileType`, since `DocumentType` does not distinguish odt from docx.
+`Sheet1`. ODS also requires one column and one row. Presentations start with
+one title slide whose placeholders each hold one empty paragraph, so the
+editor has a caret position. An odp slide frame therefore omits
+`presentation:placeholder="true"`, which LibreOffice reserves for an empty
+`draw:text-box`. The layouts are in [structure editing](structure-editing.md).
+The argument is a `FileType`, since `DocumentType` does not distinguish odt
+from docx.
 
 **Why literals, not a committed file:** a file that Word or LibreOffice saves
 holds rsids, a theme, latent styles and font tables that nobody can explain,
@@ -33,6 +38,8 @@ differently from an opened one.
 | ods | Liberation Sans 10pt | A4, margins 2 cm |
 | docx | Calibri 11pt, line spacing 1.08, 8pt after | A4, margins 1 inch |
 | xlsx | Calibri 11pt | A4, Excel margins |
+| odp | Liberation Sans; title 44pt, subtitle 32pt, outline 28pt | 28 cm × 15.75 cm |
+| pptx | Calibri Light titles, Calibri text; title 44pt, body 28pt | 28 cm × 15.75 cm |
 
 Word 365 uses Aptos. We use Calibri because more systems map it to a
 metric-compatible font (Carlito). `meta:generator` and `Application` are
@@ -45,13 +52,14 @@ alone proves little.
 
 1. Run `DocumentCreate.*` in `odr_test`.
 2. Convert new and edited files to PDF with LibreOffice.
-3. Validate docx and xlsx packages with `OpenXmlValidator` from
+3. Validate docx, xlsx and pptx packages with `OpenXmlValidator` from
    `DocumentFormat.OpenXml`.
 
 ## Open work
 
 - Validate new files in Word and Excel.
-- odp, pptx and odg creation, with slide/page and text-frame insertion APIs.
+- odg creation. Slide, sheet and text-box insertion are planned in
+  [structure editing](structure-editing.md).
 - A Letter-page option.
 - New-document UI in the droid and ios apps.
 

@@ -27,8 +27,10 @@
 - [The formula evaluator without exceptions](formula-without-exceptions.md):
   stops as `std::expected` values, so the formula module builds with
   `-fno-exceptions` and loads in any WebView.
-- [Document creation design](document-creation.md): a new odt, ods, docx or
-  xlsx, generated in code and opened through the read path.
+- [Document creation design](document-creation.md): a new odt, ods, odp,
+  docx, xlsx or pptx, generated in code and opened through the read path.
+- [Structure editing plan](structure-editing.md): new sheets, slides from a
+  layout, and text boxes.
 
 ## Diagrams
 

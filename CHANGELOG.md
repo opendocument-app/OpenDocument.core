@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+### Document creation
+
+- `create_document` makes odp and pptx files. A new presentation has a 16:9
+  page, one title slide, and six slide layouts: Title Slide, Title and
+  Content, Section Header, Two Content, Title Only and Blank.
+
 ## v7.8.0 - 2026-11-14
 
 ### HTTP server

@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -44,6 +45,17 @@ Text first_text(const Element &element) {
     result = result.first_child();
   }
   return result.as_text();
+}
+
+/// @p measure in centimetres, from the units the engines report.
+double centimetres(const Measure &measure) {
+  if (measure.unit().name() == "cm") {
+    return measure.magnitude();
+  }
+  if (measure.unit().name() == "in") {
+    return measure.magnitude() * 2.54;
+  }
+  throw std::invalid_argument("unexpected unit " + measure.unit().name());
 }
 
 Document reopen(const Document &document) {
@@ -252,4 +264,62 @@ TEST(DocumentCreate, xlsx_takes_an_edit_and_keeps_it_through_a_save) {
   EXPECT_EQ(saved_sheet.dimensions().columns, 3);
   EXPECT_EQ(first_text(saved_sheet.cell(0, 0)).style().font_weight,
             FontWeight::bold);
+}
+
+class DocumentCreatePresentation : public testing::TestWithParam<FileType> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    DocumentCreate, DocumentCreatePresentation,
+    testing::Values(FileType::opendocument_presentation,
+                    FileType::office_open_xml_presentation),
+    [](const testing::TestParamInfo<FileType> &info) {
+      return file_type_to_string(info.param);
+    });
+
+TEST_P(DocumentCreatePresentation, holds_a_title_slide) {
+  const Document document = create_document(GetParam());
+
+  const std::vector<Element> slides = children(document.root_element());
+  ASSERT_EQ(slides.size(), 1);
+  ASSERT_EQ(slides[0].type(), ElementType::slide);
+
+  const std::vector<Element> frames = children(slides[0]);
+  ASSERT_EQ(frames.size(), 2);
+  for (const Element &frame : frames) {
+    ASSERT_EQ(frame.type(), ElementType::frame);
+    EXPECT_EQ(text_of(frame), "");
+  }
+  EXPECT_NEAR(centimetres(*frames[0].as_frame().x()), 2.1, 1e-4);
+  EXPECT_NEAR(centimetres(*frames[1].as_frame().width()), 21, 1e-4);
+}
+
+TEST_P(DocumentCreatePresentation, page_is_16_by_9) {
+  const Document document = create_document(GetParam());
+
+  const PageLayout layout =
+      (*document.root_element().children().begin()).as_slide().page_layout();
+  EXPECT_NEAR(centimetres(*layout.width), 28, 1e-4);
+  EXPECT_NEAR(centimetres(*layout.height), 15.75, 1e-4);
+}
+
+TEST_P(DocumentCreatePresentation, takes_an_edit_and_keeps_it_through_a_save) {
+  const Document document = create_document(GetParam());
+  const std::vector<Element> frames =
+      children(*document.root_element().children().begin());
+  ASSERT_EQ(frames.size(), 2);
+
+  // the frame of a pptx holds a text body, the frame of an odp a text box
+  Element paragraph = frames[0].first_child();
+  while (paragraph && paragraph.type() != ElementType::paragraph) {
+    paragraph = paragraph.first_child();
+  }
+  ASSERT_TRUE(paragraph);
+  std::ignore = document.append_text(paragraph, "hello");
+
+  const Document saved = reopen(document);
+  const std::vector<Element> saved_frames =
+      children(*saved.root_element().children().begin());
+  ASSERT_EQ(saved_frames.size(), 2);
+  EXPECT_EQ(text_of(saved_frames[0]), "hello");
+  EXPECT_EQ(text_of(saved_frames[1]), "");
 }

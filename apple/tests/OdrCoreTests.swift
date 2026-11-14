@@ -1005,7 +1005,7 @@ final class DocumentCreateTests: XCTestCase {
   }
 
   func testCreateRefusesATypeWithoutCreate() {
-    XCTAssertThrowsError(try Document.create(fileType: .officeOpenXmlPresentation)) { error in
+    XCTAssertThrowsError(try Document.create(fileType: .legacyWordDocument)) { error in
       XCTAssertEqual((error as NSError).code, ODRError.unsupportedFileType.rawValue)
     }
   }
