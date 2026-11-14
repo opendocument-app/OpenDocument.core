@@ -54,6 +54,10 @@ public:
   /// one `c` at least.
   void drop_empty_calc_chain();
 
+  /// An empty worksheet named @p name at @p index among the sheets, with its
+  /// part, relationship, content type and `sheet` entry.
+  ElementIdentifier insert_sheet(std::uint32_t index, const std::string &name);
+
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
 

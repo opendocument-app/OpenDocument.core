@@ -607,6 +607,67 @@ Paragraph Document::insert_paragraph_after(const Paragraph &paragraph) const {
   return {adapter, identifier, adapter->paragraph_adapter(identifier)};
 }
 
+namespace {
+
+/// [MS-XLSX] 2.2.2 `sheet-name-base-character`, which LibreOffice also
+/// enforces, and Excel's cap of 31 characters.
+void check_sheet_name(const std::string &name) {
+  if (name.find_first_of("[]*?:/\\") != std::string::npos) {
+    throw std::invalid_argument("sheet name " + name +
+                                " holds one of []*?:/\\");
+  }
+  if (name.front() == '\'' || name.back() == '\'') {
+    throw std::invalid_argument("sheet name " + name +
+                                " starts or ends with an apostrophe");
+  }
+  if (internal::util::string::utf8_length(name) > 31) {
+    throw std::invalid_argument("sheet name " + name +
+                                " is longer than 31 characters");
+  }
+}
+
+} // namespace
+
+Sheet Document::insert_sheet(const std::uint32_t index,
+                             const std::string &name) const {
+  const Element root = root_element();
+  std::vector<std::string> taken;
+  for (const Element child : root.children()) {
+    if (child.type() == ElementType::sheet) {
+      taken.push_back(
+          internal::util::string::to_lower(child.as_sheet().name()));
+    }
+  }
+  if (index > taken.size()) {
+    throw std::out_of_range("sheet index " + std::to_string(index) +
+                            " past the " + std::to_string(taken.size()) +
+                            " sheets");
+  }
+  const auto is_taken = [&](const std::string &candidate) {
+    return std::ranges::find(taken, internal::util::string::to_lower(
+                                        candidate)) != std::end(taken);
+  };
+
+  std::string chosen = name;
+  if (chosen.empty()) {
+    for (std::size_t number = taken.size() + 1;; ++number) {
+      chosen = "Sheet" + std::to_string(number);
+      if (!is_taken(chosen)) {
+        break;
+      }
+    }
+  }
+  check_sheet_name(chosen);
+  if (is_taken(chosen)) {
+    throw std::invalid_argument("a sheet is named " + chosen + " already");
+  }
+
+  const internal::abstract::ElementAdapter *adapter = m_impl->element_adapter();
+  const ElementIdentifier identifier =
+      adapter->element_insert_sheet(root.identifier(), index, chosen);
+  return {adapter, identifier, adapter->sheet_adapter(identifier)};
+}
+
 std::vector<SheetPosition>
 Document::dependents(const SheetPosition &position) const {
   return dependents(std::vector<SheetPosition>{position});

@@ -224,6 +224,9 @@ unknown mimetype are tolerated.
   at a fresh automatic style `P<n>` (`StyleRegistry::create_paragraph_style`)
   that carries `fo:text-align`. It is made as a cell style is, and one base
   and one delta make one style.
+- **A sheet.** `element_insert_sheet` adds a `table:table` with one column
+  and one row before the sheet at the index, and registers it through
+  `parse_sheet_tree`.
 - **Cells.** `sheet_set_cell` writes `office:value-type`, `office:value` and
   the `text:p` under the cell, because the file states the value and shows a
   rendering of it. It writes through the run the cell holds, so the run keeps

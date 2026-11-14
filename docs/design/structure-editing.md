@@ -44,13 +44,19 @@ format. A pptx writes the size as `p:sldSz` with no `type`.
 ## 2. Insert a sheet
 
 `Sheet Document::insert_sheet(std::uint32_t index, const std::string &name)`.
-An empty name takes the first free `SheetN`. A taken name throws.
+An empty name takes the first free `SheetN`, counting from the number of
+sheets plus one. A name another sheet has, ignoring ASCII case, throws, as
+does one with `[]*?:/\`, a leading or trailing apostrophe, or more than 31
+characters (Excel's limit, stricter than LibreOffice's).
 
 - ods: a `table:table` with one column and one row, as a new document has.
 - xlsx: a worksheet part, its relationship, its content type, and a
   `sheet` entry with the next free `sheetId`. Sheet-relative state that
   holds a sheet index (`definedName/@localSheetId`, `activeTab`) moves.
-- Formulas address a sheet by name, so an insert does not rewrite them.
+- Formulas address a sheet by name, so an insert does not rewrite them. The
+  dependency graph is dropped and every formula recomputes on the next
+  `recalculate`: a formula naming the new sheet resolves now, and a sheet
+  range may span it.
 
 ## 3. Insert a slide from a layout
 
