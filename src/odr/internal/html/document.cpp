@@ -24,6 +24,7 @@
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/html/sheet.hpp>
 #include <odr/internal/html/style_registry.hpp>
+#include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
@@ -392,20 +393,6 @@ render(const Document &document, const HtmlConfig &config, const Logger &logger,
   return resources;
 }
 
-/// The first paragraph under @p element, depth first; null where it holds
-/// none.
-Element first_paragraph_in(const Element &element) {
-  for (const Element child : element.children()) {
-    if (child.type() == ElementType::paragraph) {
-      return child;
-    }
-    if (const Element found = first_paragraph_in(child); found) {
-      return found;
-    }
-  }
-  return {};
-}
-
 std::string identifiers(const std::span<const ElementIdentifier> list) {
   std::string result;
   for (const ElementIdentifier identifier : list) {
@@ -470,7 +457,8 @@ void write_edit_templates(const Document &document, const WritingState &state) {
     std::vector<ElementIdentifier> paragraphs;
     for (const Element child : slide.children()) {
       frames.push_back(child.identifier());
-      paragraphs.push_back(first_paragraph_in(child).identifier());
+      paragraphs.push_back(
+          util::document::first_paragraph_in(child).identifier());
     }
     out.write_element_begin(
         "template", HtmlElementOptions()
@@ -498,7 +486,8 @@ void write_edit_templates(const Document &document, const WritingState &state) {
           .set_attributes(HtmlAttributesVector{
               {"data-odr-frame", std::to_string(box.identifier())},
               {"data-odr-paragraph",
-               std::to_string(first_paragraph_in(box).identifier())}}));
+               std::to_string(
+                   util::document::first_paragraph_in(box).identifier())}}));
   translate_element(box, template_state);
   out.write_element_end("template");
 }
