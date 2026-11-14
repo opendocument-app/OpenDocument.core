@@ -291,6 +291,30 @@ Java_app_opendocument_core_Document_insertSheetNative(JNIEnv *env, jobject,
   });
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_app_opendocument_core_Document_moveSheetNative(JNIEnv *env, jobject,
+                                                    jlong handle,
+                                                    jlong sheet_handle,
+                                                    jint index) {
+  guarded(env, [&] {
+    from_handle<odr::Document>(handle)->move_sheet(
+        element(sheet_handle).as_sheet(),
+        checked_integer<std::uint32_t>(index));
+  });
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_app_opendocument_core_Document_moveSlideNative(JNIEnv *env, jobject,
+                                                    jlong handle,
+                                                    jlong slide_handle,
+                                                    jint index) {
+  guarded(env, [&] {
+    from_handle<odr::Document>(handle)->move_slide(
+        element(slide_handle).as_slide(),
+        checked_integer<std::uint32_t>(index));
+  });
+}
+
 extern "C" JNIEXPORT jlongArray JNICALL
 Java_app_opendocument_core_Document_slideLayoutsNative(JNIEnv *env, jobject,
                                                        jlong handle) {

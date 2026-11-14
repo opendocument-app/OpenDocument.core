@@ -1085,6 +1085,40 @@ final class DocumentCreateTests: XCTestCase {
     }
   }
 
+  func testMoveAndRemoveSheets() throws {
+    for type in [FileType.openDocumentSpreadsheet, .officeOpenXmlWorkbook] {
+      let document = try Document.create(fileType: type)
+      _ = try document.insertSheet(at: 1, name: "B")
+      let last = try document.insertSheet(at: 2, name: "C")
+
+      try document.moveSheet(last, to: 0)
+      let root = try XCTUnwrap(document.rootElement())
+      try document.remove(root.children[1])
+      XCTAssertThrowsError(try document.moveSheet(last, to: 2))
+
+      XCTAssertEqual(root.children.compactMap { ($0 as? Sheet)?.name }, ["C", "B"])
+      try document.remove(last)
+      XCTAssertThrowsError(try document.remove(root.children[0]))
+    }
+  }
+
+  func testMoveAndRemoveSlides() throws {
+    for (type, suffix) in [
+      (FileType.openDocumentPresentation, "odp"), (.officeOpenXmlPresentation, "pptx"),
+    ] {
+      let document = try Document.create(fileType: type)
+      let blank = try document.insertSlide(at: 1, layout: 5)
+      _ = try document.insertSlide(at: 2, layout: 4)
+
+      try document.moveSlide(blank, to: 0)
+      try document.remove(try XCTUnwrap(document.rootElement()).children[1])
+      XCTAssertThrowsError(try document.moveSlide(blank, to: 2))
+
+      let root = try XCTUnwrap(try reopen(document, as: "moved.\(suffix)").rootElement())
+      XCTAssertEqual(root.children.map { $0.children.count }, [0, 1])
+    }
+  }
+
   func testATextDocumentOffersNoSlideLayout() throws {
     XCTAssertTrue(try Document.create(fileType: .openDocumentText).slideLayouts().isEmpty)
   }

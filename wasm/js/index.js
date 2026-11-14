@@ -195,6 +195,21 @@ export class Document {
     return this;
   }
 
+  removeSheet(index) {
+    unwrap(this.#core.removeSheet(this.#handle, index));
+    return this;
+  }
+
+  moveSheet(index, to) {
+    unwrap(this.#core.moveSheet(this.#handle, index, to));
+    return this;
+  }
+
+  moveSlide(slideId, index) {
+    unwrap(this.#core.moveSlide(this.#handle, slideId, index));
+    return this;
+  }
+
   slideLayouts() {
     return unwrap(this.#core.slideLayouts(this.#handle));
   }

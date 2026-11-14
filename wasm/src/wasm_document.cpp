@@ -94,10 +94,23 @@ double id_of(const Element &element) {
   return static_cast<double>(element.identifier());
 }
 
+/// A sheet or slide inserted, removed or moved changes the views, so the next
+/// `listViews` translates again.
+void drop_views(Session &session) {
+  session.service.reset();
+  session.views.clear();
+}
+
+/// A removed sheet or slide takes its view along.
 emscripten::val remove_element(const Handle handle, const double identifier) {
   return guarded([&] {
     Session &s = session(handle);
-    document_of(s).remove(element_of(s, identifier));
+    const Element element = element_of(s, identifier);
+    const ElementType type = element.type();
+    document_of(s).remove(element);
+    if (type == ElementType::sheet || type == ElementType::slide) {
+      drop_views(s);
+    }
     return ok();
   });
 }
@@ -269,19 +282,47 @@ emscripten::val insert_paragraph_after(const Handle handle,
   });
 }
 
-/// A new sheet or slide is a new view, so the next `listViews` translates
-/// again.
-void drop_views(Session &session) {
-  session.service.reset();
-  session.views.clear();
-}
-
 emscripten::val insert_sheet(const Handle handle, const double index,
                              const std::string &name) {
   return guarded([&] {
     Session &s = session(handle);
     std::ignore = document_of(s).insert_sheet(
         checked_integer<std::uint32_t>(index), name);
+    drop_views(s);
+    return ok();
+  });
+}
+
+/// Sheets have no ids here, so these replay the envelope ops that address
+/// one by its position.
+emscripten::val remove_sheet(const Handle handle, const double index) {
+  return guarded([&] {
+    Session &s = session(handle);
+    document_of(s).edit(R"({"version":2,"ops":[{"op":"removeSheet",)" +
+                        index_field("index", index) + "}]}");
+    drop_views(s);
+    return ok();
+  });
+}
+
+emscripten::val move_sheet(const Handle handle, const double index,
+                           const double to) {
+  return guarded([&] {
+    Session &s = session(handle);
+    document_of(s).edit(R"({"version":2,"ops":[{"op":"moveSheet",)" +
+                        index_field("index", index) + "," +
+                        index_field("to", to) + "}]}");
+    drop_views(s);
+    return ok();
+  });
+}
+
+emscripten::val move_slide(const Handle handle, const double identifier,
+                           const double index) {
+  return guarded([&] {
+    Session &s = session(handle);
+    document_of(s).move_slide(element_of(s, identifier).as_slide(),
+                              checked_integer<std::uint32_t>(index));
     drop_views(s);
     return ok();
   });
@@ -413,6 +454,9 @@ EMSCRIPTEN_BINDINGS(odr_document) {
   emscripten::function("insertParagraphAfter",
                        &odr::wasm::insert_paragraph_after);
   emscripten::function("insertSheet", &odr::wasm::insert_sheet);
+  emscripten::function("removeSheet", &odr::wasm::remove_sheet);
+  emscripten::function("moveSheet", &odr::wasm::move_sheet);
+  emscripten::function("moveSlide", &odr::wasm::move_slide);
   emscripten::function("slideLayouts", &odr::wasm::slide_layouts);
   emscripten::function("insertSlide", &odr::wasm::insert_slide);
   emscripten::function("insertTextBox", &odr::wasm::insert_text_box);

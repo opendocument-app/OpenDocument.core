@@ -533,6 +533,49 @@ describe('edit', () => {
     });
   }
 
+  it('moves and removes sheets and lists them as views', () => {
+    const doc = odr.create(odr.enums.FileType.xlsx);
+    try {
+      const sheets = () => doc.listViews().map((view) => view.name)
+        .filter((name) => /^(B|C|Sheet\d)$/.test(name));
+      doc.insertSheet(1, 'B').insertSheet(2, 'C');
+      doc.moveSheet(2, 0);
+      assert.deepEqual(sheets(), ['C', 'Sheet1', 'B']);
+      doc.removeSheet(1);
+      assert.deepEqual(sheets(), ['C', 'B']);
+      assert.throws(() => doc.moveSheet(0, 2), OdrError);
+      doc.removeSheet(0);
+      assert.throws(() => doc.removeSheet(0), OdrError);
+    } finally {
+      doc.close();
+    }
+  });
+
+  for (const type of ['odp', 'pptx']) {
+    it(`moves and removes slides of ${type} and lists them as views`, () => {
+      const doc = odr.create(odr.enums.FileType[type]);
+      try {
+        const views = doc.listViews().length;
+        const blank = doc.insertSlide(1, 5);
+        const content = doc.insertSlide(2, 4);
+        doc.appendText(content.paragraphs[0], 'kept');
+        doc.moveSlide(blank.id, 0);
+        doc.removeElement(blank.id);
+        assert.equal(doc.listViews().length, views + 1);
+        assert.throws(() => doc.moveSlide(content.id, 2), OdrError);
+
+        const reopened = odr.open(doc.save());
+        try {
+          assert.match(reopened.render(0).html, /kept/);
+        } finally {
+          reopened.close();
+        }
+      } finally {
+        doc.close();
+      }
+    });
+  }
+
   it('lists a slide an envelope inserted as a view', () => {
     const doc = odr.create(odr.enums.FileType.odp);
     try {

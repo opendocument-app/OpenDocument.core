@@ -188,6 +188,13 @@ strings, `insertSlide` answers `{id, frames, paragraphs}` and `insertTextBox`
 sheet or slide, or an `edit`, drops them and the next `listViews` translates
 again.
 
+Removing and moving (section 8): python, java and swift take a sheet or a
+slide through their existing `remove`, and add `move_sheet` / `moveSheet` /
+`moveSheet(_:to:)` and the same for slides. npm has no sheet ids, so it takes
+`removeSheet(index)` and `moveSheet(index, to)`, which replay the ops, a slide
+by id through `removeElement` and `moveSlide(slideId, index)`; each drops the
+cached views as an insert does.
+
 ## 8. Remove and move a sheet or a slide
 
 `Document::remove` takes a sheet or a slide too. `void

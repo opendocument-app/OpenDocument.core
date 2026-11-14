@@ -23,6 +23,14 @@ class DocumentTest {
     return Odr.open(odt.toString()).asDocumentFile().document();
   }
 
+  private static List<Element> childrenOf(Element element) {
+    List<Element> result = new ArrayList<>();
+    for (Element child : element.children()) {
+      result.add(child);
+    }
+    return result;
+  }
+
   private static List<String> walkText(Element element) {
     List<String> parts = new ArrayList<>();
     if (element.type() == ElementType.TEXT) {
@@ -229,6 +237,55 @@ class DocumentTest {
         names.add(sheet.asSheet().name());
       }
       assertEquals(List.of("Front", "Sheet1", "Sheet3"), names);
+    }
+  }
+
+  @Test
+  void moveAndRemoveSheets() throws IOException {
+    for (FileType type :
+        List.of(FileType.OPENDOCUMENT_SPREADSHEET, FileType.OFFICE_OPEN_XML_WORKBOOK)) {
+      Document document = Odr.createDocument(type);
+      document.insertSheet(1, "B");
+      Sheet last = document.insertSheet(2, "C");
+
+      document.moveSheet(last, 0);
+      document.remove(childrenOf(document.rootElement()).get(1));
+      assertThrows(OdrException.class, () -> document.moveSheet(last, 2));
+
+      List<String> names = new ArrayList<>();
+      for (Element sheet : document.rootElement().children()) {
+        names.add(sheet.asSheet().name());
+      }
+      assertEquals(List.of("C", "B"), names);
+      document.remove(last);
+      assertThrows(
+          OdrException.class,
+          () -> document.remove(childrenOf(document.rootElement()).get(0)));
+    }
+  }
+
+  @Test
+  void moveAndRemoveSlides() throws IOException {
+    for (FileType type :
+        List.of(FileType.OPENDOCUMENT_PRESENTATION, FileType.OFFICE_OPEN_XML_PRESENTATION)) {
+      Document document = Odr.createDocument(type);
+      Slide blank = document.insertSlide(1, 5);
+      document.insertSlide(2, 4);
+
+      document.moveSlide(blank, 0);
+      document.remove(childrenOf(document.rootElement()).get(1));
+      assertThrows(OdrException.class, () -> document.moveSlide(blank, 2));
+
+      Path path =
+          tempDir.resolve(
+              "moved." + (type == FileType.OPENDOCUMENT_PRESENTATION ? "odp" : "pptx"));
+      Files.write(path, document.saveToMemory());
+      Document saved = Odr.open(path.toString()).asDocumentFile().document();
+      List<Integer> shapes = new ArrayList<>();
+      for (Element slide : saved.rootElement().children()) {
+        shapes.add(childrenOf(slide).size());
+      }
+      assertEquals(List.of(0, 1), shapes);
     }
   }
 
