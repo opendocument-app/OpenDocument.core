@@ -16,6 +16,8 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+## v7.8.0 - 2026-11-14
+
 ### HTTP server
 
 - `HttpServer::bind` throws the new `ServerSocketDenied`
