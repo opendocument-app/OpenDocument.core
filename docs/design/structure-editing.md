@@ -1,21 +1,8 @@
-# Structure editing plan
+# Structure editing design
 
 New odp and pptx files, and edits that add a sheet, a slide from a layout,
 or a text box. Shared editing rules are in [editing](editing.md); creation
 rules are in [document creation](document-creation.md).
-
-## Stack
-
-| PR | Scope |
-|---|---|
-| 1 | `create_document` for odp and pptx, with six built-in layouts |
-| 1b | pptx placeholders inherit text style and alignment from layout and master |
-| 2 | `Document::insert_sheet` for ods and xlsx |
-| 3 | `Document::slide_layouts` and `Document::insert_slide` for odp and pptx |
-| 4 | `Document::insert_text_box` on a slide or drawing page |
-| 5 | envelope ops `insertSheet`, `insertSlide`, `insertTextBox` |
-| 6 | the page side: `insertSlide` and `insertTextBox` in the editable page |
-| 7 | python, java, swift and npm bindings |
 
 ## 1. New presentations
 
