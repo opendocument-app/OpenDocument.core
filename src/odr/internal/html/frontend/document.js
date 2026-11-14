@@ -1104,21 +1104,7 @@
     if (runs.length === 0 && !holdsField(gapOf(paragraph, null, null))) {
       return { run: null, offset: 0, paragraph: paragraph };
     }
-    var point = document.createRange();
-    point.setStart(container, offset);
-    // Chrome states a point inside a picture, which stands for its edge
-    var picture = pictureOf(container, paragraph);
-    if (picture !== null) {
-      var lead = document.createRange();
-      lead.setStart(picture, 0);
-      lead.setEnd(container, offset);
-      if (lead.cloneContents().childNodes.length === 0) {
-        point.setStartBefore(picture);
-      } else {
-        point.setStartAfter(picture);
-      }
-      point.collapse(true);
-    }
+    var point = pointAt(container, offset, paragraph);
     var before = null;
     var after = null;
     for (var i = 0; i < runs.length; ++i) {
@@ -1155,6 +1141,53 @@
     return holdsContent(point)
       ? null
       : { run: null, offset: 0, paragraph: paragraph };
+  }
+
+  /// (@p container, @p offset) in @p paragraph as a collapsed range. Chrome
+  /// states a point inside a picture, which stands for its edge.
+  function pointAt(container, offset, paragraph) {
+    var point = document.createRange();
+    point.setStart(container, offset);
+    var picture = pictureOf(container, paragraph);
+    if (picture !== null) {
+      var lead = document.createRange();
+      lead.setStart(picture, 0);
+      lead.setEnd(container, offset);
+      if (lead.cloneContents().childNodes.length === 0) {
+        point.setStartBefore(picture);
+      } else {
+        point.setStartAfter(picture);
+      }
+      point.collapse(true);
+    }
+    return point;
+  }
+
+  /// @p range as the paragraph boundary it alone covers: from past all one
+  /// paragraph holds to before all the next holds, as Chrome states a delete
+  /// key there. Null for any other range.
+  function boundaryOf(range) {
+    var from = paragraphOf(range.startContainer);
+    var to = paragraphOf(range.endContainer);
+    if (from === null || to === null || from.nextElementSibling !== to) {
+      return null;
+    }
+    var last = runsOf(from).pop();
+    var first = runsOf(to)[0];
+    if (last === undefined || first === undefined) {
+      return null;
+    }
+    var tail = pointAt(range.startContainer, range.startOffset, from);
+    tail.setEnd(from, from.childNodes.length);
+    var head = pointAt(range.endContainer, range.endOffset, to);
+    head.setStart(to, 0);
+    if (holdsContent(tail) || holdsContent(head)) {
+      return null;
+    }
+    return boundary(
+      { run: last, paragraph: from },
+      { run: first, paragraph: to }
+    );
   }
 
   /// The picture in @p paragraph that @p node sits in, or null.
@@ -1255,6 +1288,10 @@
       }
       range = selection.getRangeAt(0);
     }
+    var joined = boundaryOf(range);
+    if (joined !== null) {
+      return joined;
+    }
     var start = placeOf(range.startContainer, range.startOffset, "start");
     var end = placeOf(range.endContainer, range.endOffset, "end");
     if (start === null || end === null) {
@@ -1271,6 +1308,14 @@
   function replaceRange(at, text) {
     var start = at.start;
     var end = at.end;
+
+    // the boundary alone goes, so what either paragraph holds moves with it
+    if (at.boundary === true) {
+      perform(mergeParagraph(start.paragraph));
+      return text === ""
+        ? start
+        : replaceRange({ start: start, end: start }, text);
+    }
 
     // Everything the range covers has to be expressible before any of it is
     // applied, or a refusal would leave half an edit on the page.
@@ -1297,11 +1342,6 @@
       ) {
         return null;
       }
-    }
-
-    if (at.boundary === true) {
-      perform(mergeParagraph(start.paragraph));
-      return start;
     }
 
     if (start.run === null) {

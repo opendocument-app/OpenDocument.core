@@ -100,6 +100,17 @@
           /></div
         ><x-s data-odr-id="94">pictured</x-s><wbr></x-p
       >
+      <!-- A paragraph a picture ends. -->
+      <x-p data-odr-id="98" style="display:block"
+        ><x-s data-odr-id="99">closed</x-s
+        ><div data-odr-id="100" style="position:relative"><img
+            alt=""
+            width="16"
+            height="16"
+            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+          /></div
+        ><wbr></x-p
+      >
       <!-- Two lines of one paragraph, as a `text:line-break` renders. -->
       <x-p data-odr-id="95" style="display:block"
         ><x-s data-odr-id="96">one</x-s><br /><x-s></x-s
@@ -1512,6 +1523,33 @@
         "and undo puts the picture back in its paragraph",
         paragraph(92).querySelector('div[data-odr-id="93"] img') !== null &&
           paragraph(90).textContent === "F leads"
+      );
+
+      // Chrome states Delete before a leading picture up to the picture, and
+      // Backspace after an ending one from the line box past it.
+      reset();
+      select(
+        paragraph(90).lastChild,
+        0,
+        paragraph(92).querySelector('div[data-odr-id="93"]'),
+        0
+      );
+      check(
+        "Delete stated up to a leading picture joins the paragraphs",
+        input("deleteContentForward") === "taken" &&
+          paragraph(90).querySelector('div[data-odr-id="93"] img') !== null &&
+          JSON.stringify(ops()) === '[{"op":"mergeParagraph","paragraph":90}]',
+        JSON.stringify(ops())
+      );
+      reset();
+      select(paragraph(98).lastChild, 0, paragraph(95), 0);
+      check(
+        "Backspace stated from past an ending picture joins the paragraphs",
+        input("deleteContentBackward") === "taken" &&
+          paragraph(98).querySelector('div[data-odr-id="100"] img') !== null &&
+          paragraph(98).textContent === "closedonetwo" &&
+          JSON.stringify(ops()) === '[{"op":"mergeParagraph","paragraph":98}]',
+        JSON.stringify(ops())
       );
 
       // Backspace at the start of the second line: the line break has no
