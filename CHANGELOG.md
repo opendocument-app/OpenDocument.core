@@ -102,6 +102,11 @@ The release run heads these entries with the version and opens a fresh
   then has an alpha of 0.
 - An odt or odg whose page layout states no paper size is laid out on A4; one
   stating only its width or height takes the other from A4.
+- In the editable view, Backspace or Delete at a paragraph's edge joins the
+  two paragraphs and takes nothing else. Where Chrome stated the range from
+  outside the runs, it took the whole next paragraph's text, wrote a
+  paragraph's text twice, or took its last character. A picture that leads
+  or ends a paragraph moves with the merge rather than being deleted.
 - An odt frame stands at its `style:horizontal-pos` whatever its
   `style:wrap`, as in LibreOffice. A header logo wrapped `dynamic` and
   positioned `left` floated right.

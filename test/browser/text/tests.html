@@ -90,6 +90,21 @@
         ><x-s contenteditable="false"><x-s>F</x-s></x-s
         ><x-s data-odr-id="91"> leads</x-s><wbr></x-p
       >
+      <!-- A paragraph a picture leads. -->
+      <x-p data-odr-id="92" style="display:block"
+        ><div data-odr-id="93" style="position:relative"><img
+            alt=""
+            width="16"
+            height="16"
+            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+          /></div
+        ><x-s data-odr-id="94">pictured</x-s><wbr></x-p
+      >
+      <!-- Two lines of one paragraph, as a `text:line-break` renders. -->
+      <x-p data-odr-id="95" style="display:block"
+        ><x-s data-odr-id="96">one</x-s><br /><x-s></x-s
+        ><x-s data-odr-id="97">two</x-s><wbr></x-p
+      >
     </div>
 
     <!-- Not editable: the report is the harness, not the document. -->
@@ -1438,6 +1453,80 @@
           paragraph(70).textContent === "Page 5 of" &&
           ops().length === 0,
         JSON.stringify(ops())
+      );
+
+      // ------------------------------------- a point between the runs
+
+      // Chrome states the range of Backspace at a paragraph's start from the
+      // line box of the paragraph before to the paragraph itself, outside
+      // every run.
+      reset();
+      select(paragraph(10).lastChild, 0, paragraph(20), 0);
+      check(
+        "Backspace stated from the line box before joins the paragraphs",
+        input("deleteContentBackward") === "taken" &&
+          texts() === "first run a link and a tailbold|third|" &&
+          ops().length === 1 &&
+          ops()[0].op === "mergeParagraph",
+        texts() + " " + JSON.stringify(ops())
+      );
+      reset();
+      select(paragraph(10), paragraph(10).childNodes.length - 1, paragraph(20), 0);
+      check(
+        "as does one stated from past the last run",
+        input("deleteContentBackward") === "taken" &&
+          texts() === "first run a link and a tailbold|third|",
+        texts()
+      );
+
+      // A point in a picture is its edge.
+      reset();
+      var leading = paragraph(92).querySelector('div[data-odr-id="93"]');
+      select(leading, 1, run(94), 0);
+      check(
+        "Backspace stated from inside a leading picture joins the paragraphs",
+        input("deleteContentBackward") === "taken" &&
+          paragraph(92) === null &&
+          paragraph(90).textContent === "F leadspictured" &&
+          ops().length === 1 &&
+          ops()[0].op === "mergeParagraph" &&
+          ops()[0].paragraph === 90,
+        JSON.stringify(ops())
+      );
+      check(
+        "taking the picture along",
+        paragraph(90).querySelector('div[data-odr-id="93"] img') !== null
+      );
+
+      reset();
+      select(run(94).firstChild, 0);
+      check(
+        "so does a Backspace the browser states no range for",
+        input("deleteContentBackward") === "taken" &&
+          paragraph(90).querySelector('div[data-odr-id="93"] img') !== null &&
+          paragraph(90).textContent === "F leadspictured",
+        JSON.stringify(ops())
+      );
+      odr.editing.undo();
+      check(
+        "and undo puts the picture back in its paragraph",
+        paragraph(92).querySelector('div[data-odr-id="93"] img') !== null &&
+          paragraph(90).textContent === "F leads"
+      );
+
+      // Backspace at the start of the second line: the line break has no
+      // address, so nothing an operation names goes, and no character of the
+      // paragraph either.
+      reset();
+      var lines = paragraph(95);
+      var lineBreak = lines.querySelector("br");
+      var at = Array.prototype.indexOf.call(lines.childNodes, lineBreak);
+      select(lines, at, lines, at + 1);
+      input("deleteContentBackward");
+      check(
+        "Backspace over a line break takes no character",
+        lines.textContent === "onetwo" && ops().length === 0,
+        lines.textContent + " " + JSON.stringify(ops())
       );
 
       // ---------------------------------------------- what is not an edit
