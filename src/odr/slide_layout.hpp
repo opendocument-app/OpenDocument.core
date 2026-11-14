@@ -17,8 +17,9 @@ enum class SlidePlaceholderKind {
 /// A text placeholder of a slide layout, positioned on the page.
 class SlidePlaceholder final {
 public:
-  SlidePlaceholder(SlidePlaceholderKind kind, Measure x, Measure y,
-                   Measure width, Measure height);
+  SlidePlaceholder(SlidePlaceholderKind kind, const Measure &x,
+                   const Measure &y, const Measure &width,
+                   const Measure &height);
 
   [[nodiscard]] SlidePlaceholderKind kind() const noexcept;
   [[nodiscard]] const Measure &x() const noexcept;
