@@ -320,7 +320,6 @@ pugi::xml_node Document::written_part_(const AbsPath &path) {
 }
 
 const std::vector<std::pair<SlideLayout, AbsPath>> &Document::slide_layouts() {
-  std::lock_guard lock(m_slide_layouts_mutex);
   if (m_slide_layouts.has_value()) {
     return *m_slide_layouts;
   }

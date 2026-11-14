@@ -10,7 +10,6 @@
 #include <odr/internal/ooxml/presentation/ooxml_presentation_style.hpp>
 
 #include <map>
-#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -73,13 +72,11 @@ private:
   PageLayout m_slide_layout;
   /// declared before `m_slide_styles`, which points into it
   LayoutStyles m_layout_styles;
+  std::optional<std::vector<std::pair<SlideLayout, AbsPath>>> m_slide_layouts;
   std::unordered_map<ElementIdentifier, const LayoutStyle *> m_slide_styles;
   std::unordered_map<ElementIdentifier, Color> m_slide_backgrounds;
 
   ElementRegistry m_element_registry;
-
-  std::mutex m_slide_layouts_mutex;
-  std::optional<std::vector<std::pair<SlideLayout, AbsPath>>> m_slide_layouts;
 
   void load_slide_styles_(const std::vector<AbsPath> &slides);
   /// The part at @p path from the package, parsed once and written by `save`;

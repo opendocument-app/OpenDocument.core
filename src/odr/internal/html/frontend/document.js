@@ -2008,9 +2008,8 @@
 
   // -------------------------------------------------------------- structure
 
-  // A new slide or text box is a clone of a template the renderer drew from a
-  // copy of the document that took the same edit, so the page shows what
-  // replay makes (`structure-editing.md` section 6).
+  // A new slide or text box clones a template the renderer wrote from a copy
+  // that took the same edit (`structure-editing.md` section 6).
 
   var FIXED_LENGTH = /^-?(\d+\.?\d*|\.\d+)(cm|mm|in|pt|pc|px)$/;
 
@@ -2037,9 +2036,8 @@
     return element === null ? null : element.closest("[data-odr-page]");
   }
 
-  /// @p template's content with a fresh negative id on each element its
-  /// @p attributes list, in that order, and no other address: the copy's ids
-  /// name nothing here.
+  /// A clone of @p template: a fresh negative id on each element its
+  /// @p attributes list, every other id dropped.
   function instantiate(template, attributes) {
     var fragment = template.content.cloneNode(true);
     var fresh = {};

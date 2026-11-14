@@ -337,8 +337,7 @@ void translate_page_like(const PageLike &page,
   options.set_class(classes).set_style(
       html::translate_outer_page_style(layout) +
       translate_page_background(background, layout));
-  // where a text box lands; not `data-odr-id`, which a range would take for
-  // something it can remove
+  // not `data-odr-id`, which a range would take for something to remove
   if (state.config().editable && state.editable_markup()) {
     options.set_attributes(html::HtmlAttributesVector{
         {"data-odr-page", std::to_string(page.identifier())}});

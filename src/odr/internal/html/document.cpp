@@ -404,11 +404,8 @@ std::string identifiers(const std::span<const ElementIdentifier> list) {
   return result;
 }
 
-/// What a new slide of each layout and a new text box look like, so the page
-/// can draw one itself (`structure-editing.md` section 6). Each is rendered
-/// from a scratch copy that takes the edit, so it is what replay makes. The
-/// copy's ids mean nothing to the page; the attributes say which elements
-/// the page gives a negative id.
+/// A `<template>` per slide layout and one for a text box, rendered from a
+/// copy that took the edit, so the page draws what replay makes.
 void write_edit_templates(const Document &document, const WritingState &state) {
   const DocumentType type = document.document_type();
   if (type != DocumentType::presentation && type != DocumentType::drawing) {
@@ -426,12 +423,10 @@ void write_edit_templates(const Document &document, const WritingState &state) {
     return;
   }
 
-  // a template is cloned into the page, where a resource of the copy would
-  // not be served
+  // the copy's resources are not served
   HtmlConfig config = state.config();
   config.embed_images = true;
-  // a copy shares the background classes, so a template's class names no
-  // other image
+  // shares the view's background classes, so no two images get one
   WritingState template_state = state;
   template_state.set_config(config);
   template_state.set_page_chunk_near(true);

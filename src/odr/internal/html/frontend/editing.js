@@ -199,8 +199,7 @@
       return delegate("insertRows", where);
     },
 
-    /// The layouts `insertSlide` takes, by name, in the order it counts
-    /// them; empty where the page offers none.
+    /// The names of the layouts `insertSlide` counts; empty where none.
     slideLayouts: function () {
       return Array.prototype.map.call(
         document.querySelectorAll("template.odr-slide-template"),
@@ -210,18 +209,14 @@
       );
     },
 
-    /// Inserts a slide of `layout`, an index into `slideLayouts()` (0 by
-    /// default), at `index` among the slides; without one, after the slide
-    /// holding the selection, else last. The caret moves into its first
-    /// placeholder. False where refused.
+    /// Inserts a slide of the `layout`-th layout (0) at `index`, else after
+    /// the selected slide, else last. False where refused.
     insertSlide: function (request) {
       return delegate("insertSlide", request || {});
     },
 
-    /// Inserts an empty text box on the `page` -th slide or drawing page, or
-    /// the one holding the selection, at `x` and `y` and `width` by
-    /// `height`: CSS lengths in cm, mm, in, pt, pc or px, the size positive.
-    /// The caret moves into it. False where refused.
+    /// Inserts a text box on the `page`-th page, else the selected one; `x`,
+    /// `y`, `width`, `height` in cm, mm, in, pt, pc or px. False where refused.
     insertTextBox: function (request) {
       return delegate("insertTextBox", request || {});
     },
