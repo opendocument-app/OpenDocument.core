@@ -314,8 +314,11 @@ std::string placeholder_shapes(const std::span<const BlankPlaceholder> shapes,
   return result;
 }
 
-std::string relationships(
-    const std::span<const std::pair<std::string_view, std::string>> targets) {
+/// A relationship type after `relationship_type_prefix`, and its target.
+using Target = std::pair<std::string_view, std::string>;
+using Parts = std::vector<std::pair<std::string, std::string>>;
+
+std::string relationships(const std::span<const Target> targets) {
   std::string result(xml_declaration);
   result +=
       R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)";
@@ -328,9 +331,8 @@ std::string relationships(
   return result;
 }
 
-std::vector<std::pair<std::string, std::string>> presentation_parts() {
-  using Target = std::pair<std::string_view, std::string>;
-  std::vector<std::pair<std::string, std::string>> result;
+Parts presentation_parts() {
+  Parts result;
 
   std::string content_types(xml_declaration);
   content_types +=
@@ -435,10 +437,9 @@ std::vector<std::pair<std::string, std::string>> presentation_parts() {
   return result;
 }
 
-std::vector<std::pair<std::string, std::string>>
-find_parts(const FileType type) {
+Parts find_parts(const FileType type) {
   const auto copy = [](const std::span<const Part> parts) {
-    std::vector<std::pair<std::string, std::string>> result;
+    Parts result;
     for (const Part &part : parts) {
       result.emplace_back(part.path, part.content);
     }

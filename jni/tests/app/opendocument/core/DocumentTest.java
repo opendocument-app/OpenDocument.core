@@ -193,7 +193,7 @@ class DocumentTest {
   void createDocumentRefusesATypeWithoutCreate() {
     assertThrows(
         OdrException.UnsupportedFileType.class,
-        () -> Odr.createDocument(FileType.OFFICE_OPEN_XML_PRESENTATION));
+        () -> Odr.createDocument(FileType.LEGACY_WORD_DOCUMENT));
   }
 
   @Test

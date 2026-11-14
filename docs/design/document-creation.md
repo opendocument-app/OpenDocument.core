@@ -17,10 +17,11 @@ because its session holds a decoded file.
 Text documents start with one empty paragraph; spreadsheets start with
 `Sheet1`. ODS also requires one column and one row. Presentations start with
 one title slide whose placeholders each hold one empty paragraph, so the
-editor has a caret position. The six layouts come from one table in
-`internal/common/blank_slide_layouts.hpp`; see
-[structure editing](structure-editing.md). The argument is a
-`FileType`, since `DocumentType` does not distinguish odt from docx.
+editor has a caret position. An odp slide frame therefore omits
+`presentation:placeholder="true"`, which LibreOffice reserves for an empty
+`draw:text-box`. The layouts are in [structure editing](structure-editing.md).
+The argument is a `FileType`, since `DocumentType` does not distinguish odt
+from docx.
 
 **Why literals, not a committed file:** a file that Word or LibreOffice saves
 holds rsids, a theme, latent styles and font tables that nobody can explain,
@@ -53,10 +54,6 @@ alone proves little.
 2. Convert new and edited files to PDF with LibreOffice.
 3. Validate docx, xlsx and pptx packages with `OpenXmlValidator` from
    `DocumentFormat.OpenXml`.
-
-An odp placeholder on a slide is a plain frame, without
-`presentation:placeholder="true"`: LibreOffice shows its prompt only for an
-empty `draw:text-box`, and the editor needs a paragraph.
 
 ## Open work
 

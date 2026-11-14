@@ -9,9 +9,12 @@
 #include <odr/internal/util/number_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <utility>
 

@@ -396,7 +396,7 @@ def test_create_document_makes_every_type_that_states_create():
 
 def test_create_document_refuses_a_type_without_create():
     with pytest.raises(pyodr.UnsupportedFileTypeError):
-        pyodr.create_document(pyodr.FileType.office_open_xml_presentation)
+        pyodr.create_document(pyodr.FileType.legacy_word_document)
 
 
 def test_a_created_text_document_takes_an_edit(tmp_path):
