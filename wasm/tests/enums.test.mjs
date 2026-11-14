@@ -29,6 +29,7 @@ const pinned = {
   },
   HtmlEditingScope: { paragraph: 0, document: 1 },
   PdfTextMode: { dual_layer: 0, single_layer: 1 },
+  SlidePlaceholderKind: { title: 0, subtitle: 1, body: 2 },
   EncryptionState: {
     unknown: 0,
     not_encrypted: 1,

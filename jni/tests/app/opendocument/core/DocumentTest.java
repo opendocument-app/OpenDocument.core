@@ -210,6 +210,91 @@ class DocumentTest {
   }
 
   @Test
+  void insertSheetNamesAndPlacesIt() throws IOException {
+    for (FileType type :
+        List.of(FileType.OPENDOCUMENT_SPREADSHEET, FileType.OFFICE_OPEN_XML_WORKBOOK)) {
+      Document document = Odr.createDocument(type);
+
+      assertEquals("Front", document.insertSheet(0, "Front").name());
+      assertEquals("Sheet3", document.insertSheet(2).name());
+      assertThrows(OdrException.class, () -> document.insertSheet(0, "front"));
+
+      Path path =
+          tempDir.resolve(
+              "sheets." + (type == FileType.OPENDOCUMENT_SPREADSHEET ? "ods" : "xlsx"));
+      Files.write(path, document.saveToMemory());
+      Document saved = Odr.open(path.toString()).asDocumentFile().document();
+      List<String> names = new ArrayList<>();
+      for (Element sheet : saved.rootElement().children()) {
+        names.add(sheet.asSheet().name());
+      }
+      assertEquals(List.of("Front", "Sheet1", "Sheet3"), names);
+    }
+  }
+
+  @Test
+  void aSlideFromALayoutAndATextBoxSurviveASave() throws IOException {
+    for (FileType type :
+        List.of(FileType.OPENDOCUMENT_PRESENTATION, FileType.OFFICE_OPEN_XML_PRESENTATION)) {
+      Document document = Odr.createDocument(type);
+
+      List<SlideLayout> layouts = document.slideLayouts();
+      List<String> names = new ArrayList<>();
+      for (SlideLayout layout : layouts) {
+        names.add(layout.name);
+      }
+      assertEquals(
+          List.of(
+              "Title Slide",
+              "Title and Content",
+              "Section Header",
+              "Two Content",
+              "Title Only",
+              "Blank"),
+          names);
+      assertEquals(SlidePlaceholderKind.TITLE, layouts.get(1).placeholders.get(0).kind);
+      assertEquals(SlidePlaceholderKind.BODY, layouts.get(1).placeholders.get(1).kind);
+
+      Slide slide = document.insertSlide(1, 1);
+      assertEquals(2, slide.children().size());
+      document.appendText(firstParagraph(slide.firstChild()), "Agenda");
+
+      Frame box =
+          document.insertTextBox(
+              slide,
+              new Measure(2, "cm"),
+              new Measure(12, "cm"),
+              new Measure(10, "cm"),
+              new Measure(1.5, "cm"));
+      document.appendText(firstParagraph(box), "note");
+      assertThrows(
+          OdrException.class,
+          () ->
+              document.insertTextBox(
+                  slide,
+                  new Measure(2, "cm"),
+                  new Measure(12, "cm"),
+                  new Measure(0, "cm"),
+                  new Measure(1, "cm")));
+      assertThrows(OdrException.class, () -> document.insertSlide(9, 0));
+
+      Path path =
+          tempDir.resolve(
+              "slides." + (type == FileType.OPENDOCUMENT_PRESENTATION ? "odp" : "pptx"));
+      Files.write(path, document.saveToMemory());
+      Document saved = Odr.open(path.toString()).asDocumentFile().document();
+      List<Element> slides = saved.rootElement().children();
+      assertEquals(2, slides.size());
+      assertEquals(List.of("Agenda", "note"), walkText(slides.get(1)));
+    }
+  }
+
+  @Test
+  void aTextDocumentOffersNoSlideLayout() {
+    assertTrue(Odr.createDocument(FileType.OPENDOCUMENT_TEXT).slideLayouts().isEmpty());
+  }
+
+  @Test
   void removeTakesTheElementOut() throws IOException {
     Document document = openDocument();
     Element run = document.rootElement().firstChild().firstChild();

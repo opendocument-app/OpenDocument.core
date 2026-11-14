@@ -157,6 +157,9 @@ emscripten::val edit(const Handle handle, const std::string &diff) {
     } else {
       document_of(s).edit(diff, s.logger);
     }
+    // an envelope may add a sheet or a slide, which is a new view
+    s.service.reset();
+    s.views.clear();
     return ok();
   });
 }

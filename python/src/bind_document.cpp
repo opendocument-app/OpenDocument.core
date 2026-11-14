@@ -4,7 +4,9 @@
 #include <odr/document_element.hpp>
 #include <odr/file.hpp>
 #include <odr/filesystem.hpp>
+#include <odr/quantity.hpp>
 #include <odr/sheet_position.hpp>
+#include <odr/slide_layout.hpp>
 #include <odr/style.hpp>
 #include <odr/table_dimension.hpp>
 #include <odr/table_position.hpp>
@@ -14,6 +16,7 @@
 
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace py = pybind11;
 
@@ -102,6 +105,32 @@ void odr_python::bind_document(py::module_ &m) {
       .value("date", odr::ValueType::date)
       .value("time", odr::ValueType::time)
       .value("error", odr::ValueType::error);
+
+  py::enum_<odr::SlidePlaceholderKind>(m, "SlidePlaceholderKind")
+      .value("title", odr::SlidePlaceholderKind::title)
+      .value("subtitle", odr::SlidePlaceholderKind::subtitle)
+      .value("body", odr::SlidePlaceholderKind::body);
+
+  py::class_<odr::SlidePlaceholder>(m, "SlidePlaceholder")
+      .def(py::init<odr::SlidePlaceholderKind, const odr::Measure &,
+                    const odr::Measure &, const odr::Measure &,
+                    const odr::Measure &>(),
+           py::arg("kind"), py::arg("x"), py::arg("y"), py::arg("width"),
+           py::arg("height"))
+      .def("kind", &odr::SlidePlaceholder::kind)
+      .def("x", &odr::SlidePlaceholder::x)
+      .def("y", &odr::SlidePlaceholder::y)
+      .def("width", &odr::SlidePlaceholder::width)
+      .def("height", &odr::SlidePlaceholder::height);
+
+  py::class_<odr::SlideLayout>(m, "SlideLayout")
+      .def(py::init<std::string, std::vector<odr::SlidePlaceholder>>(),
+           py::arg("name"), py::arg("placeholders"))
+      .def("name", &odr::SlideLayout::name)
+      .def("placeholders", &odr::SlideLayout::placeholders)
+      .def("__repr__", [](const odr::SlideLayout &layout) {
+        return "SlideLayout('" + layout.name() + "')";
+      });
 
   py::class_<odr::TableDimensions>(m, "TableDimensions")
       .def(py::init<>())
@@ -393,6 +422,22 @@ void odr_python::bind_document(py::module_ &m) {
       .def("insert_paragraph_after", &odr::Document::insert_paragraph_after,
            py::arg("paragraph"), keep_self_alive,
            "An empty paragraph after this one, of the same style.")
+      .def("insert_sheet", &odr::Document::insert_sheet, py::arg("index"),
+           py::arg("name") = std::string(), keep_self_alive,
+           "An empty sheet at an index among the sheets; an empty name takes "
+           "the first free `SheetN`.")
+      .def("slide_layouts", &odr::Document::slide_layouts,
+           "The layouts `insert_slide` starts a slide from; empty where the "
+           "engine cannot insert a slide.")
+      .def("insert_slide", &odr::Document::insert_slide, py::arg("index"),
+           py::arg("layout"), keep_self_alive,
+           "An empty slide at an index among the slides, holding the text "
+           "placeholders of the layout-th of `slide_layouts`.")
+      .def("insert_text_box", &odr::Document::insert_text_box, py::arg("page"),
+           py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"),
+           keep_self_alive,
+           "A text box with one empty paragraph on a slide or drawing page, "
+           "drawing no fill and no outline. Lengths need a fixed unit.")
       .def("recalculate", &odr::Document::recalculate,
            py::call_guard<py::gil_scoped_release>(),
            "Compute the stale formula cells and write each result into the "

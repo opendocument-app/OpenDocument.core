@@ -28,6 +28,8 @@ The release run heads these entries with the version and opens a fresh
   xlsx. An empty name takes the next free `SheetN`. A name another sheet has,
   ignoring case, or one Excel or LibreOffice refuses throws
   `std::invalid_argument`. Formulas recompute on the next `recalculate`.
+  In every binding: `insert_sheet` in python, `insertSheet` in java and npm,
+  `insertSheet(at:name:)` in swift.
 
 ### Presentations
 
@@ -39,6 +41,16 @@ The release run heads these entries with the version and opens a fresh
 - `Document::insert_text_box(page, x, y, width, height)` adds a text box with
   one empty paragraph to a slide of an odp or pptx, or a page of an odg. It
   draws no fill and no outline.
+- Both are in every binding, with `SlideLayout`, `SlidePlaceholder` and
+  `SlidePlaceholderKind`: `slide_layouts`, `insert_slide` and
+  `insert_text_box` in python, `slideLayouts`, `insertSlide` and
+  `insertTextBox` in java and npm, `slideLayouts()`, `insertSlide(at:layout:)`
+  and `insertTextBox(on:x:y:width:height:)` in swift. In npm a placeholder's
+  lengths are strings such as `2.1cm`, `insertSlide` answers the ids of the
+  slide, its placeholders and their paragraphs, and `insertTextBox` those of
+  the box and its paragraph.
+- npm: a sheet or slide inserted directly or through `edit` is a view from
+  the next `listViews`.
 - A new pptx states a default text style, the theme's body font at 18pt, as
   PowerPoint writes it, so a text box shows in Calibri.
 - A pptx placeholder takes its position, text size, font, alignment and

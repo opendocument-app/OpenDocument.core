@@ -6,6 +6,7 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
 #include <odr/odr.hpp>
+#include <odr/slide_layout.hpp>
 
 #include <optional>
 #include <sstream>
@@ -14,6 +15,7 @@
 
 using odr::apple::guarded;
 using odr::apple::guarded_value;
+using odr::apple::to_nsstring;
 using odr::apple::to_string;
 
 @implementation ODRSheetPosition
@@ -72,6 +74,47 @@ using odr::apple::to_string;
     _changed = list(result.changed());
     _circular = list(result.circular());
     _unevaluated = list(result.unevaluated());
+  }
+  return self;
+}
+
+@end
+
+@interface ODRSlidePlaceholder ()
+- (instancetype)initWithPlaceholder:(const odr::SlidePlaceholder &)placeholder;
+@end
+
+@implementation ODRSlidePlaceholder
+
+- (instancetype)initWithPlaceholder:(const odr::SlidePlaceholder &)placeholder {
+  if ((self = [super init])) {
+    _kind = static_cast<ODRSlidePlaceholderKind>(placeholder.kind());
+    _x = [ODRMeasure measureWithHandle:placeholder.x()];
+    _y = [ODRMeasure measureWithHandle:placeholder.y()];
+    _width = [ODRMeasure measureWithHandle:placeholder.width()];
+    _height = [ODRMeasure measureWithHandle:placeholder.height()];
+  }
+  return self;
+}
+
+@end
+
+@interface ODRSlideLayout ()
+- (instancetype)initWithLayout:(const odr::SlideLayout &)layout;
+@end
+
+@implementation ODRSlideLayout
+
+- (instancetype)initWithLayout:(const odr::SlideLayout &)layout {
+  if ((self = [super init])) {
+    _name = to_nsstring(layout.name());
+    NSMutableArray<ODRSlidePlaceholder *> *const placeholders =
+        [NSMutableArray arrayWithCapacity:layout.placeholders().size()];
+    for (const odr::SlidePlaceholder &placeholder : layout.placeholders()) {
+      [placeholders addObject:[[ODRSlidePlaceholder alloc]
+                                  initWithPlaceholder:placeholder]];
+    }
+    _placeholders = [placeholders copy];
   }
   return self;
 }
@@ -271,6 +314,54 @@ using odr::apple::to_string;
   return guarded(error, [&]() -> ODRParagraph * {
     return [self wrapParagraph:_handle->insert_paragraph_after(
                                    paragraph.handle.as_paragraph())];
+  });
+}
+
+- (nullable ODRSheet *)insertSheetAtIndex:(uint32_t)index
+                                     name:(NSString *)name
+                                    error:(NSError **)error {
+  return guarded(error, [&]() -> ODRSheet * {
+    return static_cast<ODRSheet *>([ODRElement
+        elementWithHandle:_handle->insert_sheet(index, to_string(name))
+                    owner:self]);
+  });
+}
+
+- (nullable NSArray<ODRSlideLayout *> *)slideLayoutsWithError:
+    (NSError **)error {
+  return guarded(error, [&]() -> NSArray<ODRSlideLayout *> * {
+    const std::vector<odr::SlideLayout> layouts = _handle->slide_layouts();
+    NSMutableArray<ODRSlideLayout *> *const result =
+        [NSMutableArray arrayWithCapacity:layouts.size()];
+    for (const odr::SlideLayout &layout : layouts) {
+      [result addObject:[[ODRSlideLayout alloc] initWithLayout:layout]];
+    }
+    return [result copy];
+  });
+}
+
+- (nullable ODRSlide *)insertSlideAtIndex:(uint32_t)index
+                                   layout:(uint32_t)layout
+                                    error:(NSError **)error {
+  return guarded(error, [&]() -> ODRSlide * {
+    return static_cast<ODRSlide *>([ODRElement
+        elementWithHandle:_handle->insert_slide(index, layout)
+                    owner:self]);
+  });
+}
+
+- (nullable ODRFrame *)insertTextBoxOnPage:(ODRElement *)page
+                                         x:(ODRMeasure *)x
+                                         y:(ODRMeasure *)y
+                                     width:(ODRMeasure *)width
+                                    height:(ODRMeasure *)height
+                                     error:(NSError **)error {
+  return guarded(error, [&]() -> ODRFrame * {
+    return static_cast<ODRFrame *>([ODRElement
+        elementWithHandle:_handle->insert_text_box(
+                              page.handle, x.handle.value(), y.handle.value(),
+                              width.handle.value(), height.handle.value())
+                    owner:self]);
   });
 }
 
