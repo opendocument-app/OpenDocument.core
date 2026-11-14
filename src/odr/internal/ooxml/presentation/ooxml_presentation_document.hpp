@@ -10,6 +10,7 @@
 #include <odr/internal/ooxml/presentation/ooxml_presentation_style.hpp>
 
 #include <map>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -34,8 +35,9 @@ public:
   [[nodiscard]] const ElementRegistry &element_registry() const;
 
   /// The layouts of every master, in `p:sldLayoutIdLst` order, and their
-  /// parts.
-  [[nodiscard]] std::vector<std::pair<SlideLayout, AbsPath>> slide_layouts();
+  /// parts. Read once: no edit changes a master.
+  [[nodiscard]] const std::vector<std::pair<SlideLayout, AbsPath>> &
+  slide_layouts();
   /// An empty slide at @p index from the @p layout -th of @ref slide_layouts:
   /// a new part with its relationships and content type, and an entry in
   /// `p:sldIdLst`.
@@ -75,6 +77,9 @@ private:
   std::unordered_map<ElementIdentifier, Color> m_slide_backgrounds;
 
   ElementRegistry m_element_registry;
+
+  std::mutex m_slide_layouts_mutex;
+  std::optional<std::vector<std::pair<SlideLayout, AbsPath>>> m_slide_layouts;
 
   void load_slide_styles_(const std::vector<AbsPath> &slides);
   /// The part at @p path from the package, parsed once and written by `save`;

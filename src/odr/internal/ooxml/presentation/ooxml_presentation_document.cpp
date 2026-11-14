@@ -319,7 +319,11 @@ pugi::xml_node Document::written_part_(const AbsPath &path) {
   return xml.document_element();
 }
 
-std::vector<std::pair<SlideLayout, AbsPath>> Document::slide_layouts() {
+const std::vector<std::pair<SlideLayout, AbsPath>> &Document::slide_layouts() {
+  std::lock_guard lock(m_slide_layouts_mutex);
+  if (m_slide_layouts.has_value()) {
+    return *m_slide_layouts;
+  }
   const AbsPath presentation_path("/ppt/presentation.xml");
   std::vector<std::pair<SlideLayout, AbsPath>> result;
   for (const pugi::xml_node master_id : m_document_xml.document_element()
@@ -371,7 +375,7 @@ std::vector<std::pair<SlideLayout, AbsPath>> Document::slide_layouts() {
                           std::move(layout_path));
     }
   }
-  return result;
+  return m_slide_layouts.emplace(std::move(result));
 }
 
 ElementIdentifier Document::insert_slide(const std::uint32_t index,
@@ -659,8 +663,8 @@ public:
   [[nodiscard]] std::vector<SlideLayout> element_slide_layouts(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     std::vector<SlideLayout> result;
-    for (auto &[layout, _] : m_document->slide_layouts()) {
-      result.push_back(std::move(layout));
+    for (const auto &[layout, _] : m_document->slide_layouts()) {
+      result.push_back(layout);
     }
     return result;
   }
