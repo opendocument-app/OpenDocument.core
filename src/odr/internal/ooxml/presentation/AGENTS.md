@@ -79,15 +79,17 @@ insertion creates a sibling run with copied properties. Removing its only
 text removes the run. Appending accepts paragraphs and spans; slide removal
 refuses because it also needs package metadata updates.
 
-`Document::insert_slide` adds a slide part from a layout
-(`write_placeholder_slide`), its relationships part, an entry in the
-presentation's relationships, the content types and `p:sldIdLst`. `save`
+The constructor builds a detached `p:sld` per layout
+(`write_placeholder_slide`) and one holding a text box, outside the package
+and outside the root. `Document::insert_slide` copies a layout into a new
+slide part, with its relationships part, an entry in the presentation's
+relationships, the content types and `p:sldIdLst`. `save`
 writes the slides, every part in `m_written_parts`, and `presentation.xml`
 once an edit changed it, and byte-copies the rest. The `p:sld` dispatch walks
 `parse_slide_children`, so a new slide parses on its own.
 
-`Document::insert_text_box` appends a `p:sp` text box (`txBox="1"`) to the
-slide's shape tree.
+`Document::insert_text_box` writes a `p:sp` text box (`txBox="1"`,
+`write_text_box`) into the slide's shape tree.
 
 `paragraph_set_style` writes `algn` on the `a:pPr` of the paragraph and
 refuses `start` and `end`, which `ST_TextAlignType` does not name. The

@@ -7,6 +7,7 @@ so these checks run by hand and not in `odr_test`.
 test/browser/text/serve          # serves on :8734
 open http://localhost:8734/tests.html
 open http://localhost:8734/empty.html
+open http://localhost:8734/slides.html
 ```
 
 `serve` serves `document.css`, `editing.js`, `document.js` and `search.js` out
@@ -18,6 +19,11 @@ by `test/browser/serve.py`.
 `empty.html` is a new document: one addressed paragraph and no run. The
 editor decides on load whether a page is its own, so that shape needs a page
 of its own.
+
+`slides.html` is a presentation cut down to two slides and the templates
+the renderer writes after them: `insertSlide` and `insertTextBox` clone a
+template, give its placeholders fresh negative ids, and log the op that
+names them; typing into a new placeholder is an `insertText` with `parent`.
 
 `tests.html` holds the shapes the editor handles: two runs beside each other,
 a run under a link, a run under a style-only wrapper, a paragraph with a

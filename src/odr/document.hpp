@@ -29,7 +29,6 @@ class Filesystem;
 class Paragraph;
 class Sheet;
 class Slide;
-class SlideLayout;
 class Text;
 
 /// What @ref Document::recalculate did. Each list is sorted by sheet, then
@@ -138,13 +137,13 @@ public:
   [[nodiscard]] Sheet insert_sheet(std::uint32_t index,
                                    const std::string &name) const;
 
-  /// The layouts @ref insert_slide starts a slide from; empty where the
+  /// The layouts @ref insert_slide starts a slide from, each the empty slide
+  /// it makes, outside the document and refusing edits; empty where the
   /// engine cannot insert a slide.
-  [[nodiscard]] std::vector<SlideLayout> slide_layouts() const;
+  [[nodiscard]] std::vector<Slide> slide_layouts() const;
 
-  /// An empty slide at @p index among the slides, holding the text
-  /// placeholders of the @p layout -th of @ref slide_layouts, each with one
-  /// empty paragraph.
+  /// An empty slide at @p index among the slides, as the @p layout -th of
+  /// @ref slide_layouts.
   /// @throws std::out_of_range for an index past the slide count or a layout
   /// past the list.
   [[nodiscard]] Slide insert_slide(std::uint32_t index,

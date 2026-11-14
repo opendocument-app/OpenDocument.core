@@ -1336,8 +1336,9 @@ std::string StyleRegistry::create_text_style(pugi::xml_node automatic_styles,
 
 std::string
 StyleRegistry::create_text_box_style(pugi::xml_node automatic_styles) {
-  if (!m_text_box_style.empty()) {
-    return m_text_box_style;
+  if (const auto it = m_text_box_styles.find(automatic_styles);
+      it != m_text_box_styles.end()) {
+    return it->second;
   }
   std::string name;
   for (std::uint32_t number = 1;; ++number) {
@@ -1357,7 +1358,7 @@ StyleRegistry::create_text_box_style(pugi::xml_node automatic_styles) {
 
   m_index_style[name] = node;
   generate_style_(name, node);
-  m_text_box_style = name;
+  m_text_box_styles[automatic_styles] = name;
   return name;
 }
 

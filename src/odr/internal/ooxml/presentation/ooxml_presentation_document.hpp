@@ -1,6 +1,5 @@
 #pragma once
 
-#include <odr/slide_layout.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/common/document.hpp>
@@ -10,6 +9,7 @@
 #include <odr/internal/ooxml/presentation/ooxml_presentation_style.hpp>
 
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -33,12 +33,13 @@ public:
 
   [[nodiscard]] const ElementRegistry &element_registry() const;
 
-  /// The layouts of every master, in `p:sldLayoutIdLst` order, and their
-  /// parts.
-  [[nodiscard]] std::vector<std::pair<SlideLayout, AbsPath>> slide_layouts();
-  /// An empty slide at @p index from the @p layout -th of @ref slide_layouts:
-  /// a new part with its relationships and content type, and an entry in
-  /// `p:sldIdLst`.
+  /// A slide outside the root per layout of every master, in
+  /// `p:sldLayoutIdLst` order, as @ref insert_slide makes it.
+  [[nodiscard]] std::vector<ElementIdentifier> slide_layouts() const;
+  /// A text box outside the root as @ref insert_text_box makes it.
+  [[nodiscard]] ElementIdentifier text_box_layout() const;
+  /// A copy of the @p layout -th of @ref slide_layouts at @p index: a new part
+  /// with its relationships and content type, and an entry in `p:sldIdLst`.
   ElementIdentifier insert_slide(std::uint32_t index, std::uint32_t layout);
   /// A `p:sp` text box with one empty paragraph, last on the slide
   /// @p slide_id.
@@ -71,12 +72,17 @@ private:
   PageLayout m_slide_layout;
   /// declared before `m_slide_styles`, which points into it
   LayoutStyles m_layout_styles;
+  /// what `slide_layouts` and `text_box_layout` hold, outside the package
+  std::vector<std::unique_ptr<pugi::xml_document>> m_layouts_xml;
+  std::vector<std::pair<ElementIdentifier, AbsPath>> m_slide_layouts;
+  ElementIdentifier m_text_box_layout{null_element_id};
   std::unordered_map<ElementIdentifier, const LayoutStyle *> m_slide_styles;
   std::unordered_map<ElementIdentifier, Color> m_slide_backgrounds;
 
   ElementRegistry m_element_registry;
 
   void load_slide_styles_(const std::vector<AbsPath> &slides);
+  void load_slide_layouts_();
   /// The part at @p path from the package, parsed once and written by `save`;
   /// null where the package has none.
   pugi::xml_node written_part_(const AbsPath &path);

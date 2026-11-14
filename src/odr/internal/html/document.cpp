@@ -20,10 +20,14 @@
 #include <odr/internal/html/html_writer.hpp>
 #include <odr/internal/html/sheet.hpp>
 #include <odr/internal/html/style_registry.hpp>
+#include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
+#include <odr/internal/xml/xml_util.hpp>
 
 #include <algorithm>
+#include <cstdint>
 #include <mutex>
+#include <span>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -383,6 +387,71 @@ render(const Document &document, const HtmlConfig &config, const Logger &logger,
   return resources;
 }
 
+std::string identifiers(const std::span<const ElementIdentifier> list) {
+  std::string result;
+  for (const ElementIdentifier identifier : list) {
+    if (!result.empty()) {
+      result += ' ';
+    }
+    result += std::to_string(identifier);
+  }
+  return result;
+}
+
+/// A `<template>` per slide layout and one for a text box, rendered from what
+/// an insert copies, so the page draws what replay makes.
+void write_edit_templates(const Document &document, const WritingState &state) {
+  const abstract::Document &impl = *document.impl();
+  const Frame box =
+      document
+          .element_by_id(impl.element_adapter()->element_text_box_layout(
+              impl.root_element()))
+          .as_frame();
+  if (!box) {
+    return;
+  }
+
+  // shares the view's background classes, so no two images get one
+  WritingState template_state = state;
+  template_state.set_page_chunk_near(true);
+  template_state.set_repeat_page_backgrounds(true);
+  HtmlWriter &out = state.out();
+
+  const std::vector<Slide> layouts = document.slide_layouts();
+  for (std::uint32_t layout = 0; layout < layouts.size(); ++layout) {
+    std::vector<ElementIdentifier> frames;
+    std::vector<ElementIdentifier> paragraphs;
+    for (const Element child : layouts[layout].children()) {
+      frames.push_back(child.identifier());
+      paragraphs.push_back(
+          util::document::first_paragraph_in(child).identifier());
+    }
+    out.write_element_begin(
+        "template", HtmlElementOptions()
+                        .set_class("odr-slide-template")
+                        .set_attributes(HtmlAttributesVector{
+                            {"data-odr-layout", std::to_string(layout)},
+                            {"data-odr-name",
+                             xml::escape_attribute(layouts[layout].name())},
+                            {"data-odr-frames", identifiers(frames)},
+                            {"data-odr-paragraphs", identifiers(paragraphs)}}));
+    translate_slide(layouts[layout], template_state);
+    out.write_element_end("template");
+  }
+
+  out.write_element_begin(
+      "template",
+      HtmlElementOptions()
+          .set_class("odr-text-box-template")
+          .set_attributes(HtmlAttributesVector{
+              {"data-odr-frame", std::to_string(box.identifier())},
+              {"data-odr-paragraph",
+               std::to_string(
+                   util::document::first_paragraph_in(box).identifier())}}));
+  translate_element(box, template_state);
+  out.write_element_end("template");
+}
+
 class HtmlFragmentBase {
 public:
   HtmlFragmentBase(std::string name, const std::size_t index, std::string path,
@@ -606,6 +675,9 @@ public:
                       fragment_state.set_page_chunk_near(fragment ==
                                                          m_fragments.front());
                       fragment->write_fragment(state.out(), fragment_state);
+                    }
+                    if (state.config().editable && state.document_editable()) {
+                      write_edit_templates(m_document, state);
                     }
                   });
   }

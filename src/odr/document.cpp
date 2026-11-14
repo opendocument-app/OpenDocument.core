@@ -8,11 +8,11 @@
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/filesystem.hpp>
 #include <odr/quantity.hpp>
-#include <odr/slide_layout.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/common/sheet_dependencies.hpp>
 #include <odr/internal/common/sheet_recalculation.hpp>
+#include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
@@ -288,20 +288,6 @@ Sheet sheet_at(const Element root, const std::uint32_t ordinal) {
                               " not found");
 }
 
-/// The first paragraph under @p element, depth first; null where it holds
-/// none.
-Element first_paragraph_in(const Element &element) {
-  for (const Element child : element.children()) {
-    if (child.type() == ElementType::paragraph) {
-      return child;
-    }
-    if (const Element found = first_paragraph_in(child); found) {
-      return found;
-    }
-  }
-  return {};
-}
-
 } // namespace
 
 void Document::edit(const std::string_view operations,
@@ -568,9 +554,13 @@ void Document::edit(const std::string_view operations,
       const auto layout = integer<std::uint32_t>(operation.at("layout"));
       // the page drew the slide it expected, and a different one would leave
       // later operations naming the wrong placeholder
-      if (const std::vector<SlideLayout> layouts = slide_layouts();
+      if (const std::vector<Slide> layouts = slide_layouts();
           layout < layouts.size()) {
-        const std::size_t count = layouts[layout].placeholders().size();
+        std::size_t count = 0;
+        for ([[maybe_unused]] const Element child :
+             layouts[layout].children()) {
+          ++count;
+        }
         if ((operation.contains("frames") && frames.size() != count) ||
             (operation.contains("paragraphs") && paragraphs.size() != count)) {
           throw std::invalid_argument(
@@ -591,7 +581,8 @@ void Document::edit(const std::string_view operations,
       }
       for (std::size_t i = 0; i < paragraphs.size(); ++i) {
         minted.emplace(paragraphs[i],
-                       first_paragraph_in(created[i]).identifier());
+                       internal::util::document::first_paragraph_in(created[i])
+                           .identifier());
       }
       continue;
     }
@@ -609,7 +600,9 @@ void Document::edit(const std::string_view operations,
           measure_of(operation, "height"));
       minted.emplace(address, frame.identifier());
       if (paragraph.has_value()) {
-        minted.emplace(*paragraph, first_paragraph_in(frame).identifier());
+        minted.emplace(
+            *paragraph,
+            internal::util::document::first_paragraph_in(frame).identifier());
       }
       continue;
     }
@@ -639,6 +632,14 @@ Element Document::element_by_id(const ElementIdentifier identifier) const {
 ElementIdentifier Document::check_(const Element &element) const {
   if (!element || element_by_id(element.identifier()) != element) {
     throw std::invalid_argument("element is not this document's");
+  }
+  // a slide outside the root is a layout, which takes no edit
+  Element top = element;
+  while (const Element parent = top.parent()) {
+    top = parent;
+  }
+  if (top.type() == ElementType::slide) {
+    throw std::invalid_argument("a slide layout takes no edit");
   }
   return element.identifier();
 }
@@ -787,9 +788,15 @@ Sheet Document::insert_sheet(const std::uint32_t index,
   return {adapter, identifier, adapter->sheet_adapter(identifier)};
 }
 
-std::vector<SlideLayout> Document::slide_layouts() const {
-  return m_impl->element_adapter()->element_slide_layouts(
-      m_impl->root_element());
+std::vector<Slide> Document::slide_layouts() const {
+  const internal::abstract::ElementAdapter *adapter = m_impl->element_adapter();
+  std::vector<Slide> result;
+  for (const ElementIdentifier identifier :
+       adapter->element_slide_layouts(m_impl->root_element())) {
+    result.emplace_back(adapter, identifier,
+                        adapter->slide_adapter(identifier));
+  }
+  return result;
 }
 
 Slide Document::insert_slide(const std::uint32_t index,

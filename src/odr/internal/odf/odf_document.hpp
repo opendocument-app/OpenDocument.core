@@ -7,10 +7,16 @@
 
 #include <pugixml.hpp>
 
+#include <cstddef>
 #include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <vector>
+
+namespace odr::internal {
+struct BlankSlideLayout;
+} // namespace odr::internal
 
 namespace odr::internal::odf {
 
@@ -53,8 +59,25 @@ public:
   /// @throws std::exception if the part cannot be parsed.
   [[nodiscard]] pugi::xml_node part(const AbsPath &path);
 
+  /// A slide outside the root per layout, as `element_insert_slide` makes it.
+  [[nodiscard]] std::vector<ElementIdentifier> slide_layouts() const;
+  /// A text box outside the root as `element_insert_text_box` makes it.
+  [[nodiscard]] ElementIdentifier text_box_layout() const;
+  /// The `style:presentation-page-layout` of the @p index -th layout. A
+  /// built-in is written into `office:styles` on first use, for a page of
+  /// @p width by @p height centimetres.
+  pugi::xml_node slide_layout_node(std::size_t index, double width,
+                                   double height);
+
 private:
+  struct SlideLayout final {
+    ElementIdentifier slide{null_element_id};
+    pugi::xml_node node; ///< null for a built-in not written yet
+    const BlankSlideLayout *builtin{nullptr};
+  };
+
   void init_(pugi::xml_node content_root, pugi::xml_node styles_root);
+  void load_layouts_(pugi::xml_node body);
 
   pugi::xml_document m_content_xml;
   pugi::xml_document m_styles_xml;
@@ -66,6 +89,11 @@ private:
 
   ElementRegistry m_element_registry;
   StyleRegistry m_style_registry;
+
+  /// what `slide_layouts` and `text_box_layout` hold, outside the package
+  pugi::xml_document m_layouts_xml;
+  std::vector<SlideLayout> m_slide_layouts;
+  ElementIdentifier m_text_box_layout{null_element_id};
 };
 
 } // namespace odr::internal::odf

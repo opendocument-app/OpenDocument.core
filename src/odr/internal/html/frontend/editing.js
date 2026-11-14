@@ -199,6 +199,28 @@
       return delegate("insertRows", where);
     },
 
+    /// The names of the layouts `insertSlide` counts; empty where none.
+    slideLayouts: function () {
+      return Array.prototype.map.call(
+        document.querySelectorAll("template.odr-slide-template"),
+        function (template) {
+          return template.getAttribute("data-odr-name");
+        }
+      );
+    },
+
+    /// Inserts a slide of the `layout`-th layout (0) at `index`, else after
+    /// the selected slide, else last. False where refused.
+    insertSlide: function (request) {
+      return delegate("insertSlide", request || {});
+    },
+
+    /// Inserts a text box on the `page`-th page, else the selected one; `x`,
+    /// `y`, `width`, `height` in cm, mm, in, pt, pc or px. False where refused.
+    insertTextBox: function (request) {
+      return delegate("insertTextBox", request || {});
+    },
+
     /// Removes the rows the selection spans. False where refused.
     deleteRows: function () {
       return delegate("deleteRows");

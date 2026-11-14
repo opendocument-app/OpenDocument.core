@@ -188,7 +188,6 @@ set(ODR_SOURCE_FILES
         "src/odr/odr.cpp"
         "src/odr/quantity.cpp"
         "src/odr/sheet_position.cpp"
-        "src/odr/slide_layout.cpp"
         "src/odr/style.cpp"
         "src/odr/table_dimension.cpp"
         "src/odr/table_position.cpp"
@@ -410,6 +409,7 @@ set(ODR_SOURCE_FILES
 
         "src/odr/internal/util/byte_util.cpp"
         "src/odr/internal/util/color_util.cpp"
+        "src/odr/internal/util/document_util.cpp"
         "src/odr/internal/util/byte_stream_util.cpp"
         "src/odr/internal/util/byte_string.cpp"
         "src/odr/internal/util/file_util.cpp"

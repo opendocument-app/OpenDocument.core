@@ -6,7 +6,6 @@
 #include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/quantity.hpp>
-#include <odr/slide_layout.hpp>
 #include <odr/style.hpp>
 
 #include <cstdint>
@@ -163,11 +162,18 @@ public:
     throw UnsupportedOperation();
   }
 
-  /// The layouts a slide can start from, for the root @p element_id; none
-  /// where the engine cannot insert a slide.
-  [[nodiscard]] virtual std::vector<SlideLayout> element_slide_layouts(
+  /// The slides outside the root of @p element_id that
+  /// @ref element_insert_slide copies, one per layout; none where the engine
+  /// cannot insert a slide.
+  [[nodiscard]] virtual std::vector<ElementIdentifier> element_slide_layouts(
       [[maybe_unused]] const ElementIdentifier element_id) const {
     return {};
+  }
+  /// A frame outside the root of @p element_id as
+  /// @ref element_insert_text_box makes it; null where it makes none.
+  [[nodiscard]] virtual ElementIdentifier element_text_box_layout(
+      [[maybe_unused]] const ElementIdentifier element_id) const {
+    return null_element_id;
   }
   /// An empty slide at @p index among the slides of the root @p element_id,
   /// from the @p layout -th of @ref element_slide_layouts. The caller checked

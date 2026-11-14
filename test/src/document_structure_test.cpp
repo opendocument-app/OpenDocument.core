@@ -4,7 +4,6 @@
 #include <odr/file.hpp>
 #include <odr/odr.hpp>
 #include <odr/quantity.hpp>
-#include <odr/slide_layout.hpp>
 #include <odr/style.hpp>
 
 #include <test_util.hpp>
@@ -30,7 +29,7 @@ std::vector<std::string> sheet_names(const Document &document) {
 
 std::vector<std::string> layout_names(const Document &document) {
   std::vector<std::string> result;
-  for (const SlideLayout &layout : document.slide_layouts()) {
+  for (const Slide &layout : document.slide_layouts()) {
     result.push_back(layout.name());
   }
   return result;
@@ -197,29 +196,45 @@ TEST_P(DocumentInsertSlide, a_slide_holds_its_layouts_placeholders) {
   EXPECT_NEAR(centimetres(*frames[2].as_frame().width()), 12.3, 1e-3);
 }
 
-TEST_P(DocumentInsertSlide, a_layout_lists_the_placeholders_a_slide_gets) {
+TEST_P(DocumentInsertSlide, a_layout_is_the_slide_it_inserts) {
   const Document document = create_document(GetParam());
-  const std::vector<SlideLayout> layouts = document.slide_layouts();
-
-  const std::vector<SlidePlaceholder> &title = layouts[0].placeholders();
-  ASSERT_EQ(title.size(), 2);
-  EXPECT_EQ(title[0].kind(), SlidePlaceholderKind::title);
-  EXPECT_EQ(title[1].kind(), SlidePlaceholderKind::subtitle);
-  EXPECT_TRUE(layouts[5].placeholders().empty());
+  const std::vector<Slide> layouts = document.slide_layouts();
+  EXPECT_TRUE(children_of(layouts[5]).empty());
 
   for (std::uint32_t i = 0; i < layouts.size(); ++i) {
     const std::vector<Element> frames =
         children_of(document.insert_slide(1, i));
-    const std::vector<SlidePlaceholder> &placeholders =
-        layouts[i].placeholders();
+    const std::vector<Element> placeholders = children_of(layouts[i]);
     ASSERT_EQ(frames.size(), placeholders.size()) << layouts[i].name();
     for (std::size_t j = 0; j < frames.size(); ++j) {
       EXPECT_NEAR(centimetres(*frames[j].as_frame().x()),
-                  centimetres(placeholders[j].x()), 1e-3);
+                  centimetres(*placeholders[j].as_frame().x()), 1e-3);
       EXPECT_NEAR(centimetres(*frames[j].as_frame().height()),
-                  centimetres(placeholders[j].height()), 1e-3);
+                  centimetres(*placeholders[j].as_frame().height()), 1e-3);
+      EXPECT_EQ(
+          first_paragraph(frames[j]).as_paragraph().text_style().font_size,
+          first_paragraph(placeholders[j])
+              .as_paragraph()
+              .text_style()
+              .font_size);
     }
   }
+}
+
+TEST_P(DocumentInsertSlide,
+       a_layout_is_outside_the_document_and_refuses_edits) {
+  const Document document = create_document(GetParam());
+  const Slide layout = document.slide_layouts()[0];
+
+  EXPECT_FALSE(layout.parent());
+  EXPECT_EQ(children_of(document.root_element()).size(), 1);
+  EXPECT_THROW(std::ignore = document.append_text(
+                   first_paragraph(*layout.children().begin()), "x"),
+               std::invalid_argument);
+  EXPECT_THROW(std::ignore = document.insert_text_box(
+                   layout, Measure("1cm"), Measure("1cm"), Measure("2cm"),
+                   Measure("1cm")),
+               std::invalid_argument);
 }
 
 TEST_P(DocumentInsertSlide, a_blank_slide_goes_first) {
@@ -274,14 +289,18 @@ TEST(DocumentStructure, an_odp_offers_its_own_layouts_then_the_built_ins) {
                                       "Section Header", "Two Content",
                                       "Title Only", "Blank"}));
 
-  EXPECT_EQ(document.slide_layouts()[0].placeholders().size(), 2);
+  EXPECT_EQ(children_of(document.slide_layouts()[0]).size(), 2);
 
   const Slide added = document.insert_slide(1, 3);
   EXPECT_EQ(children_of(added).size(), 3);
+  // writing the built-in into the file moves no layout
+  EXPECT_EQ(layout_names(document)[3], "Two Content");
+  EXPECT_EQ(children_of(document.insert_slide(2, 3)).size(), 3);
+  EXPECT_EQ(children_of(document.insert_slide(3, 1)).size(), 2);
 
   const Document saved = reopen(document);
   EXPECT_EQ(saved.slide_layouts().size(), 6);
-  EXPECT_EQ(children_of(saved.root_element()).size(), 2);
+  EXPECT_EQ(children_of(saved.root_element()).size(), 4);
 }
 
 TEST(DocumentStructure, a_pptx_with_two_masters_numbers_a_repeated_layout) {

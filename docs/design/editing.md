@@ -108,6 +108,9 @@ map onto the element model.
 formatting (`format`, `toggle`). `odr.onEditChange` reports `dirty`, `canUndo`
 and `canRedo`; `odr.onSelectionChange` reports selection state.
 
+A presentation or drawing page also takes `slideLayouts`, `insertSlide` and
+`insertTextBox`; see [structure editing](structure-editing.md).
+
 Editors call `odr.editing.attach({name, enable, disable, operations, undo,
 redo, ...})`; only `operations` is required. Operations are concatenated,
 and undo tries each editor in turn. Refusals use `odr.onEditRefused` with

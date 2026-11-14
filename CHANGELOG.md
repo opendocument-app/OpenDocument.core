@@ -31,11 +31,10 @@ The release run heads these entries with the version and opens a fresh
 
 ### Presentations
 
-- `Document::slide_layouts()` lists the layouts a slide can start from as
-  `SlideLayout`s: a name and the kind and position of each text placeholder.
-  `Document::insert_slide(index, layout)` adds a slide holding those
-  placeholders to an odp or pptx. A pptx offers its own layouts; an odp offers
-  its own and then the six built-in ones it lacks.
+- `Document::slide_layouts()` lists the layouts a slide can start from, each
+  a `Slide` outside the document as `Document::insert_slide(index, layout)`
+  adds it to an odp or pptx. A layout refuses edits. A pptx offers its own
+  layouts; an odp offers its own and then the six built-in ones it lacks.
 - `Document::insert_text_box(page, x, y, width, height)` adds a text box with
   one empty paragraph to a slide of an odp or pptx, or a page of an odg. It
   draws no fill and no outline.
@@ -52,6 +51,10 @@ The release run heads these entries with the version and opens a fresh
   `insertSlide` and `insertTextBox` name the slide, its placeholders and the
   text box's paragraph by negative ids, so later operations can type into
   them.
+- An editable presentation or drawing page takes `odr.editing.slideLayouts`,
+  `insertSlide` and `insertTextBox`, and records the ops above. Its render
+  carries a `<template>` per slide layout and one for a text box, and each
+  slide or page states `data-odr-page`.
 
 ## v7.8.0 - 2026-11-14
 

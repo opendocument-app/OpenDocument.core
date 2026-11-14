@@ -2,7 +2,6 @@
 
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
-#include <odr/slide_layout.hpp>
 #include <odr/table_dimension.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
@@ -22,6 +21,7 @@
 #include <cmath>
 #include <iterator>
 #include <optional>
+#include <ranges>
 #include <span>
 #include <sstream>
 #include <stdexcept>
@@ -40,38 +40,21 @@ create_element_adapter(Document &document, ElementRegistry &registry);
 
 /// [ECMA-376] 19.7.10: the placeholders a slide types into; a graphic one
 /// (`pic`, `chart`, `tbl`, ...) and the date, footer and number are none.
-std::optional<SlidePlaceholderKind>
-text_kind(const pugi::xml_node placeholder) {
+bool takes_text(const pugi::xml_node placeholder) {
   const std::string_view type = placeholder.attribute("type").value();
-  if (type.empty() || type == "body" || type == "obj") {
-    return SlidePlaceholderKind::body;
-  }
-  if (type == "title" || type == "ctrTitle") {
-    return SlidePlaceholderKind::title;
-  }
-  if (type == "subTitle") {
-    return SlidePlaceholderKind::subtitle;
-  }
-  return std::nullopt;
+  return type.empty() || type == "body" || type == "obj" || type == "title" ||
+         type == "ctrTitle" || type == "subTitle";
 }
 
-struct LayoutPlaceholder final {
-  pugi::xml_node shape;
-  SlidePlaceholder placeholder;
-};
-
-/// The text placeholders of @p layout, positioned by the layout, else by
-/// @p master. One with no position at all is left out.
-std::vector<LayoutPlaceholder> text_placeholders(const pugi::xml_node layout,
-                                                 const pugi::xml_node master) {
-  std::vector<LayoutPlaceholder> result;
+/// The text placeholders of @p layout that it or @p master positions.
+std::vector<pugi::xml_node> text_placeholders(const pugi::xml_node layout,
+                                              const pugi::xml_node master) {
+  std::vector<pugi::xml_node> result;
   for (const pugi::xml_node shape :
        layout.child("p:cSld").child("p:spTree").children("p:sp")) {
     const pugi::xml_node ph =
         shape.child("p:nvSpPr").child("p:nvPr").child("p:ph");
-    const std::optional<SlidePlaceholderKind> kind =
-        ph ? text_kind(ph) : std::nullopt;
-    if (!kind.has_value()) {
+    if (!ph || !takes_text(ph)) {
       continue;
     }
     pugi::xml_node xfrm = shape.child("p:spPr").child("a:xfrm");
@@ -80,30 +63,19 @@ std::vector<LayoutPlaceholder> text_placeholders(const pugi::xml_node layout,
                  .master_shape.child("p:spPr")
                  .child("a:xfrm");
     }
-    const std::optional<Measure> x =
-        read_emus_attribute(xfrm.child("a:off").attribute("x"));
-    const std::optional<Measure> y =
-        read_emus_attribute(xfrm.child("a:off").attribute("y"));
-    const std::optional<Measure> width =
-        read_emus_attribute(xfrm.child("a:ext").attribute("cx"));
-    const std::optional<Measure> height =
-        read_emus_attribute(xfrm.child("a:ext").attribute("cy"));
-    if (!x.has_value() || !y.has_value() || !width.has_value() ||
-        !height.has_value()) {
-      continue;
+    if (xfrm.child("a:off") && xfrm.child("a:ext")) {
+      result.push_back(shape);
     }
-    result.push_back({shape, SlidePlaceholder(*kind, *x, *y, *width, *height)});
   }
   return result;
 }
 
-/// Fills @p slide with a copy of each of @p placeholders of @p layout, holding
-/// one empty paragraph and inheriting its position.
-void write_placeholder_slide(
-    pugi::xml_document &slide, const pugi::xml_node layout,
-    const std::span<const LayoutPlaceholder> placeholders) {
+/// Begins @p slide as a `p:sld` with an empty shape tree, in the namespaces
+/// of @p part; returns the tree.
+pugi::xml_node begin_slide(pugi::xml_document &slide,
+                           const pugi::xml_node part) {
   pugi::xml_node root = slide.append_child("p:sld");
-  for (const pugi::xml_attribute attribute : layout.attributes()) {
+  for (const pugi::xml_attribute attribute : part.attributes()) {
     if (std::string_view(attribute.name()).starts_with("xmlns")) {
       root.append_attribute(attribute.name()).set_value(attribute.value());
     }
@@ -116,12 +88,54 @@ void write_placeholder_slide(
   group.append_child("p:cNvGrpSpPr");
   group.append_child("p:nvPr");
   tree.append_child("p:grpSpPr");
+  root.append_child("p:clrMapOvr").append_child("a:masterClrMapping");
+  return tree;
+}
 
+/// Fills @p shape as a text box with one empty paragraph and no fill, @p id
+/// on its slide, at @p x and @p y and @p width by @p height EMUs.
+void write_text_box(pugi::xml_node shape, const std::uint32_t id,
+                    const std::int64_t x, const std::int64_t y,
+                    const std::int64_t width, const std::int64_t height) {
+  pugi::xml_node non_visual = shape.append_child("p:nvSpPr");
+  pugi::xml_node properties = non_visual.append_child("p:cNvPr");
+  properties.append_attribute("id").set_value(id);
+  properties.append_attribute("name").set_value(
+      ("TextBox " + std::to_string(id - 1)).c_str());
+  non_visual.append_child("p:cNvSpPr").append_attribute("txBox").set_value("1");
+  non_visual.append_child("p:nvPr");
+
+  pugi::xml_node shape_properties = shape.append_child("p:spPr");
+  pugi::xml_node transform = shape_properties.append_child("a:xfrm");
+  pugi::xml_node offset = transform.append_child("a:off");
+  offset.append_attribute("x").set_value(x);
+  offset.append_attribute("y").set_value(y);
+  pugi::xml_node extent = transform.append_child("a:ext");
+  extent.append_attribute("cx").set_value(width);
+  extent.append_attribute("cy").set_value(height);
+  pugi::xml_node geometry = shape_properties.append_child("a:prstGeom");
+  geometry.append_attribute("prst").set_value("rect");
+  geometry.append_child("a:avLst");
+  shape_properties.append_child("a:noFill");
+
+  pugi::xml_node body = shape.append_child("p:txBody");
+  pugi::xml_node body_properties = body.append_child("a:bodyPr");
+  body_properties.append_attribute("wrap").set_value("square");
+  body_properties.append_child("a:spAutoFit");
+  body.append_child("a:lstStyle");
+  body.append_child("a:p");
+}
+
+/// @p slide as a new slide of @p layout: a copy of each of @p placeholders,
+/// holding one empty paragraph and inheriting position and text style.
+void write_placeholder_slide(
+    pugi::xml_document &slide, const pugi::xml_node layout,
+    const std::span<const pugi::xml_node> placeholders) {
+  pugi::xml_node tree = begin_slide(slide, layout);
   std::uint32_t shape_id = 2;
-  for (const auto &[shape, _] : placeholders) {
+  for (const pugi::xml_node shape : placeholders) {
     const pugi::xml_node placeholder =
         shape.child("p:nvSpPr").child("p:nvPr").child("p:ph");
-    // the position and the text style come from the layout
     pugi::xml_node copy = tree.append_child("p:sp");
     pugi::xml_node non_visual = copy.append_child("p:nvSpPr");
     pugi::xml_node properties = non_visual.append_child("p:cNvPr");
@@ -144,8 +158,6 @@ void write_placeholder_slide(
     body.append_child("a:lstStyle");
     body.append_child("a:p");
   }
-
-  root.append_child("p:clrMapOvr").append_child("a:masterClrMapping");
 }
 
 } // namespace
@@ -195,6 +207,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
                               m_document_xml.document_element());
 
   load_slide_styles_(slides);
+  load_slide_layouts_();
 
   m_element_adapter = create_element_adapter(*this, m_element_registry);
 }
@@ -319,9 +332,23 @@ pugi::xml_node Document::written_part_(const AbsPath &path) {
   return xml.document_element();
 }
 
-std::vector<std::pair<SlideLayout, AbsPath>> Document::slide_layouts() {
+void Document::load_slide_layouts_() {
   const AbsPath presentation_path("/ppt/presentation.xml");
-  std::vector<std::pair<SlideLayout, AbsPath>> result;
+  const auto new_xml = [&]() -> pugi::xml_document & {
+    return *m_layouts_xml.emplace_back(std::make_unique<pugi::xml_document>());
+  };
+  const auto register_slide = [&](const pugi::xml_document &xml,
+                                  const LayoutStyle &style) {
+    const ElementIdentifier id = parse_tree(
+        m_element_registry, ParseContext(m_slides_xml), xml.document_element());
+    m_slide_styles[id] = &style;
+    if (style.background.has_value()) {
+      m_slide_backgrounds[id] = *style.background;
+    }
+    return id;
+  };
+
+  std::vector<std::string> names;
   for (const pugi::xml_node master_id : m_document_xml.document_element()
                                             .child("p:sldMasterIdLst")
                                             .children("p:sldMasterId")) {
@@ -347,37 +374,57 @@ std::vector<std::pair<SlideLayout, AbsPath>> Document::slide_layouts() {
       }
       AbsPath layout_path =
           resolve_part_path(master_path, layout_target->second);
-      const pugi::xml_node layout = m_layout_styles.part(*m_files, layout_path);
-      if (!layout) {
+      const LayoutStyle &style = m_layout_styles.get(*m_files, layout_path);
+      if (!style.layout) {
         continue;
       }
-      std::string name = layout.child("p:cSld").attribute("name").value();
+      std::string name = style.layout.child("p:cSld").attribute("name").value();
       if (name.empty()) {
-        name = "Layout " + std::to_string(result.size() + 1);
+        name = "Layout " + std::to_string(names.size() + 1);
       }
       // a second master often repeats the first one's names
-      const auto count = std::ranges::count_if(result, [&](const auto &entry) {
-        return entry.first.name() == name ||
-               entry.first.name().starts_with(name + " (");
+      const auto count = std::ranges::count_if(names, [&](const auto &taken) {
+        return taken == name || taken.starts_with(name + " (");
       });
       if (count > 0) {
         name += " (" + std::to_string(count + 1) + ")";
       }
-      std::vector<SlidePlaceholder> placeholders;
-      for (LayoutPlaceholder &placeholder : text_placeholders(layout, master)) {
-        placeholders.push_back(std::move(placeholder.placeholder));
-      }
-      result.emplace_back(SlideLayout(std::move(name), std::move(placeholders)),
-                          std::move(layout_path));
+
+      pugi::xml_document &xml = new_xml();
+      write_placeholder_slide(xml, style.layout,
+                              text_placeholders(style.layout, style.master));
+      xml.document_element().child("p:cSld").append_attribute("name").set_value(
+          name.c_str());
+      m_slide_layouts.emplace_back(register_slide(xml, style),
+                                   std::move(layout_path));
+      names.push_back(std::move(name));
     }
   }
-  return result;
+
+  if (m_slide_layouts.empty()) {
+    return;
+  }
+  const LayoutStyle &style = *m_slide_styles.at(m_slide_layouts.front().first);
+  pugi::xml_document &xml = new_xml();
+  write_text_box(begin_slide(xml, style.layout).append_child("p:sp"), 2, 0, 0,
+                 0, 0);
+  m_text_box_layout =
+      m_element_registry.element_at(register_slide(xml, style)).first_child_id;
+}
+
+std::vector<ElementIdentifier> Document::slide_layouts() const {
+  return std::ranges::to<std::vector<ElementIdentifier>>(
+      std::views::keys(m_slide_layouts));
+}
+
+ElementIdentifier Document::text_box_layout() const {
+  return m_text_box_layout;
 }
 
 ElementIdentifier Document::insert_slide(const std::uint32_t index,
                                          const std::uint32_t layout) {
   const AbsPath presentation_path("/ppt/presentation.xml");
-  const AbsPath layout_path = slide_layouts().at(layout).second;
+  const auto &[layout_id, layout_path] = m_slide_layouts.at(layout);
   pugi::xml_node relationships =
       written_part_(AbsPath("/ppt/_rels/presentation.xml.rels"));
   pugi::xml_node types = written_part_(AbsPath("/[Content_Types].xml"));
@@ -439,9 +486,9 @@ ElementIdentifier Document::insert_slide(const std::uint32_t index,
 
   pugi::xml_document &slide = m_slides_xml[id];
   m_slide_ids_by_path[slide_path] = id;
-  const LayoutStyle &style = m_layout_styles.get(*m_files, layout_path);
-  write_placeholder_slide(slide, style.layout,
-                          text_placeholders(style.layout, style.master));
+  slide.append_copy(m_element_registry.element_at(layout_id).node)
+      .child("p:cSld")
+      .remove_attribute("name");
 
   // [ECMA-376] 19.2.1.33: a slide id is at least 256 and unique
   pugi::xml_node root = m_document_xml.document_element();
@@ -483,11 +530,10 @@ ElementIdentifier Document::insert_slide(const std::uint32_t index,
     m_element_registry.append_child(m_root_element, slide_id);
   }
 
-  if (style.layout) {
-    m_slide_styles[slide_id] = &style;
-  }
-  if (style.background.has_value()) {
-    m_slide_backgrounds[slide_id] = *style.background;
+  m_slide_styles[slide_id] = m_slide_styles.at(layout_id);
+  if (const auto background = m_slide_backgrounds.find(layout_id);
+      background != m_slide_backgrounds.end()) {
+    m_slide_backgrounds[slide_id] = background->second;
   }
   return slide_id;
 }
@@ -510,7 +556,7 @@ ElementIdentifier Document::insert_text_box(const ElementIdentifier slide_id,
         std::max(shape_id, properties.node().attribute("id").as_uint() + 1);
   }
   const auto emus = [](const Measure &length) {
-    return std::to_string(std::llround(points(length) * 12700.0));
+    return std::llround(points(length) * 12700.0);
   };
 
   // `CT_GroupShape` ends with `p:extLst`
@@ -518,33 +564,7 @@ ElementIdentifier Document::insert_text_box(const ElementIdentifier slide_id,
   pugi::xml_node shape = extensions
                              ? tree.insert_child_before("p:sp", extensions)
                              : tree.append_child("p:sp");
-  pugi::xml_node non_visual = shape.append_child("p:nvSpPr");
-  pugi::xml_node properties = non_visual.append_child("p:cNvPr");
-  properties.append_attribute("id").set_value(shape_id);
-  properties.append_attribute("name").set_value(
-      ("TextBox " + std::to_string(shape_id - 1)).c_str());
-  non_visual.append_child("p:cNvSpPr").append_attribute("txBox").set_value("1");
-  non_visual.append_child("p:nvPr");
-
-  pugi::xml_node shape_properties = shape.append_child("p:spPr");
-  pugi::xml_node transform = shape_properties.append_child("a:xfrm");
-  pugi::xml_node offset = transform.append_child("a:off");
-  offset.append_attribute("x").set_value(emus(x).c_str());
-  offset.append_attribute("y").set_value(emus(y).c_str());
-  pugi::xml_node extent = transform.append_child("a:ext");
-  extent.append_attribute("cx").set_value(emus(width).c_str());
-  extent.append_attribute("cy").set_value(emus(height).c_str());
-  pugi::xml_node geometry = shape_properties.append_child("a:prstGeom");
-  geometry.append_attribute("prst").set_value("rect");
-  geometry.append_child("a:avLst");
-  shape_properties.append_child("a:noFill");
-
-  pugi::xml_node body = shape.append_child("p:txBody");
-  pugi::xml_node body_properties = body.append_child("a:bodyPr");
-  body_properties.append_attribute("wrap").set_value("square");
-  body_properties.append_child("a:spAutoFit");
-  body.append_child("a:lstStyle");
-  body.append_child("a:p");
+  write_text_box(shape, shape_id, emus(x), emus(y), emus(width), emus(height));
 
   const ElementIdentifier frame_id =
       parse_tree(m_element_registry, ParseContext(m_slides_xml), shape);
@@ -656,13 +676,13 @@ public:
     return true;
   }
 
-  [[nodiscard]] std::vector<SlideLayout> element_slide_layouts(
+  [[nodiscard]] std::vector<ElementIdentifier> element_slide_layouts(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
-    std::vector<SlideLayout> result;
-    for (auto &[layout, _] : m_document->slide_layouts()) {
-      result.push_back(std::move(layout));
-    }
-    return result;
+    return m_document->slide_layouts();
+  }
+  [[nodiscard]] ElementIdentifier element_text_box_layout(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    return m_document->text_box_layout();
   }
   [[nodiscard]] ElementIdentifier
   element_insert_slide([[maybe_unused]] const ElementIdentifier element_id,

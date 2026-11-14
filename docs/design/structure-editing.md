@@ -14,7 +14,7 @@ rules are in [document creation](document-creation.md).
 | 3 | `Document::slide_layouts` and `Document::insert_slide` for odp and pptx |
 | 4 | `Document::insert_text_box` on a slide or drawing page |
 | 5 | envelope ops `insertSheet`, `insertSlide`, `insertTextBox` |
-| 6 | the page side: the gestures in the editable page |
+| 6 | the page side: `insertSlide` and `insertTextBox` in the editable page |
 | 7 | python, java, swift and npm bindings |
 
 ## 1. New presentations
@@ -61,32 +61,36 @@ characters (Excel's limit, stricter than LibreOffice's).
 
 ## 3. Insert a slide from a layout
 
-`std::vector<SlideLayout> Document::slide_layouts()` lists the layouts: a
-name, and per text placeholder its kind (`title`, `subtitle`, `body`) and its
-position, which is where `insert_slide` puts it. A picker or the page can draw
-a layout from that. `Slide Document::insert_slide(std::uint32_t index,
-std::uint32_t layout)` adds an empty slide that holds the layout's text
-placeholders, each with one empty paragraph for the caret.
+`std::vector<Slide> Document::slide_layouts()` lists the layouts, each as the
+empty slide `Slide Document::insert_slide(std::uint32_t index, std::uint32_t
+layout)` makes from it: its text placeholders, each with one empty paragraph
+for the caret. A layout is not under the root, so it is no slide of the
+document, and `Document` refuses an edit to it. The engine builds the layouts
+when it opens the document, and an insert copies one, so a layout and the slide
+made from it are the same by construction.
 
 - pptx: the layouts of every master, in `p:sldLayoutIdLst` order, named by
   `p:cSld/@name`. A second master often repeats the first one's names, so a
   repeat is numbered: "Title Slide (2)". A slide is a new part with a
   relationship to its layout, plus an entry in `p:sldIdLst`, the
-  presentation's relationships and the content types. Each title, subtitle,
-  body or content placeholder is copied as a `p:sp` with its `p:ph` and an
-  empty `p:spPr`, as PowerPoint writes it: position and text style inherit
-  (1b). Graphic placeholders, the date, footer and number, and a placeholder
-  that neither the layout nor the master positions are left out.
+  presentation's relationships and the content types. A layout is a detached
+  `p:sld` holding each title, subtitle, body or content placeholder of the
+  layout part as a `p:sp` with its `p:ph` and an empty `p:spPr`, as PowerPoint
+  writes it: position and text style inherit (1b). The layout part's own text,
+  such as "Click to edit Master title style", is not copied. Graphic
+  placeholders, the date, footer and number, and a placeholder that neither
+  the layout nor the master positions are left out.
 - odp: the file's `style:presentation-page-layout`s, named by
   `style:display-name`, else by the built-in whose placeholders they hold
   (LibreOffice names its layouts `AL<n>T<m>`), else by `style:name`, a repeat
   numbered as in pptx; handout and notes layouts are left out. Then each
-  built-in whose name is not taken. A built-in is written into `office:styles`
-  the first time a slide uses it, scaled to the master's page; the list scales
-  it to the first master's. The new `draw:page` takes the master of the slide
-  before it, and each text placeholder becomes a `draw:frame` with
-  `presentation:class`, the master's `<master>-title`, `-subtitle` or
-  `-outline1` style where it has one, and a `draw:text-box`.
+  built-in whose name is not taken. The list is made once, so writing a
+  built-in moves no index. A layout is a detached `draw:page` on the first
+  master. A built-in is written into `office:styles` the first time a slide
+  uses it, scaled to that slide's master's page. The new `draw:page` takes
+  the master of the slide before it, and each text placeholder becomes a
+  `draw:frame` with `presentation:class`, the master's `<master>-title`,
+  `-subtitle` or `-outline1` style where it has one, and a `draw:text-box`.
 
 ## 4. Insert a text box
 
@@ -134,10 +138,46 @@ the new sheet.
 ## 6. The page
 
 The page applies the edit itself ([editing](editing.md) decision 1), so an
-editable presentation page has to know what a new slide looks like:
-`slide_layouts()` gives each layout's placeholders and their places. The new
-gestures obey the editing scope: under `paragraph` they refuse with
-`outOfScope`.
+editable presentation or drawing page has to know what a new slide or text
+box looks like.
+
+- After the pages, the document view carries a `<template>` per layout
+  (`odr-slide-template`, with `data-odr-layout` and `data-odr-name`) and one
+  for a text box (`odr-text-box-template`). Each is the renderer's output for
+  a layout of `slide_layouts()`, or for the text box an insert copies, so a
+  template is what replay makes without a second model in the script.
+- A layout's ids name nothing in the page. `data-odr-frames` and
+  `data-odr-paragraphs` (`data-odr-frame` and `data-odr-paragraph` for the
+  text box) say which elements take a fresh negative id; every other address
+  in the clone is dropped.
+- Each slide and drawing page carries its id as `data-odr-page`, not as
+  `data-odr-id`: a range would take an addressed element that holds no run
+  for something it can remove.
+- A template shares the view's background classes and states its own rule,
+  because the slide that stated the rule first may never be drawn.
+
+| Script | What it does |
+|---|---|
+| `odr.editing.slideLayouts()` | the template names, in the order `insertSlide` counts them |
+| `odr.editing.insertSlide({index, layout})` | clones a template before the `index`-th slide; without `index`, after the slide holding the selection, else last |
+| `odr.editing.insertTextBox({page, x, y, width, height})` | clones the text box onto the `page`-th page, or the selected one, and sets its box; lengths are CSS lengths in a fixed unit |
+
+Both move the caret into the first new paragraph, and typing there is the
+existing `insertText` with `parent`. One call is one undo step. Under scope
+`paragraph` both refuse with `outOfScope`; a bad index, layout, page or length
+refuses with `unsupportedEdit`. A view of one slide carries no template, and
+the gestures refuse there.
+
+Not covered: a sheet. A spreadsheet view shows one sheet, so a host adds one
+through `Document::insert_sheet` or the envelope op and renders again.
+
+Known gaps:
+
+- An odp layout sits on the first master. In an odp with several masters, a
+  slide inserted after one on another master shows the first master until
+  the next render. The saved file is right.
+- A deck with hundreds of layouts carries hundreds of templates: about 2 KB
+  each, more where a layout or master shows a picture.
 
 ## Validation
 
