@@ -323,3 +323,22 @@ TEST_P(DocumentCreatePresentation, takes_an_edit_and_keeps_it_through_a_save) {
   EXPECT_EQ(text_of(saved_frames[0]), "hello");
   EXPECT_EQ(text_of(saved_frames[1]), "");
 }
+
+TEST(DocumentCreate, pptx_placeholders_take_the_style_of_layout_and_master) {
+  const Document document =
+      create_document(FileType::office_open_xml_presentation);
+  const std::vector<Element> frames =
+      children(*document.root_element().children().begin());
+  ASSERT_EQ(frames.size(), 2);
+
+  Element title = frames[0].first_child();
+  while (title && title.type() != ElementType::paragraph) {
+    title = title.first_child();
+  }
+  ASSERT_TRUE(title);
+  const TextStyle text_style = title.as_paragraph().text_style();
+  EXPECT_EQ(text_style.font_name, "Calibri Light");
+  EXPECT_EQ(text_style.font_size->to_string(), "44pt");
+  EXPECT_EQ(title.as_paragraph().style().text_align, TextAlign::center);
+  EXPECT_EQ(frames[0].as_frame().style().vertical_align, VerticalAlign::bottom);
+}

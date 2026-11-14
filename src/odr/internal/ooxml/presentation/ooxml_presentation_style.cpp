@@ -6,6 +6,7 @@
 #include <odr/internal/xml/xml_util.hpp>
 
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <utility>
 
@@ -102,60 +103,165 @@ presentation::read_background_color(const pugi::xml_node slide_like,
                             color_scheme);
 }
 
-presentation::LayoutStyle presentation::load_layout_style(
-    const abstract::ReadableFilesystem &files, const AbsPath &layout_path,
-    std::unordered_map<std::string, ColorScheme> &color_schemes) {
-  LayoutStyle result;
+pugi::xml_node
+presentation::LayoutStyles::part(const abstract::ReadableFilesystem &files,
+                                 const AbsPath &path) {
+  const auto [it, inserted] = m_parts.try_emplace(path.string());
+  if (inserted && !parse_optional_part(files, path, it->second)) {
+    it->second.reset();
+  }
+  return it->second.document_element();
+}
 
-  pugi::xml_document layout;
-  if (!parse_optional_part(files, layout_path, layout)) {
+const presentation::Theme &
+presentation::LayoutStyles::theme(const abstract::ReadableFilesystem &files,
+                                  const AbsPath &master_path,
+                                  const pugi::xml_node master) {
+  const auto [it, inserted] = m_themes.try_emplace(master_path.string());
+  if (!inserted) {
+    return it->second;
+  }
+  pugi::xml_document document;
+  if (const std::optional<AbsPath> theme_path =
+          parse_relationship_target(files, master_path, "theme");
+      theme_path.has_value() &&
+      parse_optional_part(files, *theme_path, document)) {
+    const pugi::xml_node elements =
+        document.document_element().child("a:themeElements");
+    it->second.color_scheme =
+        ColorScheme(elements.child("a:clrScheme"), master.child("p:clrMap"));
+    const pugi::xml_node fonts = elements.child("a:fontScheme");
+    it->second.major_font = fonts.child("a:majorFont")
+                                .child("a:latin")
+                                .attribute("typeface")
+                                .value();
+    it->second.minor_font = fonts.child("a:minorFont")
+                                .child("a:latin")
+                                .attribute("typeface")
+                                .value();
+  }
+  return it->second;
+}
+
+const presentation::LayoutStyle &
+presentation::LayoutStyles::get(const abstract::ReadableFilesystem &files,
+                                const AbsPath &layout_path) {
+  const auto [it, inserted] = m_layouts.try_emplace(layout_path.string());
+  LayoutStyle &result = it->second;
+  if (!inserted) {
     return result;
   }
 
-  pugi::xml_document master;
-  if (const std::optional<AbsPath> master_path =
-          parse_relationship_target(files, layout_path, "slideMaster");
-      master_path.has_value() &&
-      parse_optional_part(files, *master_path, master)) {
-    // `unordered_map` keeps its elements put, so the pointer outlives the
-    // inserts that follow
-    const auto [master_it, inserted] =
-        color_schemes.try_emplace(master_path->string());
-    if (inserted) {
-      pugi::xml_document theme;
-      if (const std::optional<AbsPath> theme_path =
-              parse_relationship_target(files, *master_path, "theme");
-          theme_path.has_value() &&
-          parse_optional_part(files, *theme_path, theme)) {
-        master_it->second =
-            ColorScheme(theme.document_element()
-                            .child("a:themeElements")
-                            .child("a:clrScheme"),
-                        master.document_element().child("p:clrMap"));
-      }
-    }
-    result.color_scheme = &master_it->second;
-    result.background =
-        read_background_color(master.document_element(), result.color_scheme)
-            .value_or(std::optional<Color>());
+  result.layout = part(files, layout_path);
+  if (!result.layout) {
+    return result;
   }
 
-  if (const std::optional<std::optional<Color>> stated =
-          read_background_color(layout.document_element(), result.color_scheme);
+  if (const std::optional<AbsPath> master_path =
+          parse_relationship_target(files, layout_path, "slideMaster");
+      master_path.has_value()) {
+    result.master = part(files, *master_path);
+    if (result.master) {
+      result.theme = &theme(files, *master_path, result.master);
+      result.background =
+          read_background_color(result.master, &result.theme->color_scheme)
+              .value_or(std::optional<Color>());
+    }
+  }
+
+  if (const std::optional<std::optional<Color>> stated = read_background_color(
+          result.layout,
+          result.theme == nullptr ? nullptr : &result.theme->color_scheme);
       stated.has_value()) {
     result.background = *stated;
   }
   return result;
 }
 
-void presentation::resolve_text_style(const pugi::xml_node node,
-                                      const ColorScheme *color_scheme,
-                                      TextStyle &result) {
-  const pugi::xml_node run_properties = node.child("a:rPr");
+presentation::PlaceholderSources
+presentation::find_placeholder_sources(const pugi::xml_node shape,
+                                       const pugi::xml_node layout,
+                                       const pugi::xml_node master) {
+  PlaceholderSources result;
+  const pugi::xml_node placeholder =
+      shape.child("p:nvSpPr").child("p:nvPr").child("p:ph");
+  if (!placeholder) {
+    return result;
+  }
+
+  // [ECMA-376] 19.7.10 `ST_PlaceholderType`: absent is `obj`
+  const std::string_view type = placeholder.attribute("type")
+                                    ? placeholder.attribute("type").value()
+                                    : "obj";
+  const bool is_title = type == "title" || type == "ctrTitle";
+  const pugi::xml_attribute index = placeholder.attribute("idx");
+
+  const auto placeholder_of = [](const pugi::xml_node candidate) {
+    return candidate.child("p:nvSpPr").child("p:nvPr").child("p:ph");
+  };
+  const auto type_of = [](const pugi::xml_node ph) -> std::string_view {
+    return ph.attribute("type") ? ph.attribute("type").value() : "obj";
+  };
+  const auto find = [&](const pugi::xml_node part, const auto &matches) {
+    for (const pugi::xml_node candidate :
+         part.child("p:cSld").child("p:spTree").children("p:sp")) {
+      if (const pugi::xml_node ph = placeholder_of(candidate);
+          ph && matches(ph)) {
+        return candidate;
+      }
+    }
+    return pugi::xml_node();
+  };
+
+  if (!is_title && index) {
+    result.layout_shape = find(layout, [&](const pugi::xml_node ph) {
+      return std::string_view(ph.attribute("idx").value()) == index.value();
+    });
+  }
+  if (!result.layout_shape) {
+    result.layout_shape = find(
+        layout, [&](const pugi::xml_node ph) { return type_of(ph) == type; });
+  }
+  if (!result.layout_shape && is_title) {
+    result.layout_shape = find(layout, [&](const pugi::xml_node ph) {
+      return type_of(ph) == "title" || type_of(ph) == "ctrTitle";
+    });
+  }
+
+  // a master holds one placeholder per kind: the title, the body that every
+  // other text placeholder follows, and the date, footer and number
+  const std::string_view master_type =
+      is_title                                            ? "title"
+      : type == "dt" || type == "ftr" || type == "sldNum" ? type
+                                                          : "body";
+  result.master_shape = find(master, [&](const pugi::xml_node ph) {
+    return type_of(ph) == master_type;
+  });
+  result.master_list_style =
+      master.child("p:txStyles")
+          .child(is_title ? "p:titleStyle" : "p:bodyStyle");
+  return result;
+}
+
+void presentation::resolve_text_properties(const pugi::xml_node run_properties,
+                                           const Theme *theme,
+                                           TextStyle &result) {
+  const ColorScheme *color_scheme =
+      theme == nullptr ? nullptr : &theme->color_scheme;
 
   if (const pugi::xml_attribute font_name =
           run_properties.child("a:latin").attribute("typeface")) {
-    result.font_name = font_name.value();
+    // [ECMA-376] 20.1.4.1.24: `+mj-lt` and `+mn-lt` name the theme's fonts
+    const std::string_view name = font_name.value();
+    if (!name.starts_with('+')) {
+      result.font_name = std::string(name);
+    } else if (theme != nullptr && name == "+mj-lt" &&
+               !theme->major_font.empty()) {
+      result.font_name = theme->major_font;
+    } else if (theme != nullptr && name == "+mn-lt" &&
+               !theme->minor_font.empty()) {
+      result.font_name = theme->minor_font;
+    }
   }
   if (const std::optional<Measure> font_size =
           read_hundredth_point_attribute(run_properties.attribute("sz"));
@@ -206,10 +312,8 @@ void presentation::resolve_text_style(const pugi::xml_node node,
   }
 }
 
-void presentation::resolve_paragraph_style(const pugi::xml_node node,
-                                           ParagraphStyle &result) {
-  const pugi::xml_node paragraph_properties = node.child("a:pPr");
-
+void presentation::resolve_paragraph_properties(
+    const pugi::xml_node paragraph_properties, ParagraphStyle &result) {
   if (const std::optional<TextAlign> text_align =
           read_drawing_text_align_attribute(
               paragraph_properties.attribute("algn"));

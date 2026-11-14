@@ -33,7 +33,19 @@ from `@baseline`, alignment from `@algn` ([ECMA-376] 20.1.10.59
 are taken only in their absolute `a:spcPts` form, because the percent form is
 of the text size and css would resolve it against the width. The parent
 cascade (`get_intermediate_style`, `.override()`) is computed on demand from
-the XML, with no master or default-style contribution.
+the XML.
+
+**A placeholder inherits from its layout and master.** `find_placeholder_sources`
+matches a slide's `p:ph` against the layout by `idx`, else by `type`, and
+against the master by kind: title (`title`, `ctrTitle`), `dt`, `ftr`,
+`sldNum`, else body ([ECMA-376] 19.3.1.36). A paragraph's list-style level
+(`lvl`) then reads, weakest first: `p:defaultTextStyle`, the master's
+`p:titleStyle` or `p:bodyStyle`, the `a:lstStyle` of the master's, the
+layout's and the shape's own text body, and last its `a:pPr` and its runs'
+`a:rPr`. A placeholder without `a:xfrm` takes the layout's, else the
+master's, and `a:bodyPr/@anchor` falls through the same way. The layout and
+master stay parsed for this. `+mj-lt` and `+mn-lt` resolve to the theme's
+major and minor latin font.
 
 **Colour goes through the theme.** A pptx states most colour as `a:schemeClr`,
 a slot name such as `tx1`, `bg1` or `accent1`. A slot resolves along slide,
@@ -83,9 +95,8 @@ re-serialises the slide parts and byte-copies the rest. The slides are held by
 
 ## Open work
 
-1. No master or layout inheritance beyond colour. `slide_master_page` returns
-   null and neither shape tree is walked, so a placeholder's font, size and
-   position and every shape a master or layout draws are missing.
+1. The shapes a master or layout draws are not rendered: `slide_master_page`
+   returns null. `p:otherStyle` and bullets (`a:buChar`) are not read.
    `a:custGeom` and `a:gradFill` are not modelled.
 2. Images are not modelled. There is no `p:pic` or `a:blip` parser entry, and
    `image_href` reads `xlink:href`, which a pptx never carries.
