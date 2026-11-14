@@ -8,6 +8,7 @@
 #include <odr/font.hpp>
 #include <odr/html.hpp>
 #include <odr/logger.hpp>
+#include <odr/slide_layout.hpp>
 #include <odr/style.hpp>
 
 #include <gtest/gtest.h>
@@ -352,4 +353,10 @@ TEST(EnumOrdinals, text_path_mode) {
   EXPECT_EQ(ordinal(TextPathMode::normal), 0);
   EXPECT_EQ(ordinal(TextPathMode::path), 1);
   EXPECT_EQ(ordinal(TextPathMode::shape), 2);
+}
+
+TEST(EnumOrdinals, slide_placeholder_kind) {
+  EXPECT_EQ(ordinal(SlidePlaceholderKind::title), 0);
+  EXPECT_EQ(ordinal(SlidePlaceholderKind::subtitle), 1);
+  EXPECT_EQ(ordinal(SlidePlaceholderKind::body), 2);
 }

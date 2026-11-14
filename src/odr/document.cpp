@@ -8,6 +8,7 @@
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/common/filesystem.hpp>
 #include <odr/quantity.hpp>
+#include <odr/slide_layout.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/common/sheet_dependencies.hpp>
@@ -666,6 +667,39 @@ Sheet Document::insert_sheet(const std::uint32_t index,
   const ElementIdentifier identifier =
       adapter->element_insert_sheet(root.identifier(), index, chosen);
   return {adapter, identifier, adapter->sheet_adapter(identifier)};
+}
+
+std::vector<SlideLayout> Document::slide_layouts() const {
+  return m_impl->element_adapter()->element_slide_layouts(
+      m_impl->root_element());
+}
+
+Slide Document::insert_slide(const std::uint32_t index,
+                             const std::uint32_t layout) const {
+  const Element root = root_element();
+  std::uint32_t slides = 0;
+  for (const Element child : root.children()) {
+    if (child.type() == ElementType::slide) {
+      ++slides;
+    }
+  }
+  if (index > slides) {
+    throw std::out_of_range("slide index " + std::to_string(index) +
+                            " past the " + std::to_string(slides) + " slides");
+  }
+  const internal::abstract::ElementAdapter *adapter = m_impl->element_adapter();
+  if (const std::size_t layouts =
+          adapter->element_slide_layouts(root.identifier()).size();
+      layout >= layouts) {
+    if (layouts == 0) {
+      throw UnsupportedOperation();
+    }
+    throw std::out_of_range("layout " + std::to_string(layout) + " past the " +
+                            std::to_string(layouts) + " layouts");
+  }
+  const ElementIdentifier identifier =
+      adapter->element_insert_slide(root.identifier(), index, layout);
+  return {adapter, identifier, adapter->slide_adapter(identifier)};
 }
 
 std::vector<SheetPosition>

@@ -227,6 +227,10 @@ unknown mimetype are tolerated.
 - **A sheet.** `element_insert_sheet` adds a `table:table` with one column
   and one row before the sheet at the index, and registers it through
   `parse_sheet_tree`.
+- **A slide.** `element_insert_slide` adds a `draw:page` from one of
+  `list_slide_layouts` (`odf_slide_layout`): the file's layouts, then each
+  built-in it lacks, which `write_slide_layout` puts into `office:styles` on
+  first use. See `docs/design/structure-editing.md`.
 - **Cells.** `sheet_set_cell` writes `office:value-type`, `office:value` and
   the `text:p` under the cell, because the file states the value and shows a
   rendering of it. It writes through the run the cell holds, so the run keeps

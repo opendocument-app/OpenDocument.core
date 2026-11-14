@@ -100,23 +100,6 @@ std::string centimetres(const std::int32_t hundredths) {
                                  static_cast<double>(hundredths) / 100.0, 6));
 }
 
-/// The value of `presentation:object` and `presentation:class` (ODF 1.3 part
-/// 3, 19.427 and 19.388).
-std::string_view presentation_class(const BlankPlaceholderKind kind) {
-  switch (kind) {
-  case BlankPlaceholderKind::title:
-  case BlankPlaceholderKind::centered_title:
-    return "title";
-  case BlankPlaceholderKind::subtitle:
-    return "subtitle";
-  case BlankPlaceholderKind::content:
-    return "outline";
-  case BlankPlaceholderKind::text:
-    return "text";
-  }
-  throw std::invalid_argument("unknown placeholder kind");
-}
-
 std::string_view presentation_style(const BlankPlaceholderKind kind) {
   switch (kind) {
   case BlankPlaceholderKind::title:
@@ -271,6 +254,21 @@ std::string content(const Blank &blank) {
 }
 
 } // namespace
+
+std::string_view presentation_class(const BlankPlaceholderKind kind) {
+  switch (kind) {
+  case BlankPlaceholderKind::title:
+  case BlankPlaceholderKind::centered_title:
+    return "title";
+  case BlankPlaceholderKind::subtitle:
+    return "subtitle";
+  case BlankPlaceholderKind::content:
+    return "outline";
+  case BlankPlaceholderKind::text:
+    return "text";
+  }
+  throw std::invalid_argument("unknown placeholder kind");
+}
 
 std::string blank_package(const FileType type) {
   const Blank blank = find_blank(type);

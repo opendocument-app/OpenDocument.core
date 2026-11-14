@@ -188,6 +188,7 @@ set(ODR_SOURCE_FILES
         "src/odr/odr.cpp"
         "src/odr/quantity.cpp"
         "src/odr/sheet_position.cpp"
+        "src/odr/slide_layout.cpp"
         "src/odr/style.cpp"
         "src/odr/table_dimension.cpp"
         "src/odr/table_position.cpp"
@@ -301,6 +302,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/odf/odf_number_format.cpp"
         "src/odr/internal/odf/odf_parser.cpp"
         "src/odr/internal/odf/odf_sheet_references.cpp"
+        "src/odr/internal/odf/odf_slide_layout.cpp"
         "src/odr/internal/odf/odf_style.cpp"
         "src/odr/internal/odf/odf_table.cpp"
 

@@ -22,6 +22,9 @@ read_transform(pugi::xml_node node);
 [[nodiscard]] std::optional<DrawingTransform>
 parse_transform(std::string_view value);
 
+/// Centimetres per @p unit; zero for a unit that is not an absolute length.
+[[nodiscard]] double centimetres_per(std::string_view unit);
+
 /// A length attribute in 1/100 mm, the unit ODF measures a chart and an
 /// `svg:d` with no view box in. Nothing where it is absent or not a length.
 [[nodiscard]] std::optional<double>

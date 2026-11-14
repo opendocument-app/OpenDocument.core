@@ -78,6 +78,10 @@ public:
   /// the slide unstyled rather than failing the open.
   const LayoutStyle &get(const abstract::ReadableFilesystem &files,
                          const AbsPath &layout_path);
+  /// The root of the part at @p path, parsed once; null where it is missing
+  /// or is not xml.
+  pugi::xml_node part(const abstract::ReadableFilesystem &files,
+                      const AbsPath &path);
 
 private:
   /// by path; `unordered_map` keeps its elements put, so pointers into these
@@ -86,8 +90,6 @@ private:
   std::unordered_map<std::string, Theme> m_themes;
   std::unordered_map<std::string, LayoutStyle> m_layouts;
 
-  pugi::xml_node part(const abstract::ReadableFilesystem &files,
-                      const AbsPath &path);
   const Theme &theme(const abstract::ReadableFilesystem &files,
                      const AbsPath &master_path, pugi::xml_node master);
 };

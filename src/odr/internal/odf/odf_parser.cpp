@@ -625,6 +625,12 @@ ElementIdentifier odf::parse_sheet_tree(ElementRegistry &registry,
   return std::get<0>(parse_sheet(registry, node));
 }
 
+ElementIdentifier odf::parse_slide_tree(ElementRegistry &registry,
+                                        const pugi::xml_node node) {
+  return std::get<0>(parse_element_tree(registry, ElementType::slide, node,
+                                        parse_any_element_children));
+}
+
 void odf::reindex_sheet(ElementRegistry &registry,
                         const ElementIdentifier sheet_id) {
   ElementRegistry::Sheet &sheet = registry.sheet_element_at(sheet_id);

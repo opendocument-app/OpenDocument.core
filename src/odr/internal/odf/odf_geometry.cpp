@@ -30,29 +30,6 @@ namespace {
 constexpr double view_box_size = 21600;
 constexpr double view_box_centre = view_box_size / 2;
 
-/// Zero for a unit that is not an absolute length.
-double centimetres_per(const std::string_view unit) {
-  if (unit == "cm") {
-    return 1.0;
-  }
-  if (unit == "mm") {
-    return 0.1;
-  }
-  if (unit == "in") {
-    return 2.54;
-  }
-  if (unit == "pt") {
-    return 2.54 / 72.0;
-  }
-  if (unit == "pc") {
-    return 2.54 / 6.0;
-  }
-  if (unit == "px") {
-    return 2.54 / 96.0;
-  }
-  return 0.0;
-}
-
 /// Composes the operation list, holding the translation in centimetres.
 class TransformParser : private ValueCursor {
 public:
@@ -622,6 +599,28 @@ std::optional<DrawingPath> read_elliptical_kind(const pugi::xml_node node) {
 } // namespace odr::internal::odf
 
 namespace odr::internal {
+
+double odf::centimetres_per(const std::string_view unit) {
+  if (unit == "cm") {
+    return 1.0;
+  }
+  if (unit == "mm") {
+    return 0.1;
+  }
+  if (unit == "in") {
+    return 2.54;
+  }
+  if (unit == "pt") {
+    return 2.54 / 72.0;
+  }
+  if (unit == "pc") {
+    return 2.54 / 6.0;
+  }
+  if (unit == "px") {
+    return 2.54 / 96.0;
+  }
+  return 0.0;
+}
 
 std::optional<DrawingTransform> odf::read_transform(const pugi::xml_node node) {
   const pugi::xml_attribute attribute = node.attribute("draw:transform");

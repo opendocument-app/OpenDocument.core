@@ -79,10 +79,17 @@ insertion creates a sibling run with copied properties. Removing its only
 text removes the run. Appending accepts paragraphs and spans; slide removal
 refuses because it also needs package metadata updates.
 
+`Document::insert_slide` adds a slide part from a layout
+(`write_placeholder_slide`), its relationships part, an entry in the
+presentation's relationships, the content types and `p:sldIdLst`. `save`
+writes the slides, every part in `m_written_parts`, and `presentation.xml`
+once an edit changed it, and byte-copies the rest. The `p:sld` dispatch walks
+`parse_slide_children`, so a new slide parses on its own.
+
 `paragraph_set_style` writes `algn` on the `a:pPr` of the paragraph and
-refuses `start` and `end`, which `ST_TextAlignType` does not name. `save`
-re-serialises the slide parts and byte-copies the rest. The slides are held by
-`r:id`, so `save` keeps the path to `r:id` map to know which part it writes.
+refuses `start` and `end`, which `ST_TextAlignType` does not name. The
+slides are held by `r:id`, so `save` keeps the path to `r:id` map to know
+which part it writes.
 
 ## Module layout
 

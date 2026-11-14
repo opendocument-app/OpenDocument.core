@@ -60,26 +60,32 @@ characters (Excel's limit, stricter than LibreOffice's).
 
 ## 3. Insert a slide from a layout
 
-`std::vector<std::string> Document::slide_layouts()` lists the layouts, and
-`Slide Document::insert_slide(std::uint32_t index, std::uint32_t layout)`
-adds an empty slide that holds the layout's placeholders.
+`std::vector<SlideLayout> Document::slide_layouts()` lists the layouts: a
+name, and per text placeholder its kind (`title`, `subtitle`, `body`) and its
+position, which is where `insert_slide` puts it. A picker or the page can draw
+a layout from that. `Slide Document::insert_slide(std::uint32_t index,
+std::uint32_t layout)` adds an empty slide that holds the layout's text
+placeholders, each with one empty paragraph for the caret.
 
 - pptx: the layouts of every master, in `p:sldLayoutIdLst` order, named by
-  `p:cSld/@name`. A slide is a new part with a relationship to its layout,
-  plus an entry in `p:sldIdLst`, the presentation's relationships and the
-  content types. Each placeholder is copied as a `p:sp` with its `p:ph` and
-  an explicit `a:xfrm`, taken from the layout or else from the master's
-  placeholder of the same type, because the renderer does not inherit
-  geometry yet.
-- odp: the `style:presentation-page-layout`s in `styles.xml`, named by
-  `style:display-name`, else by the name LibreOffice would show for the
-  placeholder set, else by `style:name`. "Blank" is added when no layout is
-  empty. The new `draw:page` takes the master page of the slide before it.
-  Each placeholder becomes a `draw:frame` with `presentation:class` and a
-  `draw:text-box` that holds one empty paragraph.
-
-A placeholder frame holds one empty paragraph, so the editor can put a caret
-in it.
+  `p:cSld/@name`. A second master often repeats the first one's names, so a
+  repeat is numbered: "Title Slide (2)". A slide is a new part with a
+  relationship to its layout, plus an entry in `p:sldIdLst`, the
+  presentation's relationships and the content types. Each title, subtitle,
+  body or content placeholder is copied as a `p:sp` with its `p:ph` and an
+  empty `p:spPr`, as PowerPoint writes it: position and text style inherit
+  (1b). Graphic placeholders, the date, footer and number, and a placeholder
+  that neither the layout nor the master positions are left out.
+- odp: the file's `style:presentation-page-layout`s, named by
+  `style:display-name`, else by the built-in whose placeholders they hold
+  (LibreOffice names its layouts `AL<n>T<m>`), else by `style:name`, a repeat
+  numbered as in pptx; handout and notes layouts are left out. Then each
+  built-in whose name is not taken. A built-in is written into `office:styles`
+  the first time a slide uses it, scaled to the master's page; the list scales
+  it to the first master's. The new `draw:page` takes the master of the slide
+  before it, and each text placeholder becomes a `draw:frame` with
+  `presentation:class`, the master's `<master>-title`, `-subtitle` or
+  `-outline1` style where it has one, and a `draw:text-box`.
 
 ## 4. Insert a text box
 

@@ -2,6 +2,7 @@
 
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
+#include <odr/slide_layout.hpp>
 #include <odr/table_dimension.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
@@ -20,10 +21,13 @@
 #include <array>
 #include <cmath>
 #include <iterator>
+#include <optional>
+#include <span>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <fmt/format.h>
@@ -32,7 +36,117 @@ namespace odr::internal::ooxml::presentation {
 
 namespace {
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry);
+create_element_adapter(Document &document, ElementRegistry &registry);
+
+/// [ECMA-376] 19.7.10: the placeholders a slide types into; a graphic one
+/// (`pic`, `chart`, `tbl`, ...) and the date, footer and number are none.
+std::optional<SlidePlaceholderKind>
+text_kind(const pugi::xml_node placeholder) {
+  const std::string_view type = placeholder.attribute("type").value();
+  if (type.empty() || type == "body" || type == "obj") {
+    return SlidePlaceholderKind::body;
+  }
+  if (type == "title" || type == "ctrTitle") {
+    return SlidePlaceholderKind::title;
+  }
+  if (type == "subTitle") {
+    return SlidePlaceholderKind::subtitle;
+  }
+  return std::nullopt;
+}
+
+struct LayoutPlaceholder final {
+  pugi::xml_node shape;
+  SlidePlaceholder placeholder;
+};
+
+/// The text placeholders of @p layout, positioned by the layout, else by
+/// @p master. One with no position at all is left out.
+std::vector<LayoutPlaceholder> text_placeholders(const pugi::xml_node layout,
+                                                 const pugi::xml_node master) {
+  std::vector<LayoutPlaceholder> result;
+  for (const pugi::xml_node shape :
+       layout.child("p:cSld").child("p:spTree").children("p:sp")) {
+    const pugi::xml_node ph =
+        shape.child("p:nvSpPr").child("p:nvPr").child("p:ph");
+    const std::optional<SlidePlaceholderKind> kind =
+        ph ? text_kind(ph) : std::nullopt;
+    if (!kind.has_value()) {
+      continue;
+    }
+    pugi::xml_node xfrm = shape.child("p:spPr").child("a:xfrm");
+    if (!xfrm) {
+      xfrm = find_placeholder_sources(shape, layout, master)
+                 .master_shape.child("p:spPr")
+                 .child("a:xfrm");
+    }
+    const std::optional<Measure> x =
+        read_emus_attribute(xfrm.child("a:off").attribute("x"));
+    const std::optional<Measure> y =
+        read_emus_attribute(xfrm.child("a:off").attribute("y"));
+    const std::optional<Measure> width =
+        read_emus_attribute(xfrm.child("a:ext").attribute("cx"));
+    const std::optional<Measure> height =
+        read_emus_attribute(xfrm.child("a:ext").attribute("cy"));
+    if (!x.has_value() || !y.has_value() || !width.has_value() ||
+        !height.has_value()) {
+      continue;
+    }
+    result.push_back({shape, SlidePlaceholder(*kind, *x, *y, *width, *height)});
+  }
+  return result;
+}
+
+/// Fills @p slide with a copy of each of @p placeholders of @p layout, holding
+/// one empty paragraph and inheriting its position.
+void write_placeholder_slide(
+    pugi::xml_document &slide, const pugi::xml_node layout,
+    const std::span<const LayoutPlaceholder> placeholders) {
+  pugi::xml_node root = slide.append_child("p:sld");
+  for (const pugi::xml_attribute attribute : layout.attributes()) {
+    if (std::string_view(attribute.name()).starts_with("xmlns")) {
+      root.append_attribute(attribute.name()).set_value(attribute.value());
+    }
+  }
+  pugi::xml_node tree = root.append_child("p:cSld").append_child("p:spTree");
+  pugi::xml_node group = tree.append_child("p:nvGrpSpPr");
+  pugi::xml_node group_properties = group.append_child("p:cNvPr");
+  group_properties.append_attribute("id").set_value(1);
+  group_properties.append_attribute("name").set_value("");
+  group.append_child("p:cNvGrpSpPr");
+  group.append_child("p:nvPr");
+  tree.append_child("p:grpSpPr");
+
+  std::uint32_t shape_id = 2;
+  for (const auto &[shape, _] : placeholders) {
+    const pugi::xml_node placeholder =
+        shape.child("p:nvSpPr").child("p:nvPr").child("p:ph");
+    // the position and the text style come from the layout
+    pugi::xml_node copy = tree.append_child("p:sp");
+    pugi::xml_node non_visual = copy.append_child("p:nvSpPr");
+    pugi::xml_node properties = non_visual.append_child("p:cNvPr");
+    properties.append_attribute("id").set_value(shape_id++);
+    properties.append_attribute("name").set_value(
+        shape.child("p:nvSpPr").child("p:cNvPr").attribute("name").value());
+    non_visual.append_child("p:cNvSpPr")
+        .append_child("a:spLocks")
+        .append_attribute("noGrp")
+        .set_value("1");
+    pugi::xml_node ph = non_visual.append_child("p:nvPr").append_child("p:ph");
+    for (const char *name : {"type", "orient", "sz", "idx"}) {
+      if (const pugi::xml_attribute attribute = placeholder.attribute(name)) {
+        ph.append_attribute(name).set_value(attribute.value());
+      }
+    }
+    copy.append_child("p:spPr");
+    pugi::xml_node body = copy.append_child("p:txBody");
+    body.append_child("a:bodyPr");
+    body.append_child("a:lstStyle");
+    body.append_child("a:p");
+  }
+
+  root.append_child("p:clrMapOvr").append_child("a:masterClrMapping");
+}
 
 } // namespace
 
@@ -45,8 +159,8 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
 
   // Only the parts the slide-id list names: a package may relate anything at
   // all to the presentation, and a Google Slides export relates a protobuf.
-  const Relations relations =
-      parse_relationships(*m_files, AbsPath("/ppt/presentation.xml"));
+  m_relations = parse_relationships(*m_files, AbsPath("/ppt/presentation.xml"));
+  const Relations &relations = m_relations;
   std::vector<AbsPath> slides;
   for (const pugi::xml_node slide_id : m_document_xml.document_element()
                                            .child("p:sldIdLst")
@@ -101,21 +215,41 @@ void Document::save(std::ostream &out) const {
   // TODO this would decrypt/inflate and encrypt/deflate again
   zip::ZipArchive archive;
 
+  const auto write = [&](const AbsPath &path, const pugi::xml_document &xml,
+                         const bool declaration) {
+    // TODO stream
+    std::stringstream content;
+    if (declaration) {
+      // pugixml is never asked to parse the declaration, so it writes none
+      content << R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>)";
+    }
+    xml.print(content, "", pugi::format_raw);
+    archive.insert_file(std::end(archive), path.rebase(AbsPath("/")),
+                        std::make_shared<MemoryFile>(content.str()));
+  };
+
+  for (const auto &[path, id] : m_slide_ids_by_path) {
+    write(path, m_slides_xml.at(id), false);
+  }
+  for (const auto &[path, xml] : m_written_parts) {
+    write(path, xml, true);
+  }
+  if (m_presentation_changed) {
+    write(AbsPath("/ppt/presentation.xml"), m_document_xml, true);
+  }
+
   for (auto walker = m_files->file_walker(AbsPath("/")); !walker->end();
        walker->next()) {
     const AbsPath &abs_path = walker->path();
-    RelPath rel_path = walker->path().rebase(AbsPath("/"));
-    if (walker->is_directory()) {
-      archive.insert_directory(std::end(archive), rel_path);
+    if (m_slide_ids_by_path.contains(abs_path) ||
+        m_written_parts.contains(abs_path) ||
+        (m_presentation_changed &&
+         abs_path == AbsPath("/ppt/presentation.xml"))) {
       continue;
     }
-    if (const auto slide = m_slide_ids_by_path.find(abs_path);
-        slide != std::end(m_slide_ids_by_path)) {
-      // TODO stream
-      std::stringstream content;
-      m_slides_xml.at(slide->second).print(content, "", pugi::format_raw);
-      auto tmp = std::make_shared<MemoryFile>(content.str());
-      archive.insert_file(std::end(archive), rel_path, tmp);
+    const RelPath rel_path = abs_path.rebase(AbsPath("/"));
+    if (walker->is_directory()) {
+      archive.insert_directory(std::end(archive), rel_path);
       continue;
     }
     archive.insert_file(std::end(archive), rel_path, m_files->open(abs_path));
@@ -171,6 +305,191 @@ void Document::load_slide_styles_(const std::vector<AbsPath> &slides) {
       m_slide_backgrounds[current_id] = *background;
     }
   }
+}
+
+pugi::xml_node Document::written_part_(const AbsPath &path) {
+  if (const auto it = m_written_parts.find(path); it != m_written_parts.end()) {
+    return it->second.document_element();
+  }
+  if (!m_files->is_file(path)) {
+    return {};
+  }
+  pugi::xml_document &xml = m_written_parts[path];
+  xml = xml::parse(*m_files, path);
+  return xml.document_element();
+}
+
+std::vector<std::pair<SlideLayout, AbsPath>> Document::slide_layouts() {
+  const AbsPath presentation_path("/ppt/presentation.xml");
+  std::vector<std::pair<SlideLayout, AbsPath>> result;
+  for (const pugi::xml_node master_id : m_document_xml.document_element()
+                                            .child("p:sldMasterIdLst")
+                                            .children("p:sldMasterId")) {
+    const auto master_target =
+        m_relations.find(master_id.attribute("r:id").value());
+    if (master_target == m_relations.end()) {
+      continue;
+    }
+    const AbsPath master_path =
+        resolve_part_path(presentation_path, master_target->second);
+    const pugi::xml_node master = m_layout_styles.part(*m_files, master_path);
+    if (!master) {
+      continue;
+    }
+    const Relations master_relations =
+        parse_relationships(*m_files, master_path);
+    for (const pugi::xml_node layout_id :
+         master.child("p:sldLayoutIdLst").children("p:sldLayoutId")) {
+      const auto layout_target =
+          master_relations.find(layout_id.attribute("r:id").value());
+      if (layout_target == master_relations.end()) {
+        continue;
+      }
+      AbsPath layout_path =
+          resolve_part_path(master_path, layout_target->second);
+      const pugi::xml_node layout = m_layout_styles.part(*m_files, layout_path);
+      if (!layout) {
+        continue;
+      }
+      std::string name = layout.child("p:cSld").attribute("name").value();
+      if (name.empty()) {
+        name = "Layout " + std::to_string(result.size() + 1);
+      }
+      // a second master often repeats the first one's names
+      const auto count = std::ranges::count_if(result, [&](const auto &entry) {
+        return entry.first.name() == name ||
+               entry.first.name().starts_with(name + " (");
+      });
+      if (count > 0) {
+        name += " (" + std::to_string(count + 1) + ")";
+      }
+      std::vector<SlidePlaceholder> placeholders;
+      for (LayoutPlaceholder &placeholder : text_placeholders(layout, master)) {
+        placeholders.push_back(std::move(placeholder.placeholder));
+      }
+      result.emplace_back(SlideLayout(std::move(name), std::move(placeholders)),
+                          std::move(layout_path));
+    }
+  }
+  return result;
+}
+
+ElementIdentifier Document::insert_slide(const std::uint32_t index,
+                                         const std::uint32_t layout) {
+  const AbsPath presentation_path("/ppt/presentation.xml");
+  const AbsPath layout_path = slide_layouts().at(layout).second;
+  pugi::xml_node relationships =
+      written_part_(AbsPath("/ppt/_rels/presentation.xml.rels"));
+  pugi::xml_node types = written_part_(AbsPath("/[Content_Types].xml"));
+  if (!relationships || !types) {
+    throw UnsupportedOperation();
+  }
+
+  std::string file_name;
+  std::string target;
+  AbsPath slide_path("/");
+  for (std::uint32_t number = 1;; ++number) {
+    file_name = "slide" + std::to_string(number) + ".xml";
+    target = "slides/" + file_name;
+    slide_path = resolve_part_path(presentation_path, target);
+    if (!m_files->is_file(slide_path) &&
+        !m_slide_ids_by_path.contains(slide_path)) {
+      break;
+    }
+  }
+
+  std::string id;
+  for (std::uint32_t number = 1;; ++number) {
+    id = "rId" + std::to_string(number);
+    if (!relationships.find_child_by_attribute("Relationship", "Id",
+                                               id.c_str()) &&
+        !m_slides_xml.contains(id)) {
+      break;
+    }
+  }
+  pugi::xml_node relationship = relationships.append_child("Relationship");
+  relationship.append_attribute("Id").set_value(id.c_str());
+  relationship.append_attribute("Type").set_value(
+      "http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
+      "slide");
+  relationship.append_attribute("Target").set_value(target.c_str());
+  m_relations[id] = target;
+
+  pugi::xml_node type = types.append_child("Override");
+  type.append_attribute("PartName").set_value(slide_path.string().c_str());
+  type.append_attribute("ContentType")
+      .set_value("application/vnd.openxmlformats-officedocument.presentationml."
+                 "slide+xml");
+
+  const RelPath layout_target = layout_path.rebase(slide_path.parent());
+  pugi::xml_document &slide_relationships = m_written_parts[resolve_part_path(
+      presentation_path, "slides/_rels/" + file_name + ".rels")];
+  pugi::xml_node slide_relationships_root =
+      slide_relationships.append_child("Relationships");
+  slide_relationships_root.append_attribute("xmlns").set_value(
+      "http://schemas.openxmlformats.org/package/2006/relationships");
+  pugi::xml_node layout_relationship =
+      slide_relationships_root.append_child("Relationship");
+  layout_relationship.append_attribute("Id").set_value("rId1");
+  layout_relationship.append_attribute("Type").set_value(
+      "http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
+      "slideLayout");
+  layout_relationship.append_attribute("Target").set_value(
+      layout_target.string().c_str());
+
+  pugi::xml_document &slide = m_slides_xml[id];
+  m_slide_ids_by_path[slide_path] = id;
+  const LayoutStyle &style = m_layout_styles.get(*m_files, layout_path);
+  write_placeholder_slide(slide, style.layout,
+                          text_placeholders(style.layout, style.master));
+
+  // [ECMA-376] 19.2.1.33: a slide id is at least 256 and unique
+  pugi::xml_node root = m_document_xml.document_element();
+  pugi::xml_node list = root.child("p:sldIdLst");
+  if (!list) {
+    pugi::xml_node after = root.child("p:handoutMasterIdLst");
+    if (!after) {
+      after = root.child("p:notesMasterIdLst");
+    }
+    if (!after) {
+      after = root.child("p:sldMasterIdLst");
+    }
+    list = root.insert_child_after("p:sldIdLst", after);
+  }
+  std::uint32_t slide_number = 255;
+  std::vector<pugi::xml_node> entries;
+  for (const pugi::xml_node entry : list.children("p:sldId")) {
+    slide_number = std::max(slide_number, entry.attribute("id").as_uint());
+    entries.push_back(entry);
+  }
+  pugi::xml_node entry =
+      index < entries.size()
+          ? list.insert_child_before("p:sldId", entries[index])
+          : list.append_child("p:sldId");
+  entry.append_attribute("id").set_value(slide_number + 1);
+  entry.append_attribute("r:id").set_value(id.c_str());
+  m_presentation_changed = true;
+
+  const ElementIdentifier slide_id = parse_tree(
+      m_element_registry, ParseContext(m_slides_xml), slide.document_element());
+  ElementIdentifier before =
+      m_element_registry.element_at(m_root_element).first_child_id;
+  for (std::uint32_t i = 0; i < index && before != null_element_id; ++i) {
+    before = m_element_registry.element_at(before).next_sibling_id;
+  }
+  if (before != null_element_id) {
+    m_element_registry.insert_sibling_before(before, slide_id);
+  } else {
+    m_element_registry.append_child(m_root_element, slide_id);
+  }
+
+  if (style.layout) {
+    m_slide_styles[slide_id] = &style;
+  }
+  if (style.background.has_value()) {
+    m_slide_backgrounds[slide_id] = *style.background;
+  }
+  return slide_id;
 }
 
 const LayoutStyle *
@@ -269,12 +588,27 @@ using AdapterBase = internal::RegistryElementAdapter<
 
 class ElementAdapter final : public AdapterBase {
 public:
-  ElementAdapter(const Document &document, ElementRegistry &registry)
+  ElementAdapter(Document &document, ElementRegistry &registry)
       : AdapterBase(registry), m_document(&document) {}
 
   [[nodiscard]] bool element_is_editable(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     return true;
+  }
+
+  [[nodiscard]] std::vector<SlideLayout> element_slide_layouts(
+      [[maybe_unused]] const ElementIdentifier element_id) const override {
+    std::vector<SlideLayout> result;
+    for (auto &[layout, _] : m_document->slide_layouts()) {
+      result.push_back(std::move(layout));
+    }
+    return result;
+  }
+  [[nodiscard]] ElementIdentifier
+  element_insert_slide([[maybe_unused]] const ElementIdentifier element_id,
+                       const std::uint32_t index,
+                       const std::uint32_t layout) const override {
+    return m_document->insert_slide(index, layout);
   }
 
   [[nodiscard]] PageLayout
@@ -653,7 +987,7 @@ public:
   }
 
 private:
-  const Document *m_document{nullptr};
+  Document *m_document{nullptr};
 
   [[nodiscard]] pugi::xml_node
   get_node(const ElementIdentifier element_id) const {
@@ -799,7 +1133,7 @@ private:
 };
 
 std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry) {
+create_element_adapter(Document &document, ElementRegistry &registry) {
   return std::make_unique<ElementAdapter>(document, registry);
 }
 
