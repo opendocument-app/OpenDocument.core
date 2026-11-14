@@ -244,6 +244,25 @@ std::string placeholder_element(const BlankPlaceholder &placeholder,
   throw std::invalid_argument("unknown placeholder kind");
 }
 
+/// [ECMA-376] 19.7.15 `ST_SlideLayoutType`.
+std::string_view slide_layout_type(const BlankSlideLayoutKind kind) {
+  switch (kind) {
+  case BlankSlideLayoutKind::title_slide:
+    return "title";
+  case BlankSlideLayoutKind::title_and_content:
+    return "obj";
+  case BlankSlideLayoutKind::section_header:
+    return "secHead";
+  case BlankSlideLayoutKind::two_content:
+    return "twoObj";
+  case BlankSlideLayoutKind::title_only:
+    return "titleOnly";
+  case BlankSlideLayoutKind::blank:
+    return "blank";
+  }
+  throw std::invalid_argument("unknown slide layout kind");
+}
+
 std::string_view placeholder_name(const BlankPlaceholderKind kind) {
   switch (kind) {
   case BlankPlaceholderKind::title:
@@ -414,8 +433,8 @@ Parts presentation_parts() {
         fmt::format(
             R"({}<p:sldLayout{} type="{}" preserve="1"><p:cSld name="{}">{}{}</p:spTree></p:cSld>)"
             R"(<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>)",
-            xml_declaration, presentation_namespaces, layout.ooxml_type,
-            layout.name, shape_tree_head,
+            xml_declaration, presentation_namespaces,
+            slide_layout_type(layout.kind), layout.name, shape_tree_head,
             placeholder_shapes(layout.placeholders, Owner::layout)));
     result.emplace_back(
         fmt::format("ppt/slideLayouts/_rels/slideLayout{}.xml.rels", i + 1),

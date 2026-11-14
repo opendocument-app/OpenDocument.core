@@ -16,6 +16,16 @@ enum class BlankPlaceholderKind {
   text,
 };
 
+/// Which slide layout of a new presentation.
+enum class BlankSlideLayoutKind {
+  title_slide,
+  title_and_content,
+  section_header,
+  two_content,
+  title_only,
+  blank,
+};
+
 /// A placeholder of a new presentation, in hundredths of a centimetre.
 struct BlankPlaceholder final {
   BlankPlaceholderKind kind{BlankPlaceholderKind::title};
@@ -28,8 +38,8 @@ struct BlankPlaceholder final {
 /// A slide layout of a new odp or pptx; see
 /// `docs/design/structure-editing.md`.
 struct BlankSlideLayout final {
+  BlankSlideLayoutKind kind{BlankSlideLayoutKind::blank};
   std::string_view name;
-  std::string_view ooxml_type; ///< [ECMA-376] 19.7.15 `ST_SlideLayoutType`
   std::span<const BlankPlaceholder> placeholders;
 };
 
@@ -63,14 +73,17 @@ constexpr std::array blank_title_only_placeholders{blank_title};
 constexpr std::array blank_master_placeholders{blank_title, blank_content};
 
 constexpr std::array blank_slide_layouts{
-    BlankSlideLayout{"Title Slide", "title", blank_title_slide_placeholders},
-    BlankSlideLayout{"Title and Content", "obj",
-                     blank_title_content_placeholders},
-    BlankSlideLayout{"Section Header", "secHead",
+    BlankSlideLayout{BlankSlideLayoutKind::title_slide, "Title Slide",
+                     blank_title_slide_placeholders},
+    BlankSlideLayout{BlankSlideLayoutKind::title_and_content,
+                     "Title and Content", blank_title_content_placeholders},
+    BlankSlideLayout{BlankSlideLayoutKind::section_header, "Section Header",
                      blank_section_header_placeholders},
-    BlankSlideLayout{"Two Content", "twoObj", blank_two_content_placeholders},
-    BlankSlideLayout{"Title Only", "titleOnly", blank_title_only_placeholders},
-    BlankSlideLayout{"Blank", "blank", {}},
+    BlankSlideLayout{BlankSlideLayoutKind::two_content, "Two Content",
+                     blank_two_content_placeholders},
+    BlankSlideLayout{BlankSlideLayoutKind::title_only, "Title Only",
+                     blank_title_only_placeholders},
+    BlankSlideLayout{BlankSlideLayoutKind::blank, "Blank", {}},
 };
 
 } // namespace odr::internal
