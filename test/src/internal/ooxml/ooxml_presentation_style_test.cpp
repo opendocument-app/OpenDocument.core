@@ -91,12 +91,33 @@ std::vector<Part> package(const std::string &layout, const std::string &master,
   };
 }
 
-/// @p color_schemes owns what the returned style points at, so it outlives it.
-LayoutStyle
-layout_style_of(const std::vector<Part> &parts,
-                std::unordered_map<std::string, ColorScheme> &color_schemes) {
+/// What `load_layout_style` caches, which the returned style points into.
+struct Cache final {
+  std::unordered_map<std::string, Theme> themes;
+  std::unordered_map<std::string, pugi::xml_document> parts;
+};
+
+/// @p cache owns what the returned style points at, so it outlives it.
+LayoutStyle layout_style_of(const std::vector<Part> &parts, Cache &cache) {
   const VirtualFilesystem filesystem = filesystem_of(parts);
-  return load_layout_style(filesystem, AbsPath(layout_path), color_schemes);
+  return load_layout_style(filesystem, AbsPath(layout_path), cache.themes,
+                           cache.parts);
+}
+
+/// The run properties of @p run, through a theme of @p scheme alone.
+void resolve_text_style(const pugi::xml_node run, const ColorScheme *scheme,
+                        TextStyle &result) {
+  Theme theme;
+  if (scheme != nullptr) {
+    theme.color_scheme = *scheme;
+  }
+  resolve_text_properties(run.child("a:rPr"),
+                          scheme == nullptr ? nullptr : &theme, result);
+}
+
+void resolve_paragraph_style(const pugi::xml_node paragraph,
+                             ParagraphStyle &result) {
+  resolve_paragraph_properties(paragraph.child("a:pPr"), result);
 }
 
 } // namespace
@@ -190,24 +211,24 @@ TEST(ooxml_presentation_style, a_ground_stated_as_a_literal) {
 }
 
 TEST(ooxml_presentation_style, a_layout_takes_its_masters_scheme_and_ground) {
-  std::unordered_map<std::string, ColorScheme> color_schemes;
+  Cache cache;
   const LayoutStyle style = layout_style_of(
       package("<p:sldLayout><p:cSld/></p:sldLayout>",
               R"(<p:sldMaster><p:clrMap bg1="lt1" tx1="dk1"/><p:cSld>)" +
                   solid_background(R"(<a:schemeClr val="bg1"/>)") +
                   "</p:cSld></p:sldMaster>",
               light_and_dark),
-      color_schemes);
+      cache);
 
-  ASSERT_NE(nullptr, style.color_scheme);
-  ASSERT_TRUE(style.color_scheme->resolve("tx1").has_value());
-  EXPECT_EQ(0xff111111u, style.color_scheme->resolve("tx1")->argb());
+  ASSERT_NE(nullptr, style.theme);
+  ASSERT_TRUE(style.theme->color_scheme.resolve("tx1").has_value());
+  EXPECT_EQ(0xff111111u, style.theme->color_scheme.resolve("tx1")->argb());
   ASSERT_TRUE(style.background.has_value());
   EXPECT_EQ(0xffeeeeeeu, style.background->argb());
 }
 
 TEST(ooxml_presentation_style, a_layouts_own_ground_beats_its_masters) {
-  std::unordered_map<std::string, ColorScheme> color_schemes;
+  Cache cache;
   const LayoutStyle style = layout_style_of(
       package("<p:sldLayout><p:cSld>" +
                   solid_background(R"(<a:srgbClr val="00ff00"/>)") +
@@ -216,14 +237,14 @@ TEST(ooxml_presentation_style, a_layouts_own_ground_beats_its_masters) {
                   solid_background(R"(<a:srgbClr val="ff0000"/>)") +
                   "</p:cSld></p:sldMaster>",
               light_and_dark),
-      color_schemes);
+      cache);
 
   ASSERT_TRUE(style.background.has_value());
   EXPECT_EQ(0xff00ff00u, style.background->argb());
 }
 
 TEST(ooxml_presentation_style, a_layout_whose_ground_we_cannot_read) {
-  std::unordered_map<std::string, ColorScheme> color_schemes;
+  Cache cache;
   const LayoutStyle style = layout_style_of(
       package("<p:sldLayout><p:cSld><p:bg><p:bgPr><a:gradFill/></p:bgPr>"
               "</p:bg></p:cSld></p:sldLayout>",
@@ -231,7 +252,7 @@ TEST(ooxml_presentation_style, a_layout_whose_ground_we_cannot_read) {
                   solid_background(R"(<a:srgbClr val="ff0000"/>)") +
                   "</p:cSld></p:sldMaster>",
               light_and_dark),
-      color_schemes);
+      cache);
 
   EXPECT_FALSE(style.background.has_value());
 }
@@ -245,34 +266,35 @@ TEST(ooxml_presentation_style, one_scheme_per_master_however_many_layouts) {
       relationship("slideMaster", "../slideMasters/slideMaster1.xml"));
   const VirtualFilesystem filesystem = filesystem_of(parts);
 
-  std::unordered_map<std::string, ColorScheme> color_schemes;
-  const LayoutStyle first =
-      load_layout_style(filesystem, AbsPath(layout_path), color_schemes);
+  Cache cache;
+  const LayoutStyle first = load_layout_style(filesystem, AbsPath(layout_path),
+                                              cache.themes, cache.parts);
   const LayoutStyle second = load_layout_style(
-      filesystem, AbsPath("/ppt/slideLayouts/slideLayout2.xml"), color_schemes);
+      filesystem, AbsPath("/ppt/slideLayouts/slideLayout2.xml"), cache.themes,
+      cache.parts);
 
-  EXPECT_EQ(1u, color_schemes.size());
-  EXPECT_EQ(first.color_scheme, second.color_scheme);
+  EXPECT_EQ(1u, cache.themes.size());
+  EXPECT_EQ(first.theme, second.theme);
 }
 
 TEST(ooxml_presentation_style, a_layout_relating_no_master_stays_unstyled) {
-  std::unordered_map<std::string, ColorScheme> color_schemes;
+  Cache cache;
   const LayoutStyle style =
-      layout_style_of({{layout_path, "<p:sldLayout/>"}}, color_schemes);
+      layout_style_of({{layout_path, "<p:sldLayout/>"}}, cache);
 
-  EXPECT_EQ(nullptr, style.color_scheme);
+  EXPECT_EQ(nullptr, style.theme);
   EXPECT_FALSE(style.background.has_value());
 }
 
 TEST(ooxml_presentation_style, a_layout_part_that_is_not_xml_stays_unstyled) {
-  std::unordered_map<std::string, ColorScheme> color_schemes;
+  Cache cache;
   const LayoutStyle style = layout_style_of(
       {{layout_path, "not xml at all"},
        {layout_rels_path,
         relationship("slideMaster", "../slideMasters/slideMaster1.xml")}},
-      color_schemes);
+      cache);
 
-  EXPECT_EQ(nullptr, style.color_scheme);
+  EXPECT_EQ(nullptr, style.theme);
   EXPECT_FALSE(style.background.has_value());
 }
 
@@ -395,4 +417,103 @@ TEST(ooxml_presentation_style, explicit_off_values_clear_text_formatting) {
   EXPECT_EQ(FontStyle::normal, style.font_style);
   EXPECT_EQ(false, style.font_underline);
   EXPECT_EQ(false, style.font_line_through);
+}
+
+namespace {
+
+std::string placeholder_shape(const std::string &ph, const std::string &name) {
+  return R"(<p:sp><p:nvSpPr><p:cNvPr id="2" name=")" + name +
+         R"("/><p:cNvSpPr/><p:nvPr>)" + ph + "</p:nvPr></p:nvSpPr></p:sp>";
+}
+
+std::string shape_tree(const std::string &root, const std::string &shapes) {
+  return "<" + root + "><p:cSld><p:spTree>" + shapes + "</p:spTree></p:cSld>" +
+         "</" + root + ">";
+}
+
+std::string name_of(const pugi::xml_node shape) {
+  return shape.child("p:nvSpPr").child("p:cNvPr").attribute("name").value();
+}
+
+} // namespace
+
+TEST(ooxml_presentation_style, a_placeholder_matches_its_layout_by_index) {
+  pugi::xml_document layout;
+  node_of(shape_tree("p:sldLayout",
+                     placeholder_shape(R"(<p:ph idx="1"/>)", "first") +
+                         placeholder_shape(R"(<p:ph idx="2"/>)", "second")),
+          layout);
+  pugi::xml_document master;
+  node_of(shape_tree(
+              "p:sldMaster",
+              placeholder_shape(R"(<p:ph type="title"/>)", "title") +
+                  placeholder_shape(R"(<p:ph type="body" idx="1"/>)", "body")),
+          master);
+  pugi::xml_document slide;
+  const pugi::xml_node shape =
+      node_of(placeholder_shape(R"(<p:ph idx="2"/>)", "mine"), slide);
+
+  const PlaceholderSources sources = find_placeholder_sources(
+      shape, layout.document_element(), master.document_element());
+  EXPECT_EQ("second", name_of(sources.layout_shape));
+  EXPECT_EQ("body", name_of(sources.master_shape));
+}
+
+TEST(ooxml_presentation_style, a_centered_title_follows_the_masters_title) {
+  pugi::xml_document layout;
+  node_of(shape_tree("p:sldLayout",
+                     placeholder_shape(R"(<p:ph type="ctrTitle"/>)", "ctr")),
+          layout);
+  pugi::xml_document master;
+  node_of(R"(<p:sldMaster><p:cSld><p:spTree>)" +
+              placeholder_shape(R"(<p:ph type="title"/>)", "title") +
+              R"(</p:spTree></p:cSld><p:txStyles><p:titleStyle/>)"
+              R"(<p:bodyStyle/></p:txStyles></p:sldMaster>)",
+          master);
+  pugi::xml_document slide;
+  const pugi::xml_node shape =
+      node_of(placeholder_shape(R"(<p:ph type="ctrTitle"/>)", "mine"), slide);
+
+  const PlaceholderSources sources = find_placeholder_sources(
+      shape, layout.document_element(), master.document_element());
+  EXPECT_EQ("ctr", name_of(sources.layout_shape));
+  EXPECT_EQ("title", name_of(sources.master_shape));
+  EXPECT_EQ(std::string("p:titleStyle"), sources.master_list_style.name());
+}
+
+TEST(ooxml_presentation_style, a_shape_that_is_no_placeholder_inherits_none) {
+  pugi::xml_document layout;
+  node_of(shape_tree("p:sldLayout", placeholder_shape("<p:ph/>", "any")),
+          layout);
+  pugi::xml_document slide;
+  const pugi::xml_node shape = node_of(placeholder_shape("", "mine"), slide);
+
+  const PlaceholderSources sources =
+      find_placeholder_sources(shape, layout.document_element(), {});
+  EXPECT_FALSE(sources.layout_shape);
+  EXPECT_FALSE(sources.master_shape);
+  EXPECT_FALSE(sources.master_list_style);
+}
+
+TEST(ooxml_presentation_style, a_theme_font_resolves_through_the_theme) {
+  Theme theme;
+  theme.major_font = "Calibri Light";
+  theme.minor_font = "Calibri";
+
+  pugi::xml_document document;
+  const pugi::xml_node major =
+      node_of(R"(<a:defRPr><a:latin typeface="+mj-lt"/></a:defRPr>)", document);
+  TextStyle style;
+  resolve_text_properties(major, &theme, style);
+  EXPECT_EQ("Calibri Light", style.font_name);
+
+  pugi::xml_document other;
+  const pugi::xml_node minor =
+      node_of(R"(<a:defRPr><a:latin typeface="+mn-lt"/></a:defRPr>)", other);
+  resolve_text_properties(minor, &theme, style);
+  EXPECT_EQ("Calibri", style.font_name);
+
+  TextStyle unresolved;
+  resolve_text_properties(minor, nullptr, unresolved);
+  EXPECT_FALSE(unresolved.font_name.has_value());
 }

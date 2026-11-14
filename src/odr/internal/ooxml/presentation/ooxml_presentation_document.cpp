@@ -16,12 +16,15 @@
 #include <odr/internal/xml/xml_util.hpp>
 #include <odr/internal/zip/zip_archive.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <iterator>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace odr::internal::ooxml::presentation {
 
@@ -154,18 +157,21 @@ void Document::load_slide_styles_(const std::vector<AbsPath> &slides) {
           by_layout.try_emplace(layout_path->string());
       if (inserted) {
         layout_it->second =
-            load_layout_style(*m_files, *layout_path, m_color_schemes);
+            load_layout_style(*m_files, *layout_path, m_themes, m_style_parts);
       }
       layout_style = layout_it->second;
     }
 
-    if (layout_style.color_scheme != nullptr) {
-      m_slide_color_schemes[current_id] = layout_style.color_scheme;
+    const ColorScheme *color_scheme = layout_style.theme == nullptr
+                                          ? nullptr
+                                          : &layout_style.theme->color_scheme;
+    if (layout_style.layout) {
+      m_slide_styles[current_id] = layout_style;
     }
 
     std::optional<Color> background = layout_style.background;
     if (const std::optional<std::optional<Color>> stated =
-            read_background_color(slide_node, layout_style.color_scheme);
+            read_background_color(slide_node, color_scheme);
         stated.has_value()) {
       background = *stated;
     }
@@ -175,10 +181,14 @@ void Document::load_slide_styles_(const std::vector<AbsPath> &slides) {
   }
 }
 
-const ColorScheme *
-Document::slide_color_scheme(const ElementIdentifier element_id) const {
-  const auto it = m_slide_color_schemes.find(element_id);
-  return it == std::end(m_slide_color_schemes) ? nullptr : it->second;
+const LayoutStyle *
+Document::slide_style(const ElementIdentifier element_id) const {
+  const auto it = m_slide_styles.find(element_id);
+  return it == std::end(m_slide_styles) ? nullptr : &it->second;
+}
+
+pugi::xml_node Document::default_text_style() const {
+  return m_document_xml.document_element().child("p:defaultTextStyle");
 }
 
 PageLayout
@@ -617,11 +627,16 @@ public:
                fill_color.has_value()) {
       result.fill_color = fill_color;
     }
-    if (const std::optional<VerticalAlign> vertical_align =
-            read_drawing_vertical_align_attribute(
-                node.child("p:txBody").child("a:bodyPr").attribute("anchor"));
-        vertical_align.has_value()) {
-      result.vertical_align = vertical_align;
+    const PlaceholderSources sources = get_placeholder_sources(element_id);
+    for (const pugi::xml_node shape :
+         {sources.master_shape, sources.layout_shape, node}) {
+      if (const std::optional<VerticalAlign> vertical_align =
+              read_drawing_vertical_align_attribute(shape.child("p:txBody")
+                                                        .child("a:bodyPr")
+                                                        .attribute("anchor"));
+          vertical_align.has_value()) {
+        result.vertical_align = vertical_align;
+      }
     }
     return result;
   }
@@ -653,27 +668,95 @@ private:
     return m_registry->element_at(element_id).node;
   }
 
-  /// The scheme of the slide the element sits on.
-  [[nodiscard]] const ColorScheme *
-  get_color_scheme(const ElementIdentifier element_id) const {
+  /// The layout, master and theme of the slide the element sits on.
+  [[nodiscard]] const LayoutStyle *
+  get_layout_style(const ElementIdentifier element_id) const {
     for (ElementIdentifier id = element_id; id != null_element_id;
          id = element_parent(id)) {
       if (element_type(id) == ElementType::slide) {
-        return m_document->slide_color_scheme(id);
+        return m_document->slide_style(id);
       }
     }
     return nullptr;
   }
 
+  [[nodiscard]] const Theme *
+  get_theme(const ElementIdentifier element_id) const {
+    const LayoutStyle *style = get_layout_style(element_id);
+    return style == nullptr ? nullptr : style->theme;
+  }
+
+  [[nodiscard]] const ColorScheme *
+  get_color_scheme(const ElementIdentifier element_id) const {
+    const Theme *theme = get_theme(element_id);
+    return theme == nullptr ? nullptr : &theme->color_scheme;
+  }
+
+  /// The placeholders of the layout and master the frame @p element_id
+  /// inherits from; none for a shape that is no placeholder.
+  [[nodiscard]] PlaceholderSources
+  get_placeholder_sources(const ElementIdentifier element_id) const {
+    const LayoutStyle *style = get_layout_style(element_id);
+    if (style == nullptr) {
+      return {};
+    }
+    return find_placeholder_sources(get_node(element_id), style->layout,
+                                    style->master);
+  }
+
   /// `p:sp` carries its transform in `p:spPr/a:xfrm`, `p:graphicFrame` in
-  /// `p:xfrm`.
+  /// `p:xfrm`. A placeholder that states none takes its layout's, else its
+  /// master's.
   [[nodiscard]] pugi::xml_node
   get_frame_xfrm(const ElementIdentifier element_id) const {
     const pugi::xml_node node = get_node(element_id);
     if (const pugi::xml_node xfrm = node.child("p:spPr").child("a:xfrm")) {
       return xfrm;
     }
-    return node.child("p:xfrm");
+    if (const pugi::xml_node xfrm = node.child("p:xfrm")) {
+      return xfrm;
+    }
+    const PlaceholderSources sources = get_placeholder_sources(element_id);
+    if (const pugi::xml_node xfrm =
+            sources.layout_shape.child("p:spPr").child("a:xfrm")) {
+      return xfrm;
+    }
+    return sources.master_shape.child("p:spPr").child("a:xfrm");
+  }
+
+  /// The list styles a paragraph inherits, weakest first: the presentation's
+  /// default, the master's title or body style, then the `a:lstStyle` of the
+  /// master's, the layout's and the shape's own text body. [ECMA-376]
+  /// 21.1.2.4.12 and 19.3.1.36
+  [[nodiscard]] std::vector<pugi::xml_node>
+  get_list_styles(const ElementIdentifier paragraph_id) const {
+    std::vector<pugi::xml_node> result{m_document->default_text_style()};
+
+    pugi::xml_node text_body;
+    ElementIdentifier frame_id = null_element_id;
+    for (ElementIdentifier id = element_parent(paragraph_id);
+         id != null_element_id; id = element_parent(id)) {
+      const ElementType type = element_type(id);
+      if (!text_body && type == ElementType::group) {
+        text_body = get_node(id);
+      }
+      if (type == ElementType::frame) {
+        frame_id = id;
+        break;
+      }
+    }
+
+    if (frame_id != null_element_id &&
+        std::string_view(get_node(frame_id).name()) == "p:sp") {
+      const PlaceholderSources sources = get_placeholder_sources(frame_id);
+      result.push_back(sources.master_list_style);
+      result.push_back(
+          sources.master_shape.child("p:txBody").child("a:lstStyle"));
+      result.push_back(
+          sources.layout_shape.child("p:txBody").child("a:lstStyle"));
+    }
+    result.push_back(text_body.child("a:lstStyle"));
+    return result;
   }
 
   [[nodiscard]] static std::string get_text(const pugi::xml_node node) {
@@ -695,15 +778,28 @@ private:
         m_registry->element_at(element_id);
     if (element.type == ElementType::paragraph) {
       ResolvedStyle result;
-      resolve_text_style(element.node, get_color_scheme(element_id),
-                         result.text_style);
-      resolve_paragraph_style(element.node, result.paragraph_style);
+      const Theme *theme = get_theme(element_id);
+      const pugi::xml_node own = element.node.child("a:pPr");
+      // [ECMA-376] 21.1.2.2.7: `lvl` 0 to 8 picks `a:lvl1pPr` to `a:lvl9pPr`
+      const std::string level =
+          "a:lvl" +
+          std::to_string(std::clamp(own.attribute("lvl").as_int(0), 0, 8) + 1) +
+          "pPr";
+      for (const pugi::xml_node list_style : get_list_styles(element_id)) {
+        const pugi::xml_node properties = list_style.child(level.c_str());
+        resolve_paragraph_properties(properties, result.paragraph_style);
+        resolve_text_properties(properties.child("a:defRPr"), theme,
+                                result.text_style);
+      }
+      resolve_paragraph_properties(own, result.paragraph_style);
+      resolve_text_properties(element.node.child("a:rPr"), theme,
+                              result.text_style);
       return result;
     }
     if (element.type == ElementType::span) {
       ResolvedStyle result;
-      resolve_text_style(element.node, get_color_scheme(element_id),
-                         result.text_style);
+      resolve_text_properties(element.node.child("a:rPr"),
+                              get_theme(element_id), result.text_style);
       return result;
     }
     return {};

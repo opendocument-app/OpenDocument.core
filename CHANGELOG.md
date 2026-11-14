@@ -22,6 +22,15 @@ The release run heads these entries with the version and opens a fresh
   page, one title slide, and six slide layouts: Title Slide, Title and
   Content, Section Header, Two Content, Title Only and Blank.
 
+### Presentations
+
+- A pptx placeholder takes its position, text size, font, alignment and
+  vertical anchor from its slide layout and master when the slide does not
+  state them, as PowerPoint draws it. A PowerPoint slide usually states none,
+  so its titles and bodies rendered small, unpositioned and overlapping.
+  Theme fonts (`+mj-lt`, `+mn-lt`) resolve to the theme's typefaces, and the
+  presentation's default text style applies to every shape.
+
 ## v7.8.0 - 2026-11-14
 
 ### HTTP server
