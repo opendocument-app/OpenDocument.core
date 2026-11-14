@@ -4,6 +4,7 @@
 
 #include <odr/internal/common/blank_slide_layouts.hpp>
 #include <odr/internal/odf/odf_blank.hpp>
+#include <odr/internal/odf/odf_geometry.hpp>
 #include <odr/internal/util/number_util.hpp>
 
 #include <algorithm>
@@ -209,10 +210,10 @@ void odf::write_text_box(pugi::xml_node frame, const std::string &style,
                          const Measure &width, const Measure &height) {
   frame.append_attribute("draw:style-name").set_value(style.c_str());
   frame.append_attribute("draw:layer").set_value("layout");
-  frame.append_attribute("svg:width").set_value(width.to_string().c_str());
-  frame.append_attribute("svg:height").set_value(height.to_string().c_str());
-  frame.append_attribute("svg:x").set_value(x.to_string().c_str());
-  frame.append_attribute("svg:y").set_value(y.to_string().c_str());
+  frame.append_attribute("svg:width").set_value(length_string(width).c_str());
+  frame.append_attribute("svg:height").set_value(length_string(height).c_str());
+  frame.append_attribute("svg:x").set_value(length_string(x).c_str());
+  frame.append_attribute("svg:y").set_value(length_string(y).c_str());
   frame.append_child("draw:text-box").append_child("text:p");
 }
 

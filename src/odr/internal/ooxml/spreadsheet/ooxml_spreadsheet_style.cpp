@@ -379,9 +379,10 @@ std::uint32_t StyleRegistry::create_cell_format(
       }
     }
     if (text_style.font_size.has_value()) {
-      xml::set_attribute(
-          ordered_child(font, "sz", font_order), "val",
-          fmt::format("{:g}", points(*text_style.font_size)).c_str());
+      xml::set_attribute(ordered_child(font, "sz", font_order), "val",
+                         fmt::format("{:g}", text_style.font_size->magnitude_in(
+                                                 KnownUnit::point))
+                             .c_str());
     }
     if (text_style.font_color.has_value()) {
       pugi::xml_node color = ordered_child(font, "color", font_order);

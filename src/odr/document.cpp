@@ -17,7 +17,6 @@
 #include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
-#include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <fstream>
@@ -176,11 +175,8 @@ Color parse_color(const std::string &text) {
 
 /// A length with a fixed size, as `Measure` spells it (`14pt`).
 Measure parse_font_size(const std::string &text) {
-  static constexpr std::array<std::string_view, 6> units{"pt", "px", "in",
-                                                         "cm", "mm", "pc"};
   const Measure size(text);
-  if (!(size.magnitude() > 0) ||
-      !std::ranges::contains(units, size.unit().name())) {
+  if (!(size.magnitude() > 0) || size.unit().dimension() != Dimension::length) {
     throw std::invalid_argument("not a font size: " + text);
   }
   return size;
@@ -914,10 +910,8 @@ Slide Document::insert_slide(const std::uint32_t index,
 Frame Document::insert_text_box(const Element &page, const Measure &x,
                                 const Measure &y, const Measure &width,
                                 const Measure &height) const {
-  constexpr std::array<std::string_view, 6> fixed{"cm", "mm", "in",
-                                                  "pt", "pc", "px"};
   for (const Measure *length : {&x, &y, &width, &height}) {
-    if (std::ranges::find(fixed, length->unit().name()) == fixed.end()) {
+    if (length->unit().dimension() != Dimension::length) {
       throw std::invalid_argument("length " + length->to_string() +
                                   " has no fixed size");
     }

@@ -1,6 +1,7 @@
 #include <odr/internal/odf/odf_style.hpp>
 
 #include <odr/internal/odf/odf_document.hpp>
+#include <odr/internal/odf/odf_geometry.hpp>
 #include <odr/internal/odf/odf_parser.hpp>
 #include <odr/internal/xml/xml_util.hpp>
 
@@ -10,7 +11,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <numbers>
 #include <ranges>
 #include <stdexcept>
 #include <string>
@@ -48,7 +48,7 @@ std::optional<Measure> read_measure(const pugi::xml_attribute attribute) {
 /// reads a `%` as.
 std::optional<Measure> resolve_margin(const Measure &margin,
                                       const std::optional<Measure> &parent) {
-  if (margin.unit().name() != "%") {
+  if (margin.unit().known() != KnownUnit::percent) {
     return margin;
   }
   if (!parent.has_value()) {
@@ -374,18 +374,10 @@ double read_angle(const pugi::xml_attribute attribute,
   if (!angle.has_value() || !std::isfinite(angle->magnitude())) {
     return 0;
   }
-  const double value = angle->magnitude();
-  const std::string &unit = angle->unit().name();
-  if (unit == "deg") {
-    return value;
+  if (angle->unit().dimension() == Dimension::angle) {
+    return angle->magnitude_in(KnownUnit::degree);
   }
-  if (unit == "rad") {
-    return value * 180.0 / std::numbers::pi;
-  }
-  if (unit == "grad") {
-    return value * 0.9;
-  }
-  return unitless_in_tenths ? value / 10.0 : value;
+  return unitless_in_tenths ? angle->magnitude() / 10.0 : angle->magnitude();
 }
 
 /// @p color scaled by an intensity such as `80%`.
@@ -539,7 +531,7 @@ void Style::resolve_text_style_(const StyleRegistry *registry,
       font_size.has_value()) {
     // A percentage is of the parent's size, resolved here rather than passed
     // to css - the parent style is not on the element in the render.
-    if (font_size->unit().name() != "%") {
+    if (font_size->unit().known() != KnownUnit::percent) {
       result.font_size = font_size;
     } else {
       if (const std::optional<Measure> parent_font_size = result.font_size;
@@ -1082,7 +1074,7 @@ void write_text_properties(pugi::xml_node properties, const TextStyle &style) {
   };
 
   if (style.font_size.has_value()) {
-    const std::string value = style.font_size->to_string();
+    const std::string value = length_string(*style.font_size);
     set("fo:font-size", value);
     set("style:font-size-asian", value);
     set("style:font-size-complex", value);

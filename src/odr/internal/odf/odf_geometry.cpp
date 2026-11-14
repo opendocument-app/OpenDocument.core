@@ -46,23 +46,28 @@ public:
       }
     }
 
-    const double scale = m_unit.empty() ? 1.0 : centimetres_per(m_unit);
-    const DynamicUnit unit{m_unit};
+    const double scale = m_unit == DynamicUnit() ? 1.0 : centimetres(m_unit);
     return DrawingTransform{
         .a = m_transform.a,
         .b = m_transform.b,
         .c = m_transform.c,
         .d = m_transform.d,
-        .e = Measure(m_transform.e / scale, unit),
-        .f = Measure(m_transform.f / scale, unit),
+        .e = Measure(m_transform.e / scale, m_unit),
+        .f = Measure(m_transform.f / scale, m_unit),
     };
   }
 
 private:
   util::math::Transform2D m_transform;
-  /// What every length agreed on, or `cm` where they did not; empty until one
-  /// is seen, which keeps a list of pure rotations unitless.
-  std::string m_unit;
+  /// What every length agreed on, or `cm` where they did not; unitless until
+  /// one is seen, which keeps a list of pure rotations unitless.
+  DynamicUnit m_unit;
+
+  /// Divided by rather than converted back, so a length comes out as it went
+  /// in.
+  [[nodiscard]] static double centimetres(const DynamicUnit &unit) {
+    return Measure(1, unit).magnitude_in(KnownUnit::centimetre);
+  }
 
   [[nodiscard]] std::string_view read_name() {
     return take_while(str::is_ascii_letter);
@@ -81,16 +86,16 @@ private:
     if (unit.empty()) {
       return *value == 0.0 ? std::optional<double>(0.0) : std::nullopt;
     }
-    const double scale = centimetres_per(unit);
-    if (scale == 0.0) {
+    const DynamicUnit length_unit(unit);
+    if (length_unit.dimension() != Dimension::length) {
       return {};
     }
-    if (m_unit.empty()) {
-      m_unit = unit;
-    } else if (m_unit != unit) {
-      m_unit = "cm";
+    if (m_unit == DynamicUnit()) {
+      m_unit = length_unit;
+    } else if (m_unit != length_unit) {
+      m_unit = DynamicUnit(KnownUnit::centimetre);
     }
-    return *value * scale;
+    return *value * centimetres(length_unit);
   }
 
   /// The list applies left to right, so a `translate` after a `rotate` is not
@@ -600,26 +605,14 @@ std::optional<DrawingPath> read_elliptical_kind(const pugi::xml_node node) {
 
 namespace odr::internal {
 
-double odf::centimetres_per(const std::string_view unit) {
-  if (unit == "cm") {
-    return 1.0;
+std::string odf::length_string(const Measure &length) {
+  switch (length.unit().known()) {
+  case KnownUnit::metre:
+  case KnownUnit::quarter_millimetre:
+    return length.to(KnownUnit::centimetre).to_string();
+  default:
+    return length.to_string();
   }
-  if (unit == "mm") {
-    return 0.1;
-  }
-  if (unit == "in") {
-    return 2.54;
-  }
-  if (unit == "pt") {
-    return 2.54 / 72.0;
-  }
-  if (unit == "pc") {
-    return 2.54 / 6.0;
-  }
-  if (unit == "px") {
-    return 2.54 / 96.0;
-  }
-  return 0.0;
 }
 
 std::optional<DrawingTransform> odf::read_transform(const pugi::xml_node node) {
@@ -650,12 +643,12 @@ odf::read_hundredth_millimetres(const pugi::xml_attribute attribute) {
     return {};
   }
   in.skip_whitespace();
-  const double scale =
-      odf::centimetres_per(in.take_while(str::is_ascii_letter));
-  if (scale == 0) {
+  const Measure length(*value,
+                       DynamicUnit(in.take_while(str::is_ascii_letter)));
+  if (length.unit().dimension() != Dimension::length) {
     return {};
   }
-  return *value * scale * 1000;
+  return length.magnitude_in(KnownUnit::millimetre) * 100;
 }
 
 std::optional<DrawingPath> odf::read_path(const pugi::xml_node node) {

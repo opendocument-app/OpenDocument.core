@@ -471,9 +471,10 @@ html::translate_paragraph_style(const ParagraphStyle &paragraph_style,
     // a percent line height is relative to the text font size, which is
     // emitted on nested text spans; a CSS percentage would resolve against
     // this block's font size, while a unitless ratio inherits per element
-    if (line_height->unit().name() == "%") {
-      const Measure ratio(line_height->magnitude() * 1e-2, DynamicUnit(""));
-      result.append("line-height:").append(ratio.to_string()).append(";");
+    if (line_height->unit().known() == KnownUnit::percent) {
+      result.append("line-height:")
+          .append(line_height->to(KnownUnit::none).to_string())
+          .append(";");
     } else {
       result.append("line-height:")
           .append(css_length(*line_height))

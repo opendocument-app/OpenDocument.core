@@ -719,7 +719,7 @@ ElementIdentifier Document::insert_text_box(const ElementIdentifier slide_id,
         std::max(shape_id, properties.node().attribute("id").as_uint() + 1);
   }
   const auto emus = [](const Measure &length) {
-    return std::llround(points(length) * 12700.0);
+    return std::llround(length.magnitude_in(KnownUnit::point) * 12700.0);
   };
 
   // `CT_GroupShape` ends with `p:extLst`
@@ -804,7 +804,8 @@ void write_run_properties(pugi::xml_node properties, const TextStyle &style) {
   }
   if (style.font_size.has_value()) {
     attribute("sz",
-              std::to_string(std::lround(points(*style.font_size) * 100.0)));
+              std::to_string(std::lround(
+                  style.font_size->magnitude_in(KnownUnit::point) * 100.0)));
   }
   if (style.font_color.has_value()) {
     for (const char *name : fill_names) {

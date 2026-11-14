@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <ostream>
 #include <stdexcept>
@@ -10,17 +11,62 @@
 
 namespace odr {
 
+/// What a unit measures. Units of one dimension convert into each other.
+enum class Dimension : std::uint8_t {
+  unknown,
+  dimensionless,
+  length,
+  angle,
+};
+
+/// The units whose size is known, so a quantity in one converts.
+enum class KnownUnit : std::uint8_t {
+  unknown,
+  /// ``: a bare number
+  none,
+  /// `%`
+  percent,
+  /// `m`
+  metre,
+  /// `cm`
+  centimetre,
+  /// `mm`
+  millimetre,
+  /// `q`
+  quarter_millimetre,
+  /// `in`
+  inch,
+  /// `pt`, 1/72 in
+  point,
+  /// `pc`, 1/6 in
+  pica,
+  /// `px`, 1/96 in
+  pixel,
+  /// `rad`
+  radian,
+  /// `deg`
+  degree,
+  /// `grad`
+  gradian,
+  /// `turn`
+  turn,
+};
+
 /// Represents a runtime unit of measure.
 class DynamicUnit {
 public:
   /// Constructs the unitless unit, equal to `DynamicUnit("")`.
   DynamicUnit();
   explicit DynamicUnit(std::string_view name);
+  /// Throws `std::invalid_argument` for `KnownUnit::unknown`.
+  explicit DynamicUnit(KnownUnit unit);
 
   bool operator==(const DynamicUnit &rhs) const;
   bool operator!=(const DynamicUnit &rhs) const;
 
   [[nodiscard]] const std::string &name() const;
+  [[nodiscard]] KnownUnit known() const;
+  [[nodiscard]] Dimension dimension() const;
 
   void to_stream(std::ostream &) const;
   [[nodiscard]] std::string to_string() const;
@@ -28,6 +74,7 @@ public:
 private:
   struct Unit;
   class Registry;
+  friend class QuantityBase;
 
   const Unit *m_unit{nullptr};
 };
@@ -40,6 +87,11 @@ protected:
 
   /// Renders @p magnitude with 7 significant digits, always positional.
   static std::string format_magnitude(double magnitude);
+
+  /// Throws `std::invalid_argument` where @p from and @p to differ in
+  /// dimension or either is of unknown size.
+  static double convert(double magnitude, const DynamicUnit &from,
+                        const DynamicUnit &to);
 };
 
 /// Represents a quantity with a magnitude and a unit of measure.
@@ -75,6 +127,21 @@ public:
 
   Magnitude magnitude() const { return m_magnitude; }
   Unit unit() const { return m_unit; }
+
+  /// The magnitude in @p unit. Throws `std::invalid_argument` where the
+  /// quantity's unit measures another dimension or has no known size.
+  [[nodiscard]] double magnitude_in(const KnownUnit unit) const
+    requires std::is_same_v<Unit, DynamicUnit>
+  {
+    return convert(static_cast<double>(m_magnitude), m_unit, DynamicUnit(unit));
+  }
+
+  /// This quantity in @p unit; throws as @ref magnitude_in does.
+  [[nodiscard]] Quantity<double> to(const KnownUnit unit) const
+    requires std::is_same_v<Unit, DynamicUnit>
+  {
+    return {magnitude_in(unit), DynamicUnit(unit)};
+  }
 
   void to_stream(std::ostream &out) const { out << to_string(); }
 

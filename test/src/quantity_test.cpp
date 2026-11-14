@@ -7,6 +7,7 @@
 #include <clocale>
 #include <cstdint>
 #include <locale>
+#include <numbers>
 
 using namespace odr;
 
@@ -49,6 +50,40 @@ TEST(Quantity, ignores_numeric_locale) {
   EXPECT_EQ(Measure("1234.5cm"), Measure(1234.5, DynamicUnit("cm")));
   EXPECT_EQ(Quantity<std::int32_t>(1234, DynamicUnit("cm")).to_string(),
             "1234cm");
+}
+
+TEST(DynamicUnit, knows_dimensions) {
+  EXPECT_EQ(DynamicUnit("cm").known(), KnownUnit::centimetre);
+  EXPECT_EQ(DynamicUnit("cm"), DynamicUnit(KnownUnit::centimetre));
+  EXPECT_EQ(DynamicUnit(KnownUnit::pixel).name(), "px");
+  EXPECT_EQ(DynamicUnit("pt").dimension(), Dimension::length);
+  EXPECT_EQ(DynamicUnit("grad").dimension(), Dimension::angle);
+  EXPECT_EQ(DynamicUnit("%").dimension(), Dimension::dimensionless);
+  EXPECT_EQ(DynamicUnit().known(), KnownUnit::none);
+  EXPECT_EQ(DynamicUnit("em").known(), KnownUnit::unknown);
+  EXPECT_EQ(DynamicUnit("em").dimension(), Dimension::unknown);
+  EXPECT_THROW((void)DynamicUnit(KnownUnit::unknown), std::invalid_argument);
+}
+
+TEST(Quantity, converts_within_a_dimension) {
+  EXPECT_EQ(Measure("1in").magnitude_in(KnownUnit::point), 72);
+  EXPECT_EQ(Measure("1in").magnitude_in(KnownUnit::centimetre), 2.54);
+  EXPECT_EQ(Measure("72pt").magnitude_in(KnownUnit::pixel), 96);
+  EXPECT_EQ(Measure("2.5cm").magnitude_in(KnownUnit::centimetre), 2.5);
+  EXPECT_DOUBLE_EQ(Measure("180deg").magnitude_in(KnownUnit::radian),
+                   std::numbers::pi);
+  EXPECT_DOUBLE_EQ(Measure("100grad").magnitude_in(KnownUnit::degree), 90);
+  EXPECT_EQ(Measure("50%").magnitude_in(KnownUnit::none), 0.5);
+  EXPECT_EQ(Quantity<std::int32_t>("3in").magnitude_in(KnownUnit::point), 216);
+  EXPECT_EQ(Measure("1in").to(KnownUnit::point), Measure("72pt"));
+}
+
+TEST(Quantity, refuses_a_conversion_across_dimensions) {
+  EXPECT_THROW((void)Measure("1cm").magnitude_in(KnownUnit::degree),
+               std::invalid_argument);
+  EXPECT_THROW((void)Measure("1em").magnitude_in(KnownUnit::point),
+               std::invalid_argument);
+  EXPECT_THROW((void)Measure("1").to(KnownUnit::point), std::invalid_argument);
 }
 
 TEST(Quantity, checks_integral_magnitudes) {

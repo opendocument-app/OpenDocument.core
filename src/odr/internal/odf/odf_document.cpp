@@ -64,11 +64,11 @@ std::pair<double, double> page_size(const abstract::ElementAdapter &adapter,
                                     const ElementIdentifier master_id) {
   const auto centimetres = [](const std::optional<Measure> &length,
                               const double fallback) {
-    if (!length.has_value()) {
+    if (!length.has_value() ||
+        length->unit().dimension() != Dimension::length) {
       return fallback;
     }
-    const double per = centimetres_per(length->unit().name());
-    return per == 0.0 ? fallback : length->magnitude() * per;
+    return length->magnitude_in(KnownUnit::centimetre);
   };
   const abstract::MasterPageAdapter *master =
       adapter.master_page_adapter(master_id);
