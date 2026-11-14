@@ -2,7 +2,9 @@ name: save cache
 description: >
   Saves a cache entry and deletes the older entries under the same prefix. The
   repository quota is evicted by last access, so a superseded entry left behind
-  pushes out a live one of another job. The job needs `actions: write`.
+  pushes out a live one of another job. Deleting needs `actions: write`; a job
+  without it, as one `release.yml` calls, warns and leaves the entries to the
+  next build on main.
 
 inputs:
   path:
@@ -49,12 +51,22 @@ runs:
           gh cache list --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF" \
             --key "$PREFIX" --limit 100 --json id,key,createdAt --jq "$1"
         }
-        saved=$(list '.[] | select(.key == env.KEY) | .createdAt')
+        if ! saved=$(list '.[] | select(.key == env.KEY) | .createdAt'); then
+          echo "::warning::cannot list the caches, deleting nothing"
+          exit 0
+        fi
         if [ -z "$saved" ]; then
           echo "no entry under $KEY, deleting nothing"
           exit 0
         fi
         export SAVED="$saved"
-        for id in $(list '.[] | select(.key != env.KEY and .createdAt < env.SAVED) | .id'); do
-          gh cache delete --repo "$GITHUB_REPOSITORY" "$id"
+        if ! stale=$(list '.[] | select(.key != env.KEY and .createdAt < env.SAVED) | .id'); then
+          echo "::warning::cannot list the caches, deleting nothing"
+          exit 0
+        fi
+        for id in $stale; do
+          if ! gh cache delete --repo "$GITHUB_REPOSITORY" "$id"; then
+            echo "::warning::cannot delete cache $id, leaving the rest"
+            exit 0
+          fi
         done
