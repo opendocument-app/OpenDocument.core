@@ -1,5 +1,7 @@
 #include <odr/internal/odf/odf_slide_layout.hpp>
 
+#include <odr/quantity.hpp>
+
 #include <odr/internal/common/blank_slide_layouts.hpp>
 #include <odr/internal/odf/odf_blank.hpp>
 #include <odr/internal/util/number_util.hpp>
@@ -77,14 +79,9 @@ std::array<double, 4> scaled(const BlankPlaceholder &placeholder,
           placeholder.width * scale_x, placeholder.height * scale_y};
 }
 
-} // namespace
-
-} // namespace odr::internal::odf
-
-namespace odr::internal {
-
-std::vector<pugi::xml_node>
-odf::text_placeholders(const pugi::xml_node layout) {
+/// The `presentation:placeholder`s of @p layout that take text and state a
+/// position.
+std::vector<pugi::xml_node> text_placeholders(const pugi::xml_node layout) {
   std::vector<pugi::xml_node> result;
   for (const pugi::xml_node placeholder :
        layout.children("presentation:placeholder")) {
@@ -101,6 +98,12 @@ odf::text_placeholders(const pugi::xml_node layout) {
   }
   return result;
 }
+
+} // namespace
+
+} // namespace odr::internal::odf
+
+namespace odr::internal {
 
 std::vector<odf::SlideLayoutSource>
 odf::list_slide_layouts(const pugi::xml_node styles) {
@@ -167,6 +170,50 @@ pugi::xml_node odf::write_slide_layout(pugi::xml_node styles,
     }
   }
   return node;
+}
+
+void odf::write_slide(pugi::xml_node page, const std::string &name,
+                      const std::string &master, const pugi::xml_node layout,
+                      const pugi::xml_node styles) {
+  page.append_attribute("draw:name").set_value(name.c_str());
+  page.append_attribute("draw:master-page-name").set_value(master.c_str());
+  page.append_attribute("presentation:presentation-page-layout-name")
+      .set_value(layout.attribute("style:name").value());
+
+  for (const pugi::xml_node placeholder : text_placeholders(layout)) {
+    const std::string_view object =
+        placeholder.attribute("presentation:object").value();
+    pugi::xml_node frame = page.append_child("draw:frame");
+    // LibreOffice names a master's presentation styles `<master>-<kind>`
+    const std::string style = master + (object == "title"      ? "-title"
+                                        : object == "subtitle" ? "-subtitle"
+                                                               : "-outline1");
+    if (styles.find_child_by_attribute("style:style", "style:name",
+                                       style.c_str())) {
+      frame.append_attribute("presentation:style-name")
+          .set_value(style.c_str());
+    }
+    for (const char *attribute :
+         {"svg:x", "svg:y", "svg:width", "svg:height"}) {
+      frame.append_attribute(attribute).set_value(
+          placeholder.attribute(attribute).value());
+    }
+    frame.append_attribute("presentation:class")
+        .set_value(std::string(object).c_str());
+    frame.append_child("draw:text-box").append_child("text:p");
+  }
+}
+
+void odf::write_text_box(pugi::xml_node frame, const std::string &style,
+                         const Measure &x, const Measure &y,
+                         const Measure &width, const Measure &height) {
+  frame.append_attribute("draw:style-name").set_value(style.c_str());
+  frame.append_attribute("draw:layer").set_value("layout");
+  frame.append_attribute("svg:width").set_value(width.to_string().c_str());
+  frame.append_attribute("svg:height").set_value(height.to_string().c_str());
+  frame.append_attribute("svg:x").set_value(x.to_string().c_str());
+  frame.append_attribute("svg:y").set_value(y.to_string().c_str());
+  frame.append_child("draw:text-box").append_child("text:p");
 }
 
 } // namespace odr::internal

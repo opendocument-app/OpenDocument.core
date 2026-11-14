@@ -79,54 +79,6 @@ std::pair<double, double> page_size(const abstract::ElementAdapter &adapter,
           centimetres(page.height, blank_slide_height / 100.0)};
 }
 
-/// Fills @p page as a slide named @p name on @p master with a frame and an
-/// empty paragraph per text placeholder of @p layout, styled by the master's
-/// presentation styles in @p styles.
-void write_slide(pugi::xml_node page, const std::string &name,
-                 const std::string &master, const pugi::xml_node layout,
-                 const pugi::xml_node styles) {
-  page.append_attribute("draw:name").set_value(name.c_str());
-  page.append_attribute("draw:master-page-name").set_value(master.c_str());
-  page.append_attribute("presentation:presentation-page-layout-name")
-      .set_value(layout.attribute("style:name").value());
-
-  for (const pugi::xml_node placeholder : text_placeholders(layout)) {
-    const std::string_view object =
-        placeholder.attribute("presentation:object").value();
-    pugi::xml_node frame = page.append_child("draw:frame");
-    // LibreOffice names a master's presentation styles `<master>-<kind>`
-    const std::string style = master + (object == "title"      ? "-title"
-                                        : object == "subtitle" ? "-subtitle"
-                                                               : "-outline1");
-    if (styles.find_child_by_attribute("style:style", "style:name",
-                                       style.c_str())) {
-      frame.append_attribute("presentation:style-name")
-          .set_value(style.c_str());
-    }
-    for (const char *attribute :
-         {"svg:x", "svg:y", "svg:width", "svg:height"}) {
-      frame.append_attribute(attribute).set_value(
-          placeholder.attribute(attribute).value());
-    }
-    frame.append_attribute("presentation:class")
-        .set_value(std::string(object).c_str());
-    frame.append_child("draw:text-box").append_child("text:p");
-  }
-}
-
-/// Fills @p frame as a text box of graphic style @p style holding one empty
-/// paragraph, at @p x and @p y and @p width by @p height.
-void write_text_box(pugi::xml_node frame, const std::string &style,
-                    const Measure &x, const Measure &y, const Measure &width,
-                    const Measure &height) {
-  frame.append_attribute("draw:style-name").set_value(style.c_str());
-  frame.append_attribute("draw:layer").set_value("layout");
-  frame.append_attribute("svg:width").set_value(width.to_string().c_str());
-  frame.append_attribute("svg:height").set_value(height.to_string().c_str());
-  frame.append_attribute("svg:x").set_value(x.to_string().c_str());
-  frame.append_attribute("svg:y").set_value(y.to_string().c_str());
-  frame.append_child("draw:text-box").append_child("text:p");
-}
 } // namespace
 
 Document::Document(const FileType file_type, const DocumentType document_type,
