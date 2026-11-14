@@ -470,6 +470,7 @@ TEST_P(DocumentStructureEnvelope, refuses_ids_for_other_placeholders) {
      "frames": [-2, 3]}
   ]})"),
                std::invalid_argument);
+  EXPECT_EQ(children_of(document.root_element()).size(), 1);
 }
 
 TEST_P(DocumentStructureEnvelope, types_into_a_text_box_it_inserted) {

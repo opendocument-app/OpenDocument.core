@@ -565,23 +565,26 @@ void Document::edit(const std::string_view operations,
       all.insert(std::end(all), std::begin(frames), std::end(frames));
       all.insert(std::end(all), std::begin(paragraphs), std::end(paragraphs));
       check_distinct(std::move(all));
+      const auto layout = integer<std::uint32_t>(operation.at("layout"));
+      // the page drew the slide it expected, and a different one would leave
+      // later operations naming the wrong placeholder
+      if (const std::vector<SlideLayout> layouts = slide_layouts();
+          layout < layouts.size()) {
+        const std::size_t count = layouts[layout].placeholders().size();
+        if ((operation.contains("frames") && frames.size() != count) ||
+            (operation.contains("paragraphs") && paragraphs.size() != count)) {
+          throw std::invalid_argument(
+              "the layout holds " + std::to_string(count) +
+              " placeholders, not what `frames` and `paragraphs` list");
+        }
+      }
       const Slide slide =
-          insert_slide(integer<std::uint32_t>(operation.at("index")),
-                       integer<std::uint32_t>(operation.at("layout")));
+          insert_slide(integer<std::uint32_t>(operation.at("index")), layout);
       minted.emplace(address, slide.identifier());
 
       std::vector<Element> created;
       for (const Element child : slide.children()) {
         created.push_back(child);
-      }
-      // the page drew the slide it expected, and a different one would leave
-      // later operations naming the wrong placeholder
-      if ((operation.contains("frames") && frames.size() != created.size()) ||
-          (operation.contains("paragraphs") &&
-           paragraphs.size() != created.size())) {
-        throw std::invalid_argument(
-            "the layout holds " + std::to_string(created.size()) +
-            " placeholders, not what `frames` and `paragraphs` list");
       }
       for (std::size_t i = 0; i < frames.size(); ++i) {
         minted.emplace(frames[i], created[i].identifier());

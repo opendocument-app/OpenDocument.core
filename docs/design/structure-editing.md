@@ -117,13 +117,16 @@ Moving and resizing a frame are not covered.
 
 `id` is the negative id of the created slide or frame. `frames` lists one
 negative id per placeholder of the new slide, in document order, and
-`paragraphs` one per placeholder's empty paragraph, so later ops can type
-into them: `{"op": "insertText", "parent": -4, "text": "Agenda", "id": -6}`. Both are
-optional, and a list whose length is not the slide's placeholder count throws,
-because the page drew a different slide than replay made. The slide is in
-place by then; replay does not roll back ([editing](editing.md) decision 7).
-`name` may be left out for the next free `SheetN`. The lengths of
-`insertTextBox` are strings as `Measure` spells them, such as `"2.5cm"`.
+`paragraphs` one per placeholder's empty paragraph, so later ops can type into
+them. Both are optional. A list whose length is not the layout's placeholder
+count throws before the slide is made, because the page drew a different slide
+than replay would make. `name` may be left out for the next free `SheetN`. The
+lengths of `insertTextBox` are strings as `Measure` spells them, such as
+`"2.5cm"`. A later op types into a placeholder by its paragraph id:
+
+```json
+{"op": "insertText", "parent": -4, "text": "Agenda", "id": -6}
+```
 
 Sheets keep their positional address, so an op after an `insertSheet` counts
 the new sheet.
@@ -131,7 +134,8 @@ the new sheet.
 ## 6. The page
 
 The page applies the edit itself ([editing](editing.md) decision 1), so an
-editable presentation page has to know what a new slide looks like. The new
+editable presentation page has to know what a new slide looks like:
+`slide_layouts()` gives each layout's placeholders and their places. The new
 gestures obey the editing scope: under `paragraph` they refuse with
 `outOfScope`.
 

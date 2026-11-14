@@ -39,6 +39,12 @@ The release run heads these entries with the version and opens a fresh
 - `Document::insert_text_box(page, x, y, width, height)` adds a text box with
   one empty paragraph to a slide of an odp or pptx, or a page of an odg. It
   draws no fill and no outline.
+- A new pptx states a default text style, the theme's body font at 18pt, as
+  PowerPoint writes it, so a text box shows in Calibri.
+- A pptx placeholder takes its position, text size, font, alignment and
+  vertical anchor from its slide layout and master when the slide does not
+  state them. Theme fonts (`+mj-lt`, `+mn-lt`) resolve to the theme's
+  typefaces, and the presentation's default text style applies to every shape.
 
 ### Editing
 
@@ -46,12 +52,6 @@ The release run heads these entries with the version and opens a fresh
   `insertSlide` and `insertTextBox` name the slide, its placeholders and the
   text box's paragraph by negative ids, so later operations can type into
   them.
-- A new pptx states a default text style, the theme's body font at 18pt, as
-  PowerPoint writes it, so a text box shows in Calibri.
-- A pptx placeholder takes its position, text size, font, alignment and
-  vertical anchor from its slide layout and master when the slide does not
-  state them. Theme fonts (`+mj-lt`, `+mn-lt`) resolve to the theme's
-  typefaces, and the presentation's default text style applies to every shape.
 
 ## v7.8.0 - 2026-11-14
 
