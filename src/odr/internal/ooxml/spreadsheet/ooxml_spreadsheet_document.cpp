@@ -460,6 +460,146 @@ ElementIdentifier Document::insert_sheet(const std::uint32_t index,
   return sheet;
 }
 
+void Document::renumber_sheets_(
+    const std::function<std::optional<std::uint32_t>(std::uint32_t)> &to) {
+  // ECMA-376 18.2.5 `localSheetId`, 18.2.30 `activeTab` and `firstSheet`
+  pugi::xml_node names = workbook().child("definedNames");
+  for (pugi::xml_node name = names.child("definedName"); name;) {
+    const pugi::xml_node next = name.next_sibling("definedName");
+    if (pugi::xml_attribute local = name.attribute("localSheetId")) {
+      if (const std::optional<std::uint32_t> moved = to(local.as_uint())) {
+        local.set_value(*moved);
+      } else {
+        names.remove_child(name);
+      }
+    }
+    name = next;
+  }
+  if (names && !names.child("definedName")) {
+    workbook().remove_child(names);
+  }
+  const std::uint32_t count = static_cast<std::uint32_t>(
+      std::ranges::distance(workbook().child("sheets").children("sheet")));
+  for (const pugi::xml_node view :
+       workbook().child("bookViews").children("workbookView")) {
+    for (const char *attribute : {"activeTab", "firstSheet"}) {
+      if (pugi::xml_attribute position = view.attribute(attribute)) {
+        // the view of a sheet that goes falls to the one taking its place
+        const std::uint32_t old = position.as_uint();
+        const std::uint32_t moved = to(old).value_or(old);
+        position.set_value(count == 0 ? 0 : std::min(moved, count - 1));
+      }
+    }
+  }
+}
+
+void Document::remove_sheet(const ElementIdentifier sheet,
+                            const std::uint32_t index) {
+  const AbsPath workbook_path("/xl/workbook.xml");
+  pugi::xml_node relationships = part(AbsPath("/xl/_rels/workbook.xml.rels"));
+  pugi::xml_node types = part(AbsPath("/[Content_Types].xml"));
+  pugi::xml_node sheets = workbook().child("sheets");
+  pugi::xml_node entry = sheets.child("sheet");
+  for (std::uint32_t i = 0; i < index && entry; ++i) {
+    entry = entry.next_sibling("sheet");
+  }
+  if (!relationships || !types || !entry) {
+    throw UnsupportedOperation();
+  }
+
+  const std::string id = entry.attribute("r:id").value();
+  Relations &workbook_relations =
+      m_xml_documents_and_relations.at(workbook_path).second;
+  const AbsPath sheet_path =
+      resolve_part_path(workbook_path, workbook_relations.at(id));
+  sheets.remove_child(entry);
+  relationships.remove_child(
+      relationships.find_child_by_attribute("Relationship", "Id", id.c_str()));
+  workbook_relations.erase(id);
+  types.remove_child(types.find_child_by_attribute(
+      "Override", "PartName", sheet_path.string().c_str()));
+
+  // the dom stays, because the registry holds nodes in it
+  std::erase(m_written_parts, sheet_path);
+  const AbsPath sheet_relations_path =
+      sheet_path.parent()
+          .join(RelPath("_rels"))
+          .join(RelPath(sheet_path.basename() + ".rels"));
+  for (const AbsPath &path : {sheet_path, sheet_relations_path}) {
+    if (m_files->is_file(path)) {
+      m_dropped_parts.push_back(path);
+    }
+  }
+
+  renumber_sheets_(
+      [&](const std::uint32_t position) -> std::optional<std::uint32_t> {
+        if (position == index) {
+          return std::nullopt;
+        }
+        return position > index ? position - 1 : position;
+      });
+
+  m_element_registry.unlink_child(sheet);
+  m_element_registry.invalidate(sheet);
+  drop_sheet_dependencies();
+  note_moved();
+}
+
+void Document::move_sheet(const ElementIdentifier sheet,
+                          const std::uint32_t index) {
+  pugi::xml_node sheets = workbook().child("sheets");
+  std::vector<ElementIdentifier> order;
+  std::vector<pugi::xml_node> entries;
+  pugi::xml_node entry = sheets.child("sheet");
+  for (ElementIdentifier id =
+           m_element_registry.element_at(m_root_element).first_child_id;
+       id != null_element_id && entry;
+       id = m_element_registry.element_at(id).next_sibling_id) {
+    order.push_back(id);
+    entries.push_back(entry);
+    entry = entry.next_sibling("sheet");
+  }
+  const auto found = std::ranges::find(order, sheet);
+  if (found == order.end() || order.size() != entries.size()) {
+    throw UnsupportedOperation();
+  }
+  const auto from = static_cast<std::uint32_t>(found - order.begin());
+  if (from == index) {
+    return;
+  }
+
+  const pugi::xml_node moved = entries[from];
+  const ElementIdentifier anchor = order[index];
+  if (index < from) {
+    sheets.insert_move_before(moved, entries[index]);
+  } else {
+    sheets.insert_move_after(moved, entries[index]);
+  }
+  m_element_registry.unlink_child(sheet);
+  if (index < from) {
+    m_element_registry.insert_sibling_before(anchor, sheet);
+  } else {
+    m_element_registry.insert_sibling_after(anchor, sheet);
+  }
+
+  renumber_sheets_(
+      [&](const std::uint32_t position) -> std::optional<std::uint32_t> {
+        if (position == from) {
+          return index;
+        }
+        if (from < index && position > from && position <= index) {
+          return position - 1;
+        }
+        if (index < from && position >= index && position < from) {
+          return position + 1;
+        }
+        return position;
+      });
+
+  drop_sheet_dependencies();
+  note_moved();
+}
+
 bool Document::is_editable() const noexcept { return true; }
 
 bool Document::is_savable(const bool encrypted) const noexcept {
@@ -590,6 +730,75 @@ public:
                        const std::uint32_t index,
                        const std::string &name) const override {
     return m_document->insert_sheet(index, name);
+  }
+
+  /// A reference to the sheet becomes `#REF!`: the rewrite of a delete of
+  /// every row, then of every column, which leaves none standing. A sheet
+  /// holding a table or a pivot table, or one a pivot cache reads, is
+  /// refused: what names them is not rewritten.
+  void element_remove(const ElementIdentifier element_id) const override {
+    if (element_type(element_id) != ElementType::sheet) {
+      throw UnsupportedOperation();
+    }
+    const ElementRegistry::ElementRelations &relations =
+        *m_registry->element_relations(element_id);
+    const formula::SheetEdit rows{
+        .sheet = m_registry->sheet_element_at(element_id).name,
+        .count = std::numeric_limits<std::uint32_t>::max(),
+        .insert = false};
+    formula::SheetEdit columns = rows;
+    columns.axis = formula::Axis::column;
+
+    // decided before anything is written
+    std::vector<pugi::xml_node> pivots;
+    std::vector<pugi::xml_node> caches;
+    try {
+      pivots = m_document->related_parts(relations.origin, "pivotTable");
+      caches = m_document->related_parts(AbsPath("/xl/workbook.xml"),
+                                         "pivotCacheDefinition");
+    } catch (const std::exception &) {
+      throw UnsupportedOperation();
+    }
+    if (!pivots.empty() ||
+        get_node(element_id).child("tableParts").child("tablePart") ||
+        std::ranges::any_of(caches, [&](const pugi::xml_node cache) {
+          return loses_pivot_source(cache, rows);
+        })) {
+      throw UnsupportedOperation();
+    }
+    const Readers readers = readers_of(element_id);
+    const auto index = static_cast<std::uint32_t>(
+        std::ranges::find(readers.sheet_ids, element_id) -
+        readers.sheet_ids.begin());
+
+    const std::string sheet_id = sheet_id_of(element_id);
+    for (const formula::SheetEdit &edit : {rows, columns}) {
+      move_workbook_references(
+          m_document->workbook(), readers.worksheets,
+          m_document->related_part(AbsPath("/xl/workbook.xml"), "calcChain"),
+          sheet_id, edit);
+      for (const pugi::xml_node chart : readers.charts) {
+        move_chart(chart, edit);
+      }
+      for (const NamedWorksheet &table : readers.other_tables) {
+        move_table_formulas(table.node, table.name, edit);
+      }
+    }
+    m_document->drop_empty_calc_chain();
+    m_document->remove_sheet(element_id, index);
+    for (const ElementIdentifier id : readers.sheet_ids) {
+      if (id != element_id) {
+        index_shared_formulas(m_registry->sheet_element_at(id));
+      }
+    }
+  }
+
+  void element_move(const ElementIdentifier element_id,
+                    const std::uint32_t index) const override {
+    if (element_type(element_id) != ElementType::sheet) {
+      throw UnsupportedOperation();
+    }
+    m_document->move_sheet(element_id, index);
   }
 
   [[nodiscard]] std::string
@@ -1077,6 +1286,77 @@ public:
   static constexpr std::uint32_t row_limit = 1048576;
   static constexpr std::uint32_t column_limit = 16384;
 
+  /// What a structural edit of one sheet rewrites beyond that sheet.
+  struct Readers final {
+    std::vector<ElementIdentifier> sheet_ids;
+    std::vector<NamedWorksheet> worksheets;
+    /// Every chart: one on any sheet may read the edited one.
+    std::vector<pugi::xml_node> charts;
+    /// The tables of every sheet but the edited one.
+    std::vector<NamedWorksheet> other_tables;
+  };
+
+  /// The @ref Readers of an edit of @p element_id, read and checked to
+  /// parse before anything is written.
+  [[nodiscard]] Readers readers_of(const ElementIdentifier element_id) const {
+    Readers result;
+    try {
+      for (ElementIdentifier id =
+               element_first_child(m_document->root_element());
+           id != null_element_id; id = element_next_sibling(id)) {
+        const ElementRegistry::ElementRelations *sheet_relations =
+            m_registry->element_relations(id);
+        if (id != element_id) {
+          for (const pugi::xml_node table :
+               m_document->related_parts(sheet_relations->origin, "table")) {
+            result.other_tables.push_back(
+                {m_registry->sheet_element_at(id).name, table});
+          }
+        }
+        const auto target = sheet_relations->relations->find(
+            get_node(id).child("drawing").attribute("r:id").value());
+        if (target == sheet_relations->relations->end()) {
+          continue;
+        }
+        const AbsPath drawing_path =
+            resolve_part_path(sheet_relations->origin, target->second);
+        const pugi::xml_node drawing_root = m_document->part(drawing_path);
+        const Relations &drawing_relations =
+            m_document->relations_of(drawing_path);
+        for (const pugi::xpath_node chart :
+             drawing_root.select_nodes("//*[local-name()='chart']")) {
+          if (const auto chart_target = drawing_relations.find(
+                  chart.node().attribute("r:id").value());
+              chart_target != drawing_relations.end()) {
+            result.charts.push_back(m_document->part(
+                resolve_part_path(drawing_path, chart_target->second)));
+          }
+        }
+      }
+    } catch (const std::exception &) {
+      throw UnsupportedOperation();
+    }
+
+    for (ElementIdentifier id = element_first_child(m_document->root_element());
+         id != null_element_id; id = element_next_sibling(id)) {
+      result.sheet_ids.push_back(id);
+      result.worksheets.push_back(
+          {.name = m_registry->sheet_element_at(id).name,
+           .node = get_node(id)});
+    }
+    check_formula_syntax(m_document->workbook());
+    for (const NamedWorksheet &worksheet : result.worksheets) {
+      check_formula_syntax(worksheet.node);
+    }
+    for (const pugi::xml_node chart : result.charts) {
+      check_formula_syntax(chart);
+    }
+    for (const NamedWorksheet &table : result.other_tables) {
+      check_formula_syntax(table.node);
+    }
+    return result;
+  }
+
   /// Moves rows, cells and dependent references and parts (ECMA-376
   /// 18.3.1.73, 18.3.1.4).
   void edit_sheet(const ElementIdentifier element_id,
@@ -1163,66 +1443,10 @@ public:
       throw UnsupportedOperation();
     }
 
-    // a chart on any sheet may read the edited one
-    std::vector<pugi::xml_node> charts;
-    std::vector<NamedWorksheet> other_tables;
-    try {
-      for (ElementIdentifier id =
-               element_first_child(m_document->root_element());
-           id != null_element_id; id = element_next_sibling(id)) {
-        const ElementRegistry::ElementRelations *sheet_relations =
-            m_registry->element_relations(id);
-        if (id != element_id) {
-          for (const pugi::xml_node table :
-               m_document->related_parts(sheet_relations->origin, "table")) {
-            other_tables.push_back(
-                {m_registry->sheet_element_at(id).name, table});
-          }
-        }
-        const auto target = sheet_relations->relations->find(
-            get_node(id).child("drawing").attribute("r:id").value());
-        if (target == sheet_relations->relations->end()) {
-          continue;
-        }
-        const AbsPath drawing_path =
-            resolve_part_path(sheet_relations->origin, target->second);
-        const pugi::xml_node drawing_root = m_document->part(drawing_path);
-        const Relations &drawing_relations =
-            m_document->relations_of(drawing_path);
-        for (const pugi::xpath_node chart :
-             drawing_root.select_nodes("//*[local-name()='chart']")) {
-          if (const auto chart_target = drawing_relations.find(
-                  chart.node().attribute("r:id").value());
-              chart_target != drawing_relations.end()) {
-            charts.push_back(m_document->part(
-                resolve_part_path(drawing_path, chart_target->second)));
-          }
-        }
-      }
-    } catch (const std::exception &) {
-      throw UnsupportedOperation();
-    }
-
-    std::vector<ElementIdentifier> sheet_ids;
-    std::vector<NamedWorksheet> worksheets;
-    for (ElementIdentifier id = element_first_child(m_document->root_element());
-         id != null_element_id; id = element_next_sibling(id)) {
-      sheet_ids.push_back(id);
-      worksheets.push_back({.name = m_registry->sheet_element_at(id).name,
-                            .node = get_node(id)});
-    }
-    check_formula_syntax(m_document->workbook());
-    for (const NamedWorksheet &worksheet : worksheets) {
-      check_formula_syntax(worksheet.node);
-    }
-    for (const pugi::xml_node chart : charts) {
-      check_formula_syntax(chart);
-    }
+    const auto [sheet_ids, worksheets, charts, other_tables] =
+        readers_of(element_id);
     for (const pugi::xml_node table : tables) {
       check_formula_syntax(table);
-    }
-    for (const NamedWorksheet &table : other_tables) {
-      check_formula_syntax(table.node);
     }
     move_workbook_references(
         m_document->workbook(), worksheets,

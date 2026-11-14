@@ -152,6 +152,14 @@ public:
     throw UnsupportedOperation();
   }
 
+  /// Puts the sheet or slide @p element_id at @p index among the others of
+  /// its kind, counted after the move. The caller checked @p index.
+  /// @throws UnsupportedOperation where the engine cannot write.
+  virtual void element_move([[maybe_unused]] const ElementIdentifier element_id,
+                            [[maybe_unused]] const std::uint32_t index) const {
+    throw UnsupportedOperation();
+  }
+
   /// An empty sheet named @p name at @p index among the sheets of the root
   /// @p element_id, which the caller checked.
   /// @throws UnsupportedOperation where the engine cannot write.

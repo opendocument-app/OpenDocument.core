@@ -177,6 +177,51 @@ strings, `insertSlide` answers `{id, frames, paragraphs}` and `insertTextBox`
 sheet or slide, or an `edit`, drops them and the next `listViews` translates
 again.
 
+## 8. Remove and move a sheet or a slide
+
+`Document::remove` takes a sheet or a slide too. `void
+Document::move_sheet(const Sheet &sheet, std::uint32_t index)` and `void
+Document::move_slide(const Slide &slide, std::uint32_t index)` put it at
+`index` among the others, counted after the move, so `index` is where it
+ends up. A removed sheet or slide keeps its id and stops being reachable,
+like every removed element.
+
+| PR | Scope |
+|---|---|
+| 1 | sheets: remove and move in ods and xlsx |
+| 2 | slides: remove and move in odp and pptx |
+| 3 | envelope ops `removeSheet`, `moveSheet`, `removeSlide`, `moveSlide` |
+| 4 | the page: remove and move a slide in the editable page |
+| 5 | python, java, swift and npm bindings |
+
+Sheets:
+
+- A workbook keeps one sheet: removing the last throws
+  `std::invalid_argument`, as Excel and LibreOffice refuse it.
+- A reference naming a removed sheet becomes `#REF!`, as both write it. The
+  rewrite is the one a row delete runs, deleting every row and then every
+  column of that sheet, so every place a row delete rewrites follows.
+- A move rewrites no formula: formulas name sheets, and a 3D range
+  (`Sheet1:Sheet3!A1`) spans whatever lies between its ends afterwards, as
+  in Excel.
+- xlsx: the `sheet` entry, the workbook relationship, the content type and
+  the part go. A name local to the removed sheet goes; `localSheetId`,
+  `activeTab` and `firstSheet` follow the positions. The parts the removed
+  sheet alone refers to, such as its drawing, stay as unreferenced parts.
+  A sheet holding a table or a pivot table, or one a pivot cache reads, is
+  refused with `UnsupportedOperation`.
+- ods: the `table:table` moves or goes.
+- Every formula recomputes on the next `recalculate`.
+
+Slides:
+
+- odp: the `draw:page` moves or goes.
+- pptx: `p:sldIdLst` is reordered. A removed slide also loses its
+  presentation relationship, its content type, its part and its notes
+  slide, and its entries in custom shows and sections. A moved slide joins
+  the section of the slide it now follows, the first section at index 0,
+  because PowerPoint repairs sections out of slide order.
+
 ## Validation
 
 `DocumentCreate.*` and the per-feature gtests, then a LibreOffice round trip

@@ -6,8 +6,10 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element_registry.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.hpp>
 
+#include <functional>
 #include <iosfwd>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
@@ -57,6 +59,13 @@ public:
   /// An empty worksheet named @p name at @p index among the sheets, with its
   /// part, relationship, content type and `sheet` entry.
   ElementIdentifier insert_sheet(std::uint32_t index, const std::string &name);
+  /// Takes the sheet @p sheet, the @p index -th, out of the workbook: its
+  /// `sheet` entry, relationship, content type, part and the names local to
+  /// it. References to it are the caller's.
+  void remove_sheet(ElementIdentifier sheet, std::uint32_t index);
+  /// Puts the sheet @p sheet at @p index among the sheets, counted after the
+  /// move, with what counts sheets by position.
+  void move_sheet(ElementIdentifier sheet, std::uint32_t index);
 
   [[nodiscard]] bool is_editable() const noexcept override;
   [[nodiscard]] bool is_savable(bool encrypted) const noexcept override;
@@ -79,6 +88,10 @@ private:
   pugi::xml_node create_styles_();
 
   std::pair<pugi::xml_document &, Relations &> parse_xml_(const AbsPath &path);
+  /// Maps every attribute that counts sheets by position through @p to,
+  /// which answers the new position or none for a sheet that goes.
+  void renumber_sheets_(
+      const std::function<std::optional<std::uint32_t>(std::uint32_t)> &to);
 };
 
 } // namespace odr::internal::ooxml::spreadsheet

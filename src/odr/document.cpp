@@ -644,8 +644,55 @@ ElementIdentifier Document::check_(const Element &element) const {
   return element.identifier();
 }
 
+namespace {
+
+std::uint32_t count_children(const Element &parent, const ElementType type) {
+  std::uint32_t result = 0;
+  for (const Element child : parent.children()) {
+    if (child.type() == type) {
+      ++result;
+    }
+  }
+  return result;
+}
+
+/// Refuses to move @p element unless it is a child of @p root of @p type and
+/// @p index names a place among those children.
+void check_move(const Element &root, const Element &element,
+                const ElementType type, const std::uint32_t index) {
+  const char *noun = type == ElementType::sheet ? "sheet" : "slide";
+  if (element.type() != type || element.parent() != root) {
+    throw std::invalid_argument("element " +
+                                std::to_string(element.identifier()) +
+                                " is not a " + noun + " of this document");
+  }
+  if (const std::uint32_t count = count_children(root, type); index >= count) {
+    throw std::out_of_range("index " + std::to_string(index) + " past the " +
+                            std::to_string(count) + " " + noun + "s");
+  }
+}
+
+} // namespace
+
 void Document::remove(const Element &element) const {
-  m_impl->element_adapter()->element_remove(check_(element));
+  const ElementIdentifier identifier = check_(element);
+  if (element.type() == ElementType::sheet &&
+      count_children(root_element(), ElementType::sheet) == 1) {
+    throw std::invalid_argument("a workbook keeps one sheet");
+  }
+  m_impl->element_adapter()->element_remove(identifier);
+}
+
+void Document::move_sheet(const Sheet &sheet, const std::uint32_t index) const {
+  const ElementIdentifier identifier = check_(sheet);
+  check_move(root_element(), sheet, ElementType::sheet, index);
+  m_impl->element_adapter()->element_move(identifier, index);
+}
+
+void Document::move_slide(const Slide &slide, const std::uint32_t index) const {
+  const ElementIdentifier identifier = check_(slide);
+  check_move(root_element(), slide, ElementType::slide, index);
+  m_impl->element_adapter()->element_move(identifier, index);
 }
 
 Text Document::insert_text_before(const Text &anchor,

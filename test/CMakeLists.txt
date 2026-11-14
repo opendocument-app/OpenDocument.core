@@ -137,6 +137,7 @@ add_executable(odr_test
         "src/internal/ooxml/ooxml_spreadsheet_merge_test.cpp"
         "src/internal/ooxml/ooxml_spreadsheet_pivots_test.cpp"
         "src/internal/ooxml/ooxml_spreadsheet_rows_test.cpp"
+        "src/internal/ooxml/ooxml_spreadsheet_sheets_test.cpp"
         "src/internal/ooxml/ooxml_spreadsheet_style_test.cpp"
         "src/internal/ooxml/ooxml_spreadsheet_tables_test.cpp"
         "src/internal/ooxml/ooxml_spreadsheet_style_write_test.cpp"

@@ -2404,7 +2404,73 @@ public:
   }
 
   void element_remove(const ElementIdentifier element_id) const override {
+    if (element_type(element_id) == ElementType::sheet) {
+      remove_sheet(element_id);
+      return;
+    }
     TreeEditor(*m_registry).remove(element_id);
+  }
+
+  /// The `table:table` goes, and every reference to it becomes `#REF!`: the
+  /// rewrite of a delete of every row, then of every column, which leaves
+  /// no reference to the sheet standing.
+  void remove_sheet(const ElementIdentifier element_id) const {
+    pugi::xml_node node = get_node(element_id);
+    const std::string name = sheet_name(element_id);
+    std::vector<SheetPosition> touched;
+    for (const formula::Axis axis :
+         {formula::Axis::row, formula::Axis::column}) {
+      std::ranges::move(
+          move_references(node.parent(),
+                          {.sheet = name,
+                           .axis = axis,
+                           .count = std::numeric_limits<std::uint32_t>::max(),
+                           .insert = false}),
+          std::back_inserter(touched));
+    }
+    // the positions count the sheet, so the results go while it is there
+    drop_moved_results(std::move(touched));
+
+    m_registry->unlink_child(element_id);
+    m_registry->invalidate(element_id);
+    node.parent().remove_child(node);
+    m_document->drop_sheet_dependencies();
+    m_document->note_moved();
+  }
+
+  /// The node and the element move together, before the one now at
+  /// @p index, else after the last.
+  void element_move(const ElementIdentifier element_id,
+                    const std::uint32_t index) const override {
+    const ElementType type = element_type(element_id);
+    if (type != ElementType::sheet && type != ElementType::slide) {
+      throw UnsupportedOperation();
+    }
+    const ElementIdentifier parent_id = element_parent(element_id);
+    std::vector<ElementIdentifier> others;
+    for (ElementIdentifier id = element_first_child(parent_id);
+         id != null_element_id; id = element_next_sibling(id)) {
+      if (id != element_id && element_type(id) == type) {
+        others.push_back(id);
+      }
+    }
+    if (others.empty()) {
+      return;
+    }
+    const pugi::xml_node node = get_node(element_id);
+    pugi::xml_node parent = node.parent();
+    m_registry->unlink_child(element_id);
+    if (index < others.size()) {
+      parent.insert_move_before(node, get_node(others[index]));
+      m_registry->insert_sibling_before(others[index], element_id);
+    } else {
+      parent.insert_move_after(node, get_node(others.back()));
+      m_registry->insert_sibling_after(others.back(), element_id);
+    }
+    if (type == ElementType::sheet) {
+      m_document->drop_sheet_dependencies();
+      m_document->note_moved();
+    }
   }
   [[nodiscard]] TextStyle
   text_style(const ElementIdentifier element_id) const override {

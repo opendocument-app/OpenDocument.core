@@ -91,6 +91,16 @@ and `workbookView/@activeTab` and `@firstSheet` count sheets by position, so
 each at the new index or after it moves up one. `docProps/app.xml` keeps its
 old sheet titles; no reader checks them.
 
+**A removed sheet leaves the package; a moved one only reorders.** Removing
+drops the `sheet` entry, the relationship, the content type, the part and its
+relationships part. The parts only it referred to, such as its drawing, stay
+unreferenced. The dom stays parsed, because the registry holds nodes in it. A
+name local to the sheet goes, and the positional attributes are mapped
+through the removal or the move (`renumber_sheets_`). References to the sheet
+become `#REF!` by the rewrite of a row delete, then a column delete, of the
+whole grid, which also clears the sheet's calc chain entries. A move rewrites
+no formula: references name sheets.
+
 **`save` writes the parts it can have changed**, every worksheet and
 `workbook.xml`, and byte-copies the rest. pugixml does not parse the xml
 declaration, so `save` writes one itself. Every save sets
