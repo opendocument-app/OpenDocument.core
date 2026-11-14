@@ -40,6 +40,8 @@ struct WritingState {
 
   [[nodiscard]] HtmlWriter &out() const { return *m_out; }
   [[nodiscard]] const HtmlConfig &config() const { return *m_config; }
+  /// @p config outlives the state.
+  void set_config(const HtmlConfig &config) { m_config = &config; }
   [[nodiscard]] HtmlResources &resources() const { return *m_resources; }
   [[nodiscard]] const Logger &logger() const { return *m_logger; }
   /// Where repeated style blocks are deduplicated, or null where they are not.
@@ -108,19 +110,28 @@ struct WritingState {
     return *m_page_backgrounds;
   }
 
+  /// Whether every page restates its background rule, as a template must.
+  [[nodiscard]] bool repeat_page_backgrounds() const {
+    return m_repeat_page_backgrounds;
+  }
+  void set_repeat_page_backgrounds(const bool repeat) {
+    m_repeat_page_backgrounds = repeat;
+  }
+
 private:
-  HtmlWriter *m_out;
-  const HtmlConfig *m_config;
-  HtmlResources *m_resources;
-  const Logger *m_logger;
-  StyleRegistry *m_styles;
+  HtmlWriter *m_out{nullptr};
+  const HtmlConfig *m_config{nullptr};
+  HtmlResources *m_resources{nullptr};
+  const Logger *m_logger{nullptr};
+  StyleRegistry *m_styles{nullptr};
   TextDirection m_direction{TextDirection::left_to_right};
   bool m_editable_markup{true};
   bool m_document_editable{false};
-  std::optional<formula::Syntax> m_formula_syntax;
+  std::optional<formula::Syntax> m_formula_syntax{std::nullopt};
   const std::vector<formula::Name> *m_formula_names{nullptr};
-  std::optional<bool> m_page_chunk_near;
+  std::optional<bool> m_page_chunk_near{std::nullopt};
   std::unordered_map<std::string, std::string> *m_shared_images{nullptr};
+  bool m_repeat_page_backgrounds{false};
   std::shared_ptr<std::unordered_map<std::string, std::string>>
       m_page_backgrounds{
           std::make_shared<std::unordered_map<std::string, std::string>>()};

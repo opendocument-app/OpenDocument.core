@@ -13,6 +13,7 @@
 
 #include <odr/internal/common/sheet_dependencies.hpp>
 #include <odr/internal/common/sheet_recalculation.hpp>
+#include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/file_util.hpp>
 #include <odr/internal/util/string_util.hpp>
 
@@ -286,20 +287,6 @@ Sheet sheet_at(const Element root, const std::uint32_t ordinal) {
   }
   throw std::invalid_argument("sheet " + std::to_string(ordinal) +
                               " not found");
-}
-
-/// The first paragraph under @p element, depth first; null where it holds
-/// none.
-Element first_paragraph_in(const Element &element) {
-  for (const Element child : element.children()) {
-    if (child.type() == ElementType::paragraph) {
-      return child;
-    }
-    if (const Element found = first_paragraph_in(child); found) {
-      return found;
-    }
-  }
-  return {};
 }
 
 } // namespace
@@ -591,7 +578,8 @@ void Document::edit(const std::string_view operations,
       }
       for (std::size_t i = 0; i < paragraphs.size(); ++i) {
         minted.emplace(paragraphs[i],
-                       first_paragraph_in(created[i]).identifier());
+                       internal::util::document::first_paragraph_in(created[i])
+                           .identifier());
       }
       continue;
     }
@@ -609,7 +597,9 @@ void Document::edit(const std::string_view operations,
           measure_of(operation, "height"));
       minted.emplace(address, frame.identifier());
       if (paragraph.has_value()) {
-        minted.emplace(*paragraph, first_paragraph_in(frame).identifier());
+        minted.emplace(
+            *paragraph,
+            internal::util::document::first_paragraph_in(frame).identifier());
       }
       continue;
     }

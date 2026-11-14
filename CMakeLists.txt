@@ -410,6 +410,7 @@ set(ODR_SOURCE_FILES
 
         "src/odr/internal/util/byte_util.cpp"
         "src/odr/internal/util/color_util.cpp"
+        "src/odr/internal/util/document_util.cpp"
         "src/odr/internal/util/byte_stream_util.cpp"
         "src/odr/internal/util/byte_string.cpp"
         "src/odr/internal/util/file_util.cpp"

@@ -270,7 +270,7 @@ std::string page_bitmap_class(const BitmapFill &bitmap,
   const auto [it, first] =
       classes.try_emplace(bitmap.href.empty() ? url : bitmap.href,
                           fmt::format("odr-page-bg-{}", classes.size()));
-  if (!first) {
+  if (!first && !state.repeat_page_backgrounds()) {
     return it->second;
   }
   if (!bitmap.href.empty()) {
@@ -333,10 +333,16 @@ void translate_page_like(const PageLike &page,
   if (near.has_value()) {
     classes += html::chunk_classes(state.config(), *near);
   }
-  state.out().write_element_begin(
-      "div", html::HtmlElementOptions().set_class(classes).set_style(
-                 html::translate_outer_page_style(layout) +
-                 translate_page_background(background, layout)));
+  html::HtmlElementOptions options;
+  options.set_class(classes).set_style(
+      html::translate_outer_page_style(layout) +
+      translate_page_background(background, layout));
+  // not `data-odr-id`, which a range would take for something to remove
+  if (state.config().editable && state.editable_markup()) {
+    options.set_attributes(html::HtmlAttributesVector{
+        {"data-odr-page", std::to_string(page.identifier())}});
+  }
+  state.out().write_element_begin("div", options);
 
   html::translate_master_page(page.master_page(), state);
   html::translate_children(page.children(), state);

@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <optional>
 #include <ranges>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -82,6 +83,20 @@ std::optional<SlidePlaceholderKind> text_kind(const std::string_view object) {
   return std::nullopt;
 }
 
+SlidePlaceholderKind slide_kind(const BlankPlaceholderKind kind) {
+  switch (kind) {
+  case BlankPlaceholderKind::title:
+  case BlankPlaceholderKind::centered_title:
+    return SlidePlaceholderKind::title;
+  case BlankPlaceholderKind::subtitle:
+    return SlidePlaceholderKind::subtitle;
+  case BlankPlaceholderKind::content:
+  case BlankPlaceholderKind::text:
+    return SlidePlaceholderKind::body;
+  }
+  throw std::invalid_argument("unknown placeholder kind");
+}
+
 /// x, y, width and height of @p placeholder in centimetres, scaled from the
 /// built-in page onto a page of @p width by @p height.
 std::array<double, 4> scaled(const BlankPlaceholder &placeholder,
@@ -143,10 +158,10 @@ odf::list_slide_layouts(const pugi::xml_node styles, const double width,
     std::vector<SlidePlaceholder> placeholders;
     for (const pugi::xml_node child :
          node.children("presentation:placeholder")) {
-      if (std::optional<SlidePlaceholder> placeholder =
+      if (const std::optional<SlidePlaceholder> placeholder =
               read_text_placeholder(child);
           placeholder.has_value()) {
-        placeholders.push_back(std::move(*placeholder));
+        placeholders.push_back(*placeholder);
       }
     }
     result.push_back(
@@ -162,9 +177,8 @@ odf::list_slide_layouts(const pugi::xml_node styles, const double width,
     for (const BlankPlaceholder &placeholder : builtin.placeholders) {
       const auto [x, y, w, h] = scaled(placeholder, width, height);
       const DynamicUnit cm("cm");
-      placeholders.emplace_back(
-          *text_kind(presentation_class(placeholder.kind)), Measure(x, cm),
-          Measure(y, cm), Measure(w, cm), Measure(h, cm));
+      placeholders.emplace_back(slide_kind(placeholder.kind), Measure(x, cm),
+                                Measure(y, cm), Measure(w, cm), Measure(h, cm));
     }
     result.push_back({.layout = SlideLayout(std::string(builtin.name),
                                             std::move(placeholders)),

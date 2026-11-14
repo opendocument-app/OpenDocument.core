@@ -34,8 +34,9 @@ public:
   [[nodiscard]] const ElementRegistry &element_registry() const;
 
   /// The layouts of every master, in `p:sldLayoutIdLst` order, and their
-  /// parts.
-  [[nodiscard]] std::vector<std::pair<SlideLayout, AbsPath>> slide_layouts();
+  /// parts. Read once: no edit changes a master.
+  [[nodiscard]] const std::vector<std::pair<SlideLayout, AbsPath>> &
+  slide_layouts();
   /// An empty slide at @p index from the @p layout -th of @ref slide_layouts:
   /// a new part with its relationships and content type, and an entry in
   /// `p:sldIdLst`.
@@ -71,6 +72,7 @@ private:
   PageLayout m_slide_layout;
   /// declared before `m_slide_styles`, which points into it
   LayoutStyles m_layout_styles;
+  std::optional<std::vector<std::pair<SlideLayout, AbsPath>>> m_slide_layouts;
   std::unordered_map<ElementIdentifier, const LayoutStyle *> m_slide_styles;
   std::unordered_map<ElementIdentifier, Color> m_slide_backgrounds;
 

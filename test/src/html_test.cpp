@@ -15,6 +15,7 @@
 #include <odr/html.hpp>
 
 #include <odr/document.hpp>
+#include <odr/document_element.hpp>
 #include <odr/exceptions.hpp>
 #include <odr/odr.hpp>
 
@@ -92,6 +93,62 @@ TEST(html, document_view_uses_the_configured_output_name) {
     service.write("custom.html", served);
     EXPECT_EQ(served.str(), rendered.str());
   }
+}
+
+namespace {
+
+std::size_t occurrences(const std::string &text, const std::string &part) {
+  std::size_t result = 0;
+  for (std::size_t at = text.find(part); at != std::string::npos;
+       at = text.find(part, at + part.size())) {
+    ++result;
+  }
+  return result;
+}
+
+std::string document_html(const Document &document, const bool editable) {
+  HtmlConfig config;
+  config.editable = editable;
+  std::ostringstream out;
+  html::translate(document, config, Logger::null())
+      .write_html(config.document_output_file_name, out);
+  return out.str();
+}
+
+} // namespace
+
+// The page draws a new slide or text box from what replay makes of the same
+// edit (`structure-editing.md` section 6).
+TEST(html, an_editable_presentation_carries_its_edit_templates) {
+  for (const FileType type : {FileType::opendocument_presentation,
+                              FileType::office_open_xml_presentation}) {
+    const Document document = create_document(type);
+    const std::string editable = document_html(document, true);
+    EXPECT_EQ(occurrences(editable, R"(<template class="odr-slide-template")"),
+              6);
+    EXPECT_NE(editable.find(R"(data-odr-name="Two Content")"),
+              std::string::npos);
+    EXPECT_EQ(occurrences(editable, R"(class="odr-text-box-template")"), 1);
+    // the slide, then one per layout
+    EXPECT_EQ(occurrences(editable, "data-odr-page="), 7);
+    // the copy took the edits, the document did not
+    EXPECT_EQ(document.root_element().first_child().next_sibling(), Element());
+
+    const std::string read_only = document_html(document, false);
+    EXPECT_EQ(read_only.find("<template"), std::string::npos);
+    EXPECT_EQ(read_only.find("data-odr-page="), std::string::npos);
+  }
+}
+
+TEST(html, an_editable_drawing_carries_a_text_box_template) {
+  const std::string editable =
+      document_html(open(TestData::test_file_path("odr-public/odg/empty.odg"))
+                        .as_document_file()
+                        .document(),
+                    true);
+  EXPECT_EQ(editable.find(R"(<template class="odr-slide-template")"),
+            std::string::npos);
+  EXPECT_EQ(occurrences(editable, R"(class="odr-text-box-template")"), 1);
 }
 
 // A linked stylesheet is of no use to a host serving the service over http if
