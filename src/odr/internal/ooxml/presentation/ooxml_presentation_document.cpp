@@ -513,7 +513,11 @@ ElementIdentifier Document::insert_text_box(const ElementIdentifier slide_id,
     return std::to_string(std::llround(points(length) * 12700.0));
   };
 
-  pugi::xml_node shape = tree.append_child("p:sp");
+  // `CT_GroupShape` ends with `p:extLst`
+  const pugi::xml_node extensions = tree.child("p:extLst");
+  pugi::xml_node shape = extensions
+                             ? tree.insert_child_before("p:sp", extensions)
+                             : tree.append_child("p:sp");
   pugi::xml_node non_visual = shape.append_child("p:nvSpPr");
   pugi::xml_node properties = non_visual.append_child("p:cNvPr");
   properties.append_attribute("id").set_value(shape_id);
