@@ -60,8 +60,9 @@ jobs:
         shell: bash
         run: echo "CONAN_CACHE_KEY=${{ hashFiles('conanfile.py', '.github/config/conan/**') }}" >> "$GITHUB_ENV"
 
-      - name: cache conan
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+      - name: restore conan
+        id: conan
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: ${{ env.CONAN_HOME }}
           key: conan-${{ env.CACHE_FLAVOR }}-android-${{ matrix.architecture }}-${{ env.CONAN_KEY_SUFFIX }}-${{ env.CONAN_CACHE_KEY }}
@@ -103,12 +104,23 @@ jobs:
         if: github.event_name == 'release'
         run: grep -rqa readyPromiseResolve android/native/prebuilt --include=libodr_jni.so
 
+      # Only the default branch saves: its entries are the only ones other
+      # branches can restore.
+      - name: save conan
+        if: github.ref == 'refs/heads/main' && steps.conan.outputs.cache-hit != 'true'
+        uses: ./.github/actions/save-cache
+        with:
+          path: ${{ env.CONAN_HOME }}
+          key: conan-${{ env.CACHE_FLAVOR }}-android-${{ matrix.architecture }}-${{ env.CONAN_KEY_SUFFIX }}-${{ env.CONAN_CACHE_KEY }}
+          prefix: conan-${{ env.CACHE_FLAVOR }}-android-${{ matrix.architecture }}-${{ env.CONAN_KEY_SUFFIX }}-
       - name: save ccache
         if: github.ref == 'refs/heads/main'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        uses: ./.github/actions/save-cache
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ env.CACHE_FLAVOR }}-android-${{ matrix.architecture }}-${{ env.CCACHE_KEY_SUFFIX }}-${{ github.run_id }}
+          prefix: ccache-${{ env.CACHE_FLAVOR }}-android-${{ matrix.architecture }}-${{ env.CCACHE_KEY_SUFFIX }}-
+          ccache: true
 
       - name: upload native libraries
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

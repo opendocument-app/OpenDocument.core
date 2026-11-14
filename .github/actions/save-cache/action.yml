@@ -1,0 +1,60 @@
+name: save cache
+description: >
+  Saves a cache entry and deletes the older entries under the same prefix. The
+  repository quota is evicted by last access, so a superseded entry left behind
+  pushes out a live one of another job. The job needs `actions: write`.
+
+inputs:
+  path:
+    description: what to save
+    required: true
+  key:
+    description: the key to save under
+    required: true
+  prefix:
+    description: the restore prefix; its entries created before `key` are deleted
+    required: true
+  ccache:
+    description: drop ccache entries no build used for a day before saving
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    # ccache refreshes an entry's mtime on a hit, so this keeps the working set
+    # and drops what only an old revision compiled
+    - name: trim ccache
+      if: inputs.ccache == 'true'
+      shell: bash
+      run: |
+        if command -v ccache > /dev/null; then
+          ccache --evict-older-than 1d
+          ccache --show-stats
+        fi
+
+    - name: save
+      uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+      with:
+        path: ${{ inputs.path }}
+        key: ${{ inputs.key }}
+
+    - name: delete superseded entries
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        KEY: ${{ inputs.key }}
+        PREFIX: ${{ inputs.prefix }}
+      run: |
+        list() {
+          gh cache list --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF" \
+            --key "$PREFIX" --limit 100 --json id,key,createdAt --jq "$1"
+        }
+        saved=$(list '.[] | select(.key == env.KEY) | .createdAt')
+        if [ -z "$saved" ]; then
+          echo "no entry under $KEY, deleting nothing"
+          exit 0
+        fi
+        export SAVED="$saved"
+        for id in $(list '.[] | select(.key != env.KEY and .createdAt < env.SAVED) | .id'); do
+          gh cache delete --repo "$GITHUB_REPOSITORY" "$id"
+        done

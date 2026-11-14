@@ -15,9 +15,11 @@ concurrency:
 # from source. Both caches therefore vary their key:
 #   * conan — keyed on what determines its content (recipes + profile), so it is
 #     rewritten precisely when the dependencies change.
-#   * ccache — keyed per run and restored via prefix, so it keeps growing. Only
-#     the default branch writes it; branch-scoped entries are invisible to other
-#     branches and would just churn the 10 GB repo quota.
+#   * ccache — keyed per run and restored via prefix, so it keeps growing.
+# Only the default branch writes either; branch-scoped entries are invisible to
+# other branches and would just churn the 10 GB repo quota. Saving goes through
+# `.github/actions/save-cache`, which deletes the entries a save supersedes:
+# eviction is by last access, so leftovers would push out other jobs' caches.
 # `CACHE_FLAVOR` separates jobs that resolve a *different* dependency set for the
 # same profile — without it they overwrite each other and both keep rebuilding.
 # The `*_KEY_SUFFIX` variables stay as a manual "throw it all away" knob.
@@ -83,8 +85,9 @@ jobs:
         shell: bash
         run: echo "CONAN_CACHE_KEY=${{ hashFiles('conanfile.py', '.github/config/conan/**') }}" >> "$GITHUB_ENV"
 
-      - name: cache conan
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+      - name: restore conan
+        id: conan
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: ${{ env.CONAN_HOME }}
           key: conan-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}-${{ env.CONAN_CACHE_KEY }}
@@ -145,12 +148,23 @@ jobs:
         if: runner.os == 'Linux' && matrix.bindings
         run: python -m unittest discover -s scripts/tests
 
+      # Only the default branch saves: its entries are the only ones other
+      # branches can restore.
+      - name: save conan
+        if: github.ref == 'refs/heads/main' && steps.conan.outputs.cache-hit != 'true'
+        uses: ./.github/actions/save-cache
+        with:
+          path: ${{ env.CONAN_HOME }}
+          key: conan-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}-${{ env.CONAN_CACHE_KEY }}
+          prefix: conan-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}-
       - name: save ccache
         if: github.ref == 'refs/heads/main'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        uses: ./.github/actions/save-cache
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}-${{ github.run_id }}
+          prefix: ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}-
+          ccache: true
 
       # Bindings and smoke tests need no fetched data. The macOS `test` job
       # handles the document corpus and reference output.
@@ -386,8 +400,9 @@ jobs:
         shell: bash
         run: echo "CONAN_CACHE_KEY=${{ hashFiles('conanfile.py', 'conan.lock', '.github/config/conan/**') }}" >> "$GITHUB_ENV"
 
-      - name: cache conan
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+      - name: restore conan
+        id: conan
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         with:
           path: ${{ env.CONAN_HOME }}
           key: conan-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}-${{ env.CONAN_CACHE_KEY }}
@@ -434,12 +449,23 @@ jobs:
       - name: build
         run: cmake --build test/downstream/build --config Release
 
+      # Only the default branch saves: its entries are the only ones other
+      # branches can restore.
+      - name: save conan
+        if: github.ref == 'refs/heads/main' && steps.conan.outputs.cache-hit != 'true'
+        uses: ./.github/actions/save-cache
+        with:
+          path: ${{ env.CONAN_HOME }}
+          key: conan-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}-${{ env.CONAN_CACHE_KEY }}
+          prefix: conan-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CONAN_KEY_SUFFIX }}-
       - name: save ccache
         if: github.ref == 'refs/heads/main'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        uses: ./.github/actions/save-cache
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}-${{ github.run_id }}
+          prefix: ccache-${{ env.CACHE_FLAVOR }}-${{ matrix.host_profile }}-${{ env.CCACHE_KEY_SUFFIX }}-
+          ccache: true
 
       - name: run
         if: matrix.build_profile == matrix.host_profile && (runner.os == 'Linux' || runner.os == 'macOS')
