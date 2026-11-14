@@ -33,8 +33,7 @@ public:
   [[nodiscard]] const ElementRegistry &element_registry() const;
 
   /// The layouts of every master, in `p:sldLayoutIdLst` order, by name.
-  [[nodiscard]] std::vector<std::pair<std::string, AbsPath>>
-  slide_layouts() const;
+  [[nodiscard]] std::vector<std::pair<std::string, AbsPath>> slide_layouts();
   /// An empty slide at @p index from the @p layout -th of @ref slide_layouts:
   /// a new part with its relationships and content type, and an entry in
   /// `p:sldIdLst`.

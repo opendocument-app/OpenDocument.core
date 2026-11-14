@@ -75,8 +75,8 @@ empty paragraph for the caret.
   (1b). Graphic placeholders and the date, footer and number are left out.
 - odp: the file's `style:presentation-page-layout`s, named by
   `style:display-name`, else by the built-in whose placeholders they hold
-  (LibreOffice names its layouts `AL<n>T<m>`), else by `style:name`; handout
-  and notes layouts are left out. Then each built-in whose name is not taken.
+  (LibreOffice names its layouts `AL<n>T<m>`), else by `style:name`, a repeat
+  numbered as in pptx; handout and notes layouts are left out. Then each built-in whose name is not taken.
   A built-in is written into `office:styles` the first time a slide uses it,
   scaled to the master's page. The new `draw:page` takes the master of the
   slide before it, and each text placeholder becomes a `draw:frame` with

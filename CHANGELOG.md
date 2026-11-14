@@ -35,7 +35,6 @@ The release run heads these entries with the version and opens a fresh
   `Document::insert_slide(index, layout)` adds one to an odp or pptx, holding
   the layout's text placeholders. A pptx offers its own layouts; an odp
   offers its own and then the six built-in ones it lacks.
-
 - A pptx placeholder takes its position, text size, font, alignment and
   vertical anchor from its slide layout and master when the slide does not
   state them. Theme fonts (`+mj-lt`, `+mn-lt`) resolve to the theme's

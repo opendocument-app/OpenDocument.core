@@ -87,9 +87,9 @@ once an edit changed it, and byte-copies the rest. The `p:sld` dispatch walks
 `parse_slide_children`, so a new slide parses on its own.
 
 `paragraph_set_style` writes `algn` on the `a:pPr` of the paragraph and
-refuses `start` and `end`, which `ST_TextAlignType` does not name. `save`
-re-serialises the slide parts and byte-copies the rest. The slides are held by
-`r:id`, so `save` keeps the path to `r:id` map to know which part it writes.
+refuses `start` and `end`, which `ST_TextAlignType` does not name. The
+slides are held by `r:id`, so `save` keeps the path to `r:id` map to know
+which part it writes.
 
 ## Module layout
 

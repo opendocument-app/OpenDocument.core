@@ -50,10 +50,9 @@ bool takes_text(const pugi::xml_node placeholder) {
 /// Fills @p slide with a copy of each text placeholder of @p layout, holding
 /// one empty paragraph and inheriting its position.
 void write_placeholder_slide(pugi::xml_document &slide,
-                             const pugi::xml_document &layout) {
+                             const pugi::xml_node layout) {
   pugi::xml_node root = slide.append_child("p:sld");
-  for (const pugi::xml_attribute attribute :
-       layout.document_element().attributes()) {
+  for (const pugi::xml_attribute attribute : layout.attributes()) {
     if (std::string_view(attribute.name()).starts_with("xmlns")) {
       root.append_attribute(attribute.name()).set_value(attribute.value());
     }
@@ -68,10 +67,8 @@ void write_placeholder_slide(pugi::xml_document &slide,
   tree.append_child("p:grpSpPr");
 
   std::uint32_t shape_id = 2;
-  for (const pugi::xml_node shape : layout.document_element()
-                                        .child("p:cSld")
-                                        .child("p:spTree")
-                                        .children("p:sp")) {
+  for (const pugi::xml_node shape :
+       layout.child("p:cSld").child("p:spTree").children("p:sp")) {
     const pugi::xml_node placeholder =
         shape.child("p:nvSpPr").child("p:nvPr").child("p:ph");
     if (!placeholder || !takes_text(placeholder)) {
@@ -275,7 +272,7 @@ pugi::xml_node Document::written_part_(const AbsPath &path) {
   return xml.document_element();
 }
 
-std::vector<std::pair<std::string, AbsPath>> Document::slide_layouts() const {
+std::vector<std::pair<std::string, AbsPath>> Document::slide_layouts() {
   const AbsPath presentation_path("/ppt/presentation.xml");
   std::vector<std::pair<std::string, AbsPath>> result;
   for (const pugi::xml_node master_id : m_document_xml.document_element()
@@ -288,15 +285,14 @@ std::vector<std::pair<std::string, AbsPath>> Document::slide_layouts() const {
     }
     const AbsPath master_path =
         resolve_part_path(presentation_path, master_target->second);
-    if (!m_files->is_file(master_path)) {
+    const pugi::xml_node master = m_layout_styles.part(*m_files, master_path);
+    if (!master) {
       continue;
     }
-    const pugi::xml_document master = xml::parse(*m_files, master_path);
     const Relations master_relations =
         parse_relationships(*m_files, master_path);
-    for (const pugi::xml_node layout_id : master.document_element()
-                                              .child("p:sldLayoutIdLst")
-                                              .children("p:sldLayoutId")) {
+    for (const pugi::xml_node layout_id :
+         master.child("p:sldLayoutIdLst").children("p:sldLayoutId")) {
       const auto layout_target =
           master_relations.find(layout_id.attribute("r:id").value());
       if (layout_target == master_relations.end()) {
@@ -304,14 +300,11 @@ std::vector<std::pair<std::string, AbsPath>> Document::slide_layouts() const {
       }
       AbsPath layout_path =
           resolve_part_path(master_path, layout_target->second);
-      if (!m_files->is_file(layout_path)) {
+      const pugi::xml_node layout = m_layout_styles.part(*m_files, layout_path);
+      if (!layout) {
         continue;
       }
-      std::string name = xml::parse(*m_files, layout_path)
-                             .document_element()
-                             .child("p:cSld")
-                             .attribute("name")
-                             .value();
+      std::string name = layout.child("p:cSld").attribute("name").value();
       if (name.empty()) {
         name = "Layout " + std::to_string(result.size() + 1);
       }
@@ -393,20 +386,20 @@ ElementIdentifier Document::insert_slide(const std::uint32_t index,
 
   pugi::xml_document &slide = m_slides_xml[id];
   m_slide_ids_by_path[slide_path] = id;
-  write_placeholder_slide(slide, xml::parse(*m_files, layout_path));
+  write_placeholder_slide(slide, m_layout_styles.part(*m_files, layout_path));
 
   // [ECMA-376] 19.2.1.33: a slide id is at least 256 and unique
   pugi::xml_node root = m_document_xml.document_element();
   pugi::xml_node list = root.child("p:sldIdLst");
   if (!list) {
-    pugi::xml_node before = root.child("p:handoutMasterIdLst");
-    if (!before) {
-      before = root.child("p:notesMasterIdLst");
+    pugi::xml_node after = root.child("p:handoutMasterIdLst");
+    if (!after) {
+      after = root.child("p:notesMasterIdLst");
     }
-    if (!before) {
-      before = root.child("p:sldMasterIdLst");
+    if (!after) {
+      after = root.child("p:sldMasterIdLst");
     }
-    list = root.insert_child_after("p:sldIdLst", before);
+    list = root.insert_child_after("p:sldIdLst", after);
   }
   std::uint32_t slide_number = 255;
   std::vector<pugi::xml_node> entries;

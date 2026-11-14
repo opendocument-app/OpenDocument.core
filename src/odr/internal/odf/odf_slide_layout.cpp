@@ -7,8 +7,10 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include <fmt/format.h>
 
@@ -87,10 +89,18 @@ odf::list_slide_layouts(const pugi::xml_node styles) {
     if (name.empty()) {
       name = derived_name(node);
     }
-    if (!named(name)) {
-      result.push_back(
-          {.name = std::move(name), .node = node, .builtin = nullptr});
+    // two layouts may hold the same placeholders
+    if (const auto count =
+            std::ranges::count_if(result,
+                                  [&](const SlideLayout &layout) {
+                                    return layout.name == name ||
+                                           layout.name.starts_with(name + " (");
+                                  });
+        count > 0) {
+      name += fmt::format(" ({})", count + 1);
     }
+    result.push_back(
+        {.name = std::move(name), .node = node, .builtin = nullptr});
   }
   for (const BlankSlideLayout &builtin : blank_slide_layouts) {
     if (!named(std::string(builtin.name))) {
@@ -120,17 +130,17 @@ pugi::xml_node odf::write_slide_layout(pugi::xml_node styles,
   node.append_attribute("style:display-name")
       .set_value(std::string(layout.name).c_str());
 
-  const double scale_x = width * 100.0 / blank_slide_width;
-  const double scale_y = height * 100.0 / blank_slide_height;
+  const double scale_x = width / blank_slide_width;
+  const double scale_y = height / blank_slide_height;
   for (const BlankPlaceholder &placeholder : layout.placeholders) {
     pugi::xml_node child = node.append_child("presentation:placeholder");
     child.append_attribute("presentation:object")
         .set_value(std::string(presentation_class(placeholder.kind)).c_str());
     const std::array<std::pair<const char *, double>, 4> geometry{{
-        {"svg:x", placeholder.x * scale_x / 100.0},
-        {"svg:y", placeholder.y * scale_y / 100.0},
-        {"svg:width", placeholder.width * scale_x / 100.0},
-        {"svg:height", placeholder.height * scale_y / 100.0},
+        {"svg:x", placeholder.x * scale_x},
+        {"svg:y", placeholder.y * scale_y},
+        {"svg:width", placeholder.width * scale_x},
+        {"svg:height", placeholder.height * scale_y},
     }};
     for (const auto &[attribute, value] : geometry) {
       child.append_attribute(attribute).set_value(centimetres(value).c_str());

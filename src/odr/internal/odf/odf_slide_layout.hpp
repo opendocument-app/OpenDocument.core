@@ -20,9 +20,9 @@ struct SlideLayout final {
 };
 
 /// The layouts of @p styles (`office:styles`), named by `style:display-name`,
-/// else after the placeholders they hold, else by `style:name`; then each
-/// built-in whose name none of them has. A layout for handouts or notes is
-/// left out.
+/// else after the placeholders they hold, else by `style:name`, a repeat
+/// numbered; then each built-in whose name none of them has. A layout for
+/// handouts or notes is left out.
 [[nodiscard]] std::vector<SlideLayout>
 list_slide_layouts(pugi::xml_node styles);
 
