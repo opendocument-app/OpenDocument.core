@@ -633,13 +633,13 @@ ElementIdentifier Document::check_(const Element &element) const {
   if (!element || element_by_id(element.identifier()) != element) {
     throw std::invalid_argument("element is not this document's");
   }
-  // a slide layout sits outside the root and takes no edit
+  // a slide outside the root is a layout, which takes no edit
   Element top = element;
   while (const Element parent = top.parent()) {
     top = parent;
   }
-  if (top != root_element()) {
-    throw std::invalid_argument("element is not in the document's tree");
+  if (top.type() == ElementType::slide) {
+    throw std::invalid_argument("a slide layout takes no edit");
   }
   return element.identifier();
 }

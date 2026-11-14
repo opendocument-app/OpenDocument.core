@@ -5,8 +5,6 @@
 #include <odr/exceptions.hpp>
 #include <odr/file.hpp>
 #include <odr/html.hpp>
-#include <odr/logger.hpp>
-#include <odr/quantity.hpp>
 #include <odr/style.hpp>
 
 #include <odr/internal/abstract/document.hpp>
@@ -29,7 +27,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <mutex>
-#include <optional>
 #include <span>
 #include <string>
 #include <unordered_map>

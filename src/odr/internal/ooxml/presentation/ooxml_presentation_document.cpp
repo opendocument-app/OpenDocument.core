@@ -413,7 +413,8 @@ void Document::load_slide_layouts_() {
 }
 
 std::vector<ElementIdentifier> Document::slide_layouts() const {
-  return m_slide_layouts | std::views::keys | std::ranges::to<std::vector>();
+  return std::ranges::to<std::vector<ElementIdentifier>>(
+      std::views::keys(m_slide_layouts));
 }
 
 ElementIdentifier Document::text_box_layout() const {

@@ -221,8 +221,8 @@ void Document::load_layouts_(const pugi::xml_node body) {
 }
 
 std::vector<ElementIdentifier> Document::slide_layouts() const {
-  return m_slide_layouts | std::views::transform(&SlideLayout::slide) |
-         std::ranges::to<std::vector>();
+  return std::ranges::to<std::vector<ElementIdentifier>>(
+      std::views::transform(m_slide_layouts, &SlideLayout::slide));
 }
 
 ElementIdentifier Document::text_box_layout() const {

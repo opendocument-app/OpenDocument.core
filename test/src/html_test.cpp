@@ -131,7 +131,7 @@ TEST(html, an_editable_presentation_carries_its_edit_templates) {
     EXPECT_EQ(occurrences(editable, R"(class="odr-text-box-template")"), 1);
     // the slide, then one per layout
     EXPECT_EQ(occurrences(editable, "data-odr-page="), 7);
-    // the copy took the edits, the document did not
+    // rendering the templates inserts no slide
     EXPECT_EQ(document.root_element().first_child().next_sibling(), Element());
 
     const std::string read_only = document_html(document, false);

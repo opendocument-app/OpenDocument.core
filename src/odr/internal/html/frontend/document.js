@@ -2008,8 +2008,8 @@
 
   // -------------------------------------------------------------- structure
 
-  // A new slide or text box clones a template the renderer wrote from a copy
-  // that took the same edit (`structure-editing.md` section 6).
+  // A new slide or text box clones a template, the renderer's output for what
+  // an insert copies (`structure-editing.md` section 6).
 
   var FIXED_LENGTH = /^-?(\d+\.?\d*|\.\d+)(cm|mm|in|pt|pc|px)$/;
 
