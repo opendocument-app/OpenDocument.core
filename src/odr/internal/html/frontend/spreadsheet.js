@@ -932,13 +932,13 @@
   // on. A new column is as wide as Excel's default one, because every table
   // of the sheet has to state it, and its cells have no style. Null where the
   // edge would cut a merge, or lies past the rendered columns.
-  function insertColumns(column, count) {
+  function insertColumns(column, count, width) {
     if (column > lastColumn() + 1 || colspanReaches(column)) {
       return null;
     }
     var slice = { widths: [], headers: [], cells: [] };
     for (var i = 0; i < count; ++i) {
-      slice.widths.push("64px");
+      slice.widths.push(width === undefined ? "64px" : width);
       var header = document.createElement("th");
       header.className = "odr-sheet-column-header";
       if (!merged) {
@@ -1464,6 +1464,80 @@
     return true;
   }
 
+  // An edit past the content needs a `td`: the columns and rows up to it are
+  // made as an insert makes them, at the grid's size (`sheet-grid.md`
+  // decision 3). Within a budget, because a jump far out would make a cell
+  // for every row and column on the way.
+  var materializeBudget = 200000;
+
+  // What `unmaterialize` takes away again, or null past the budget, a merge
+  // or the grid.
+  function materialize(column, row) {
+    if (cellAt(column, row) !== null || !inGrid(column, row)) {
+      return null;
+    }
+    var columns = contentColumns();
+    var addColumns = Math.max(0, column - columns + 1);
+    var addRows = Math.max(0, row - contentRows + 1);
+    var cells = addColumns * contentRows + addRows * (columns + addColumns);
+    if (cells > materializeBudget) {
+      return null;
+    }
+    var made = {
+      columnsAt: columns,
+      columns: null,
+      columnCount: addColumns,
+      rowsAt: contentRows,
+      rows: null,
+      rowCount: addRows,
+    };
+    if (addColumns > 0) {
+      made.columns = insertColumns(columns, addColumns, cellWidth() + "px");
+      if (made.columns === null) {
+        return null;
+      }
+    }
+    if (addRows > 0) {
+      made.rows = insertRows(made.rowsAt, addRows);
+      if (made.rows === null) {
+        unmaterialize(made);
+        return null;
+      }
+      made.rows.forEach(function (tr) {
+        tr.style.height = cellHeight() + "px";
+      });
+    }
+    pinEmpty(null);
+    layout();
+    return made;
+  }
+
+  // Takes what `materialize` made away, keeping it for `rematerialize`.
+  function unmaterialize(made) {
+    if (made.rows !== null) {
+      made.rows = deleteRows(made.rowsAt, made.rowCount);
+    }
+    if (made.columns !== null) {
+      made.columns = deleteColumns(made.columnsAt, made.columnCount);
+    }
+    layout();
+  }
+
+  function rematerialize(made) {
+    if (made.columns !== null) {
+      restoreColumns(made.columnsAt, made.columns);
+    }
+    if (made.rows !== null) {
+      restoreRows(made.rowsAt, made.rows);
+    }
+    layout();
+  }
+
+  // The rows and columns the page writes, the grid past them.
+  function contentExtent() {
+    return { columns: contentColumns(), rows: contentRows };
+  }
+
   window.addEventListener("scroll", refresh, { passive: true });
   window.addEventListener("load", refresh);
   window.addEventListener("resize", refresh);
@@ -1496,6 +1570,11 @@
       return gridOn;
     },
     goToCell: goToCell,
+    inGrid: inGrid,
+    extent: contentExtent,
+    materialize: materialize,
+    unmaterialize: unmaterialize,
+    rematerialize: rematerialize,
   };
 
   odr.goToCell = goToCell;

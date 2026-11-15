@@ -564,7 +564,7 @@ TEST(CsvDocument, a_field_is_quoted_only_where_it_has_to_be) {
 TEST(CsvDocument, a_write_past_the_end_grows_the_sheet) {
   EXPECT_EQ(edited("a,b\n", R"({"op":"setCell","sheet":0,"column":2,"row":2,)"
                             R"("value":{"type":"string","text":"c"}})"),
-            "a,b\n\"\"\n,,c\n");
+            "a,b\n,,\n,,c\n");
 
   const Document document = open(File::from_memory("a,b\n"),
                                  DecodeOptions::as_csv({.separator = ','}))

@@ -527,8 +527,18 @@ void CsvDocument::save(std::ostream &out) const {
     const std::vector<std::string> &fields = m_rows[row];
     if (fields.size() <= 1 &&
         cell(0, static_cast<std::uint32_t>(row)).empty()) {
-      // an empty line is no record, so an empty row states its one field
-      out << m_dialect.quote << m_dialect.quote;
+      // an empty line is no record, so an empty row states its fields: as
+      // many as the sheet is wide, so it reads as a row of this file, else
+      // the one field
+      if (m_dimensions.columns > 1) {
+        out << std::string(m_dimensions.columns - 1, m_dialect.separator);
+      } else {
+        out << m_dialect.quote << m_dialect.quote;
+      }
+      if (row + 1 < m_rows.size() || m_final_line_end) {
+        out << m_line_end;
+      }
+      continue;
     }
     for (std::size_t column = 0; column < fields.size(); ++column) {
       if (column > 0) {

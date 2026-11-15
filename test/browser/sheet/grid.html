@@ -99,19 +99,63 @@
       check("on the grid pins the empty cell under it", JSON.stringify(pinned()) === '{"column":1,"row":4,"empty":true}', pinned());
 
       note("editing");
+      function ops() {
+        return JSON.parse(odr.editing.getOperations()).ops;
+      }
+      function editor() {
+        return document.querySelector(".odr-sheet-editor");
+      }
+      function press(target, key) {
+        target.dispatchEvent(new KeyboardEvent("keydown", { key: key, bubbles: true }));
+      }
       check("the mode turns on", odr.editing.enable() === true);
-      var before = refusals.length;
-      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "x", bubbles: true }));
-      check("typing into an empty cell is refused", refusals.length === before + 1 && refusals[refusals.length - 1].reason === "unsupportedEdit", refusals.slice(before));
-      check("and opens no editor", document.querySelector(".odr-sheet-editor") === null);
       odr.sheet.pin({ column: 2, row: 2 });
-      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+      press(document.body, "ArrowDown");
       check("an arrow steps off the content onto the grid", JSON.stringify(pinned()) === '{"column":2,"row":3,"empty":true}', pinned());
+      press(document.body, "x");
+      check("typing there makes its row and opens the editor", editor() !== null && odr.sheet.cellAt(2, 3) !== null);
+      check("the content grows by the row", odr.sheet.extent().rows === 4, odr.sheet.extent());
+      editor().value = "below";
+      press(editor(), "Enter");
+      var last = ops()[ops().length - 1];
+      check(
+        "the commit is the setCell an edit inside makes",
+        last.op === "setCell" && last.column === 2 && last.row === 3 && last.value.text === "below",
+        last
+      );
+      check("the cell shows it", odr.sheet.cellAt(2, 3).textContent === "below");
+      check("the grid starts below it", shownLabels("gutter")[0] === "5", shownLabels("gutter"));
+      check("undo takes the row away", odr.editing.undo() === true && odr.sheet.cellAt(2, 3) === null && odr.sheet.extent().rows === 3);
+      check("redo brings it back, written", odr.editing.redo() === true && odr.sheet.cellAt(2, 3).textContent === "below");
+
+      odr.goToCell(4, 0);
+      press(document.body, "y");
+      check("beside the content its columns are made", editor() !== null && odr.sheet.extent().columns === 5, odr.sheet.extent());
+      check("with their letters", document.querySelectorAll(".odr-sheet-column-header").length === 5);
+      editor().value = "beside";
+      press(editor(), "Enter");
+      check("and the cell is written", odr.sheet.cellAt(4, 0).textContent === "beside" && ops()[ops().length - 1].column === 4);
+      check("undo takes the columns away", odr.editing.undo() === true && odr.sheet.extent().columns === 3 && document.querySelectorAll(".odr-sheet-column-header").length === 3);
+
+      odr.goToCell(1, 6);
+      press(document.body, "z");
+      check("an edit far below makes every row up to it", editor() !== null && odr.sheet.extent().rows === 7);
+      var count = ops().length;
+      press(editor(), "Escape");
+      check("an edit left without a write takes them away", editor() === null && odr.sheet.extent().rows === 4 && ops().length === count, odr.sheet.extent());
+
+      odr.goToCell(1, 6);
+      check("a row inserted past the content records nothing", odr.editing.insertRows("above") === true && ops().length === count);
+
+      odr.goToCell(0, 5);
+      sheet.querySelector(".odr-sheet-grid-below").dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+      check("a double click on the grid opens the editor there", editor() !== null && odr.sheet.cellAt(0, 5) !== null);
+      press(editor(), "Escape");
 
       note("rows that go in");
       odr.sheet.insertRows(1, 1);
       setTimeout(function () {
-        check("move the grid down a row", shownLabels("gutter")[0] === "5", shownLabels("gutter"));
+        check("move the grid down a row", shownLabels("gutter")[0] === "6", shownLabels("gutter"));
 
         note("switched off");
         odr.editing.setSheetOptions({ grid: false });
