@@ -42,10 +42,10 @@ public:
   [[nodiscard]] std::optional<std::string> locale() const override;
   /// What `table:calculation-settings` states, and the ODF defaults where it
   /// states nothing.
-  [[nodiscard]] formula::Settings formula_settings() const override;
+  [[nodiscard]] formula::Settings formula_settings() const;
   /// The `table:named-range` and `table:named-expression` entries of the
   /// document and of each sheet.
-  [[nodiscard]] std::vector<formula::Name> formula_names() const override;
+  [[nodiscard]] std::vector<formula::Name> formula_names() const;
 
   void save(std::ostream &out) const override;
   void save(std::ostream &out, const char *password) const override;
@@ -59,9 +59,10 @@ public:
   /// @throws std::exception if the part cannot be parsed.
   [[nodiscard]] pugi::xml_node part(const AbsPath &path);
 
-  /// A slide outside the root per layout, as `element_insert_slide` makes it.
+  /// A slide outside the root per layout, as `presentation_insert_slide`
+  /// makes it.
   [[nodiscard]] std::vector<ElementIdentifier> slide_layouts() const;
-  /// A text box outside the root as `element_insert_text_box` makes it.
+  /// A text box outside the root as the adapter's text-box insert makes it.
   [[nodiscard]] ElementIdentifier text_box_layout() const;
   /// The `style:presentation-page-layout` of the @p index -th layout. A
   /// built-in is written into `office:styles` on first use, for a page of

@@ -23,6 +23,15 @@ namespace odr::internal {
 
 class SheetDependencies;
 
+/// What an engine's adapters implement. @ref Document keeps the type-specific
+/// ones that match its document type.
+struct EngineAdapters final {
+  std::unique_ptr<abstract::ElementAdapter> element;
+  const abstract::SpreadsheetAdapter *spreadsheet{nullptr};
+  const abstract::PresentationAdapter *presentation{nullptr};
+  const abstract::DrawingAdapter *drawing{nullptr};
+};
+
 class Document : public abstract::Document {
 public:
   /// @p archive is the package @p files reads from lazily, if any.
@@ -51,11 +60,15 @@ public:
   [[nodiscard]] const abstract::ElementAdapter *
   element_adapter() const override;
 
-  [[nodiscard]] const SheetDependencies &sheet_dependencies() const final;
-  [[nodiscard]] formula::Settings formula_settings() const override;
-  [[nodiscard]] std::vector<formula::Name> formula_names() const override;
-  [[nodiscard]] std::vector<formula::ExternalSheet>
-  formula_external_sheets() const override;
+  [[nodiscard]] const abstract::SpreadsheetAdapter *
+  spreadsheet_adapter() const final;
+  [[nodiscard]] const abstract::PresentationAdapter *
+  presentation_adapter() const final;
+  [[nodiscard]] const abstract::DrawingAdapter *drawing_adapter() const final;
+
+  /// What a spreadsheet adapter answers for its dependencies: built on the
+  /// first question and kept until @ref drop_sheet_dependencies.
+  [[nodiscard]] const SheetDependencies &sheet_dependencies() const;
   /// Invalidates the dependency graph after formulas move.
   void drop_sheet_dependencies() const noexcept;
 
@@ -85,9 +98,15 @@ protected:
   std::shared_ptr<zip::util::Archive> m_archive;
 
   ElementIdentifier m_root_element{null_element_id};
-  std::unique_ptr<abstract::ElementAdapter> m_element_adapter;
+
+  void set_adapters_(EngineAdapters adapters);
 
 private:
+  std::unique_ptr<abstract::ElementAdapter> m_element_adapter;
+  const abstract::SpreadsheetAdapter *m_spreadsheet_adapter{nullptr};
+  const abstract::PresentationAdapter *m_presentation_adapter{nullptr};
+  const abstract::DrawingAdapter *m_drawing_adapter{nullptr};
+
   mutable std::unique_ptr<SheetDependencies> m_sheet_dependencies;
   mutable std::vector<std::pair<ElementIdentifier, TablePosition>> m_written;
   mutable bool m_moved{false};

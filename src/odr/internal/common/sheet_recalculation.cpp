@@ -475,7 +475,9 @@ internal::recalculate(const abstract::Document &document) {
   const std::optional<formula::Syntax> syntax =
       formula::syntax_of(document.file_type());
   const abstract::ElementAdapter *adapter = document.element_adapter();
-  if (!syntax.has_value() || adapter == nullptr) {
+  const abstract::SpreadsheetAdapter *spreadsheet =
+      document.spreadsheet_adapter();
+  if (!syntax.has_value() || adapter == nullptr || spreadsheet == nullptr) {
     return result;
   }
   const SheetCellSource source(document);
@@ -523,7 +525,7 @@ internal::recalculate(const abstract::Document &document) {
     });
   }
 
-  const SheetDependencies &graph = document.sheet_dependencies();
+  const SheetDependencies &graph = spreadsheet->spreadsheet_dependencies();
   const auto *edited = dynamic_cast<const Document *>(&document);
   std::vector<SheetPosition> stale;
   if (edited != nullptr && edited->moved()) {

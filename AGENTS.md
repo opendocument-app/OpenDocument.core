@@ -211,7 +211,8 @@ cmake --build cmake-build-relwithdebinfo --target translate  # CLI: file to HTML
    row, if an alias is claimed twice, or if the declared capabilities exceed
    what the engine does.
 2. Subclass `internal::Document`. In the constructor build an `ElementRegistry`
-   and an `ElementAdapter` as described above. The document is read-only by
+   and an `ElementAdapter` as described above, and install it with
+   `set_adapters_(create_adapters(...))`. The document is read-only by
    default. Override `is_editable`, `is_savable` and `save` only for an engine
    that writes.
 3. Implement the per-element adapters you can populate. The HTML renderer then

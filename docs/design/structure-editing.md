@@ -119,7 +119,7 @@ editable presentation or drawing view carries what it needs to draw one.
 - One call is one undo step. A move to where the slide is records nothing.
 - Under scope `paragraph` every gesture refuses with `outOfScope`; a bad
   index, layout, page or length with `unsupportedEdit`. A view of one slide
-  and a drawing carry no templates, so the gestures refuse there.
+  or one drawing page carries no templates, so the gestures refuse there.
 - There is no sheet gesture: a sheet view shows one sheet, so a host edits
   sheets through the API or the ops and renders again.
 

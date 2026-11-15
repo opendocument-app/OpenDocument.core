@@ -14,8 +14,7 @@
 namespace odr::internal::rtf {
 
 namespace {
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const ElementRegistry &registry);
+EngineAdapters create_adapters(const ElementRegistry &registry);
 }
 
 Document::Document(const abstract::File &file)
@@ -24,7 +23,7 @@ Document::Document(const abstract::File &file)
   const std::unique_ptr<std::istream> in = file.stream();
   m_root_element = parse_tree(m_element_registry, *in);
 
-  m_element_adapter = create_element_adapter(m_element_registry);
+  set_adapters_(create_adapters(m_element_registry));
 }
 
 const ElementRegistry &Document::element_registry() const {
@@ -83,9 +82,8 @@ public:
   }
 };
 
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const ElementRegistry &registry) {
-  return std::make_unique<ElementAdapter>(registry);
+EngineAdapters create_adapters(const ElementRegistry &registry) {
+  return {.element = std::make_unique<ElementAdapter>(registry)};
 }
 
 } // namespace

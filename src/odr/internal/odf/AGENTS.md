@@ -224,18 +224,18 @@ unknown mimetype are tolerated.
   at a fresh automatic style `P<n>` (`StyleRegistry::create_paragraph_style`)
   that carries `fo:text-align`. It is made as a cell style is, and one base
   and one delta make one style.
-- **A sheet.** `element_insert_sheet` adds a `table:table` with one column
+- **A sheet.** `spreadsheet_insert_sheet` adds a `table:table` with one column
   and one row before the sheet at the index, and registers it through
   `parse_sheet_tree`.
 - **A slide.** At open, a presentation gets a detached `draw:page` per layout
   of `list_slide_layouts` (`odf_slide_layout`) in `m_layouts_xml`, which is
-  never saved. `element_insert_slide` writes a `draw:page` the same way
+  never saved. `presentation_insert_slide` writes a `draw:page` the same way
   (`write_slide`); a built-in goes into `office:styles` on first use. See
   `docs/design/structure-editing.md`.
-- **A text box.** `element_insert_text_box` adds a `draw:frame` with a
-  `draw:text-box` to a slide or a drawing page (`write_text_box`), styled by
-  the one `StyleRegistry::create_text_box_style` makes per automatic-styles
-  element.
+- **A text box.** `presentation_insert_text_box` and
+  `drawing_insert_text_box` add a `draw:frame` with a `draw:text-box` to a
+  slide or a drawing page (`write_text_box`), styled by the one
+  `StyleRegistry::create_text_box_style` makes per automatic-styles element.
 - **Cells.** `sheet_set_cell` writes `office:value-type`, `office:value` and
   the `text:p` under the cell, because the file states the value and shows a
   rendering of it. It writes through the run the cell holds, so the run keeps

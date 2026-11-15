@@ -368,9 +368,12 @@ render(const Document &document, const HtmlConfig &config, const Logger &logger,
         styles.close();
         write_head(document, head_state, name, content_pixels);
       });
+  const abstract::SpreadsheetAdapter *spreadsheet =
+      document.impl()->spreadsheet_adapter();
   const std::vector<formula::Name> names =
-      config.editable ? document.impl()->formula_names()
-                      : std::vector<formula::Name>();
+      config.editable && spreadsheet != nullptr
+          ? spreadsheet->spreadsheet_formula_names()
+          : std::vector<formula::Name>();
   {
     std::ostream deferred(&buffer);
     HtmlWriter body_out(deferred, config);
@@ -402,11 +405,15 @@ std::string identifiers(const std::span<const ElementIdentifier> list) {
 /// an insert copies, so the page draws what replay makes.
 void write_edit_templates(const Document &document, const WritingState &state) {
   const abstract::Document &impl = *document.impl();
-  const Frame box =
-      document
-          .element_by_id(impl.element_adapter()->element_text_box_layout(
-              impl.root_element()))
-          .as_frame();
+  ElementIdentifier box_id = null_element_id;
+  if (const abstract::PresentationAdapter *slides = impl.presentation_adapter();
+      slides != nullptr) {
+    box_id = slides->presentation_text_box_layout();
+  } else if (const abstract::DrawingAdapter *pages = impl.drawing_adapter();
+             pages != nullptr) {
+    box_id = pages->drawing_text_box_layout();
+  }
+  const Frame box = document.element_by_id(box_id).as_frame();
   if (!box) {
     return;
   }

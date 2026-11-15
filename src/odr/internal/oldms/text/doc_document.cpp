@@ -10,9 +10,8 @@
 namespace odr::internal::oldms::text {
 
 namespace {
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(ElementRegistry &registry,
-                       const StyleRegistry &style_registry);
+EngineAdapters create_adapters(ElementRegistry &registry,
+                               const StyleRegistry &style_registry);
 }
 
 Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
@@ -20,8 +19,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files)
                          std::move(files)) {
   m_root_element = parse_tree(m_element_registry, m_style_registry, *m_files);
 
-  m_element_adapter =
-      create_element_adapter(m_element_registry, m_style_registry);
+  set_adapters_(create_adapters(m_element_registry, m_style_registry));
 }
 
 ElementRegistry &Document::element_registry() { return m_element_registry; }
@@ -102,10 +100,10 @@ private:
   }
 };
 
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(ElementRegistry &registry,
-                       const StyleRegistry &style_registry) {
-  return std::make_unique<ElementAdapter>(registry, style_registry);
+EngineAdapters create_adapters(ElementRegistry &registry,
+                               const StyleRegistry &style_registry) {
+  return {.element =
+              std::make_unique<ElementAdapter>(registry, style_registry)};
 }
 
 } // namespace

@@ -52,8 +52,7 @@
 namespace odr::internal::odf {
 
 namespace {
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(Document &document, ElementRegistry &registry);
+EngineAdapters create_adapters(Document &document, ElementRegistry &registry);
 std::string read_generator(pugi::xml_node content_root,
                            const abstract::ReadableFilesystem *files);
 bool gradient_angles_in_tenths(std::string_view office_version,
@@ -123,7 +122,7 @@ void Document::init_(const pugi::xml_node content_root,
                            master_page_id);
   }
 
-  m_element_adapter = create_element_adapter(*this, m_element_registry);
+  set_adapters_(create_adapters(*this, m_element_registry));
   load_layouts_(content_root.child("office:body").first_child());
 }
 
@@ -146,7 +145,7 @@ void Document::load_layouts_(const pugi::xml_node body) {
   pugi::xml_node pages = root.append_child(body.name());
 
   if (kind == "office:presentation") {
-    const auto [width, height] = page_size(*m_element_adapter, master_id);
+    const auto [width, height] = page_size(*element_adapter(), master_id);
     for (const SlideLayoutSource &source : list_slide_layouts(styles)) {
       const pugi::xml_node layout =
           source.node ? source.node
@@ -743,10 +742,31 @@ PageLayout with_default_paper(PageLayout layout) {
   return layout;
 }
 
-class ElementAdapter final : public AdapterBase {
+class ElementAdapter final : public AdapterBase,
+                             public abstract::SpreadsheetAdapter,
+                             public abstract::PresentationAdapter,
+                             public abstract::DrawingAdapter {
 public:
   ElementAdapter(Document &document, ElementRegistry &registry)
       : AdapterBase(registry), m_document(&document) {}
+
+  [[nodiscard]] const SheetDependencies &
+  spreadsheet_dependencies() const override {
+    return m_document->sheet_dependencies();
+  }
+  [[nodiscard]] formula::Settings
+  spreadsheet_formula_settings() const override {
+    return m_document->formula_settings();
+  }
+  [[nodiscard]] std::vector<formula::Name>
+  spreadsheet_formula_names() const override {
+    return m_document->formula_names();
+  }
+  /// An `.ods` holds the copies as sheets of their own.
+  [[nodiscard]] std::vector<formula::ExternalSheet>
+  spreadsheet_external_sheets() const override {
+    return {};
+  }
 
   [[nodiscard]] bool
   element_is_editable(const ElementIdentifier element_id) const override {
@@ -2236,15 +2256,14 @@ public:
   }
 
   [[nodiscard]] std::vector<ElementIdentifier>
-  element_slide_layouts(const ElementIdentifier element_id) const override {
-    if (std::string_view(get_node(element_id).name()) !=
-        "office:presentation") {
-      return {};
-    }
+  presentation_slide_layouts() const override {
     return m_document->slide_layouts();
   }
-  [[nodiscard]] ElementIdentifier element_text_box_layout(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
+  [[nodiscard]] ElementIdentifier
+  presentation_text_box_layout() const override {
+    return m_document->text_box_layout();
+  }
+  [[nodiscard]] ElementIdentifier drawing_text_box_layout() const override {
     return m_document->text_box_layout();
   }
 
@@ -2252,9 +2271,9 @@ public:
   /// master, holding a frame with one empty paragraph per text placeholder.
   /// A built-in layout the file lacks is written into `office:styles`.
   [[nodiscard]] ElementIdentifier
-  element_insert_slide(const ElementIdentifier element_id,
-                       const std::uint32_t index,
-                       const std::uint32_t layout_index) const override {
+  presentation_insert_slide(const std::uint32_t index,
+                            const std::uint32_t layout_index) const override {
+    const ElementIdentifier element_id = m_document->root_element();
     pugi::xml_node presentation = get_node(element_id);
     pugi::xml_node styles = m_document->styles_root().child("office:styles");
     if (std::string_view(presentation.name()) != "office:presentation" ||
@@ -2316,12 +2335,25 @@ public:
     return slide_id;
   }
 
+  [[nodiscard]] ElementIdentifier
+  presentation_insert_text_box(const ElementIdentifier slide, const Measure &x,
+                               const Measure &y, const Measure &width,
+                               const Measure &height) const override {
+    return insert_text_box_(slide, x, y, width, height);
+  }
+  [[nodiscard]] ElementIdentifier
+  drawing_insert_text_box(const ElementIdentifier page, const Measure &x,
+                          const Measure &y, const Measure &width,
+                          const Measure &height) const override {
+    return insert_text_box_(page, x, y, width, height);
+  }
+
   /// A `draw:frame` holding a `draw:text-box` with one empty paragraph,
   /// ahead of the slide's notes, which LibreOffice keeps last.
   [[nodiscard]] ElementIdentifier
-  element_insert_text_box(const ElementIdentifier element_id, const Measure &x,
-                          const Measure &y, const Measure &width,
-                          const Measure &height) const override {
+  insert_text_box_(const ElementIdentifier element_id, const Measure &x,
+                   const Measure &y, const Measure &width,
+                   const Measure &height) const {
     if (const ElementType type = element_type(element_id);
         type != ElementType::slide && type != ElementType::page) {
       throw UnsupportedOperation();
@@ -2356,9 +2388,9 @@ public:
   /// A `table:table` with one column and one row, as a new document has
   /// (ODF 1.3 part 3, 9.1.2), before the sheet at @p index or after the last.
   [[nodiscard]] ElementIdentifier
-  element_insert_sheet(const ElementIdentifier element_id,
-                       const std::uint32_t index,
-                       const std::string &name) const override {
+  spreadsheet_insert_sheet(const std::uint32_t index,
+                           const std::string &name) const override {
+    const ElementIdentifier element_id = m_document->root_element();
     pugi::xml_node spreadsheet = get_node(element_id);
     if (std::string_view(spreadsheet.name()) != "office:spreadsheet") {
       throw UnsupportedOperation();
@@ -2456,10 +2488,19 @@ public:
     m_document->note_moved();
   }
 
+  void spreadsheet_move_sheet(const ElementIdentifier sheet,
+                              const std::uint32_t index) const override {
+    move_(sheet, index);
+  }
+  void presentation_move_slide(const ElementIdentifier slide,
+                               const std::uint32_t index) const override {
+    move_(slide, index);
+  }
+
   /// The node and the element move together, before the one now at
   /// @p index, else after the last.
-  void element_move(const ElementIdentifier element_id,
-                    const std::uint32_t index) const override {
+  void move_(const ElementIdentifier element_id,
+             const std::uint32_t index) const {
     const ElementType type = element_type(element_id);
     if (type != ElementType::sheet && type != ElementType::slide) {
       throw UnsupportedOperation();
@@ -3593,9 +3634,10 @@ private:
   }
 };
 
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(Document &document, ElementRegistry &registry) {
-  return std::make_unique<ElementAdapter>(document, registry);
+EngineAdapters create_adapters(Document &document, ElementRegistry &registry) {
+  auto adapter = std::make_unique<ElementAdapter>(document, registry);
+  const ElementAdapter *raw = adapter.get();
+  return {std::move(adapter), raw, raw, raw};
 }
 
 } // namespace

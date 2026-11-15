@@ -58,20 +58,36 @@ const abstract::ElementAdapter *Document::element_adapter() const {
   return m_element_adapter.get();
 }
 
+void Document::set_adapters_(EngineAdapters adapters) {
+  m_element_adapter = std::move(adapters.element);
+  m_spreadsheet_adapter = m_document_type == DocumentType::spreadsheet
+                              ? adapters.spreadsheet
+                              : nullptr;
+  m_presentation_adapter = m_document_type == DocumentType::presentation
+                               ? adapters.presentation
+                               : nullptr;
+  m_drawing_adapter =
+      m_document_type == DocumentType::drawing ? adapters.drawing : nullptr;
+}
+
+const abstract::SpreadsheetAdapter *Document::spreadsheet_adapter() const {
+  return m_spreadsheet_adapter;
+}
+
+const abstract::PresentationAdapter *Document::presentation_adapter() const {
+  return m_presentation_adapter;
+}
+
+const abstract::DrawingAdapter *Document::drawing_adapter() const {
+  return m_drawing_adapter;
+}
+
 const SheetDependencies &Document::sheet_dependencies() const {
   if (!m_sheet_dependencies) {
     m_sheet_dependencies =
         std::make_unique<SheetDependencies>(SheetDependencies::of(*this));
   }
   return *m_sheet_dependencies;
-}
-
-formula::Settings Document::formula_settings() const { return {}; }
-
-std::vector<formula::Name> Document::formula_names() const { return {}; }
-
-std::vector<formula::ExternalSheet> Document::formula_external_sheets() const {
-  return {};
 }
 
 void Document::drop_sheet_dependencies() const noexcept {
