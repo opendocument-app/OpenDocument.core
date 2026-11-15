@@ -101,7 +101,10 @@ public:
   /// `std::invalid_argument` for an element of another document.
   /// @{
 
-  /// Removes @p element and its subtree; its identifier stays taken.
+  /// Removes @p element and its subtree; its identifier stays taken. A sheet
+  /// or a slide goes with what the format keeps for it; a reference to a
+  /// removed sheet becomes `#REF!`.
+  /// @throws std::invalid_argument for the last sheet of a workbook.
   void remove(const Element &element) const;
 
   /// A run beside @p anchor with the same style; may create a format wrapper.
@@ -137,6 +140,11 @@ public:
   [[nodiscard]] Sheet insert_sheet(std::uint32_t index,
                                    const std::string &name) const;
 
+  /// Puts @p sheet at @p index among the sheets, counted after the move. No
+  /// formula is rewritten: a 3D range spans what lies between its ends then.
+  /// @throws std::out_of_range for an index past the last sheet.
+  void move_sheet(const Sheet &sheet, std::uint32_t index) const;
+
   /// The layouts @ref insert_slide starts a slide from, each the empty slide
   /// it makes, outside the document and refusing edits; empty where the
   /// engine cannot insert a slide.
@@ -148,6 +156,10 @@ public:
   /// past the list.
   [[nodiscard]] Slide insert_slide(std::uint32_t index,
                                    std::uint32_t layout) const;
+
+  /// Puts @p slide at @p index among the slides, counted after the move.
+  /// @throws std::out_of_range for an index past the last slide.
+  void move_slide(const Slide &slide, std::uint32_t index) const;
 
   /// A text box on @p page, a slide or a drawing page, at @p x and @p y and
   /// @p width by @p height, holding one empty paragraph. It draws no fill and

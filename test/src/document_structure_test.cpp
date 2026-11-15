@@ -10,6 +10,7 @@
 
 #include <gtest/gtest.h>
 
+#include <iterator>
 #include <stdexcept>
 #include <string>
 #include <tuple>
@@ -117,6 +118,105 @@ TEST_P(DocumentInsertSheet, a_formula_reads_a_sheet_inserted_after_it) {
   std::ignore = document.recalculate();
 
   EXPECT_EQ(first.cell(0, 0).value().number(), 14.0);
+}
+
+namespace {
+
+Sheet sheet_at(const Document &document, const std::uint32_t index) {
+  auto it = document.root_element().children().begin();
+  std::advance(it, index);
+  return (*it).as_sheet();
+}
+
+std::string formula_of(const Document &document, const std::string &ods_formula,
+                       const std::string &xlsx_formula) {
+  return document.file_type() == FileType::opendocument_spreadsheet
+             ? ods_formula
+             : xlsx_formula;
+}
+
+} // namespace
+
+TEST_P(DocumentInsertSheet, removes_a_sheet_and_survives_a_save) {
+  const Document document = create_document(GetParam());
+  const Sheet data = document.insert_sheet(0, "Data");
+  std::ignore = document.insert_sheet(2, "Last");
+  sheet_at(document, 2).set_cell(0, 0, CellValue("kept"));
+
+  document.remove(data);
+
+  EXPECT_FALSE(document.element_by_id(data.identifier()));
+  EXPECT_EQ(sheet_names(document),
+            (std::vector<std::string>{"Sheet1", "Last"}));
+  const Document saved = reopen(document);
+  EXPECT_EQ(sheet_names(saved), (std::vector<std::string>{"Sheet1", "Last"}));
+  EXPECT_EQ(sheet_at(saved, 1).cell(0, 0).value().text(), "kept");
+}
+
+TEST_P(DocumentInsertSheet, refuses_to_remove_the_last_sheet) {
+  const Document document = create_document(GetParam());
+
+  EXPECT_THROW(document.remove(sheet_at(document, 0)), std::invalid_argument);
+  EXPECT_EQ(sheet_names(document), std::vector<std::string>{"Sheet1"});
+}
+
+TEST_P(DocumentInsertSheet, a_reference_to_a_removed_sheet_is_lost) {
+  const Document document = create_document(GetParam());
+  const Sheet data = document.insert_sheet(1, "Data");
+  data.set_cell(0, 0, CellValue(7.0));
+  sheet_at(document, 0)
+      .set_cell(0, 0,
+                CellValue().with_formula(
+                    formula_of(document, "of:=[$Data.A1]*2+[$Data.B:.B]",
+                               "Data!A1*2+Data!B:B")));
+
+  document.remove(data);
+  std::ignore = document.recalculate();
+
+  const CellValue value = sheet_at(document, 0).cell(0, 0).value();
+  EXPECT_EQ(value.type(), ValueType::error);
+  EXPECT_EQ(value.formula(),
+            formula_of(document, "of:=#REF!*2+#REF!", "#REF!*2+#REF!"));
+}
+
+TEST_P(DocumentInsertSheet, moves_a_sheet_both_ways_and_survives_a_save) {
+  const Document document = create_document(GetParam());
+  std::ignore = document.insert_sheet(1, "B");
+  std::ignore = document.insert_sheet(2, "C");
+
+  document.move_sheet(sheet_at(document, 0), 2);
+  EXPECT_EQ(sheet_names(document),
+            (std::vector<std::string>{"B", "C", "Sheet1"}));
+  document.move_sheet(sheet_at(document, 1), 0);
+  EXPECT_EQ(sheet_names(document),
+            (std::vector<std::string>{"C", "B", "Sheet1"}));
+  document.move_sheet(sheet_at(document, 1), 1);
+
+  EXPECT_EQ(sheet_names(reopen(document)),
+            (std::vector<std::string>{"C", "B", "Sheet1"}));
+}
+
+TEST_P(DocumentInsertSheet, a_formula_reads_a_moved_sheet) {
+  const Document document = create_document(GetParam());
+  const Sheet data = document.insert_sheet(1, "Data");
+  data.set_cell(0, 0, CellValue(7.0));
+  sheet_at(document, 0)
+      .set_cell(0, 0,
+                CellValue().with_formula(
+                    formula_of(document, "of:=[$Data.A1]*2", "Data!A1*2")));
+
+  document.move_sheet(data, 0);
+  std::ignore = document.recalculate();
+
+  EXPECT_EQ(sheet_at(document, 1).cell(0, 0).value().number(), 14.0);
+}
+
+TEST_P(DocumentInsertSheet, refuses_a_move_past_the_last_sheet) {
+  const Document document = create_document(GetParam());
+  std::ignore = document.insert_sheet(1, "B");
+
+  EXPECT_THROW(document.move_sheet(sheet_at(document, 0), 2),
+               std::out_of_range);
 }
 
 TEST(DocumentStructure, a_text_document_refuses_a_sheet) {

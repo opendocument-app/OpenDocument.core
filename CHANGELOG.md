@@ -30,6 +30,11 @@ The release run heads these entries with the version and opens a fresh
   `std::invalid_argument`. Formulas recompute on the next `recalculate`.
   In every binding: `insert_sheet` in python, `insertSheet` in java and npm,
   `insertSheet(at:name:)` in swift.
+- `Document::remove` takes a sheet of an ods or xlsx, and
+  `Document::move_sheet(sheet, index)` moves one. A reference to a removed
+  sheet becomes `#REF!`, as Excel and LibreOffice write it. Removing the last
+  sheet throws `std::invalid_argument`. An xlsx sheet holding a table or a
+  pivot table, or one a pivot cache reads, is refused.
 
 ### Presentations
 
@@ -47,6 +52,7 @@ The release run heads these entries with the version and opens a fresh
   its name and its placeholders' boxes, lengths as strings such as `2.1cm`;
   `insertSlide` answers the ids of the slide, its placeholders and their
   paragraphs, and `insertTextBox` those of the box and its paragraph.
+- `Document::move_slide(slide, index)` moves a slide of an odp.
 - npm: a sheet or slide inserted directly or through `edit` is a view from
   the next `listViews`.
 - A new pptx states a default text style, the theme's body font at 18pt, as
