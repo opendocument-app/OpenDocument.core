@@ -34,8 +34,8 @@ open http://localhost:8732/formula-arrays.html
 `grid.html` is a sheet of three columns by three rows with a maximum of six
 by eight, so the grid past the content (`docs/design/sheet-grid.md`) stops
 inside one screen. It checks the labels, the growth, `odr.goToCell`, a click
-and an arrow onto an empty cell, the edit refused there, a row inserted and
-the grid switched off. `grid-cut.html` is a sheet `spreadsheet_limit` cut at
+and an arrow onto an empty cell, the edit refused there, a row inserted, the
+grid switched off, and a column inserted and deleted. `grid-cut.html` is a sheet `spreadsheet_limit` cut at
 two columns: no grid right of the cut, the rows below go on.
 
 `serve` serves `document.css`, `spreadsheet.css`, `editing.js`,

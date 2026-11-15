@@ -123,6 +123,18 @@
         odr.sheet.setGrid(false);
         check("the option follows setGrid", odr.editing.getSheetOptions().grid === false);
         odr.sheet.setGrid(true);
+
+        note("columns that go in");
+        var right = layer("right").offsetLeft;
+        odr.sheet.insertColumns(1, 1);
+        setTimeout(function () {
+          check("move the grid right a column", layer("right").offsetLeft === right + 64, { before: right, after: layer("right").offsetLeft });
+          check("and its letters go on from E", shownLabels("ruler").join() === "E,F", shownLabels("ruler"));
+          odr.sheet.deleteColumns(1, 1);
+          setTimeout(function () {
+            check("and back when it goes", layer("right").offsetLeft === right && shownLabels("ruler").join() === "D,E,F", { left: layer("right").offsetLeft, labels: shownLabels("ruler") });
+          }, 100);
+        }, 100);
       }, 100);
     </script>
   </body>
