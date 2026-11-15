@@ -521,7 +521,9 @@ namespace {
 /// The root is not a part, so it has no parent to hang `_rels` off.
 bool is_package_root(const AbsPath &path) { return path == AbsPath("/"); }
 
-AbsPath relationships_path(const AbsPath &path) {
+} // namespace
+
+AbsPath ooxml::relationships_path(const AbsPath &path) {
   if (is_package_root(path)) {
     return AbsPath("/_rels/.rels");
   }
@@ -529,8 +531,6 @@ AbsPath relationships_path(const AbsPath &path) {
       .join(RelPath("_rels"))
       .join(RelPath(path.basename() + ".rels"));
 }
-
-} // namespace
 
 AbsPath ooxml::resolve_part_path(const AbsPath &source,
                                  const std::string_view target) {

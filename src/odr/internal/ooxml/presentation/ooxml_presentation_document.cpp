@@ -551,10 +551,7 @@ Document::slide_relationship_id_(const ElementIdentifier slide_id) const {
 }
 
 void Document::drop_part_(const AbsPath &path) {
-  const AbsPath relationships = path.parent()
-                                    .join(RelPath("_rels"))
-                                    .join(RelPath(path.basename() + ".rels"));
-  for (const AbsPath &dropped : {path, relationships}) {
+  for (const AbsPath &dropped : {path, relationships_path(path)}) {
     m_written_parts.erase(dropped);
     if (m_files->is_file(dropped)) {
       m_dropped_parts.push_back(dropped);
@@ -611,23 +608,8 @@ void Document::remove_slide(const ElementIdentifier slide_id) {
       resolve_part_path(presentation_path, m_relations.at(id));
 
   // the notes slide is the slide's alone, and refers back to it
-  std::optional<AbsPath> notes;
-  const AbsPath slide_relationships_path =
-      slide_path.parent()
-          .join(RelPath("_rels"))
-          .join(RelPath(slide_path.basename() + ".rels"));
-  if (m_files->is_file(slide_relationships_path)) {
-    const pugi::xml_document xml =
-        xml::parse(*m_files, slide_relationships_path);
-    for (const pugi::xml_node relationship :
-         xml.document_element().children("Relationship")) {
-      if (std::string_view(relationship.attribute("Type").value())
-              .ends_with("/notesSlide")) {
-        notes = resolve_part_path(slide_path,
-                                  relationship.attribute("Target").value());
-      }
-    }
-  }
+  const std::optional<AbsPath> notes =
+      parse_relationship_target(*m_files, slide_path, "notesSlide");
 
   const std::string number = entry.attribute("id").value();
   if (const pugi::xml_node sections = section_list(root)) {
