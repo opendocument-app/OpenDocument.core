@@ -149,6 +149,19 @@ describe('render', () => {
     }
   });
 
+  it('draws the grid past the content unless asked not to', () => {
+    const grid = odr.open(minimalOds());
+    const plain = odr.open(minimalOds(), { spreadsheetGrid: false });
+    try {
+      // the attribute, not the name: the page script names it too
+      assert.ok(grid.render(0).html.includes('data-odr-sheet-max="'));
+      assert.ok(!plain.render(0).html.includes('data-odr-sheet-max="'));
+    } finally {
+      grid.close();
+      plain.close();
+    }
+  });
+
   it('carries the formula module where a sheet edits', () => {
     const withFormula = new TextEncoder().encode(
       '<?xml version="1.0" encoding="UTF-8"?>' +

@@ -83,6 +83,34 @@
   var pinnedRow = null;
   var pinnedCell = null;
 
+  // The empty grid past the content (`sheet-grid.md`), read off what the
+  // renderer states.
+  function pairOf(name) {
+    var value = table.getAttribute(name);
+    if (value === null) {
+      return null;
+    }
+    var parts = value.split(",").map(Number);
+    return parts.length === 2 && parts.every(isFinite) ? parts : null;
+  }
+
+  var extent = pairOf("data-odr-sheet-extent");
+  var maximum = pairOf("data-odr-sheet-max");
+  var defaultSize = pairOf("data-odr-sheet-default-size");
+  var cutAt = pairOf("data-odr-cut");
+  // past a cut edge the sheet holds what the page does not show
+  var growsRight = extent !== null && (cutAt === null || cutAt[0] <= extent[0]);
+  var growsDown = extent !== null && (cutAt === null || cutAt[1] <= extent[1]);
+  var contentRows = extent === null ? 0 : extent[1];
+  // a browser lays out no element much taller than this
+  var heightLimit = 15000000;
+  var gridOn = false;
+  var extraColumns = 0;
+  var extraRows = 0;
+  // an empty cell pinned, where no `td` is
+  var emptyPin = null;
+  var layers = null;
+
   // Column 0 is the gutter, which labels no column.
   function columnRule(index, wash, scope) {
     if (index < 1) {
@@ -289,6 +317,7 @@
   function pin(column, row, cell) {
     lower();
     focus = null;
+    pinEmpty(null);
     if (pinnedRow !== null) {
       pinnedRow.classList.remove("odr-sheet-pinned");
     }
@@ -421,7 +450,9 @@
   // axis that header does not name being null. Null where nothing is pinned.
   function pinnedPosition() {
     if (pinnedCell === null) {
-      return null;
+      return emptyPin === null
+        ? null
+        : { column: emptyPin.column, row: emptyPin.row, cell: null };
     }
     var position = positionOf(pinnedCell);
     if (position !== null) {
@@ -445,7 +476,12 @@
     }
     var cell = cellAt(position.column, position.row);
     if (cell === null) {
-      return false;
+      if (!inGrid(position.column, position.row)) {
+        return false;
+      }
+      pin(-1, null, null);
+      pinEmpty({ column: position.column, row: position.row });
+      return true;
     }
     pin(rulerColumn(cell), cell.parentElement, cell);
     return true;
@@ -688,6 +724,7 @@
 
   // Labels every row from @p row on again, @p by further down.
   function relabel(row, by) {
+    contentRows += by;
     var rows = bodyRows();
     for (var i = 0; i < rows.length; ++i) {
       var label = rowOf(rows[i]);
@@ -969,6 +1006,459 @@
     return slice;
   }
 
+  // ------------------------------------------------------------------- grid
+  // The empty grid past the content, up to the format's last row and column
+  // (`sheet-grid.md`). Drawn, not written: gridlines are backgrounds, and
+  // only the labels in view are elements.
+
+
+  function cellWidth() {
+    return defaultSize[0];
+  }
+
+  function cellHeight() {
+    return defaultSize[1];
+  }
+
+  function contentColumns() {
+    return lastColumn() + 1;
+  }
+
+  // The right edge of the last column, in the sheet's own pixels.
+  function contentWidth() {
+    var headers = columnHeaders();
+    var last = headers[headers.length - 1];
+    return last === undefined
+      ? head.offsetWidth
+      : last.offsetLeft + last.offsetWidth;
+  }
+
+  function gutterWidth() {
+    return headerRow.cells[0].offsetWidth;
+  }
+
+  // Whether the position is an empty cell the grid draws.
+  function inGrid(column, row) {
+    if (
+      !gridOn ||
+      column < 0 ||
+      row < 0 ||
+      column !== Math.floor(column) ||
+      row !== Math.floor(row)
+    ) {
+      return false;
+    }
+    var pastColumns = column >= contentColumns();
+    var pastRows = row >= contentRows;
+    if (!pastColumns && !pastRows) {
+      return false;
+    }
+    return (
+      (!pastColumns || (growsRight && column < maximum[0])) &&
+      (!pastRows || (growsDown && row < maximum[1]))
+    );
+  }
+
+  function element(name, className) {
+    var created = document.createElement(name);
+    created.className = className;
+    return created;
+  }
+
+  function buildGrid() {
+    var below = element("div", "odr-sheet-grid-below");
+    var belowLines = element("div", "odr-sheet-grid-lines");
+    var belowColumns = element("div", "odr-sheet-grid-columns");
+    var belowContent = element("div", "odr-sheet-grid-content");
+    var gutter = element("div", "odr-sheet-grid-gutter");
+    below.appendChild(belowLines);
+    below.appendChild(belowColumns);
+    below.appendChild(belowContent);
+    below.appendChild(gutter);
+    var right = element("div", "odr-sheet-grid-right");
+    var ruler = element("div", "odr-sheet-grid-ruler");
+    var mark = element("div", "odr-sheet-grid-pin");
+    table.appendChild(below);
+    table.appendChild(right);
+    table.insertBefore(ruler, head.nextSibling);
+    table.appendChild(mark);
+    return {
+      below: below,
+      belowColumns: belowColumns,
+      belowContent: belowContent,
+      gutter: gutter,
+      right: right,
+      ruler: ruler,
+      mark: mark,
+      rowLabels: [],
+      columnLabels: [],
+      rowLines: [],
+    };
+  }
+
+  // Reuses the first @p count children of @p list, making more as needed.
+  function reuse(list, parent, count, className) {
+    while (list.length < count) {
+      list.push(parent.appendChild(element("div", className)));
+    }
+    for (var i = 0; i < list.length; ++i) {
+      list[i].style.display = i < count ? "" : "none";
+    }
+  }
+
+  // Where the sheet is in view, in its own pixels: a zoom on the body scales
+  // both the rect and the scroll, so the ratio of the two takes it out.
+  function view() {
+    var box = table.getBoundingClientRect();
+    var factor = table.offsetWidth > 0 ? box.width / table.offsetWidth : 1;
+    if (!(factor > 0)) {
+      factor = 1;
+    }
+    return {
+      left: -box.left / factor,
+      top: -box.top / factor,
+      right: (window.innerWidth - box.left) / factor,
+      bottom: (window.innerHeight - box.top) / factor,
+      factor: factor,
+      box: box,
+    };
+  }
+
+  // The top of the first row past the content.
+  function belowTop() {
+    return layers.below.offsetTop;
+  }
+
+  // The top and height of row @p row, in the sheet's own pixels; null for a
+  // row the page has not laid out.
+  function rowBox(row) {
+    if (row >= contentRows) {
+      return {
+        top: belowTop() + (row - contentRows) * cellHeight(),
+        height: cellHeight(),
+      };
+    }
+    var entry = indexed().rows.get(row);
+    if (entry === undefined) {
+      return null;
+    }
+    return {
+      top: entry.tr.offsetTop + entry.tr.offsetParent.offsetTop,
+      height: entry.tr.offsetHeight,
+    };
+  }
+
+  function columnBox(column) {
+    var columns = contentColumns();
+    if (column >= columns) {
+      return {
+        left: contentWidth() + (column - columns) * cellWidth(),
+        width: cellWidth(),
+      };
+    }
+    var header = headerRow.cells[column + 1];
+    return { left: header.offsetLeft, width: header.offsetWidth };
+  }
+
+  function placeMark() {
+    var mark = layers.mark;
+    var row = emptyPin === null ? null : rowBox(emptyPin.row);
+    if (row === null) {
+      mark.style.display = "none";
+      return;
+    }
+    var column = columnBox(emptyPin.column);
+    mark.style.display = "";
+    mark.style.left = column.left + "px";
+    mark.style.top = row.top + "px";
+    mark.style.width = column.width + "px";
+    mark.style.height = row.height + "px";
+  }
+
+  function pinEmpty(position) {
+    emptyPin = position;
+    if (layers !== null) {
+      placeMark();
+    }
+  }
+
+  // Lays the layers out for the extent the grid has grown to, and writes the
+  // labels and lines in view.
+  function layout() {
+    if (layers === null) {
+      return;
+    }
+    var width = cellWidth();
+    var height = cellHeight();
+    var content = contentWidth();
+    var extraWidth = extraColumns * width;
+    var gutter = gutterWidth();
+    var below = layers.below;
+
+    below.style.display = extraRows > 0 ? "" : "none";
+    below.style.width = content + extraWidth + "px";
+    below.style.height = extraRows * height + "px";
+    table.style.setProperty("--odr-grid-width", width + "px");
+    table.style.setProperty("--odr-grid-height", height + "px");
+    layers.belowColumns.style.left = content + "px";
+    layers.belowColumns.style.width = extraWidth + "px";
+    layers.belowContent.style.left = gutter + "px";
+    layers.belowContent.style.width = content - gutter + "px";
+    // a line on the left of each column of the content, as its cells draw one
+    var stops = [];
+    columnHeaders().forEach(function (header) {
+      var x = header.offsetLeft - gutter;
+      stops.push(
+        "linear-gradient(var(--odr-sheet-line),var(--odr-sheet-line)) " +
+          x +
+          "px 0/1px 100% no-repeat"
+      );
+    });
+    layers.belowContent.style.background = stops.join(",");
+    layers.gutter.style.width = gutter + "px";
+
+    var rowsTop = head.offsetTop + head.offsetHeight;
+    var right = layers.right;
+    right.style.display = extraColumns > 0 ? "" : "none";
+    right.style.left = content + "px";
+    right.style.top = rowsTop + "px";
+    right.style.width = extraWidth + "px";
+    right.style.height = Math.max(0, belowTop() - rowsTop) + "px";
+
+    var ruler = layers.ruler;
+    ruler.style.display = extraColumns > 0 ? "" : "none";
+    ruler.style.marginLeft = content + "px";
+    ruler.style.width = extraWidth + "px";
+    ruler.style.height = head.offsetHeight + "px";
+    ruler.style.marginTop = -head.offsetHeight + "px";
+
+    labels();
+    placeMark();
+  }
+
+  // The row numbers and column letters in view, and the lines beside the
+  // content's rows in view.
+  function labels() {
+    var at = view();
+    // half a screen past the view on every side, so a quick scroll shows none
+    // missing before the next layout
+    var marginX = (at.right - at.left) / 2;
+    var marginY = (at.bottom - at.top) / 2;
+    at = {
+      left: at.left - marginX,
+      right: at.right + marginX,
+      top: at.top - marginY,
+      bottom: at.bottom + marginY,
+    };
+    var width = cellWidth();
+    var height = cellHeight();
+    var top = belowTop();
+
+    var firstRow = Math.max(0, Math.floor((at.top - top) / height));
+    var endRow = Math.min(extraRows, Math.ceil((at.bottom - top) / height));
+    var rowCount = Math.max(0, endRow - firstRow);
+    reuse(layers.rowLabels, layers.gutter, rowCount, "odr-sheet-grid-label");
+    for (var i = 0; i < rowCount; ++i) {
+      var label = layers.rowLabels[i];
+      label.style.top = (firstRow + i) * height + "px";
+      label.style.height = height + "px";
+      label.textContent = String(contentRows + firstRow + i + 1);
+    }
+
+    var content = contentWidth();
+    var columns = contentColumns();
+    var firstColumn = Math.max(0, Math.floor((at.left - content) / width));
+    var endColumn = Math.min(
+      extraColumns,
+      Math.ceil((at.right - content) / width)
+    );
+    var columnCount = Math.max(0, endColumn - firstColumn);
+    reuse(
+      layers.columnLabels,
+      layers.ruler,
+      columnCount,
+      "odr-sheet-grid-label"
+    );
+    for (var j = 0; j < columnCount; ++j) {
+      var letters = layers.columnLabels[j];
+      letters.style.left = (firstColumn + j) * width + "px";
+      letters.style.width = width + "px";
+      letters.textContent = columnName(columns + firstColumn + j);
+    }
+
+    // beside the content, a line on top of each row in view
+    var lines = [];
+    var rows = bodyRows();
+    var rowsTop = layers.right.offsetTop;
+    for (var k = 0; k < rows.length && extraColumns > 0; ++k) {
+      var tr = rows[k];
+      var y = tr.offsetTop + tr.offsetParent.offsetTop;
+      if (y + tr.offsetHeight < at.top) {
+        continue;
+      }
+      if (y > at.bottom) {
+        break;
+      }
+      lines.push(y - rowsTop);
+    }
+    reuse(
+      layers.rowLines,
+      layers.right,
+      lines.length,
+      "odr-sheet-grid-row-line"
+    );
+    for (var m = 0; m < lines.length; ++m) {
+      layers.rowLines[m].style.top = lines[m] + "px";
+    }
+  }
+
+  // Keeps two screens of grid past what the reader sees, up to the format's
+  // last row and column: a fling stops at the edge only until the next look.
+  function grow() {
+    var at = view();
+    var screenWidth = window.innerWidth / at.factor;
+    var screenHeight = window.innerHeight / at.factor;
+    if (growsRight) {
+      var wanted = Math.ceil(
+        (at.right + 2 * screenWidth - contentWidth()) / cellWidth()
+      );
+      extraColumns = Math.max(
+        0,
+        Math.min(maximum[0] - contentColumns(), Math.max(extraColumns, wanted))
+      );
+    }
+    if (growsDown) {
+      var needed = Math.ceil(
+        (at.bottom + 2 * screenHeight - belowTop()) / cellHeight()
+      );
+      extraRows = Math.max(
+        0,
+        Math.min(
+          maximum[1] - contentRows,
+          Math.floor((heightLimit - belowTop()) / cellHeight()),
+          Math.max(extraRows, needed)
+        )
+      );
+    }
+  }
+
+  var scheduled = 0;
+  function refresh() {
+    if (!gridOn || scheduled !== 0) {
+      return;
+    }
+    // a timer, not a frame: a page in the background gets few frames
+    scheduled = setTimeout(function () {
+      scheduled = 0;
+      if (gridOn) {
+        grow();
+        layout();
+      }
+    }, 30);
+  }
+
+  // The empty cell under a click, or null.
+  function gridCellAt(event) {
+    var at = view();
+    var x = (event.clientX - at.box.left) / at.factor;
+    var y = (event.clientY - at.box.top) / at.factor;
+    var column = null;
+    if (x >= contentWidth()) {
+      column =
+        contentColumns() + Math.floor((x - contentWidth()) / cellWidth());
+    } else {
+      var headers = columnHeaders();
+      for (var i = 0; i < headers.length; ++i) {
+        if (x < headers[i].offsetLeft + headers[i].offsetWidth) {
+          column = i;
+          break;
+        }
+      }
+    }
+    var row = null;
+    if (y >= belowTop()) {
+      row = contentRows + Math.floor((y - belowTop()) / cellHeight());
+    } else {
+      var rows = bodyRows();
+      for (var j = 0; j < rows.length; ++j) {
+        var top = rows[j].offsetTop + rows[j].offsetParent.offsetTop;
+        if (y >= top && y < top + rows[j].offsetHeight) {
+          row = rowOf(rows[j]);
+          break;
+        }
+      }
+    }
+    return column === null || row === null || !inGrid(column, row)
+      ? null
+      : { column: column, row: row };
+  }
+
+  function clicked(event) {
+    var position = gridCellAt(event);
+    if (position !== null) {
+      pinAt(position);
+    }
+  }
+
+  function setGrid(enabled) {
+    var next =
+      Boolean(enabled) &&
+      extent !== null &&
+      maximum !== null &&
+      defaultSize !== null;
+    if (next === gridOn) {
+      return gridOn;
+    }
+    gridOn = next;
+    if (gridOn) {
+      if (layers === null) {
+        layers = buildGrid();
+        layers.below.addEventListener("click", clicked);
+        layers.right.addEventListener("click", clicked);
+      }
+      table.classList.add("odr-sheet-grid");
+      grow();
+      layout();
+    } else {
+      table.classList.remove("odr-sheet-grid");
+      pinEmpty(null);
+    }
+    return gridOn;
+  }
+
+  // Goes to a cell, the empty grid included: it grows to hold it, pins it and
+  // scrolls it into view. False for a position the grid does not reach.
+  function goToCell(column, row) {
+    if (cellAt(column, row) === null && !inGrid(column, row)) {
+      return false;
+    }
+    if (column >= contentColumns()) {
+      extraColumns = Math.max(
+        extraColumns,
+        Math.min(maximum[0] - contentColumns(), column - contentColumns() + 1)
+      );
+    }
+    if (row >= contentRows) {
+      var needed = row - contentRows + 1;
+      if (belowTop() + needed * cellHeight() > heightLimit) {
+        return false;
+      }
+      extraRows = Math.max(extraRows, needed);
+    }
+    layout();
+    pinAt({ column: column, row: row });
+    var target = cellAt(column, row) || layers.mark;
+    target.scrollIntoView({ block: "nearest", inline: "nearest" });
+    refresh();
+    return true;
+  }
+
+  window.addEventListener("scroll", refresh, { passive: true });
+  window.addEventListener("load", refresh);
+  window.addEventListener("resize", refresh);
+  table.addEventListener("odr-chunk-filled", refresh);
+  setGrid(true);
+
   // What the script beside this one, and a host, ask of the sheet: positions
   // the way an op names them, and the pin. `spreadsheet-editing.md` decision 8.
   odr.sheet = {
@@ -990,7 +1480,11 @@
     insertColumns: insertColumns,
     deleteColumns: deleteColumns,
     restoreColumns: restoreColumns,
+    setGrid: setGrid,
+    goToCell: goToCell,
   };
+
+  odr.goToCell = goToCell;
 
   table.addEventListener("mouseover", function (event) {
     var column = rulerColumn(event.target.closest("td,th"));

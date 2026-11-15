@@ -81,8 +81,28 @@ body{margin:0;background:var(--odr-sheet-canvas)}
    the rows breaking across pages. Only `!important` beats the inline column
    width. The ruler collapses rather than `display:none`, which would take the
    cells out of their rows and shift every column left. */
+/* The empty grid past the content (`sheet-grid.md`): backgrounds, not cells.
+   Lines sit on the top and the left of a cell, as the cells draw theirs. */
+.odr-sheet.odr-sheet-grid{position:relative}
+.odr-sheet:not(.odr-sheet-grid)>[class*="odr-sheet-grid-"]{display:none!important}
+.odr-sheet-grid-below{position:relative;background:#fff}
+.odr-sheet-grid-lines,.odr-sheet-grid-columns,.odr-sheet-grid-content{position:absolute;top:0;bottom:0}
+.odr-sheet-grid-lines{left:0;right:0;background:linear-gradient(to bottom,var(--odr-sheet-line) 1px,transparent 1px) 0 0/100% var(--odr-grid-height)}
+.odr-sheet-grid-columns{background:linear-gradient(to right,var(--odr-sheet-line) 1px,transparent 1px) 0 0/var(--odr-grid-width) 100%}
+.odr-sheet-grid-right{position:absolute;background:#fff linear-gradient(to right,var(--odr-sheet-line) 1px,transparent 1px) 0 0/var(--odr-grid-width) 100%}
+.odr-sheet-grid-row-line{position:absolute;left:0;right:0;height:1px;background:var(--odr-sheet-line)}
+.odr-gridlines-none .odr-sheet-grid-lines,.odr-gridlines-none .odr-sheet-grid-columns,.odr-gridlines-none .odr-sheet-grid-content,.odr-gridlines-none .odr-sheet-grid-row-line{background:none!important}
+.odr-gridlines-none .odr-sheet-grid-right{background-image:none}
+/* The ruler goes on: row numbers stick to the left, column letters to the top. */
+.odr-sheet-grid-gutter{position:sticky;left:0;z-index:1;height:100%;background:var(--odr-sheet-ruler);box-shadow:inset -1px 0 0 var(--odr-sheet-rule)}
+.odr-sheet-grid-ruler{position:sticky;top:0;z-index:2;background:var(--odr-sheet-ruler);box-shadow:inset 0 -1px 0 var(--odr-sheet-rule)}
+.odr-sheet-grid-label{position:absolute;display:flex;align-items:center;justify-content:center;color:var(--odr-sheet-ruler-text);font:500 12px/1 var(--odr-sheet-font);white-space:nowrap;user-select:none}
+.odr-sheet-grid-gutter .odr-sheet-grid-label{left:0;right:0;box-shadow:inset -1px 0 0 var(--odr-sheet-rule),inset 0 -1px 0 var(--odr-sheet-line)}
+.odr-sheet-grid-ruler .odr-sheet-grid-label{top:0;bottom:0;box-shadow:inset -1px 0 0 var(--odr-sheet-line),inset 0 -1px 0 var(--odr-sheet-rule)}
+.odr-sheet-grid-pin{position:absolute;z-index:3;pointer-events:none;outline:2px solid var(--odr-sheet-focus);outline-offset:-2px}
 @media print{
 .odr-sheet-head{display:none}
+.odr-sheet-grid-below,.odr-sheet-grid-right,.odr-sheet-grid-ruler,.odr-sheet-grid-pin{display:none!important}
 .odr-sheet col.odr-sheet-gutter{visibility:collapse;width:0}
 .odr-sheet-head,.odr-sheet-rows{width:calc(var(--odr-sheet-width) - var(--odr-sheet-gutter))}
 .odr-sheet-row-header{visibility:collapse;padding:0;box-shadow:none}

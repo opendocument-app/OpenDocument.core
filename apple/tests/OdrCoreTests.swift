@@ -294,6 +294,21 @@ final class HtmlTests: XCTestCase {
     XCTAssertNil(config.spreadsheetLimit)
   }
 
+  /// Proves the switch crosses the binding; the C++ suite covers the rest.
+  func testSpreadsheetGridReachesTheHtml() throws {
+    let config = HtmlConfig()
+    XCTAssertTrue(config.spreadsheetGrid)
+    config.spreadsheetGrid = false
+    XCTAssertFalse(config.spreadsheetGrid)
+
+    let path = try write("alpha,beta\n", as: "grid.csv")
+    let service = try HtmlTranslator.translate(
+      file: try DecodedFile.decode(path: path), config: config)
+    var resources: NSArray?
+    let html = try XCTUnwrap(service.views.first).writeHtml(resources: &resources)
+    XCTAssertFalse(html.contains("data-odr-sheet-max=\""), "the switch did not reach the html")
+  }
+
   func testLazyLayoutRoundTrips() throws {
     let config = HtmlConfig()
     XCTAssertTrue(config.lazyLayout)

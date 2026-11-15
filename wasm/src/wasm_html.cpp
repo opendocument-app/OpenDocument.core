@@ -190,6 +190,7 @@ HtmlConfig wasm::to_html_config(const emscripten::val &value) {
   read(value, "textDocumentMargin", config.text_document_margin);
   read(value, "formatHtml", config.format_html);
   read(value, "lazyLayout", config.lazy_layout);
+  read(value, "spreadsheetGrid", config.spreadsheet_grid);
 
   read(value, "pageRangeBegin", config.page_range_begin);
   if (const emscripten::val end = value["pageRangeEnd"];

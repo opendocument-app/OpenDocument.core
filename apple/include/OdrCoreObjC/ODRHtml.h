@@ -130,6 +130,8 @@ NS_SWIFT_NAME(HtmlConfig)
 @property(nonatomic, strong, nullable)
     NSNumber *spreadsheetCellLimit NS_REFINED_FOR_SWIFT;
 @property(nonatomic) BOOL spreadsheetLimitByContent;
+/// Whether the page draws the empty grid past a sheet's content.
+@property(nonatomic) BOOL spreadsheetGrid;
 @property(nonatomic) ODRHtmlTableGridlines spreadsheetGridlines;
 /// How much of a sheet's body is held back while `<head>` collects the classes
 /// its cells name.

@@ -763,6 +763,7 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
   set_object("spreadsheetCellLimit", "Ljava/lang/Long;",
              box_long(env, config.spreadsheet_cell_limit));
   set_boolean("spreadsheetLimitByContent", config.spreadsheet_limit_by_content);
+  set_boolean("spreadsheetGrid", config.spreadsheet_grid);
   set_long("spreadsheetStyleBuffer",
            checked_integer<jlong>(config.spreadsheet_style_buffer));
   set_object("spreadsheetGridlines",
@@ -937,6 +938,7 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
       checked_integer<std::uint64_t>(get_long("spreadsheetStyleBuffer"));
   result.spreadsheet_limit_by_content =
       get_boolean("spreadsheetLimitByContent");
+  result.spreadsheet_grid = get_boolean("spreadsheetGrid");
   {
     const jint code = enum_ordinal(
         env, get_object("spreadsheetGridlines",

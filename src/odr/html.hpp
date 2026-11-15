@@ -188,6 +188,9 @@ struct HtmlConfig {
   bool spreadsheet_limit_by_content{true};
   /// Which gridlines a sheet paints.
   HtmlTableGridlines spreadsheet_gridlines{HtmlTableGridlines::soft};
+  /// Whether the page draws the empty grid past a sheet's content, up to the
+  /// format's last row and column. The page's `setSheetOptions` overrides it.
+  bool spreadsheet_grid{true};
   /// How much of a sheet's body is held back while `<head>` collects the
   /// classes its cells name. Past it the head goes out with what it has, and a
   /// style block first seen later stays inline.

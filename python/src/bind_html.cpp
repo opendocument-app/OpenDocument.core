@@ -103,6 +103,7 @@ void odr_python::bind_html(py::module_ &m) {
       .def_readwrite("spreadsheet_limit", &odr::HtmlConfig::spreadsheet_limit)
       .def_readwrite("spreadsheet_cell_limit",
                      &odr::HtmlConfig::spreadsheet_cell_limit)
+      .def_readwrite("spreadsheet_grid", &odr::HtmlConfig::spreadsheet_grid)
       .def_readwrite("spreadsheet_limit_by_content",
                      &odr::HtmlConfig::spreadsheet_limit_by_content)
       .def_readwrite("spreadsheet_gridlines",

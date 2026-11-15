@@ -63,6 +63,10 @@ struct WritingState {
     m_document_editable = editable;
   }
 
+  /// The type of the file rendered, which decides how far a sheet's grid goes.
+  [[nodiscard]] FileType file_type() const { return m_file_type; }
+  void set_file_type(const FileType type) { m_file_type = type; }
+
   /// The syntax a formula of this document is written in, or nothing where
   /// the engine states none.
   [[nodiscard]] std::optional<formula::Syntax> formula_syntax() const {
@@ -125,6 +129,7 @@ private:
   TextDirection m_direction{TextDirection::left_to_right};
   bool m_editable_markup{true};
   bool m_document_editable{false};
+  FileType m_file_type{FileType::unknown};
   std::optional<formula::Syntax> m_formula_syntax{std::nullopt};
   const std::vector<formula::Name> *m_formula_names{nullptr};
   std::optional<bool> m_page_chunk_near{std::nullopt};

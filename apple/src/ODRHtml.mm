@@ -115,6 +115,7 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
           ? @(static_cast<unsigned long long>(*config.spreadsheet_cell_limit))
           : nil;
   _spreadsheetLimitByContent = config.spreadsheet_limit_by_content ? YES : NO;
+  _spreadsheetGrid = config.spreadsheet_grid ? YES : NO;
   _spreadsheetGridlines =
       static_cast<ODRHtmlTableGridlines>(config.spreadsheet_gridlines);
   _spreadsheetStyleBuffer =
@@ -201,6 +202,7 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
     config.spreadsheet_cell_limit.reset();
   }
   config.spreadsheet_limit_by_content = _spreadsheetLimitByContent == YES;
+  config.spreadsheet_grid = _spreadsheetGrid == YES;
   config.spreadsheet_gridlines =
       static_cast<odr::HtmlTableGridlines>(_spreadsheetGridlines);
   config.spreadsheet_style_buffer =

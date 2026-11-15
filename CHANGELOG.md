@@ -110,6 +110,21 @@ The release run heads these entries with the version and opens a fresh
 - In every binding: `page_layout` in python, `pageLayout` in java, swift and
   npm.
 
+### Spreadsheet view
+
+- A sheet's grid goes on past its content, up to the format's last row and
+  column, as in Excel and LibreOffice: gridlines, column letters and row
+  numbers, drawn by the page and grown as the reader scrolls. An empty cell
+  there can be selected, by a click, the editor's arrows or
+  `odr.goToCell(column, row)`; typing into it is refused with
+  `unsupportedEdit` for now. Nothing is printed past the content.
+- `HtmlConfig::spreadsheet_grid` (on by default) and the page's
+  `odr.sheet.setGrid(enabled)` and `setSheetOptions({grid})` turn it off.
+  `spreadsheet_grid` in python, `spreadsheetGrid` in java, swift and npm.
+- `.odr-sheet` states `data-odr-sheet-extent`, `data-odr-sheet-max` and
+  `data-odr-sheet-default-size`, and `data-odr-cut` also in a read-only
+  render.
+
 ### Editing
 
 - The edit envelope takes `insertSheet`, `insertSlide` and `insertTextBox`.
