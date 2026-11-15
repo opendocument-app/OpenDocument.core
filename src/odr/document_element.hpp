@@ -383,7 +383,7 @@ public:
   /// Sets a cell value. ODF clears dependent formula caches; OOXML keeps them
   /// and requests recalculation on load. A formula is in the syntax
   /// @ref CellValue::with_formula states, and has no result until
-  /// @ref Document::recalculate or a save computes one.
+  /// @ref Spreadsheet::recalculate or a save computes one.
   /// @throws UnsupportedOperation for unwritable cells, a formula that does
   /// not parse, the anchor of an array or a shared formula, a formula in a
   /// csv, or nonfinite numbers.

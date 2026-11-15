@@ -272,7 +272,7 @@ unknown mimetype are tolerated.
   the `text:p` is removed as an element. The formula, the style and an
   anchored drawing stay. A formula the graph could not resolve
   (`SheetDependencies::unresolved`) keeps its result. ODF has no
-  `fullCalcOnLoad`. `Document::recalculate` computes supported stale formulas,
+  `fullCalcOnLoad`. `Spreadsheet::recalculate` computes supported stale formulas,
   and saving after an edit invokes it. Unsupported formulas remain empty.
 - **Removed nodes leave tombstones.** Where a write rebuilds a paragraph, the
   old children leave the DOM, and their elements keep their ids and become

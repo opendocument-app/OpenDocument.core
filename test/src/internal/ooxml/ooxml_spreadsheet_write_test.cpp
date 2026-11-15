@@ -135,7 +135,7 @@ TEST(OoxmlSpreadsheetWrite, a_value_written_over_a_formula_takes_it_away) {
   sheet.set_cell(0, 0, CellValue(5, "5"));
 
   EXPECT_FALSE(sheet.cell(0, 0).value().has_formula());
-  (void)document.recalculate();
+  (void)document.as_spreadsheet().recalculate();
   EXPECT_DOUBLE_EQ(sheet.cell(1, 0).value().number(), 10);
 }
 
@@ -148,7 +148,7 @@ TEST(OoxmlSpreadsheetWrite, a_formula_is_written_and_computed) {
   sheet.set_cell(2, 0, CellValue().with_formula("A1*2"));
 
   EXPECT_EQ(sheet.cell(2, 0).value().formula(), "A1*2");
-  (void)document.recalculate();
+  (void)document.as_spreadsheet().recalculate();
   EXPECT_DOUBLE_EQ(sheet.cell(2, 0).value().number(), 6);
   EXPECT_DOUBLE_EQ(sheet.cell(1, 0).value().number(), 7);
   EXPECT_NE(worksheet_of(document).find(R"(<c r="C1"><f>A1*2</f><v>6</v></c>)"),

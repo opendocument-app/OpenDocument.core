@@ -30,7 +30,7 @@ std::vector<std::string> sheet_names(const Document &document) {
 
 std::vector<std::string> layout_names(const Document &document) {
   std::vector<std::string> result;
-  for (const Slide &layout : document.slide_layouts()) {
+  for (const Slide &layout : document.as_presentation().slide_layouts()) {
     result.push_back(layout.name());
   }
   return result;
@@ -57,8 +57,8 @@ INSTANTIATE_TEST_SUITE_P(DocumentStructure, DocumentInsertSheet,
 TEST_P(DocumentInsertSheet, appends_and_prepends_in_order) {
   const Document document = create_document(GetParam());
 
-  const Sheet last = document.insert_sheet(1, "Last");
-  const Sheet first = document.insert_sheet(0, "First");
+  const Sheet last = document.as_spreadsheet().insert_sheet(1, "Last");
+  const Sheet first = document.as_spreadsheet().insert_sheet(0, "First");
 
   EXPECT_EQ(last.name(), "Last");
   EXPECT_EQ(first.name(), "First");
@@ -69,23 +69,26 @@ TEST_P(DocumentInsertSheet, appends_and_prepends_in_order) {
 TEST_P(DocumentInsertSheet, an_empty_name_takes_the_first_free_one) {
   const Document document = create_document(GetParam());
 
-  EXPECT_EQ(document.insert_sheet(1, "").name(), "Sheet2");
-  std::ignore = document.insert_sheet(2, "Sheet4");
-  EXPECT_EQ(document.insert_sheet(3, "").name(), "Sheet5");
+  EXPECT_EQ(document.as_spreadsheet().insert_sheet(1, "").name(), "Sheet2");
+  std::ignore = document.as_spreadsheet().insert_sheet(2, "Sheet4");
+  EXPECT_EQ(document.as_spreadsheet().insert_sheet(3, "").name(), "Sheet5");
 }
 
 TEST_P(DocumentInsertSheet, refuses_a_taken_or_illegal_name) {
   const Document document = create_document(GetParam());
 
-  EXPECT_THROW(std::ignore = document.insert_sheet(1, "sheet1"),
+  EXPECT_THROW(std::ignore =
+                   document.as_spreadsheet().insert_sheet(1, "sheet1"),
                std::invalid_argument);
-  EXPECT_THROW(std::ignore = document.insert_sheet(1, "a/b"),
+  EXPECT_THROW(std::ignore = document.as_spreadsheet().insert_sheet(1, "a/b"),
                std::invalid_argument);
-  EXPECT_THROW(std::ignore = document.insert_sheet(1, "'quoted'"),
+  EXPECT_THROW(std::ignore =
+                   document.as_spreadsheet().insert_sheet(1, "'quoted'"),
                std::invalid_argument);
-  EXPECT_THROW(std::ignore = document.insert_sheet(1, std::string(32, 'x')),
+  EXPECT_THROW(std::ignore = document.as_spreadsheet().insert_sheet(
+                   1, std::string(32, 'x')),
                std::invalid_argument);
-  EXPECT_THROW(std::ignore = document.insert_sheet(2, "Far"),
+  EXPECT_THROW(std::ignore = document.as_spreadsheet().insert_sheet(2, "Far"),
                std::out_of_range);
   EXPECT_EQ(sheet_names(document), std::vector<std::string>{"Sheet1"});
 }
@@ -93,7 +96,7 @@ TEST_P(DocumentInsertSheet, refuses_a_taken_or_illegal_name) {
 TEST_P(DocumentInsertSheet, a_new_sheet_takes_cells_and_survives_a_save) {
   const Document document = create_document(GetParam());
 
-  const Sheet added = document.insert_sheet(0, "Data");
+  const Sheet added = document.as_spreadsheet().insert_sheet(0, "Data");
   added.set_cell(1, 2, CellValue("hello"));
   added.set_cell(0, 0, CellValue(42.0));
 
@@ -108,14 +111,14 @@ TEST_P(DocumentInsertSheet, a_formula_reads_a_sheet_inserted_after_it) {
   const Document document = create_document(GetParam());
   const Sheet first = (*document.root_element().children().begin()).as_sheet();
 
-  const Sheet data = document.insert_sheet(1, "Data");
+  const Sheet data = document.as_spreadsheet().insert_sheet(1, "Data");
   data.set_cell(0, 0, CellValue(7.0));
   first.set_cell(
       0, 0,
       CellValue().with_formula(GetParam() == FileType::opendocument_spreadsheet
                                    ? "of:=[$Data.A1]*2"
                                    : "Data!A1*2"));
-  std::ignore = document.recalculate();
+  std::ignore = document.as_spreadsheet().recalculate();
 
   EXPECT_EQ(first.cell(0, 0).value().number(), 14.0);
 }
@@ -139,8 +142,8 @@ std::string formula_of(const Document &document, const std::string &ods_formula,
 
 TEST_P(DocumentInsertSheet, removes_a_sheet_and_survives_a_save) {
   const Document document = create_document(GetParam());
-  const Sheet data = document.insert_sheet(0, "Data");
-  std::ignore = document.insert_sheet(2, "Last");
+  const Sheet data = document.as_spreadsheet().insert_sheet(0, "Data");
+  std::ignore = document.as_spreadsheet().insert_sheet(2, "Last");
   sheet_at(document, 2).set_cell(0, 0, CellValue("kept"));
 
   document.remove(data);
@@ -162,7 +165,7 @@ TEST_P(DocumentInsertSheet, refuses_to_remove_the_last_sheet) {
 
 TEST_P(DocumentInsertSheet, a_reference_to_a_removed_sheet_is_lost) {
   const Document document = create_document(GetParam());
-  const Sheet data = document.insert_sheet(1, "Data");
+  const Sheet data = document.as_spreadsheet().insert_sheet(1, "Data");
   data.set_cell(0, 0, CellValue(7.0));
   sheet_at(document, 0)
       .set_cell(0, 0,
@@ -171,7 +174,7 @@ TEST_P(DocumentInsertSheet, a_reference_to_a_removed_sheet_is_lost) {
                                "Data!A1*2+Data!B:B")));
 
   document.remove(data);
-  std::ignore = document.recalculate();
+  std::ignore = document.as_spreadsheet().recalculate();
 
   const CellValue value = sheet_at(document, 0).cell(0, 0).value();
   EXPECT_EQ(value.type(), ValueType::error);
@@ -181,16 +184,16 @@ TEST_P(DocumentInsertSheet, a_reference_to_a_removed_sheet_is_lost) {
 
 TEST_P(DocumentInsertSheet, moves_a_sheet_both_ways_and_survives_a_save) {
   const Document document = create_document(GetParam());
-  std::ignore = document.insert_sheet(1, "B");
-  std::ignore = document.insert_sheet(2, "C");
+  std::ignore = document.as_spreadsheet().insert_sheet(1, "B");
+  std::ignore = document.as_spreadsheet().insert_sheet(2, "C");
 
-  document.move_sheet(sheet_at(document, 0), 2);
+  document.as_spreadsheet().move_sheet(sheet_at(document, 0), 2);
   EXPECT_EQ(sheet_names(document),
             (std::vector<std::string>{"B", "C", "Sheet1"}));
-  document.move_sheet(sheet_at(document, 1), 0);
+  document.as_spreadsheet().move_sheet(sheet_at(document, 1), 0);
   EXPECT_EQ(sheet_names(document),
             (std::vector<std::string>{"C", "B", "Sheet1"}));
-  document.move_sheet(sheet_at(document, 1), 1);
+  document.as_spreadsheet().move_sheet(sheet_at(document, 1), 1);
 
   EXPECT_EQ(sheet_names(reopen(document)),
             (std::vector<std::string>{"C", "B", "Sheet1"}));
@@ -198,31 +201,25 @@ TEST_P(DocumentInsertSheet, moves_a_sheet_both_ways_and_survives_a_save) {
 
 TEST_P(DocumentInsertSheet, a_formula_reads_a_moved_sheet) {
   const Document document = create_document(GetParam());
-  const Sheet data = document.insert_sheet(1, "Data");
+  const Sheet data = document.as_spreadsheet().insert_sheet(1, "Data");
   data.set_cell(0, 0, CellValue(7.0));
   sheet_at(document, 0)
       .set_cell(0, 0,
                 CellValue().with_formula(
                     formula_of(document, "of:=[$Data.A1]*2", "Data!A1*2")));
 
-  document.move_sheet(data, 0);
-  std::ignore = document.recalculate();
+  document.as_spreadsheet().move_sheet(data, 0);
+  std::ignore = document.as_spreadsheet().recalculate();
 
   EXPECT_EQ(sheet_at(document, 1).cell(0, 0).value().number(), 14.0);
 }
 
 TEST_P(DocumentInsertSheet, refuses_a_move_past_the_last_sheet) {
   const Document document = create_document(GetParam());
-  std::ignore = document.insert_sheet(1, "B");
+  std::ignore = document.as_spreadsheet().insert_sheet(1, "B");
 
-  EXPECT_THROW(document.move_sheet(sheet_at(document, 0), 2),
+  EXPECT_THROW(document.as_spreadsheet().move_sheet(sheet_at(document, 0), 2),
                std::out_of_range);
-}
-
-TEST(DocumentStructure, a_text_document_refuses_a_sheet) {
-  const Document document = create_document(FileType::opendocument_text);
-  EXPECT_THROW(std::ignore = document.insert_sheet(0, "Sheet1"),
-               UnsupportedOperation);
 }
 
 namespace {
@@ -281,7 +278,7 @@ TEST_P(DocumentInsertSlide, a_new_presentation_offers_the_six_layouts) {
 TEST_P(DocumentInsertSlide, a_slide_holds_its_layouts_placeholders) {
   const Document document = create_document(GetParam());
 
-  const Slide added = document.insert_slide(1, 3);
+  const Slide added = document.as_presentation().insert_slide(1, 3);
 
   const std::vector<Element> slides = children_of(document.root_element());
   ASSERT_EQ(slides.size(), 2);
@@ -297,12 +294,12 @@ TEST_P(DocumentInsertSlide, a_slide_holds_its_layouts_placeholders) {
 
 TEST_P(DocumentInsertSlide, a_layout_is_the_slide_it_inserts) {
   const Document document = create_document(GetParam());
-  const std::vector<Slide> layouts = document.slide_layouts();
+  const std::vector<Slide> layouts = document.as_presentation().slide_layouts();
   EXPECT_TRUE(children_of(layouts[5]).empty());
 
   for (std::uint32_t i = 0; i < layouts.size(); ++i) {
     const std::vector<Element> frames =
-        children_of(document.insert_slide(1, i));
+        children_of(document.as_presentation().insert_slide(1, i));
     const std::vector<Element> placeholders = children_of(layouts[i]);
     ASSERT_EQ(frames.size(), placeholders.size()) << layouts[i].name();
     for (std::size_t j = 0; j < frames.size(); ++j) {
@@ -323,14 +320,14 @@ TEST_P(DocumentInsertSlide, a_layout_is_the_slide_it_inserts) {
 TEST_P(DocumentInsertSlide,
        a_layout_is_outside_the_document_and_refuses_edits) {
   const Document document = create_document(GetParam());
-  const Slide layout = document.slide_layouts()[0];
+  const Slide layout = document.as_presentation().slide_layouts()[0];
 
   EXPECT_FALSE(layout.parent());
   EXPECT_EQ(children_of(document.root_element()).size(), 1);
   EXPECT_THROW(std::ignore = document.append_text(
                    first_paragraph(*layout.children().begin()), "x"),
                std::invalid_argument);
-  EXPECT_THROW(std::ignore = document.insert_text_box(
+  EXPECT_THROW(std::ignore = document.as_presentation().insert_text_box(
                    layout, Measure("1cm"), Measure("1cm"), Measure("2cm"),
                    Measure("1cm")),
                std::invalid_argument);
@@ -339,7 +336,7 @@ TEST_P(DocumentInsertSlide,
 TEST_P(DocumentInsertSlide, a_blank_slide_goes_first) {
   const Document document = create_document(GetParam());
 
-  std::ignore = document.insert_slide(0, 5);
+  std::ignore = document.as_presentation().insert_slide(0, 5);
 
   const std::vector<Element> slides = children_of(document.root_element());
   ASSERT_EQ(slides.size(), 2);
@@ -350,24 +347,26 @@ TEST_P(DocumentInsertSlide, a_blank_slide_goes_first) {
 TEST_P(DocumentInsertSlide, a_new_slide_takes_text_and_survives_a_save) {
   const Document document = create_document(GetParam());
 
-  const Slide added = document.insert_slide(1, 1);
+  const Slide added = document.as_presentation().insert_slide(1, 1);
   std::ignore = document.append_text(first_paragraph(*added.children().begin()),
                                      "agenda");
-  std::ignore = document.insert_slide(2, 4);
+  std::ignore = document.as_presentation().insert_slide(2, 4);
 
   const Document saved = reopen(document);
   const std::vector<Element> slides = children_of(saved.root_element());
   ASSERT_EQ(slides.size(), 3);
   EXPECT_EQ(text_of(slides[1]), "agenda");
   EXPECT_EQ(children_of(slides[2]).size(), 1);
-  EXPECT_EQ(saved.slide_layouts().size(), 6);
+  EXPECT_EQ(saved.as_presentation().slide_layouts().size(), 6);
 }
 
 TEST_P(DocumentInsertSlide, refuses_an_index_or_layout_past_the_end) {
   const Document document = create_document(GetParam());
 
-  EXPECT_THROW(std::ignore = document.insert_slide(2, 0), std::out_of_range);
-  EXPECT_THROW(std::ignore = document.insert_slide(1, 6), std::out_of_range);
+  EXPECT_THROW(std::ignore = document.as_presentation().insert_slide(2, 0),
+               std::out_of_range);
+  EXPECT_THROW(std::ignore = document.as_presentation().insert_slide(1, 6),
+               std::out_of_range);
   EXPECT_EQ(children_of(document.root_element()).size(), 1);
 }
 
@@ -386,7 +385,7 @@ std::vector<std::string> slide_texts(const Document &document) {
 Document numbered_slides(const FileType type) {
   const Document document = create_document(type);
   for (std::uint32_t i = 1; i < 4; ++i) {
-    std::ignore = document.insert_slide(i, 1);
+    std::ignore = document.as_presentation().insert_slide(i, 1);
   }
   std::uint32_t number = 0;
   for (const Element slide : document.root_element().children()) {
@@ -426,13 +425,13 @@ TEST_P(DocumentInsertSlide, removes_every_slide) {
 TEST_P(DocumentInsertSlide, moves_a_slide_both_ways_and_survives_a_save) {
   const Document document = numbered_slides(GetParam());
 
-  document.move_slide(slide_at(document, 0), 3);
+  document.as_presentation().move_slide(slide_at(document, 0), 3);
   EXPECT_EQ(slide_texts(document),
             (std::vector<std::string>{"1", "2", "3", "0"}));
-  document.move_slide(slide_at(document, 2), 0);
+  document.as_presentation().move_slide(slide_at(document, 2), 0);
   EXPECT_EQ(slide_texts(document),
             (std::vector<std::string>{"3", "1", "2", "0"}));
-  document.move_slide(slide_at(document, 1), 1);
+  document.as_presentation().move_slide(slide_at(document, 1), 1);
 
   EXPECT_EQ(slide_texts(reopen(document)),
             (std::vector<std::string>{"3", "1", "2", "0"}));
@@ -441,8 +440,8 @@ TEST_P(DocumentInsertSlide, moves_a_slide_both_ways_and_survives_a_save) {
 TEST_P(DocumentInsertSlide, a_slide_inserted_after_a_move_lands_in_place) {
   const Document document = numbered_slides(GetParam());
 
-  document.move_slide(slide_at(document, 3), 0);
-  std::ignore = document.insert_slide(1, 5);
+  document.as_presentation().move_slide(slide_at(document, 3), 0);
+  std::ignore = document.as_presentation().insert_slide(1, 5);
 
   const Document saved = reopen(document);
   EXPECT_EQ(slide_texts(saved),
@@ -452,16 +451,11 @@ TEST_P(DocumentInsertSlide, a_slide_inserted_after_a_move_lands_in_place) {
 TEST_P(DocumentInsertSlide, refuses_a_move_past_the_last_slide) {
   const Document document = numbered_slides(GetParam());
 
-  EXPECT_THROW(document.move_slide(slide_at(document, 0), 4),
+  EXPECT_THROW(document.as_presentation().move_slide(slide_at(document, 0), 4),
                std::out_of_range);
-  EXPECT_THROW(document.move_slide(*document.slide_layouts().begin(), 0),
+  EXPECT_THROW(document.as_presentation().move_slide(
+                   *document.as_presentation().slide_layouts().begin(), 0),
                std::invalid_argument);
-}
-
-TEST(DocumentStructure, a_text_document_offers_no_layout) {
-  const Document document = create_document(FileType::opendocument_text);
-  EXPECT_TRUE(document.slide_layouts().empty());
-  EXPECT_THROW(std::ignore = document.insert_slide(0, 0), UnsupportedOperation);
 }
 
 TEST(DocumentStructure, an_odp_offers_its_own_layouts_then_the_built_ins) {
@@ -475,17 +469,20 @@ TEST(DocumentStructure, an_odp_offers_its_own_layouts_then_the_built_ins) {
                                       "Section Header", "Two Content",
                                       "Title Only", "Blank"}));
 
-  EXPECT_EQ(children_of(document.slide_layouts()[0]).size(), 2);
+  EXPECT_EQ(children_of(document.as_presentation().slide_layouts()[0]).size(),
+            2);
 
-  const Slide added = document.insert_slide(1, 3);
+  const Slide added = document.as_presentation().insert_slide(1, 3);
   EXPECT_EQ(children_of(added).size(), 3);
   // writing the built-in into the file moves no layout
   EXPECT_EQ(layout_names(document)[3], "Two Content");
-  EXPECT_EQ(children_of(document.insert_slide(2, 3)).size(), 3);
-  EXPECT_EQ(children_of(document.insert_slide(3, 1)).size(), 2);
+  EXPECT_EQ(children_of(document.as_presentation().insert_slide(2, 3)).size(),
+            3);
+  EXPECT_EQ(children_of(document.as_presentation().insert_slide(3, 1)).size(),
+            2);
 
   const Document saved = reopen(document);
-  EXPECT_EQ(saved.slide_layouts().size(), 6);
+  EXPECT_EQ(saved.as_presentation().slide_layouts().size(), 6);
   EXPECT_EQ(children_of(saved.root_element()).size(), 4);
 }
 
@@ -499,7 +496,7 @@ TEST(DocumentStructure, a_pptx_with_two_masters_numbers_a_repeated_layout) {
   EXPECT_EQ(layouts[1], "Title Slide");
   EXPECT_EQ(layouts[13], "Title Slide (2)");
 
-  const Slide added = document.insert_slide(1, 2);
+  const Slide added = document.as_presentation().insert_slide(1, 2);
   const Document saved = reopen(document);
   EXPECT_EQ(children_of(saved.root_element()).size(),
             children_of(document.root_element()).size());
@@ -524,7 +521,7 @@ TEST_P(DocumentInsertTextBox, sits_where_it_was_put_and_draws_nothing) {
   const Document document = create_document(GetParam());
   const Element slide = *document.root_element().children().begin();
 
-  const Frame box = document.insert_text_box(
+  const Frame box = document.as_presentation().insert_text_box(
       slide, Measure("2cm"), Measure("3cm"), Measure("10cm"), Measure("1.5cm"));
 
   const std::vector<Element> frames = children_of(slide);
@@ -541,13 +538,13 @@ TEST_P(DocumentInsertTextBox, sits_where_it_was_put_and_draws_nothing) {
 
 TEST_P(DocumentInsertTextBox, takes_text_and_survives_a_save) {
   const Document document = create_document(GetParam());
-  const Slide added = document.insert_slide(1, 5);
+  const Slide added = document.as_presentation().insert_slide(1, 5);
 
-  const Frame box = document.insert_text_box(
+  const Frame box = document.as_presentation().insert_text_box(
       added, Measure("1in"), Measure("1in"), Measure("4in"), Measure("1in"));
   std::ignore = document.append_text(first_paragraph(box), "note");
-  std::ignore = document.insert_text_box(added, Measure("1in"), Measure("3in"),
-                                         Measure("4in"), Measure("1in"));
+  std::ignore = document.as_presentation().insert_text_box(
+      added, Measure("1in"), Measure("3in"), Measure("4in"), Measure("1in"));
 
   const Document saved = reopen(document);
   const std::vector<Element> slides = children_of(saved.root_element());
@@ -562,27 +559,31 @@ TEST_P(DocumentInsertTextBox, refuses_a_relative_length_or_an_empty_size) {
   const Document document = create_document(GetParam());
   const Element slide = *document.root_element().children().begin();
 
-  EXPECT_THROW(std::ignore = document.insert_text_box(
+  EXPECT_THROW(std::ignore = document.as_presentation().insert_text_box(
                    slide, Measure("1em"), Measure("0cm"), Measure("1cm"),
                    Measure("1cm")),
                std::invalid_argument);
-  EXPECT_THROW(std::ignore = document.insert_text_box(
+  EXPECT_THROW(std::ignore = document.as_presentation().insert_text_box(
                    slide, Measure("0cm"), Measure("0cm"), Measure("0cm"),
                    Measure("1cm")),
                std::invalid_argument);
-  EXPECT_THROW(std::ignore = document.insert_text_box(
+  EXPECT_THROW(std::ignore = document.as_presentation().insert_text_box(
                    first_paragraph(*slide.children().begin()), Measure("0cm"),
                    Measure("0cm"), Measure("1cm"), Measure("1cm")),
                UnsupportedOperation);
   EXPECT_EQ(children_of(slide).size(), 2);
 }
 
-TEST(DocumentStructure, a_text_document_refuses_a_text_box) {
-  const Document document = create_document(FileType::opendocument_text);
-  EXPECT_THROW(std::ignore = document.insert_text_box(
-                   *document.root_element().children().begin(), Measure("0cm"),
-                   Measure("0cm"), Measure("1cm"), Measure("1cm")),
-               UnsupportedOperation);
+TEST(DocumentStructure, a_handle_needs_its_document_type) {
+  const Document text = create_document(FileType::opendocument_text);
+  EXPECT_NO_THROW(std::ignore = text.as_text_document());
+  EXPECT_THROW(std::ignore = text.as_spreadsheet(), WrongDocumentType);
+  EXPECT_THROW(std::ignore = text.as_presentation(), WrongDocumentType);
+  EXPECT_THROW(std::ignore = text.as_drawing(), WrongDocumentType);
+
+  const Document sheets = create_document(FileType::office_open_xml_workbook);
+  EXPECT_NO_THROW(std::ignore = sheets.as_spreadsheet());
+  EXPECT_THROW(std::ignore = sheets.as_presentation(), WrongDocumentType);
 }
 
 TEST(DocumentStructure, an_odg_page_takes_a_text_box) {
@@ -593,7 +594,7 @@ TEST(DocumentStructure, an_odg_page_takes_a_text_box) {
   const Element page = *document.root_element().children().begin();
   ASSERT_EQ(page.type(), ElementType::page);
 
-  const Frame box = document.insert_text_box(
+  const Frame box = document.as_drawing().insert_text_box(
       page, Measure("2cm"), Measure("2cm"), Measure("8cm"), Measure("2cm"));
   std::ignore = document.append_text(first_paragraph(box), "drawn");
 
@@ -604,7 +605,7 @@ TEST(DocumentStructure, an_odg_page_takes_a_text_box) {
 TEST(DocumentStructure, a_pptx_text_box_takes_the_theme_body_font) {
   const Document document =
       create_document(FileType::office_open_xml_presentation);
-  const Frame box = document.insert_text_box(
+  const Frame box = document.as_presentation().insert_text_box(
       *document.root_element().children().begin(), Measure("1cm"),
       Measure("1cm"), Measure("5cm"), Measure("1cm"));
 

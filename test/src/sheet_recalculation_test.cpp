@@ -92,7 +92,7 @@ TEST(SheetRecalculation, an_edit_computes_what_reads_it) {
                                     computed("of:=[.B1]+1", "3")));
 
   first_sheet(document).set_cell(0, 0, CellValue(5));
-  const Recalculation result = document.recalculate();
+  const Recalculation result = document.as_spreadsheet().recalculate();
 
   EXPECT_EQ(spelled(result.changed()),
             (std::vector<std::string>{"0!B1", "0!C1"}));
@@ -102,13 +102,13 @@ TEST(SheetRecalculation, an_edit_computes_what_reads_it) {
   EXPECT_EQ(value_at(document, 1, 0).text(), "10");
   EXPECT_EQ(value_at(document, 2, 0).number(), 11);
   EXPECT_EQ(value_at(document, 1, 0).formula(), "of:=[.A1]*2");
-  EXPECT_TRUE(document.recalculate().changed().empty());
+  EXPECT_TRUE(document.as_spreadsheet().recalculate().changed().empty());
 }
 
 TEST(SheetRecalculation, a_formula_without_a_result_is_computed) {
   const Document document = ods(row(number("4") + uncomputed("of:=[.A1]/2")));
 
-  EXPECT_EQ(spelled(document.recalculate().changed()),
+  EXPECT_EQ(spelled(document.as_spreadsheet().recalculate().changed()),
             (std::vector<std::string>{"0!B1"}));
   EXPECT_EQ(value_at(document, 1, 0).number(), 2);
 }
@@ -117,7 +117,7 @@ TEST(SheetRecalculation, a_result_keeps_its_type) {
   const Document document =
       ods(row(number("1") + uncomputed(R"(of:=&quot;a&quot;&amp;[.A1])") +
               uncomputed("of:=[.A1]&gt;0") + uncomputed("of:=1/0")));
-  document.recalculate();
+  document.as_spreadsheet().recalculate();
 
   EXPECT_EQ(value_at(document, 1, 0).type(), ValueType::string);
   EXPECT_EQ(value_at(document, 1, 0).text(), "a1");
@@ -135,7 +135,7 @@ TEST(SheetRecalculation, a_cycle_gets_no_result) {
   const Document document =
       ods(row(uncomputed("of:=[.B1]+1") + uncomputed("of:=[.A1]+1") +
               uncomputed("of:=[.A1]*2")));
-  const Recalculation result = document.recalculate();
+  const Recalculation result = document.as_spreadsheet().recalculate();
 
   EXPECT_EQ(spelled(result.circular()),
             (std::vector<std::string>{"0!A1", "0!B1"}));
@@ -147,7 +147,7 @@ TEST(SheetRecalculation, what_the_evaluator_does_not_know_stays_without_one) {
   const Document document =
       ods(row(number("1") + uncomputed("of:=NOSUCHFUNCTION([.A1])") +
               uncomputed("of:=[.B1]+1")));
-  const Recalculation result = document.recalculate();
+  const Recalculation result = document.as_spreadsheet().recalculate();
 
   EXPECT_EQ(spelled(result.unevaluated()),
             (std::vector<std::string>{"0!B1", "0!C1"}));
@@ -160,7 +160,7 @@ TEST(SheetRecalculation, now_and_rand_compute_every_time) {
   const Document document =
       ods(row(computed("of:=TODAY()", "1") + computed("of:=NOW()", "1") +
               computed("of:=RAND()", "5")));
-  document.recalculate();
+  document.as_spreadsheet().recalculate();
 
   const double today = value_at(document, 0, 0).number();
   EXPECT_GT(today, 45000); // after 2023
@@ -177,7 +177,7 @@ TEST(SheetRecalculation, a_range_reads_the_stale_cells_it_holds) {
           row(computed("of:=SUM([.A1:.A2])", "3")));
 
   first_sheet(document).set_cell(0, 0, CellValue(5));
-  document.recalculate();
+  document.as_spreadsheet().recalculate();
 
   EXPECT_EQ(value_at(document, 0, 2).number(), 15);
 }
@@ -189,7 +189,7 @@ TEST(SheetRecalculation, a_running_total_down_a_column) {
   }
   const Document document = ods(rows);
 
-  EXPECT_EQ(document.recalculate().changed().size(), 1999);
+  EXPECT_EQ(document.as_spreadsheet().recalculate().changed().size(), 1999);
   EXPECT_EQ(value_at(document, 0, 1999).number(), 2000);
 }
 
@@ -201,7 +201,7 @@ TEST(SheetRecalculation, a_chain_up_a_column_past_the_depth_limit) {
   rows += row(number("1"));
   const Document document = ods(rows);
 
-  EXPECT_EQ(document.recalculate().changed().size(), 1099);
+  EXPECT_EQ(document.as_spreadsheet().recalculate().changed().size(), 1099);
   EXPECT_EQ(value_at(document, 0, 0).number(), 1100);
 }
 
@@ -213,7 +213,7 @@ TEST(SheetRecalculation, a_cycle_longer_than_the_depth_limit_gets_no_result) {
   }
   const Document document = ods(rows);
 
-  const Recalculation result = document.recalculate();
+  const Recalculation result = document.as_spreadsheet().recalculate();
   EXPECT_TRUE(result.changed().empty());
   EXPECT_EQ(result.circular().size(), 200);
   EXPECT_EQ(spelled(result.unevaluated()), (std::vector<std::string>{"0!A1"}));
@@ -224,7 +224,7 @@ TEST(SheetRecalculation, a_structural_edit_makes_every_formula_stale) {
       ods(row(number("1") + computed("of:=[.A1]*2", "7")));
 
   first_sheet(document).insert_rows(0, 1);
-  const Recalculation result = document.recalculate();
+  const Recalculation result = document.as_spreadsheet().recalculate();
 
   EXPECT_EQ(spelled(result.changed()), (std::vector<std::string>{"0!B2"}));
   EXPECT_EQ(value_at(document, 1, 1).number(), 2);
@@ -248,7 +248,7 @@ TEST(SheetRecalculation, an_xlsx_result_replaces_the_stale_one) {
   first_sheet(document).set_cell(0, 0, CellValue(3));
   // the xlsx keeps the stale result until a recalculation
   EXPECT_EQ(value_at(document, 1, 0).number(), 4);
-  const Recalculation result = document.recalculate();
+  const Recalculation result = document.as_spreadsheet().recalculate();
 
   EXPECT_EQ(spelled(result.changed()),
             (std::vector<std::string>{"0!B1", "0!C1"}));
@@ -269,7 +269,7 @@ TEST(SheetRecalculation, an_array_formula_reads_every_cell_of_its_ranges) {
       R"(<row r="2"><c r="A2"><v>2</v></c><c r="B2"><v>4</v></c></row>)"));
 
   first_sheet(document).set_cell(0, 0, CellValue(2));
-  const Recalculation result = document.recalculate();
+  const Recalculation result = document.as_spreadsheet().recalculate();
 
   // computed as a plain formula, it would read A1*B1: 6
   EXPECT_EQ(spelled(result.changed()),
@@ -286,7 +286,7 @@ TEST(SheetRecalculation, an_array_formula_fills_its_range) {
       R"(<row r="3"><c r="B3"><v>0</v></c></row>)"));
 
   first_sheet(document).set_cell(0, 1, CellValue(5));
-  document.recalculate();
+  document.as_spreadsheet().recalculate();
 
   EXPECT_EQ(value_at(document, 1, 0).number(), 2);
   EXPECT_EQ(value_at(document, 1, 1).number(), 10);
@@ -307,7 +307,7 @@ TEST(SheetRecalculation, a_cell_an_array_formula_spans_computes_with_it) {
       row(number("2") + number("4") + computed("of:=[.B2]+1", "5")));
 
   first_sheet(document).set_cell(0, 1, CellValue(10));
-  const Recalculation result = document.recalculate();
+  const Recalculation result = document.as_spreadsheet().recalculate();
 
   // the write dropped the result of B1, as an ods does for each dependent
   EXPECT_EQ(spelled(result.changed()),
@@ -369,7 +369,7 @@ TEST(SheetRecalculation, a_reference_into_another_workbook_reads_its_copy) {
   const Document document =
       decode(std::make_shared<internal::MemoryFile>(out.str()));
 
-  const Recalculation result = document.recalculate();
+  const Recalculation result = document.as_spreadsheet().recalculate();
 
   EXPECT_EQ(value_at(document, 0, 0).number(), 10);
   EXPECT_EQ(value_at(document, 1, 0).number(), 23);
@@ -411,7 +411,7 @@ Document iterating_ods(const std::string &steps) {
 // difference.
 TEST(SheetRecalculation, a_cycle_computes_where_the_document_iterates) {
   const Document document = iterating_ods("100");
-  const Recalculation result = document.recalculate();
+  const Recalculation result = document.as_spreadsheet().recalculate();
 
   EXPECT_EQ(value_at(document, 0, 0).number(), 1.9990234375);
   EXPECT_EQ(value_at(document, 1, 0).number(), 1.9990234375);
@@ -437,7 +437,7 @@ TEST(SheetRecalculation, a_cycle_computes_after_the_cycles_it_reads) {
       row(uncomputed("of:=[.B1]") + uncomputed("of:=[.A2]")) +
       row(uncomputed("of:=[.B3]/2+1") + uncomputed("of:=[.A3]")) +
       R"(</table:table></office:spreadsheet></office:body></office:document>)"));
-  document.recalculate();
+  document.as_spreadsheet().recalculate();
 
   EXPECT_EQ(value_at(document, 0, 2).number(), 1.9990234375);
   EXPECT_NEAR(value_at(document, 0, 0).number(), 3.997314453125, 0.001);
@@ -458,7 +458,7 @@ TEST(SheetRecalculation, a_cycle_that_grows_leaves_the_cycle_it_reads) {
       row(uncomputed("of:=[.B2]+1+[.A1]") + uncomputed("of:=[.A2]")) +
       row(uncomputed("of:=[.B3]/2+[.A1]") + uncomputed("of:=[.A3]")) +
       R"(</table:table></office:spreadsheet></office:body></office:document>)"));
-  const Recalculation result = document.recalculate();
+  const Recalculation result = document.as_spreadsheet().recalculate();
 
   EXPECT_EQ(value_at(document, 0, 0).number(), 1.9990234375);
   EXPECT_NEAR(value_at(document, 0, 2).number(), 3.99707078933716, 1e-12);
@@ -468,7 +468,7 @@ TEST(SheetRecalculation, a_cycle_that_grows_leaves_the_cycle_it_reads) {
 
 TEST(SheetRecalculation, a_cycle_past_its_steps_has_no_result_in_libreoffice) {
   const Document document = iterating_ods("3");
-  const Recalculation result = document.recalculate();
+  const Recalculation result = document.as_spreadsheet().recalculate();
 
   EXPECT_EQ(spelled(result.circular()),
             (std::vector<std::string>{"0!A1", "0!B1", "0!A2", "0!B2"}));
@@ -481,7 +481,7 @@ TEST(SheetRecalculation,
       R"(<row r="1"><c r="A1"><f>B1/2+1</f></c><c r="B1"><f>A1</f></c>)"
       R"(<c r="C1"><f>A1*10</f></c></row>)",
       "", "", R"(<calcPr iterate="1" iterateCount="3"/>)"));
-  document.recalculate();
+  document.as_spreadsheet().recalculate();
 
   // three steps from 0: 1, 1.5, 1.75
   EXPECT_EQ(value_at(document, 0, 0).number(), 1.75);
@@ -492,7 +492,7 @@ TEST(SheetRecalculation, an_unedited_document_keeps_its_results) {
   const Document document =
       ods(row(number("1") + computed("of:=[.A1]*2", "2")));
 
-  EXPECT_TRUE(document.recalculate().changed().empty());
+  EXPECT_TRUE(document.as_spreadsheet().recalculate().changed().empty());
 }
 
 TEST(SheetRecalculation, oversized_array_spans_are_rejected_before_expansion) {
@@ -500,5 +500,6 @@ TEST(SheetRecalculation, oversized_array_spans_are_rejected_before_expansion) {
       ods(row(R"(<table:table-cell table:formula="of:=1" )"
               R"(table:number-matrix-columns-spanned="65536" )"
               R"(table:number-matrix-rows-spanned="65536"/> )"));
-  EXPECT_THROW((void)document.recalculate(), UnsupportedOperation);
+  EXPECT_THROW((void)document.as_spreadsheet().recalculate(),
+               UnsupportedOperation);
 }

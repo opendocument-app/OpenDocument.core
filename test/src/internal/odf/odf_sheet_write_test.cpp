@@ -199,7 +199,7 @@ TEST(OdfSheetWrite, a_value_written_over_a_formula_takes_the_formula_away) {
 
   EXPECT_FALSE(sheet.cell(0, 0).value().has_formula());
   EXPECT_DOUBLE_EQ(sheet.cell(0, 0).value().number(), 5);
-  (void)document.recalculate();
+  (void)document.as_spreadsheet().recalculate();
   EXPECT_DOUBLE_EQ(sheet.cell(1, 0).value().number(), 10);
 }
 
@@ -216,7 +216,7 @@ TEST(OdfSheetWrite, a_formula_is_written_and_computed) {
 
   EXPECT_EQ(sheet.cell(2, 0).value().formula(), "of:=[.A1]*2");
   EXPECT_FALSE(sheet.cell(2, 0).value().has_number());
-  (void)document.recalculate();
+  (void)document.as_spreadsheet().recalculate();
   ASSERT_TRUE(sheet.cell(2, 0).value().has_number());
   EXPECT_DOUBLE_EQ(sheet.cell(2, 0).value().number(), 6);
   // the graph knows the new formula, so what reads it computes too

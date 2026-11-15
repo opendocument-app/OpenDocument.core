@@ -59,7 +59,11 @@ emscripten::val is_savable(const Handle handle, const bool encrypted) {
 /// `{changed, circular, unevaluated}`, each a list of `{sheet, column, row}`.
 emscripten::val recalculate(const Handle handle) {
   return guarded([&] {
-    const Recalculation result = document_of(session(handle)).recalculate();
+    const Document &document = document_of(session(handle));
+    const Recalculation result =
+        document.document_type() == DocumentType::spreadsheet
+            ? document.as_spreadsheet().recalculate()
+            : Recalculation();
     const auto list = [](const std::vector<SheetPosition> &positions) {
       emscripten::val array = emscripten::val::array();
       for (const SheetPosition &position : positions) {
@@ -286,7 +290,7 @@ emscripten::val insert_sheet(const Handle handle, const double index,
                              const std::string &name) {
   return guarded([&] {
     Session &s = session(handle);
-    std::ignore = document_of(s).insert_sheet(
+    std::ignore = document_of(s).as_spreadsheet().insert_sheet(
         checked_integer<std::uint32_t>(index), name);
     drop_views(s);
     return ok();
@@ -321,8 +325,9 @@ emscripten::val move_slide(const Handle handle, const double identifier,
                            const double index) {
   return guarded([&] {
     Session &s = session(handle);
-    document_of(s).move_slide(element_of(s, identifier).as_slide(),
-                              checked_integer<std::uint32_t>(index));
+    document_of(s).as_presentation().move_slide(
+        element_of(s, identifier).as_slide(),
+        checked_integer<std::uint32_t>(index));
     drop_views(s);
     return ok();
   });
@@ -336,7 +341,11 @@ emscripten::val slide_layouts(const Handle handle) {
   };
   return guarded([&] {
     emscripten::val result = emscripten::val::array();
-    for (const Slide &layout : document_of(session(handle)).slide_layouts()) {
+    const Document &document = document_of(session(handle));
+    if (document.document_type() != DocumentType::presentation) {
+      return ok(result);
+    }
+    for (const Slide &layout : document.as_presentation().slide_layouts()) {
       emscripten::val placeholders = emscripten::val::array();
       for (const Element child : layout.children()) {
         const Frame frame = child.as_frame();
@@ -362,9 +371,9 @@ emscripten::val insert_slide(const Handle handle, const double index,
                              const double layout) {
   return guarded([&] {
     Session &s = session(handle);
-    const Slide slide =
-        document_of(s).insert_slide(checked_integer<std::uint32_t>(index),
-                                    checked_integer<std::uint32_t>(layout));
+    const Slide slide = document_of(s).as_presentation().insert_slide(
+        checked_integer<std::uint32_t>(index),
+        checked_integer<std::uint32_t>(layout));
     emscripten::val frames = emscripten::val::array();
     emscripten::val paragraphs = emscripten::val::array();
     for (const Element child : slide.children()) {
@@ -388,9 +397,14 @@ emscripten::val insert_text_box(const Handle handle, const double page,
                                 const std::string &height) {
   return guarded([&] {
     Session &s = session(handle);
-    const Frame box = document_of(s).insert_text_box(
-        element_of(s, page), Measure(x), Measure(y), Measure(width),
-        Measure(height));
+    const Document &document = document_of(s);
+    const Frame box = document.document_type() == DocumentType::presentation
+                          ? document.as_presentation().insert_text_box(
+                                element_of(s, page), Measure(x), Measure(y),
+                                Measure(width), Measure(height))
+                          : document.as_drawing().insert_text_box(
+                                element_of(s, page), Measure(x), Measure(y),
+                                Measure(width), Measure(height));
     emscripten::val result = emscripten::val::object();
     result.set("id", id_of(box));
     result.set("paragraph",

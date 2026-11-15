@@ -417,7 +417,10 @@ void write_edit_templates(const Document &document, const WritingState &state) {
   template_state.set_repeat_page_backgrounds(true);
   HtmlWriter &out = state.out();
 
-  const std::vector<Slide> layouts = document.slide_layouts();
+  const std::vector<Slide> layouts =
+      document.document_type() == DocumentType::presentation
+          ? document.as_presentation().slide_layouts()
+          : std::vector<Slide>{};
   for (std::uint32_t layout = 0; layout < layouts.size(); ++layout) {
     std::vector<ElementIdentifier> frames;
     std::vector<ElementIdentifier> paragraphs;

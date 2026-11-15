@@ -13,7 +13,7 @@ struct Row final {
 
 using odr::ErrorCode;
 
-constexpr std::array<Row, 66> rows{{
+constexpr std::array<Row, 67> rows{{
     {ErrorCode::unknown, "Unknown"},
     {ErrorCode::unsupported_operation, "UnsupportedOperation"},
     {ErrorCode::file_not_found, "FileNotFound"},
@@ -68,6 +68,7 @@ constexpr std::array<Row, 66> rows{{
     {ErrorCode::unsupported_file_encoding, "UnsupportedFileEncoding"},
     {ErrorCode::unauthenticated_read_error, "UnauthenticatedReadError"},
     {ErrorCode::server_socket_denied, "ServerSocketDenied"},
+    {ErrorCode::wrong_document_type, "WrongDocumentType"},
 
     {ErrorCode::edit_new_line, "newLine"},
     {ErrorCode::edit_formula, "formula"},
