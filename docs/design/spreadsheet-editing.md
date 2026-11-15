@@ -431,6 +431,18 @@ and the commits name. Git holds the full text of each decision.
   without an answer `odr-sheet-stale` and raises `odr.onCellsStale`, so an
   undo takes its marks back.
 
+## Open work
+
+Sheet-level edits are in [structure editing](structure-editing.md#open-work).
+
+- Merge and unmerge cells.
+- Column widths and row heights.
+- Freeze panes.
+- xlsx: hyperlinks and comments are not modelled, so they can be neither
+  read nor written; `text_set_content` throws.
+- xlsx styles: no `cellStyleXfs` inheritance, and every border renders as
+  `0.75pt solid` (xlsx `AGENTS.md`, open work 2).
+
 ## Limits
 
 These stay without an answer (decision 29), by choice:

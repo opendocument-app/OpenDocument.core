@@ -238,6 +238,38 @@ Slides:
   slide-jump hyperlink or an outline entry in `viewProps.xml`. Its target is
   gone, which PowerPoint may offer to repair.
 
+## Open work
+
+Sheets:
+
+- Rename a sheet, rewriting every formula, name and chart range that names
+  it. The removal rewrite in section 8 already finds those references.
+- Duplicate and hide a sheet.
+- A page gesture for sheets. A sheet view shows one sheet, so it needs the
+  view to show more than one, or a host-side tab bar that calls the ops.
+- 3D ranges: removing the sheet at either end of a range should move that
+  end inward, as Excel does (gap in section 8).
+- xlsx: remove a sheet holding a table or a pivot table, or one a pivot
+  cache reads; drop the parts only a removed sheet refers to, such as its
+  drawing.
+
+Slides:
+
+- Move and resize a text box (section 4).
+- Remove a shape, and insert a picture or a table. pptx editing covers runs,
+  paragraphs and text style only (pptx `AGENTS.md`, open work 4).
+- pptx: drop other parts' relationships to a removed slide, such as
+  slide-jump hyperlinks and the outline in `viewProps.xml` (gap in section 8).
+- odp with several masters: a slide inserted after one on another master
+  shows the first master until the next render (gap in section 6).
+- A deck with hundreds of layouts carries hundreds of templates (gap in
+  section 6). Templates could load on demand.
+
+Both:
+
+- Open the edited xlsx and pptx files in Excel and PowerPoint, and run
+  `OpenXmlValidator` on them (see Validation).
+
 ## Validation
 
 `DocumentCreate.*` and the per-feature gtests, then a LibreOffice round trip
