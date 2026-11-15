@@ -316,8 +316,8 @@ void write_run_properties(pugi::xml_node properties, const TextStyle &style) {
     value("w:color", hex_color(*style.font_color));
   }
   if (style.font_size.has_value()) {
-    const std::string half_points =
-        std::to_string(std::lround(points(*style.font_size) * 2.0));
+    const std::string half_points = std::to_string(
+        std::lround(style.font_size->magnitude_in(KnownUnit::point) * 2.0));
     value("w:sz", half_points);
     value("w:szCs", half_points);
   }

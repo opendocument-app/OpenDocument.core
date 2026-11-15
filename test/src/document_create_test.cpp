@@ -9,7 +9,6 @@
 #include <gtest/gtest.h>
 
 #include <sstream>
-#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -47,15 +46,8 @@ Text first_text(const Element &element) {
   return result.as_text();
 }
 
-/// @p measure in centimetres, from the units the engines report.
 double centimetres(const Measure &measure) {
-  if (measure.unit().name() == "cm") {
-    return measure.magnitude();
-  }
-  if (measure.unit().name() == "in") {
-    return measure.magnitude() * 2.54;
-  }
-  throw std::invalid_argument("unexpected unit " + measure.unit().name());
+  return measure.magnitude_in(KnownUnit::centimetre);
 }
 
 Document reopen(const Document &document) {

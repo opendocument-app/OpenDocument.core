@@ -39,8 +39,6 @@ std::string hex_color(const Color &color);
 /// The `w:highlight` name of @p color, where it is one of the sixteen
 /// ([ECMA-376] 17.18.40).
 std::optional<std::string_view> highlight_name(const Color &color);
-/// @p length in points; refuses a unit that has no fixed size.
-double points(const Measure &length);
 
 std::optional<std::string> read_string_attribute(pugi::xml_attribute);
 std::optional<Color> read_color_attribute(pugi::xml_attribute);

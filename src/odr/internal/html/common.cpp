@@ -22,7 +22,6 @@
 #include <fstream>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -110,16 +109,6 @@ html::width_fit(const HtmlConfig &config, const bool fit_width_by_default,
 
 namespace {
 
-/// css absolute lengths, all defined against the inch (css values 3, 5.2).
-const std::unordered_map<std::string, double> &css_absolute_units() {
-  static const std::unordered_map<std::string, double> units{
-      {"px", 1.0},         {"in", 96.0},        {"pt", 96.0 / 72.0},
-      {"pc", 96.0 / 6},    {"cm", 96.0 / 2.54}, {"mm", 96.0 / 25.4},
-      {"q", 96.0 / 101.6},
-  };
-  return units;
-}
-
 /// Whether css reads @p name as a length: an absolute one, one it resolves
 /// against the font, the line or the viewport, or `%` against the containing
 /// block.
@@ -128,7 +117,19 @@ bool is_css_length_unit(const std::string &name) {
       "em", "rem", "ex", "ch", "ic",   "cap",  "lh", "rlh",
       "vw", "vh",  "vi", "vb", "vmin", "vmax", "%",
   };
-  return css_absolute_units().contains(name) || relative.contains(name);
+  // css values 3, 5.2
+  switch (DynamicUnit(name).known()) {
+  case KnownUnit::centimetre:
+  case KnownUnit::millimetre:
+  case KnownUnit::quarter_millimetre:
+  case KnownUnit::inch:
+  case KnownUnit::point:
+  case KnownUnit::pica:
+  case KnownUnit::pixel:
+    return true;
+  default:
+    return relative.contains(name);
+  }
 }
 
 /// Unit identifiers are case-insensitive in css, and a host writes the name.
@@ -170,12 +171,11 @@ std::optional<double> html::css_pixels(const std::optional<Measure> &measure) {
     return {};
   }
 
-  const auto &units = css_absolute_units();
-  const auto it = units.find(unit_name(*measure));
-  if (it == std::end(units)) {
+  const Measure length(measure->magnitude(), DynamicUnit(unit_name(*measure)));
+  if (length.unit().dimension() != Dimension::length) {
     return {};
   }
-  const double pixels = measure->magnitude() * it->second;
+  const double pixels = length.magnitude_in(KnownUnit::pixel);
   return std::isfinite(pixels) && pixels > 0 ? std::optional(pixels)
                                              : std::nullopt;
 }

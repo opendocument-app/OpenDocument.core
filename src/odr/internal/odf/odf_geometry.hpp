@@ -1,5 +1,7 @@
 #pragma once
 
+#include <odr/quantity.hpp>
+
 #include <optional>
 #include <string>
 #include <string_view>
@@ -22,8 +24,9 @@ read_transform(pugi::xml_node node);
 [[nodiscard]] std::optional<DrawingTransform>
 parse_transform(std::string_view value);
 
-/// Centimetres per @p unit; zero for a unit that is not an absolute length.
-[[nodiscard]] double centimetres_per(std::string_view unit);
+/// @p length as ODF spells it: in `cm`, `mm`, `in`, `pt`, `pc` or `px`
+/// (ODF 1.3 part 3, 18.3.18), another length in `cm`, anything else as is.
+[[nodiscard]] std::string length_string(const Measure &length);
 
 /// A length attribute in 1/100 mm, the unit ODF measures a chart and an
 /// `svg:d` with no view box in. Nothing where it is absent or not a length.

@@ -16,6 +16,15 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+### Units
+
+- `DynamicUnit` tells its `dimension()` (length, angle, dimensionless), its
+  `known()` unit and its `factor_to(unit)`. `Measure::magnitude_in(KnownUnit)`
+  and `Measure::to(KnownUnit)` convert within a dimension and throw
+  `std::invalid_argument` across dimensions or for a unit of unknown size.
+- `insert_text_box` and a `setTextStyle` font size also take lengths in `m`
+  and `q`.
+
 ### Document creation
 
 - `create_document` makes odp and pptx files. A new presentation has a 16:9

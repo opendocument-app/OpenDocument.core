@@ -257,8 +257,7 @@ std::string text_of(const Element &element) {
 }
 
 double centimetres(const Measure &measure) {
-  return measure.unit().name() == "in" ? measure.magnitude() * 2.54
-                                       : measure.magnitude();
+  return measure.magnitude_in(KnownUnit::centimetre);
 }
 
 } // namespace

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <ostream>
 #include <stdexcept>
@@ -10,17 +11,52 @@
 
 namespace odr {
 
+/// What a unit measures. Units of one dimension convert into each other.
+enum class Dimension : std::uint8_t {
+  unknown,
+  dimensionless,
+  length,
+  angle,
+};
+
+/// The units whose size is known, so a quantity in one converts.
+enum class KnownUnit : std::uint8_t {
+  unknown,
+  none,               ///< a bare number, named ``
+  percent,            ///< `%`
+  metre,              ///< `m`
+  centimetre,         ///< `cm`
+  millimetre,         ///< `mm`
+  quarter_millimetre, ///< `q`
+  inch,               ///< `in`
+  point,              ///< `pt`, 1/72 in
+  pica,               ///< `pc`, 1/6 in
+  pixel,              ///< `px`, 1/96 in
+  radian,             ///< `rad`
+  degree,             ///< `deg`
+  gradian,            ///< `grad`
+  turn,               ///< `turn`
+};
+
 /// Represents a runtime unit of measure.
 class DynamicUnit {
 public:
   /// Constructs the unitless unit, equal to `DynamicUnit("")`.
   DynamicUnit();
   explicit DynamicUnit(std::string_view name);
+  /// Throws `std::invalid_argument` for `KnownUnit::unknown`.
+  explicit DynamicUnit(KnownUnit unit);
 
   bool operator==(const DynamicUnit &rhs) const;
   bool operator!=(const DynamicUnit &rhs) const;
 
   [[nodiscard]] const std::string &name() const;
+  [[nodiscard]] KnownUnit known() const;
+  [[nodiscard]] Dimension dimension() const;
+  /// The factor a magnitude in this unit is multiplied by to be in @p to.
+  /// Throws `std::invalid_argument` across dimensions or for a unit of
+  /// unknown size.
+  [[nodiscard]] double factor_to(const DynamicUnit &to) const;
 
   void to_stream(std::ostream &) const;
   [[nodiscard]] std::string to_string() const;
@@ -75,6 +111,22 @@ public:
 
   Magnitude magnitude() const { return m_magnitude; }
   Unit unit() const { return m_unit; }
+
+  /// The magnitude in @p unit. Throws `std::invalid_argument` where the
+  /// quantity's unit measures another dimension or has no known size.
+  [[nodiscard]] double magnitude_in(const KnownUnit unit) const
+    requires std::is_same_v<Unit, DynamicUnit>
+  {
+    return static_cast<double>(m_magnitude) *
+           m_unit.factor_to(DynamicUnit(unit));
+  }
+
+  /// This quantity in @p unit; throws as @ref magnitude_in does.
+  [[nodiscard]] Quantity<double> to(const KnownUnit unit) const
+    requires std::is_same_v<Unit, DynamicUnit>
+  {
+    return {magnitude_in(unit), DynamicUnit(unit)};
+  }
 
   void to_stream(std::ostream &out) const { out << to_string(); }
 

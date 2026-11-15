@@ -140,29 +140,6 @@ std::optional<std::string_view> ooxml::highlight_name(const Color &color) {
   return it->first;
 }
 
-double ooxml::points(const Measure &length) {
-  const std::string &unit = length.unit().name();
-  if (unit == "pt") {
-    return length.magnitude();
-  }
-  if (unit == "px") {
-    return length.magnitude() * 0.75;
-  }
-  if (unit == "in") {
-    return length.magnitude() * 72.0;
-  }
-  if (unit == "cm") {
-    return length.magnitude() * 72.0 / 2.54;
-  }
-  if (unit == "mm") {
-    return length.magnitude() * 72.0 / 25.4;
-  }
-  if (unit == "pc") {
-    return length.magnitude() * 12.0;
-  }
-  throw std::invalid_argument("no fixed size in points: " + length.to_string());
-}
-
 std::optional<Color>
 ooxml::read_color_attribute(const pugi::xml_attribute attribute) {
   if (!attribute) {
