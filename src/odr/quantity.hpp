@@ -53,6 +53,10 @@ public:
   [[nodiscard]] const std::string &name() const;
   [[nodiscard]] KnownUnit known() const;
   [[nodiscard]] Dimension dimension() const;
+  /// The factor a magnitude in this unit is multiplied by to be in @p to.
+  /// Throws `std::invalid_argument` across dimensions or for a unit of
+  /// unknown size.
+  [[nodiscard]] double factor_to(const DynamicUnit &to) const;
 
   void to_stream(std::ostream &) const;
   [[nodiscard]] std::string to_string() const;
@@ -60,7 +64,6 @@ public:
 private:
   struct Unit;
   class Registry;
-  friend class QuantityBase;
 
   const Unit *m_unit{nullptr};
 };
@@ -73,11 +76,6 @@ protected:
 
   /// Renders @p magnitude with 7 significant digits, always positional.
   static std::string format_magnitude(double magnitude);
-
-  /// Throws `std::invalid_argument` where @p from and @p to differ in
-  /// dimension or either is of unknown size.
-  static double convert(double magnitude, const DynamicUnit &from,
-                        const DynamicUnit &to);
 };
 
 /// Represents a quantity with a magnitude and a unit of measure.
@@ -119,7 +117,8 @@ public:
   [[nodiscard]] double magnitude_in(const KnownUnit unit) const
     requires std::is_same_v<Unit, DynamicUnit>
   {
-    return convert(static_cast<double>(m_magnitude), m_unit, DynamicUnit(unit));
+    return static_cast<double>(m_magnitude) *
+           m_unit.factor_to(DynamicUnit(unit));
   }
 
   /// This quantity in @p unit; throws as @ref magnitude_in does.

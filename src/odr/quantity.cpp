@@ -193,18 +193,16 @@ void DynamicUnit::to_stream(std::ostream &out) const { out << m_unit->name; }
 
 std::string DynamicUnit::to_string() const { return m_unit->name; }
 
-double QuantityBase::convert(const double magnitude, const DynamicUnit &from,
-                             const DynamicUnit &to) {
-  if (from == to) {
-    return magnitude;
+double DynamicUnit::factor_to(const DynamicUnit &to) const {
+  if (*this == to) {
+    return 1;
   }
-  if (from.dimension() == Dimension::unknown ||
-      from.dimension() != to.dimension()) {
-    throw std::invalid_argument("cannot convert " + from.name() + " to " +
+  if (dimension() == Dimension::unknown || dimension() != to.dimension()) {
+    throw std::invalid_argument("cannot convert " + name() + " to " +
                                 to.name());
   }
-  return magnitude * ((from.m_unit->numerator * to.m_unit->denominator) /
-                      (from.m_unit->denominator * to.m_unit->numerator));
+  return (m_unit->numerator * to.m_unit->denominator) /
+         (m_unit->denominator * to.m_unit->numerator);
 }
 
 } // namespace odr

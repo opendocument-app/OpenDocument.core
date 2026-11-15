@@ -18,9 +18,9 @@ The release run heads these entries with the version and opens a fresh
 
 ### Units
 
-- `DynamicUnit` tells its `dimension()` (length, angle, dimensionless) and
-  `known()` unit. `Measure::magnitude_in(KnownUnit)` and
-  `Measure::to(KnownUnit)` convert within a dimension and throw
+- `DynamicUnit` tells its `dimension()` (length, angle, dimensionless), its
+  `known()` unit and its `factor_to(unit)`. `Measure::magnitude_in(KnownUnit)`
+  and `Measure::to(KnownUnit)` convert within a dimension and throw
   `std::invalid_argument` across dimensions or for a unit of unknown size.
 - `insert_text_box` and a `setTextStyle` font size also take lengths in `m`
   and `q`.
