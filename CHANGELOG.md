@@ -121,6 +121,12 @@ The release run heads these entries with the version and opens a fresh
   away again. An edit that would make more than 200,000 cells on the way is
   refused with `unsupportedEdit`. Inserting or deleting rows and columns
   in the grid records nothing. Nothing is printed past the content.
+- In the editing mode Ctrl (or Cmd) with an arrow jumps as in a desktop
+  application, Ctrl+Home goes to A1 and Ctrl+End to the last cell of the
+  content; Shift widens the selection. A style chord or `format` on an empty
+  cell of the grid makes it and styles it.
+- An empty column and row of the grid take the size the file states for the
+  first ones past the content, where it states one.
 - A csv saved after a write past its last row states each row it adds with
   the sheet's fields (`,,`) rather than a single `""`, so the file still
   reads as a csv.

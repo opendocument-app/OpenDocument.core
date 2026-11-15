@@ -1733,7 +1733,8 @@ TEST(html, a_sheet_states_what_its_grid_is_drawn_from) {
   // an ods states its grid, LibreOffice's 1024 columns here
   EXPECT_NE(ods.find(R"(data-odr-sheet-max="1024,1048576")"),
             std::string::npos);
-  EXPECT_NE(ods.find(R"(data-odr-sheet-default-size="85.42,17.01")"),
+  // the size of the columns and rows the file declares past its content
+  EXPECT_NE(ods.find(R"(data-odr-sheet-default-size="85.34,19.54")"),
             std::string::npos);
 
   config.spreadsheet_grid = false;

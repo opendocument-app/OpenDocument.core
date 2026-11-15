@@ -42,11 +42,11 @@ renderer states a few facts, and the page draws the rest.
   65,536 × 256 for xls, 1,000,000 × 1,000 for Numbers. An ods states its grid
   as its dimensions, so its own dimensions win where they are smaller; an xlsx states only its used range,
   so its dimensions say nothing about the maximum.
-- **The default size** is what an empty column and row take in the format:
-  the sheet's default column width and row height where the file states
-  them, else the application's (Excel: 8.43 characters by 15 pt; LibreOffice:
-  2.26 cm by 0.45 cm). Reading the file's defaults is new model work; until
-  then the renderer states the application's.
+- **The default size** is what the file states for the first column and the
+  first row past the content, else the application's (Excel: 8.43
+  characters by 15 pt; LibreOffice: 2.26 cm by 0.45 cm). An ods declares its
+  trailing columns and rows with their style, so it always states them; an
+  xlsx does where a `col` range or a `row` covers the position.
 - **No grid past a cut.** Where the render is cut, the area past the
   rendered cells holds content the page does not show. Drawing empty cells
   there would claim it is empty. The page draws nothing past a cut edge, as
@@ -74,6 +74,12 @@ default) drops the three new attributes, and with them the grid.
   at once: `odr.goToCell(column, row)` (also `odr.sheet.goToCell`, by
   index) pins the cell, empty or not, and scrolls it into view. It answers
   false past the maximum or a cut edge.
+- **Jump keys**, in the editing mode as the arrows are: Ctrl (or Cmd) with
+  an arrow goes from a filled cell to the last filled one before a gap, else
+  to the next filled one, else to the edge the page reaches; past the
+  content nothing is filled, so it goes straight to the edge. Ctrl+Home is
+  A1, Ctrl+End the last cell of the content, and Shift widens the selection
+  instead of moving the pin.
 - **The height stops at the browser's limit.** The area below the content
   stays under 15 million px, short of Firefox's 17.9 million; a jump past
   that is refused. At Excel's 20 px a row, that is some 750,000 rows.
@@ -116,6 +122,8 @@ to type into.
   write (Escape, or nothing typed) takes them away at once.
 - **Opening the editor there** works as on a cell: typing, Enter or F2 on the
   pinned empty cell, a double click, or a click where `editOnClick` holds.
+- **Formatting there** too: `format`, `toggle` and their chords make the
+  cell's rows and columns, style it, and the step owns what was made.
 - **Inserting and deleting rows and columns in the grid** records nothing
   and is taken: the grid there is empty. Past a `spreadsheet_limit` cut no
   grid is drawn, and such an edit moves what the file holds there.
@@ -129,17 +137,15 @@ to type into.
 
 ## Left
 
-- **Jump keys.** Ctrl+End and Ctrl+arrow, which jump in a desktop
-  application, are not taken yet; `odr.goToCell` is what they would call.
 - **Past the browser's height limit**, a spacer could stand in for the rows
   above a far target, so a jump to row 1,048,576 works. Not built: the area
   stops at the limit.
-- **The file's own default column width and row height** are not read yet;
-  the application's stand in (decision 1).
+- **An xlsx's `sheetFormatPr`** (its default column width and row height) is
+  not read. Reading it in the engine would also size every unstyled column
+  inside the content, which today takes the width of its text: a change of
+  the rendering of its own.
 - **Frozen panes** are not rendered today. Where they come, the grid starts
   past them.
-- **Formatting past the content.** A style chord on an empty cell does
-  nothing yet; it would make the cell as an edit does.
 - **An edit past the budget**, far below a wide sheet, is refused. Making
   only the target row, with the rows on the way left to the grid, needs the
   row index to take rows out of order.

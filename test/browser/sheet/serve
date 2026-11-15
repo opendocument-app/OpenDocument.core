@@ -16,6 +16,7 @@ serve(
         "tests.html",
         "grid.html",
         "grid-cut.html",
+        "grid-keys.html",
         "sheets.html",
         "chunks.html",
         "nochunks.html",

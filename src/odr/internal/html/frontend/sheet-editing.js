@@ -1878,7 +1878,96 @@
 
   /// What a pinned cell does with a key when no editor is open. Captured, so
   /// these never reach the pin and the sort beneath. The chord is `editing.js`'s.
+  /// Whether the cell at a position shows anything; the grid past the
+  /// content shows nothing.
+  function isFilled(column, row) {
+    var cell = sheetApi.cellAt(column, row);
+    return cell !== null && cell.textContent.trim() !== "";
+  }
+
+  /// Where Ctrl with an arrow lands from @p at, as in a desktop application:
+  /// from a filled cell to the last filled one before a gap, else to the
+  /// next filled one, else to the edge the page reaches. Past the content
+  /// nothing is filled, so the walk stops there and goes to the edge.
+  function jumpTarget(at, step) {
+    var extent = sheetApi.extent();
+    var reach = sheetApi.reach();
+    function inside(column, row) {
+      return (
+        column >= 0 && row >= 0 && column <= reach.column && row <= reach.row
+      );
+    }
+    var column = at.column + step[0];
+    var row = at.row + step[1];
+    if (!inside(column, row)) {
+      return { column: at.column, row: at.row };
+    }
+    if (isFilled(at.column, at.row) && isFilled(column, row)) {
+      while (
+        inside(column + step[0], row + step[1]) &&
+        isFilled(column + step[0], row + step[1])
+      ) {
+        column += step[0];
+        row += step[1];
+      }
+      return { column: column, row: row };
+    }
+    while (!isFilled(column, row)) {
+      var past =
+        (step[0] > 0 && column >= extent.columns) ||
+        (step[1] > 0 && row >= extent.rows);
+      if (past || !inside(column + step[0], row + step[1])) {
+        return {
+          column: step[0] > 0 ? reach.column : column,
+          row: step[1] > 0 ? reach.row : row,
+        };
+      }
+      column += step[0];
+      row += step[1];
+    }
+    return { column: column, row: row };
+  }
+
+  /// Ctrl or Cmd with an arrow, Home or End moves the pin, Shift widening
+  /// the selection; true where the key was one of them.
+  function jumpKey(event) {
+    var at = sheetApi.pinned();
+    if (at === null || at.column === null || at.row === null) {
+      return false;
+    }
+    var to;
+    if (arrows[event.key] !== undefined) {
+      var from = event.shiftKey ? sheetApi.selection().focus || at : at;
+      to = jumpTarget(from, arrows[event.key]);
+    } else if (event.key === "Home") {
+      to = { column: 0, row: 0 };
+    } else if (event.key === "End") {
+      var extent = sheetApi.extent();
+      to = { column: extent.columns - 1, row: extent.rows - 1 };
+    } else {
+      return false;
+    }
+    if (event.shiftKey) {
+      sheetApi.select(to);
+    } else {
+      sheetApi.goToCell(to.column, to.row);
+    }
+    return true;
+  }
+
   function pinnedKey(event) {
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      !event.altKey &&
+      odr.editing.isEnabled() &&
+      overlay === null &&
+      !typingIn(event.target) &&
+      jumpKey(event)
+    ) {
+      event.stopPropagation();
+      event.preventDefault();
+      return;
+    }
     if (
       !odr.editing.isEnabled() ||
       overlay !== null ||
@@ -2368,7 +2457,53 @@
 
   /// States @p style on every selected cell as one undo step. A lock refuses
   /// a value, not a style.
+  /// Formats the selection; on an empty cell of the grid past the content,
+  /// its rows and columns are made first, and the step owns them as an
+  /// edit's does (`sheet-grid.md` decision 3).
   function format(style) {
+    var pin = sheetApi.pinned();
+    var made = null;
+    if (
+      pin !== null &&
+      pin.cell === null &&
+      pin.column !== null &&
+      pin.row !== null &&
+      odr.editing.isEnabled() &&
+      odr.editing.isEditable() &&
+      styles &&
+      Object.keys(style).length > 0 &&
+      valid(style)
+    ) {
+      made = sheetApi.materialize(pin.column, pin.row);
+      if (made === null) {
+        refuse("unsupportedEdit", pin.column, pin.row);
+        return false;
+      }
+      sheetApi.pin({ column: pin.column, row: pin.row });
+    }
+    var steps = shared.history.length;
+    var done = formatCells(style);
+    if (made !== null) {
+      if (done && shared.history.length > steps) {
+        var entry = shared.history[shared.history.length - 1];
+        var undo = entry.undo;
+        var redo = entry.redo;
+        entry.undo = function () {
+          undo();
+          sheetApi.unmaterialize(made);
+        };
+        entry.redo = function () {
+          sheetApi.rematerialize(made);
+          redo();
+        };
+      } else {
+        sheetApi.unmaterialize(made);
+      }
+    }
+    return done;
+  }
+
+  function formatCells(style) {
     finish();
     if (!odr.editing.isEnabled()) {
       return false;
@@ -2578,7 +2713,12 @@
       editStructure(axis, false, false);
     } else {
       var property = chords[event.key.toLowerCase()];
-      if (property === undefined || sheetApi.selectedCells().length === 0) {
+      // an empty cell of the grid has no `td` yet, and `format` makes one
+      var empty = pin !== null && pin.cell === null && pin.row !== null;
+      if (
+        property === undefined ||
+        (sheetApi.selectedCells().length === 0 && !empty)
+      ) {
         return;
       }
       toggle(property);

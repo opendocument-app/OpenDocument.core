@@ -1027,7 +1027,7 @@ struct SheetGrid final {
   double row_pixels{0};
 };
 
-SheetGrid sheet_grid(const Sheet &sheet, const FileType type) {
+SheetGrid application_grid(const Sheet &sheet, const FileType type) {
   // Excel's 8.43 characters by 15pt
   constexpr double excel_column = 64;
   constexpr double excel_row = 20;
@@ -1046,6 +1046,26 @@ SheetGrid sheet_grid(const Sheet &sheet, const FileType type) {
   default:
     return {16384, 1048576, excel_column, excel_row};
   }
+}
+
+/// The format's grid, at the size the file states for the first column and
+/// row past the content where it states one: an ods declares its trailing
+/// columns and rows with their style, an xlsx a `col` range or a `row`.
+SheetGrid sheet_grid(const Sheet &sheet, const FileType type,
+                     const std::uint32_t end_column,
+                     const std::uint32_t end_row) {
+  SheetGrid result = application_grid(sheet, type);
+  if (const std::optional<double> width =
+          html::css_pixels(sheet.column_style(end_column).width);
+      width.has_value() && *width > 0) {
+    result.column_pixels = *width;
+  }
+  if (const std::optional<double> height =
+          html::css_pixels(sheet.row_style(end_row).height);
+      height.has_value() && *height > 0) {
+    result.row_pixels = *height;
+  }
+  return result;
 }
 
 std::string pair_of(const std::uint32_t first, const std::uint32_t second) {
@@ -1087,7 +1107,8 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
             }
             // what the page draws the empty grid past the content from
             if (grid) {
-              const SheetGrid limits = sheet_grid(sheet, state.file_type());
+              const SheetGrid limits =
+                  sheet_grid(sheet, state.file_type(), end_column, end_row);
               clb("data-odr-sheet-extent", pair_of(end_column, end_row));
               clb("data-odr-sheet-max",
                   pair_of(std::max(limits.columns, end_column),

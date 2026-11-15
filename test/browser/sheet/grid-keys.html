@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet grid key and format checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body class="odr-body odr-gridlines-soft" data-odr-editable="true" data-odr-keyboard="navigation shortcuts">
+    <!-- Four columns by four rows with a gap: B3 and the whole row 2 past A
+         are empty, so a jump has a run to end and a gap to cross. The maximum
+         is eight columns by ten rows. -->
+    <div class="odr-sheet" data-odr-sheet="0" data-odr-sheet-extent="4,4" data-odr-sheet-max="8,10" data-odr-sheet-default-size="50,20" style="--odr-sheet-gutter:30px;--odr-sheet-width:350px">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" /><col style="width: 80px" /><col style="width: 80px" /><col style="width: 80px" /><col style="width: 80px" />
+        <thead><tr><th class="odr-sheet-corner"></th><th class="odr-sheet-column-header">A</th><th class="odr-sheet-column-header">B</th><th class="odr-sheet-column-header">C</th><th class="odr-sheet-column-header">D</th></tr></thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" /><col style="width: 80px" /><col style="width: 80px" /><col style="width: 80px" /><col style="width: 80px" />
+        <tbody>
+          <tr><th class="odr-sheet-row-header">1</th><td>a1</td><td>b1</td><td>c1</td><td></td></tr>
+          <tr><th class="odr-sheet-row-header">2</th><td>a2</td><td>b2</td><td></td><td></td></tr>
+          <tr><th class="odr-sheet-row-header">3</th><td>a3</td><td></td><td></td><td></td></tr>
+          <tr><th class="odr-sheet-row-header">4</th><td>a4</td><td>b4</td><td></td><td>d4</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="report" style="margin-top:40px"></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      function press(key, modifiers) {
+        modifiers = modifiers || {};
+        var event = new KeyboardEvent("keydown", {
+          key: key,
+          ctrlKey: !!modifiers.ctrl,
+          metaKey: !!modifiers.meta,
+          shiftKey: !!modifiers.shift,
+          bubbles: true,
+          cancelable: true,
+        });
+        document.body.dispatchEvent(event);
+        return event.defaultPrevented;
+      }
+      function at() {
+        var pin = odr.sheet.pinned();
+        return pin === null ? null : pin.column + "," + pin.row + (pin.cell === null ? " empty" : "");
+      }
+      function ops() {
+        return JSON.parse(odr.editing.getOperations()).ops;
+      }
+
+      check("the mode turns on", odr.editing.enable() === true);
+
+      note("jumping with Ctrl");
+      odr.sheet.pin({ column: 0, row: 0 });
+      check("Ctrl+Right runs to the last filled cell of the row", press("ArrowRight", { ctrl: true }) && at() === "2,0", at());
+      check("then on through the empty grid to the edge", press("ArrowRight", { ctrl: true }) && at() === "7,0 empty", at());
+      check("Ctrl+Left from the edge comes back to the next filled cell", press("ArrowLeft", { ctrl: true }) && at() === "2,0", at());
+      odr.sheet.pin({ column: 1, row: 0 });
+      check("Ctrl+Down stops before the gap", press("ArrowDown", { ctrl: true }) && at() === "1,1", at());
+      check("and crosses it to the next filled cell", press("ArrowDown", { ctrl: true }) && at() === "1,3", at());
+      check("then to the last row the page reaches", press("ArrowDown", { ctrl: true }) && at() === "1,9 empty", at());
+      check("Cmd works as Ctrl", press("ArrowUp", { meta: true }) && at() === "1,3", at());
+      check("Ctrl+Home is A1", press("Home", { ctrl: true }) && at() === "0,0", at());
+      check("Ctrl+End is the last cell of the content", press("End", { ctrl: true }) && at() === "3,3", at());
+      odr.sheet.pin({ column: 0, row: 0 });
+      press("ArrowDown", { ctrl: true, shift: true });
+      var range = odr.sheet.selection();
+      check("Shift widens the selection instead", at() === "0,0" && range.rows[1] === 3 && range.columns[1] === 0, range);
+
+      note("formatting an empty cell");
+      odr.sheet.pin(null);
+      odr.goToCell(5, 1);
+      var before = ops().length;
+      check("format makes its column and styles it", odr.editing.format({ bold: true }) === true && odr.sheet.extent().columns === 6);
+      var last = ops()[ops().length - 1];
+      check("as a setCellStyle on that cell", ops().length === before + 1 && last.op === "setCellStyle" && last.column === 5 && last.row === 1, last);
+      check("undo takes the columns away again", odr.editing.undo() === true && odr.sheet.extent().columns === 4);
+      check("redo brings them back, styled", odr.editing.redo() === true && odr.sheet.extent().columns === 6);
+      odr.goToCell(2, 6);
+      check("a chord on an empty cell below formats it too", press("b", { ctrl: true }) && odr.sheet.extent().rows === 7 && ops()[ops().length - 1].row === 6);
+      odr.goToCell(3, 8);
+      check("an invalid style makes nothing", odr.editing.format({ size: "huge" }) === false && odr.sheet.extent().rows === 7);
+    </script>
+  </body>
+</html>
