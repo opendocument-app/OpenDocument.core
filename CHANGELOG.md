@@ -52,6 +52,7 @@ The release run heads these entries with the version and opens a fresh
   its name and its placeholders' boxes, lengths as strings such as `2.1cm`;
   `insertSlide` answers the ids of the slide, its placeholders and their
   paragraphs, and `insertTextBox` those of the box and its paragraph.
+- `Document::move_slide(slide, index)` moves a slide of an odp.
 - npm: a sheet or slide inserted directly or through `edit` is a view from
   the next `listViews`.
 - A new pptx states a default text style, the theme's body font at 18pt, as

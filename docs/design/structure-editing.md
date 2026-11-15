@@ -204,6 +204,8 @@ Sheets:
 - A move rewrites no formula: formulas name sheets, and a 3D range
   (`Sheet1:Sheet3!A1`) spans whatever lies between its ends afterwards, as
   in Excel.
+- Gap: removing the sheet at either end of a 3D range leaves the range
+  naming it. Excel moves that end to the neighbouring sheet inside the range.
 - xlsx: the `sheet` entry, the workbook relationship, the content type and
   the part go. A name local to the removed sheet goes; `localSheetId`,
   `activeTab` and `firstSheet` follow the positions. The parts the removed
