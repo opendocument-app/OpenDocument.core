@@ -37,6 +37,9 @@
 - [Conversion design](conversion.md): a document turned into another file
   type of its document type, read through the model and written only through
   the edit API.
+- [PDF inspection design](pdf-inspection.md): a public, read-only view of a
+  pdf's pages, annotations, fonts, images, page content and raw objects,
+  wrapping the parser's own structs.
 
 ## Diagrams
 
