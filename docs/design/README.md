@@ -29,8 +29,8 @@
   `-fno-exceptions` and loads in any WebView.
 - [Document creation design](document-creation.md): a new odt, ods, odp,
   docx, xlsx or pptx, generated in code and opened through the read path.
-- [Structure editing design](structure-editing.md): new sheets, slides from a
-  layout, and text boxes.
+- [Structure editing design](structure-editing.md): sheets and slides
+  inserted, removed and moved, slides from a layout, and text boxes.
 
 ## Diagrams
 

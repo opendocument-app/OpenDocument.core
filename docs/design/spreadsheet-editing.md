@@ -272,164 +272,79 @@ separate scripts. The coordinates are the ones an op names, never a DOM index.
 
 ## Landed
 
-Each item landed as a stack of PRs. The decision numbers are the ones the PRs
-and the commits name. Git holds the full text of each decision.
+Each item landed as a stack of PRs; the decision numbers are the ones its
+commits name.
 
-- **Cell formatting** (decisions 9 to 13).
-  - `Sheet::set_cell_style`, `set_row_style` and `set_column_style`, and the
-    ops `setCellStyle`, `setRowStyle` and `setColumnStyle`. A style is a delta
-    with the keys of a run, plus `fill` and `align`.
-  - A write copies the style the cell shows and never edits a shared one. An
-    `.ods` adds an automatic style, and an `.xlsx` appends a `font`, a `fill`
-    and an `xf` only where no equal one exists.
-  - A row or column style also reaches the cells that the file does not state
-    yet. An `.ods` row style goes onto the cells, because LibreOffice applies
-    the `table:default-cell-style-name` of a row to every row.
-  - The selection is a rectangle, and the pin is one of its corners. A header
-    click selects a row or a column, and an undo step is one gesture.
-- **Number formats** (decisions 14 to 16).
-  - `internal/number_format` parses a format code as MS-XLS 2.4.126 states
-    it, and one formatter writes a number with it. An ods data style is first
-    turned into a format code.
-  - An `.xlsx` reader formats `<v>` with the `numFmtId` of the cell. An
-    `.ods` reader keeps the `text:p`, and the ods writer formats a written
-    number with the data style of the cell.
+- **Cell formatting** (decisions 9–13)
+  - `Sheet::set_cell_style`, `set_row_style`, `set_column_style` and their
+    ops. A style is a delta: the keys of a run, plus `fill` and `align`.
+  - A write copies the style the cell shows and never edits a shared one.
+    xlsx appends a `font`, `fill` or `xf` only where no equal one exists.
+  - A row or column style also reaches cells the file does not state yet.
+    An ods row style goes onto the cells, because LibreOffice applies a
+    row's `table:default-cell-style-name` to every row.
+  - The page selects a rectangle; a header click selects a row or a column.
+- **Number formats** (decisions 14–16)
+  - `internal/number_format` parses a format code (MS-XLS 2.4.126) and
+    formats a number with it. An ods data style is turned into a format
+    code first.
   - An editable render states `data-odr-value`, so the editor opens a
     formatted number on its value.
-- **Typed dates and times** (decisions 17 to 19).
-  - A date states days since 1899-12-30, and a time states its length in
-    days. An `.xlsx` in the 1904 system adds 1462 days.
-  - A written date takes the date format of the cell, else a built-in one.
-  - The editor reads a date in the order of the document's locale, and ISO
-    8601 always.
-- **Inserted and deleted rows and columns** (decisions 20 to 27).
-  - The ops `insertRows`, `deleteRows`, `insertColumns` and `deleteColumns`
-    state a sheet, an index and a count. `formula::SheetEdit` states either
+- **Dates and times** (decisions 17–19)
+  - A date is days since 1899-12-30, a time its length in days; an xlsx in
+    the 1904 system adds 1462.
+  - The editor reads a date in the document locale's order, and ISO 8601.
+- **Inserted and deleted rows and columns** (decisions 20–28)
+  - Ops `insertRows`, `deleteRows`, `insertColumns`, `deleteColumns`, each
+    with a sheet, an index and a count; `formula::SheetEdit` takes either
     axis.
-  - A reference moves with the cell it names, an absolute one too. A
-    reference all inside removed cells becomes `#REF!`.
-  - The writers of `.ods`, `.xlsx` and `.csv` move the cells and everything
-    the file addresses. An edit refuses before it writes anything where it
-    cuts a merge or an xlsx array formula, pushes a cell off the grid, or
-    meets a formula that does not parse, one nested past 64 levels too.
-  - A new row or column is plain. The grid ends at column 16384 (`XFD`).
-  - A structural op splits the log, so no op merges across it. The stale
-    marks follow every op of the log in order.
-- **What else a structural edit moves** (decision 28).
-  - XLSX tables: the range, the filter and the calculated columns move. A new
-    column gets a `tableColumn` and a header cell of the same name. An edit
-    that removes the header row, the totals row or the whole table refuses.
-  - The formulas of conditional formats and validations, and the conditions
-    of an `.ods`. A rule whose first cell a delete removes reads from the
-    first cell that stays.
-  - XLSX page breaks, the ranges of xlsx and ods charts, and the source and
-    the place of an xlsx pivot table. An edit that cuts a pivot table, or
-    removes all of its source, refuses. A source in another workbook stays.
-  - The Excel 2010 extensions of an xlsx worksheet: an `x14` conditional
-    format, validation and sparkline. A rule on another sheet moves the
-    references it reads in the edited one.
-- **Formula evaluation** (decisions 29 to 33).
-  - `formula::evaluate` gives a value or no answer, never a wrong value. An
-    `.ods` follows LibreOffice and reads `table:calculation-settings`. An
-    `.xlsx` follows Excel's documented rules. Where the applications or the
-    documentation leave a result open, the evaluator gives no answer.
-  - A corpus test evaluates every formula of `test/data/input`, and fails on
-    an answer that differs from the result the file caches.
-  - `formula::Value` is empty, a number, a string, a boolean, an error, a
-    reference or an array. A reference stays one until a function reads it.
-    An error propagates left to right. Two numbers are equal where they agree
-    to about 15 significant digits, and an `.ods` sum adds as `KahanSum`.
-    Where Excel's undocumented tolerance and a reading to 15 digits decide
-    apart, an `.xlsx` comparison has no answer.
-  - A range reads only the cells its sheet states, through
-    `SheetAdapter::sheet_visit_cells`, so a repeated `.ods` run reads its
-    value once. A formula nests 64 levels at most, as Excel writes them.
-  - An `.ods` spells a boolean in `&` as the LibreOffice in its
-    `meta:generator` does: `1` before 27.2, `TRUE` from it, and no answer
-    for another application.
-  - 123 functions of mathematics, logic, information, text, lookup, the
-    conditional aggregates and dates, and the names a document defines.
-    `OFFSET` and `INDIRECT` build a reference when they run, so a formula
-    with one reads anything and computes on every recalculation. `NOW`,
-    `TODAY`, `RAND` and `RANDBETWEEN` read the clock and the random numbers
-    in `formula::Settings`, which a recalculation and the page state, so
-    they compute every time too. `INFO` has no answer.
-  - A reference into another document reads the copy the file caches, as
-    the applications do while that document is closed: an `.ods` holds it
-    as a hidden sheet, `'file:///x.ods'#Sheet1`, and an `.xlsx` in an
-    `externalLink` part (`formula_external_sheets`). A copy with a cell
-    whose type this does not read is dropped, so nothing reads that cell as
-    empty. The page does not hold the copy, so such a formula stays stale
-    there.
-  - An array formula computes its range (`formula::evaluate_array`). An
-    operator reads every cell of a range, and a function maps over the
-    elements of an argument it takes as one value: `LEN(A1:A3)` gives three
-    lengths, and `SUM` reads its range whole (`find_array_rule`). `OFFSET`,
-    `INDIRECT` and `CELL` have no answer there. A single row or column
-    repeats over the range, and a position past the result is `#N/A`. A
-    dynamic array of an `.xlsx` fills the range the file states. The page
-    computes the range too: its first cell states `data-odr-array`, and a
-    row or column edit through the range refuses, as the writers do.
-  - `Document::recalculate` computes each stale cell on demand: a dependent
-    of an edit, every formula after a structural edit, and a formula without
-    a result, with a name or with a volatile function. A cycle gets no
-    result, except where the document iterates (`table:iteration`, `calcPr
-    iterate`): then each group of cells that read each other is computed
-    again and again in reading order, from what its cells hold, until none
-    changes by the difference, as LibreOffice does. Past the steps
-    LibreOffice states `Err:523`, so the group has no result, and Excel
-    keeps the last values. LibreOffice's own order can leave a cycle that
-    reads another one a little apart, within the difference. The page
-    iterates the same way, from 0 in an `.ods`, whose write drops the
-    results, and from the file's values in an `.xlsx`. A save recalculates
-    after an edit.
-  - A cell without an answer has no result in an `.ods`, and keeps its old
-    one in an `.xlsx`, which keeps `fullCalcOnLoad`. Every binding has
-    `recalculate`.
-- **Live formulas** (decision 5).
-  - `wasm/formula` builds `odr-formula.js`, the evaluator and the number
-    formats with the wasm inside. An editable ods or xlsx sheet page embeds
-    it and states what it reads: the syntax and the `Settings` of the
-    document, and the format code of each formula cell.
-  - A commit, an undo and a redo compute the formula cells that the edit
-    reaches, in the order they read each other, and show them in the format
-    of each cell. A boolean takes the words the page shows its booleans in.
-    Only a cell without an answer stays stale and reaches `odr.onCellsStale`.
-  - `setCell` takes a formula in the syntax of the file. A formula cell takes
-    a value or a formula, except the anchor of an array or a shared formula.
-    An xlsx drops the `calcChain` entry of a formula it removes, and the
-    whole chain where that empties it.
-  - The editor takes `=` input (decision 4) and opens a formula cell on its
-    formula.
+  - A reference moves with its cell, an absolute one too. One entirely
+    inside removed cells becomes `#REF!`.
+  - Everything a file addresses moves too: xlsx tables, conditional formats
+    and validations (including `x14`), page breaks, chart ranges, pivot
+    sources and places, sparklines, and the ods conditions.
+  - An edit refuses before it writes anything where it would cut a merge,
+    an array formula or a pivot table, push a cell off the grid (column
+    `XFD`), remove a table's header or totals row, or meet a formula that
+    does not parse.
+  - A structural op splits the log, so no op merges across it.
+- **Formula evaluation** (decisions 29–33)
+  - `formula::evaluate` gives a value or no answer, never a wrong one. ods
+    follows LibreOffice and its `table:calculation-settings`; xlsx follows
+    Excel's documented rules. A corpus test checks every formula in
+    `test/data/input` against its cached result.
+  - Two numbers are equal where they agree to about 15 significant digits;
+    an ods sum adds as `KahanSum`. Where Excel's undocumented tolerance and
+    15 digits disagree, an xlsx comparison has no answer. An ods `&` spells
+    a boolean as the LibreOffice in `meta:generator` does.
+  - 123 functions, plus the document's names. `OFFSET`, `INDIRECT` and the
+    clock and random functions recompute on every recalculation.
+  - Array formulas, dynamic arrays (in the range the file states), iterated
+    cycles where the document allows them (`table:iteration`, `calcPr
+    iterate`), and references into other documents through the copy the
+    file caches.
+  - `Document::recalculate` computes each stale cell on demand, and a save
+    after an edit recalculates. A cell without an answer has no result in
+    an ods and keeps its old one in an xlsx, which keeps `fullCalcOnLoad`.
+- **Live formulas in the page** (decision 5)
+  - An editable ods or xlsx sheet embeds `odr-formula.js` and states what
+    it reads: the syntax, the `Settings`, the names, and each cell's format
+    code, type, `data-odr-formula` and `data-odr-reads`.
+  - A commit, undo or redo computes the formula cells it reaches, in
+    dependency order. A cell without an answer is marked `odr-sheet-stale`
+    and reported through `odr.onCellsStale`.
+  - `setCell` takes a formula; the editor takes `=` input (decision 4).
 
 ## Formulas, read side
 
-- `internal/formula` parses `of:=SUM([.A1:.B2])` (`table:formula`) and
-  `SUM(A1:B2)` (`<f>`) with one recursive descent that branches on a
-  `Syntax`. A named expression, a reference over several sheets and a
-  spelling past the grid stay opaque names. A formula that does not parse
-  answers nothing.
-- The writer and `shift` make an ooxml shared formula readable: a member reads
-  the master's expression moved by the offset between the two cells.
-- `SheetAdapter::sheet_visit_formulas` hands out the cells the file spells,
-  not the positions they cover, so a repeated row is a handful of nodes.
-- A formula the graph can read no position out of is in
+- One recursive-descent parser reads OpenFormula (`of:=SUM([.A1:.B2])`)
+  and OOXML (`SUM(A1:B2)`). A formula that does not parse answers nothing.
+- An ooxml shared formula reads the master's expression shifted to the
+  member's cell.
+- `SheetAdapter::sheet_visit_formulas` visits the cells the file spells, so
+  a repeated ods row is one node.
+- A formula the dependency graph cannot resolve is in
   `Document::unresolved_formulas` and keeps its cached result.
-- The view writes `data-odr-formula` and `data-odr-reads` on a formula cell,
-  as editing scaffolding only. For the evaluator in the page it also writes
-  `data-odr-format` on every cell, the format code of the cell, its row or
-  its column (`Sheet::cell_number_format`), so a typed formula takes it too,
-  `data-odr-type` and the value of a boolean or an error cell, the name of
-  the sheet on its table, and the syntax, the `formula::Settings` and the
-  names of the document on `<body>` (`data-odr-formula-names`). A row or
-  column edit moves the names as it moves the formulas. `data-odr-reads`
-  puts in what a name stands for, so a formula with a name reads only that.
-  A formula with a volatile function reads all of its sheet, so every edit
-  computes it. The page formats a result with the document's locale, not
-  with the language of an ods data style. A commit computes the dependents
-  off the coalesced log (`repaintStale`, decision 5). It marks the ones
-  without an answer `odr-sheet-stale` and raises `odr.onCellsStale`, so an
-  undo takes its marks back.
 
 ## Open work
 
@@ -443,13 +358,10 @@ Sheet-level edits are in [structure editing](structure-editing.md#open-work).
 - xlsx styles: no `cellStyleXfs` inheritance, and every border renders as
   `0.75pt solid` (xlsx `AGENTS.md`, open work 2).
 
-## Limits
+These stay without an answer by choice (decision 29):
 
-These stay without an answer (decision 29), by choice:
-
-- **A dynamic array that an edit makes larger or smaller.** It fills the
-  range the file states. A spill also needs the writers to move the range.
-- **A cell that the cached copy of another document lacks.** No application
-  can compute it while that document is closed. The page holds no copy, so
-  a formula that reads another document stays stale there.
-- **`INFO`.** It reports the application and the system that compute it.
+- A dynamic array that an edit makes larger or smaller. A spill would also
+  need the writers to move the range.
+- A cell missing from the cached copy of another document. The page holds
+  no copy, so such a formula stays stale there.
+- `INFO`, which reports the application and system that compute it.
