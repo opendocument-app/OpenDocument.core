@@ -451,7 +451,7 @@ def reopen(document, tmp_path, name):
     ],
 )
 def test_insert_sheet_names_and_places_it(file_type, suffix, tmp_path):
-    document = pyodr.create_document(file_type)
+    document = pyodr.create_document(file_type).as_spreadsheet()
 
     front = document.insert_sheet(0, "Front")
     numbered = document.insert_sheet(2)
@@ -473,7 +473,7 @@ def test_insert_sheet_names_and_places_it(file_type, suffix, tmp_path):
     ],
 )
 def test_a_slide_from_a_layout_and_a_text_box(file_type, suffix, tmp_path):
-    document = pyodr.create_document(file_type)
+    document = pyodr.create_document(file_type).as_presentation()
 
     layouts = document.slide_layouts()
     assert [layout.name() for layout in layouts] == [
@@ -524,7 +524,7 @@ def test_a_slide_from_a_layout_and_a_text_box(file_type, suffix, tmp_path):
     ],
 )
 def test_move_and_remove_sheets(file_type, suffix, tmp_path):
-    document = pyodr.create_document(file_type)
+    document = pyodr.create_document(file_type).as_spreadsheet()
     document.insert_sheet(1, "B")
     last = document.insert_sheet(2, "C")
 
@@ -550,7 +550,7 @@ def test_move_and_remove_sheets(file_type, suffix, tmp_path):
     ],
 )
 def test_move_and_remove_slides(file_type, suffix, tmp_path):
-    document = pyodr.create_document(file_type)
+    document = pyodr.create_document(file_type).as_presentation()
     blank = document.insert_slide(1, 5)
     document.insert_slide(2, 4)
 
@@ -565,17 +565,60 @@ def test_move_and_remove_slides(file_type, suffix, tmp_path):
 
 
 def test_a_slide_layout_keeps_its_document_alive():
-    layouts = pyodr.create_document(
-        pyodr.FileType.office_open_xml_presentation
-    ).slide_layouts()
+    layouts = (
+        pyodr.create_document(pyodr.FileType.office_open_xml_presentation)
+        .as_presentation()
+        .slide_layouts()
+    )
     gc.collect()
     assert layouts[0].name() == "Title Slide"
     assert len(children_of(layouts[0])) == 2
 
 
-def test_a_text_document_offers_no_slide_layout():
+def test_a_handle_is_only_for_its_document_type():
     document = pyodr.create_document(pyodr.FileType.opendocument_text)
-    assert document.slide_layouts() == []
+
+    text_document = document.as_text_document()
+    assert isinstance(text_document, pyodr.Document)
+    assert text_document.document_type() == pyodr.DocumentType.text
+    with pytest.raises(pyodr.WrongDocumentTypeError):
+        document.as_spreadsheet()
+    with pytest.raises(pyodr.WrongDocumentTypeError):
+        document.as_presentation()
+    with pytest.raises(pyodr.WrongDocumentTypeError):
+        document.as_drawing()
+    assert not hasattr(document, "insert_sheet")
+    assert not hasattr(document, "slide_layouts")
+
+
+FLAT_DRAWING = (
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    '<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"'
+    ' xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"'
+    ' office:version="1.3"'
+    ' office:mimetype="application/vnd.oasis.opendocument.graphics">'
+    '<office:body><office:drawing><draw:page draw:name="p"/>'
+    "</office:drawing></office:body></office:document>"
+)
+
+
+def test_a_text_box_on_a_drawing_page(tmp_path):
+    path = tmp_path / "empty.fodg"
+    path.write_text(FLAT_DRAWING)
+    document = pyodr.open(str(path)).as_document_file().document().as_drawing()
+    page = children_of(document.root_element())[0]
+
+    box = document.insert_text_box(
+        page,
+        pyodr.Measure("2cm"),
+        pyodr.Measure("2cm"),
+        pyodr.Measure("10cm"),
+        pyodr.Measure("1.5cm"),
+    )
+    document.append_text(first_paragraph(box), "note")
+
+    reloaded = reopen(document, tmp_path, "drawn.fodg")
+    assert walk_text(reloaded.root_element()) == ["note"]
 
 
 FLAT_SPREADSHEET = (
@@ -607,13 +650,18 @@ def test_recalculate_computes_the_stale_formulas(tmp_path):
         '{"version":2,"ops":[{"op":"setCell","sheet":0,"column":0,"row":0,'
         '"value":{"type":"number","number":5,"text":"5"}}]}'
     )
-    result = document.recalculate()
+    result = document.as_spreadsheet().recalculate()
 
     assert result.changed() == [pyodr.SheetPosition(0, 1, 0)]
     assert result.circular() == [pyodr.SheetPosition(0, 2, 0)]
     assert result.unevaluated() == []
     assert result.changed()[0].column == 1
     assert repr(result.changed()[0]) == "SheetPosition(0!B1)"
+    assert document.recalculate().changed() == []
+
+
+def test_recalculate_answers_every_document_type():
+    document = pyodr.create_document(pyodr.FileType.opendocument_text)
     assert document.recalculate().changed() == []
 
 

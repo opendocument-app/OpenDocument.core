@@ -55,6 +55,14 @@ jlongArray wrap_elements(JNIEnv *env, const Range &range) {
   return result;
 }
 
+odr::Measure text_box_measure(JNIEnv *env, const jobject value) {
+  const std::optional<odr::Measure> result = measure_from_java(env, value);
+  if (!result.has_value()) {
+    throw std::invalid_argument("a text box needs every length");
+  }
+  return *result;
+}
+
 } // namespace
 
 // app.opendocument.core.Document
@@ -285,9 +293,56 @@ Java_app_opendocument_core_Document_insertParagraphAfterNative(
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_app_opendocument_core_Document_insertSheetNative(JNIEnv *env, jobject,
-                                                      jlong handle, jint index,
-                                                      jstring name) {
+Java_app_opendocument_core_Document_asFilesystemNative(JNIEnv *env, jobject,
+                                                       jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(from_handle<odr::Document>(handle)->as_filesystem());
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Document_asTextDocumentNative(JNIEnv *env, jobject,
+                                                         jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(
+        odr::Document(from_handle<odr::Document>(handle)->as_text_document()));
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Document_asSpreadsheetNative(JNIEnv *env, jobject,
+                                                        jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(
+        odr::Document(from_handle<odr::Document>(handle)->as_spreadsheet()));
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Document_asPresentationNative(JNIEnv *env, jobject,
+                                                         jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(
+        odr::Document(from_handle<odr::Document>(handle)->as_presentation()));
+  });
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Document_asDrawingNative(JNIEnv *env, jobject,
+                                                    jlong handle) {
+  return guarded(env, [&] {
+    return make_handle(
+        odr::Document(from_handle<odr::Document>(handle)->as_drawing()));
+  });
+}
+
+// app.opendocument.core.Spreadsheet
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Spreadsheet_insertSheetNative(JNIEnv *env, jobject,
+                                                         jlong handle,
+                                                         jint index,
+                                                         jstring name) {
   return guarded(env, [&] {
     return wrap_element(
         from_handle<odr::Document>(handle)->as_spreadsheet().insert_sheet(
@@ -296,10 +351,10 @@ Java_app_opendocument_core_Document_insertSheetNative(JNIEnv *env, jobject,
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_Document_moveSheetNative(JNIEnv *env, jobject,
-                                                    jlong handle,
-                                                    jlong sheet_handle,
-                                                    jint index) {
+Java_app_opendocument_core_Spreadsheet_moveSheetNative(JNIEnv *env, jobject,
+                                                       jlong handle,
+                                                       jlong sheet_handle,
+                                                       jint index) {
   guarded(env, [&] {
     from_handle<odr::Document>(handle)->as_spreadsheet().move_sheet(
         element(sheet_handle).as_sheet(),
@@ -307,34 +362,23 @@ Java_app_opendocument_core_Document_moveSheetNative(JNIEnv *env, jobject,
   });
 }
 
-extern "C" JNIEXPORT void JNICALL
-Java_app_opendocument_core_Document_moveSlideNative(JNIEnv *env, jobject,
-                                                    jlong handle,
-                                                    jlong slide_handle,
-                                                    jint index) {
-  guarded(env, [&] {
-    from_handle<odr::Document>(handle)->as_presentation().move_slide(
-        element(slide_handle).as_slide(),
-        checked_integer<std::uint32_t>(index));
-  });
-}
+// app.opendocument.core.Presentation
 
 extern "C" JNIEXPORT jlongArray JNICALL
-Java_app_opendocument_core_Document_slideLayoutsNative(JNIEnv *env, jobject,
-                                                       jlong handle) {
+Java_app_opendocument_core_Presentation_slideLayoutsNative(JNIEnv *env, jobject,
+                                                           jlong handle) {
   return guarded(env, [&] {
-    const odr::Document &document = *from_handle<odr::Document>(handle);
-    return wrap_elements(env, document.document_type() ==
-                                      odr::DocumentType::presentation
-                                  ? document.as_presentation().slide_layouts()
-                                  : std::vector<odr::Slide>());
+    return wrap_elements(
+        env,
+        from_handle<odr::Document>(handle)->as_presentation().slide_layouts());
   });
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_app_opendocument_core_Document_insertSlideNative(JNIEnv *env, jobject,
-                                                      jlong handle, jint index,
-                                                      jint layout) {
+Java_app_opendocument_core_Presentation_insertSlideNative(JNIEnv *env, jobject,
+                                                          jlong handle,
+                                                          jint index,
+                                                          jint layout) {
   return guarded(env, [&] {
     return wrap_element(
         from_handle<odr::Document>(handle)->as_presentation().insert_slide(
@@ -343,35 +387,43 @@ Java_app_opendocument_core_Document_insertSlideNative(JNIEnv *env, jobject,
   });
 }
 
-extern "C" JNIEXPORT jlong JNICALL
-Java_app_opendocument_core_Document_insertTextBoxNative(
-    JNIEnv *env, jobject, jlong handle, jlong page_handle, jobject x, jobject y,
-    jobject width, jobject height) {
-  return guarded(env, [&] {
-    const auto measure = [&](const jobject value) {
-      const std::optional<odr::Measure> result = measure_from_java(env, value);
-      if (!result.has_value()) {
-        throw std::invalid_argument("a text box needs every length");
-      }
-      return *result;
-    };
-    const odr::Document &document = *from_handle<odr::Document>(handle);
-    if (document.document_type() == odr::DocumentType::presentation) {
-      return wrap_element(document.as_presentation().insert_text_box(
-          element(page_handle), measure(x), measure(y), measure(width),
-          measure(height)));
-    }
-    return wrap_element(document.as_drawing().insert_text_box(
-        element(page_handle), measure(x), measure(y), measure(width),
-        measure(height)));
+extern "C" JNIEXPORT void JNICALL
+Java_app_opendocument_core_Presentation_moveSlideNative(JNIEnv *env, jobject,
+                                                        jlong handle,
+                                                        jlong slide_handle,
+                                                        jint index) {
+  guarded(env, [&] {
+    from_handle<odr::Document>(handle)->as_presentation().move_slide(
+        element(slide_handle).as_slide(),
+        checked_integer<std::uint32_t>(index));
   });
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_app_opendocument_core_Document_asFilesystemNative(JNIEnv *env, jobject,
-                                                       jlong handle) {
+Java_app_opendocument_core_Presentation_insertTextBoxNative(
+    JNIEnv *env, jobject, jlong handle, jlong page_handle, jobject x, jobject y,
+    jobject width, jobject height) {
   return guarded(env, [&] {
-    return make_handle(from_handle<odr::Document>(handle)->as_filesystem());
+    return wrap_element(
+        from_handle<odr::Document>(handle)->as_presentation().insert_text_box(
+            element(page_handle), text_box_measure(env, x),
+            text_box_measure(env, y), text_box_measure(env, width),
+            text_box_measure(env, height)));
+  });
+}
+
+// app.opendocument.core.Drawing
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_app_opendocument_core_Drawing_insertTextBoxNative(
+    JNIEnv *env, jobject, jlong handle, jlong page_handle, jobject x, jobject y,
+    jobject width, jobject height) {
+  return guarded(env, [&] {
+    return wrap_element(
+        from_handle<odr::Document>(handle)->as_drawing().insert_text_box(
+            element(page_handle), text_box_measure(env, x),
+            text_box_measure(env, y), text_box_measure(env, width),
+            text_box_measure(env, height)));
   });
 }
 

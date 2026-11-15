@@ -49,6 +49,8 @@ void odr_python::bind_core(py::module_ &m) {
   py::register_exception<odr::NoDocumentFile>(m, "NoDocumentFileError", error);
   py::register_exception<odr::UnknownDocumentType>(
       m, "UnknownDocumentTypeError", error);
+  py::register_exception<odr::WrongDocumentType>(m, "WrongDocumentTypeError",
+                                                 error);
   py::register_exception<odr::UnsupportedCryptoAlgorithm>(
       m, "UnsupportedCryptoAlgorithmError", error);
   py::register_exception<odr::WrongPasswordError>(m, "WrongPasswordError",

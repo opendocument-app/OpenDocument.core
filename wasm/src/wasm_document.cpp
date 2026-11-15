@@ -56,6 +56,15 @@ emscripten::val is_savable(const Handle handle, const bool encrypted) {
   });
 }
 
+/// Nothing; throws `WrongDocumentType` where @p as fails, so `js/index.js`
+/// hands out a handle only for its own type.
+template <auto as> emscripten::val check_document_type(const Handle handle) {
+  return guarded([&] {
+    std::ignore = (document_of(session(handle)).*as)();
+    return ok(emscripten::val::null());
+  });
+}
+
 /// `{changed, circular, unevaluated}`, each a list of `{sheet, column, row}`.
 emscripten::val recalculate(const Handle handle) {
   return guarded([&] {
@@ -341,11 +350,8 @@ emscripten::val slide_layouts(const Handle handle) {
   };
   return guarded([&] {
     emscripten::val result = emscripten::val::array();
-    const Document &document = document_of(session(handle));
-    if (document.document_type() != DocumentType::presentation) {
-      return ok(result);
-    }
-    for (const Slide &layout : document.as_presentation().slide_layouts()) {
+    for (const Slide &layout :
+         document_of(session(handle)).as_presentation().slide_layouts()) {
       emscripten::val placeholders = emscripten::val::array();
       for (const Element child : layout.children()) {
         const Frame frame = child.as_frame();
@@ -445,6 +451,17 @@ emscripten::val save_encrypted(const Handle handle,
 } // namespace odr::wasm
 
 EMSCRIPTEN_BINDINGS(odr_document) {
+  emscripten::function(
+      "asTextDocument",
+      &odr::wasm::check_document_type<&odr::Document::as_text_document>);
+  emscripten::function(
+      "asSpreadsheet",
+      &odr::wasm::check_document_type<&odr::Document::as_spreadsheet>);
+  emscripten::function(
+      "asPresentation",
+      &odr::wasm::check_document_type<&odr::Document::as_presentation>);
+  emscripten::function(
+      "asDrawing", &odr::wasm::check_document_type<&odr::Document::as_drawing>);
   emscripten::function("isEditable", &odr::wasm::is_editable);
   emscripten::function("isSavable", &odr::wasm::is_savable);
   emscripten::function("locale", &odr::wasm::locale);

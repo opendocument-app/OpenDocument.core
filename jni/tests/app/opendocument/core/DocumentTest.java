@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.io.TempDir;
 
 class DocumentTest {
@@ -221,7 +222,7 @@ class DocumentTest {
   void insertSheetNamesAndPlacesIt() throws IOException {
     for (FileType type :
         List.of(FileType.OPENDOCUMENT_SPREADSHEET, FileType.OFFICE_OPEN_XML_WORKBOOK)) {
-      Document document = Odr.createDocument(type);
+      Spreadsheet document = Odr.createDocument(type).asSpreadsheet();
 
       assertEquals("Front", document.insertSheet(0, "Front").name());
       assertEquals("Sheet3", document.insertSheet(2).name());
@@ -244,7 +245,7 @@ class DocumentTest {
   void moveAndRemoveSheets() throws IOException {
     for (FileType type :
         List.of(FileType.OPENDOCUMENT_SPREADSHEET, FileType.OFFICE_OPEN_XML_WORKBOOK)) {
-      Document document = Odr.createDocument(type);
+      Spreadsheet document = Odr.createDocument(type).asSpreadsheet();
       document.insertSheet(1, "B");
       Sheet last = document.insertSheet(2, "C");
 
@@ -268,7 +269,7 @@ class DocumentTest {
   void moveAndRemoveSlides() throws IOException {
     for (FileType type :
         List.of(FileType.OPENDOCUMENT_PRESENTATION, FileType.OFFICE_OPEN_XML_PRESENTATION)) {
-      Document document = Odr.createDocument(type);
+      Presentation document = Odr.createDocument(type).asPresentation();
       Slide blank = document.insertSlide(1, 5);
       document.insertSlide(2, 4);
 
@@ -293,7 +294,7 @@ class DocumentTest {
   void aSlideFromALayoutAndATextBoxSurviveASave() throws IOException {
     for (FileType type :
         List.of(FileType.OPENDOCUMENT_PRESENTATION, FileType.OFFICE_OPEN_XML_PRESENTATION)) {
-      Document document = Odr.createDocument(type);
+      Presentation document = Odr.createDocument(type).asPresentation();
 
       List<Slide> layouts = document.slideLayouts();
       List<String> names = new ArrayList<>();
@@ -346,8 +347,47 @@ class DocumentTest {
   }
 
   @Test
-  void aTextDocumentOffersNoSlideLayout() {
-    assertTrue(Odr.createDocument(FileType.OPENDOCUMENT_TEXT).slideLayouts().isEmpty());
+  void aHandleIsOnlyForItsDocumentType() {
+    Document document = Odr.createDocument(FileType.OPENDOCUMENT_TEXT);
+
+    assertEquals(DocumentType.TEXT, document.asTextDocument().documentType());
+    for (Executable cast :
+        List.<Executable>of(
+            document::asSpreadsheet, document::asPresentation, document::asDrawing)) {
+      OdrException error = assertThrows(OdrException.class, cast);
+      assertEquals(54, error.getCode()); // odr::ErrorCode::wrong_document_type
+    }
+  }
+
+  private static final String EMPTY_DRAWING =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+          + "<office:document"
+          + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+          + " xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\""
+          + " office:version=\"1.3\""
+          + " office:mimetype=\"application/vnd.oasis.opendocument.graphics\">"
+          + "<office:body><office:drawing><draw:page draw:name=\"p\"/>"
+          + "</office:drawing></office:body></office:document>";
+
+  @Test
+  void aDrawingPageTakesATextBox() throws IOException {
+    Path path = tempDir.resolve("empty.fodg");
+    Files.writeString(path, EMPTY_DRAWING);
+    Drawing document = Odr.open(path.toString()).asDocumentFile().document().asDrawing();
+
+    Frame box =
+        document.insertTextBox(
+            document.rootElement().firstChild(),
+            new Measure(2, "cm"),
+            new Measure(2, "cm"),
+            new Measure(8, "cm"),
+            new Measure(2, "cm"));
+    document.appendText(firstParagraph(box), "drawn");
+
+    Path saved = tempDir.resolve("drawn.fodg");
+    Files.write(saved, document.saveToMemory());
+    Document reopened = Odr.open(saved.toString()).asDocumentFile().document();
+    assertEquals(List.of("drawn"), walkText(reopened.rootElement()));
   }
 
   @Test
@@ -635,12 +675,18 @@ class DocumentTest {
     document.edit(
         "{\"version\":2,\"ops\":[{\"op\":\"setCell\",\"sheet\":0,\"column\":0,\"row\":0,"
             + "\"value\":{\"type\":\"number\",\"number\":5,\"text\":\"5\"}}]}");
-    Recalculation result = document.recalculate();
+    Recalculation result = document.asSpreadsheet().recalculate();
 
     assertEquals(List.of(new SheetPosition(0, 1, 0)), result.changed());
     assertEquals(List.of(new SheetPosition(0, 2, 0)), result.circular());
     assertTrue(result.unevaluated().isEmpty());
     assertTrue(document.recalculate().changed().isEmpty());
+  }
+
+  @Test
+  void recalculateAnswersEveryDocumentType() {
+    assertTrue(
+        Odr.createDocument(FileType.OPENDOCUMENT_TEXT).recalculate().changed().isEmpty());
   }
 
   private static final String FILLED_DRAWING =

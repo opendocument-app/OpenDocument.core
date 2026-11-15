@@ -22,11 +22,18 @@ function unwrap(envelope) {
   throw new OdrError(type, message, detail);
 }
 
+// The embind surface behind a `Document`, for its subclasses.
+let coreOf;
+
 // Holds a handle into the wasm heap, so it must be closed: JS has no
 // destructors and the module cannot know when you are done.
 export class Document {
   #core;
   #handle;
+
+  static {
+    coreOf = (document) => document.#core;
+  }
 
   constructor(core, handle) {
     this.#core = core;
@@ -37,6 +44,28 @@ export class Document {
   // survive structured cloning.
   get handle() {
     return this.#handle;
+  }
+
+  // Each throws `WrongDocumentType` for another type. The handle shares this
+  // session: closing either closes both.
+  asTextDocument() {
+    unwrap(this.#core.asTextDocument(this.#handle));
+    return new TextDocument(this.#core, this.#handle);
+  }
+
+  asSpreadsheet() {
+    unwrap(this.#core.asSpreadsheet(this.#handle));
+    return new Spreadsheet(this.#core, this.#handle);
+  }
+
+  asPresentation() {
+    unwrap(this.#core.asPresentation(this.#handle));
+    return new Presentation(this.#core, this.#handle);
+  }
+
+  asDrawing() {
+    unwrap(this.#core.asDrawing(this.#handle));
+    return new Drawing(this.#core, this.#handle);
   }
 
   get fileType() {
@@ -189,39 +218,6 @@ export class Document {
     return unwrap(this.#core.insertParagraphAfter(this.#handle, paragraphId));
   }
 
-  // An empty sheet at `index`; an empty name takes the first free `SheetN`.
-  insertSheet(index, name = '') {
-    unwrap(this.#core.insertSheet(this.#handle, index, name));
-    return this;
-  }
-
-  removeSheet(sheet) {
-    unwrap(this.#core.removeSheet(this.#handle, sheet));
-    return this;
-  }
-
-  moveSheet(sheet, index) {
-    unwrap(this.#core.moveSheet(this.#handle, sheet, index));
-    return this;
-  }
-
-  moveSlide(slideId, index) {
-    unwrap(this.#core.moveSlide(this.#handle, slideId, index));
-    return this;
-  }
-
-  slideLayouts() {
-    return unwrap(this.#core.slideLayouts(this.#handle));
-  }
-
-  insertSlide(index, layout) {
-    return unwrap(this.#core.insertSlide(this.#handle, index, layout));
-  }
-
-  insertTextBox(pageId, { x, y, width, height }) {
-    return unwrap(this.#core.insertTextBox(this.#handle, pageId, x, y, width, height));
-  }
-
   // Whether this pdf can take annotations.
   isAnnotatable() {
     return unwrap(this.#core.isAnnotatable(this.#handle));
@@ -251,6 +247,51 @@ export class Document {
 
   [Symbol.dispose]() {
     this.close();
+  }
+}
+
+export class TextDocument extends Document {}
+
+export class Spreadsheet extends Document {
+  // An empty sheet at `index`; an empty name takes the first free `SheetN`.
+  insertSheet(index, name = '') {
+    unwrap(coreOf(this).insertSheet(this.handle, index, name));
+    return this;
+  }
+
+  removeSheet(sheet) {
+    unwrap(coreOf(this).removeSheet(this.handle, sheet));
+    return this;
+  }
+
+  moveSheet(sheet, index) {
+    unwrap(coreOf(this).moveSheet(this.handle, sheet, index));
+    return this;
+  }
+}
+
+export class Presentation extends Document {
+  moveSlide(slideId, index) {
+    unwrap(coreOf(this).moveSlide(this.handle, slideId, index));
+    return this;
+  }
+
+  slideLayouts() {
+    return unwrap(coreOf(this).slideLayouts(this.handle));
+  }
+
+  insertSlide(index, layout) {
+    return unwrap(coreOf(this).insertSlide(this.handle, index, layout));
+  }
+
+  insertTextBox(pageId, { x, y, width, height }) {
+    return unwrap(coreOf(this).insertTextBox(this.handle, pageId, x, y, width, height));
+  }
+}
+
+export class Drawing extends Document {
+  insertTextBox(pageId, { x, y, width, height }) {
+    return unwrap(coreOf(this).insertTextBox(this.handle, pageId, x, y, width, height));
   }
 }
 

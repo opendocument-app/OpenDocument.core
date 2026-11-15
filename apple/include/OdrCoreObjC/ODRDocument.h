@@ -40,7 +40,14 @@ NS_SWIFT_NAME(Recalculation)
 
 @end
 
+@class ODRTextDocument;
+@class ODRSpreadsheet;
+@class ODRPresentation;
+@class ODRDrawing;
+
 /// A decoded document — `odr::Document`. Obtained from `ODRDocumentFile`.
+/// What only one `ODRDocumentType` answers is on its handle: `asSpreadsheet`,
+/// `asPresentation`, `asDrawing` and `asTextDocument`.
 NS_SWIFT_NAME(Document)
 @interface ODRDocument : NSObject
 
@@ -49,9 +56,19 @@ NS_SWIFT_NAME(Document)
 
 /// A new document of `type`, with one empty paragraph or one empty sheet.
 /// Fails for a type whose capabilities do not state `create`.
-+ (nullable instancetype)createWithFileType:(ODRFileType)type
-                                      error:(NSError **)error
++ (nullable ODRDocument *)createWithFileType:(ODRFileType)type
+                                       error:(NSError **)error
     NS_SWIFT_NAME(create(fileType:));
+
+/// Each fails unless `documentType` matches.
+- (nullable ODRTextDocument *)asTextDocumentWithError:(NSError **)error
+    NS_SWIFT_NAME(asTextDocument());
+- (nullable ODRSpreadsheet *)asSpreadsheetWithError:(NSError **)error
+    NS_SWIFT_NAME(asSpreadsheet());
+- (nullable ODRPresentation *)asPresentationWithError:(NSError **)error
+    NS_SWIFT_NAME(asPresentation());
+- (nullable ODRDrawing *)asDrawingWithError:(NSError **)error
+    NS_SWIFT_NAME(asDrawing());
 
 @property(nonatomic, readonly) ODRFileType fileType;
 @property(nonatomic, readonly) ODRDocumentType documentType;
@@ -74,7 +91,7 @@ NS_SWIFT_NAME(Document)
        error:(NSError **)error NS_SWIFT_NAME(edit(operations:));
 
 /// Recalculates stale formulas and stores their results; save does this after
-/// edits.
+/// edits. Empty for a document that is no spreadsheet.
 - (nullable ODRRecalculation *)recalculateWithError:(NSError **)error
     NS_SWIFT_NAME(recalculate());
 
@@ -150,6 +167,17 @@ NS_SWIFT_NAME(Document)
                                           error:(NSError **)error
     NS_SWIFT_NAME(insertParagraph(after:));
 
+@end
+
+/// A text document — `odr::TextDocument`.
+NS_SWIFT_NAME(TextDocument)
+@interface ODRTextDocument : ODRDocument
+@end
+
+/// A spreadsheet: its sheets — `odr::Spreadsheet`.
+NS_SWIFT_NAME(Spreadsheet)
+@interface ODRSpreadsheet : ODRDocument
+
 /// An empty sheet at `index` among the sheets. An empty `name` takes the
 /// first free `SheetN`; a name another sheet has, ignoring case, fails.
 - (nullable ODRSheet *)insertSheetAtIndex:(uint32_t)index
@@ -161,6 +189,12 @@ NS_SWIFT_NAME(Document)
 - (BOOL)moveSheet:(ODRSheet *)sheet
           toIndex:(uint32_t)index
             error:(NSError **)error NS_SWIFT_NAME(moveSheet(_:to:));
+
+@end
+
+/// A presentation: its slides — `odr::Presentation`.
+NS_SWIFT_NAME(Presentation)
+@interface ODRPresentation : ODRDocument
 
 /// The layouts `insertSlide` starts a slide from, each the empty slide it
 /// makes, outside the document and refusing edits; empty where the engine
@@ -180,9 +214,24 @@ NS_SWIFT_NAME(Document)
           toIndex:(uint32_t)index
             error:(NSError **)error NS_SWIFT_NAME(moveSlide(_:to:));
 
-/// A text box with one empty paragraph on a slide or drawing page, drawing no
-/// fill and no outline. Every length needs a fixed unit, and the size must be
-/// positive.
+/// A text box with one empty paragraph on a slide, drawing no fill and no
+/// outline. Every length needs a fixed unit, and the size must be positive.
+- (nullable ODRFrame *)insertTextBoxOnPage:(ODRElement *)page
+                                         x:(ODRMeasure *)x
+                                         y:(ODRMeasure *)y
+                                     width:(ODRMeasure *)width
+                                    height:(ODRMeasure *)height
+                                     error:(NSError **)error
+    NS_SWIFT_NAME(insertTextBox(on:x:y:width:height:));
+
+@end
+
+/// A drawing: its pages — `odr::Drawing`.
+NS_SWIFT_NAME(Drawing)
+@interface ODRDrawing : ODRDocument
+
+/// A text box with one empty paragraph on a drawing page, drawing no fill and
+/// no outline. Every length needs a fixed unit, and the size must be positive.
 - (nullable ODRFrame *)insertTextBoxOnPage:(ODRElement *)page
                                          x:(ODRMeasure *)x
                                          y:(ODRMeasure *)y

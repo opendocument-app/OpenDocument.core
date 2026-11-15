@@ -26,7 +26,9 @@ The release run heads these entries with the version and opens a fresh
 - `Document::dependents`, `unresolved_formulas` and `recalculate` are
   deprecated for their `Spreadsheet` namesakes and go in the next major.
   `Spreadsheet::dependents` takes a `std::span`.
-- The bindings keep their methods and what they answer.
+- The bindings have the same handles: `as_spreadsheet()` and the others in
+  python, `asSpreadsheet()` in java, swift and npm, each a subclass of that
+  binding's `Document`. `recalculate` stays on every binding's `Document`.
 
 ### Units
 
@@ -49,8 +51,8 @@ The release run heads these entries with the version and opens a fresh
   xlsx. An empty name takes the next free `SheetN`. A name another sheet has,
   ignoring case, or one Excel or LibreOffice refuses throws
   `std::invalid_argument`. Formulas recompute on the next `recalculate`.
-  In every binding: `insert_sheet` in python, `insertSheet` in java and npm,
-  `insertSheet(at:name:)` in swift.
+  In every binding, on its `Spreadsheet`: `insert_sheet` in python,
+  `insertSheet` in java and npm, `insertSheet(at:name:)` in swift.
 - `Document::remove` takes a sheet of an ods or xlsx, and
   `Spreadsheet::move_sheet(sheet, index)` moves one. A reference to a removed
   sheet becomes `#REF!`, as Excel and LibreOffice write it. Removing the last
@@ -67,17 +69,19 @@ The release run heads these entries with the version and opens a fresh
   `Drawing` adds a text box with
   one empty paragraph to a slide of an odp or pptx, or a page of an odg. It
   draws no fill and no outline.
-- Both are in every binding: `slide_layouts`, `insert_slide` and
+- Both are in every binding, on its `Presentation`, and the text box also on
+  its `Drawing`: `slide_layouts`, `insert_slide` and
   `insert_text_box` in python, `slideLayouts`, `insertSlide` and
   `insertTextBox` in java and npm, `slideLayouts()`, `insertSlide(at:layout:)`
   and `insertTextBox(on:x:y:width:height:)` in swift. npm lists a layout as
   its name and its placeholders' boxes, lengths as strings such as `2.1cm`;
   `insertSlide` answers the ids of the slide, its placeholders and their
   paragraphs, and `insertTextBox` those of the box and its paragraph.
-- Removing and moving in every binding: `remove`, `move_sheet` and
-  `move_slide` in python, `remove`, `moveSheet` and `moveSlide` in java,
-  `remove(_:)`, `moveSheet(_:to:)` and `moveSlide(_:to:)` in swift, and
-  `removeSheet(sheet)`, `moveSheet(sheet, index)`, `removeElement(slideId)` and
+- Removing and moving in every binding, the moves on `Spreadsheet` and
+  `Presentation`: `remove`, `move_sheet` and `move_slide` in python,
+  `remove`, `moveSheet` and `moveSlide` in java, `remove(_:)`,
+  `moveSheet(_:to:)` and `moveSlide(_:to:)` in swift, and `removeSheet(sheet)`
+  (on `Spreadsheet`), `moveSheet(sheet, index)`, `removeElement(slideId)` and
   `moveSlide(slideId, index)` in npm, which lists the views again afterwards.
 - `Document::remove` takes a slide of an odp or pptx, and
   `Presentation::move_slide(slide, index)` moves one. A pptx slide goes with its

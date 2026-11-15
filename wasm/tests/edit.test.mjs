@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 
-import { Odr, OdrError, minimalOds, minimalOdt, minimalPdf } from './helper.mjs';
+import { Document, Odr, OdrError, minimalOds, minimalOdt, minimalPdf } from './helper.mjs';
 
 // Read out of the html rather than spelled, as the browser does. The runs
 // carry the ids an op names; a paragraph carries one too, so the tag counts.
@@ -197,7 +197,7 @@ describe('edit', () => {
         '{"version":2,"ops":[{"op":"setCell","sheet":0,"column":0,"row":0,' +
           '"value":{"type":"number","number":5,"text":"5"}}]}',
       );
-      const result = doc.recalculate();
+      const result = doc.asSpreadsheet().recalculate();
       assert.deepEqual(result.changed, [{ sheet: 0, column: 1, row: 0 }]);
       assert.deepEqual(result.circular, [{ sheet: 0, column: 2, row: 0 }]);
       assert.deepEqual(result.unevaluated, []);
@@ -479,8 +479,49 @@ describe('edit', () => {
     });
   });
 
+  it('hands out a handle only for its document type', () => {
+    const doc = odr.create(odr.enums.FileType.odt);
+    try {
+      assert.ok(doc.asTextDocument() instanceof Document);
+      for (const as of ['asSpreadsheet', 'asPresentation', 'asDrawing']) {
+        assert.throws(() => doc[as](), { name: 'WrongDocumentType' });
+      }
+      assert.equal(doc.insertSheet, undefined);
+      assert.deepEqual(doc.recalculate().changed, []);
+    } finally {
+      doc.close();
+    }
+  });
+
+  it('puts a text box on a drawing page', () => {
+    const doc = odr.open(
+      new TextEncoder().encode(
+        '<?xml version="1.0" encoding="UTF-8"?>' +
+          '<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"' +
+          ' xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"' +
+          ' office:version="1.3" office:mimetype="application/vnd.oasis.opendocument.graphics">' +
+          '<office:body><office:drawing><draw:page draw:name="p"/>' +
+          '</office:drawing></office:body></office:document>',
+      ),
+      { editable: true },
+    ).asDrawing();
+    try {
+      const page = Number(doc.render(0).html.match(/data-odr-page="(\d+)"/)[1]);
+      const box = doc.insertTextBox(page, { x: '2cm', y: '2cm', width: '8cm', height: '2cm' });
+      doc.appendText(box.paragraph, 'drawn');
+      const reopened = odr.open(doc.save(), { name: 'drawn.fodg' });
+      try {
+        assert.match(reopened.render(0).html, /drawn/);
+      } finally {
+        reopened.close();
+      }
+    } finally {
+      doc.close();
+    }
+  });
+
   it('inserts a sheet and lists it as a view', () => {
-    const doc = odr.create(odr.enums.FileType.xlsx);
+    const doc = odr.create(odr.enums.FileType.xlsx).asSpreadsheet();
     try {
       const sheets = () => doc.listViews().map((view) => view.name)
         .filter((name) => /^(Front|Sheet\d)$/.test(name));
@@ -495,7 +536,7 @@ describe('edit', () => {
 
   for (const type of ['odp', 'pptx']) {
     it(`saves a slide and a text box inserted into ${type}`, () => {
-      const doc = odr.create(odr.enums.FileType[type]);
+      const doc = odr.create(odr.enums.FileType[type]).asPresentation();
       try {
         const layouts = doc.slideLayouts();
         assert.deepEqual(layouts.map((layout) => layout.name), [
@@ -534,7 +575,7 @@ describe('edit', () => {
   }
 
   it('moves and removes sheets and lists them as views', () => {
-    const doc = odr.create(odr.enums.FileType.xlsx);
+    const doc = odr.create(odr.enums.FileType.xlsx).asSpreadsheet();
     try {
       const sheets = () => doc.listViews().map((view) => view.name)
         .filter((name) => /^(B|C|Sheet\d)$/.test(name));
@@ -553,7 +594,7 @@ describe('edit', () => {
 
   for (const type of ['odp', 'pptx']) {
     it(`moves and removes slides of ${type} and lists them as views`, () => {
-      const doc = odr.create(odr.enums.FileType[type]);
+      const doc = odr.create(odr.enums.FileType[type]).asPresentation();
       try {
         const views = doc.listViews().length;
         const blank = doc.insertSlide(1, 5);
