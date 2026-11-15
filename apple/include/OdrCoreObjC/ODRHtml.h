@@ -139,6 +139,7 @@ NS_SWIFT_NAME(HtmlConfig)
 /// Overrides `viewportMode` for spreadsheets when set.
 @property(nonatomic, strong, nullable)
     NSNumber *spreadsheetViewportMode NS_REFINED_FOR_SWIFT;
+/// How a view of sheets, slides, drawing pages or pdf pages lays them out.
 @property(nonatomic) ODRHtmlPageLayout pageLayout;
 /// Raw `content` for the viewport meta tag; overrides the modes above.
 @property(nonatomic, copy, nullable) NSString *viewportContent;

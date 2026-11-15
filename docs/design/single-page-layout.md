@@ -11,7 +11,8 @@ gestures, which have to keep the current page in view.
 A view of a workbook, a presentation, a drawing or a pdf states every sheet
 or page in one column, and the reader scrolls. A presentation is read one
 slide at a time, a workbook one sheet at a time, and a pdf on a phone one
-page at a time. Today a host that wants that has two options, and neither works well:
+page at a time. Today a host that wants that has two options, and neither
+works well:
 
 - **One view per page** (`page0.html`, ...). Switching pages loads another
   document, so the page loses what it holds: the edit log and its undo, a
@@ -151,9 +152,6 @@ host that renders once for every reader cannot know it.
   did before this layout. Turning to another sheet shows it, without its
   sticky headers, row loading or editing. A view of one sheet is unaffected.
   Binding the scripts per sheet is its own change.
-- **Scroll tracking under `continuous` runs on a short timer**, not on
-  animation frames, because a page in the background gets few frames and its
-  host still wants `onPageChange`.
 
 ## Open questions
 

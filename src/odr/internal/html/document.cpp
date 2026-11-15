@@ -35,8 +35,6 @@
 namespace odr::internal::html {
 namespace {
 
-/// Whether the document renders as fixed-size pages on a backdrop rather than
-/// reflowing to the viewport.
 /// The views `HtmlConfig::page_layout` applies to: one page or sheet each.
 bool has_page_layout(const Document &document) {
   return document.document_type() == DocumentType::spreadsheet ||
@@ -44,6 +42,8 @@ bool has_page_layout(const Document &document) {
          document.document_type() == DocumentType::drawing;
 }
 
+/// Whether the document renders as fixed-size pages on a backdrop rather than
+/// reflowing to the viewport.
 bool is_paged_content(const Document &document, const HtmlConfig &config) {
   return (document.document_type() == DocumentType::text &&
           config.text_document_margin) ||

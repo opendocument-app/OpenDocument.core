@@ -1044,6 +1044,9 @@ TEST(html, a_pdf_loads_its_later_pages) {
   EXPECT_NE(page.str().find(
                 R"(data-odr-chunk="p2" data-odr-chunk-src="pdf-pages/2.js")"),
             std::string::npos);
+  // a page that loads later is a page of the layout from the start
+  EXPECT_NE(page.str().find(R"(class="p odr-page odr-chunk" style=)"),
+            std::string::npos);
   EXPECT_NE(page.str().find("src:url(pdf-fonts/"), std::string::npos);
   EXPECT_EQ(page.str().find("src:url(data:font"), std::string::npos);
   EXPECT_TRUE(std::ranges::any_of(resources, [](const auto &resource) {

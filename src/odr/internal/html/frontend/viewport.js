@@ -696,7 +696,7 @@
   // host still wants to know.
   var tracking = 0;
   function track() {
-    if (single || tracking !== 0) {
+    if (tracking !== 0) {
       return;
     }
     tracking = setTimeout(function () {
@@ -711,10 +711,13 @@
 
   if (pageList.length > 0) {
     reported = { page: pageIndex(currentPage), count: pageList.length };
-    if (!single && opening !== null) {
-      turnTo(pageList[opening], true);
+    // under `single`, loads the neighbours of the page it opens at
+    if (single || opening !== null) {
+      turnTo(currentPage, !single);
     }
-    window.addEventListener("scroll", track, { passive: true });
+    if (!single) {
+      window.addEventListener("scroll", track, { passive: true });
+    }
     window.addEventListener("hashchange", function () {
       var index = hashedPage();
       if (index !== null && pageList[index] !== currentPage) {

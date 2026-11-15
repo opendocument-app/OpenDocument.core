@@ -2403,7 +2403,7 @@ public:
       out.write_element_begin(
           "div",
           HtmlElementOptions()
-              .set_class("p" + chunk_classes(config(), false))
+              .set_class("p odr-page" + chunk_classes(config(), false))
               .set_style(std::move(size).str())
               .set_extra(R"(id="p)" + std::to_string(number) +
                          R"(" data-odr-chunk="p)" + std::to_string(number) +
