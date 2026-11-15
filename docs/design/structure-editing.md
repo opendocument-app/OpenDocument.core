@@ -1,8 +1,9 @@
 # Structure editing design
 
-New odp and pptx files, and edits that add a sheet, a slide from a layout,
-or a text box. Shared editing rules are in [editing](editing.md); creation
-rules are in [document creation](document-creation.md).
+New odp and pptx files, and edits that add a sheet, a slide from a layout
+or a text box, and remove or move a sheet or a slide. Shared editing rules
+are in [editing](editing.md); creation rules are in
+[document creation](document-creation.md).
 
 ## 1. New presentations
 
@@ -203,14 +204,6 @@ Document::move_slide(const Slide &slide, std::uint32_t index)` put it at
 `index` among the others, counted after the move, so `index` is where it
 ends up. A removed sheet or slide keeps its id and stops being reachable,
 like every removed element.
-
-| PR | Scope |
-|---|---|
-| 1 | sheets: remove and move in ods and xlsx |
-| 2 | slides: remove and move in odp and pptx |
-| 3 | envelope ops `removeSheet`, `moveSheet`, `removeSlide`, `moveSlide` |
-| 4 | the page: remove and move a slide in the editable page |
-| 5 | python, java, swift and npm bindings |
 
 Sheets:
 
