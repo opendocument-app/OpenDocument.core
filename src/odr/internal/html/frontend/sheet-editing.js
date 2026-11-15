@@ -1800,7 +1800,7 @@
   var options = {
     editOnClick: onClick === null ? null : onClick === "true",
     // the empty grid past the content, which `spreadsheet.js` draws
-    grid: true,
+    grid: odr.sheet.hasGrid(),
   };
 
   /// Whether a click opens the editor, where a double click always does. The
@@ -1837,6 +1837,8 @@
     Object.keys(options).forEach(function (key) {
       copy[key] = options[key];
     });
+    // `odr.sheet.setGrid` turns it too
+    copy.grid = odr.sheet.hasGrid();
     return copy;
   };
 

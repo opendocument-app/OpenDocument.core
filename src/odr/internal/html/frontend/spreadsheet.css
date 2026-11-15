@@ -77,10 +77,6 @@ body{margin:0;background:var(--odr-sheet-canvas)}
 .odr-sheet-sort:hover{background:var(--odr-sheet-wash-ruler)}
 .odr-sheet-sort::after{content:"\25BE";font-size:15px;line-height:1}
 .odr-sheet-sort-asc::after{content:"\25B4"}
-/* `--odr-print-fit` is written per sheet by `translate_sheet`; `zoom` keeps
-   the rows breaking across pages. Only `!important` beats the inline column
-   width. The ruler collapses rather than `display:none`, which would take the
-   cells out of their rows and shift every column left. */
 /* The empty grid past the content (`sheet-grid.md`): backgrounds, not cells.
    Lines sit on the top and the left of a cell, as the cells draw theirs. */
 .odr-sheet.odr-sheet-grid{position:relative}
@@ -100,6 +96,10 @@ body{margin:0;background:var(--odr-sheet-canvas)}
 .odr-sheet-grid-gutter .odr-sheet-grid-label{left:0;right:0;box-shadow:inset -1px 0 0 var(--odr-sheet-rule),inset 0 -1px 0 var(--odr-sheet-line)}
 .odr-sheet-grid-ruler .odr-sheet-grid-label{top:0;bottom:0;box-shadow:inset -1px 0 0 var(--odr-sheet-line),inset 0 -1px 0 var(--odr-sheet-rule)}
 .odr-sheet-grid-pin{position:absolute;z-index:3;pointer-events:none;outline:2px solid var(--odr-sheet-focus);outline-offset:-2px}
+/* `--odr-print-fit` is written per sheet by `translate_sheet`; `zoom` keeps
+   the rows breaking across pages. Only `!important` beats the inline column
+   width. The ruler collapses rather than `display:none`, which would take the
+   cells out of their rows and shift every column left. */
 @media print{
 .odr-sheet-head{display:none}
 .odr-sheet-grid-below,.odr-sheet-grid-right,.odr-sheet-grid-ruler,.odr-sheet-grid-pin{display:none!important}

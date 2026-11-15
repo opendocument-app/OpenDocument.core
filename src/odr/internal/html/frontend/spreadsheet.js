@@ -479,6 +479,7 @@
       if (!inGrid(position.column, position.row)) {
         return false;
       }
+      hold(position.column, position.row);
       pin(-1, null, null);
       pinEmpty({ column: position.column, row: position.row });
       return true;
@@ -736,6 +737,7 @@
 
   function changed() {
     index = null;
+    refresh();
     if (pinnedRow !== null && !table.contains(pinnedRow)) {
       pin(-1, null, null);
     } else {
@@ -853,6 +855,7 @@
   // went in or out.
   function columnsChanged(column, count, inserted) {
     index = null;
+    refresh();
     columnHeaders().forEach(function (header, at) {
       var letters = header.firstChild;
       if (letters === null || letters.nodeType !== Node.TEXT_NODE) {
@@ -1011,7 +1014,6 @@
   // (`sheet-grid.md`). Drawn, not written: gridlines are backgrounds, and
   // only the labels in view are elements.
 
-
   function cellWidth() {
     return defaultSize[0];
   }
@@ -1055,8 +1057,44 @@
     }
     return (
       (!pastColumns || (growsRight && column < maximum[0])) &&
-      (!pastRows || (growsDown && row < maximum[1]))
+      (!pastRows ||
+        (growsDown &&
+          row < maximum[1] &&
+          belowTop() + (row - contentRows + 1) * cellHeight() <= heightLimit))
     );
+  }
+
+  // Grows the grid to hold the cell at @p column, @p row, which `inGrid`
+  // allows.
+  function hold(column, row) {
+    extraColumns = Math.max(extraColumns, column - contentColumns() + 1);
+    extraRows = Math.max(extraRows, row - contentRows + 1);
+    layout();
+  }
+
+  // Calls @p visit with each row of the content between @p top and @p bottom
+  // and the row's top. Only the chunks there are read: a far chunk's rows
+  // are not laid out, and asking for their geometry would lay them out.
+  function rowsBetween(top, bottom, visit) {
+    for (var i = 0; i < chunks.length; ++i) {
+      var chunkTop = chunks[i].offsetTop;
+      if (chunkTop + chunks[i].offsetHeight <= top) {
+        continue;
+      }
+      if (chunkTop > bottom) {
+        return;
+      }
+      var rows = chunks[i].querySelectorAll(":scope>tbody>tr");
+      for (var j = 0; j < rows.length; ++j) {
+        var y = chunkTop + rows[j].offsetTop;
+        if (y > bottom) {
+          return;
+        }
+        if (y + rows[j].offsetHeight > top) {
+          visit(rows[j], y);
+        }
+      }
+    }
   }
 
   function element(name, className) {
@@ -1288,18 +1326,11 @@
 
     // beside the content, a line on top of each row in view
     var lines = [];
-    var rows = bodyRows();
     var rowsTop = layers.right.offsetTop;
-    for (var k = 0; k < rows.length && extraColumns > 0; ++k) {
-      var tr = rows[k];
-      var y = tr.offsetTop + tr.offsetParent.offsetTop;
-      if (y + tr.offsetHeight < at.top) {
-        continue;
-      }
-      if (y > at.bottom) {
-        break;
-      }
-      lines.push(y - rowsTop);
+    if (extraColumns > 0) {
+      rowsBetween(at.top, at.bottom, function (tr, y) {
+        lines.push(y - rowsTop);
+      });
     }
     reuse(
       layers.rowLines,
@@ -1379,14 +1410,9 @@
     if (y >= belowTop()) {
       row = contentRows + Math.floor((y - belowTop()) / cellHeight());
     } else {
-      var rows = bodyRows();
-      for (var j = 0; j < rows.length; ++j) {
-        var top = rows[j].offsetTop + rows[j].offsetParent.offsetTop;
-        if (y >= top && y < top + rows[j].offsetHeight) {
-          row = rowOf(rows[j]);
-          break;
-        }
-      }
+      rowsBetween(y, y, function (tr) {
+        row = row === null ? rowOf(tr) : row;
+      });
     }
     return column === null || row === null || !inGrid(column, row)
       ? null
@@ -1429,24 +1455,9 @@
   // Goes to a cell, the empty grid included: it grows to hold it, pins it and
   // scrolls it into view. False for a position the grid does not reach.
   function goToCell(column, row) {
-    if (cellAt(column, row) === null && !inGrid(column, row)) {
+    if (!pinAt({ column: column, row: row })) {
       return false;
     }
-    if (column >= contentColumns()) {
-      extraColumns = Math.max(
-        extraColumns,
-        Math.min(maximum[0] - contentColumns(), column - contentColumns() + 1)
-      );
-    }
-    if (row >= contentRows) {
-      var needed = row - contentRows + 1;
-      if (belowTop() + needed * cellHeight() > heightLimit) {
-        return false;
-      }
-      extraRows = Math.max(extraRows, needed);
-    }
-    layout();
-    pinAt({ column: column, row: row });
     var target = cellAt(column, row) || layers.mark;
     target.scrollIntoView({ block: "nearest", inline: "nearest" });
     refresh();
@@ -1481,6 +1492,9 @@
     deleteColumns: deleteColumns,
     restoreColumns: restoreColumns,
     setGrid: setGrid,
+    hasGrid: function () {
+      return gridOn;
+    },
     goToCell: goToCell,
   };
 

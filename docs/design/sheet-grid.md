@@ -40,8 +40,8 @@ renderer states a few facts, and the page draws the rest.
 | `data-odr-cut` | the whole content where `spreadsheet_limit` or the cell budget cut the sheet (`HtmlSheetCut`); written for the grid too now, not only for an editable render |
 
 - **The maximum** is the format's: 1,048,576 × 16,384 for xlsx, ods and csv,
-  65,536 × 256 for xls, 1,000,000 × 1,000 for Numbers. An ods states its grid as its dimensions, so its own
-  dimensions win where they are smaller; an xlsx states only its used range,
+  65,536 × 256 for xls, 1,000,000 × 1,000 for Numbers. An ods states its grid
+  as its dimensions, so its own dimensions win where they are smaller; an xlsx states only its used range,
   so its dimensions say nothing about the maximum.
 - **The default size** is what an empty column and row take in the format:
   the sheet's default column width and row height where the file states
@@ -70,9 +70,8 @@ default) drops the three new attributes, and with them the grid.
   past the last row. Only the labels in view are elements, reused as the
   reader scrolls, so the DOM is a screen of labels whatever the position.
   They stick as the ruler does now.
-- **The area grows as the reader goes.** Its size starts at a screen past
-  the content and grows by a screen when the reader comes near its edge, up
-  to the maximum, as Excel's scroll bar does. A jump grows it to the target
+- **The area grows as the reader goes.** It keeps two screens past the view
+  and grows as the reader scrolls, up to the maximum, as Excel's scroll bar does. A jump grows it to the target
   at once: `odr.goToCell(column, row)` (also `odr.sheet.goToCell`, by
   index) pins the cell, empty or not, and scrolls it into view. It answers
   false past the maximum or a cut edge.
@@ -88,7 +87,8 @@ default) drops the three new attributes, and with them the grid.
 - **Not in print.** The grid is screen only.
 
 The page grid is on for every sheet view that states its facts.
-`odr.sheet.setGrid(false)` drops it in any page, and
+`odr.sheet.setGrid(false)` drops it in any page (`odr.sheet.hasGrid()`
+answers whether it is drawn), and
 `odr.editing.setSheetOptions({grid: false})` in an editable one;
 `HtmlConfig::spreadsheet_grid` keeps the facts out of the markup for a host
 that wants the old canvas from the first frame.
@@ -127,7 +127,3 @@ scrolled and selected, and an edit there is refused with `unsupportedEdit`.
   "Left"). The grid lands in the views of one sheet first.
 - **Frozen panes** are not rendered today. Where they come, the grid starts
   past them.
-
-## Open questions
-
-- Whether the spacer under "Left" is worth building, or the limit stays.

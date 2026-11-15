@@ -110,8 +110,6 @@
 
       note("rows that go in");
       odr.sheet.insertRows(1, 1);
-      odr.sheet.setGrid(true);
-      window.dispatchEvent(new Event("resize"));
       setTimeout(function () {
         check("move the grid down a row", shownLabels("gutter")[0] === "5", shownLabels("gutter"));
 
@@ -122,6 +120,9 @@
         check("an empty cell cannot be pinned", odr.sheet.pin({ column: 4, row: 0 }) === false);
         odr.editing.setSheetOptions({ grid: true });
         check("and back on", getComputedStyle(layer("below")).display !== "none");
+        odr.sheet.setGrid(false);
+        check("the option follows setGrid", odr.editing.getSheetOptions().grid === false);
+        odr.sheet.setGrid(true);
       }, 100);
     </script>
   </body>

@@ -119,7 +119,8 @@ The release run heads these entries with the version and opens a fresh
   `odr.goToCell(column, row)`; typing into it is refused with
   `unsupportedEdit` for now. Nothing is printed past the content.
 - `HtmlConfig::spreadsheet_grid` (on by default) and the page's
-  `odr.sheet.setGrid(enabled)` and `setSheetOptions({grid})` turn it off.
+  `odr.sheet.setGrid(enabled)` and `setSheetOptions({grid})` turn it off;
+  `odr.sheet.hasGrid()` answers whether it is drawn.
   `spreadsheet_grid` in python, `spreadsheetGrid` in java, swift and npm.
 - `.odr-sheet` states `data-odr-sheet-extent`, `data-odr-sheet-max` and
   `data-odr-sheet-default-size`, and `data-odr-cut` also in a read-only
