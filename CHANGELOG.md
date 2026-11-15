@@ -98,6 +98,18 @@ The release run heads these entries with the version and opens a fresh
   state them. Theme fonts (`+mj-lt`, `+mn-lt`) resolve to the theme's
   typefaces, and the presentation's default text style applies to every shape.
 
+### Viewing
+
+- `HtmlConfig::page_layout` takes `HtmlPageLayout::single`: a view of a
+  workbook, a presentation, a drawing or a pdf shows one sheet or page at a
+  time. Every sheet and page is an `odr-page` in either layout.
+- The page script answers `odr.getPageCount()`, `odr.getPage()` and
+  `odr.setPage(index)`, calls `odr.onPageChange({page, count})` (forwarded as
+  `pageChange`), and keeps `#page=N` in the URL, 1-based: a link opens at
+  that page. Under `single`, the arrow, page and Home/End keys turn pages.
+- In every binding: `page_layout` in python, `pageLayout` in java, swift and
+  npm.
+
 ### Editing
 
 - The edit envelope takes `insertSheet`, `insertSlide` and `insertTextBox`.

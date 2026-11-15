@@ -1,6 +1,6 @@
 # Single-page layout design
 
-Status: proposed, not built.
+Status: built.
 
 Related: [`lazy-loading.md`](lazy-loading.md) holds the chunks a page is
 laid out in. [`structure-editing.md`](structure-editing.md) holds the slide
@@ -8,9 +8,10 @@ gestures, which have to keep the current page in view.
 
 ## Problem
 
-A view of a paged document states every page in one column, and the reader
-scrolls. A presentation is read one slide at a time, and so is a pdf on a
-phone. Today a host that wants that has two options, and neither works well:
+A view of a workbook, a presentation, a drawing or a pdf states every sheet
+or page in one column, and the reader scrolls. A presentation is read one
+slide at a time, a workbook one sheet at a time, and a pdf on a phone one
+page at a time. Today a host that wants that has two options, and neither works well:
 
 - **One view per page** (`page0.html`, ...). Switching pages loads another
   document, so the page loses what it holds: the edit log and its undo, a
@@ -26,7 +27,7 @@ third slide.
 ### 1. A layout in `HtmlConfig`
 
 ```cpp
-/// How a view of a paged document lays out its pages.
+/// How a view lays out its pages.
 enum class HtmlPageLayout {
   continuous, ///< every page in one column, as now
   single,     ///< one page shown at a time; the script switches
@@ -41,37 +42,40 @@ struct HtmlConfig {
 - An enum, not a `bool`: a spread of two pages is the next layout, and it
   then needs no second field. A new value goes at the end, because the
   bindings map the enum by ordinal.
-- It applies to every view with a page column: slides, drawing pages, text
-  documents with page boxes, and pdf pages. A spreadsheet already gives each
-  sheet a view of its own, and a text file has no pages, so both ignore it.
+- It applies to the sheets of a spreadsheet, slides, drawing pages and pdf
+  pages. A view of one sheet or one slide has one page, so it changes
+  nothing there. A text document is read as a column, page boxes or not, so
+  it ignores the layout; so does every view without pages.
 - `continuous` is the default, so nothing changes for a host that does not
   ask.
 
 ### 2. The markup stays the same
 
-The view writes every page as now. Two views write pages today, and they
-mark them differently:
+The view writes every page as now. Three kinds of page are written, each
+marked its own way:
 
-- a document view: `.odr-pages > .odr-page-outer`, with `data-odr-page` (an
-  element id) only when the render is editable;
-- the pdf view: `div.d > div[data-odr-page]`, with `id="pN"` (1-based) and
+- a slide or a drawing page: `.odr-pages > .odr-page-outer`, with
+  `data-odr-page` (an element id) only when the render is editable;
+- a sheet: `body > .odr-sheet`, with `data-odr-sheet` (its ordinal);
+- a pdf page: `div.d > div[data-odr-page]`, with `id="pN"` (1-based) and
   `data-odr-page` (the 0-based index).
 
-So both page elements also get the class `odr-page`, the one hook the CSS
-and the script need. `<body>` carries `data-odr-page-layout="single"`, and
-CSS hides every page but the one with `odr-page-current`:
+So each also gets the class `odr-page`, in both layouts: the one hook the
+CSS and the script need. Under `single`, `<body>` carries
+`data-odr-page-layout="single"`, and `write_page_layout_style` writes one
+rule:
 
 ```css
-[data-odr-page-layout="single"] .odr-page:not(.odr-page-current) {
-  display: none;
-}
+@media screen{[data-odr-page-current] .odr-page:not(.odr-page-current){display:none}}
 ```
 
-- The first page is current in the markup, so the first frame needs no
-  script. Without a script, a `<noscript>` rule shows every page, and the
-  view reads as `continuous`.
-- A print shows every page, as `continuous` does. `@media print` drops the
-  rule.
+- The rule waits for the script: `viewport.js` marks the current page and
+  sets `data-odr-page-current` on `<body>`. Until it runs, and without it,
+  every page shows and the view reads as `continuous`. The first page is on
+  top in that column anyway, so the first frame shows the page the script
+  then keeps, unless `#page=N` names another one. No `<noscript>` rule and
+  no current page in the markup are needed.
+- A print shows every page, as `continuous` does: the rule is screen only.
 - Lazy loading keeps working. The current page and its two neighbours are
   near, so a page is laid out before it is shown. At level 3, a page whose
   chunk has not loaded is loaded when it becomes current, and shown once it
@@ -90,8 +94,8 @@ In `viewport.js`, next to the zoom, and in both layouts:
 
 - The index is 0-based, as `odr.editing.insertTextBox({page})` takes it, and
   is the page's position among the `.odr-page` elements. It equals the pdf
-  view's `data-odr-page`, but not a document view's, which holds an element
-  id.
+  view's `data-odr-page` and a sheet's `data-odr-sheet`, but not a slide's
+  `data-odr-page`, which holds an element id.
 - `host-bridge.js` forwards `onPageChange` as `pageChange`, as it does every
   `odr.on*` callback, so an app shell builds its own controls.
 - In `single`, the arrow keys, PageUp, PageDown, Home and End switch pages
@@ -126,16 +130,30 @@ host that renders once for every reader cannot know it.
 ### 5. What has to follow the current page
 
 - **Search.** A hit on another page makes that page current before the hit
-  scrolls into view (`search.js`).
+  scrolls into view. `search.js` already calls `odr.chunks.show` on a hit,
+  and under `single` that turns to the hit's page, so search needs no change.
 - **Selection.** A selection never spans a hidden page, because a hidden
   page cannot be selected.
 - **Structure edits.** An inserted slide becomes current, as it scrolls into
   view now. Removing the current slide makes its neighbour current, the next
-  one, else the previous one. A moved slide stays current.
+  one, else the previous one. A moved slide stays current. `viewport.js`
+  holds the current page as the element and watches the page column, so an
+  undo or a redo of any of these lands the same way.
 - **Pdf annotations.** A highlight is drawn on the current page; the pages
   that are hidden keep theirs, as a far chunk does now.
 - **Fitting the width.** `fit_width_by_view` measures the current page, so
   turning to a page of another size refits it. A pdf can mix page sizes.
+
+## Left
+
+- **A workbook's whole-document view drives one sheet.** `spreadsheet.js`
+  and `sheet-editing.js` bind to the first `.odr-sheet` of the page, as they
+  did before this layout. Turning to another sheet shows it, without its
+  sticky headers, row loading or editing. A view of one sheet is unaffected.
+  Binding the scripts per sheet is its own change.
+- **Scroll tracking under `continuous` runs on a short timer**, not on
+  animation frames, because a page in the background gets few frames and its
+  host still wants `onPageChange`.
 
 ## Open questions
 

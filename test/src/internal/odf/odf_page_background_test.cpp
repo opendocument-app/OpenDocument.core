@@ -151,7 +151,7 @@ TEST(OdfPageBackground, a_slide_takes_its_own_bitmap) {
   EXPECT_NE(html.find(".odr-page-outer.odr-page-bg-0{background-image:url("
                       "\"data:image/png;base64,"),
             std::string::npos);
-  EXPECT_NE(html.find(R"(class="odr-page-outer odr-page-bg-0)"),
+  EXPECT_NE(html.find(R"(class="odr-page-outer odr-page odr-page-bg-0)"),
             std::string::npos);
   EXPECT_NE(html.find("background-size:100% 100%"), std::string::npos);
   // the dark sheet keeps a picture
@@ -166,7 +166,7 @@ TEST(OdfPageBackground, the_slides_showing_one_bitmap_share_its_rule) {
   const std::string html = render(path, 0);
 
   EXPECT_EQ(count(html, "data:image/png;base64,"), 1);
-  EXPECT_EQ(count(html, R"(class="odr-page-outer odr-page-bg-0)"), 3);
+  EXPECT_EQ(count(html, R"(class="odr-page-outer odr-page odr-page-bg-0)"), 3);
 }
 
 TEST(OdfPageBackground, a_linked_bitmap_is_a_resource) {
@@ -204,7 +204,8 @@ TEST(OdfPageBackground, a_slide_without_a_fill_shows_its_master_page_fill) {
   const std::string html = render(path);
   EXPECT_NE(html.find("background-image:linear-gradient("), std::string::npos);
   // the dark sheet clears it
-  EXPECT_NE(html.find(R"(class="odr-page-outer odr-fill)"), std::string::npos);
+  EXPECT_NE(html.find(R"(class="odr-page-outer odr-page odr-fill)"),
+            std::string::npos);
 }
 
 // As LibreOffice renders it: its default fill color, not the master's.

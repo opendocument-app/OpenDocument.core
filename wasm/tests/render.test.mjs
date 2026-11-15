@@ -134,6 +134,21 @@ describe('render', () => {
     }
   });
 
+  it('honours a page layout', () => {
+    const column = odr.open(minimalOds());
+    const single = odr.open(minimalOds(), {
+      pageLayout: odr.enums.HtmlPageLayout.single,
+    });
+    try {
+      // the attribute, not the name: the page script names it too
+      assert.ok(!column.render(0).html.includes('data-odr-page-layout="single"'));
+      assert.ok(single.render(0).html.includes('data-odr-page-layout="single"'));
+    } finally {
+      column.close();
+      single.close();
+    }
+  });
+
   it('carries the formula module where a sheet edits', () => {
     const withFormula = new TextEncoder().encode(
       '<?xml version="1.0" encoding="UTF-8"?>' +

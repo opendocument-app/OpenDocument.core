@@ -130,6 +130,9 @@ emscripten::val enum_tables() {
             entry("actual_size", HtmlViewportMode::actual_size),
             entry("none", HtmlViewportMode::none),
             entry("fit_width_by_view", HtmlViewportMode::fit_width_by_view)));
+  result.set("HtmlPageLayout",
+             table(entry("continuous", HtmlPageLayout::continuous),
+                   entry("single", HtmlPageLayout::single)));
   result.set("HtmlEditingScope",
              table(entry("paragraph", HtmlEditingScope::paragraph),
                    entry("document", HtmlEditingScope::document)));

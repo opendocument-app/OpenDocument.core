@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>single-page layout checks</title>
+    <!-- what `write_page_layout_style` writes -->
+    <style>
+      @media screen{[data-odr-page-current] .odr-page:not(.odr-page-current){display:none}}
+      .odr-page{width:300px;height:200px;margin:16px;background:#eee}
+    </style>
+  </head>
+  <body data-odr-page-layout="single" data-odr-keyboard="navigation">
+    <!-- A paged view as `HtmlPageLayout::single` writes it
+         (`single-page-layout.md`). -->
+    <div class="odr-pages">
+      <div class="odr-page-outer odr-page" id="p0"><span>one</span></div>
+      <div class="odr-page-outer odr-page" id="p1"><span id="inside">two</span></div>
+      <div class="odr-page-outer odr-page" id="p2"><span>three</span></div>
+      <div class="odr-page-outer odr-page" id="p3"><span contenteditable="true" id="editable">four</span></div>
+    </div>
+
+    <div id="report"></div>
+    <script src="checks.js"></script>
+    <script>
+      // the URL a host opens the view at
+      history.replaceState(null, "", "#page=2");
+      var changes = [];
+      window.odr = {
+        onPageChange: function (detail) {
+          changes.push(detail);
+        },
+      };
+    </script>
+    <script src="viewport.js"></script>
+    <script>
+      function shown() {
+        return Array.prototype.filter
+          .call(document.getElementsByClassName("odr-page"), function (page) {
+            return getComputedStyle(page).display !== "none";
+          })
+          .map(function (page) {
+            return page.id;
+          })
+          .join(",");
+      }
+      function key(name, init, target) {
+        var event = new KeyboardEvent("keydown", Object.assign({ key: name, bubbles: true, cancelable: true }, init || {}));
+        (target || document.body).dispatchEvent(event);
+        return event.defaultPrevented;
+      }
+      function once(condition, then) {
+        var tries = 0;
+        (function poll() {
+          if (condition() || ++tries > 100) {
+            then();
+          } else {
+            setTimeout(poll, 20);
+          }
+        })();
+      }
+
+      note("opening");
+      check("#page=2 opens at the second page", odr.getPage() === 1, odr.getPage());
+      check("and shows it alone", shown() === "p1", shown());
+      check("the count is every page", odr.getPageCount() === 4, odr.getPageCount());
+      check("opening reports no change", changes.length === 0, changes);
+
+      note("switching");
+      check("setPage takes an index", odr.setPage(3) === true);
+      check("and shows that page alone", shown() === "p3", shown());
+      check("onPageChange says so", JSON.stringify(changes[changes.length - 1]) === '{"page":3,"count":4}', changes);
+      check("an index past the last is refused", odr.setPage(4) === false && odr.getPage() === 3);
+      check("a fraction is refused", odr.setPage(1.5) === false && odr.getPage() === 3);
+
+      note("keys");
+      check("ArrowLeft turns back", key("ArrowLeft") && odr.getPage() === 2, odr.getPage());
+      check("PageDown turns on", key("PageDown") && odr.getPage() === 3, odr.getPage());
+      check("past the last, the key is left alone", !key("ArrowRight") && odr.getPage() === 3);
+      check("Home is the first page", key("Home") && odr.getPage() === 0, odr.getPage());
+      check("End is the last", key("End") && odr.getPage() === 3, odr.getPage());
+      check("a chord is the host's", !key("Home", { ctrlKey: true }) && odr.getPage() === 3);
+      check("an editable target keeps its keys", !key("Home", {}, document.getElementById("editable")) && odr.getPage() === 3);
+
+      note("following the page");
+      odr.chunks.show(document.getElementById("inside"));
+      check("showing an element shows its page", odr.getPage() === 1 && shown() === "p1", shown());
+
+      note("the hash");
+      once(
+        function () {
+          return location.hash === "#page=2";
+        },
+        function () {
+          check("the hash follows the current page", location.hash === "#page=2", location.hash);
+          var before = changes.length;
+          window.addEventListener(
+            "hashchange",
+            function () {
+              check("a new hash turns to its page", odr.getPage() === 2 && shown() === "p2", shown());
+              check("and reports it", changes.length === before + 1, changes);
+
+              note("inserts and removals");
+              var pages = document.querySelector(".odr-pages");
+              var removed = document.getElementById("p2");
+              pages.removeChild(removed);
+              once(
+                function () {
+                  return odr.getPageCount() === 3 && changes[changes.length - 1].count === 3;
+                },
+                function () {
+                  check("a removed page hands over to the one in its place", odr.getPage() === 2 && shown() === "p3", shown());
+                  var added = document.createElement("div");
+                  added.className = "odr-page-outer odr-page";
+                  added.id = "new";
+                  pages.insertBefore(added, pages.firstChild);
+                  once(
+                    function () {
+                      return odr.getPageCount() === 4 && changes[changes.length - 1].count === 4;
+                    },
+                    function () {
+                      check("an insert before keeps the page and moves its index", odr.getPage() === 3 && shown() === "p3", { page: odr.getPage(), shown: shown() });
+                      pages.removeChild(document.getElementById("p3"));
+                      once(
+                        function () {
+                          return odr.getPageCount() === 3 && changes[changes.length - 1].count === 3;
+                        },
+                        function () {
+                          check("removing the last page hands over to the one before", odr.getPage() === 2 && shown() === "p1", shown());
+                        }
+                      );
+                    }
+                  );
+                }
+              );
+            },
+            { once: true }
+          );
+          location.hash = "#page=3";
+        }
+      );
+    </script>
+  </body>
+</html>

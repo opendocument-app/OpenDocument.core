@@ -343,6 +343,50 @@
     return applied();
   };
 
+  // The pages of a paged view (`single-page-layout.md`). The current one is
+  // kept as the element, so an insert or a removal before it keeps it.
+  var single = body.getAttribute("data-odr-page-layout") === "single";
+  var pageList = document.getElementsByClassName("odr-page");
+  var currentPage = null;
+  // Where the current page was, to pick its neighbour once it is removed.
+  var currentIndex = 0;
+  var reported = null;
+  var hashTimer = 0;
+
+  function pageIndex(page) {
+    return Array.prototype.indexOf.call(pageList, page);
+  }
+
+  // The 0-based page `#page=N` names, or null for none or one past the last.
+  function hashedPage() {
+    var match = /^#(?:.*&)?page=(\d+)(?:&|$)/.exec(window.location.hash);
+    if (match === null) {
+      return null;
+    }
+    var index = parseInt(match[1], 10) - 1;
+    return index >= 0 && index < pageList.length ? index : null;
+  }
+
+  // Under `single`, the body naming a current page turns on the rule that
+  // hides the others; before it does, every page shows.
+  function mark(page) {
+    if (currentPage !== null && currentPage !== page) {
+      currentPage.classList.remove("odr-page-current");
+    }
+    currentPage = page;
+    currentIndex = pageIndex(page);
+    if (single) {
+      page.classList.add("odr-page-current");
+      body.setAttribute("data-odr-page-current", "");
+    }
+  }
+
+  // Before the fit is measured, which measures the shown page alone.
+  var opening = pageList.length > 0 ? hashedPage() : null;
+  if (pageList.length > 0) {
+    mark(pageList[opening === null ? 0 : opening]);
+  }
+
   // Before the first measurement, so every one of them reads the same state.
   adjustsText = textAdjustHolds();
   width = root.clientWidth;
@@ -464,19 +508,28 @@
     }
   }
 
+  // Lays out the chunk that holds @p element. Observed anew, so the observer
+  // takes it back once it is far, though it saw no change.
+  function showChunk(element) {
+    var chunk = element.closest(".odr-chunk");
+    if (chunk !== null) {
+      setNear(chunk, true);
+      if (near !== null && !chunk.hasAttribute("data-odr-chunk-held")) {
+        near.unobserve(chunk);
+        near.observe(chunk);
+      }
+    }
+  }
+
   odr.chunks = {
     // Lays out the chunk that holds @p element, so it can be measured and
-    // scrolled to. Observed anew, so the observer takes it back once it is
-    // far, though it saw no change.
+    // scrolled to. Under `single`, its page becomes the one shown.
     show: function (element) {
-      var chunk = element.closest(".odr-chunk");
-      if (chunk !== null) {
-        setNear(chunk, true);
-        if (near !== null && !chunk.hasAttribute("data-odr-chunk-held")) {
-          near.unobserve(chunk);
-          near.observe(chunk);
-        }
+      var page = single ? element.closest(".odr-page") : null;
+      if (page !== null && page !== currentPage) {
+        turnTo(page, false);
       }
+      showChunk(element);
     },
     // Puts the content of chunk @p index in, which its script states.
     fill: function (index, html) {
@@ -556,5 +609,199 @@
         setNear(chunk, true);
       }
     },
+  };
+  // The hash follows the current page, late: a browser limits how often a
+  // page may replace its history entry, and a scroll passes many pages.
+  function writeHash() {
+    clearTimeout(hashTimer);
+    hashTimer = setTimeout(function () {
+      if (currentPage === null) {
+        return;
+      }
+      var hash = "#page=" + (pageIndex(currentPage) + 1);
+      if (window.location.hash === hash) {
+        return;
+      }
+      try {
+        history.replaceState(history.state, "", hash);
+      } catch (e) {
+        // an `about:srcdoc` frame has no URL of its own to write
+      }
+    }, 250);
+  }
+
+  function pageChanged() {
+    var page = currentPage === null ? null : pageIndex(currentPage);
+    var count = pageList.length;
+    if (reported !== null && reported.page === page && reported.count === count) {
+      return;
+    }
+    reported = { page: page, count: count };
+    writeHash();
+    if (typeof odr.onPageChange === "function") {
+      odr.onPageChange({ page: page, count: count });
+    }
+  }
+
+  // Makes @p page current: shown under `single`, and with @p scroll, scrolled
+  // to its top.
+  function turnTo(page, scroll) {
+    mark(page);
+    // a settling run would scroll back to where the reader was
+    taken();
+    showChunk(page);
+    if (single) {
+      [pageList[currentIndex - 1], pageList[currentIndex + 1]].forEach(
+        function (neighbour) {
+          if (neighbour !== undefined) {
+            load(neighbour);
+          }
+        }
+      );
+      // a page of another size fits anew
+      if (measures && pinned === null) {
+        var next = measureFit();
+        if (next !== fit) {
+          fit = next;
+          zoomBody(applied());
+          notify();
+        }
+      }
+    }
+    if (scroll) {
+      page.scrollIntoView({ block: "start", inline: "nearest" });
+    }
+    remember();
+    pageChanged();
+  }
+
+  // The first page whose foot is below the top of the viewport.
+  function topPage() {
+    var low = 0;
+    var high = pageList.length - 1;
+    var found = null;
+    while (low <= high) {
+      var middle = (low + high) >> 1;
+      if (pageList[middle].getBoundingClientRect().bottom > 0) {
+        found = pageList[middle];
+        high = middle - 1;
+      } else {
+        low = middle + 1;
+      }
+    }
+    return found;
+  }
+
+  // A timer, not a frame: a page in the background gets few frames, and its
+  // host still wants to know.
+  var tracking = 0;
+  function track() {
+    if (single || tracking !== 0) {
+      return;
+    }
+    tracking = setTimeout(function () {
+      tracking = 0;
+      var page = topPage();
+      if (page !== null && page !== currentPage) {
+        mark(page);
+        pageChanged();
+      }
+    }, 100);
+  }
+
+  if (pageList.length > 0) {
+    reported = { page: pageIndex(currentPage), count: pageList.length };
+    if (!single && opening !== null) {
+      turnTo(pageList[opening], true);
+    }
+    window.addEventListener("scroll", track, { passive: true });
+    window.addEventListener("hashchange", function () {
+      var index = hashedPage();
+      if (index !== null && pageList[index] !== currentPage) {
+        turnTo(pageList[index], true);
+      }
+    });
+
+    // An insert, a removal, a move or their undo: a removed current page
+    // hands over to the one now in its place, else the one before.
+    if (typeof MutationObserver === "function") {
+      new MutationObserver(function () {
+        if (pageList.length === 0) {
+          currentPage = null;
+        } else if (currentPage === null || !currentPage.isConnected) {
+          mark(pageList[Math.min(currentIndex, pageList.length - 1)]);
+        } else {
+          currentIndex = pageIndex(currentPage);
+        }
+        pageChanged();
+      }).observe(pageList[0].parentNode, { childList: true });
+    }
+
+    var keys = (body.getAttribute("data-odr-keyboard") || "").split(" ");
+    if (single && keys.indexOf("navigation") !== -1) {
+      document.addEventListener("keydown", function (event) {
+        var target = event.target;
+        if (
+          event.defaultPrevented ||
+          event.altKey ||
+          event.ctrlKey ||
+          event.metaKey ||
+          event.shiftKey ||
+          currentPage === null ||
+          (target !== null &&
+            (target.isContentEditable ||
+              /^(INPUT|TEXTAREA|SELECT)$/.test(target.nodeName)))
+        ) {
+          return;
+        }
+        var index = pageIndex(currentPage);
+        var next;
+        switch (event.key) {
+          case "ArrowRight":
+          case "PageDown":
+            next = index + 1;
+            break;
+          case "ArrowLeft":
+          case "PageUp":
+            next = index - 1;
+            break;
+          case "Home":
+            next = 0;
+            break;
+          case "End":
+            next = pageList.length - 1;
+            break;
+          default:
+            return;
+        }
+        if (odr.setPage(next)) {
+          event.preventDefault();
+        }
+      });
+    }
+  }
+
+  odr.getPageCount = function () {
+    return pageList.length;
+  };
+
+  // The shown page under `single`, the one at the top of the viewport under
+  // `continuous`; null without pages.
+  odr.getPage = function () {
+    var page = single ? currentPage : topPage();
+    return page === null ? null : pageIndex(page);
+  };
+
+  // False for an index that names no page.
+  odr.setPage = function (index) {
+    if (typeof index !== "number" || index !== Math.floor(index)) {
+      return false;
+    }
+    var page = pageList[index];
+    if (page === undefined) {
+      return false;
+    }
+    turnTo(page, true);
+    return true;
   };
 })();

@@ -1033,7 +1033,7 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   state.out().write_element_begin(
       "div",
       HtmlElementOptions()
-          .set_class("odr-sheet")
+          .set_class("odr-sheet odr-page")
           .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
             // every op names its sheet, and a view holds only one
             clb("data-odr-sheet", std::to_string(rows->ordinal));

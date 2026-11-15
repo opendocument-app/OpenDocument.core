@@ -2,6 +2,8 @@
 
 #include <odr/html.hpp>
 
+#include <odr/internal/html/html_writer.hpp>
+
 #include <cstdint>
 #include <string_view>
 
@@ -35,6 +37,14 @@ void write_search_dark_style(const WritingState &state);
 /// the viewport. Inline, because a chunk must start hidden on the first frame.
 /// Nothing where `HtmlConfig::lazy_layout` is off.
 void write_chunk_style(const WritingState &state);
+/// Under `HtmlPageLayout::single`, hides every `odr-page` but the current one
+/// once `viewport.js` names it. Before the script, and without it, every page
+/// shows. Nothing under `continuous`.
+void write_page_layout_style(const WritingState &state);
+/// `data-odr-page-layout` on the body of a paged view, if the layout is not
+/// the default.
+void write_page_layout_attribute(const HtmlConfig &config,
+                                 const HtmlAttributeWriterCallback &clb);
 /// The classes that make an element a chunk, each with a space before it, and
 /// @p near where it is near the viewport before the script runs. Empty where
 /// `HtmlConfig::lazy_layout` is off.

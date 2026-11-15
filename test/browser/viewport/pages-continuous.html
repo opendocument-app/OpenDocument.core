@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>continuous page checks</title>
+    <style>
+      body{margin:0;overflow-anchor:none}
+      .odr-page{width:300px;height:1200px;margin:16px;background:#eee}
+      #report{position:fixed;top:0;right:0;background:#fff}
+    </style>
+  </head>
+  <body data-odr-keyboard="navigation">
+    <!-- A paged view under the default layout: every page in one column, and
+         `#page=N` read and written all the same (`single-page-layout.md`). -->
+    <div class="odr-pages">
+      <div class="odr-page-outer odr-page" id="p0"></div>
+      <div class="odr-page-outer odr-page" id="p1"></div>
+      <div class="odr-page-outer odr-page" id="p2"></div>
+      <div class="odr-page-outer odr-page" id="p3"></div>
+    </div>
+
+    <div id="report"></div>
+    <script src="checks.js"></script>
+    <script>
+      history.replaceState(null, "", "#page=3");
+      var changes = [];
+      window.odr = {
+        onPageChange: function (detail) {
+          changes.push(detail);
+        },
+      };
+    </script>
+    <script src="viewport.js"></script>
+    <script>
+      function topOf(id) {
+        return document.getElementById(id).getBoundingClientRect().top;
+      }
+      function once(condition, then) {
+        var tries = 0;
+        (function poll() {
+          if (condition() || ++tries > 100) {
+            then();
+          } else {
+            setTimeout(poll, 20);
+          }
+        })();
+      }
+      var shown = Array.prototype.every.call(document.getElementsByClassName("odr-page"), function (page) {
+        return getComputedStyle(page).display !== "none";
+      });
+
+      check("every page shows", shown);
+      check("#page=3 scrolls to the third page", Math.abs(topOf("p2")) < 2, topOf("p2"));
+      check("and it is the current one", odr.getPage() === 2, odr.getPage());
+      check("opening reports no change", changes.length === 0, changes);
+      check("setPage scrolls to the page", odr.setPage(0) === true && Math.abs(topOf("p0")) < 2, topOf("p0"));
+      check("and reports it", changes.length === 1 && changes[0].page === 0, changes);
+
+      window.scrollTo(0, window.scrollY + topOf("p3") + 10);
+      once(
+        function () {
+          return location.hash === "#page=4";
+        },
+        function () {
+          check("scrolling to a page reports it", changes.length === 2 && changes[1].page === 3, changes);
+          check("and writes the hash", location.hash === "#page=4", location.hash);
+          check("the arrows stay the browser's", !(function () {
+            var event = new KeyboardEvent("keydown", { key: "Home", bubbles: true, cancelable: true });
+            document.body.dispatchEvent(event);
+            return event.defaultPrevented;
+          })());
+        }
+      );
+    </script>
+  </body>
+</html>

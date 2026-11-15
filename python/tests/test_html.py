@@ -123,6 +123,17 @@ def test_viewport_mode_reaches_the_html(odt_path):
     assert '<meta name="viewport" content="width=420"/>' in render(odt_path, raw)
 
 
+def test_page_layout_reaches_the_html(ods_path):
+    # proves the layout crosses the binding; the C++ suite covers the rest
+    config = pyodr.HtmlConfig()
+    assert config.page_layout == pyodr.HtmlPageLayout.continuous
+    assert 'data-odr-page-layout="single"' not in render(ods_path, config)
+
+    config.page_layout = pyodr.HtmlPageLayout.single
+    assert config.page_layout == pyodr.HtmlPageLayout.single
+    assert 'data-odr-page-layout="single"' in render(ods_path, config)
+
+
 def test_editing_scope_reaches_the_html(odt_path):
     # proves the scope crosses the binding; the C++ suite covers the rest
     # the attribute, not the name: the script names it too

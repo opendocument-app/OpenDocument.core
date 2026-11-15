@@ -225,6 +225,7 @@ HtmlConfig wasm::to_html_config(const emscripten::val &value) {
             : std::optional(checked_integer<std::uint64_t>(limit.as<double>()));
   }
   read_enum(value, "viewportMode", config.viewport_mode);
+  read_enum(value, "pageLayout", config.page_layout);
   if (const emscripten::val width = value["viewportWidth"];
       !width.isUndefined() && !width.isNull()) {
     config.viewport_width = checked_integer<std::uint32_t>(width.as<double>());

@@ -210,6 +210,7 @@ void write_pdf_body_begin(HtmlWriter &out, const HtmlConfig &config) {
         if (config.pdf_annotation_mark_on_selection) {
           clb("data-odr-annotation-mark-on-selection", "true");
         }
+        write_page_layout_attribute(config, clb);
       }));
 }
 
@@ -3086,7 +3087,7 @@ public:
     const double width = quarter_turn ? box_height : box_width;
     const double height = quarter_turn ? box_width : box_height;
 
-    std::string classes = "p";
+    std::string classes = "p odr-page";
     {
       std::ostringstream w;
       w << "width:" << width * pt_to_in << "in";
@@ -3270,6 +3271,7 @@ public:
     styles.write_rules(out.out());
     out.write_header_style_end();
     write_chunk_style(state);
+    write_page_layout_style(state);
     write_search_style(state);
     write_pdf_annotation_style(state);
     write_permissions(out);

@@ -54,6 +54,7 @@ class HtmlTest {
     assertEquals(HtmlTableGridlines.SOFT, config.spreadsheetGridlines);
     assertEquals(HtmlViewportMode.AUTOMATIC, config.viewportMode);
     assertNull(config.spreadsheetViewportMode);
+    assertEquals(HtmlPageLayout.CONTINUOUS, config.pageLayout);
     assertNull(config.viewportContent);
     assertNull(config.viewportWidth);
     assertNull(config.initialZoom);
@@ -97,6 +98,7 @@ class HtmlTest {
     HtmlConfig config = new HtmlConfig();
     config.viewportMode = HtmlViewportMode.FIT_WIDTH;
     config.spreadsheetViewportMode = HtmlViewportMode.ACTUAL_SIZE;
+    config.pageLayout = HtmlPageLayout.SINGLE;
     config.viewportContent = "width=420";
     config.viewportWidth = 420;
     config.initialZoom = 1.5;
@@ -111,6 +113,7 @@ class HtmlTest {
 
     assertEquals(HtmlViewportMode.FIT_WIDTH, readBack.viewportMode);
     assertEquals(HtmlViewportMode.ACTUAL_SIZE, readBack.spreadsheetViewportMode);
+    assertEquals(HtmlPageLayout.SINGLE, readBack.pageLayout);
     assertEquals("width=420", readBack.viewportContent);
     assertEquals(Integer.valueOf(420), readBack.viewportWidth);
     assertEquals(Double.valueOf(1.5), readBack.initialZoom);

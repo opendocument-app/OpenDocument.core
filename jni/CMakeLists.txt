@@ -121,6 +121,7 @@ add_jar(odr_java
         "java/app/opendocument/core/HtmlConfig.java"
         "java/app/opendocument/core/HtmlEditingScope.java"
         "java/app/opendocument/core/HtmlPage.java"
+        "java/app/opendocument/core/HtmlPageLayout.java"
         "java/app/opendocument/core/HtmlResource.java"
         "java/app/opendocument/core/HtmlResourceType.java"
         "java/app/opendocument/core/HtmlService.java"

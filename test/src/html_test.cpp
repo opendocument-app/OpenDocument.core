@@ -989,6 +989,46 @@ TEST(html, a_sheet_writes_a_search_index) {
   EXPECT_TRUE(second.str().ends_with("\\nr4097c64\"});\n"));
 }
 
+// `single-page-layout.md` decision 2: every page is an `odr-page` in both
+// layouts, and only `single` states itself and the rule that hides the rest.
+TEST(html, a_single_page_layout_marks_the_pages_and_the_body) {
+  const auto render = [](const auto &input, const HtmlPageLayout layout) {
+    HtmlConfig config;
+    config.page_layout = layout;
+    std::ostringstream out;
+    html::translate(input, config, Logger::null())
+        .write_html(config.document_output_file_name, out);
+    return out.str();
+  };
+  const auto check = [&](const auto &input) {
+    const std::string single = render(input, HtmlPageLayout::single);
+    EXPECT_NE(single.find(R"(data-odr-page-layout="single")"),
+              std::string::npos);
+    EXPECT_NE(single.find(".odr-page:not(.odr-page-current){display:none}"),
+              std::string::npos);
+
+    const std::string continuous = render(input, HtmlPageLayout::continuous);
+    EXPECT_EQ(continuous.find(R"(data-odr-page-layout="single")"),
+              std::string::npos);
+    EXPECT_EQ(continuous.find(".odr-page:not(.odr-page-current)"),
+              std::string::npos);
+    EXPECT_EQ(occurrences(continuous, " odr-page"),
+              occurrences(single, " odr-page"));
+    EXPECT_GE(occurrences(continuous, " odr-page"), 1);
+  };
+  check(create_document(FileType::office_open_xml_presentation));
+  check(create_document(FileType::office_open_xml_workbook));
+  check(open(
+      TestData::test_file_path("odr-public/pdf/opendocument-app-website.pdf"),
+      {}, Logger::null()));
+
+  // a text document is read as a column, its page boxes or not
+  EXPECT_EQ(render(create_document(FileType::opendocument_text),
+                   HtmlPageLayout::single)
+                .find(R"(data-odr-page-layout="single")"),
+            std::string::npos);
+}
+
 // `lazy-loading.md` decision 3: a pdf page after the first renders alone, and
 // the fonts are files that every page links.
 TEST(html, a_pdf_loads_its_later_pages) {
@@ -1105,9 +1145,11 @@ TEST(html, a_slide_is_a_chunk_of_the_document) {
     std::ostringstream document;
     service.list_views().at(0).write_html(document);
     const std::string page = document.str();
-    EXPECT_EQ(page.find(R"(class="odr-page-outer odr-chunk odr-chunk-near")"),
-              page.find(R"(class="odr-page-outer)"));
-    EXPECT_NE(page.find(R"(class="odr-page-outer odr-chunk")"),
+    EXPECT_EQ(
+        page.find(
+            R"(class="odr-page-outer odr-page odr-chunk odr-chunk-near")"),
+        page.find(R"(class="odr-page-outer)"));
+    EXPECT_NE(page.find(R"(class="odr-page-outer odr-page odr-chunk")"),
               std::string::npos);
     EXPECT_NE(page.find(".odr-chunk{content-visibility:hidden}"),
               std::string::npos);
@@ -1115,7 +1157,8 @@ TEST(html, a_slide_is_a_chunk_of_the_document) {
     // a view of one slide has nothing to skip
     std::ostringstream one;
     service.list_views().at(2).write_html(one);
-    EXPECT_NE(one.str().find(R"(class="odr-page-outer")"), std::string::npos);
+    EXPECT_NE(one.str().find(R"(class="odr-page-outer odr-page")"),
+              std::string::npos);
     EXPECT_FALSE(std::regex_search(one.str(),
                                    std::regex(R"(class="[^"]*\bodr-chunk\b)")));
   }

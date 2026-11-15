@@ -2153,6 +2153,10 @@
         });
       },
     });
+    // under a single-page layout, the slide becomes the one shown
+    if (odr.chunks !== undefined) {
+      odr.chunks.show(slide);
+    }
     slide.scrollIntoView({ block: "nearest" });
     caretInto(slide);
     return true;
@@ -2250,6 +2254,10 @@
         parent.insertBefore(slide, next);
       },
     });
+    // under a single-page layout, the slide becomes the one shown
+    if (odr.chunks !== undefined) {
+      odr.chunks.show(slide);
+    }
     slide.scrollIntoView({ block: "nearest" });
     return true;
   }
