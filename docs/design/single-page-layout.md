@@ -147,11 +147,8 @@ host that renders once for every reader cannot know it.
 
 ## Left
 
-- **A workbook's whole-document view drives one sheet.** `spreadsheet.js`
-  and `sheet-editing.js` bind to the first `.odr-sheet` of the page, as they
-  did before this layout. Turning to another sheet shows it, without its
-  sticky headers, row loading or editing. A view of one sheet is unaffected.
-  Binding the scripts per sheet is its own change.
+- ~~A workbook's whole-document view drives one sheet.~~ Every sheet of the
+  page has its scripts now; see [`sheet-scripts.md`](sheet-scripts.md).
 
 ## Open questions
 

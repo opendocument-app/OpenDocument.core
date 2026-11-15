@@ -638,6 +638,12 @@
     }
     reported = { page: page, count: count };
     writeHash();
+    // for the page's own scripts: the sheet scripts follow the sheet shown
+    document.dispatchEvent(
+      new CustomEvent("odr-page-change", {
+        detail: { page: page, count: count },
+      })
+    );
     if (typeof odr.onPageChange === "function") {
       odr.onPageChange({ page: page, count: count });
     }
@@ -711,6 +717,9 @@
 
   if (pageList.length > 0) {
     reported = { page: pageIndex(currentPage), count: pageList.length };
+    document.dispatchEvent(
+      new CustomEvent("odr-page-change", { detail: reported })
+    );
     // under `single`, loads the neighbours of the page it opens at
     if (single || opening !== null) {
       turnTo(currentPage, !single);

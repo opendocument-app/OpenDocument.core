@@ -41,12 +41,19 @@ and a column inserted and deleted. `grid-cut.html` is a sheet
 `spreadsheet_limit` cut at two columns: no grid right of the cut, the rows
 below go on, and a column inserted at the cut edge is recorded.
 
+`sheets.html` is a workbook's page with two sheets under the single-page
+layout (`docs/design/sheet-scripts.md`): each bound with its own grid, a
+column wash naming its sheet, `setPage` choosing the sheet `odr.sheet`
+answers for, writes on both in one log in the order taken, one undo history
+across them, one pin on the page, and an edit past the content touching
+only its own sheet.
+
 `serve` serves `document.css`, `spreadsheet.css`, `editing.js`,
 `spreadsheet.js` and `sheet-editing.js` out of
 `src/odr/internal/html/frontend/`, so the checks run the file the library
 embeds. `error-codes.js` is built from `src/odr/error_code.{hpp,cpp}` by
 `test/browser/serve.py`. Each page prints its own report with a count. A page
-holds one `.odr-sheet`, because the script binds to the first one it finds.
+holds one `.odr-sheet`, except `sheets.html`, which holds two.
 
 `editing.js` goes first, as the library writes it. It owns `odr.editing` and
 `odr.takesKeys`, and the other two scripts read them. The page states the
