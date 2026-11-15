@@ -78,7 +78,7 @@ class Document {
 
 | Adapter | Methods |
 |---------|---------|
-| `SpreadsheetAdapter` | `spreadsheet_dependencies`, `_formula_settings`, `_formula_names`, `_external_sheets`, `spreadsheet_insert_sheet`, `_move_sheet` |
+| `SpreadsheetAdapter` | `spreadsheet_edits`, `_formula_settings`, `_formula_names`, `_external_sheets`, `spreadsheet_insert_sheet`, `_move_sheet` |
 | `PresentationAdapter` | `presentation_slide_layouts`, `_insert_slide`, `_move_slide`, `_text_box_layout`, `_insert_text_box` |
 | `DrawingAdapter` | `drawing_text_box_layout`, `drawing_insert_text_box` |
 
@@ -114,12 +114,10 @@ adapters.
   only an index, so it is the document adapter's. `Document::remove` keeps
   the one check that is the public API's, that a workbook keeps a sheet.
 
-Open question:
-
-- The edit log `common::Document` keeps for recalculation (`note_written`,
-  `note_moved`, the cached dependency graph) is spreadsheet state on the
-  common base, and recalculation still finds it with a `dynamic_cast`. It
-  could move behind `SpreadsheetAdapter`.
+What a recalculation reads off the edits, the cached dependency graph and
+the cells written since the last one, is a `SheetEdits` the spreadsheet
+adapter owns and `spreadsheet_edits` hands out. The adapter notes each write
+and move there, so `common::Document` keeps no spreadsheet state.
 
 ## Migration
 

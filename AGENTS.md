@@ -74,7 +74,7 @@ Two model rules that every engine follows:
 |------|------|
 | `src/odr/*.hpp` | Public API: `file`, `document`, `document_element`, `html`, `style`, `quantity`, `odr`. |
 | `src/odr/internal/abstract/` | Core interfaces: `File`, `DecodedFile`, `Document`, `ElementAdapter`, `Filesystem`, `Archive`, `HtmlService`. |
-| `src/odr/internal/common/` | Shared implementations: `Path`, base `Document`, `ElementRegistry`, `ElementAdapter`, filesystem, style, table cursor, `TextCursor`, `SheetDependencies`, temp files. |
+| `src/odr/internal/common/` | Shared implementations: `Path`, base `Document`, `ElementRegistry`, `ElementAdapter`, filesystem, style, table cursor, `TextCursor`, `SheetDependencies`, `SheetEdits`, temp files. |
 | `src/odr/internal/util/` | Helpers: byte stream, string, stream, document, number. |
 | `src/odr/internal/magic.*`, `open_strategy.*` | Detection and open dispatch. |
 | `src/odr/internal/file_type_table.*` | The one table per `FileType`: extensions, MIME types, category, document type, capabilities. Every lookup in `odr.hpp` forwards into it. Extend the table, not the lookups. |

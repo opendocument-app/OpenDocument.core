@@ -34,7 +34,7 @@ struct GraphicStyle;
 
 namespace odr::internal {
 class AbsPath;
-class SheetDependencies;
+class SheetEdits;
 } // namespace odr::internal
 
 namespace odr::internal::formula {
@@ -112,9 +112,8 @@ class SpreadsheetAdapter {
 public:
   virtual ~SpreadsheetAdapter() = default;
 
-  /// Built on the first question and kept until an edit moves formulas.
-  [[nodiscard]] virtual const SheetDependencies &
-  spreadsheet_dependencies() const = 0;
+  /// The dependency graph and the cell writes a recalculation reads.
+  [[nodiscard]] virtual SheetEdits &spreadsheet_edits() const = 0;
   /// How the formulas compute: what an `.ods` states, and Excel's settings
   /// for every other format.
   [[nodiscard]] virtual formula::Settings

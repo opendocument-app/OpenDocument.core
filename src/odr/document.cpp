@@ -11,6 +11,7 @@
 #include <odr/style.hpp>
 
 #include <odr/internal/common/sheet_dependencies.hpp>
+#include <odr/internal/common/sheet_edits.hpp>
 #include <odr/internal/common/sheet_recalculation.hpp>
 #include <odr/internal/util/document_util.hpp>
 #include <odr/internal/util/file_util.hpp>
@@ -1024,7 +1025,7 @@ Spreadsheet::dependents(const std::span<const SheetPosition> positions) const {
   if (sheets == nullptr) {
     return {};
   }
-  return sheets->spreadsheet_dependencies().dependents(
+  return sheets->spreadsheet_edits().dependencies().dependents(
       std::vector(std::begin(positions), std::end(positions)));
 }
 
@@ -1034,7 +1035,7 @@ std::vector<SheetPosition> Spreadsheet::unresolved_formulas() const {
   if (sheets == nullptr) {
     return {};
   }
-  return sheets->spreadsheet_dependencies().unresolved();
+  return sheets->spreadsheet_edits().dependencies().unresolved();
 }
 
 Recalculation Spreadsheet::recalculate() const {

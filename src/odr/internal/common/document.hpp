@@ -8,8 +8,6 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <utility>
-#include <vector>
 
 namespace odr::internal::zip::util {
 class Archive;
@@ -20,8 +18,6 @@ class ReadableFilesystem;
 } // namespace odr::internal::abstract
 
 namespace odr::internal {
-
-class SheetDependencies;
 
 /// What an engine's adapters implement. @ref Document keeps the type-specific
 /// ones that match its document type.
@@ -66,25 +62,6 @@ public:
   presentation_adapter() const final;
   [[nodiscard]] const abstract::DrawingAdapter *drawing_adapter() const final;
 
-  /// What a spreadsheet adapter answers for its dependencies: built on the
-  /// first question and kept until @ref drop_sheet_dependencies.
-  [[nodiscard]] const SheetDependencies &sheet_dependencies() const;
-  /// Invalidates the dependency graph after formulas move.
-  void drop_sheet_dependencies() const noexcept;
-
-  /// Marks dependents of (@p sheet, @p position) for recalculation.
-  void note_written(ElementIdentifier sheet,
-                    const TablePosition &position) const;
-  /// Notes an edit that moves cells: a recalculation computes every formula
-  /// again.
-  void note_moved() const noexcept;
-  /// The writes noted since the last recalculation, by sheet.
-  [[nodiscard]] const std::vector<std::pair<ElementIdentifier, TablePosition>> &
-  written() const noexcept;
-  [[nodiscard]] bool moved() const noexcept;
-  /// Clears the edits handled by recalculation.
-  void forget_edits() const noexcept;
-
   /// Decoded from a package that was password-encrypted. `save` has no
   /// encryption to put back, so a savable engine refuses one.
   [[nodiscard]] bool is_decrypted() const noexcept;
@@ -106,10 +83,6 @@ private:
   const abstract::SpreadsheetAdapter *m_spreadsheet_adapter{nullptr};
   const abstract::PresentationAdapter *m_presentation_adapter{nullptr};
   const abstract::DrawingAdapter *m_drawing_adapter{nullptr};
-
-  mutable std::unique_ptr<SheetDependencies> m_sheet_dependencies;
-  mutable std::vector<std::pair<ElementIdentifier, TablePosition>> m_written;
-  mutable bool m_moved{false};
 };
 
 } // namespace odr::internal

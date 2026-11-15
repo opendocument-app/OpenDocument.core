@@ -10,6 +10,7 @@
 #include <odr/internal/common/file.hpp>
 #include <odr/internal/common/page_anchor.hpp>
 #include <odr/internal/common/sheet_dependencies.hpp>
+#include <odr/internal/common/sheet_edits.hpp>
 #include <odr/internal/common/table_cursor.hpp>
 #include <odr/internal/crypto/crypto_util.hpp>
 #include <odr/internal/formula/formula_parser.hpp>
@@ -748,11 +749,10 @@ class ElementAdapter final : public AdapterBase,
                              public abstract::DrawingAdapter {
 public:
   ElementAdapter(Document &document, ElementRegistry &registry)
-      : AdapterBase(registry), m_document(&document) {}
+      : AdapterBase(registry), m_document(&document), m_edits(&document) {}
 
-  [[nodiscard]] const SheetDependencies &
-  spreadsheet_dependencies() const override {
-    return m_document->sheet_dependencies();
+  [[nodiscard]] SheetEdits &spreadsheet_edits() const override {
+    return m_edits;
   }
   [[nodiscard]] formula::Settings
   spreadsheet_formula_settings() const override {
@@ -1086,9 +1086,9 @@ public:
           *m_registry->sheet_element_at(element_id).cell(column, row));
     }
     drop_stale_results(element_id, column, row);
-    m_document->note_written(element_id, TablePosition(column, row));
+    m_edits.note_written(element_id, TablePosition(column, row));
     if (had_formula || value.has_formula()) {
-      m_document->drop_sheet_dependencies();
+      m_edits.note_formula_changed();
     }
   }
 
@@ -1856,7 +1856,7 @@ public:
     const std::vector<ElementIdentifier> sheets = sheets_();
     if (const auto written = std::ranges::find(sheets, sheet_id);
         written != sheets.end()) {
-      drop_results(m_document->sheet_dependencies().dependents(
+      drop_results(m_edits.dependencies().dependents(
           {SheetPosition(static_cast<std::uint32_t>(written - sheets.begin()),
                          TablePosition(column, row))}));
     }
@@ -1865,10 +1865,9 @@ public:
   /// Rebuilds dependencies after a structural edit and invalidates @p touched
   /// formulas and their dependents.
   void drop_moved_results(std::vector<SheetPosition> touched) const {
-    m_document->drop_sheet_dependencies();
-    m_document->note_moved();
+    m_edits.note_moved();
     const std::vector<SheetPosition> dependents =
-        m_document->sheet_dependencies().dependents(touched);
+        m_edits.dependencies().dependents(touched);
     touched.insert(touched.end(), dependents.begin(), dependents.end());
     drop_results(touched);
   }
@@ -2415,8 +2414,7 @@ public:
     }
 
     // a formula naming the sheet resolves now, and a sheet range may span it
-    m_document->drop_sheet_dependencies();
-    m_document->note_moved();
+    m_edits.note_moved();
     return sheet_id;
   }
 
@@ -2480,8 +2478,7 @@ public:
     drop_moved_results(std::move(touched));
 
     TreeEditor(*m_registry).remove(element_id);
-    m_document->drop_sheet_dependencies();
-    m_document->note_moved();
+    m_edits.note_moved();
   }
 
   void spreadsheet_move_sheet(const ElementIdentifier sheet,
@@ -2520,8 +2517,7 @@ public:
       m_registry->insert_sibling_after(others.back(), element_id);
     }
     if (type == ElementType::sheet) {
-      m_document->drop_sheet_dependencies();
-      m_document->note_moved();
+      m_edits.note_moved();
     }
   }
   [[nodiscard]] TextStyle
@@ -3000,6 +2996,7 @@ private:
   }
 
   Document *m_document{nullptr};
+  mutable SheetEdits m_edits;
   mutable std::mutex m_charts_mutex;
   mutable std::unordered_map<ElementIdentifier, std::optional<std::string>>
       m_charts;

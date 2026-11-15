@@ -3,9 +3,9 @@
 #include <odr/exceptions.hpp>
 
 #include <odr/internal/abstract/document.hpp>
-#include <odr/internal/common/document.hpp>
 #include <odr/internal/common/sheet_cell_source.hpp>
 #include <odr/internal/common/sheet_dependencies.hpp>
+#include <odr/internal/common/sheet_edits.hpp>
 #include <odr/internal/formula/formula_dependencies.hpp>
 #include <odr/internal/formula/formula_evaluator.hpp>
 #include <odr/internal/formula/formula_function.hpp>
@@ -465,8 +465,13 @@ CellValue cell_value_of(const formula::Value &value) {
 namespace odr {
 
 bool internal::is_edited(const abstract::Document &document) {
-  const auto *edited = dynamic_cast<const Document *>(&document);
-  return edited != nullptr && (edited->moved() || !edited->written().empty());
+  const abstract::SpreadsheetAdapter *spreadsheet =
+      document.spreadsheet_adapter();
+  if (spreadsheet == nullptr) {
+    return false;
+  }
+  const SheetEdits &edits = spreadsheet->spreadsheet_edits();
+  return edits.moved() || !edits.written().empty();
 }
 
 internal::SheetRecalculation
@@ -525,24 +530,22 @@ internal::recalculate(const abstract::Document &document) {
     });
   }
 
-  const SheetDependencies &graph = spreadsheet->spreadsheet_dependencies();
-  const auto *edited = dynamic_cast<const Document *>(&document);
+  SheetEdits &edits = spreadsheet->spreadsheet_edits();
+  const SheetDependencies &graph = edits.dependencies();
   std::vector<SheetPosition> stale;
-  if (edited != nullptr && edited->moved()) {
+  if (edits.moved()) {
     for (const auto &[position, formula] : formulas) {
       stale.push_back(position);
     }
   } else {
-    if (edited != nullptr) {
-      std::vector<SheetPosition> written;
-      for (const auto &[sheet_id, position] : edited->written()) {
-        if (const auto index = sheet_index.find(sheet_id);
-            index != sheet_index.end()) {
-          written.emplace_back(index->second, position);
-        }
+    std::vector<SheetPosition> written;
+    for (const auto &[sheet_id, position] : edits.written()) {
+      if (const auto index = sheet_index.find(sheet_id);
+          index != sheet_index.end()) {
+        written.emplace_back(index->second, position);
       }
-      stale = graph.dependents(written);
     }
+    stale = graph.dependents(written);
     for (const auto &[position, formula] : formulas) {
       if (!source.cell(position).has_value() ||
           (formula.node.has_value() && formula::is_volatile(*formula.node))) {
@@ -653,9 +656,7 @@ internal::recalculate(const abstract::Document &document) {
     }
   }
 
-  if (edited != nullptr) {
-    edited->forget_edits();
-  }
+  edits.forget();
   return result;
 }
 
