@@ -71,6 +71,9 @@ The release run heads these entries with the version and opens a fresh
   `insertSlide` and `insertTextBox` name the slide, its placeholders and the
   text box's paragraph by negative ids, so later operations can type into
   them.
+- The edit envelope takes `removeSheet` and `moveSheet`, which address a
+  sheet by its position, and `removeSlide` and `moveSlide`, which name a
+  slide by its id, a negative one for a slide the envelope inserted.
 - An editable presentation or drawing page takes `odr.editing.slideLayouts`,
   `insertSlide` and `insertTextBox`, and records the ops above. Its render
   carries a `<template>` per slide layout and one for a text box, and each

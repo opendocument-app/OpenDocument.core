@@ -1656,15 +1656,13 @@ TEST(DocumentEdit, pptx_text_edits_keep_one_text_node_per_run) {
             "beforeone  two\tthreeappendedplain");
 }
 
-TEST(DocumentEdit, pptx_rejects_unsupported_containers_and_slide_removal) {
+TEST(DocumentEdit, pptx_rejects_unsupported_containers) {
   const Document document = pptx_of(pptx_paragraphs);
   const std::string before = part_of(document, "ppt/slides/slide1.xml");
   EXPECT_THROW((void)document.append_text(document.root_element(), "bad"),
                UnsupportedOperation);
   EXPECT_THROW((void)document.append_text(
                    nth_of_type(document, ElementType::frame, 0), "bad"),
-               UnsupportedOperation);
-  EXPECT_THROW(document.remove(nth_of_type(document, ElementType::slide, 0)),
                UnsupportedOperation);
   EXPECT_EQ(part_of(document, "ppt/slides/slide1.xml"), before);
 }
