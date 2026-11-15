@@ -17,9 +17,9 @@ odr_test_data(
 odr_test_data(
         PATH "reference-output/odr-public"
         URL "https://github.com/opendocument-app/OpenDocument.test.output.git"
-        REVISION "f0d814631f0973e929e4e66967e0c65114bb64fb")
+        REVISION "77754bbe581249cb12b628acab947d29d20bada9")
 
 odr_test_data(
         PATH "reference-output/odr-private"
         URL "https://github.com/opendocument-app/OpenDocument.test-private.output.git"
-        REVISION "f1fe1fa2176e03aec2e39be68dc8311a4fdc9b4f")
+        REVISION "688b43dc7954fad36fe6f5937872dd656e76ee21")
