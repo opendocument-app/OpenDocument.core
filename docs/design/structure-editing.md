@@ -10,14 +10,15 @@ creation rules are in [document creation](document-creation.md).
   (LibreOffice's 16:9). Six layouts: Title Slide, Title and Content, Section
   Header, Two Content, Title Only, Blank. One geometry table feeds both
   formats, so a layout sits at the same place in each.
-- **Insert a sheet:** `Document::insert_sheet(index, name)`. An empty name
+- **Insert a sheet:** `Spreadsheet::insert_sheet(index, name)`. An empty name
   takes the first free `SheetN`.
-- **Insert a slide:** `Document::slide_layouts()` and
-  `Document::insert_slide(index, layout)`.
-- **Insert a text box:** `Document::insert_text_box(page, x, y, width,
-  height)` on a slide or a drawing page.
+- **Insert a slide:** `Presentation::slide_layouts()` and
+  `Presentation::insert_slide(index, layout)`.
+- **Insert a text box:** `insert_text_box(page, x, y, width, height)` on
+  `Presentation` and `Drawing`, for a slide or a drawing page.
 - **Remove and move:** `Document::remove` takes a sheet or a slide;
-  `Document::move_sheet(sheet, index)` and `move_slide(slide, index)`.
+  `Spreadsheet::move_sheet(sheet, index)` and
+  `Presentation::move_slide(slide, index)`.
 - **Ops:** see the table below.
 - **The page:** slide and text-box templates and five `odr.editing` gestures.
 - **Bindings:** python, java, swift and npm.

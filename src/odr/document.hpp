@@ -9,6 +9,7 @@
 #include <iosfwd>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -22,16 +23,20 @@ namespace odr {
 enum class FileType;
 enum class DocumentType;
 class DocumentFile;
+class Drawing;
 class Element;
 class Frame;
 class File;
 class Filesystem;
 class Paragraph;
+class Presentation;
 class Sheet;
 class Slide;
+class Spreadsheet;
 class Text;
+class TextDocument;
 
-/// What @ref Document::recalculate did. Each list is sorted by sheet, then
+/// What @ref Spreadsheet::recalculate did. Each list is sorted by sheet, then
 /// in reading order.
 class Recalculation final {
 public:
@@ -54,10 +59,21 @@ private:
   std::vector<SheetPosition> m_unevaluated;
 };
 
-/// Represents a document.
-class Document final {
+/// Represents a document. What only one @ref DocumentType answers is on its
+/// handle: @ref as_spreadsheet, @ref as_presentation, @ref as_drawing and
+/// @ref as_text_document.
+class Document {
 public:
   explicit Document(std::shared_ptr<internal::abstract::Document>);
+
+  /// @throws WrongDocumentType unless @ref document_type matches.
+  [[nodiscard]] TextDocument as_text_document() const;
+  /// @throws WrongDocumentType unless @ref document_type matches.
+  [[nodiscard]] Spreadsheet as_spreadsheet() const;
+  /// @throws WrongDocumentType unless @ref document_type matches.
+  [[nodiscard]] Presentation as_presentation() const;
+  /// @throws WrongDocumentType unless @ref document_type matches.
+  [[nodiscard]] Drawing as_drawing() const;
 
   [[nodiscard]] bool is_editable() const noexcept;
   /// Savable, @p encrypted to ask for an encrypted save. False for a document
@@ -132,6 +148,67 @@ public:
   [[nodiscard]] Paragraph
   insert_paragraph_after(const Paragraph &paragraph) const;
 
+  /// @}
+
+  /// @name Formulas
+  /// Deprecated: ask @ref as_spreadsheet. These answer for every document
+  /// type, as they did before the handles.
+  /// @{
+
+  [[deprecated("use as_spreadsheet().dependents")]] [[nodiscard]]
+  std::vector<SheetPosition> dependents(const SheetPosition &position) const;
+  [[deprecated("use as_spreadsheet().dependents")]] [[nodiscard]]
+  std::vector<SheetPosition>
+  dependents(const std::vector<SheetPosition> &positions) const;
+  [[deprecated("use as_spreadsheet().unresolved_formulas")]] [[nodiscard]]
+  std::vector<SheetPosition> unresolved_formulas() const;
+  [[deprecated("use as_spreadsheet().recalculate")]]
+  Recalculation recalculate() const;
+
+  /// @}
+
+  /// The files the document is packaged from; empty for a document that is
+  /// one file.
+  [[nodiscard]] Filesystem as_filesystem() const;
+
+  /// The internal document this wraps.
+  [[nodiscard]] std::shared_ptr<internal::abstract::Document> impl() const;
+
+protected:
+  /// @p element 's identifier, checked to be one this document holds.
+  [[nodiscard]] ElementIdentifier check_(const Element &element) const;
+
+  [[nodiscard]] Frame insert_text_box_(const Element &page, const Measure &x,
+                                       const Measure &y, const Measure &width,
+                                       const Measure &height) const;
+
+private:
+  std::shared_ptr<internal::abstract::Document> m_impl;
+
+  /// Recalculates formulas made stale by edits before saving.
+  void recalculate_edits_() const;
+  void save_file_(const std::string &path, const char *password) const;
+
+  [[nodiscard]] Text insert_text_(const Text &anchor, Placement where,
+                                  const std::string &text) const;
+
+  [[nodiscard]] const internal::abstract::ParagraphAdapter *
+  paragraphs_(const Paragraph &paragraph, ElementIdentifier &identifier) const;
+
+  friend DocumentFile;
+};
+
+/// A text document.
+class TextDocument final : public Document {
+private:
+  explicit TextDocument(const Document &document);
+
+  friend Document;
+};
+
+/// A spreadsheet: its sheets and its formulas.
+class Spreadsheet final : public Document {
+public:
   /// An empty sheet at @p index among the sheets; the sheet count appends.
   /// An empty @p name takes the first free `SheetN`.
   /// @throws std::out_of_range for an index past the count.
@@ -145,6 +222,41 @@ public:
   /// @throws std::out_of_range for an index past the last sheet.
   void move_sheet(const Sheet &sheet, std::uint32_t index) const;
 
+  /// @name Formulas
+  /// The graph is built the first time one of these is asked and kept.
+  /// @{
+
+  /// The cells whose formula reads @p position, directly or through another
+  /// formula. Sorted by sheet and then in reading order, each named once.
+  [[nodiscard]] std::vector<SheetPosition>
+  dependents(const SheetPosition &position) const;
+  /// The same for a whole batch of edited positions, which costs one walk
+  /// rather than one per position.
+  [[nodiscard]] std::vector<SheetPosition>
+  dependents(std::span<const SheetPosition> positions) const;
+
+  /// The cells holding a formula whose references could not all be read: it
+  /// may read any position, so a caller that must be right assumes it does.
+  [[nodiscard]] std::vector<SheetPosition> unresolved_formulas() const;
+
+  /// Recomputes stale formulas: edited dependencies, missing results and
+  /// untracked reads. Structural edits invalidate all formulas; save
+  /// recalculates after edits.
+  /// @throws UnsupportedOperation if repeated formulas exceed the
+  /// recalculation limit.
+  Recalculation recalculate() const;
+
+  /// @}
+
+private:
+  explicit Spreadsheet(const Document &document);
+
+  friend Document;
+};
+
+/// A presentation: its slides.
+class Presentation final : public Document {
+public:
   /// The layouts @ref insert_slide starts a slide from, each the empty slide
   /// it makes, outside the document and refusing edits; empty where the
   /// engine cannot insert a slide.
@@ -161,8 +273,8 @@ public:
   /// @throws std::out_of_range for an index past the last slide.
   void move_slide(const Slide &slide, std::uint32_t index) const;
 
-  /// A text box on @p page, a slide or a drawing page, at @p x and @p y and
-  /// @p width by @p height, holding one empty paragraph. It draws no fill and
+  /// A text box on the slide @p page at @p x and @p y and @p width by
+  /// @p height, holding one empty paragraph. It draws no fill and
   /// no outline.
   /// @throws std::invalid_argument for a length in a unit of no fixed size,
   /// or a size that is not positive.
@@ -170,58 +282,28 @@ public:
                                       const Measure &y, const Measure &width,
                                       const Measure &height) const;
 
-  /// @}
+private:
+  explicit Presentation(const Document &document);
 
-  /// @name Formulas
-  /// The graph is built the first time one of these is asked and kept.
-  /// @{
+  friend Document;
+};
 
-  /// The cells whose formula reads @p position, directly or through another
-  /// formula. Sorted by sheet and then in reading order, each named once.
-  [[nodiscard]] std::vector<SheetPosition>
-  dependents(const SheetPosition &position) const;
-  /// The same for a whole batch of edited positions, which costs one walk
-  /// rather than one per position.
-  [[nodiscard]] std::vector<SheetPosition>
-  dependents(const std::vector<SheetPosition> &positions) const;
-
-  /// The cells holding a formula whose references could not all be read: it
-  /// may read any position, so a caller that must be right assumes it does.
-  [[nodiscard]] std::vector<SheetPosition> unresolved_formulas() const;
-
-  /// Recomputes stale formulas: edited dependencies, missing results and
-  /// untracked reads. Structural edits invalidate all formulas; save
-  /// recalculates after edits.
-  /// @throws UnsupportedOperation if repeated formulas exceed the
-  /// recalculation limit.
-  Recalculation recalculate() const;
-
-  /// @}
-
-  /// The files the document is packaged from; empty for a document that is
-  /// one file.
-  [[nodiscard]] Filesystem as_filesystem() const;
-
-  /// The internal document this wraps.
-  [[nodiscard]] std::shared_ptr<internal::abstract::Document> impl() const;
+/// A drawing: its pages.
+class Drawing final : public Document {
+public:
+  /// A text box on the drawing page @p page at @p x and @p y and @p width by
+  /// @p height, holding one empty paragraph. It draws no fill and
+  /// no outline.
+  /// @throws std::invalid_argument for a length in a unit of no fixed size,
+  /// or a size that is not positive.
+  [[nodiscard]] Frame insert_text_box(const Element &page, const Measure &x,
+                                      const Measure &y, const Measure &width,
+                                      const Measure &height) const;
 
 private:
-  std::shared_ptr<internal::abstract::Document> m_impl;
+  explicit Drawing(const Document &document);
 
-  /// Recalculates formulas made stale by edits before saving.
-  void recalculate_edits_() const;
-  void save_file_(const std::string &path, const char *password) const;
-
-  /// @p element 's identifier, checked to be one this document holds.
-  [[nodiscard]] ElementIdentifier check_(const Element &element) const;
-
-  [[nodiscard]] Text insert_text_(const Text &anchor, Placement where,
-                                  const std::string &text) const;
-
-  [[nodiscard]] const internal::abstract::ParagraphAdapter *
-  paragraphs_(const Paragraph &paragraph, ElementIdentifier &identifier) const;
-
-  friend DocumentFile;
+  friend Document;
 };
 
 } // namespace odr

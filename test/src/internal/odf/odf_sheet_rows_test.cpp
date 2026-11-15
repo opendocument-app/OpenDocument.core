@@ -243,7 +243,7 @@ TEST(OdfSheetRows, the_dependents_follow_the_moved_formulas) {
   sheet_at(document, 0).insert_rows(0, 1);
 
   const std::vector<SheetPosition> dependents =
-      document.dependents(SheetPosition(0, 0, 2));
+      document.as_spreadsheet().dependents(SheetPosition(0, 0, 2));
   ASSERT_EQ(dependents.size(), 1);
   EXPECT_EQ(dependents[0], SheetPosition(0, 1, 1));
 }

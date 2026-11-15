@@ -64,6 +64,7 @@ enum class ErrorCode : std::int32_t {
   unsupported_file_encoding = 51,
   unauthenticated_read_error = 52,
   server_socket_denied = 53,
+  wrong_document_type = 54,
 
   /// The editing scripts report these through `odr.onEditRefused` and
   /// `odr.onError`.

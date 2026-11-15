@@ -41,9 +41,9 @@ text never had.
 | Formulas | `internal/formula/` parses OpenFormula and OOXML into one AST, writes it back, and shifts it for an ooxml shared formula |
 | Number formats | `internal/number_format/` parses a format code and formats a number with it; `odf/odf_number_format.cpp` turns an ods data style into a format code |
 | Evaluation | `formula::evaluate` computes a parsed formula, or gives no answer. `formula_value.hpp` holds the values and the `Settings`, `formula_function.hpp` the functions. `internal::SheetCellSource` reads the cells of a decoded document, and `abstract::Document::formula_settings` states how it computes. `internal::recalculate` (`sheet_recalculation.cpp`) computes the stale cells and writes them with `SheetAdapter::sheet_set_result`; `internal::Document` notes the edits. `test/src/formula_corpus_test.cpp` holds decision 29 |
-| Dependencies | `internal::SheetDependencies`, built off the decoded document and again after a row edit. `Document::dependents` and `Document::unresolved_formulas` expose it |
+| Dependencies | `internal::SheetDependencies`, built off the decoded document and again after a row edit. `Spreadsheet::dependents` and `Spreadsheet::unresolved_formulas` expose it |
 | Row and column edits | `formula::SheetEdit` and `formula::move_references` move a reference along either axis, `formula::move_addresses` an address list. `odf_sheet_references.cpp` and `ooxml_spreadsheet_references.cpp` walk what each file addresses |
-| Stale results | An odf write drops the cached result of every dependent (`drop_stale_results`). An ooxml write keeps them, because every save sets `fullCalcOnLoad`. `Document::recalculate`, and a save after an edit, write what the evaluator computes |
+| Stale results | An odf write drops the cached result of every dependent (`drop_stale_results`). An ooxml write keeps them, because every save sets `fullCalcOnLoad`. `Spreadsheet::recalculate`, and a save after an edit, write what the evaluator computes |
 | Browser: sheet script | `html/frontend/spreadsheet.js` owns pin, raise, sort and the position map, and publishes `odr.sheet` |
 | Browser: the mode | `html/frontend/editing.js` owns `odr.editing`, the refusals, the log and the `odr.on*` callbacks |
 | Browser: sheet editor | `html/frontend/sheet-editing.js` attaches the cell overlay and the stale marks to the mode |
@@ -205,7 +205,7 @@ Where the evaluator has no answer, the file still has to stay honest.
 `.xlsx` has a switch for this, `calcPr/@fullCalcOnLoad="1"` (ECMA-376
 18.2.2), set on every save. `.ods` has none, so an odf write removes the
 cached result of every dependent cell: the value attributes and the
-`text:p`. `Document::recalculate` writes back the results it computes. A
+`text:p`. `Spreadsheet::recalculate` writes back the results it computes. A
 cell stating a formula and no result is one a reader has to compute, and
 such a cell renders empty here.
 
@@ -323,7 +323,7 @@ commits name.
     cycles where the document allows them (`table:iteration`, `calcPr
     iterate`), and references into other documents through the copy the
     file caches.
-  - `Document::recalculate` computes each stale cell on demand, and a save
+  - `Spreadsheet::recalculate` computes each stale cell on demand, and a save
     after an edit recalculates. A cell without an answer has no result in
     an ods and keeps its old one in an xlsx, which keeps `fullCalcOnLoad`.
 - **Live formulas in the page** (decision 5)
@@ -344,7 +344,7 @@ commits name.
 - `SheetAdapter::sheet_visit_formulas` visits the cells the file spells, so
   a repeated ods row is one node.
 - A formula the dependency graph cannot resolve is in
-  `Document::unresolved_formulas` and keeps its cached result.
+  `Spreadsheet::unresolved_formulas` and keeps its cached result.
 
 ## Open work
 

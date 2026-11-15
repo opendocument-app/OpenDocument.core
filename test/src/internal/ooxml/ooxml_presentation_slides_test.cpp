@@ -125,7 +125,7 @@ TEST(OoxmlPresentationSlides, a_removed_slide_leaves_sections_and_shows) {
 TEST(OoxmlPresentationSlides, a_moved_slide_joins_the_section_it_lands_in) {
   const Document document = decode(three_slides());
 
-  document.move_slide(slide_at(document, 2), 0);
+  document.as_presentation().move_slide(slide_at(document, 2), 0);
 
   const std::string presentation =
       saved_part(document, "/ppt/presentation.xml");
@@ -142,7 +142,7 @@ TEST(OoxmlPresentationSlides, a_moved_slide_joins_the_section_it_lands_in) {
 TEST(OoxmlPresentationSlides, a_slide_moved_after_another_follows_its_section) {
   const Document document = decode(three_slides());
 
-  document.move_slide(slide_at(document, 0), 1);
+  document.as_presentation().move_slide(slide_at(document, 0), 1);
 
   const std::string presentation =
       saved_part(document, "/ppt/presentation.xml");

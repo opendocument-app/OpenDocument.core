@@ -22,6 +22,7 @@
 #include <fstream>
 #include <memory>
 #include <optional>
+#include <span>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -41,6 +42,45 @@ Document::Document(std::shared_ptr<internal::abstract::Document> impl)
     throw NullPointerError("document is null");
   }
 }
+
+TextDocument Document::as_text_document() const {
+  if (const DocumentType type = document_type(); type != DocumentType::text) {
+    throw WrongDocumentType(DocumentType::text, type);
+  }
+  return TextDocument(*this);
+}
+
+Spreadsheet Document::as_spreadsheet() const {
+  if (const DocumentType type = document_type();
+      type != DocumentType::spreadsheet) {
+    throw WrongDocumentType(DocumentType::spreadsheet, type);
+  }
+  return Spreadsheet(*this);
+}
+
+Presentation Document::as_presentation() const {
+  if (const DocumentType type = document_type();
+      type != DocumentType::presentation) {
+    throw WrongDocumentType(DocumentType::presentation, type);
+  }
+  return Presentation(*this);
+}
+
+Drawing Document::as_drawing() const {
+  if (const DocumentType type = document_type();
+      type != DocumentType::drawing) {
+    throw WrongDocumentType(DocumentType::drawing, type);
+  }
+  return Drawing(*this);
+}
+
+TextDocument::TextDocument(const Document &document) : Document(document) {}
+
+Spreadsheet::Spreadsheet(const Document &document) : Document(document) {}
+
+Presentation::Presentation(const Document &document) : Document(document) {}
+
+Drawing::Drawing(const Document &document) : Document(document) {}
 
 bool Document::is_editable() const noexcept { return m_impl->is_editable(); }
 
@@ -545,8 +585,9 @@ void Document::edit(const std::string_view operations,
     }
 
     if (name == "insertSheet") {
-      std::ignore = insert_sheet(integer<std::uint32_t>(operation.at("index")),
-                                 operation.value("name", std::string()));
+      std::ignore = Spreadsheet(*this).insert_sheet(
+          integer<std::uint32_t>(operation.at("index")),
+          operation.value("name", std::string()));
       continue;
     }
 
@@ -557,9 +598,10 @@ void Document::edit(const std::string_view operations,
     }
 
     if (name == "moveSheet") {
-      move_sheet(sheet_at(root_element(),
-                          integer<std::uint32_t>(operation.at("sheet"))),
-                 integer<std::uint32_t>(operation.at("index")));
+      Spreadsheet(*this).move_sheet(
+          sheet_at(root_element(),
+                   integer<std::uint32_t>(operation.at("sheet"))),
+          integer<std::uint32_t>(operation.at("index")));
       continue;
     }
 
@@ -569,8 +611,9 @@ void Document::edit(const std::string_view operations,
     }
 
     if (name == "moveSlide") {
-      move_slide(slide_of(operation, "page"),
-                 integer<std::uint32_t>(operation.at("index")));
+      Presentation(*this).move_slide(
+          slide_of(operation, "page"),
+          integer<std::uint32_t>(operation.at("index")));
       continue;
     }
 
@@ -587,7 +630,8 @@ void Document::edit(const std::string_view operations,
       const auto layout = integer<std::uint32_t>(operation.at("layout"));
       // the page drew the slide it expected, and a different one would leave
       // later operations naming the wrong placeholder
-      if (const std::vector<Slide> layouts = slide_layouts();
+      const Presentation presentation(*this);
+      if (const std::vector<Slide> layouts = presentation.slide_layouts();
           layout < layouts.size()) {
         std::size_t count = 0;
         for ([[maybe_unused]] const Element child :
@@ -601,8 +645,8 @@ void Document::edit(const std::string_view operations,
               " placeholders, not what `frames` and `paragraphs` list");
         }
       }
-      const Slide slide =
-          insert_slide(integer<std::uint32_t>(operation.at("index")), layout);
+      const Slide slide = presentation.insert_slide(
+          integer<std::uint32_t>(operation.at("index")), layout);
       minted.emplace(address, slide.identifier());
 
       std::vector<Element> created;
@@ -627,7 +671,7 @@ void Document::edit(const std::string_view operations,
         paragraph = reserve_address(operation.at("paragraph"));
         check_distinct({address, *paragraph});
       }
-      const Frame frame = insert_text_box(
+      const Frame frame = insert_text_box_(
           element_of(operation, "page"), measure_of(operation, "x"),
           measure_of(operation, "y"), measure_of(operation, "width"),
           measure_of(operation, "height"));
@@ -716,16 +760,18 @@ void Document::remove(const Element &element) const {
   m_impl->element_adapter()->element_remove(identifier);
 }
 
-void Document::move_sheet(const Sheet &sheet, const std::uint32_t index) const {
+void Spreadsheet::move_sheet(const Sheet &sheet,
+                             const std::uint32_t index) const {
   const ElementIdentifier identifier = check_(sheet);
   check_move(root_element(), sheet, ElementType::sheet, index);
-  m_impl->element_adapter()->element_move(identifier, index);
+  impl()->element_adapter()->element_move(identifier, index);
 }
 
-void Document::move_slide(const Slide &slide, const std::uint32_t index) const {
+void Presentation::move_slide(const Slide &slide,
+                              const std::uint32_t index) const {
   const ElementIdentifier identifier = check_(slide);
   check_move(root_element(), slide, ElementType::slide, index);
-  m_impl->element_adapter()->element_move(identifier, index);
+  impl()->element_adapter()->element_move(identifier, index);
 }
 
 Text Document::insert_text_before(const Text &anchor,
@@ -828,8 +874,8 @@ void check_sheet_name(const std::string &name) {
 
 } // namespace
 
-Sheet Document::insert_sheet(const std::uint32_t index,
-                             const std::string &name) const {
+Sheet Spreadsheet::insert_sheet(const std::uint32_t index,
+                                const std::string &name) const {
   const Element root = root_element();
   std::vector<std::string> taken;
   for (const Element child : root.children()) {
@@ -862,25 +908,25 @@ Sheet Document::insert_sheet(const std::uint32_t index,
     throw std::invalid_argument("a sheet is named " + chosen + " already");
   }
 
-  const internal::abstract::ElementAdapter *adapter = m_impl->element_adapter();
+  const internal::abstract::ElementAdapter *adapter = impl()->element_adapter();
   const ElementIdentifier identifier =
       adapter->element_insert_sheet(root.identifier(), index, chosen);
   return {adapter, identifier, adapter->sheet_adapter(identifier)};
 }
 
-std::vector<Slide> Document::slide_layouts() const {
-  const internal::abstract::ElementAdapter *adapter = m_impl->element_adapter();
+std::vector<Slide> Presentation::slide_layouts() const {
+  const internal::abstract::ElementAdapter *adapter = impl()->element_adapter();
   std::vector<Slide> result;
   for (const ElementIdentifier identifier :
-       adapter->element_slide_layouts(m_impl->root_element())) {
+       adapter->element_slide_layouts(impl()->root_element())) {
     result.emplace_back(adapter, identifier,
                         adapter->slide_adapter(identifier));
   }
   return result;
 }
 
-Slide Document::insert_slide(const std::uint32_t index,
-                             const std::uint32_t layout) const {
+Slide Presentation::insert_slide(const std::uint32_t index,
+                                 const std::uint32_t layout) const {
   const Element root = root_element();
   std::uint32_t slides = 0;
   for (const Element child : root.children()) {
@@ -892,7 +938,7 @@ Slide Document::insert_slide(const std::uint32_t index,
     throw std::out_of_range("slide index " + std::to_string(index) +
                             " past the " + std::to_string(slides) + " slides");
   }
-  const internal::abstract::ElementAdapter *adapter = m_impl->element_adapter();
+  const internal::abstract::ElementAdapter *adapter = impl()->element_adapter();
   if (const std::size_t layouts =
           adapter->element_slide_layouts(root.identifier()).size();
       layout >= layouts) {
@@ -907,9 +953,21 @@ Slide Document::insert_slide(const std::uint32_t index,
   return {adapter, identifier, adapter->slide_adapter(identifier)};
 }
 
-Frame Document::insert_text_box(const Element &page, const Measure &x,
-                                const Measure &y, const Measure &width,
-                                const Measure &height) const {
+Frame Presentation::insert_text_box(const Element &page, const Measure &x,
+                                    const Measure &y, const Measure &width,
+                                    const Measure &height) const {
+  return insert_text_box_(page, x, y, width, height);
+}
+
+Frame Drawing::insert_text_box(const Element &page, const Measure &x,
+                               const Measure &y, const Measure &width,
+                               const Measure &height) const {
+  return insert_text_box_(page, x, y, width, height);
+}
+
+Frame Document::insert_text_box_(const Element &page, const Measure &x,
+                                 const Measure &y, const Measure &width,
+                                 const Measure &height) const {
   for (const Measure *length : {&x, &y, &width, &height}) {
     if (length->unit().dimension() != Dimension::length) {
       throw std::invalid_argument("length " + length->to_string() +
@@ -927,23 +985,42 @@ Frame Document::insert_text_box(const Element &page, const Measure &x,
 }
 
 std::vector<SheetPosition>
+Spreadsheet::dependents(const SheetPosition &position) const {
+  return dependents(std::span(&position, 1));
+}
+
+std::vector<SheetPosition>
+Spreadsheet::dependents(const std::span<const SheetPosition> positions) const {
+  return impl()->sheet_dependencies().dependents(
+      std::vector(std::begin(positions), std::end(positions)));
+}
+
+std::vector<SheetPosition> Spreadsheet::unresolved_formulas() const {
+  return impl()->sheet_dependencies().unresolved();
+}
+
+Recalculation Spreadsheet::recalculate() const {
+  internal::SheetRecalculation result = internal::recalculate(*impl());
+  return Recalculation(std::move(result.changed), std::move(result.circular),
+                       std::move(result.unevaluated));
+}
+
+std::vector<SheetPosition>
 Document::dependents(const SheetPosition &position) const {
-  return dependents(std::vector<SheetPosition>{position});
+  return Spreadsheet(*this).dependents(position);
 }
 
 std::vector<SheetPosition>
 Document::dependents(const std::vector<SheetPosition> &positions) const {
-  return m_impl->sheet_dependencies().dependents(positions);
+  return Spreadsheet(*this).dependents(positions);
 }
 
 std::vector<SheetPosition> Document::unresolved_formulas() const {
-  return m_impl->sheet_dependencies().unresolved();
+  return Spreadsheet(*this).unresolved_formulas();
 }
 
 Recalculation Document::recalculate() const {
-  internal::SheetRecalculation result = internal::recalculate(*m_impl);
-  return Recalculation(std::move(result.changed), std::move(result.circular),
-                       std::move(result.unevaluated));
+  return Spreadsheet(*this).recalculate();
 }
 
 void Document::recalculate_edits_() const {
@@ -952,7 +1029,7 @@ void Document::recalculate_edits_() const {
   }
   // a document a recalculation cannot read saves what its edits left
   try {
-    recalculate();
+    std::ignore = Spreadsheet(*this).recalculate();
   } catch (const UnsupportedOperation &) {
     return;
   }

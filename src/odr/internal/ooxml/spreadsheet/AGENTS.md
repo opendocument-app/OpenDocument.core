@@ -118,7 +118,7 @@ the evaluator cannot compute.
 
 ## Open work
 
-1. Formula evaluation is partial. `Document::recalculate` computes supported
+1. Formula evaluation is partial. `Spreadsheet::recalculate` computes supported
    stale formulas, and saving after an edit invokes it. Unsupported and array
    formulas retain their cached results. Number formats supply displayed
    numbers, dates and times.

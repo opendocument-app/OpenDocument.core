@@ -396,20 +396,34 @@ void odr_python::bind_document(py::module_ &m) {
       .def("insert_paragraph_after", &odr::Document::insert_paragraph_after,
            py::arg("paragraph"), keep_self_alive,
            "An empty paragraph after this one, of the same style.")
-      .def("insert_sheet", &odr::Document::insert_sheet, py::arg("index"),
-           py::arg("name") = std::string(), keep_self_alive,
-           "An empty sheet at an index among the sheets; an empty name takes "
-           "the first free `SheetN`.")
-      .def("move_sheet", &odr::Document::move_sheet, py::arg("sheet"),
-           py::arg("index"),
-           "Put a sheet at an index among the sheets, counted after the "
-           "move.")
+      .def(
+          "insert_sheet",
+          [](const odr::Document &self, const std::uint32_t index,
+             const std::string &name) {
+            return self.as_spreadsheet().insert_sheet(index, name);
+          },
+          py::arg("index"), py::arg("name") = std::string(), keep_self_alive,
+          "An empty sheet at an index among the sheets; an empty name takes "
+          "the first free `SheetN`.")
+      .def(
+          "move_sheet",
+          [](const odr::Document &self, const odr::Sheet &sheet,
+             const std::uint32_t index) {
+            self.as_spreadsheet().move_sheet(sheet, index);
+          },
+          py::arg("sheet"), py::arg("index"),
+          "Put a sheet at an index among the sheets, counted after the "
+          "move.")
       .def(
           "slide_layouts",
           [](const py::object &self) {
             py::list result;
+            const auto &document = self.cast<const odr::Document &>();
+            if (document.document_type() != odr::DocumentType::presentation) {
+              return result;
+            }
             for (const odr::Slide &layout :
-                 self.cast<const odr::Document &>().slide_layouts()) {
+                 document.as_presentation().slide_layouts()) {
               py::object item = py::cast(layout);
               // what `keep_self_alive` does for one returned element
               py::detail::keep_alive_impl(item, self);
@@ -420,23 +434,49 @@ void odr_python::bind_document(py::module_ &m) {
           "The layouts `insert_slide` starts a slide from, each the empty "
           "slide it makes, outside the document and refusing edits; empty "
           "where the engine cannot insert a slide.")
-      .def("insert_slide", &odr::Document::insert_slide, py::arg("index"),
-           py::arg("layout"), keep_self_alive,
-           "An empty slide at an index among the slides, as the layout-th of "
-           "`slide_layouts`.")
-      .def("move_slide", &odr::Document::move_slide, py::arg("slide"),
-           py::arg("index"),
-           "Put a slide at an index among the slides, counted after the "
-           "move.")
-      .def("insert_text_box", &odr::Document::insert_text_box, py::arg("page"),
-           py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"),
-           keep_self_alive,
-           "A text box with one empty paragraph on a slide or drawing page, "
-           "drawing no fill and no outline. Lengths need a fixed unit.")
-      .def("recalculate", &odr::Document::recalculate,
-           py::call_guard<py::gil_scoped_release>(),
-           "Compute the stale formula cells and write each result into the "
-           "document. A save does so first where an edit left one stale.")
+      .def(
+          "insert_slide",
+          [](const odr::Document &self, const std::uint32_t index,
+             const std::uint32_t layout) {
+            return self.as_presentation().insert_slide(index, layout);
+          },
+          py::arg("index"), py::arg("layout"), keep_self_alive,
+          "An empty slide at an index among the slides, as the layout-th of "
+          "`slide_layouts`.")
+      .def(
+          "move_slide",
+          [](const odr::Document &self, const odr::Slide &slide,
+             const std::uint32_t index) {
+            self.as_presentation().move_slide(slide, index);
+          },
+          py::arg("slide"), py::arg("index"),
+          "Put a slide at an index among the slides, counted after the "
+          "move.")
+      .def(
+          "insert_text_box",
+          [](const odr::Document &self, const odr::Element &page,
+             const odr::Measure &x, const odr::Measure &y,
+             const odr::Measure &width, const odr::Measure &height) {
+            if (self.document_type() == odr::DocumentType::presentation) {
+              return self.as_presentation().insert_text_box(page, x, y, width,
+                                                            height);
+            }
+            return self.as_drawing().insert_text_box(page, x, y, width, height);
+          },
+          py::arg("page"), py::arg("x"), py::arg("y"), py::arg("width"),
+          py::arg("height"), keep_self_alive,
+          "A text box with one empty paragraph on a slide or drawing page, "
+          "drawing no fill and no outline. Lengths need a fixed unit.")
+      .def(
+          "recalculate",
+          [](const odr::Document &self) {
+            return self.document_type() == odr::DocumentType::spreadsheet
+                       ? self.as_spreadsheet().recalculate()
+                       : odr::Recalculation();
+          },
+          py::call_guard<py::gil_scoped_release>(),
+          "Compute the stale formula cells and write each result into the "
+          "document. A save does so first where an edit left one stale.")
       .def("is_savable", &odr::Document::is_savable,
            py::arg("encrypted") = false)
       // saving serialises the whole document; holding the GIL for it blocks

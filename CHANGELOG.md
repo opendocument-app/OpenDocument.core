@@ -16,6 +16,18 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+### Documents
+
+- `Document::as_spreadsheet()`, `as_presentation()`, `as_drawing()` and
+  `as_text_document()` return a handle per document type, holding what only
+  that type answers; each throws the new `WrongDocumentType`
+  (`ErrorCode::wrong_document_type`) for another type. See
+  `docs/design/document-types.md`.
+- `Document::dependents`, `unresolved_formulas` and `recalculate` are
+  deprecated for their `Spreadsheet` namesakes and go in the next major.
+  `Spreadsheet::dependents` takes a `std::span`.
+- The bindings keep their methods and what they answer.
+
 ### Units
 
 - `DynamicUnit` tells its `dimension()` (length, angle, dimensionless), its
@@ -33,25 +45,26 @@ The release run heads these entries with the version and opens a fresh
 
 ### Spreadsheets
 
-- `Document::insert_sheet(index, name)` adds an empty sheet to an ods or
+- `Spreadsheet::insert_sheet(index, name)` adds an empty sheet to an ods or
   xlsx. An empty name takes the next free `SheetN`. A name another sheet has,
   ignoring case, or one Excel or LibreOffice refuses throws
   `std::invalid_argument`. Formulas recompute on the next `recalculate`.
   In every binding: `insert_sheet` in python, `insertSheet` in java and npm,
   `insertSheet(at:name:)` in swift.
 - `Document::remove` takes a sheet of an ods or xlsx, and
-  `Document::move_sheet(sheet, index)` moves one. A reference to a removed
+  `Spreadsheet::move_sheet(sheet, index)` moves one. A reference to a removed
   sheet becomes `#REF!`, as Excel and LibreOffice write it. Removing the last
   sheet throws `std::invalid_argument`. An xlsx sheet holding a table or a
   pivot table, or one a pivot cache reads, is refused.
 
 ### Presentations
 
-- `Document::slide_layouts()` lists the layouts a slide can start from, each
-  a `Slide` outside the document as `Document::insert_slide(index, layout)`
-  adds it to an odp or pptx. A layout refuses edits. A pptx offers its own
+- `Presentation::slide_layouts()` lists the layouts a slide can start from,
+  each a `Slide` outside the document as
+  `Presentation::insert_slide(index, layout)` adds it to an odp or pptx. A layout refuses edits. A pptx offers its own
   layouts; an odp offers its own and then the six built-in ones it lacks.
-- `Document::insert_text_box(page, x, y, width, height)` adds a text box with
+- `insert_text_box(page, x, y, width, height)` on `Presentation` and
+  `Drawing` adds a text box with
   one empty paragraph to a slide of an odp or pptx, or a page of an odg. It
   draws no fill and no outline.
 - Both are in every binding: `slide_layouts`, `insert_slide` and
@@ -67,7 +80,7 @@ The release run heads these entries with the version and opens a fresh
   `removeSheet(sheet)`, `moveSheet(sheet, index)`, `removeElement(slideId)` and
   `moveSlide(slideId, index)` in npm, which lists the views again afterwards.
 - `Document::remove` takes a slide of an odp or pptx, and
-  `Document::move_slide(slide, index)` moves one. A pptx slide goes with its
+  `Presentation::move_slide(slide, index)` moves one. A pptx slide goes with its
   notes slide and its entries in custom shows and sections, and a moved one
   joins the section it lands in. An odp slide leaves its custom shows.
 - npm: a sheet or slide inserted directly or through `edit` is a view from

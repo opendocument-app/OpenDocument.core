@@ -76,8 +76,11 @@ extern "C" JNIEXPORT jintArray JNICALL
 Java_app_opendocument_core_Document_recalculateNative(JNIEnv *env, jobject,
                                                       jlong handle) {
   return guarded(env, [&]() -> jintArray {
+    const odr::Document &document = *from_handle<odr::Document>(handle);
     const odr::Recalculation result =
-        from_handle<odr::Document>(handle)->recalculate();
+        document.document_type() == odr::DocumentType::spreadsheet
+            ? document.as_spreadsheet().recalculate()
+            : odr::Recalculation();
     // three counts, then each position as its sheet, column and row
     std::vector<jint> stated;
     for (const auto *positions :
@@ -286,8 +289,9 @@ Java_app_opendocument_core_Document_insertSheetNative(JNIEnv *env, jobject,
                                                       jlong handle, jint index,
                                                       jstring name) {
   return guarded(env, [&] {
-    return wrap_element(from_handle<odr::Document>(handle)->insert_sheet(
-        checked_integer<std::uint32_t>(index), to_string(env, name)));
+    return wrap_element(
+        from_handle<odr::Document>(handle)->as_spreadsheet().insert_sheet(
+            checked_integer<std::uint32_t>(index), to_string(env, name)));
   });
 }
 
@@ -297,7 +301,7 @@ Java_app_opendocument_core_Document_moveSheetNative(JNIEnv *env, jobject,
                                                     jlong sheet_handle,
                                                     jint index) {
   guarded(env, [&] {
-    from_handle<odr::Document>(handle)->move_sheet(
+    from_handle<odr::Document>(handle)->as_spreadsheet().move_sheet(
         element(sheet_handle).as_sheet(),
         checked_integer<std::uint32_t>(index));
   });
@@ -309,7 +313,7 @@ Java_app_opendocument_core_Document_moveSlideNative(JNIEnv *env, jobject,
                                                     jlong slide_handle,
                                                     jint index) {
   guarded(env, [&] {
-    from_handle<odr::Document>(handle)->move_slide(
+    from_handle<odr::Document>(handle)->as_presentation().move_slide(
         element(slide_handle).as_slide(),
         checked_integer<std::uint32_t>(index));
   });
@@ -319,8 +323,11 @@ extern "C" JNIEXPORT jlongArray JNICALL
 Java_app_opendocument_core_Document_slideLayoutsNative(JNIEnv *env, jobject,
                                                        jlong handle) {
   return guarded(env, [&] {
-    return wrap_elements(env,
-                         from_handle<odr::Document>(handle)->slide_layouts());
+    const odr::Document &document = *from_handle<odr::Document>(handle);
+    return wrap_elements(env, document.document_type() ==
+                                      odr::DocumentType::presentation
+                                  ? document.as_presentation().slide_layouts()
+                                  : std::vector<odr::Slide>());
   });
 }
 
@@ -329,9 +336,10 @@ Java_app_opendocument_core_Document_insertSlideNative(JNIEnv *env, jobject,
                                                       jlong handle, jint index,
                                                       jint layout) {
   return guarded(env, [&] {
-    return wrap_element(from_handle<odr::Document>(handle)->insert_slide(
-        checked_integer<std::uint32_t>(index),
-        checked_integer<std::uint32_t>(layout)));
+    return wrap_element(
+        from_handle<odr::Document>(handle)->as_presentation().insert_slide(
+            checked_integer<std::uint32_t>(index),
+            checked_integer<std::uint32_t>(layout)));
   });
 }
 
@@ -347,7 +355,13 @@ Java_app_opendocument_core_Document_insertTextBoxNative(
       }
       return *result;
     };
-    return wrap_element(from_handle<odr::Document>(handle)->insert_text_box(
+    const odr::Document &document = *from_handle<odr::Document>(handle);
+    if (document.document_type() == odr::DocumentType::presentation) {
+      return wrap_element(document.as_presentation().insert_text_box(
+          element(page_handle), measure(x), measure(y), measure(width),
+          measure(height)));
+    }
+    return wrap_element(document.as_drawing().insert_text_box(
         element(page_handle), measure(x), measure(y), measure(width),
         measure(height)));
   });

@@ -93,6 +93,11 @@ MsUnsupportedCryptoAlgorithm::MsUnsupportedCryptoAlgorithm()
 UnknownDocumentType::UnknownDocumentType()
     : CodedException("unknown document type") {}
 
+WrongDocumentType::WrongDocumentType(const DocumentType expected,
+                                     const DocumentType actual)
+    : CodedException("wrong document type: " + document_type_to_string(actual) +
+                     ", not " + document_type_to_string(expected)) {}
+
 ValueNotStated::ValueNotStated() : CodedException("value not stated") {}
 
 InvalidPrefix::InvalidPrefix() : CodedException("invalid prefix string") {}

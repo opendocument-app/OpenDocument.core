@@ -141,7 +141,7 @@ TEST(OoxmlSpreadsheetSheets, names_and_views_follow_a_move) {
           R"(<definedName name="c" localSheetId="2">$A$1</definedName>)"
           R"(</definedNames>)"));
 
-  document.move_sheet(sheet_at(document, 2), 0);
+  document.as_spreadsheet().move_sheet(sheet_at(document, 2), 0);
 
   EXPECT_EQ(sheet_at(document, 0).name(), "u");
   const std::string workbook = saved_part(document, "/xl/workbook.xml");

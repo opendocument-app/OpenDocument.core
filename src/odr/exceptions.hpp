@@ -8,6 +8,7 @@
 
 namespace odr {
 enum class FileType;
+enum class DocumentType;
 enum class TextEncoding;
 
 /// Base of every exception type this library declares. The decoders also throw
@@ -226,6 +227,13 @@ struct MsUnsupportedCryptoAlgorithm final
 struct UnknownDocumentType final
     : CodedException<ErrorCode::unknown_document_type> {
   UnknownDocumentType();
+};
+
+/// A document handle asked of a document of another type, e.g.
+/// `Document::as_spreadsheet` on a text document
+struct WrongDocumentType final
+    : CodedException<ErrorCode::wrong_document_type> {
+  WrongDocumentType(DocumentType expected, DocumentType actual);
 };
 
 /// A value asked of something that states none, e.g. `CellValue::number` on a

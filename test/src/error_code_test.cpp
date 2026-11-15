@@ -4,6 +4,7 @@
 
 #include <odr/error_code.hpp>
 #include <odr/exceptions.hpp>
+#include <odr/file.hpp>
 
 #include <gtest/gtest.h>
 
@@ -70,6 +71,8 @@ std::vector<std::pair<ErrorCode, const char *>> thrown_codes() {
       {of(FileEncryptedError()), "FileEncrypted"},
       {of(UnauthenticatedReadError()), "UnauthenticatedReadError"},
       {of(ServerSocketDenied("h", 1)), "ServerSocketDenied"},
+      {of(WrongDocumentType(DocumentType::spreadsheet, DocumentType::text)),
+       "WrongDocumentType"},
   };
 }
 
