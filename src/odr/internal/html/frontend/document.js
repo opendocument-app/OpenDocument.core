@@ -2158,6 +2158,102 @@
     return true;
   }
 
+  /// The slide a removal or a move takes: the @p page -th, else the selected
+  /// one. Null on a page without slide templates, which is no presentation
+  /// or a view of one slide.
+  function slideOf(request) {
+    if (slideTemplates().length === 0) {
+      return null;
+    }
+    var slide = request.page === undefined ? selectedPage() : pages()[request.page];
+    return slide === undefined ? null : slide;
+  }
+
+  /// Removes the @p page -th slide, else the selected one.
+  function removeSlide(request) {
+    var detail = { page: request.page === undefined ? null : request.page };
+    if (!structureAllowed(detail)) {
+      return false;
+    }
+    var slide = slideOf(request);
+    if (slide === null) {
+      odr.editing.refuse("unsupportedEdit", detail);
+      return false;
+    }
+
+    gesture += 1;
+    var parent = slide.parentNode;
+    var next = slide.nextSibling;
+    var neighbour = slide.nextElementSibling || slide.previousElementSibling;
+    perform({
+      ops: [{ op: "removeSlide", page: Number(slide.getAttribute("data-odr-page")) }],
+      apply: function () {
+        parent.removeChild(slide);
+      },
+      revert: function () {
+        parent.insertBefore(slide, next);
+      },
+    });
+    if (neighbour !== null && neighbour.hasAttribute("data-odr-page")) {
+      caretInto(neighbour);
+    }
+    return true;
+  }
+
+  /// Puts the @p page -th slide, else the selected one, at @p index among the
+  /// slides, counted after the move.
+  function moveSlide(request) {
+    var detail = {
+      page: request.page === undefined ? null : request.page,
+      index: request.index === undefined ? null : request.index,
+    };
+    if (!structureAllowed(detail)) {
+      return false;
+    }
+    var slide = slideOf(request);
+    var all = pages();
+    var index = request.index;
+    if (
+      slide === null ||
+      typeof index !== "number" ||
+      index < 0 ||
+      index >= all.length ||
+      index !== Math.floor(index)
+    ) {
+      odr.editing.refuse("unsupportedEdit", detail);
+      return false;
+    }
+    var from = all.indexOf(slide);
+    if (from === index) {
+      return true;
+    }
+
+    gesture += 1;
+    var parent = slide.parentNode;
+    var next = slide.nextSibling;
+    var others = all.filter(function (page) {
+      return page !== slide;
+    });
+    var before = index < others.length ? others[index] : others[others.length - 1].nextSibling;
+    perform({
+      ops: [
+        {
+          op: "moveSlide",
+          page: Number(slide.getAttribute("data-odr-page")),
+          index: index,
+        },
+      ],
+      apply: function () {
+        parent.insertBefore(slide, before);
+      },
+      revert: function () {
+        parent.insertBefore(slide, next);
+      },
+    });
+    slide.scrollIntoView({ block: "nearest" });
+    return true;
+  }
+
   /// A text box on the @p page -th page, or the selected one, at @p x and
   /// @p y and @p width by @p height, each a CSS length in a fixed unit.
   function insertTextBox(request) {
@@ -2226,6 +2322,8 @@
     operations: operations,
     insertSlide: insertSlide,
     insertTextBox: insertTextBox,
+    removeSlide: removeSlide,
+    moveSlide: moveSlide,
     format: function (style) {
       recordWritten();
       return format(style, rangeOf({}));

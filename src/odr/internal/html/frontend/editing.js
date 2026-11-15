@@ -221,6 +221,18 @@
       return delegate("insertTextBox", request || {});
     },
 
+    /// Removes the `page`-th slide, else the selected one. False where
+    /// refused.
+    removeSlide: function (request) {
+      return delegate("removeSlide", request || {});
+    },
+
+    /// Puts the `page`-th slide, else the selected one, at `index` among the
+    /// slides, counted after the move. False where refused.
+    moveSlide: function (request) {
+      return delegate("moveSlide", request || {});
+    },
+
     /// Removes the rows the selection spans. False where refused.
     deleteRows: function () {
       return delegate("deleteRows");

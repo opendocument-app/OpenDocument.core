@@ -154,12 +154,17 @@ box looks like.
 | `odr.editing.slideLayouts()` | the template names, in the order `insertSlide` counts them |
 | `odr.editing.insertSlide({index, layout})` | clones a template before the `index`-th slide; without `index`, after the slide holding the selection, else last |
 | `odr.editing.insertTextBox({page, x, y, width, height})` | clones the text box onto the `page`-th page, or the selected one, and sets its box; lengths are CSS lengths in a fixed unit |
+| `odr.editing.removeSlide({page})` | removes the `page`-th slide, or the selected one |
+| `odr.editing.moveSlide({page, index})` | puts the `page`-th slide, or the selected one, at `index`, counted after the move |
 
-Both move the caret into the first new paragraph, and typing there is the
-existing `insertText` with `parent`. One call is one undo step. Under scope
-`paragraph` both refuse with `outOfScope`; a bad index, layout, page or length
-refuses with `unsupportedEdit`. A view of one slide carries no template, and
-the gestures refuse there.
+Both inserts move the caret into the first new paragraph, and typing there is
+the existing `insertText` with `parent`. A removal moves it into the slide that
+takes the place. A removal or a move records the slide by its
+`data-odr-page`, and a move to where the slide is records nothing. One call
+is one undo step. Under scope `paragraph` every gesture refuses with
+`outOfScope`; a bad index, layout, page or length refuses with
+`unsupportedEdit`. A view of one slide carries no template, and the gestures
+refuse there; so do a removal and a move on a drawing, which carries none.
 
 Not covered: a sheet. A spreadsheet view shows one sheet, so a host adds one
 through `Document::insert_sheet` or the envelope op and renders again.

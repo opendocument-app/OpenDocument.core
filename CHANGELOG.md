@@ -78,6 +78,9 @@ The release run heads these entries with the version and opens a fresh
   `insertSlide` and `insertTextBox`, and records the ops above. Its render
   carries a `<template>` per slide layout and one for a text box, and each
   slide or page states `data-odr-page`.
+- An editable presentation takes `odr.editing.removeSlide({page})` and
+  `odr.editing.moveSlide({page, index})`, on the selected slide where `page`
+  is left out, and records `removeSlide` and `moveSlide`.
 
 ## v7.8.0 - 2026-11-14
 
