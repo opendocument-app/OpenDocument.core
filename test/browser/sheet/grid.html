@@ -1,0 +1,141 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet grid checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body class="odr-body odr-gridlines-soft" data-odr-editable="true" data-odr-keyboard="navigation shortcuts">
+    <!-- A sheet of three columns and three rows as `translate_sheet` writes it
+         with `spreadsheet_grid` (`sheet-grid.md` decision 1). The maximum is
+         six columns by eight rows, so the grid stops inside one screen. -->
+    <div class="odr-sheet" data-odr-sheet="0" data-odr-sheet-extent="3,3" data-odr-sheet-max="6,8" data-odr-sheet-default-size="50,20" style="--odr-sheet-gutter:30px;--odr-sheet-width:270px">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <thead>
+          <tr>
+            <th class="odr-sheet-corner"></th>
+            <th class="odr-sheet-column-header">A</th>
+            <th class="odr-sheet-column-header">B</th>
+            <th class="odr-sheet-column-header">C</th>
+          </tr>
+        </thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <tbody>
+          <tr><th class="odr-sheet-row-header">1</th><td>a1</td><td>b1</td><td>c1</td></tr>
+          <tr><th class="odr-sheet-row-header">2</th><td>a2</td><td>b2</td><td>c2</td></tr>
+          <tr><th class="odr-sheet-row-header">3</th><td>a3</td><td>b3</td><td>c3</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="report" style="margin-top:40px"></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var refusals = [];
+      odr.onEditRefused = function (event) {
+        refusals.push(event);
+      };
+      var sheet = document.querySelector(".odr-sheet");
+      function layer(name) {
+        return sheet.querySelector(".odr-sheet-grid-" + name);
+      }
+      function shownLabels(name) {
+        return Array.prototype.filter
+          .call(layer(name).querySelectorAll(".odr-sheet-grid-label"), function (label) {
+            return label.style.display !== "none";
+          })
+          .map(function (label) {
+            return label.textContent;
+          });
+      }
+      function pinned() {
+        var at = odr.sheet.pinned();
+        return at === null ? null : { column: at.column, row: at.row, empty: at.cell === null };
+      }
+
+      note("the grid past the content");
+      check("the layers are there", layer("below") !== null && layer("right") !== null && layer("ruler") !== null);
+      check("the row numbers go on from 4", shownLabels("gutter")[0] === "4", shownLabels("gutter"));
+      check("the column letters go on from D", shownLabels("ruler")[0] === "D", shownLabels("ruler"));
+      check("and stop at the format's last column", shownLabels("ruler").join() === "D,E,F", shownLabels("ruler"));
+      check("the rows stop at its last row", shownLabels("gutter").join() === "4,5,6,7,8", shownLabels("gutter"));
+      check("below holds the rows past the content", layer("below").offsetHeight === 100, layer("below").offsetHeight);
+      check("the ruler past the content is three columns wide", layer("ruler").offsetWidth === 150, layer("ruler").offsetWidth);
+
+      note("going to a cell");
+      check("an empty cell of the grid", odr.goToCell(5, 7) === true);
+      check("is pinned as an empty cell", JSON.stringify(pinned()) === '{"column":5,"row":7,"empty":true}', pinned());
+      var mark = layer("pin");
+      var below = layer("below");
+      check(
+        "and marked where it is drawn",
+        mark.style.display !== "none" && mark.offsetLeft === 270 + 2 * 50 && mark.offsetTop === below.offsetTop + 4 * 20 && mark.offsetWidth === 50,
+        { left: mark.offsetLeft, top: mark.offsetTop, below: below.offsetTop }
+      );
+      check("a cell of the content pins its td", odr.goToCell(1, 1) === true && pinned().empty === false);
+      check("and the mark goes", mark.style.display === "none");
+      check("past the last column is refused", odr.goToCell(6, 0) === false);
+      check("past the last row is refused", odr.goToCell(0, 8) === false);
+
+      note("a click");
+      var box = below.getBoundingClientRect();
+      below.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, clientX: box.left + 30 + 80 + 10, clientY: box.top + 20 + 5 })
+      );
+      check("on the grid pins the empty cell under it", JSON.stringify(pinned()) === '{"column":1,"row":4,"empty":true}', pinned());
+
+      note("editing");
+      check("the mode turns on", odr.editing.enable() === true);
+      var before = refusals.length;
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "x", bubbles: true }));
+      check("typing into an empty cell is refused", refusals.length === before + 1 && refusals[refusals.length - 1].reason === "unsupportedEdit", refusals.slice(before));
+      check("and opens no editor", document.querySelector(".odr-sheet-editor") === null);
+      odr.sheet.pin({ column: 2, row: 2 });
+      document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+      check("an arrow steps off the content onto the grid", JSON.stringify(pinned()) === '{"column":2,"row":3,"empty":true}', pinned());
+
+      note("rows that go in");
+      odr.sheet.insertRows(1, 1);
+      setTimeout(function () {
+        check("move the grid down a row", shownLabels("gutter")[0] === "5", shownLabels("gutter"));
+
+        note("switched off");
+        odr.editing.setSheetOptions({ grid: false });
+        check("the option says so", odr.editing.getSheetOptions().grid === false);
+        check("the layers go", getComputedStyle(layer("below")).display === "none" && getComputedStyle(layer("ruler")).display === "none");
+        check("an empty cell cannot be pinned", odr.sheet.pin({ column: 4, row: 0 }) === false);
+        odr.editing.setSheetOptions({ grid: true });
+        check("and back on", getComputedStyle(layer("below")).display !== "none");
+        odr.sheet.setGrid(false);
+        check("the option follows setGrid", odr.editing.getSheetOptions().grid === false);
+        odr.sheet.setGrid(true);
+
+        note("columns that go in");
+        var right = layer("right").offsetLeft;
+        odr.sheet.insertColumns(1, 1);
+        setTimeout(function () {
+          check("move the grid right a column", layer("right").offsetLeft === right + 64, { before: right, after: layer("right").offsetLeft });
+          check("and its letters go on from E", shownLabels("ruler").join() === "E,F", shownLabels("ruler"));
+          odr.sheet.deleteColumns(1, 1);
+          setTimeout(function () {
+            check("and back when it goes", layer("right").offsetLeft === right && shownLabels("ruler").join() === "D,E,F", { left: layer("right").offsetLeft, labels: shownLabels("ruler") });
+          }, 100);
+        }, 100);
+      }, 100);
+    </script>
+  </body>
+</html>

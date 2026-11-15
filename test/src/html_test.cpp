@@ -1701,11 +1701,44 @@ TEST(html, an_editable_cut_sheet_states_its_whole_extent) {
     return std::move(out).str();
   };
 
+  // the grid stops at a cut edge, so a read-only page states the cut for it
+  EXPECT_NE(page(csv_file(10, 6)).find(R"(data-odr-cut="6,10")"),
+            std::string::npos);
+  config.spreadsheet_grid = false;
   EXPECT_EQ(page(csv_file(10, 6)).find(R"(data-odr-cut=")"), std::string::npos);
   config.editable = true;
   EXPECT_NE(page(csv_file(10, 6)).find(R"(data-odr-cut="6,10")"),
             std::string::npos);
   EXPECT_EQ(page(csv_file(3, 4)).find(R"(data-odr-cut=")"), std::string::npos);
+}
+
+// `sheet-grid.md` decision 1: what the page draws the empty grid from.
+TEST(html, a_sheet_states_what_its_grid_is_drawn_from) {
+  HtmlConfig config;
+  const auto page = [&config](const DecodedFile &file) {
+    std::ostringstream out;
+    view_at(html::translate(file, config), "sheet0.html").write_html(out);
+    return std::move(out).str();
+  };
+
+  const std::string csv = page(csv_file(3, 4));
+  EXPECT_NE(csv.find(R"(data-odr-sheet-extent="4,3")"), std::string::npos);
+  EXPECT_NE(csv.find(R"(data-odr-sheet-max="16384,1048576")"),
+            std::string::npos);
+  EXPECT_NE(csv.find(R"(data-odr-sheet-default-size="64,20")"),
+            std::string::npos);
+
+  const std::string ods = page(
+      open(TestData::test_file_path("odr-public/ods/file_example_ODS_10.ods")));
+  // an ods states its grid, LibreOffice's 1024 columns here
+  EXPECT_NE(ods.find(R"(data-odr-sheet-max="1024,1048576")"),
+            std::string::npos);
+  EXPECT_NE(ods.find(R"(data-odr-sheet-default-size="85.42,17.01")"),
+            std::string::npos);
+
+  config.spreadsheet_grid = false;
+  EXPECT_EQ(page(csv_file(3, 4)).find(R"(data-odr-sheet-max=")"),
+            std::string::npos);
 }
 
 TEST(html, an_editable_sheet_states_its_locale) {

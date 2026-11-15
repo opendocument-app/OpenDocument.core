@@ -1016,6 +1016,44 @@ private:
 } // namespace
 } // namespace html
 
+namespace {
+
+/// How far a sheet of @p type goes, and the size of an empty column and row
+/// there, in css pixels (`sheet-grid.md` decision 1).
+struct SheetGrid final {
+  std::uint32_t columns{0};
+  std::uint32_t rows{0};
+  double column_pixels{0};
+  double row_pixels{0};
+};
+
+SheetGrid sheet_grid(const Sheet &sheet, const FileType type) {
+  // Excel's 8.43 characters by 15pt
+  constexpr double excel_column = 64;
+  constexpr double excel_row = 20;
+  switch (type) {
+  case FileType::legacy_excel_worksheets:
+    return {256, 65536, excel_column, excel_row};
+  case FileType::iwork_numbers:
+    return {1000, 1000000, excel_column, excel_row};
+  case FileType::opendocument_spreadsheet: {
+    // an ods states its grid as its extent; LibreOffice's 2.26cm by 0.45cm
+    const TableDimensions stated = sheet.dimensions();
+    return {std::min<std::uint32_t>(16384, stated.columns),
+            std::min<std::uint32_t>(1048576, stated.rows), 2.26 / 2.54 * 96,
+            0.45 / 2.54 * 96};
+  }
+  default:
+    return {16384, 1048576, excel_column, excel_row};
+  }
+}
+
+std::string pair_of(const std::uint32_t first, const std::uint32_t second) {
+  return std::to_string(first) + "," + std::to_string(second);
+}
+
+} // namespace
+
 void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   // a sheet's editing is an overlay, so its content carries none
   WritingState sheet_state = state;
@@ -1027,8 +1065,10 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
   const std::uint32_t end_row = rows->end_row;
 
   const std::optional<double> print_fit = sheet_print_fit(sheet, end_column);
-  const std::optional<HtmlSheetCut> cut =
-      state.config().editable ? sheet_cut(sheet, state.config()) : std::nullopt;
+  const bool grid = state.config().spreadsheet_grid;
+  const std::optional<HtmlSheetCut> cut = state.config().editable || grid
+                                              ? sheet_cut(sheet, state.config())
+                                              : std::nullopt;
 
   state.out().write_element_begin(
       "div",
@@ -1042,8 +1082,21 @@ void html::translate_sheet(const Sheet &sheet, const WritingState &state) {
               clb("data-odr-sheet-name", xml::escape_attribute(sheet.name()));
             }
             if (cut.has_value()) {
-              clb("data-odr-cut", std::to_string(cut->content.columns) + "," +
-                                      std::to_string(cut->content.rows));
+              clb("data-odr-cut",
+                  pair_of(cut->content.columns, cut->content.rows));
+            }
+            // what the page draws the empty grid past the content from
+            if (grid) {
+              const SheetGrid limits = sheet_grid(sheet, state.file_type());
+              clb("data-odr-sheet-extent", pair_of(end_column, end_row));
+              clb("data-odr-sheet-max",
+                  pair_of(std::max(limits.columns, end_column),
+                          std::max(limits.rows, end_row)));
+              clb("data-odr-sheet-default-size",
+                  util::number::to_string_significant(limits.column_pixels, 4) +
+                      "," +
+                      util::number::to_string_significant(limits.row_pixels,
+                                                          4));
             }
           })
           .set_style([&]() -> std::string {

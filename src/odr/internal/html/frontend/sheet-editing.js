@@ -1573,6 +1573,17 @@
     }
     var cell = odr.sheet.cellAt(column, row);
     if (cell === null) {
+      // an empty cell of the grid past the content takes no edit yet
+      // (`sheet-grid.md` decision 3)
+      var at = odr.sheet.pinned();
+      if (
+        at !== null &&
+        at.cell === null &&
+        at.column === column &&
+        at.row === row
+      ) {
+        refuse("unsupportedEdit", column, row);
+      }
       return false;
     }
     odr.sheet.pin({ column: column, row: row });
@@ -1786,7 +1797,11 @@
   /// Gesture policy, the viewer's to set. `editOnClick` unstated asks the
   /// pointer. `HtmlConfig::sheet_edit_on_click` states the start value.
   var onClick = document.body.getAttribute("data-odr-sheet-edit-on-click");
-  var options = { editOnClick: onClick === null ? null : onClick === "true" };
+  var options = {
+    editOnClick: onClick === null ? null : onClick === "true",
+    // the empty grid past the content, which `spreadsheet.js` draws
+    grid: odr.sheet.hasGrid(),
+  };
 
   /// Whether a click opens the editor, where a double click always does. The
   /// pointer answers only while `editOnClick` is unstated, because it is a
@@ -1814,6 +1829,7 @@
       }
       options[key] = value[key];
     });
+    options.grid = odr.sheet.setGrid(options.grid);
   };
 
   odr.editing.getSheetOptions = function () {
@@ -1821,6 +1837,8 @@
     Object.keys(options).forEach(function (key) {
       copy[key] = options[key];
     });
+    // `odr.sheet.setGrid` turns it too
+    copy.grid = odr.sheet.hasGrid();
     return copy;
   };
 

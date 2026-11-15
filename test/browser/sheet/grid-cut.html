@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>sheet grid cut checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+  </head>
+  <body class="odr-body odr-gridlines-soft">
+    <!-- A sheet `spreadsheet_limit` cut at two columns: the file holds five,
+         so past the second column is content the page does not show, and no
+         grid is drawn there. Below the rows the sheet is not cut. -->
+    <div class="odr-sheet" data-odr-sheet="0" data-odr-cut="5,2" data-odr-sheet-extent="2,2" data-odr-sheet-max="16384,1048576" data-odr-sheet-default-size="50,20" style="--odr-sheet-gutter:30px;--odr-sheet-width:190px">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <thead>
+          <tr>
+            <th class="odr-sheet-corner"></th>
+            <th class="odr-sheet-column-header">A</th>
+            <th class="odr-sheet-column-header">B</th>
+          </tr>
+        </thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" />
+        <col style="width: 80px" />
+        <col style="width: 80px" />
+        <tbody>
+          <tr><th class="odr-sheet-row-header">1</th><td>a1</td><td>b1</td></tr>
+          <tr><th class="odr-sheet-row-header">2</th><td>a2</td><td>b2</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="report" style="margin-top:40px"></div>
+    <script src="spreadsheet.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var sheet = document.querySelector(".odr-sheet");
+      check("no grid right of a cut edge", getComputedStyle(sheet.querySelector(".odr-sheet-grid-ruler")).display === "none" && getComputedStyle(sheet.querySelector(".odr-sheet-grid-right")).display === "none");
+      check("so no cell there", odr.goToCell(2, 0) === false);
+      check("the rows below go on", getComputedStyle(sheet.querySelector(".odr-sheet-grid-below")).display !== "none");
+      check("and take a cell", odr.goToCell(1, 5) === true);
+      check("but not one past the cut column below either", odr.goToCell(3, 5) === false);
+    </script>
+  </body>
+</html>

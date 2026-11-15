@@ -134,6 +134,16 @@ def test_page_layout_reaches_the_html(ods_path):
     assert 'data-odr-page-layout="single"' in render(ods_path, config)
 
 
+def test_spreadsheet_grid_reaches_the_html(ods_path):
+    # proves the switch crosses the binding; the C++ suite covers the rest
+    config = pyodr.HtmlConfig()
+    assert config.spreadsheet_grid is True
+    assert 'data-odr-sheet-max="' in render(ods_path, config)
+
+    config.spreadsheet_grid = False
+    assert 'data-odr-sheet-max="' not in render(ods_path, config)
+
+
 def test_editing_scope_reaches_the_html(odt_path):
     # proves the scope crosses the binding; the C++ suite covers the rest
     # the attribute, not the name: the script names it too

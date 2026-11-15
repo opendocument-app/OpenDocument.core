@@ -212,6 +212,9 @@ export interface HtmlConfig {
   /** Most cells written for one sheet; `null` drops the budget. */
   spreadsheetCellLimit?: number | null;
   spreadsheetGridlines?: number;
+  /** Whether the page draws the empty grid past a sheet's content; on by
+   * default. */
+  spreadsheetGrid?: boolean;
   /** Bytes buffered while collecting sheet styles. */
   spreadsheetStyleBuffer?: number;
   viewportMode?: number;

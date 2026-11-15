@@ -1,6 +1,7 @@
 # Sheet grid design
 
-Status: proposed, not built.
+Status: step 1 built (decisions 1 and 2); editing past the content (decision
+3) is not.
 
 Related: [`lazy-loading.md`](lazy-loading.md) holds the row chunks a sheet
 is written in. [`spreadsheet-editing.md`](spreadsheet-editing.md) holds the
@@ -28,17 +29,19 @@ renderer states a few facts, and the page draws the rest.
 
 ### 1. The renderer states facts, not cells
 
-`.odr-sheet` carries what the page needs to draw past the content:
+`.odr-sheet` carries what the page needs to draw past the content, each as
+`columns,rows` like the `data-odr-cut` the editor already reads:
 
 | Attribute | What it states |
 |---|---|
-| `data-odr-sheet-max` | the last row and column the format allows, as `rows,columns` |
+| `data-odr-sheet-extent` | the rendered content, which a row chunk that has not loaded does not show the page |
+| `data-odr-sheet-max` | the last column and row the format allows |
 | `data-odr-sheet-default-size` | the width of an empty column and the height of an empty row, in px |
-| `data-odr-sheet-cut` | present where `spreadsheet_limit` or the cell budget cut the sheet (`HtmlSheetCut`): `rows`, `columns` or both |
+| `data-odr-cut` | the whole content where `spreadsheet_limit` or the cell budget cut the sheet (`HtmlSheetCut`); written for the grid too now, not only for an editable render |
 
 - **The maximum** is the format's: 1,048,576 × 16,384 for xlsx, ods and csv,
-  65,536 × 256 for xls. An ods states its grid as its dimensions, so its own
-  dimensions win where they are smaller; an xlsx states only its used range,
+  65,536 × 256 for xls, 1,000,000 × 1,000 for Numbers. An ods states its grid
+  as its dimensions, so its own dimensions win where they are smaller; an xlsx states only its used range,
   so its dimensions say nothing about the maximum.
 - **The default size** is what an empty column and row take in the format:
   the sheet's default column width and row height where the file states
@@ -51,7 +54,8 @@ renderer states a few facts, and the page draws the rest.
   now.
 
 No `<td>` is written for an empty cell, so the markup, a print and a page
-without its script stay as they are.
+without its script stay as they are. `HtmlConfig::spreadsheet_grid` (on by
+default) drops the three new attributes, and with them the grid.
 
 ### 2. The page draws the grid
 
@@ -60,30 +64,34 @@ without its script stay as they are.
 - **Gridlines** are CSS: a background repeated at the default column width
   and row height on two areas, one below the last row and one right of the
   last column, so no element exists per cell. They follow
-  `HtmlConfig::spreadsheet_gridlines`: none, soft or hard.
+  `HtmlConfig::spreadsheet_gridlines` (none, soft or hard) and the dark
+  sheet's colours.
 - **The ruler** goes on: column letters past the last column, row numbers
   past the last row. Only the labels in view are elements, reused as the
   reader scrolls, so the DOM is a screen of labels whatever the position.
   They stick as the ruler does now.
-- **The area grows as the reader goes.** Its size starts at a screen past
-  the content and grows by a screen when the reader comes near its edge, up
-  to the maximum, as Excel's scroll bar does. A jump grows it to the target
-  at once: a script call to go to a cell (`odr.goToCell(column, row)`, by
-  index), and the keys that jump in a desktop application, Ctrl+End and
-  Ctrl+arrow, which the page does not take today. The maximum height is
-  never laid out as one element; past the browser's limit, the area holds the
-  window around the target and stands in for the rows above it with a
-  spacer, so the scroll position stays meaningful.
+- **The area grows as the reader goes.** It keeps two screens past the view
+  and grows as the reader scrolls, up to the maximum, as Excel's scroll bar does. A jump grows it to the target
+  at once: `odr.goToCell(column, row)` (also `odr.sheet.goToCell`, by
+  index) pins the cell, empty or not, and scrolls it into view. It answers
+  false past the maximum or a cut edge.
+- **The height stops at the browser's limit.** The area below the content
+  stays under 15 million px, short of Firefox's 17.9 million; a jump past
+  that is refused. At Excel's 20 px a row, that is some 750,000 rows.
 - **Selecting** an empty cell works by coordinate. The pinned cell, the one
   a click or an arrow key selects (`odr.sheet.pinned()`), moves past the
   content into the grid: a click is turned into a row and a column from the
-  default size, and the arrows step on past the last row and column. Its
-  mark is drawn over the grid at that position, and `pinned()` reports the
-  position as it does for a cell that exists.
+  default size, and the editor's arrows step on past the last row and
+  column. Its mark is drawn over the grid at that position, and `pinned()`
+  reports the position with a null `cell`.
+- **Not in print.** The grid is screen only.
 
-The page grid is on for every sheet view. `odr.editing.setSheetOptions`
-takes `grid: false` to drop it, and `HtmlConfig::spreadsheet_grid` (on by
-default) for a host that wants the old canvas from the first frame.
+The page grid is on for every sheet view that states its facts.
+`odr.sheet.setGrid(false)` drops it in any page (`odr.sheet.hasGrid()`
+answers whether it is drawn), and
+`odr.editing.setSheetOptions({grid: false})` in an editable one;
+`HtmlConfig::spreadsheet_grid` keeps the facts out of the markup for a host
+that wants the old canvas from the first frame.
 
 ### 3. Editing past the content is a second step
 
@@ -107,15 +115,15 @@ scrolled and selected, and an edit there is refused with `unsupportedEdit`.
 
 ## Left
 
+- **Jump keys.** Ctrl+End and Ctrl+arrow, which jump in a desktop
+  application, are not taken yet; `odr.goToCell` is what they would call.
+- **Past the browser's height limit**, a spacer could stand in for the rows
+  above a far target, so a jump to row 1,048,576 works. Not built: the area
+  stops at the limit.
+- **The file's own default column width and row height** are not read yet;
+  the application's stand in (decision 1).
 - **A workbook's whole-document view drives one sheet.** The sheet scripts
   bind to the first `.odr-sheet` of the page (`single-page-layout.md`,
   "Left"). The grid lands in the views of one sheet first.
 - **Frozen panes** are not rendered today. Where they come, the grid starts
   past them.
-
-## Open questions
-
-- Whether a jump past the browser's limit is worth the spacer, or whether
-  the area stops at the limit and a jump past it is refused.
-- Whether the page grid follows `color_scheme`'s dark sheet from the start:
-  the canvas and the gridline colours are already variables there.

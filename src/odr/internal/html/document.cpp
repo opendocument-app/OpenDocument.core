@@ -374,6 +374,7 @@ render(const Document &document, const HtmlConfig &config, const Logger &logger,
   head_state.set_direction(document_direction(document));
   head_state.set_document_editable(document.is_editable());
   head_state.set_formula_syntax(formula::syntax_of(document.file_type()));
+  head_state.set_file_type(document.file_type());
 
   util::stream::DeferredBuffer buffer(
       out.out(), static_cast<std::size_t>(config.spreadsheet_style_buffer),
@@ -394,6 +395,7 @@ render(const Document &document, const HtmlConfig &config, const Logger &logger,
     state.set_direction(head_state.direction());
     state.set_document_editable(head_state.document_editable());
     state.set_formula_syntax(head_state.formula_syntax());
+    state.set_file_type(head_state.file_type());
     state.set_formula_names(&names);
     body(state);
   }
