@@ -1638,19 +1638,19 @@
   // The last column and row the page can show: the format's, short of the
   // browser's height limit, where the grid is drawn; else the content's.
   function reach() {
-    var lastColumn = contentColumns() - 1;
-    var lastRow = contentRows - 1;
+    var column = contentColumns() - 1;
+    var row = contentRows - 1;
     if (gridOn && growsRight) {
-      lastColumn = maximum[0] - 1;
+      column = maximum[0] - 1;
     }
     if (gridOn && growsDown) {
       var below = layers === null ? 0 : belowTop();
-      lastRow = Math.min(
+      row = Math.min(
         maximum[1] - 1,
         contentRows - 1 + Math.floor((heightLimit - below) / cellHeight())
       );
     }
-    return { column: lastColumn, row: lastRow };
+    return { column: column, row: row };
   }
 
   // The rows and columns the page writes, the grid past them.

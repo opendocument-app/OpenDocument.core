@@ -1876,8 +1876,6 @@
     );
   }
 
-  /// What a pinned cell does with a key when no editor is open. Captured, so
-  /// these never reach the pin and the sort beneath. The chord is `editing.js`'s.
   /// Whether the cell at a position shows anything; the grid past the
   /// content shows nothing.
   function isFilled(column, row) {
@@ -1955,6 +1953,8 @@
     return true;
   }
 
+  /// What a pinned cell does with a key when no editor is open. Captured, so
+  /// these never reach the pin and the sort beneath. The chord is `editing.js`'s.
   function pinnedKey(event) {
     if (
       (event.ctrlKey || event.metaKey) &&
@@ -2455,11 +2455,10 @@
     return op;
   }
 
-  /// States @p style on every selected cell as one undo step. A lock refuses
-  /// a value, not a style.
   /// Formats the selection; on an empty cell of the grid past the content,
   /// its rows and columns are made first, and the step owns them as an
-  /// edit's does (`sheet-grid.md` decision 3).
+  /// edit's does (`sheet-grid.md` decision 3). A style `formatCells` refuses
+  /// takes them away again.
   function format(style) {
     var pin = sheetApi.pinned();
     var made = null;
@@ -2469,10 +2468,7 @@
       pin.column !== null &&
       pin.row !== null &&
       odr.editing.isEnabled() &&
-      odr.editing.isEditable() &&
-      styles &&
-      Object.keys(style).length > 0 &&
-      valid(style)
+      odr.editing.isEditable()
     ) {
       made = sheetApi.materialize(pin.column, pin.row);
       if (made === null) {
@@ -2503,6 +2499,8 @@
     return done;
   }
 
+  /// States @p style on every selected cell as one undo step. A lock refuses
+  /// a value, not a style.
   function formatCells(style) {
     finish();
     if (!odr.editing.isEnabled()) {
