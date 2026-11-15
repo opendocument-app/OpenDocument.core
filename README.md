@@ -1,10 +1,35 @@
 # OpenDocument.core
 
-![build status](https://github.com/opendocument-app/OpenDocument.core/actions/workflows/build_test.yml/badge.svg)
+[![Build](https://github.com/opendocument-app/OpenDocument.core/actions/workflows/build_test.yml/badge.svg)](https://github.com/opendocument-app/OpenDocument.core/actions/workflows/build_test.yml)
+[![Release](https://img.shields.io/github/v/release/opendocument-app/OpenDocument.core)](https://github.com/opendocument-app/OpenDocument.core/releases)
+[![PyPI](https://img.shields.io/pypi/v/pyodr.svg)](https://pypi.org/project/pyodr/)
+[![npm](https://img.shields.io/npm/v/@opendocument/odr-core.svg)](https://www.npmjs.com/package/@opendocument/odr-core)
+[![Maven Central](https://img.shields.io/maven-central/v/app.opendocument/odr-core-android.svg)](https://central.sonatype.com/artifact/app.opendocument/odr-core-android)
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](LICENSE)
 
-A C++ library that reads documents and renders them to HTML. It is the engine
-behind [OpenDocument.droid](https://github.com/opendocument-app/OpenDocument.droid)
-and [OpenDocument.ios](https://github.com/opendocument-app/OpenDocument.ios).
+A C++ library that reads documents and renders them to HTML, and edits and
+saves the office formats. It is the engine behind
+[OpenDocument Reader](https://opendocument.app/) on
+[Android](https://github.com/opendocument-app/OpenDocument.droid) and
+[iOS](https://github.com/opendocument-app/OpenDocument.ios).
+
+```cpp
+#include <odr/html.hpp>
+#include <odr/odr.hpp>
+
+#include <iostream>
+
+const odr::DecodedFile file = odr::open("document.odt");
+const odr::HtmlService service = odr::html::translate(file, odr::HtmlConfig());
+const odr::Html html = service.bring_offline("output-dir");
+for (const odr::HtmlPage &page : html.pages()) {
+  std::cout << page.name << ": " << page.path << '\n';
+}
+```
+
+An editable page records the user's edits as an op log, and
+`Document::edit` replays it onto the file before a save. See the
+[editing design](docs/design/editing.md).
 
 ## Formats
 
@@ -37,10 +62,13 @@ every accepted extension and MIME type, including aliases such as `docm`,
 
 ## Bindings
 
-- [Python](python/README.md): `pyodr`
-- [Java/JNI](jni/README.md) and [Android](android/README.md): `app.opendocument:odr-core-android`
-- [Apple](apple/README.md): `OdrCore`, a Swift package
-- [WebAssembly](wasm/README.md): `@opendocument/odr-core`
+| Platform | Package | Docs |
+|---|---|---|
+| Python | [`pyodr`](https://pypi.org/project/pyodr/) | [python](python/README.md) |
+| Java, Android | [`app.opendocument:odr-core-android`](https://central.sonatype.com/artifact/app.opendocument/odr-core-android) | [jni](jni/README.md), [android](android/README.md) |
+| Swift (Apple) | `OdrCore`, a Swift package | [apple](apple/README.md) |
+| JavaScript (WebAssembly) | [`@opendocument/odr-core`](https://www.npmjs.com/package/@opendocument/odr-core) | [wasm](wasm/README.md) |
+| C++ | `odrcore` on [Conan](https://artifactory.opendocument.app/) | [Build](#build) |
 
 ## Build
 
