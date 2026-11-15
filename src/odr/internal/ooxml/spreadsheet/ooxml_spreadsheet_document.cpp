@@ -421,21 +421,7 @@ ElementIdentifier Document::insert_sheet(const std::uint32_t index,
   entry.append_attribute("sheetId").set_value(sheet_id + 1);
   entry.append_attribute("r:id").set_value(id.c_str());
 
-  // what names a sheet by its position moves with the sheets after it
-  const auto shift = [&](pugi::xml_attribute attribute) {
-    if (attribute && attribute.as_uint() >= index) {
-      attribute.set_value(attribute.as_uint() + 1);
-    }
-  };
-  for (const pugi::xml_node defined_name :
-       workbook().child("definedNames").children("definedName")) {
-    shift(defined_name.attribute("localSheetId"));
-  }
-  for (const pugi::xml_node view :
-       workbook().child("bookViews").children("workbookView")) {
-    shift(view.attribute("activeTab"));
-    shift(view.attribute("firstSheet"));
-  }
+  renumber_sheets_(std::nullopt, index);
 
   const ParseContext context(sheet_path, sheet_relations,
                              m_xml_documents_and_relations, m_shared_strings);
@@ -460,14 +446,23 @@ ElementIdentifier Document::insert_sheet(const std::uint32_t index,
   return sheet;
 }
 
-void Document::renumber_sheets_(
-    const std::function<std::optional<std::uint32_t>(std::uint32_t)> &to) {
+void Document::renumber_sheets_(const std::optional<std::uint32_t> from,
+                                const std::optional<std::uint32_t> to) {
   // ECMA-376 18.2.5 `localSheetId`, 18.2.30 `activeTab` and `firstSheet`
+  const auto map =
+      [&](const std::uint32_t position) -> std::optional<std::uint32_t> {
+    if (position == from) {
+      return to;
+    }
+    const std::uint32_t taken =
+        from.has_value() && position > *from ? position - 1 : position;
+    return to.has_value() && taken >= *to ? taken + 1 : taken;
+  };
   pugi::xml_node names = workbook().child("definedNames");
   for (pugi::xml_node name = names.child("definedName"); name;) {
     const pugi::xml_node next = name.next_sibling("definedName");
     if (pugi::xml_attribute local = name.attribute("localSheetId")) {
-      if (const std::optional<std::uint32_t> moved = to(local.as_uint())) {
+      if (const std::optional<std::uint32_t> moved = map(local.as_uint())) {
         local.set_value(*moved);
       } else {
         names.remove_child(name);
@@ -478,7 +473,7 @@ void Document::renumber_sheets_(
   if (names && !names.child("definedName")) {
     workbook().remove_child(names);
   }
-  const std::uint32_t count = static_cast<std::uint32_t>(
+  const auto count = static_cast<std::uint32_t>(
       std::ranges::distance(workbook().child("sheets").children("sheet")));
   for (const pugi::xml_node view :
        workbook().child("bookViews").children("workbookView")) {
@@ -486,7 +481,7 @@ void Document::renumber_sheets_(
       if (pugi::xml_attribute position = view.attribute(attribute)) {
         // the view of a sheet that goes falls to the one taking its place
         const std::uint32_t old = position.as_uint();
-        const std::uint32_t moved = to(old).value_or(old);
+        const std::uint32_t moved = map(old).value_or(old);
         position.set_value(count == 0 ? 0 : std::min(moved, count - 1));
       }
     }
@@ -531,13 +526,7 @@ void Document::remove_sheet(const ElementIdentifier sheet,
     }
   }
 
-  renumber_sheets_(
-      [&](const std::uint32_t position) -> std::optional<std::uint32_t> {
-        if (position == index) {
-          return std::nullopt;
-        }
-        return position > index ? position - 1 : position;
-      });
+  renumber_sheets_(index, std::nullopt);
 
   m_element_registry.unlink_child(sheet);
   m_element_registry.invalidate(sheet);
@@ -549,16 +538,14 @@ void Document::move_sheet(const ElementIdentifier sheet,
                           const std::uint32_t index) {
   pugi::xml_node sheets = workbook().child("sheets");
   std::vector<ElementIdentifier> order;
-  std::vector<pugi::xml_node> entries;
-  pugi::xml_node entry = sheets.child("sheet");
   for (ElementIdentifier id =
            m_element_registry.element_at(m_root_element).first_child_id;
-       id != null_element_id && entry;
+       id != null_element_id;
        id = m_element_registry.element_at(id).next_sibling_id) {
     order.push_back(id);
-    entries.push_back(entry);
-    entry = entry.next_sibling("sheet");
   }
+  const auto entries =
+      sheets.children("sheet") | std::ranges::to<std::vector<pugi::xml_node>>();
   const auto found = std::ranges::find(order, sheet);
   if (found == order.end() || order.size() != entries.size()) {
     throw UnsupportedOperation();
@@ -582,19 +569,7 @@ void Document::move_sheet(const ElementIdentifier sheet,
     m_element_registry.insert_sibling_after(anchor, sheet);
   }
 
-  renumber_sheets_(
-      [&](const std::uint32_t position) -> std::optional<std::uint32_t> {
-        if (position == from) {
-          return index;
-        }
-        if (from < index && position > from && position <= index) {
-          return position - 1;
-        }
-        if (index < from && position >= index && position < from) {
-          return position + 1;
-        }
-        return position;
-      });
+  renumber_sheets_(from, index);
 
   drop_sheet_dependencies();
   note_moved();

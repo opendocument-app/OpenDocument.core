@@ -2415,13 +2415,12 @@ public:
   /// rewrite of a delete of every row, then of every column, which leaves
   /// no reference to the sheet standing.
   void remove_sheet(const ElementIdentifier element_id) const {
-    pugi::xml_node node = get_node(element_id);
     const std::string name = sheet_name(element_id);
     std::vector<SheetPosition> touched;
     for (const formula::Axis axis :
          {formula::Axis::row, formula::Axis::column}) {
       std::ranges::move(
-          move_references(node.parent(),
+          move_references(get_node(element_id).parent(),
                           {.sheet = name,
                            .axis = axis,
                            .count = std::numeric_limits<std::uint32_t>::max(),
@@ -2431,9 +2430,7 @@ public:
     // the positions count the sheet, so the results go while it is there
     drop_moved_results(std::move(touched));
 
-    m_registry->unlink_child(element_id);
-    m_registry->invalidate(element_id);
-    node.parent().remove_child(node);
+    TreeEditor(*m_registry).remove(element_id);
     m_document->drop_sheet_dependencies();
     m_document->note_moved();
   }

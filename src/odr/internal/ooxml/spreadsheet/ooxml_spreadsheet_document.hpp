@@ -6,7 +6,6 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_element_registry.hpp>
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.hpp>
 
-#include <functional>
 #include <iosfwd>
 #include <memory>
 #include <optional>
@@ -88,10 +87,10 @@ private:
   pugi::xml_node create_styles_();
 
   std::pair<pugi::xml_document &, Relations &> parse_xml_(const AbsPath &path);
-  /// Maps every attribute that counts sheets by position through @p to,
-  /// which answers the new position or none for a sheet that goes.
-  void renumber_sheets_(
-      const std::function<std::optional<std::uint32_t>(std::uint32_t)> &to);
+  /// Moves what counts sheets by position after the sheet at @p from went to
+  /// @p to; no @p from is an insert, no @p to a removal.
+  void renumber_sheets_(std::optional<std::uint32_t> from,
+                        std::optional<std::uint32_t> to);
 };
 
 } // namespace odr::internal::ooxml::spreadsheet
