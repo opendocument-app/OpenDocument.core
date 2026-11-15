@@ -88,9 +88,10 @@ class Document {
   `UnsupportedOperation`, which is what the old defaults did.
 - The engine's one adapter class implements its adapters. The prefix keeps
   their names apart, as it does for the element adapters, so odf implements
-  all three and both text-box inserts forward to one function.
-  `common::Document::set_adapters_` keeps only the one that matches the
-  document type, so the engine does not repeat that check.
+  all three and both text-box inserts forward to one function. The engine
+  sets the protected pointer for its document type on `common::Document`
+  after it makes its adapter, with one `dynamic_cast`: the factory hands
+  back the base type, because the class is defined below the constructor.
 - No `TextDocumentAdapter` until a text-only method needs one.
 
 What stays where:

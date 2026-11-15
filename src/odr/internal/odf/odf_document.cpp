@@ -52,8 +52,8 @@
 namespace odr::internal::odf {
 
 namespace {
-EngineAdapters create_element_adapter(Document &document,
-                                      ElementRegistry &registry);
+std::unique_ptr<abstract::ElementAdapter>
+create_element_adapter(Document &document, ElementRegistry &registry);
 std::string read_generator(pugi::xml_node content_root,
                            const abstract::ReadableFilesystem *files);
 bool gradient_angles_in_tenths(std::string_view office_version,
@@ -123,7 +123,23 @@ void Document::init_(const pugi::xml_node content_root,
                            master_page_id);
   }
 
-  set_adapters_(create_element_adapter(*this, m_element_registry));
+  m_element_adapter = create_element_adapter(*this, m_element_registry);
+  const abstract::ElementAdapter *adapter = m_element_adapter.get();
+  switch (m_document_type) {
+  case DocumentType::spreadsheet:
+    m_spreadsheet_adapter =
+        dynamic_cast<const abstract::SpreadsheetAdapter *>(adapter);
+    break;
+  case DocumentType::presentation:
+    m_presentation_adapter =
+        dynamic_cast<const abstract::PresentationAdapter *>(adapter);
+    break;
+  case DocumentType::drawing:
+    m_drawing_adapter = dynamic_cast<const abstract::DrawingAdapter *>(adapter);
+    break;
+  default:
+    break;
+  }
   load_layouts_(content_root.child("office:body").first_child());
 }
 
@@ -3634,11 +3650,9 @@ private:
   }
 };
 
-EngineAdapters create_element_adapter(Document &document,
-                                      ElementRegistry &registry) {
-  auto adapter = std::make_unique<ElementAdapter>(document, registry);
-  const ElementAdapter *raw = adapter.get();
-  return {std::move(adapter), raw, raw, raw};
+std::unique_ptr<abstract::ElementAdapter>
+create_element_adapter(Document &document, ElementRegistry &registry) {
+  return std::make_unique<ElementAdapter>(document, registry);
 }
 
 } // namespace

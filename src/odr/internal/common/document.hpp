@@ -23,15 +23,6 @@ namespace odr::internal {
 
 class SheetDependencies;
 
-/// What an engine's adapters implement. @ref Document keeps the type-specific
-/// ones that match its document type.
-struct EngineAdapters final {
-  std::unique_ptr<abstract::ElementAdapter> element;
-  const abstract::SpreadsheetAdapter *spreadsheet{nullptr};
-  const abstract::PresentationAdapter *presentation{nullptr};
-  const abstract::DrawingAdapter *drawing{nullptr};
-};
-
 class Document : public abstract::Document {
 public:
   /// @p archive is the package @p files reads from lazily, if any.
@@ -99,14 +90,12 @@ protected:
 
   ElementIdentifier m_root_element{null_element_id};
   std::unique_ptr<abstract::ElementAdapter> m_element_adapter;
-
-  void set_adapters_(EngineAdapters adapters);
-
-private:
+  /// Set by an engine that models the document type, and only for that type.
   const abstract::SpreadsheetAdapter *m_spreadsheet_adapter{nullptr};
   const abstract::PresentationAdapter *m_presentation_adapter{nullptr};
   const abstract::DrawingAdapter *m_drawing_adapter{nullptr};
 
+private:
   mutable std::unique_ptr<SheetDependencies> m_sheet_dependencies;
   mutable std::vector<std::pair<ElementIdentifier, TablePosition>> m_written;
   mutable bool m_moved{false};
