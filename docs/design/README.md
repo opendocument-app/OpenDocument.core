@@ -27,6 +27,9 @@
 - [Single-page layout design](single-page-layout.md): a workbook,
   presentation, drawing or pdf view that shows one sheet or page at a time, a
   script API to turn pages, and `#page=N` in the URL to open at one.
+- [Sheet grid design](sheet-grid.md): the grid past a sheet's content,
+  drawn by the page up to the format's last row and column, selected there,
+  and edited there in a second step.
 - [The formula evaluator without exceptions](formula-without-exceptions.md):
   stops as `std::expected` values, so the formula module builds with
   `-fno-exceptions` and loads in any WebView.
