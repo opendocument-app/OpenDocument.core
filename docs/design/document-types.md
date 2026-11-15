@@ -64,18 +64,20 @@ inheritance badly. A second shared method is declared twice as well.
 
 ## Migration
 
-**Minor release.** Add the handles, `as_*` and `WrongDocumentType`. The moved
-methods stay on `Document`, `[[deprecated]]`, and forward to the handle
-without the type check, so they keep throwing what they threw. Every caller in
-this repository moves to the handles: the renderer, the CLI, the bindings and
-the tests. CI builds with `-Werror`, so a call left behind fails it.
+**Minor release.** Add the handles, `as_*` and `WrongDocumentType`. The
+sheet, slide and text-box methods are not in a release yet (v7.8.0 has none
+of them), so they move outright. The formula methods shipped: they stay on
+`Document`, `[[deprecated]]`, and forward to `Spreadsheet` without the type
+check, so they keep answering what they answered for every type. Every caller
+in this repository moves to the handles: the renderer, the CLI, the bindings
+and the tests. CI builds with `-Werror`, so a call left behind fails it.
 
 The bindings keep their surface in this step. A binding method that called a
 moved method now calls it through `as_*`, so on a mismatched document it fails
 with `WrongDocumentType` where it failed with `UnsupportedOperation`. That is
 a changed behaviour, not a changed API.
 
-**Next major.** Delete the deprecated methods from `Document`.
+**Next major.** Delete the deprecated formula methods from `Document`.
 
 ## Open work
 
