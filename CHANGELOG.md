@@ -36,8 +36,8 @@ The release run heads these entries with the version and opens a fresh
   `known()` unit and its `factor_to(unit)`. `Measure::magnitude_in(KnownUnit)`
   and `Measure::to(KnownUnit)` convert within a dimension and throw
   `std::invalid_argument` across dimensions or for a unit of unknown size.
-- `insert_text_box` and a `setTextStyle` font size also take lengths in `m`
-  and `q`.
+- `Presentation::insert_text_box`, `Drawing::insert_text_box` and a
+  `setTextStyle` font size also take lengths in `m` and `q`.
 
 ### Document creation
 
@@ -50,7 +50,8 @@ The release run heads these entries with the version and opens a fresh
 - `Spreadsheet::insert_sheet(index, name)` adds an empty sheet to an ods or
   xlsx. An empty name takes the next free `SheetN`. A name another sheet has,
   ignoring case, or one Excel or LibreOffice refuses throws
-  `std::invalid_argument`. Formulas recompute on the next `recalculate`.
+  `std::invalid_argument`. Formulas recompute on the next
+  `Spreadsheet::recalculate`.
   In every binding, on its `Spreadsheet`: `insert_sheet` in python,
   `insertSheet` in java and npm, `insertSheet(at:name:)` in swift.
 - `Document::remove` takes a sheet of an ods or xlsx, and
@@ -63,17 +64,18 @@ The release run heads these entries with the version and opens a fresh
 
 - `Presentation::slide_layouts()` lists the layouts a slide can start from,
   each a `Slide` outside the document as
-  `Presentation::insert_slide(index, layout)` adds it to an odp or pptx. A layout refuses edits. A pptx offers its own
-  layouts; an odp offers its own and then the six built-in ones it lacks.
-- `insert_text_box(page, x, y, width, height)` on `Presentation` and
-  `Drawing` adds a text box with
-  one empty paragraph to a slide of an odp or pptx, or a page of an odg. It
-  draws no fill and no outline.
+  `Presentation::insert_slide(index, layout)` adds it to an odp or pptx. A
+  layout refuses edits. A pptx offers its own layouts; an odp offers its own
+  and then the six built-in ones it lacks.
+- `Presentation::insert_text_box(page, x, y, width, height)` and
+  `Drawing::insert_text_box` add a text box with one empty paragraph to a
+  slide of an odp or pptx, or a page of an odg. It draws no fill and no
+  outline.
 - Both are in every binding, on its `Presentation`, and the text box also on
-  its `Drawing`: `slide_layouts`, `insert_slide` and
-  `insert_text_box` in python, `slideLayouts`, `insertSlide` and
-  `insertTextBox` in java and npm, `slideLayouts()`, `insertSlide(at:layout:)`
-  and `insertTextBox(on:x:y:width:height:)` in swift. npm lists a layout as
+  its `Drawing`: `slide_layouts`, `insert_slide` and `insert_text_box` in
+  python, `slideLayouts`, `insertSlide` and `insertTextBox` in java and npm,
+  `slideLayouts()`, `insertSlide(at:layout:)` and
+  `insertTextBox(on:x:y:width:height:)` in swift. npm lists a layout as
   its name and its placeholders' boxes, lengths as strings such as `2.1cm`;
   `insertSlide` answers the ids of the slide, its placeholders and their
   paragraphs, and `insertTextBox` those of the box and its paragraph.
