@@ -1473,7 +1473,7 @@
   // What `unmaterialize` takes away again, or null past the budget, a merge
   // or the grid.
   function materialize(column, row) {
-    if (cellAt(column, row) !== null || !inGrid(column, row)) {
+    if (!inGrid(column, row)) {
       return null;
     }
     var columns = contentColumns();
@@ -1512,23 +1512,32 @@
     return made;
   }
 
-  // Takes what `materialize` made away, keeping it for `rematerialize`.
+  // Takes what `materialize` made away, keeping it for `rematerialize`. A
+  // cell pinned there stays pinned, as the empty cell of the grid.
   function unmaterialize(made) {
+    var at = pinnedPosition();
     if (made.rows !== null) {
       made.rows = deleteRows(made.rowsAt, made.rowCount);
     }
     if (made.columns !== null) {
       made.columns = deleteColumns(made.columnsAt, made.columnCount);
     }
+    if (at !== null && at.cell !== null && pinnedCell === null) {
+      pinAt(at);
+    }
     layout();
   }
 
   function rematerialize(made) {
+    var at = emptyPin;
     if (made.columns !== null) {
       restoreColumns(made.columnsAt, made.columns);
     }
     if (made.rows !== null) {
       restoreRows(made.rowsAt, made.rows);
+    }
+    if (at !== null && cellAt(at.column, at.row) !== null) {
+      pinAt(at);
     }
     layout();
   }

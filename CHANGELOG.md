@@ -120,7 +120,7 @@ The release run heads these entries with the version and opens a fresh
   columns up to it, the edit is the usual `setCell`, and its undo takes them
   away again. An edit that would make more than 200,000 cells on the way is
   refused with `unsupportedEdit`. Inserting or deleting rows and columns
-  past the content records nothing. Nothing is printed past the content.
+  in the grid records nothing. Nothing is printed past the content.
 - A csv saved after a write past its last row states each row it adds with
   the sheet's fields (`,,`) rather than a single `""`, so the file still
   reads as a csv.

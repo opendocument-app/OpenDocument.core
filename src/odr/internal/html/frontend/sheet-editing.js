@@ -466,7 +466,8 @@
 
   /// Writes @p value at a position: the cell shows it, and the op joins the
   /// log beside the value it replaced. A formula value states its expression
-  /// in the syntax of the file, and shows nothing until it is computed.
+  /// in the syntax of the file, and shows nothing until it is computed. The
+  /// rows and columns @p made for the cell go with its undo.
   function write(column, row, value, made) {
     var cell = odr.sheet.cellAt(column, row);
     var before = odr.sheet.valueAt(column, row);
@@ -2360,10 +2361,11 @@
     var span = range === null ? null : axis === "row" ? range.rows : range.columns;
     var index = span === null ? null : after ? span[1] + 1 : span[0];
     var count = span === null ? 0 : span[1] - span[0] + 1;
-    // past the content the grid is empty: nothing moves, nothing to record
-    var extent = odr.sheet.extent();
-    var past = axis === "row" ? extent.rows : extent.columns;
-    if (odr.sheet.hasGrid() && index !== null && index >= past) {
+    // the grid past the content is empty: nothing moves, nothing to record
+    if (
+      index !== null &&
+      (axis === "row" ? odr.sheet.inGrid(0, index) : odr.sheet.inGrid(index, 0))
+    ) {
       return true;
     }
     var plural = axis === "row" ? "Rows" : "Columns";

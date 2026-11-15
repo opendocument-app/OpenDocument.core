@@ -125,8 +125,11 @@
       );
       check("the cell shows it", odr.sheet.cellAt(2, 3).textContent === "below");
       check("the grid starts below it", shownLabels("gutter")[0] === "5", shownLabels("gutter"));
+      odr.sheet.pin({ column: 2, row: 3 });
       check("undo takes the row away", odr.editing.undo() === true && odr.sheet.cellAt(2, 3) === null && odr.sheet.extent().rows === 3);
+      check("and keeps its cell pinned", JSON.stringify(pinned()) === '{"column":2,"row":3,"empty":true}', pinned());
       check("redo brings it back, written", odr.editing.redo() === true && odr.sheet.cellAt(2, 3).textContent === "below");
+      check("and pins its td", JSON.stringify(pinned()) === '{"column":2,"row":3,"empty":false}', pinned());
 
       odr.goToCell(4, 0);
       press(document.body, "y");
@@ -143,6 +146,7 @@
       var count = ops().length;
       press(editor(), "Escape");
       check("an edit left without a write takes them away", editor() === null && odr.sheet.extent().rows === 4 && ops().length === count, odr.sheet.extent());
+      check("and keeps the empty cell pinned", JSON.stringify(pinned()) === '{"column":1,"row":6,"empty":true}', pinned());
 
       odr.goToCell(1, 6);
       check("a row inserted past the content records nothing", odr.editing.insertRows("above") === true && ops().length === count);

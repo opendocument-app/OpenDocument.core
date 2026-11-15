@@ -1,11 +1,7 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
 #include <odr/file.hpp>
-#include <odr/logger.hpp>
 #include <odr/odr.hpp>
-
-#include <odr/internal/common/file.hpp>
-#include <odr/internal/open_strategy.hpp>
 
 #include <test_util.hpp>
 
@@ -13,12 +9,11 @@
 
 #include <cstdint>
 #include <functional>
-#include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 using namespace odr;
-using namespace odr::internal;
 using namespace odr::test;
 
 // `sheet-grid.md` decision 3: an edit in the grid past the content is the
@@ -27,23 +22,18 @@ using namespace odr::test;
 
 namespace {
 
-Document csv(const std::string &text) {
-  return open(File::from_memory(text),
-              DecodeOptions::as(FileType::comma_separated_values))
+Document csv(const File &file) {
+  return open(file, DecodeOptions::as(FileType::comma_separated_values))
       .as_csv_file()
       .document();
 }
 
 Document reopened(const Document &document) {
-  const std::string bytes(document.save_to_memory().memory_data().value());
+  const File saved = document.save_to_memory();
   if (document.file_type() == FileType::comma_separated_values) {
-    return csv(bytes);
+    return csv(saved);
   }
-  return DecodedFile(
-             open_strategy::open_file(std::make_shared<MemoryFile>(bytes), {},
-                                      Logger::null()))
-      .as_document_file()
-      .document();
+  return open(saved).as_document_file().document();
 }
 
 Sheet first_sheet(const Document &document) {
@@ -86,7 +76,7 @@ std::vector<Case> cases() {
       // used range
       {"an xlsx of ten rows",
        [] { return open_input("odr-public/xlsx/file_example_XLSX_10.xlsx"); }},
-      {"a csv", [] { return csv("a,b\nc,d\n"); }},
+      {"a csv", [] { return csv(File::from_memory("a,b\nc,d\n")); }},
   };
 }
 

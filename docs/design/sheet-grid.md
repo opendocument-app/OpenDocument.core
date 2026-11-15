@@ -116,8 +116,9 @@ to type into.
   write (Escape, or nothing typed) takes them away at once.
 - **Opening the editor there** works as on a cell: typing, Enter or F2 on the
   pinned empty cell, a double click, or a click where `editOnClick` holds.
-- **Inserting and deleting rows and columns past the content** records
-  nothing and is taken: the grid there is empty.
+- **Inserting and deleting rows and columns in the grid** records nothing
+  and is taken: the grid there is empty. Past a `spreadsheet_limit` cut no
+  grid is drawn, and such an edit moves what the file holds there.
 - **Every engine takes the write.** A test writes below and beside the
   content of a new and a real ods (whose empty rows are one
   `table:table-row` repeated), a new and a real xlsx (no `<row>` past the

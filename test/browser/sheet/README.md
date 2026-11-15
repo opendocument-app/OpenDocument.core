@@ -39,7 +39,7 @@ with its undo and redo, an edit left with Escape, a row inserted past the
 content, a double click on the grid, a row inserted, the grid switched off,
 and a column inserted and deleted. `grid-cut.html` is a sheet
 `spreadsheet_limit` cut at two columns: no grid right of the cut, the rows
-below go on.
+below go on, and a column inserted at the cut edge is recorded.
 
 `serve` serves `document.css`, `spreadsheet.css`, `editing.js`,
 `spreadsheet.js` and `sheet-editing.js` out of
