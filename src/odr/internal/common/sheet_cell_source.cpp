@@ -88,9 +88,9 @@ spreadsheet_of(const abstract::Document &document) {
 
 SheetCellSource::SheetCellSource(const abstract::Document &document)
     : m_adapter{document.element_adapter()},
-      m_settings{spreadsheet_of(document).spreadsheet_formula_settings()},
       m_syntax{formula::syntax_of(document.file_type())} {
   const abstract::SpreadsheetAdapter &spreadsheet = spreadsheet_of(document);
+  m_settings = spreadsheet.spreadsheet_formula_settings();
   for (formula::Name &name : spreadsheet.spreadsheet_formula_names()) {
     m_names[util::string::to_lower(name.name)].push_back(std::move(name));
   }

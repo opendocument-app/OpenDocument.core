@@ -2276,8 +2276,7 @@ public:
     const ElementIdentifier element_id = m_document->root_element();
     pugi::xml_node presentation = get_node(element_id);
     pugi::xml_node styles = m_document->styles_root().child("office:styles");
-    if (std::string_view(presentation.name()) != "office:presentation" ||
-        !styles) {
+    if (!styles) {
       throw UnsupportedOperation();
     }
 
@@ -2392,9 +2391,6 @@ public:
                            const std::string &name) const override {
     const ElementIdentifier element_id = m_document->root_element();
     pugi::xml_node spreadsheet = get_node(element_id);
-    if (std::string_view(spreadsheet.name()) != "office:spreadsheet") {
-      throw UnsupportedOperation();
-    }
     const std::vector<ElementIdentifier> sheets = sheets_();
 
     pugi::xml_node node;
@@ -2502,9 +2498,6 @@ public:
   void move_(const ElementIdentifier element_id,
              const std::uint32_t index) const {
     const ElementType type = element_type(element_id);
-    if (type != ElementType::sheet && type != ElementType::slide) {
-      throw UnsupportedOperation();
-    }
     const ElementIdentifier parent_id = element_parent(element_id);
     std::vector<ElementIdentifier> others;
     for (ElementIdentifier id = element_first_child(parent_id);
@@ -3637,7 +3630,10 @@ private:
 EngineAdapters create_adapters(Document &document, ElementRegistry &registry) {
   auto adapter = std::make_unique<ElementAdapter>(document, registry);
   const ElementAdapter *raw = adapter.get();
-  return {std::move(adapter), raw, raw, raw};
+  return {.element = std::move(adapter),
+          .spreadsheet = raw,
+          .presentation = raw,
+          .drawing = raw};
 }
 
 } // namespace

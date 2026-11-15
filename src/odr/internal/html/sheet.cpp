@@ -1259,13 +1259,12 @@ void html::write_sheet_body_attributes(const Document &document,
       syntax.has_value()) {
     clb("data-odr-formula-syntax",
         *syntax == formula::Syntax::opendocument ? "opendocument" : "ooxml");
+    const abstract::SpreadsheetAdapter *spreadsheet =
+        document.impl()->spreadsheet_adapter();
     clb("data-odr-formula-settings",
         xml::escape_attribute(formula_settings_json(
-            document.impl()->spreadsheet_adapter() != nullptr
-                ? document.impl()
-                      ->spreadsheet_adapter()
-                      ->spreadsheet_formula_settings()
-                : formula::Settings())));
+            spreadsheet != nullptr ? spreadsheet->spreadsheet_formula_settings()
+                                   : formula::Settings())));
     if (const std::vector<formula::Name> *names = state.formula_names();
         names != nullptr && !names->empty()) {
       clb("data-odr-formula-names",
