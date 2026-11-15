@@ -94,6 +94,8 @@ their content types (`m_dropped_parts`). The dom stays, because the registry
 holds nodes in it. `Document::move_slide` reorders `p:sldIdLst` and moves the
 slide's `p14:sldId` after the one of the slide it now follows, or to the front
 of the first section: PowerPoint repairs sections out of slide order.
+Other parts' relationships to a removed slide (slide-jump hyperlinks,
+`viewProps.xml` outline entries) are not dropped and dangle.
 
 `Document::insert_text_box` writes a `p:sp` text box (`txBox="1"`,
 `write_text_box`) into the slide's shape tree.

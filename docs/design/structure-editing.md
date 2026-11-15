@@ -223,6 +223,9 @@ Slides:
   slide, and its entries in custom shows and sections. A moved slide joins
   the section of the slide it now follows, the first section at index 0,
   because PowerPoint repairs sections out of slide order.
+- Gap: a relationship from another part to a removed slide stays, such as a
+  slide-jump hyperlink or an outline entry in `viewProps.xml`. Its target is
+  gone, which PowerPoint may offer to repair.
 
 ## Validation
 
