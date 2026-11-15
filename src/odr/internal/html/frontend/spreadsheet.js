@@ -1132,6 +1132,21 @@
     );
   }
 
+  // The row numbers past the content outgrow the gutter the content needed:
+  // it widens to the widest in view, as a desktop application's does, and
+  // never narrows back. True where it widened.
+  function fitGutter(label) {
+    layers.measure.textContent = label;
+    var needed = Math.ceil(layers.measure.offsetWidth) + 8;
+    var current = gutterWidth();
+    if (needed <= current) {
+      return false;
+    }
+    table.style.setProperty("--odr-sheet-gutter", needed + "px");
+    widen(needed - current);
+    return true;
+  }
+
   // Grows the grid to hold the cell at @p column, @p row, which `inGrid`
   // allows.
   function hold(column, row) {
@@ -1184,6 +1199,8 @@
     var right = element("div", "odr-sheet-grid-right");
     var ruler = element("div", "odr-sheet-grid-ruler");
     var mark = element("div", "odr-sheet-grid-pin");
+    var measure = element("span", "odr-sheet-grid-measure");
+    gutter.appendChild(measure);
     table.appendChild(below);
     table.appendChild(right);
     table.insertBefore(ruler, head.nextSibling);
@@ -1196,6 +1213,7 @@
       right: right,
       ruler: ruler,
       mark: mark,
+      measure: measure,
       rowLabels: [],
       columnLabels: [],
       rowLines: [],
@@ -1372,6 +1390,10 @@
       label.style.top = (firstRow + i) * height + "px";
       label.style.height = height + "px";
       label.textContent = String(contentRows + firstRow + i + 1);
+    }
+    var widest = String(contentRows + firstRow + rowCount);
+    if (rowCount > 0 && fitGutter(widest)) {
+      refresh();
     }
 
     var content = contentWidth();
