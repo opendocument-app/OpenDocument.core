@@ -725,8 +725,10 @@ public:
   /// every row, then of every column, which leaves none standing. A sheet
   /// holding a table or a pivot table, or one a pivot cache reads, is
   /// refused: what names them is not rewritten.
-  void
-  spreadsheet_remove_sheet(const ElementIdentifier element_id) const override {
+  void element_remove(const ElementIdentifier element_id) const override {
+    if (element_type(element_id) != ElementType::sheet) {
+      throw UnsupportedOperation();
+    }
     const ElementRegistry::ElementRelations &relations =
         *m_registry->element_relations(element_id);
     const formula::SheetEdit rows{

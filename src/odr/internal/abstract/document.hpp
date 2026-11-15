@@ -133,9 +133,6 @@ public:
   virtual ElementIdentifier
   spreadsheet_insert_sheet(std::uint32_t index,
                            const std::string &name) const = 0;
-  /// Takes the sheet @p sheet out; a reference to it becomes `#REF!`.
-  /// @throws UnsupportedOperation where the engine cannot write.
-  virtual void spreadsheet_remove_sheet(ElementIdentifier sheet) const = 0;
   /// Puts @p sheet at @p index among the sheets, counted after the move. The
   /// caller checked @p index.
   /// @throws UnsupportedOperation where the engine cannot write.
@@ -158,9 +155,6 @@ public:
   virtual ElementIdentifier
   presentation_insert_slide(std::uint32_t index,
                             std::uint32_t layout) const = 0;
-  /// Takes the slide @p slide out, with what the format keeps for it.
-  /// @throws UnsupportedOperation where the engine cannot write.
-  virtual void presentation_remove_slide(ElementIdentifier slide) const = 0;
   /// Puts @p slide at @p index among the slides, counted after the move. The
   /// caller checked @p index.
   /// @throws UnsupportedOperation where the engine cannot write.
@@ -224,7 +218,8 @@ public:
 
   /// Removes @p element_id and its subtree; it keeps its id and stops being
   /// reachable, so an id already handed out never names something else. A
-  /// sheet or a slide goes through its document adapter instead.
+  /// sheet or a slide goes with what the format keeps for it, and a reference
+  /// to a removed sheet becomes `#REF!`.
   virtual void
   element_remove([[maybe_unused]] const ElementIdentifier element_id) const {
     throw UnsupportedOperation();

@@ -78,8 +78,8 @@ class Document {
 
 | Adapter | Methods |
 |---------|---------|
-| `SpreadsheetAdapter` | `spreadsheet_dependencies`, `_formula_settings`, `_formula_names`, `_external_sheets`, `spreadsheet_insert_sheet`, `_remove_sheet`, `_move_sheet` |
-| `PresentationAdapter` | `presentation_slide_layouts`, `_insert_slide`, `_remove_slide`, `_move_slide`, `_text_box_layout`, `_insert_text_box` |
+| `SpreadsheetAdapter` | `spreadsheet_dependencies`, `_formula_settings`, `_formula_names`, `_external_sheets`, `spreadsheet_insert_sheet`, `_move_sheet` |
+| `PresentationAdapter` | `presentation_slide_layouts`, `_insert_slide`, `_move_slide`, `_text_box_layout`, `_insert_text_box` |
 | `DrawingAdapter` | `drawing_text_box_layout`, `drawing_insert_text_box` |
 
 - An adapter is null for another type, and for an engine that models none
@@ -97,27 +97,25 @@ class Document {
   one.
 - No `TextDocumentAdapter` until a text-only method needs one.
 
-What stays where:
+An internal hook sits where its public method sits: a method of a handle
+goes to that type's adapter, a method of `Document` stays with the element
+adapters.
 
 - **`Document`**: what every type has. The formula queries leave it.
-- **`ElementAdapter`**: navigation, and the edits that apply in every type:
-  `element_remove` of a run, a paragraph or a frame, `element_append_text`.
-  `element_move` and the sheet, slide and text-box inserts leave it.
+- **`ElementAdapter`**: navigation, `element_remove` and
+  `element_append_text`. `element_move` and the sheet, slide and text-box
+  inserts leave it.
 - **Element adapters** (`SheetAdapter`, `ParagraphAdapter`, `TextAdapter`):
   edits of one element, as before: rows, cells, a paragraph split, a run.
-- **Removing a sheet or a slide** goes through its document adapter, because
-  what goes with it is the document's: references become `#REF!`, a pptx
-  slide takes its notes and its show entries. `Document::remove` dispatches
-  on the element type.
+- **Removal** stays `element_remove` for every kind, as `Document::remove`
+  takes any element. A removal names an element the engine holds, and the
+  engine branches on its kind: a sheet's references become `#REF!`, a pptx
+  slide takes its notes and its show entries. An insert names no element,
+  only an index, so it is the document adapter's. `Document::remove` keeps
+  the one check that is the public API's, that a workbook keeps a sheet.
 
-Open questions:
+Open question:
 
-- Where creation and removal live. Above, an insert or a remove whose effect
-  reaches past the element (sheets, slides) is the document adapter's, and
-  one that stays inside its parent is the element adapters'. The other cut
-  is one edit adapter for every structural write, which would move
-  `element_remove`, `element_append_text`, `paragraph_split` and
-  `text_insert` too.
 - The edit log `common::Document` keeps for recalculation (`note_written`,
   `note_moved`, the cached dependency graph) is spreadsheet state on the
   common base, and recalculation still finds it with a `dynamic_cast`. It

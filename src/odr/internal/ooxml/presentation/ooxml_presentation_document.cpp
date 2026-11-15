@@ -853,9 +853,6 @@ public:
                             const std::uint32_t layout) const override {
     return m_document->insert_slide(index, layout);
   }
-  void presentation_remove_slide(const ElementIdentifier slide) const override {
-    m_document->remove_slide(slide);
-  }
   void presentation_move_slide(const ElementIdentifier slide,
                                const std::uint32_t index) const override {
     m_document->move_slide(slide, index);
@@ -1028,6 +1025,10 @@ public:
   }
 
   void element_remove(const ElementIdentifier element_id) const override {
+    if (element_type(element_id) == ElementType::slide) {
+      m_document->remove_slide(element_id);
+      return;
+    }
     const ElementIdentifier parent_id = element_parent(element_id);
     if (element_type(element_id) == ElementType::text &&
         parent_id != null_element_id &&

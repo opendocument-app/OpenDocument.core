@@ -2436,12 +2436,14 @@ public:
   }
 
   void element_remove(const ElementIdentifier element_id) const override {
+    if (element_type(element_id) == ElementType::sheet) {
+      remove_sheet(element_id);
+      return;
+    }
+    if (element_type(element_id) == ElementType::slide) {
+      drop_from_shows(get_node(element_id));
+    }
     TreeEditor(*m_registry).remove(element_id);
-  }
-
-  void presentation_remove_slide(const ElementIdentifier slide) const override {
-    drop_from_shows(get_node(slide));
-    TreeEditor(*m_registry).remove(slide);
   }
 
   /// ODF 1.3 part 3, 9.6.3: a custom show lists its pages by name.
@@ -2465,8 +2467,7 @@ public:
   /// The `table:table` goes, and every reference to it becomes `#REF!`: the
   /// rewrite of a delete of every row, then of every column, which leaves
   /// no reference to the sheet standing.
-  void
-  spreadsheet_remove_sheet(const ElementIdentifier element_id) const override {
+  void remove_sheet(const ElementIdentifier element_id) const {
     const std::string name = sheet_name(element_id);
     std::vector<SheetPosition> touched;
     for (const formula::Axis axis :

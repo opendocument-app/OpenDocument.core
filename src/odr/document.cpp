@@ -766,18 +766,7 @@ void Document::remove(const Element &element) const {
       count_children(root_element(), ElementType::sheet) == 1) {
     throw std::invalid_argument("a workbook keeps one sheet");
   }
-  switch (element.type()) {
-  case ElementType::sheet:
-    required(m_impl->spreadsheet_adapter())
-        .spreadsheet_remove_sheet(identifier);
-    return;
-  case ElementType::slide:
-    required(m_impl->presentation_adapter())
-        .presentation_remove_slide(identifier);
-    return;
-  default:
-    m_impl->element_adapter()->element_remove(identifier);
-  }
+  m_impl->element_adapter()->element_remove(identifier);
 }
 
 void Spreadsheet::move_sheet(const Sheet &sheet,
