@@ -41,6 +41,12 @@ and a column inserted and deleted. `grid-cut.html` is a sheet
 `spreadsheet_limit` cut at two columns: no grid right of the cut, the rows
 below go on, and a column inserted at the cut edge is recorded.
 
+`grid-keys.html` is a sheet of four columns by four rows with a gap: Ctrl
+and Cmd with an arrow end a run, cross the gap and reach the edge of the
+grid, Ctrl+Home and Ctrl+End, Shift widening the selection, and `format`
+and a style chord on an empty cell of the grid, with the undo and redo of
+what they make.
+
 `sheets.html` is a workbook's page with two sheets under the single-page
 layout (`docs/design/sheet-scripts.md`): each bound with its own grid, a
 column wash naming its sheet, `setPage` choosing the sheet `odr.sheet`

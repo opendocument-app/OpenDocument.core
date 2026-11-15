@@ -1132,6 +1132,21 @@
     );
   }
 
+  // The row numbers past the content outgrow the gutter the content needed:
+  // it widens to the widest in view, as a desktop application's does, and
+  // never narrows back. True where it widened.
+  function fitGutter(label) {
+    layers.measure.textContent = label;
+    var needed = Math.ceil(layers.measure.offsetWidth) + 8;
+    var current = gutterWidth();
+    if (needed <= current) {
+      return false;
+    }
+    table.style.setProperty("--odr-sheet-gutter", needed + "px");
+    widen(needed - current);
+    return true;
+  }
+
   // Grows the grid to hold the cell at @p column, @p row, which `inGrid`
   // allows.
   function hold(column, row) {
@@ -1184,6 +1199,8 @@
     var right = element("div", "odr-sheet-grid-right");
     var ruler = element("div", "odr-sheet-grid-ruler");
     var mark = element("div", "odr-sheet-grid-pin");
+    var measure = element("span", "odr-sheet-grid-measure");
+    gutter.appendChild(measure);
     table.appendChild(below);
     table.appendChild(right);
     table.insertBefore(ruler, head.nextSibling);
@@ -1196,6 +1213,7 @@
       right: right,
       ruler: ruler,
       mark: mark,
+      measure: measure,
       rowLabels: [],
       columnLabels: [],
       rowLines: [],
@@ -1372,6 +1390,10 @@
       label.style.top = (firstRow + i) * height + "px";
       label.style.height = height + "px";
       label.textContent = String(contentRows + firstRow + i + 1);
+    }
+    var widest = String(contentRows + firstRow + rowCount);
+    if (rowCount > 0 && fitGutter(widest)) {
+      refresh();
     }
 
     var content = contentWidth();
@@ -1613,6 +1635,24 @@
     layout();
   }
 
+  // The last column and row the page can show: the format's, short of the
+  // browser's height limit, where the grid is drawn; else the content's.
+  function reach() {
+    var column = contentColumns() - 1;
+    var row = contentRows - 1;
+    if (gridOn && growsRight) {
+      column = maximum[0] - 1;
+    }
+    if (gridOn && growsDown) {
+      var below = layers === null ? 0 : belowTop();
+      row = Math.min(
+        maximum[1] - 1,
+        contentRows - 1 + Math.floor((heightLimit - below) / cellHeight())
+      );
+    }
+    return { column: column, row: row };
+  }
+
   // The rows and columns the page writes, the grid past them.
   function contentExtent() {
     return { columns: contentColumns(), rows: contentRows };
@@ -1654,6 +1694,7 @@
     goToCell: goToCell,
     inGrid: inGrid,
     extent: contentExtent,
+    reach: reach,
     materialize: materialize,
     unmaterialize: unmaterialize,
     rematerialize: rematerialize,

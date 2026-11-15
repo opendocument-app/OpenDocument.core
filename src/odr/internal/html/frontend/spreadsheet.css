@@ -95,6 +95,7 @@ body{margin:0;background:var(--odr-sheet-canvas)}
 .odr-sheet-grid-label{position:absolute;display:flex;align-items:center;justify-content:center;color:var(--odr-sheet-ruler-text);font:500 12px/1 var(--odr-sheet-font);white-space:nowrap;user-select:none}
 .odr-sheet-grid-gutter .odr-sheet-grid-label{left:0;right:0;box-shadow:inset -1px 0 0 var(--odr-sheet-rule),inset 0 -1px 0 var(--odr-sheet-line)}
 .odr-sheet-grid-ruler .odr-sheet-grid-label{top:0;bottom:0;box-shadow:inset -1px 0 0 var(--odr-sheet-line),inset 0 -1px 0 var(--odr-sheet-rule)}
+.odr-sheet-grid-measure{position:absolute;visibility:hidden;white-space:nowrap;font:500 12px/1 var(--odr-sheet-font)}
 .odr-sheet-grid-pin{position:absolute;z-index:3;pointer-events:none;outline:2px solid var(--odr-sheet-focus);outline-offset:-2px}
 /* `--odr-print-fit` is written per sheet by `translate_sheet`; `zoom` keeps
    the rows breaking across pages. Only `!important` beats the inline column
