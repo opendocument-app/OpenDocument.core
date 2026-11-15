@@ -749,6 +749,15 @@ void check_move(const Element &root, const Element &element,
   }
 }
 
+/// @throws UnsupportedOperation where the engine models no such document.
+template <typename Adapter>
+const Adapter &required(const Adapter *const adapter) {
+  if (adapter == nullptr) {
+    throw UnsupportedOperation();
+  }
+  return *adapter;
+}
+
 } // namespace
 
 void Document::remove(const Element &element) const {
@@ -757,21 +766,34 @@ void Document::remove(const Element &element) const {
       count_children(root_element(), ElementType::sheet) == 1) {
     throw std::invalid_argument("a workbook keeps one sheet");
   }
-  m_impl->element_adapter()->element_remove(identifier);
+  switch (element.type()) {
+  case ElementType::sheet:
+    required(m_impl->spreadsheet_adapter())
+        .spreadsheet_remove_sheet(identifier);
+    return;
+  case ElementType::slide:
+    required(m_impl->presentation_adapter())
+        .presentation_remove_slide(identifier);
+    return;
+  default:
+    m_impl->element_adapter()->element_remove(identifier);
+  }
 }
 
 void Spreadsheet::move_sheet(const Sheet &sheet,
                              const std::uint32_t index) const {
   const ElementIdentifier identifier = check_(sheet);
   check_move(root_element(), sheet, ElementType::sheet, index);
-  impl()->element_adapter()->element_move(identifier, index);
+  required(impl()->spreadsheet_adapter())
+      .spreadsheet_move_sheet(identifier, index);
 }
 
 void Presentation::move_slide(const Slide &slide,
                               const std::uint32_t index) const {
   const ElementIdentifier identifier = check_(slide);
   check_move(root_element(), slide, ElementType::slide, index);
-  impl()->element_adapter()->element_move(identifier, index);
+  required(impl()->presentation_adapter())
+      .presentation_move_slide(identifier, index);
 }
 
 Text Document::insert_text_before(const Text &anchor,
@@ -908,17 +930,23 @@ Sheet Spreadsheet::insert_sheet(const std::uint32_t index,
     throw std::invalid_argument("a sheet is named " + chosen + " already");
   }
 
-  const internal::abstract::ElementAdapter *adapter = impl()->element_adapter();
   const ElementIdentifier identifier =
-      adapter->element_insert_sheet(root.identifier(), index, chosen);
+      required(impl()->spreadsheet_adapter())
+          .spreadsheet_insert_sheet(index, chosen);
+  const internal::abstract::ElementAdapter *adapter = impl()->element_adapter();
   return {adapter, identifier, adapter->sheet_adapter(identifier)};
 }
 
 std::vector<Slide> Presentation::slide_layouts() const {
+  const internal::abstract::PresentationAdapter *slides =
+      impl()->presentation_adapter();
+  if (slides == nullptr) {
+    return {};
+  }
   const internal::abstract::ElementAdapter *adapter = impl()->element_adapter();
   std::vector<Slide> result;
   for (const ElementIdentifier identifier :
-       adapter->element_slide_layouts(impl()->root_element())) {
+       slides->presentation_slide_layouts()) {
     result.emplace_back(adapter, identifier,
                         adapter->slide_adapter(identifier));
   }
@@ -938,9 +966,10 @@ Slide Presentation::insert_slide(const std::uint32_t index,
     throw std::out_of_range("slide index " + std::to_string(index) +
                             " past the " + std::to_string(slides) + " slides");
   }
-  const internal::abstract::ElementAdapter *adapter = impl()->element_adapter();
+  const internal::abstract::PresentationAdapter &presentation =
+      required(impl()->presentation_adapter());
   if (const std::size_t layouts =
-          adapter->element_slide_layouts(root.identifier()).size();
+          presentation.presentation_slide_layouts().size();
       layout >= layouts) {
     if (layouts == 0) {
       throw UnsupportedOperation();
@@ -949,7 +978,8 @@ Slide Presentation::insert_slide(const std::uint32_t index,
                             std::to_string(layouts) + " layouts");
   }
   const ElementIdentifier identifier =
-      adapter->element_insert_slide(root.identifier(), index, layout);
+      presentation.presentation_insert_slide(index, layout);
+  const internal::abstract::ElementAdapter *adapter = impl()->element_adapter();
   return {adapter, identifier, adapter->slide_adapter(identifier)};
 }
 
@@ -978,9 +1008,18 @@ Frame Document::insert_text_box_(const Element &page, const Measure &x,
     throw std::invalid_argument("a text box needs a positive size");
   }
 
+  const ElementIdentifier page_id = check_(page);
+  ElementIdentifier identifier = null_element_id;
+  if (const internal::abstract::PresentationAdapter *slides =
+          m_impl->presentation_adapter();
+      slides != nullptr) {
+    identifier =
+        slides->presentation_insert_text_box(page_id, x, y, width, height);
+  } else {
+    identifier = required(m_impl->drawing_adapter())
+                     .drawing_insert_text_box(page_id, x, y, width, height);
+  }
   const internal::abstract::ElementAdapter *adapter = m_impl->element_adapter();
-  const ElementIdentifier identifier =
-      adapter->element_insert_text_box(check_(page), x, y, width, height);
   return {adapter, identifier, adapter->frame_adapter(identifier)};
 }
 
@@ -991,12 +1030,22 @@ Spreadsheet::dependents(const SheetPosition &position) const {
 
 std::vector<SheetPosition>
 Spreadsheet::dependents(const std::span<const SheetPosition> positions) const {
-  return impl()->sheet_dependencies().dependents(
+  const internal::abstract::SpreadsheetAdapter *sheets =
+      impl()->spreadsheet_adapter();
+  if (sheets == nullptr) {
+    return {};
+  }
+  return sheets->spreadsheet_dependencies().dependents(
       std::vector(std::begin(positions), std::end(positions)));
 }
 
 std::vector<SheetPosition> Spreadsheet::unresolved_formulas() const {
-  return impl()->sheet_dependencies().unresolved();
+  const internal::abstract::SpreadsheetAdapter *sheets =
+      impl()->spreadsheet_adapter();
+  if (sheets == nullptr) {
+    return {};
+  }
+  return sheets->spreadsheet_dependencies().unresolved();
 }
 
 Recalculation Spreadsheet::recalculate() const {

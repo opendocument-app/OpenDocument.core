@@ -27,6 +27,7 @@ namespace odr::internal {
 /// cell gives the result the file caches, and no answer where it caches none.
 class SheetCellSource final : public formula::CellSource {
 public:
+  /// @throws UnsupportedOperation for a document with no spreadsheet adapter.
   explicit SheetCellSource(const abstract::Document &document);
 
   [[nodiscard]] std::optional<std::uint32_t>

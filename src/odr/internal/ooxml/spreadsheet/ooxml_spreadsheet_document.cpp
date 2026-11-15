@@ -57,8 +57,8 @@ std::optional<TableDimensions> array_span_of(const pugi::xml_node formula) {
   return TableDimensions(bottom - top + 1, right - left + 1);
 }
 
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(Document &document, ElementRegistry &registry);
+EngineAdapters create_element_adapter(Document &document,
+                                      ElementRegistry &registry);
 
 /// The `workbook` `calcPr`, appended where it is missing. ECMA-376 18.2.27
 /// orders the children, so a new one goes before the first that must follow it.
@@ -147,7 +147,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
   m_root_element = parse_tree(m_element_registry, parse_context,
                               workbook_xml.document_element());
 
-  m_element_adapter = create_element_adapter(*this, m_element_registry);
+  set_adapters_(create_element_adapter(*this, m_element_registry));
 }
 
 const ElementRegistry &Document::element_registry() const {
@@ -693,15 +693,32 @@ using AdapterBase = internal::RegistryElementAdapter<
     abstract::SpanAdapter, abstract::TextAdapter, abstract::LinkAdapter,
     abstract::FrameAdapter, abstract::ImageAdapter>;
 
-class ElementAdapter final : public AdapterBase {
+class ElementAdapter final : public AdapterBase,
+                             public abstract::SpreadsheetAdapter {
 public:
   ElementAdapter(Document &document, ElementRegistry &registry)
       : AdapterBase(registry), m_document(&document) {}
 
+  [[nodiscard]] const SheetDependencies &
+  spreadsheet_dependencies() const override {
+    return m_document->sheet_dependencies();
+  }
+  [[nodiscard]] formula::Settings
+  spreadsheet_formula_settings() const override {
+    return m_document->formula_settings();
+  }
+  [[nodiscard]] std::vector<formula::Name>
+  spreadsheet_formula_names() const override {
+    return m_document->formula_names();
+  }
+  [[nodiscard]] std::vector<formula::ExternalSheet>
+  spreadsheet_external_sheets() const override {
+    return m_document->formula_external_sheets();
+  }
+
   [[nodiscard]] ElementIdentifier
-  element_insert_sheet([[maybe_unused]] const ElementIdentifier element_id,
-                       const std::uint32_t index,
-                       const std::string &name) const override {
+  spreadsheet_insert_sheet(const std::uint32_t index,
+                           const std::string &name) const override {
     return m_document->insert_sheet(index, name);
   }
 
@@ -709,10 +726,8 @@ public:
   /// every row, then of every column, which leaves none standing. A sheet
   /// holding a table or a pivot table, or one a pivot cache reads, is
   /// refused: what names them is not rewritten.
-  void element_remove(const ElementIdentifier element_id) const override {
-    if (element_type(element_id) != ElementType::sheet) {
-      throw UnsupportedOperation();
-    }
+  void
+  spreadsheet_remove_sheet(const ElementIdentifier element_id) const override {
     const ElementRegistry::ElementRelations &relations =
         *m_registry->element_relations(element_id);
     const formula::SheetEdit rows{
@@ -766,12 +781,9 @@ public:
     }
   }
 
-  void element_move(const ElementIdentifier element_id,
-                    const std::uint32_t index) const override {
-    if (element_type(element_id) != ElementType::sheet) {
-      throw UnsupportedOperation();
-    }
-    m_document->move_sheet(element_id, index);
+  void spreadsheet_move_sheet(const ElementIdentifier sheet,
+                              const std::uint32_t index) const override {
+    m_document->move_sheet(sheet, index);
   }
 
   [[nodiscard]] std::string
@@ -2194,9 +2206,11 @@ private:
   }
 };
 
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(Document &document, ElementRegistry &registry) {
-  return std::make_unique<ElementAdapter>(document, registry);
+EngineAdapters create_element_adapter(Document &document,
+                                      ElementRegistry &registry) {
+  auto adapter = std::make_unique<ElementAdapter>(document, registry);
+  const ElementAdapter *raw = adapter.get();
+  return {.element = std::move(adapter), .spreadsheet = raw};
 }
 
 } // namespace

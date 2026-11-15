@@ -45,6 +45,9 @@ struct Name;
 
 namespace odr::internal::abstract {
 class ReadableFilesystem;
+class SpreadsheetAdapter;
+class PresentationAdapter;
+class DrawingAdapter;
 class ElementAdapter;
 class TextRootAdapter;
 class SlideAdapter;
@@ -95,20 +98,103 @@ public:
   [[nodiscard]] virtual ElementIdentifier root_element() const = 0;
   [[nodiscard]] virtual const ElementAdapter *element_adapter() const = 0;
 
-  /// Built on the first question and kept: writing a formula is refused, so
-  /// nothing a write does changes it.
-  [[nodiscard]] virtual const SheetDependencies &sheet_dependencies() const = 0;
+  /// What only one document type answers. Null for another type, and for an
+  /// engine that models none of it.
+  [[nodiscard]] virtual const SpreadsheetAdapter *
+  spreadsheet_adapter() const = 0;
+  [[nodiscard]] virtual const PresentationAdapter *
+  presentation_adapter() const = 0;
+  [[nodiscard]] virtual const DrawingAdapter *drawing_adapter() const = 0;
+};
 
-  /// How the formulas of the document compute: what an `.ods` states, and
-  /// Excel's settings for every other format.
-  [[nodiscard]] virtual formula::Settings formula_settings() const = 0;
-  /// The names the document defines for its formulas. None for a format
-  /// that states none.
-  [[nodiscard]] virtual std::vector<formula::Name> formula_names() const = 0;
+/// A workbook's formulas and its sheets.
+class SpreadsheetAdapter {
+public:
+  virtual ~SpreadsheetAdapter() = default;
+
+  /// Built on the first question and kept until an edit moves formulas.
+  [[nodiscard]] virtual const SheetDependencies &
+  spreadsheet_dependencies() const = 0;
+  /// How the formulas compute: what an `.ods` states, and Excel's settings
+  /// for every other format.
+  [[nodiscard]] virtual formula::Settings
+  spreadsheet_formula_settings() const = 0;
+  /// The names the document defines for its formulas.
+  [[nodiscard]] virtual std::vector<formula::Name>
+  spreadsheet_formula_names() const = 0;
   /// The copies of other documents' sheets that the file caches apart from
   /// its own sheets (ECMA-376 18.14). An `.ods` holds them as sheets.
   [[nodiscard]] virtual std::vector<formula::ExternalSheet>
-  formula_external_sheets() const = 0;
+  spreadsheet_external_sheets() const = 0;
+
+  /// An empty sheet named @p name at @p index among the sheets. The caller
+  /// checked both.
+  /// @throws UnsupportedOperation where the engine cannot write.
+  virtual ElementIdentifier
+  spreadsheet_insert_sheet(std::uint32_t index,
+                           const std::string &name) const = 0;
+  /// Takes the sheet @p sheet out; a reference to it becomes `#REF!`.
+  /// @throws UnsupportedOperation where the engine cannot write.
+  virtual void spreadsheet_remove_sheet(ElementIdentifier sheet) const = 0;
+  /// Puts @p sheet at @p index among the sheets, counted after the move. The
+  /// caller checked @p index.
+  /// @throws UnsupportedOperation where the engine cannot write.
+  virtual void spreadsheet_move_sheet(ElementIdentifier sheet,
+                                      std::uint32_t index) const = 0;
+};
+
+/// A presentation's slides.
+class PresentationAdapter {
+public:
+  virtual ~PresentationAdapter() = default;
+
+  /// The slides outside the root that @ref presentation_insert_slide copies,
+  /// one per layout; none where the engine cannot insert a slide.
+  [[nodiscard]] virtual std::vector<ElementIdentifier>
+  presentation_slide_layouts() const = 0;
+  /// An empty slide at @p index among the slides, from the @p layout -th of
+  /// @ref presentation_slide_layouts. The caller checked both.
+  /// @throws UnsupportedOperation where the engine cannot write.
+  virtual ElementIdentifier
+  presentation_insert_slide(std::uint32_t index,
+                            std::uint32_t layout) const = 0;
+  /// Takes the slide @p slide out, with what the format keeps for it.
+  /// @throws UnsupportedOperation where the engine cannot write.
+  virtual void presentation_remove_slide(ElementIdentifier slide) const = 0;
+  /// Puts @p slide at @p index among the slides, counted after the move. The
+  /// caller checked @p index.
+  /// @throws UnsupportedOperation where the engine cannot write.
+  virtual void presentation_move_slide(ElementIdentifier slide,
+                                       std::uint32_t index) const = 0;
+
+  /// A frame outside the root as @ref presentation_insert_text_box makes it;
+  /// null where it makes none.
+  [[nodiscard]] virtual ElementIdentifier
+  presentation_text_box_layout() const = 0;
+  /// A text box holding one empty paragraph on the slide @p slide. The
+  /// caller checked that every length has a fixed size.
+  /// @throws UnsupportedOperation where the engine cannot write.
+  virtual ElementIdentifier
+  presentation_insert_text_box(ElementIdentifier slide, const Measure &x,
+                               const Measure &y, const Measure &width,
+                               const Measure &height) const = 0;
+};
+
+/// A drawing's pages.
+class DrawingAdapter {
+public:
+  virtual ~DrawingAdapter() = default;
+
+  /// A frame outside the root as @ref drawing_insert_text_box makes it; null
+  /// where it makes none.
+  [[nodiscard]] virtual ElementIdentifier drawing_text_box_layout() const = 0;
+  /// A text box holding one empty paragraph on the page @p page. The caller
+  /// checked that every length has a fixed size.
+  /// @throws UnsupportedOperation where the engine cannot write.
+  virtual ElementIdentifier
+  drawing_insert_text_box(ElementIdentifier page, const Measure &x,
+                          const Measure &y, const Measure &width,
+                          const Measure &height) const = 0;
 };
 
 class ElementAdapter {
@@ -137,7 +223,8 @@ public:
   element_is_editable(ElementIdentifier element_id) const = 0;
 
   /// Removes @p element_id and its subtree; it keeps its id and stops being
-  /// reachable, so an id already handed out never names something else.
+  /// reachable, so an id already handed out never names something else. A
+  /// sheet or a slide goes through its document adapter instead.
   virtual void
   element_remove([[maybe_unused]] const ElementIdentifier element_id) const {
     throw UnsupportedOperation();
@@ -149,60 +236,6 @@ public:
   virtual ElementIdentifier
   element_append_text([[maybe_unused]] const ElementIdentifier element_id,
                       [[maybe_unused]] const std::string &text) const {
-    throw UnsupportedOperation();
-  }
-
-  /// Puts the sheet or slide @p element_id at @p index among the others of
-  /// its kind, counted after the move. The caller checked @p index.
-  /// @throws UnsupportedOperation where the engine cannot write.
-  virtual void element_move([[maybe_unused]] const ElementIdentifier element_id,
-                            [[maybe_unused]] const std::uint32_t index) const {
-    throw UnsupportedOperation();
-  }
-
-  /// An empty sheet named @p name at @p index among the sheets of the root
-  /// @p element_id, which the caller checked.
-  /// @throws UnsupportedOperation where the engine cannot write.
-  virtual ElementIdentifier
-  element_insert_sheet([[maybe_unused]] const ElementIdentifier element_id,
-                       [[maybe_unused]] const std::uint32_t index,
-                       [[maybe_unused]] const std::string &name) const {
-    throw UnsupportedOperation();
-  }
-
-  /// The slides outside the root of @p element_id that
-  /// @ref element_insert_slide copies, one per layout; none where the engine
-  /// cannot insert a slide.
-  [[nodiscard]] virtual std::vector<ElementIdentifier> element_slide_layouts(
-      [[maybe_unused]] const ElementIdentifier element_id) const {
-    return {};
-  }
-  /// A frame outside the root of @p element_id as
-  /// @ref element_insert_text_box makes it; null where it makes none.
-  [[nodiscard]] virtual ElementIdentifier element_text_box_layout(
-      [[maybe_unused]] const ElementIdentifier element_id) const {
-    return null_element_id;
-  }
-  /// An empty slide at @p index among the slides of the root @p element_id,
-  /// from the @p layout -th of @ref element_slide_layouts. The caller checked
-  /// both.
-  /// @throws UnsupportedOperation where the engine cannot write.
-  virtual ElementIdentifier
-  element_insert_slide([[maybe_unused]] const ElementIdentifier element_id,
-                       [[maybe_unused]] const std::uint32_t index,
-                       [[maybe_unused]] const std::uint32_t layout) const {
-    throw UnsupportedOperation();
-  }
-
-  /// A text box holding one empty paragraph on the slide or drawing page
-  /// @p element_id. The caller checked that every length has a fixed size.
-  /// @throws UnsupportedOperation where the engine cannot write.
-  virtual ElementIdentifier
-  element_insert_text_box([[maybe_unused]] const ElementIdentifier element_id,
-                          [[maybe_unused]] const Measure &x,
-                          [[maybe_unused]] const Measure &y,
-                          [[maybe_unused]] const Measure &width,
-                          [[maybe_unused]] const Measure &height) const {
     throw UnsupportedOperation();
   }
 

@@ -31,8 +31,8 @@ class Drawing final : public Document { /* text boxes */ };
   is no `is_*`; `document_type()` answers that.
 - A subclass adds no state. Copying one into a `Document` slices nothing that
   matters, and every handle shares the one document, as before.
-- `internal::abstract::Document` does not change. The split is in the public
-  handles only.
+- The internal interface splits the same way, into document adapters. See
+  [The internal side](#the-internal-side).
 
 ## Which method goes where
 
@@ -61,6 +61,63 @@ inheritance badly. A second shared method is declared twice as well.
 
 **Why subclasses, not sibling handles:** a `Spreadsheet` is passed wherever a
 `Document` is taken, with no unwrapping to save it or walk its elements.
+
+## The internal side
+
+`internal::abstract::Document` gives a nullable adapter per type, as
+`ElementAdapter` gives one per element kind (`sheet_adapter(id)`):
+
+```cpp
+class Document {
+  // file type, document type, save, root, element_adapter, ...
+  virtual const SpreadsheetAdapter *spreadsheet_adapter() const = 0;
+  virtual const PresentationAdapter *presentation_adapter() const = 0;
+  virtual const DrawingAdapter *drawing_adapter() const = 0;
+};
+```
+
+| Adapter | Methods |
+|---------|---------|
+| `SpreadsheetAdapter` | `spreadsheet_dependencies`, `_formula_settings`, `_formula_names`, `_external_sheets`, `spreadsheet_insert_sheet`, `_remove_sheet`, `_move_sheet` |
+| `PresentationAdapter` | `presentation_slide_layouts`, `_insert_slide`, `_remove_slide`, `_move_slide`, `_text_box_layout`, `_insert_text_box` |
+| `DrawingAdapter` | `drawing_text_box_layout`, `drawing_insert_text_box` |
+
+- An adapter is null for another type, and for an engine that models none
+  of it: `.xls`, `.csv`, `.numbers`, `.ppt` and `.key` give none. The public
+  handle reads null as nothing to answer, and a write as
+  `UnsupportedOperation`, which is what the old defaults did.
+- The engine's one adapter class implements its adapters. The prefix keeps
+  their names apart, as it does for the element adapters, so odf implements
+  all three and both text-box inserts forward to one function.
+  `common::Document::set_adapters_` keeps only the one that matches the
+  document type, so the engine does not repeat that check.
+- No `TextDocumentAdapter` until a text-only method needs one.
+
+What stays where:
+
+- **`Document`**: what every type has. The formula queries leave it.
+- **`ElementAdapter`**: navigation, and the edits that apply in every type:
+  `element_remove` of a run, a paragraph or a frame, `element_append_text`.
+  `element_move` and the sheet, slide and text-box inserts leave it.
+- **Element adapters** (`SheetAdapter`, `ParagraphAdapter`, `TextAdapter`):
+  edits of one element, as before: rows, cells, a paragraph split, a run.
+- **Removing a sheet or a slide** goes through its document adapter, because
+  what goes with it is the document's: references become `#REF!`, a pptx
+  slide takes its notes and its show entries. `Document::remove` dispatches
+  on the element type.
+
+Open questions:
+
+- Where creation and removal live. Above, an insert or a remove whose effect
+  reaches past the element (sheets, slides) is the document adapter's, and
+  one that stays inside its parent is the element adapters'. The other cut
+  is one edit adapter for every structural write, which would move
+  `element_remove`, `element_append_text`, `paragraph_split` and
+  `text_insert` too.
+- The edit log `common::Document` keeps for recalculation (`note_written`,
+  `note_moved`, the cached dependency graph) is spreadsheet state on the
+  common base, and recalculation still finds it with a `dynamic_cast`. It
+  could move behind `SpreadsheetAdapter`.
 
 ## Migration
 

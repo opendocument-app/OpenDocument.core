@@ -35,8 +35,8 @@
 namespace odr::internal::ooxml::presentation {
 
 namespace {
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(Document &document, ElementRegistry &registry);
+EngineAdapters create_element_adapter(Document &document,
+                                      ElementRegistry &registry);
 
 /// [ECMA-376] 19.7.10: the placeholders a slide types into; a graphic one
 /// (`pic`, `chart`, `tbl`, ...) and the date, footer and number are none.
@@ -209,7 +209,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
   load_slide_styles_(slides);
   load_slide_layouts_();
 
-  m_element_adapter = create_element_adapter(*this, m_element_registry);
+  set_adapters_(create_element_adapter(*this, m_element_registry));
 }
 
 bool Document::is_editable() const noexcept { return true; }
@@ -830,7 +830,8 @@ using AdapterBase = internal::RegistryElementAdapter<
     abstract::TableColumnAdapter, abstract::TableRowAdapter,
     abstract::TableCellAdapter, abstract::FrameAdapter, abstract::ImageAdapter>;
 
-class ElementAdapter final : public AdapterBase {
+class ElementAdapter final : public AdapterBase,
+                             public abstract::PresentationAdapter {
 public:
   ElementAdapter(Document &document, ElementRegistry &registry)
       : AdapterBase(registry), m_document(&document) {}
@@ -840,36 +841,35 @@ public:
     return true;
   }
 
-  [[nodiscard]] std::vector<ElementIdentifier> element_slide_layouts(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
+  [[nodiscard]] std::vector<ElementIdentifier>
+  presentation_slide_layouts() const override {
     return m_document->slide_layouts();
   }
-  [[nodiscard]] ElementIdentifier element_text_box_layout(
-      [[maybe_unused]] const ElementIdentifier element_id) const override {
+  [[nodiscard]] ElementIdentifier
+  presentation_text_box_layout() const override {
     return m_document->text_box_layout();
   }
   [[nodiscard]] ElementIdentifier
-  element_insert_slide([[maybe_unused]] const ElementIdentifier element_id,
-                       const std::uint32_t index,
-                       const std::uint32_t layout) const override {
+  presentation_insert_slide(const std::uint32_t index,
+                            const std::uint32_t layout) const override {
     return m_document->insert_slide(index, layout);
   }
-  void element_move(const ElementIdentifier element_id,
-                    const std::uint32_t index) const override {
-    if (element_type(element_id) != ElementType::slide) {
-      throw UnsupportedOperation();
-    }
-    m_document->move_slide(element_id, index);
+  void presentation_remove_slide(const ElementIdentifier slide) const override {
+    m_document->remove_slide(slide);
+  }
+  void presentation_move_slide(const ElementIdentifier slide,
+                               const std::uint32_t index) const override {
+    m_document->move_slide(slide, index);
   }
 
   [[nodiscard]] ElementIdentifier
-  element_insert_text_box(const ElementIdentifier element_id, const Measure &x,
-                          const Measure &y, const Measure &width,
-                          const Measure &height) const override {
-    if (element_type(element_id) != ElementType::slide) {
+  presentation_insert_text_box(const ElementIdentifier slide, const Measure &x,
+                               const Measure &y, const Measure &width,
+                               const Measure &height) const override {
+    if (element_type(slide) != ElementType::slide) {
       throw UnsupportedOperation();
     }
-    return m_document->insert_text_box(element_id, x, y, width, height);
+    return m_document->insert_text_box(slide, x, y, width, height);
   }
 
   [[nodiscard]] PageLayout
@@ -1029,10 +1029,6 @@ public:
   }
 
   void element_remove(const ElementIdentifier element_id) const override {
-    if (element_type(element_id) == ElementType::slide) {
-      m_document->remove_slide(element_id);
-      return;
-    }
     const ElementIdentifier parent_id = element_parent(element_id);
     if (element_type(element_id) == ElementType::text &&
         parent_id != null_element_id &&
@@ -1394,9 +1390,11 @@ private:
   }
 };
 
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(Document &document, ElementRegistry &registry) {
-  return std::make_unique<ElementAdapter>(document, registry);
+EngineAdapters create_element_adapter(Document &document,
+                                      ElementRegistry &registry) {
+  auto adapter = std::make_unique<ElementAdapter>(document, registry);
+  const ElementAdapter *raw = adapter.get();
+  return {.element = std::move(adapter), .presentation = raw};
 }
 
 } // namespace

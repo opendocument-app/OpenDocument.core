@@ -79,7 +79,8 @@ void evaluate_file(const TestFile &file, Tally &tally) {
   const std::optional<formula::Syntax> syntax =
       formula::syntax_of(document->file_type());
   const abstract::ElementAdapter *adapter = document->element_adapter();
-  if (!syntax.has_value() || adapter == nullptr) {
+  if (!syntax.has_value() || adapter == nullptr ||
+      document->spreadsheet_adapter() == nullptr) {
     return;
   }
   const SheetCellSource source(*document);

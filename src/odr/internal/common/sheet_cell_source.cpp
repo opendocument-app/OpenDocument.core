@@ -1,5 +1,7 @@
 #include <odr/internal/common/sheet_cell_source.hpp>
 
+#include <odr/exceptions.hpp>
+
 #include <odr/internal/abstract/document.hpp>
 #include <odr/internal/util/string_util.hpp>
 
@@ -72,16 +74,27 @@ bool is_at(const SheetCell &cell, const TablePosition &position) {
   return !cell || cell.position() == position;
 }
 
+const abstract::SpreadsheetAdapter &
+spreadsheet_of(const abstract::Document &document) {
+  const abstract::SpreadsheetAdapter *spreadsheet =
+      document.spreadsheet_adapter();
+  if (spreadsheet == nullptr) {
+    throw UnsupportedOperation();
+  }
+  return *spreadsheet;
+}
+
 } // namespace
 
 SheetCellSource::SheetCellSource(const abstract::Document &document)
     : m_adapter{document.element_adapter()},
-      m_settings{document.formula_settings()},
+      m_settings{spreadsheet_of(document).spreadsheet_formula_settings()},
       m_syntax{formula::syntax_of(document.file_type())} {
-  for (formula::Name &name : document.formula_names()) {
+  const abstract::SpreadsheetAdapter &spreadsheet = spreadsheet_of(document);
+  for (formula::Name &name : spreadsheet.spreadsheet_formula_names()) {
     m_names[util::string::to_lower(name.name)].push_back(std::move(name));
   }
-  m_external = document.formula_external_sheets();
+  m_external = spreadsheet.spreadsheet_external_sheets();
   for (formula::ExternalSheet &copy : m_external) {
     auto &cells = m_external_cells.emplace_back();
     TableDimensions &extent = m_external_extents.emplace_back();
