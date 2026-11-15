@@ -52,8 +52,7 @@
 namespace odr::internal::odf {
 
 namespace {
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(Document &document, ElementRegistry &registry);
+EngineAdapters create_adapters(Document &document, ElementRegistry &registry);
 std::string read_generator(pugi::xml_node content_root,
                            const abstract::ReadableFilesystem *files);
 bool gradient_angles_in_tenths(std::string_view office_version,
@@ -123,23 +122,7 @@ void Document::init_(const pugi::xml_node content_root,
                            master_page_id);
   }
 
-  m_element_adapter = create_element_adapter(*this, m_element_registry);
-  const abstract::ElementAdapter *adapter = m_element_adapter.get();
-  switch (m_document_type) {
-  case DocumentType::spreadsheet:
-    m_spreadsheet_adapter =
-        dynamic_cast<const abstract::SpreadsheetAdapter *>(adapter);
-    break;
-  case DocumentType::presentation:
-    m_presentation_adapter =
-        dynamic_cast<const abstract::PresentationAdapter *>(adapter);
-    break;
-  case DocumentType::drawing:
-    m_drawing_adapter = dynamic_cast<const abstract::DrawingAdapter *>(adapter);
-    break;
-  default:
-    break;
-  }
+  set_adapters_(create_adapters(*this, m_element_registry));
   load_layouts_(content_root.child("office:body").first_child());
 }
 
@@ -162,7 +145,7 @@ void Document::load_layouts_(const pugi::xml_node body) {
   pugi::xml_node pages = root.append_child(body.name());
 
   if (kind == "office:presentation") {
-    const auto [width, height] = page_size(*m_element_adapter, master_id);
+    const auto [width, height] = page_size(*element_adapter(), master_id);
     for (const SlideLayoutSource &source : list_slide_layouts(styles)) {
       const pugi::xml_node layout =
           source.node ? source.node
@@ -3650,9 +3633,10 @@ private:
   }
 };
 
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(Document &document, ElementRegistry &registry) {
-  return std::make_unique<ElementAdapter>(document, registry);
+EngineAdapters create_adapters(Document &document, ElementRegistry &registry) {
+  auto adapter = std::make_unique<ElementAdapter>(document, registry);
+  const ElementAdapter *raw = adapter.get();
+  return {std::move(adapter), raw, raw, raw};
 }
 
 } // namespace

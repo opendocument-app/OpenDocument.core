@@ -57,8 +57,7 @@ std::optional<TableDimensions> array_span_of(const pugi::xml_node formula) {
   return TableDimensions(bottom - top + 1, right - left + 1);
 }
 
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(Document &document, ElementRegistry &registry);
+EngineAdapters create_adapters(Document &document, ElementRegistry &registry);
 
 /// The `workbook` `calcPr`, appended where it is missing. ECMA-376 18.2.27
 /// orders the children, so a new one goes before the first that must follow it.
@@ -147,9 +146,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
   m_root_element = parse_tree(m_element_registry, parse_context,
                               workbook_xml.document_element());
 
-  m_element_adapter = create_element_adapter(*this, m_element_registry);
-  m_spreadsheet_adapter = dynamic_cast<const abstract::SpreadsheetAdapter *>(
-      m_element_adapter.get());
+  set_adapters_(create_adapters(*this, m_element_registry));
 }
 
 const ElementRegistry &Document::element_registry() const {
@@ -2208,9 +2205,10 @@ private:
   }
 };
 
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(Document &document, ElementRegistry &registry) {
-  return std::make_unique<ElementAdapter>(document, registry);
+EngineAdapters create_adapters(Document &document, ElementRegistry &registry) {
+  auto adapter = std::make_unique<ElementAdapter>(document, registry);
+  const ElementAdapter *raw = adapter.get();
+  return {.element = std::move(adapter), .spreadsheet = raw};
 }
 
 } // namespace

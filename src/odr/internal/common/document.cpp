@@ -58,6 +58,18 @@ const abstract::ElementAdapter *Document::element_adapter() const {
   return m_element_adapter.get();
 }
 
+void Document::set_adapters_(EngineAdapters adapters) {
+  m_element_adapter = std::move(adapters.element);
+  m_spreadsheet_adapter = m_document_type == DocumentType::spreadsheet
+                              ? adapters.spreadsheet
+                              : nullptr;
+  m_presentation_adapter = m_document_type == DocumentType::presentation
+                               ? adapters.presentation
+                               : nullptr;
+  m_drawing_adapter =
+      m_document_type == DocumentType::drawing ? adapters.drawing : nullptr;
+}
+
 const abstract::SpreadsheetAdapter *Document::spreadsheet_adapter() const {
   return m_spreadsheet_adapter;
 }

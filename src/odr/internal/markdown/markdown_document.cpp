@@ -11,17 +11,15 @@
 namespace odr::internal::markdown {
 
 namespace {
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const ElementRegistry &registry,
-                       const StyleRegistry &style_registry);
+EngineAdapters create_adapters(const ElementRegistry &registry,
+                               const StyleRegistry &style_registry);
 }
 
 Document::Document(const std::string_view text)
     : internal::Document(FileType::markdown, DocumentType::text, nullptr) {
   m_root_element = parse_tree(m_element_registry, m_style_registry, text);
 
-  m_element_adapter =
-      create_element_adapter(m_element_registry, m_style_registry);
+  set_adapters_(create_adapters(m_element_registry, m_style_registry));
 }
 
 const ElementRegistry &Document::element_registry() const {
@@ -186,10 +184,10 @@ private:
   }
 };
 
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const ElementRegistry &registry,
-                       const StyleRegistry &style_registry) {
-  return std::make_unique<ElementAdapter>(registry, style_registry);
+EngineAdapters create_adapters(const ElementRegistry &registry,
+                               const StyleRegistry &style_registry) {
+  return {.element =
+              std::make_unique<ElementAdapter>(registry, style_registry)};
 }
 
 } // namespace

@@ -35,8 +35,7 @@
 namespace odr::internal::ooxml::presentation {
 
 namespace {
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(Document &document, ElementRegistry &registry);
+EngineAdapters create_adapters(Document &document, ElementRegistry &registry);
 
 /// [ECMA-376] 19.7.10: the placeholders a slide types into; a graphic one
 /// (`pic`, `chart`, `tbl`, ...) and the date, footer and number are none.
@@ -209,9 +208,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
   load_slide_styles_(slides);
   load_slide_layouts_();
 
-  m_element_adapter = create_element_adapter(*this, m_element_registry);
-  m_presentation_adapter = dynamic_cast<const abstract::PresentationAdapter *>(
-      m_element_adapter.get());
+  set_adapters_(create_adapters(*this, m_element_registry));
 }
 
 bool Document::is_editable() const noexcept { return true; }
@@ -1392,9 +1389,10 @@ private:
   }
 };
 
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(Document &document, ElementRegistry &registry) {
-  return std::make_unique<ElementAdapter>(document, registry);
+EngineAdapters create_adapters(Document &document, ElementRegistry &registry) {
+  auto adapter = std::make_unique<ElementAdapter>(document, registry);
+  const ElementAdapter *raw = adapter.get();
+  return {.element = std::move(adapter), .presentation = raw};
 }
 
 } // namespace

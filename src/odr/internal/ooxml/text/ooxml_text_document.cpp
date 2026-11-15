@@ -25,8 +25,8 @@
 namespace odr::internal::ooxml::text {
 
 namespace {
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry);
+EngineAdapters create_adapters(const Document &document,
+                               ElementRegistry &registry);
 
 /// `w:top` and `w:bottom` are signed: a negative margin lets the header flow
 /// into the body, which as a CSS margin would push the text off the page.
@@ -101,7 +101,7 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
   resolve_list_numbering(m_element_registry, m_numbering_registry,
                          m_root_element);
 
-  m_element_adapter = create_element_adapter(*this, m_element_registry);
+  set_adapters_(create_adapters(*this, m_element_registry));
 }
 
 ElementRegistry &Document::element_registry() { return m_element_registry; }
@@ -863,9 +863,9 @@ private:
   }
 };
 
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(const Document &document, ElementRegistry &registry) {
-  return std::make_unique<ElementAdapter>(document, registry);
+EngineAdapters create_adapters(const Document &document,
+                               ElementRegistry &registry) {
+  return {.element = std::make_unique<ElementAdapter>(document, registry)};
 }
 
 } // namespace

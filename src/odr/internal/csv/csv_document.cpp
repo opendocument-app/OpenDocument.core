@@ -366,7 +366,7 @@ CsvDocument::CsvDocument(const abstract::File &file,
   }
 
   m_root_element = make_id(Kind::root);
-  m_element_adapter = std::make_unique<ElementAdapter>(*this);
+  set_adapters_({.element = std::make_unique<ElementAdapter>(*this)});
 }
 
 std::string_view CsvDocument::cell(const std::uint32_t column,

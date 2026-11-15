@@ -19,8 +19,7 @@ namespace odr::internal::iwork {
 
 namespace {
 
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(ElementRegistry &registry);
+EngineAdapters create_adapters(ElementRegistry &registry);
 
 ElementIdentifier parse_tree(ElementRegistry &registry,
                              const FileType file_type,
@@ -45,7 +44,7 @@ Document::Document(const FileType file_type,
                          std::move(files)) {
   m_root_element = parse_tree(m_element_registry, file_type, *m_files);
 
-  m_element_adapter = create_element_adapter(m_element_registry);
+  set_adapters_(create_adapters(m_element_registry));
 }
 
 const ElementRegistry &Document::element_registry() const {
@@ -325,9 +324,8 @@ private:
   }
 };
 
-std::unique_ptr<abstract::ElementAdapter>
-create_element_adapter(ElementRegistry &registry) {
-  return std::make_unique<ElementAdapter>(registry);
+EngineAdapters create_adapters(ElementRegistry &registry) {
+  return {.element = std::make_unique<ElementAdapter>(registry)};
 }
 
 } // namespace
