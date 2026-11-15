@@ -259,11 +259,17 @@ export declare class Document {
    * is in private fields and clones away to an empty object. */
   readonly handle: number;
 
-  /** Each shares this session, so closing either closes both.
+  /** Shares this session, so closing either closes both.
    * @throws OdrError `WrongDocumentType` for another document type */
   asTextDocument(): TextDocument;
+  /** Shares this session, so closing either closes both.
+   * @throws OdrError `WrongDocumentType` for another document type */
   asSpreadsheet(): Spreadsheet;
+  /** Shares this session, so closing either closes both.
+   * @throws OdrError `WrongDocumentType` for another document type */
   asPresentation(): Presentation;
+  /** Shares this session, so closing either closes both.
+   * @throws OdrError `WrongDocumentType` for another document type */
   asDrawing(): Drawing;
 
   readonly fileType: number;
