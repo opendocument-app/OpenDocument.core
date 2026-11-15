@@ -778,6 +778,9 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
                      config.spreadsheet_viewport_mode.has_value()
                          ? static_cast<jint>(*config.spreadsheet_viewport_mode)
                          : -1));
+  set_object("pageLayout", "Lapp/opendocument/core/HtmlPageLayout;",
+             enum_from_code(env, "app/opendocument/core/HtmlPageLayout",
+                            static_cast<jint>(config.page_layout)));
   set_object("viewportContent", "Ljava/lang/String;",
              make_string_opt(env, config.viewport_content));
   set_object("viewportWidth", "Ljava/lang/Integer;",
@@ -957,6 +960,14 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
     result.spreadsheet_viewport_mode =
         code < 0 ? std::nullopt
                  : std::make_optional(static_cast<odr::HtmlViewportMode>(code));
+  }
+  {
+    const jint code =
+        enum_ordinal(env, get_object("pageLayout",
+                                     "Lapp/opendocument/core/HtmlPageLayout;"));
+    if (code >= 0) {
+      result.page_layout = static_cast<odr::HtmlPageLayout>(code);
+    }
   }
   result.viewport_content = get_string_opt("viewportContent");
   {

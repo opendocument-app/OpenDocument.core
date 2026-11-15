@@ -10,12 +10,21 @@ open http://localhost:8731/chunks.html
 open http://localhost:8731/search.html
 open http://localhost:8731/search-early.html
 open http://localhost:8731/search-many.html
+open http://localhost:8731/pages.html
+open http://localhost:8731/pages-continuous.html
 ```
 
 `serve` serves `viewport.js` out of `src/odr/internal/html/frontend/`, so the
 checks run the file the library embeds. `page.html` stands in for a rendered
 view. It writes the `:root{--odr-fit;--odr-zoom}` and `body{zoom}` that
 `write_zoom_style` writes.
+
+`pages.html` is a view under `HtmlPageLayout::single`: four pages, the rule
+`write_page_layout_style` writes, and `#page=2` set before the script runs,
+as a host opens the view. It turns pages by `setPage`, the keys, the hash and
+`odr.chunks.show`, and removes and inserts pages under the current one.
+`pages-continuous.html` is the default layout: every page shows, and
+`#page=N` scrolls rather than hides.
 
 Rules the checks follow:
 

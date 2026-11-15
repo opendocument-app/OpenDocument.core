@@ -65,6 +65,8 @@ public final class HtmlConfig {
   public HtmlViewportMode viewportMode = HtmlViewportMode.AUTOMATIC;
   /** Overrides {@link #viewportMode} for spreadsheet content; {@code null} keeps it. */
   public HtmlViewportMode spreadsheetViewportMode;
+  /** How a view of sheets, slides, drawing pages or pdf pages lays them out. */
+  public HtmlPageLayout pageLayout = HtmlPageLayout.CONTINUOUS;
   /** Raw {@code content} for the viewport meta tag; overrides the modes above when set. */
   public String viewportContent;
   /** The width the output is shown at, in css pixels; fits paged content to it. */

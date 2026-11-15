@@ -51,6 +51,15 @@ typedef NS_ENUM(NSInteger, ODRHtmlViewportMode) {
   ODRHtmlViewportModeFitWidthByView,
 } NS_SWIFT_NAME(HtmlViewportMode);
 
+/// How a view of sheets, slides, drawing pages or pdf pages lays them out —
+/// `odr::HtmlPageLayout`.
+typedef NS_ENUM(NSInteger, ODRHtmlPageLayout) {
+  /// Every page in one column.
+  ODRHtmlPageLayoutContinuous = 0,
+  /// One page shown at a time; the page script switches.
+  ODRHtmlPageLayoutSingle,
+} NS_SWIFT_NAME(HtmlPageLayout);
+
 /// How far an edit in a document view may reach. Host policy, not an engine
 /// fact.
 typedef NS_ENUM(NSInteger, ODRHtmlEditingScope) {
@@ -130,6 +139,8 @@ NS_SWIFT_NAME(HtmlConfig)
 /// Overrides `viewportMode` for spreadsheets when set.
 @property(nonatomic, strong, nullable)
     NSNumber *spreadsheetViewportMode NS_REFINED_FOR_SWIFT;
+/// How a view of sheets, slides, drawing pages or pdf pages lays them out.
+@property(nonatomic) ODRHtmlPageLayout pageLayout;
 /// Raw `content` for the viewport meta tag; overrides the modes above.
 @property(nonatomic, copy, nullable) NSString *viewportContent;
 /// The width the output is shown at, in css pixels; fits paged content to it.

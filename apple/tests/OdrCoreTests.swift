@@ -220,6 +220,22 @@ final class HtmlTests: XCTestCase {
       html.contains("data-odr-editing-scope=\"paragraph\""), "the scope did not reach the html")
   }
 
+  /// Proves the layout crosses the binding; the C++ suite covers the rest.
+  func testPageLayoutReachesTheHtml() throws {
+    XCTAssertEqual(HtmlConfig().pageLayout, .continuous)
+
+    let config = HtmlConfig()
+    config.pageLayout = .single
+
+    let file = try DecodedFile.decode(path: try Fixture.ods())
+    let service = try HtmlTranslator.translate(file: file, config: config)
+    var resources: NSArray?
+    let html = try XCTUnwrap(service.views.first).writeHtml(resources: &resources)
+
+    XCTAssertTrue(
+      html.contains("data-odr-page-layout=\"single\""), "the layout did not reach the html")
+  }
+
   /// The C++ suite covers where the floor lands; this only proves the margin
   /// crosses the binding, `nil` sides and all.
   func testMinContentMarginReachesTheHtml() throws {

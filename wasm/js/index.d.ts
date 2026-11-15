@@ -12,6 +12,7 @@ export interface EnumTables {
   HtmlColorScheme: Record<string, number>;
   HtmlTableGridlines: Record<string, number>;
   HtmlViewportMode: Record<string, number>;
+  HtmlPageLayout: Record<string, number>;
   HtmlEditingScope: Record<string, number>;
   PdfTextMode: Record<string, number>;
   EncryptionState: Record<string, number>;
@@ -214,6 +215,9 @@ export interface HtmlConfig {
   /** Bytes buffered while collecting sheet styles. */
   spreadsheetStyleBuffer?: number;
   viewportMode?: number;
+  /** `HtmlPageLayout`: sheets, slides and pages in one column, or one shown
+   * at a time and turned by the page's `odr.setPage`. */
+  pageLayout?: number;
   /** The width the output is shown at, in css pixels; fits paged content to it. */
   viewportWidth?: number;
   /** The zoom the view opens at, 1 being actual size; unset follows the fit. */

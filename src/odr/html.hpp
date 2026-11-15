@@ -100,6 +100,14 @@ enum class HtmlViewportMode {
   fit_width_by_view,
 };
 
+/// How a view lays out its pages: the sheets of a spreadsheet, slides, drawing
+/// pages and pdf pages. The page script reads and writes `#page=N` in either
+/// layout.
+enum class HtmlPageLayout {
+  continuous, ///< every page in one column
+  single,     ///< one page shown at a time; needs the script, which switches
+};
+
 /// How far an edit in a document view may reach. Host policy, not an engine
 /// fact.
 enum class HtmlEditingScope {
@@ -189,6 +197,8 @@ struct HtmlConfig {
   HtmlViewportMode viewport_mode{HtmlViewportMode::automatic};
   /// Overrides @ref viewport_mode for spreadsheet content when set.
   std::optional<HtmlViewportMode> spreadsheet_viewport_mode;
+  /// How a paged view lays out its pages. A view without pages ignores it.
+  HtmlPageLayout page_layout{HtmlPageLayout::continuous};
   /// Raw `content` for the viewport meta tag; overrides the modes above.
   std::optional<std::string> viewport_content;
   /// The width the output is shown at, in css pixels; fits paged content to it.

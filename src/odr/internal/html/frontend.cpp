@@ -344,6 +344,24 @@ void html::write_chunk_style(const WritingState &state) {
                 "auto}}</style></noscript>");
 }
 
+void html::write_page_layout_style(const WritingState &state) {
+  if (state.config().page_layout != HtmlPageLayout::single) {
+    return;
+  }
+  HtmlWriter &out = state.out();
+  out.write_header_style_begin();
+  out.out() << "@media screen{[data-odr-page-current] "
+               ".odr-page:not(.odr-page-current){display:none}}";
+  out.write_header_style_end();
+}
+
+void html::write_page_layout_attribute(const HtmlConfig &config,
+                                       const HtmlAttributeWriterCallback &clb) {
+  if (config.page_layout == HtmlPageLayout::single) {
+    clb("data-odr-page-layout", "single");
+  }
+}
+
 void html::write_editing_script(const WritingState &state) {
   write_error_codes(state);
   write_script(editing_js_asset, state);

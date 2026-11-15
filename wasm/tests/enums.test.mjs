@@ -28,6 +28,7 @@ const pinned = {
     fit_width_by_view: 4,
   },
   HtmlEditingScope: { paragraph: 0, document: 1 },
+  HtmlPageLayout: { continuous: 0, single: 1 },
   PdfTextMode: { dual_layer: 0, single_layer: 1 },
   EncryptionState: {
     unknown: 0,

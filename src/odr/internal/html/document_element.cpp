@@ -322,7 +322,7 @@ void translate_page_like(const PageLike &page,
   const std::optional<bool> near = state.page_chunk_near();
   const PageLayout layout = page.page_layout();
   const GraphicStyle background = page.background();
-  std::string classes = "odr-page-outer";
+  std::string classes = "odr-page-outer odr-page";
   if (background.fill_bitmap.has_value()) {
     classes += " " + page_bitmap_class(*background.fill_bitmap, state);
   } else if (background.fill_gradient.has_value() ||

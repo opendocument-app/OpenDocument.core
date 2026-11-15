@@ -38,6 +38,8 @@ ODR_SAME_ENUM(ODRHtmlViewportModeActualSize,
 ODR_SAME_ENUM(ODRHtmlViewportModeNone, odr::HtmlViewportMode::none);
 ODR_SAME_ENUM(ODRHtmlViewportModeFitWidthByView,
               odr::HtmlViewportMode::fit_width_by_view);
+ODR_SAME_ENUM(ODRHtmlPageLayoutContinuous, odr::HtmlPageLayout::continuous);
+ODR_SAME_ENUM(ODRHtmlPageLayoutSingle, odr::HtmlPageLayout::single);
 
 ODR_SAME_ENUM(ODRHtmlEditingScopeParagraph, odr::HtmlEditingScope::paragraph);
 ODR_SAME_ENUM(ODRHtmlEditingScopeDocument, odr::HtmlEditingScope::document);
@@ -122,6 +124,7 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
       config.spreadsheet_viewport_mode.has_value()
           ? @(static_cast<NSInteger>(*config.spreadsheet_viewport_mode))
           : nil;
+  _pageLayout = static_cast<ODRHtmlPageLayout>(config.page_layout);
   _viewportContent = config.viewport_content.has_value()
                          ? to_nsstring(*config.viewport_content)
                          : nil;
@@ -209,6 +212,7 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   } else {
     config.spreadsheet_viewport_mode.reset();
   }
+  config.page_layout = static_cast<odr::HtmlPageLayout>(_pageLayout);
   if (_viewportContent != nil) {
     config.viewport_content = to_string(_viewportContent);
   } else {

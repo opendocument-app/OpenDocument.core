@@ -42,6 +42,10 @@ void odr_python::bind_html(py::module_ &m) {
       .value("none", odr::HtmlViewportMode::none)
       .value("fit_width_by_view", odr::HtmlViewportMode::fit_width_by_view);
 
+  py::enum_<odr::HtmlPageLayout>(m, "HtmlPageLayout")
+      .value("continuous", odr::HtmlPageLayout::continuous)
+      .value("single", odr::HtmlPageLayout::single);
+
   py::enum_<odr::HtmlEditingScope>(m, "HtmlEditingScope")
       .value("paragraph", odr::HtmlEditingScope::paragraph)
       .value("document", odr::HtmlEditingScope::document);
@@ -108,6 +112,7 @@ void odr_python::bind_html(py::module_ &m) {
       .def_readwrite("viewport_mode", &odr::HtmlConfig::viewport_mode)
       .def_readwrite("spreadsheet_viewport_mode",
                      &odr::HtmlConfig::spreadsheet_viewport_mode)
+      .def_readwrite("page_layout", &odr::HtmlConfig::page_layout)
       .def_readwrite("viewport_content", &odr::HtmlConfig::viewport_content)
       .def_readwrite("viewport_width", &odr::HtmlConfig::viewport_width)
       .def_readwrite("initial_zoom", &odr::HtmlConfig::initial_zoom)

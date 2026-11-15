@@ -35,6 +35,13 @@
 namespace odr::internal::html {
 namespace {
 
+/// The views `HtmlConfig::page_layout` applies to: one page or sheet each.
+bool has_page_layout(const Document &document) {
+  return document.document_type() == DocumentType::spreadsheet ||
+         document.document_type() == DocumentType::presentation ||
+         document.document_type() == DocumentType::drawing;
+}
+
 /// Whether the document renders as fixed-size pages on a backdrop rather than
 /// reflowing to the viewport.
 bool is_paged_content(const Document &document, const HtmlConfig &config) {
@@ -248,6 +255,9 @@ void write_head(const Document &document, const WritingState &state,
   if (paged_content) {
     write_print_page_style(out, document);
   }
+  if (has_page_layout(document)) {
+    write_page_layout_style(state);
+  }
   write_search_style(state);
   write_search_dark_style(state);
   if (document.document_type() == DocumentType::spreadsheet) {
@@ -299,6 +309,9 @@ void write_body_begin(const Document &document, const WritingState &state) {
             }
             // not an editing fact: a read-only sheet has a pin to clear
             clb("data-odr-keyboard", keyboard_classes(state.config()));
+            if (has_page_layout(document)) {
+              write_page_layout_attribute(state.config(), clb);
+            }
           }));
 
   if (paged_content) {

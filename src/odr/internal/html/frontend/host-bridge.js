@@ -38,6 +38,7 @@
   odr.onSelectionChange = forward("selectionChange");
   odr.onAnnotationChange = forward("annotationChange");
   odr.onSearchChange = forward("searchChange");
+  odr.onPageChange = forward("pageChange");
   odr.onError = function (code, message) {
     send({ type: "error", detail: { code: code, message: message } });
   };

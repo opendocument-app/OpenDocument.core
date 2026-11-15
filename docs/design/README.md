@@ -24,9 +24,9 @@
   browser lays out only near the viewport, and that core renders on demand;
   a search over the chunks that have not loaded, and images that load near
   the viewport.
-- [Single-page layout design](single-page-layout.md): a paged view that
-  shows one page at a time, a script API to turn pages, and `#page=N` in the
-  URL to open at one.
+- [Single-page layout design](single-page-layout.md): a workbook,
+  presentation, drawing or pdf view that shows one sheet or page at a time, a
+  script API to turn pages, and `#page=N` in the URL to open at one.
 - [The formula evaluator without exceptions](formula-without-exceptions.md):
   stops as `std::expected` values, so the formula module builds with
   `-fno-exceptions` and loads in any WebView.
