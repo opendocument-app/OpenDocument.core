@@ -27,6 +27,9 @@
 - [Single-page layout design](single-page-layout.md): a workbook,
   presentation, drawing or pdf view that shows one sheet or page at a time, a
   script API to turn pages, and `#page=N` in the URL to open at one.
+- [Sheet scripts design](sheet-scripts.md): every sheet of a workbook's
+  page bound by the sheet scripts, `odr.sheet` answering for the one the
+  reader is in, and one history for all of them.
 - [Sheet grid design](sheet-grid.md): the grid past a sheet's content,
   drawn by the page up to the format's last row and column, selected there,
   and edited there in a second step.

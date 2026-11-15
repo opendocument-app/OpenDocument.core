@@ -124,6 +124,11 @@ The release run heads these entries with the version and opens a fresh
 - A csv saved after a write past its last row states each row it adds with
   the sheet's fields (`,,`) rather than a single `""`, so the file still
   reads as a csv.
+- A workbook's whole-document view works on every sheet, not only the first:
+  sticky headers, row loading, the grid and the editor. `odr.sheet` answers
+  for the sheet the reader is in (the one pinned last, or the one shown
+  under `HtmlPageLayout::single`), `odr.sheets` lists them all, and one
+  undo history and one op log hold every sheet's edits in the order taken.
 - `HtmlConfig::spreadsheet_grid` (on by default) and the page's
   `odr.sheet.setGrid(enabled)` and `setSheetOptions({grid})` turn it off;
   `odr.sheet.hasGrid()` answers whether it is drawn.

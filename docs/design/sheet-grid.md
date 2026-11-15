@@ -136,9 +136,6 @@ to type into.
   stops at the limit.
 - **The file's own default column width and row height** are not read yet;
   the application's stand in (decision 1).
-- **A workbook's whole-document view drives one sheet.** The sheet scripts
-  bind to the first `.odr-sheet` of the page (`single-page-layout.md`,
-  "Left"). The grid lands in the views of one sheet first.
 - **Frozen panes** are not rendered today. Where they come, the grid starts
   past them.
 - **Formatting past the content.** A style chord on an empty cell does

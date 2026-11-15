@@ -145,14 +145,6 @@ host that renders once for every reader cannot know it.
 - **Fitting the width.** `fit_width_by_view` measures the current page, so
   turning to a page of another size refits it. A pdf can mix page sizes.
 
-## Left
-
-- **A workbook's whole-document view drives one sheet.** `spreadsheet.js`
-  and `sheet-editing.js` bind to the first `.odr-sheet` of the page, as they
-  did before this layout. Turning to another sheet shows it, without its
-  sticky headers, row loading or editing. A view of one sheet is unaffected.
-  Binding the scripts per sheet is its own change.
-
 ## Open questions
 
 - A spread of two pages: whether it gets a layout of its own now, or waits

@@ -1,13 +1,70 @@
-(function () {
+// Every sheet of the page gets the script below to itself, and `odr.sheet`
+// answers for the one the reader is in (`sheet-scripts.md`).
+(function (bindSheet) {
+  "use strict";
+
+  var tables = document.querySelectorAll(".odr-sheet");
+  if (tables.length === 0) {
+    return;
+  }
+  var odr = (window.odr = window.odr || {});
+
+  var apis = [];
+  // the sheet pinned last, else the one shown
+  var active = null;
+
+  // One pin on the page: a sheet that takes one clears the others', or a
+  // key would reach two of them.
+  function activate(api) {
+    active = api;
+    apis.forEach(function (other) {
+      if (other !== api && other.pinned() !== null) {
+        other.pin(null);
+      }
+    });
+  }
+
+  Array.prototype.forEach.call(tables, function (table) {
+    apis.push(bindSheet(table, activate));
+  });
+  active = apis[0];
+
+  // Under a single-page layout the reader is in the sheet shown.
+  function followPage() {
+    apis.forEach(function (api) {
+      if (api.table.classList.contains("odr-page-current")) {
+        active = api;
+        api.refresh();
+      }
+    });
+  }
+  followPage();
+  document.addEventListener("odr-page-change", followPage);
+
+  Object.defineProperty(odr, "sheet", {
+    configurable: true,
+    get: function () {
+      return active;
+    },
+  });
+  odr.sheets = apis;
+  // The sheet a table is, which the editor beside this script works on.
+  odr.sheetFor = function (table) {
+    for (var i = 0; i < apis.length; ++i) {
+      if (apis[i].table === table) {
+        return apis[i];
+      }
+    }
+    return null;
+  };
+  odr.goToCell = function (column, row) {
+    return active.goToCell(column, row);
+  };
+})(function (table, activate) {
   "use strict";
 
   // The sheet: the ruler, and a table for each chunk of rows
   // (`lazy-loading.md` decision 3).
-  var table = document.querySelector(".odr-sheet");
-  if (table === null) {
-    return;
-  }
-
   var odr = (window.odr = window.odr || {});
 
   var merged = table.querySelector("td[colspan],td[rowspan]") !== null;
@@ -111,13 +168,21 @@
   var emptyPin = null;
   var layers = null;
 
+  // this sheet's own, where a page holds several
+  var scoped = table.hasAttribute("data-odr-sheet")
+    ? '.odr-sheet[data-odr-sheet="' +
+      table.getAttribute("data-odr-sheet") +
+      '"]'
+    : ".odr-sheet";
+
   // Column 0 is the gutter, which labels no column.
   function columnRule(index, wash, scope) {
     if (index < 1) {
       return "";
     }
     return (
-      ".odr-sheet " +
+      scoped +
+      " " +
       scope +
       "tr>:nth-child(" +
       (index + 1) +
@@ -328,6 +393,9 @@
     pinnedColumn = column;
     pinnedRow = row;
     pinnedCell = cell;
+    if (cell !== null) {
+      activate(api);
+    }
 
     if (pinnedRow !== null) {
       pinnedRow.classList.add("odr-sheet-pinned");
@@ -1215,6 +1283,9 @@
 
   function pinEmpty(position) {
     emptyPin = position;
+    if (position !== null) {
+      activate(api);
+    }
     if (layers !== null) {
       placeMark();
     }
@@ -1555,7 +1626,9 @@
 
   // What the script beside this one, and a host, ask of the sheet: positions
   // the way an op names them, and the pin. `spreadsheet-editing.md` decision 8.
-  odr.sheet = {
+  var api = {
+    table: table,
+    refresh: refresh,
     cellAt: cellAt,
     positionOf: positionOf,
     pinned: pinnedPosition,
@@ -1585,8 +1658,6 @@
     unmaterialize: unmaterialize,
     rematerialize: rematerialize,
   };
-
-  odr.goToCell = goToCell;
 
   table.addEventListener("mouseover", function (event) {
     var column = rulerColumn(event.target.closest("td,th"));
@@ -1685,7 +1756,7 @@
 
   // The canvas around the sheet included.
   document.addEventListener("click", function (event) {
-    if (event.target.closest(".odr-sheet") === null) {
+    if (event.target.closest(".odr-sheet") !== table) {
       pin(-1, null, null);
     }
   });
@@ -1837,4 +1908,5 @@
       true
     );
   }
-})();
+  return api;
+});

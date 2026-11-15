@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>several sheets checks</title>
+    <link rel="stylesheet" href="document.css" />
+    <link rel="stylesheet" href="spreadsheet.css" />
+    <!-- what `write_page_layout_style` writes -->
+    <style>
+      @media screen{[data-odr-page-current] .odr-page:not(.odr-page-current){display:none}}
+    </style>
+  </head>
+  <body class="odr-body odr-gridlines-soft" data-odr-editable="true" data-odr-keyboard="navigation shortcuts" data-odr-page-layout="single">
+    <!-- A workbook's whole-document view as `translate_sheet` writes it: every
+         sheet in one page, each an `odr-page` (`sheet-scripts.md`). -->
+    <div class="odr-sheet odr-page" data-odr-sheet="0" data-odr-sheet-name="one" data-odr-sheet-extent="2,2" data-odr-sheet-max="6,8" data-odr-sheet-default-size="50,20" style="--odr-sheet-gutter:30px;--odr-sheet-width:190px">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" /><col style="width: 80px" /><col style="width: 80px" />
+        <thead><tr><th class="odr-sheet-corner"></th><th class="odr-sheet-column-header">A</th><th class="odr-sheet-column-header">B</th></tr></thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" /><col style="width: 80px" /><col style="width: 80px" />
+        <tbody>
+          <tr><th class="odr-sheet-row-header">1</th><td>a1</td><td>b1</td></tr>
+          <tr><th class="odr-sheet-row-header">2</th><td>a2</td><td>b2</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="odr-sheet odr-page" data-odr-sheet="1" data-odr-sheet-name="two" data-odr-sheet-extent="2,2" data-odr-sheet-max="6,8" data-odr-sheet-default-size="50,20" style="--odr-sheet-gutter:30px;--odr-sheet-width:190px">
+      <table class="odr-sheet-head">
+        <col class="odr-sheet-gutter" /><col style="width: 80px" /><col style="width: 80px" />
+        <thead><tr><th class="odr-sheet-corner"></th><th class="odr-sheet-column-header">A</th><th class="odr-sheet-column-header">B</th></tr></thead>
+      </table>
+      <table class="odr-sheet-rows odr-chunk odr-chunk-near">
+        <col class="odr-sheet-gutter" /><col style="width: 80px" /><col style="width: 80px" />
+        <tbody>
+          <tr><th class="odr-sheet-row-header">1</th><td>x1</td><td>y1</td></tr>
+          <tr><th class="odr-sheet-row-header">2</th><td>x2</td><td>y2</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="report" style="margin-top:40px"></div>
+    <script src="error-codes.js"></script>
+    <script src="editing.js"></script>
+    <script src="spreadsheet.js"></script>
+    <script src="sheet-editing.js"></script>
+    <script src="viewport.js"></script>
+    <script src="checks.js"></script>
+    <script>
+      var sheets = document.querySelectorAll(".odr-sheet");
+      function ops() {
+        return JSON.parse(odr.editing.getOperations()).ops;
+      }
+      function editor() {
+        return document.querySelector(".odr-sheet-editor");
+      }
+      function press(target, key) {
+        target.dispatchEvent(new KeyboardEvent("keydown", { key: key, bubbles: true }));
+      }
+      function write(text) {
+        press(document.body, "q");
+        if (editor() === null) {
+          return false;
+        }
+        editor().value = text;
+        press(editor(), "Enter");
+        return true;
+      }
+
+      note("every sheet its own");
+      check("each sheet is bound", odr.sheets.length === 2 && odr.sheets[0].table === sheets[0] && odr.sheets[1].table === sheets[1]);
+      check("the sheet shown is the one answering", odr.sheet === odr.sheets[0]);
+      check("each draws its own grid", sheets[0].querySelector(".odr-sheet-grid-below") !== null && sheets[1].querySelector(".odr-sheet-grid-below") !== null);
+      odr.sheets[1].pin({ column: 1, row: 0 });
+      var washes = Array.prototype.map.call(document.querySelectorAll("style"), function (style) {
+        return style.textContent;
+      }).join("");
+      check("a column wash names its sheet", washes.indexOf('.odr-sheet[data-odr-sheet="1"]') !== -1 && washes.indexOf('.odr-sheet tr>') === -1, washes);
+
+      note("turning to a sheet");
+      check("the mode turns on", odr.editing.enable() === true);
+      check("setPage shows the second sheet", odr.setPage(1) === true && getComputedStyle(sheets[0]).display === "none");
+      check("and it answers", odr.sheet === odr.sheets[1]);
+
+      note("editing two sheets");
+      odr.sheet.pin({ column: 0, row: 0 });
+      check("a write on the second sheet", write("on two") && odr.sheets[1].cellAt(0, 0).textContent === "on two");
+      odr.setPage(0);
+      odr.sheet.pin({ column: 1, row: 1 });
+      check("pinning on the first clears the second", odr.sheets[1].pinned() === null && odr.sheet === odr.sheets[0]);
+      check("a write on the first", write("on one") && odr.sheets[0].cellAt(1, 1).textContent === "on one");
+      check("the second sheet keeps its cell", odr.sheets[1].cellAt(1, 1).textContent === "y2");
+      var log = ops();
+      check(
+        "the log holds both, in the order taken",
+        log.length === 2 && log[0].sheet === 1 && log[0].column === 0 && log[1].sheet === 0 && log[1].row === 1,
+        log
+      );
+
+      note("one history");
+      check("undo takes the last write back, on the first sheet", odr.editing.undo() === true && odr.sheets[0].cellAt(1, 1).textContent === "b2");
+      check("undo again reaches the second sheet", odr.editing.undo() === true && odr.sheets[1].cellAt(0, 0).textContent === "x1");
+      check("redo puts the second sheet's write back", odr.editing.redo() === true && odr.sheets[1].cellAt(0, 0).textContent === "on two");
+
+      note("a structural step undone from another sheet");
+      odr.setPage(0);
+      odr.sheet.pin({ column: 0, row: 0 });
+      check("a row goes in on the first sheet", odr.editing.insertRows("above") === true && odr.sheets[0].extent().rows === 3);
+      odr.setPage(1);
+      check(
+        "its undo, the second sheet shown, takes it out of the first",
+        odr.editing.undo() === true && odr.sheets[0].extent().rows === 2 && odr.sheets[1].extent().rows === 2,
+        [odr.sheets[0].extent(), odr.sheets[1].extent()]
+      );
+      check(
+        "and its redo puts it back there",
+        odr.editing.redo() === true && odr.sheets[0].extent().rows === 3 && odr.sheets[1].extent().rows === 2,
+        [odr.sheets[0].extent(), odr.sheets[1].extent()]
+      );
+      odr.editing.undo();
+
+      note("past the content of the second sheet");
+      odr.setPage(1);
+      check("goToCell reaches the sheet shown", odr.goToCell(3, 3) === true && odr.sheets[1].pinned().cell === null);
+      check("and an edit there makes its rows and columns only there", write("far") && odr.sheets[1].extent().rows === 4 && odr.sheets[0].extent().rows === 2);
+      check("the op names the second sheet", ops()[ops().length - 1].sheet === 1, ops()[ops().length - 1]);
+    </script>
+  </body>
+</html>
