@@ -72,16 +72,20 @@ check, so they keep answering what they answered for every type. Every caller
 in this repository moves to the handles: the renderer, the CLI, the bindings
 and the tests. CI builds with `-Werror`, so a call left behind fails it.
 
-The bindings keep their surface in this step. A binding method that called a
-moved method now calls it through `as_*`, so on a mismatched document it fails
-with `WrongDocumentType` where it failed with `UnsupportedOperation`. That is
-a changed behaviour, not a changed API.
+**Bindings, before the same release.** Python, java, swift and npm get the
+four handles as subclasses of their `Document`, and `as_*` on it. The sheet,
+slide and text-box methods are unreleased in every binding too, so they move
+outright. `recalculate` shipped on every binding's `Document` and stays there,
+where a spreadsheet handle inherits it; it answers empty for another type.
+npm's sheet-index methods (`insertRows`, `setCellStyle` and the others)
+shipped on `Document` and stay. A handle in npm shares the session, so closing
+either closes both.
 
 **Next major.** Delete the deprecated formula methods from `Document`.
 
 ## Open work
 
-- The binding surfaces: `Spreadsheet` and the others in python, java, swift
-  and npm, with the methods moved off their `Document`.
+- With the next major, `recalculate` moves off every binding's `Document`
+  onto `Spreadsheet`, and npm's sheet-index methods follow it.
 - Typed traversal on the handles, such as `Spreadsheet::sheets()`, in place of
   a walk of `root_element()`.

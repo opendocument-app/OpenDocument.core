@@ -768,12 +768,16 @@ final class DocumentSaveTests: XCTestCase {
     try document.edit(
       operations: #"{"version":2,"ops":[{"op":"setCell","sheet":0,"column":0,"row":0,"#
         + #""value":{"type":"number","number":5,"text":"5"}}]}"#)
-    let result = try document.recalculate()
+    let result = try document.asSpreadsheet().recalculate()
 
     XCTAssertEqual(result.changed, [SheetPosition(sheet: 0, column: 1, row: 0)])
     XCTAssertEqual(result.circular, [SheetPosition(sheet: 0, column: 2, row: 0)])
     XCTAssertEqual(result.unevaluated, [])
     XCTAssertEqual(try document.recalculate().changed, [])
+  }
+
+  func testRecalculateAnswersEveryDocumentType() throws {
+    XCTAssertEqual(try Document.create(fileType: .openDocumentText).recalculate().changed, [])
   }
 
   func testSetRowAndColumnStyleReachPastTheCells() throws {
@@ -1035,7 +1039,7 @@ final class DocumentCreateTests: XCTestCase {
   func testInsertSheetNamesAndPlacesIt() throws {
     for (type, suffix) in [(FileType.openDocumentSpreadsheet, "ods"), (.officeOpenXmlWorkbook, "xlsx")]
     {
-      let document = try Document.create(fileType: type)
+      let document = try Document.create(fileType: type).asSpreadsheet()
 
       XCTAssertEqual(try document.insertSheet(at: 0, name: "Front").name, "Front")
       XCTAssertEqual(try document.insertSheet(at: 2, name: "").name, "Sheet3")
@@ -1051,7 +1055,7 @@ final class DocumentCreateTests: XCTestCase {
     for (type, suffix) in [
       (FileType.openDocumentPresentation, "odp"), (.officeOpenXmlPresentation, "pptx"),
     ] {
-      let document = try Document.create(fileType: type)
+      let document = try Document.create(fileType: type).asPresentation()
 
       let layouts = try document.slideLayouts()
       XCTAssertEqual(
@@ -1087,7 +1091,7 @@ final class DocumentCreateTests: XCTestCase {
 
   func testMoveAndRemoveSheets() throws {
     for type in [FileType.openDocumentSpreadsheet, .officeOpenXmlWorkbook] {
-      let document = try Document.create(fileType: type)
+      let document = try Document.create(fileType: type).asSpreadsheet()
       _ = try document.insertSheet(at: 1, name: "B")
       let last = try document.insertSheet(at: 2, name: "C")
 
@@ -1106,7 +1110,7 @@ final class DocumentCreateTests: XCTestCase {
     for (type, suffix) in [
       (FileType.openDocumentPresentation, "odp"), (.officeOpenXmlPresentation, "pptx"),
     ] {
-      let document = try Document.create(fileType: type)
+      let document = try Document.create(fileType: type).asPresentation()
       let blank = try document.insertSlide(at: 1, layout: 5)
       _ = try document.insertSlide(at: 2, layout: 4)
 
@@ -1119,7 +1123,35 @@ final class DocumentCreateTests: XCTestCase {
     }
   }
 
-  func testATextDocumentOffersNoSlideLayout() throws {
-    XCTAssertTrue(try Document.create(fileType: .openDocumentText).slideLayouts().isEmpty)
+  func testAHandleIsOnlyForItsDocumentType() throws {
+    let document = try Document.create(fileType: .openDocumentText)
+
+    XCTAssertEqual(try document.asTextDocument().documentType, .text)
+    XCTAssertThrowsError(try document.asSpreadsheet())
+    XCTAssertThrowsError(try document.asPresentation())
+    XCTAssertThrowsError(try document.asDrawing())
+  }
+
+  func testADrawingPageTakesATextBox() throws {
+    let path = try write(
+      #"<?xml version="1.0" encoding="UTF-8"?>"#
+        + #"<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0""#
+        + #" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0""#
+        + #" office:version="1.3""#
+        + #" office:mimetype="application/vnd.oasis.opendocument.graphics">"#
+        + #"<office:body><office:drawing><draw:page draw:name="p"/>"#
+        + #"</office:drawing></office:body></office:document>"#,
+      as: "empty.fodg")
+    let document = try DecodedFile.decode(path: path).asDocumentFile().document().asDrawing()
+    let page = try XCTUnwrap(try document.rootElement()).children[0]
+
+    let box = try document.insertTextBox(
+      on: page, x: Measure(magnitude: 2, unit: "cm"), y: Measure(magnitude: 2, unit: "cm"),
+      width: Measure(magnitude: 8, unit: "cm"), height: Measure(magnitude: 2, unit: "cm"))
+    let paragraph = try XCTUnwrap(box.firstDescendant(ofType: Paragraph.self))
+    XCTAssertNotNil(try document.appendText(to: paragraph, text: "drawn"))
+
+    let root = try XCTUnwrap(try reopen(document, as: "drawn.fodg").rootElement())
+    XCTAssertEqual(root.descendants(ofType: Text.self).map { $0.content }, ["drawn"])
   }
 }

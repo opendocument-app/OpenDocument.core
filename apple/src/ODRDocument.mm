@@ -88,7 +88,7 @@ using odr::apple::to_string;
 }
 
 + (instancetype)documentWithHandle:(odr::Document)handle {
-  ODRDocument *const result = [[ODRDocument alloc] init];
+  ODRDocument *const result = [[self alloc] init];
   result->_handle = std::move(handle);
   return result;
 }
@@ -97,12 +97,39 @@ using odr::apple::to_string;
   return *_handle;
 }
 
-+ (nullable instancetype)createWithFileType:(ODRFileType)type
-                                      error:(NSError **)error {
++ (nullable ODRDocument *)createWithFileType:(ODRFileType)type
+                                       error:(NSError **)error {
   return guarded(error, [&]() -> ODRDocument * {
     return
         [ODRDocument documentWithHandle:odr::create_document(
                                             static_cast<odr::FileType>(type))];
+  });
+}
+
+- (nullable ODRTextDocument *)asTextDocumentWithError:(NSError **)error {
+  return guarded(error, [&]() -> ODRTextDocument * {
+    return [ODRTextDocument
+        documentWithHandle:odr::Document(_handle->as_text_document())];
+  });
+}
+
+- (nullable ODRSpreadsheet *)asSpreadsheetWithError:(NSError **)error {
+  return guarded(error, [&]() -> ODRSpreadsheet * {
+    return [ODRSpreadsheet
+        documentWithHandle:odr::Document(_handle->as_spreadsheet())];
+  });
+}
+
+- (nullable ODRPresentation *)asPresentationWithError:(NSError **)error {
+  return guarded(error, [&]() -> ODRPresentation * {
+    return [ODRPresentation
+        documentWithHandle:odr::Document(_handle->as_presentation())];
+  });
+}
+
+- (nullable ODRDrawing *)asDrawingWithError:(NSError **)error {
+  return guarded(error, [&]() -> ODRDrawing * {
+    return [ODRDrawing documentWithHandle:odr::Document(_handle->as_drawing())];
   });
 }
 
@@ -278,12 +305,25 @@ using odr::apple::to_string;
   });
 }
 
+- (nullable ODRFilesystem *)filesystemWithError:(NSError **)error {
+  return guarded(error, [&]() -> ODRFilesystem * {
+    return [ODRFilesystem filesystemWithHandle:_handle->as_filesystem()];
+  });
+}
+
+@end
+
+@implementation ODRTextDocument
+@end
+
+@implementation ODRSpreadsheet
+
 - (nullable ODRSheet *)insertSheetAtIndex:(uint32_t)index
                                      name:(NSString *)name
                                     error:(NSError **)error {
   return guarded(error, [&]() -> ODRSheet * {
     return static_cast<ODRSheet *>([ODRElement
-        elementWithHandle:_handle->as_spreadsheet().insert_sheet(
+        elementWithHandle:self.handle.as_spreadsheet().insert_sheet(
                               index, to_string(name))
                     owner:self]);
   });
@@ -293,17 +333,19 @@ using odr::apple::to_string;
           toIndex:(uint32_t)index
             error:(NSError **)error {
   return guarded(error, [&] {
-    _handle->as_spreadsheet().move_sheet(sheet.handle.as_sheet(), index);
+    self.handle.as_spreadsheet().move_sheet(sheet.handle.as_sheet(), index);
     return YES;
   });
 }
 
+@end
+
+@implementation ODRPresentation
+
 - (nullable NSArray<ODRSlide *> *)slideLayoutsWithError:(NSError **)error {
   return guarded(error, [&]() -> NSArray<ODRSlide *> * {
     const std::vector<odr::Slide> layouts =
-        _handle->document_type() == odr::DocumentType::presentation
-            ? _handle->as_presentation().slide_layouts()
-            : std::vector<odr::Slide>();
+        self.handle.as_presentation().slide_layouts();
     NSMutableArray<ODRSlide *> *const result =
         [NSMutableArray arrayWithCapacity:layouts.size()];
     for (const odr::Slide &layout : layouts) {
@@ -319,7 +361,8 @@ using odr::apple::to_string;
                                     error:(NSError **)error {
   return guarded(error, [&]() -> ODRSlide * {
     return static_cast<ODRSlide *>([ODRElement
-        elementWithHandle:_handle->as_presentation().insert_slide(index, layout)
+        elementWithHandle:self.handle.as_presentation().insert_slide(index,
+                                                                     layout)
                     owner:self]);
   });
 }
@@ -328,7 +371,7 @@ using odr::apple::to_string;
           toIndex:(uint32_t)index
             error:(NSError **)error {
   return guarded(error, [&] {
-    _handle->as_presentation().move_slide(slide.handle.as_slide(), index);
+    self.handle.as_presentation().move_slide(slide.handle.as_slide(), index);
     return YES;
   });
 }
@@ -340,22 +383,30 @@ using odr::apple::to_string;
                                     height:(ODRMeasure *)height
                                      error:(NSError **)error {
   return guarded(error, [&]() -> ODRFrame * {
-    const odr::Frame frame =
-        _handle->document_type() == odr::DocumentType::presentation
-            ? _handle->as_presentation().insert_text_box(
-                  page.handle, x.handle.value(), y.handle.value(),
-                  width.handle.value(), height.handle.value())
-            : _handle->as_drawing().insert_text_box(
-                  page.handle, x.handle.value(), y.handle.value(),
-                  width.handle.value(), height.handle.value());
-    return static_cast<ODRFrame *>([ODRElement elementWithHandle:frame
-                                                           owner:self]);
+    return static_cast<ODRFrame *>([ODRElement
+        elementWithHandle:self.handle.as_presentation().insert_text_box(
+                              page.handle, x.handle.value(), y.handle.value(),
+                              width.handle.value(), height.handle.value())
+                    owner:self]);
   });
 }
 
-- (nullable ODRFilesystem *)filesystemWithError:(NSError **)error {
-  return guarded(error, [&]() -> ODRFilesystem * {
-    return [ODRFilesystem filesystemWithHandle:_handle->as_filesystem()];
+@end
+
+@implementation ODRDrawing
+
+- (nullable ODRFrame *)insertTextBoxOnPage:(ODRElement *)page
+                                         x:(ODRMeasure *)x
+                                         y:(ODRMeasure *)y
+                                     width:(ODRMeasure *)width
+                                    height:(ODRMeasure *)height
+                                     error:(NSError **)error {
+  return guarded(error, [&]() -> ODRFrame * {
+    return static_cast<ODRFrame *>([ODRElement
+        elementWithHandle:self.handle.as_drawing().insert_text_box(
+                              page.handle, x.handle.value(), y.handle.value(),
+                              width.handle.value(), height.handle.value())
+                    owner:self]);
   });
 }
 

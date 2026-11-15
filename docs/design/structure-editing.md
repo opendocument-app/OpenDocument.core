@@ -125,7 +125,10 @@ editable presentation or drawing view carries what it needs to draw one.
 
 ### Bindings
 
-python, java and swift mirror the C++ calls. npm has no element surface:
+Every binding mirrors the C++ handles: the sheet calls are on its
+`Spreadsheet`, the slide calls on its `Presentation`, and the text box on its
+`Presentation` and `Drawing`, each from `as_*` on its `Document`. npm has no
+element surface:
 
 - `slideLayouts` answers `[{name, placeholders: [{x, y, width, height}]}]`.
 - `insertSlide` answers `{id, frames, paragraphs}` and `insertTextBox`

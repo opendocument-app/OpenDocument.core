@@ -258,6 +258,14 @@ export declare class Document {
   /** Pass this across `postMessage`, never the `Document` — the wrapper's state
    * is in private fields and clones away to an empty object. */
   readonly handle: number;
+
+  /** Each shares this session, so closing either closes both.
+   * @throws OdrError `WrongDocumentType` for another document type */
+  asTextDocument(): TextDocument;
+  asSpreadsheet(): Spreadsheet;
+  asPresentation(): Presentation;
+  asDrawing(): Drawing;
+
   readonly fileType: number;
   /** The name passed to `open`; empty where none was. */
   readonly fileName: string;
@@ -340,7 +348,7 @@ export declare class Document {
   deleteColumns(sheet: number, column: number, count: number): this;
   /**
    * Recalculates stale formulas and stores their results; save does this after
-   * edits.
+   * edits. Empty for a document that is no spreadsheet.
    * @throws OdrError `unsupported_operation` if repeated formulas exceed the
    * recalculation limit.
    */
@@ -356,36 +364,6 @@ export declare class Document {
   splitParagraph(paragraphId: number, afterId?: number): number;
   mergeParagraphWithNext(paragraphId: number): this;
   insertParagraphAfter(paragraphId: number): number;
-  /**
-   * An empty sheet at `index` among the sheets; an empty `name` takes the
-   * first free `SheetN`. The views list it from the next `listViews`.
-   * @throws OdrError `invalid_argument` for a name another sheet has,
-   * ignoring case, or one Excel and LibreOffice refuse.
-   */
-  insertSheet(index: number, name?: string): this;
-  /**
-   * Removes the `sheet`-th sheet; a reference to it becomes `#REF!`.
-   * @throws OdrError `invalid_argument` for the last sheet of a workbook.
-   */
-  removeSheet(sheet: number): this;
-  /** Puts the `sheet`-th sheet at `index` among the sheets, counted after the
-   * move. */
-  moveSheet(sheet: number, index: number): this;
-  /** The layouts `insertSlide` starts a slide from; empty where the engine
-   * cannot insert a slide. */
-  slideLayouts(): SlideLayout[];
-  /**
-   * An empty slide at `index` among the slides, holding the text
-   * placeholders of the `layout`-th of `slideLayouts`. The views list it
-   * from the next `listViews`.
-   */
-  insertSlide(index: number, layout: number): InsertedSlide;
-  /** Puts the slide `slideId` at `index` among the slides, counted after the
-   * move. Remove one with `removeElement`. */
-  moveSlide(slideId: number, index: number): this;
-  /** An empty text box on a slide or drawing page, drawing no fill and no
-   * outline. */
-  insertTextBox(pageId: number, placement: TextBoxPlacement): InsertedTextBox;
 
   /**
    * Whether this pdf can take annotations — false for one declaring an
@@ -411,6 +389,48 @@ export declare class Document {
   /** Idempotent; returns whether it released anything. */
   close(): boolean;
   [Symbol.dispose](): void;
+}
+
+export declare class TextDocument extends Document {}
+
+export declare class Spreadsheet extends Document {
+  /**
+   * An empty sheet at `index` among the sheets; an empty `name` takes the
+   * first free `SheetN`. The views list it from the next `listViews`.
+   * @throws OdrError `invalid_argument` for a name another sheet has,
+   * ignoring case, or one Excel and LibreOffice refuse.
+   */
+  insertSheet(index: number, name?: string): this;
+  /**
+   * Removes the `sheet`-th sheet; a reference to it becomes `#REF!`.
+   * @throws OdrError `invalid_argument` for the last sheet of a workbook.
+   */
+  removeSheet(sheet: number): this;
+  /** Puts the `sheet`-th sheet at `index` among the sheets, counted after the
+   * move. */
+  moveSheet(sheet: number, index: number): this;
+}
+
+export declare class Presentation extends Document {
+  /** The layouts `insertSlide` starts a slide from; empty where the engine
+   * cannot insert a slide. */
+  slideLayouts(): SlideLayout[];
+  /**
+   * An empty slide at `index` among the slides, holding the text
+   * placeholders of the `layout`-th of `slideLayouts`. The views list it
+   * from the next `listViews`.
+   */
+  insertSlide(index: number, layout: number): InsertedSlide;
+  /** Puts the slide `slideId` at `index` among the slides, counted after the
+   * move. Remove one with `removeElement`. */
+  moveSlide(slideId: number, index: number): this;
+  /** An empty text box on a slide, drawing no fill and no outline. */
+  insertTextBox(pageId: number, placement: TextBoxPlacement): InsertedTextBox;
+}
+
+export declare class Drawing extends Document {
+  /** An empty text box on a drawing page, drawing no fill and no outline. */
+  insertTextBox(pageId: number, placement: TextBoxPlacement): InsertedTextBox;
 }
 
 export declare class Odr {

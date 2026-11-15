@@ -1,13 +1,33 @@
 package app.opendocument.core;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-/** A decoded document. Mirrors {@code odr::Document}. */
-public final class Document extends NativeResource {
+/**
+ * A decoded document. Mirrors {@code odr::Document}. What only one {@link DocumentType} answers
+ * is on its handle: {@link #asSpreadsheet}, {@link #asPresentation}, {@link #asDrawing} and {@link
+ * #asTextDocument}.
+ */
+public class Document extends NativeResource {
   Document(long handle) {
     super(handle, null, Document::destroy);
+  }
+
+  /** Throws {@link OdrException} with {@code wrong_document_type} for another type. */
+  public TextDocument asTextDocument() {
+    return new TextDocument(asTextDocumentNative(handle()));
+  }
+
+  /** Throws {@link OdrException} with {@code wrong_document_type} for another type. */
+  public Spreadsheet asSpreadsheet() {
+    return new Spreadsheet(asSpreadsheetNative(handle()));
+  }
+
+  /** Throws {@link OdrException} with {@code wrong_document_type} for another type. */
+  public Presentation asPresentation() {
+    return new Presentation(asPresentationNative(handle()));
+  }
+
+  /** Throws {@link OdrException} with {@code wrong_document_type} for another type. */
+  public Drawing asDrawing() {
+    return new Drawing(asDrawingNative(handle()));
   }
 
   public boolean isEditable() {
@@ -67,7 +87,10 @@ public final class Document extends NativeResource {
     editNative(handle(), diff);
   }
 
-  /** Recalculates stale formulas and stores their results; save does this after edits. */
+  /**
+   * Recalculates stale formulas and stores their results; save does this after edits. Empty for a
+   * document that is no spreadsheet.
+   */
   public Recalculation recalculate() {
     return Recalculation.fromNative(recalculateNative(handle()));
   }
@@ -162,84 +185,15 @@ public final class Document extends NativeResource {
     }
   }
 
-  /** An empty sheet at {@code index} among the sheets, named the first free {@code SheetN}. */
-  public Sheet insertSheet(int index) {
-    return insertSheet(index, "");
-  }
-
-  /**
-   * An empty sheet at {@code index} among the sheets. An empty name takes the first free {@code
-   * SheetN}; a name another sheet has, ignoring case, is refused.
-   */
-  public Sheet insertSheet(int index, String name) {
-    return new Sheet(insertSheetNative(handle(), index, name), this);
-  }
-
-  /** Puts {@code sheet} at {@code index} among the sheets, counted after the move. */
-  public void moveSheet(Sheet sheet, int index) {
-    try {
-      moveSheetNative(handle(), sheet.handle(), index);
-    } finally {
-      sheet.keepAlive();
-    }
-  }
-
-  /**
-   * The layouts {@link #insertSlide} starts a slide from, each the empty slide it makes, outside
-   * the document and refusing edits; empty where the engine cannot insert a slide.
-   */
-  public List<Slide> slideLayouts() {
-    long[] handles = slideLayoutsNative(handle());
-    List<Slide> result = new ArrayList<>(handles.length);
-    for (long layout : handles) {
-      result.add(new Slide(layout, this));
-    }
-    return Collections.unmodifiableList(result);
-  }
-
-  /**
-   * An empty slide at {@code index} among the slides, as the {@code layout}-th of {@link
-   * #slideLayouts}.
-   */
-  public Slide insertSlide(int index, int layout) {
-    return new Slide(insertSlideNative(handle(), index, layout), this);
-  }
-
-  /** Puts {@code slide} at {@code index} among the slides, counted after the move. */
-  public void moveSlide(Slide slide, int index) {
-    try {
-      moveSlideNative(handle(), slide.handle(), index);
-    } finally {
-      slide.keepAlive();
-    }
-  }
-
-  /**
-   * A text box with one empty paragraph on a slide or drawing page, drawing no fill and no
-   * outline. Every length needs a fixed unit, and the size must be positive.
-   */
-  public Frame insertTextBox(Element page, Measure x, Measure y, Measure width, Measure height) {
-    try {
-      return new Frame(insertTextBoxNative(handle(), page.handle(), x, y, width, height), this);
-    } finally {
-      page.keepAlive();
-    }
-  }
-
   private static native void destroy(long handle);
 
-  private native long insertSheetNative(long handle, int index, String name);
+  private native long asTextDocumentNative(long handle);
 
-  private native void moveSheetNative(long handle, long sheetHandle, int index);
+  private native long asSpreadsheetNative(long handle);
 
-  private native long[] slideLayoutsNative(long handle);
+  private native long asPresentationNative(long handle);
 
-  private native long insertSlideNative(long handle, int index, int layout);
-
-  private native void moveSlideNative(long handle, long slideHandle, int index);
-
-  private native long insertTextBoxNative(
-      long handle, long pageHandle, Measure x, Measure y, Measure width, Measure height);
+  private native long asDrawingNative(long handle);
 
   private native int[] recalculateNative(long handle);
 

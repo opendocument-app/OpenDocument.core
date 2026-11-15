@@ -131,6 +131,39 @@ def ods_path(tmp_path):
     return path
 
 
+ODG_CONTENT_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<office:document-content
+    xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+    xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"
+    office:version="1.2">
+  <office:body>
+    <office:drawing>
+      <draw:page draw:name="page1"/>
+    </office:drawing>
+  </office:body>
+</office:document-content>
+"""
+
+
+@pytest.fixture
+def odg_path(tmp_path):
+    """A minimal OpenDocument drawing of one empty page, built from inline XML."""
+    path = tmp_path / "minimal.odg"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr(
+            "mimetype",
+            "application/vnd.oasis.opendocument.graphics",
+            compress_type=zipfile.ZIP_STORED,
+        )
+        archive.writestr("content.xml", ODG_CONTENT_XML)
+        archive.writestr("styles.xml", ODT_STYLES_XML)
+        archive.writestr(
+            "META-INF/manifest.xml",
+            ODT_MANIFEST_XML.replace("opendocument.text", "opendocument.graphics"),
+        )
+    return path
+
+
 @pytest.fixture
 def odt_path(tmp_path):
     """A minimal OpenDocument text file built from inline XML."""
