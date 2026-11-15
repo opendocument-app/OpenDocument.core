@@ -30,6 +30,7 @@ add_executable(odr_test
         "src/document_create_test.cpp"
         "src/document_structure_test.cpp"
         "src/document_edit_test.cpp"
+        "src/sheet_past_content_test.cpp"
         "src/document_list_test.cpp"
         "src/enum_ordinals_test.cpp"
         "src/error_code_test.cpp"

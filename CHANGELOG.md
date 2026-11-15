@@ -116,8 +116,14 @@ The release run heads these entries with the version and opens a fresh
   column, as in Excel and LibreOffice: gridlines, column letters and row
   numbers, drawn by the page and grown as the reader scrolls. An empty cell
   there can be selected, by a click, the editor's arrows or
-  `odr.goToCell(column, row)`; typing into it is refused with
-  `unsupportedEdit` for now. Nothing is printed past the content.
+  `odr.goToCell(column, row)`, and edited: the page makes the rows and
+  columns up to it, the edit is the usual `setCell`, and its undo takes them
+  away again. An edit that would make more than 200,000 cells on the way is
+  refused with `unsupportedEdit`. Inserting or deleting rows and columns
+  in the grid records nothing. Nothing is printed past the content.
+- A csv saved after a write past its last row states each row it adds with
+  the sheet's fields (`,,`) rather than a single `""`, so the file still
+  reads as a csv.
 - `HtmlConfig::spreadsheet_grid` (on by default) and the page's
   `odr.sheet.setGrid(enabled)` and `setSheetOptions({grid})` turn it off;
   `odr.sheet.hasGrid()` answers whether it is drawn.

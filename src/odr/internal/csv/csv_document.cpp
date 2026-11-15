@@ -527,14 +527,20 @@ void CsvDocument::save(std::ostream &out) const {
     const std::vector<std::string> &fields = m_rows[row];
     if (fields.size() <= 1 &&
         cell(0, static_cast<std::uint32_t>(row)).empty()) {
-      // an empty line is no record, so an empty row states its one field
-      out << m_dialect.quote << m_dialect.quote;
-    }
-    for (std::size_t column = 0; column < fields.size(); ++column) {
-      if (column > 0) {
-        out << m_dialect.separator;
+      // an empty line is no record, so an empty row states the sheet's
+      // fields, or its one field as `""`
+      if (m_dimensions.columns > 1) {
+        out << std::string(m_dimensions.columns - 1, m_dialect.separator);
+      } else {
+        out << m_dialect.quote << m_dialect.quote;
       }
-      write_field(out, fields[column], m_dialect);
+    } else {
+      for (std::size_t column = 0; column < fields.size(); ++column) {
+        if (column > 0) {
+          out << m_dialect.separator;
+        }
+        write_field(out, fields[column], m_dialect);
+      }
     }
     if (row + 1 < m_rows.size() || m_final_line_end) {
       out << m_line_end;

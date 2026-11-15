@@ -1,7 +1,6 @@
 # Sheet grid design
 
-Status: step 1 built (decisions 1 and 2); editing past the content (decision
-3) is not.
+Status: built.
 
 Related: [`lazy-loading.md`](lazy-loading.md) holds the row chunks a sheet
 is written in. [`spreadsheet-editing.md`](spreadsheet-editing.md) holds the
@@ -93,25 +92,40 @@ answers whether it is drawn), and
 `HtmlConfig::spreadsheet_grid` keeps the facts out of the markup for a host
 that wants the old canvas from the first frame.
 
-### 3. Editing past the content is a second step
+### 3. Editing past the content
 
 The editor edits `<td>`s: it reads a cell's text, writes into it and keeps
 its undo by element. Typing into an empty cell past the content needs a cell
 to type into.
 
-- The page makes the row and the cell when an edit starts there: a `<tr>`
-  in a table of its own after the last chunk, holding cells up to the
-  edited column, sized as the grid draws them. The rows between the content
-  and it stay drawn by the grid, not made.
-- The edit is the `setCell` it is inside the content, at that position.
-  Whether every engine takes a write past its content (an ods row inside
-  `table:number-rows-repeated`, an xlsx row with no `<row>`) is checked
-  before this step is built.
-- Inserting and deleting rows and columns past the content is nothing to
-  record: the grid there is empty.
-
-The first step ships without this: the grid past the content is drawn,
-scrolled and selected, and an edit there is refused with `unsupportedEdit`.
+- **The page makes the columns and rows up to the cell** when an edit starts
+  there (`odr.sheet.materialize`), as an insert makes them: a column with its
+  letter and a `td` in every row, a row with a `td` in every column, at the
+  grid's size. Then the editor opens as over any cell, and the grid starts
+  past the new last row and column.
+  - Not a cell of its own beside the content: the row index finds a row by
+    its label, and every chunk table and the ruler share one set of columns,
+    so a lone cell would stand on another row's label or leave rows without
+    their gridlines.
+  - Within a budget of 200,000 cells, because a jump far out would make a
+    cell for every row and column on the way. Past it the edit is refused
+    with `unsupportedEdit`.
+- **The write owns what was made.** The commit is the `setCell` an edit
+  inside the content makes; its undo takes the rows and columns away again,
+  and its redo puts the same elements back. An edit that ends without a
+  write (Escape, or nothing typed) takes them away at once.
+- **Opening the editor there** works as on a cell: typing, Enter or F2 on the
+  pinned empty cell, a double click, or a click where `editOnClick` holds.
+- **Inserting and deleting rows and columns in the grid** records nothing
+  and is taken: the grid there is empty. Past a `spreadsheet_limit` cut no
+  grid is drawn, and such an edit moves what the file holds there.
+- **Every engine takes the write.** A test writes below and beside the
+  content of a new and a real ods (whose empty rows are one
+  `table:table-row` repeated), a new and a real xlsx (no `<row>` past the
+  content) and a csv, saves, reopens and reads it back; LibreOffice reads the
+  saved ods and xlsx with the cells in place. The csv writer needed one fix:
+  an empty row it adds is written with the sheet's fields (`,,`), not one
+  `""`, so the file still reads as a csv.
 
 ## Left
 
@@ -127,3 +141,8 @@ scrolled and selected, and an edit there is refused with `unsupportedEdit`.
   "Left"). The grid lands in the views of one sheet first.
 - **Frozen panes** are not rendered today. Where they come, the grid starts
   past them.
+- **Formatting past the content.** A style chord on an empty cell does
+  nothing yet; it would make the cell as an edit does.
+- **An edit past the budget**, far below a wide sheet, is refused. Making
+  only the target row, with the rows on the way left to the grid, needs the
+  row index to take rows out of order.

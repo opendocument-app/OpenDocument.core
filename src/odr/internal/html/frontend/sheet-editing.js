@@ -68,6 +68,9 @@
   }
 
   var overlay = null;
+  /// The rows and columns an edit past the content made for its cell, until
+  /// a write takes them into its history or the edit ends without one.
+  var created = null;
   var editingAt = null;
   var history = [];
   var undone = [];
@@ -463,8 +466,9 @@
 
   /// Writes @p value at a position: the cell shows it, and the op joins the
   /// log beside the value it replaced. A formula value states its expression
-  /// in the syntax of the file, and shows nothing until it is computed.
-  function write(column, row, value) {
+  /// in the syntax of the file, and shows nothing until it is computed. The
+  /// rows and columns @p made for the cell go with its undo.
+  function write(column, row, value, made) {
     var cell = odr.sheet.cellAt(column, row);
     var before = odr.sheet.valueAt(column, row);
     if (cell === null || before === null) {
@@ -528,8 +532,14 @@
       ops: [op],
       undo: function () {
         apply(formulaBefore, shownBefore, computedBefore);
+        if (made) {
+          odr.sheet.unmaterialize(made);
+        }
       },
       redo: function () {
+        if (made) {
+          odr.sheet.rematerialize(made);
+        }
         apply(formula, shown, undefined);
       },
     });
@@ -1573,18 +1583,18 @@
     }
     var cell = odr.sheet.cellAt(column, row);
     if (cell === null) {
-      // an empty cell of the grid past the content takes no edit yet
-      // (`sheet-grid.md` decision 3)
-      var at = odr.sheet.pinned();
-      if (
-        at !== null &&
-        at.cell === null &&
-        at.column === column &&
-        at.row === row
-      ) {
-        refuse("unsupportedEdit", column, row);
+      // an empty cell of the grid past the content gets its rows and columns
+      // made first (`sheet-grid.md` decision 3)
+      if (!odr.sheet.inGrid(column, row)) {
+        return false;
       }
-      return false;
+      var made = odr.sheet.materialize(column, row);
+      if (made === null) {
+        refuse("unsupportedEdit", column, row);
+        return false;
+      }
+      created = made;
+      cell = odr.sheet.cellAt(column, row);
     }
     odr.sheet.pin({ column: column, row: row });
     odr.sheet.lower();
@@ -1633,6 +1643,10 @@
     if (input !== null) {
       input.remove();
     }
+    if (created !== null) {
+      odr.sheet.unmaterialize(created);
+      created = null;
+    }
   }
 
   /// Ends an open edit: what it holds is committed, and a refused formula is
@@ -1674,8 +1688,15 @@
       }
       value = { type: "formula", formula: expression };
     }
+    var made = created;
+    created = null;
     close();
-    write(at.column, at.row, value !== null ? value : parse(text));
+    if (
+      !write(at.column, at.row, value !== null ? value : parse(text), made) &&
+      made !== null
+    ) {
+      odr.sheet.unmaterialize(made);
+    }
     if (!odr.sheet.pin({ column: at.column + columns, row: at.row + rows })) {
       odr.sheet.pin({ column: at.column, row: at.row });
       refuseCut(at.column + columns, at.row + rows);
@@ -1783,8 +1804,21 @@
     }
   });
 
+  /// The cell under a click: a `td`, or in the grid past the content the
+  /// empty cell the grid pinned for that click.
   function targetPosition(event) {
-    return odr.sheet.positionOf(event.target.closest("td"));
+    var at = odr.sheet.positionOf(event.target.closest("td"));
+    if (
+      at === null &&
+      event.target.closest(".odr-sheet-grid-below,.odr-sheet-grid-right") !==
+        null
+    ) {
+      var pin = odr.sheet.pinned();
+      if (pin !== null && pin.cell === null) {
+        at = { column: pin.column, row: pin.row };
+      }
+    }
+    return at;
   }
 
   table.addEventListener("dblclick", function (event) {
@@ -2327,6 +2361,13 @@
     var span = range === null ? null : axis === "row" ? range.rows : range.columns;
     var index = span === null ? null : after ? span[1] + 1 : span[0];
     var count = span === null ? 0 : span[1] - span[0] + 1;
+    // the grid past the content is empty: nothing moves, nothing to record
+    if (
+      index !== null &&
+      (axis === "row" ? odr.sheet.inGrid(0, index) : odr.sheet.inGrid(index, 0))
+    ) {
+      return true;
+    }
     var plural = axis === "row" ? "Rows" : "Columns";
     if (index !== null && cutsArray(axis, index, count, insert)) {
       var refused = { sheet: sheet };
