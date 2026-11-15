@@ -516,6 +516,54 @@ def test_a_slide_from_a_layout_and_a_text_box(file_type, suffix, tmp_path):
     assert walk_text(slides[1]) == ["Agenda", "note"]
 
 
+@pytest.mark.parametrize(
+    "file_type,suffix",
+    [
+        (pyodr.FileType.opendocument_spreadsheet, "ods"),
+        (pyodr.FileType.office_open_xml_workbook, "xlsx"),
+    ],
+)
+def test_move_and_remove_sheets(file_type, suffix, tmp_path):
+    document = pyodr.create_document(file_type)
+    document.insert_sheet(1, "B")
+    last = document.insert_sheet(2, "C")
+
+    document.move_sheet(last, 0)
+    document.remove(children_of(document.root_element())[1])
+    with pytest.raises(IndexError):
+        document.move_sheet(last, 2)
+
+    reloaded = reopen(document, tmp_path, "moved." + suffix)
+    names = [child.as_sheet().name() for child in children_of(reloaded.root_element())]
+    assert names == ["C", "B"]
+
+    document.remove(last)
+    with pytest.raises(ValueError):
+        document.remove(children_of(document.root_element())[0])
+
+
+@pytest.mark.parametrize(
+    "file_type,suffix",
+    [
+        (pyodr.FileType.opendocument_presentation, "odp"),
+        (pyodr.FileType.office_open_xml_presentation, "pptx"),
+    ],
+)
+def test_move_and_remove_slides(file_type, suffix, tmp_path):
+    document = pyodr.create_document(file_type)
+    blank = document.insert_slide(1, 5)
+    document.insert_slide(2, 4)
+
+    document.move_slide(blank, 0)
+    document.remove(children_of(document.root_element())[1])
+    with pytest.raises(IndexError):
+        document.move_slide(blank, 2)
+
+    reloaded = reopen(document, tmp_path, "moved." + suffix)
+    slides = children_of(reloaded.root_element())
+    assert [len(children_of(slide)) for slide in slides] == [0, 1]
+
+
 def test_a_slide_layout_keeps_its_document_alive():
     layouts = pyodr.create_document(
         pyodr.FileType.office_open_xml_presentation

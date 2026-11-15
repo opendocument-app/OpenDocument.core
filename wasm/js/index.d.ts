@@ -290,6 +290,8 @@ export declare class Document {
    * `data-odr-id`. Each returns the id of what it created; nothing crosses as
    * a handle. `edit` above is the same operations as one batch.
    *
+   * A slide goes with what the format keeps for it, and its view from the
+   * next `listViews`.
    * @throws OdrError `UnsupportedOperation` where the engine cannot write,
    *   `invalid_argument` for an id this document does not hold.
    */
@@ -361,6 +363,14 @@ export declare class Document {
    * ignoring case, or one Excel and LibreOffice refuse.
    */
   insertSheet(index: number, name?: string): this;
+  /**
+   * Removes the `sheet`-th sheet; a reference to it becomes `#REF!`.
+   * @throws OdrError `invalid_argument` for the last sheet of a workbook.
+   */
+  removeSheet(sheet: number): this;
+  /** Puts the `sheet`-th sheet at `index` among the sheets, counted after the
+   * move. */
+  moveSheet(sheet: number, index: number): this;
   /** The layouts `insertSlide` starts a slide from; empty where the engine
    * cannot insert a slide. */
   slideLayouts(): SlideLayout[];
@@ -370,6 +380,9 @@ export declare class Document {
    * from the next `listViews`.
    */
   insertSlide(index: number, layout: number): InsertedSlide;
+  /** Puts the slide `slideId` at `index` among the slides, counted after the
+   * move. Remove one with `removeElement`. */
+  moveSlide(slideId: number, index: number): this;
   /** An empty text box on a slide or drawing page, drawing no fill and no
    * outline. */
   insertTextBox(pageId: number, placement: TextBoxPlacement): InsertedTextBox;

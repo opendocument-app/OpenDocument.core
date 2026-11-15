@@ -370,7 +370,9 @@ void odr_python::bind_document(py::module_ &m) {
       // Structural edits. Each raises for an engine that cannot write, and for
       // an element of another document.
       .def("remove", &odr::Document::remove, py::arg("element"),
-           "Remove an element and its subtree.")
+           "Remove an element and its subtree. A sheet or a slide goes with "
+           "what the format keeps for it; a reference to a removed sheet "
+           "becomes `#REF!`, and the last sheet of a workbook raises.")
       .def("insert_text_before", &odr::Document::insert_text_before,
            py::arg("anchor"), py::arg("text"), keep_self_alive,
            "A run before another, in the same parent, so it takes the same "
@@ -398,6 +400,10 @@ void odr_python::bind_document(py::module_ &m) {
            py::arg("name") = std::string(), keep_self_alive,
            "An empty sheet at an index among the sheets; an empty name takes "
            "the first free `SheetN`.")
+      .def("move_sheet", &odr::Document::move_sheet, py::arg("sheet"),
+           py::arg("index"),
+           "Put a sheet at an index among the sheets, counted after the "
+           "move.")
       .def(
           "slide_layouts",
           [](const py::object &self) {
@@ -418,6 +424,10 @@ void odr_python::bind_document(py::module_ &m) {
            py::arg("layout"), keep_self_alive,
            "An empty slide at an index among the slides, as the layout-th of "
            "`slide_layouts`.")
+      .def("move_slide", &odr::Document::move_slide, py::arg("slide"),
+           py::arg("index"),
+           "Put a slide at an index among the slides, counted after the "
+           "move.")
       .def("insert_text_box", &odr::Document::insert_text_box, py::arg("page"),
            py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"),
            keep_self_alive,

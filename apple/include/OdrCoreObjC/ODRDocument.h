@@ -109,7 +109,9 @@ NS_SWIFT_NAME(Document)
 /// Each fails where the engine cannot write, and for an element of another
 /// document.
 
-/// Removes an element and its subtree; its identifier stays taken.
+/// Removes an element and its subtree; its identifier stays taken. A sheet or
+/// a slide goes with what the format keeps for it; a reference to a removed
+/// sheet becomes `#REF!`, and the last sheet of a workbook fails.
 - (BOOL)removeElement:(ODRElement *)element
                 error:(NSError **)error NS_SWIFT_NAME(remove(_:));
 
@@ -155,6 +157,11 @@ NS_SWIFT_NAME(Document)
                                     error:(NSError **)error
     NS_SWIFT_NAME(insertSheet(at:name:));
 
+/// Puts `sheet` at `index` among the sheets, counted after the move.
+- (BOOL)moveSheet:(ODRSheet *)sheet
+          toIndex:(uint32_t)index
+            error:(NSError **)error NS_SWIFT_NAME(moveSheet(_:to:));
+
 /// The layouts `insertSlide` starts a slide from, each the empty slide it
 /// makes, outside the document and refusing edits; empty where the engine
 /// cannot insert a slide.
@@ -167,6 +174,11 @@ NS_SWIFT_NAME(Document)
                                    layout:(uint32_t)layout
                                     error:(NSError **)error
     NS_SWIFT_NAME(insertSlide(at:layout:));
+
+/// Puts `slide` at `index` among the slides, counted after the move.
+- (BOOL)moveSlide:(ODRSlide *)slide
+          toIndex:(uint32_t)index
+            error:(NSError **)error NS_SWIFT_NAME(moveSlide(_:to:));
 
 /// A text box with one empty paragraph on a slide or drawing page, drawing no
 /// fill and no outline. Every length needs a fixed unit, and the size must be

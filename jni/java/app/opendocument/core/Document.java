@@ -79,7 +79,9 @@ public final class Document extends NativeResource {
   }
 
   /**
-   * Removes an element and its subtree; its identifier stays taken.
+   * Removes an element and its subtree; its identifier stays taken. A sheet or a slide goes with
+   * what the format keeps for it; a reference to a removed sheet becomes {@code #REF!}, and the
+   * last sheet of a workbook is refused.
    *
    * <p>The structural edits below all throw where the engine cannot write, and
    * for an element of another document.
@@ -173,6 +175,15 @@ public final class Document extends NativeResource {
     return new Sheet(insertSheetNative(handle(), index, name), this);
   }
 
+  /** Puts {@code sheet} at {@code index} among the sheets, counted after the move. */
+  public void moveSheet(Sheet sheet, int index) {
+    try {
+      moveSheetNative(handle(), sheet.handle(), index);
+    } finally {
+      sheet.keepAlive();
+    }
+  }
+
   /**
    * The layouts {@link #insertSlide} starts a slide from, each the empty slide it makes, outside
    * the document and refusing edits; empty where the engine cannot insert a slide.
@@ -194,6 +205,15 @@ public final class Document extends NativeResource {
     return new Slide(insertSlideNative(handle(), index, layout), this);
   }
 
+  /** Puts {@code slide} at {@code index} among the slides, counted after the move. */
+  public void moveSlide(Slide slide, int index) {
+    try {
+      moveSlideNative(handle(), slide.handle(), index);
+    } finally {
+      slide.keepAlive();
+    }
+  }
+
   /**
    * A text box with one empty paragraph on a slide or drawing page, drawing no fill and no
    * outline. Every length needs a fixed unit, and the size must be positive.
@@ -210,9 +230,13 @@ public final class Document extends NativeResource {
 
   private native long insertSheetNative(long handle, int index, String name);
 
+  private native void moveSheetNative(long handle, long sheetHandle, int index);
+
   private native long[] slideLayoutsNative(long handle);
 
   private native long insertSlideNative(long handle, int index, int layout);
+
+  private native void moveSlideNative(long handle, long slideHandle, int index);
 
   private native long insertTextBoxNative(
       long handle, long pageHandle, Measure x, Measure y, Measure width, Measure height);

@@ -52,6 +52,11 @@ The release run heads these entries with the version and opens a fresh
   its name and its placeholders' boxes, lengths as strings such as `2.1cm`;
   `insertSlide` answers the ids of the slide, its placeholders and their
   paragraphs, and `insertTextBox` those of the box and its paragraph.
+- Removing and moving in every binding: `remove`, `move_sheet` and
+  `move_slide` in python, `remove`, `moveSheet` and `moveSlide` in java,
+  `remove(_:)`, `moveSheet(_:to:)` and `moveSlide(_:to:)` in swift, and
+  `removeSheet(sheet)`, `moveSheet(sheet, index)`, `removeElement(slideId)` and
+  `moveSlide(slideId, index)` in npm, which lists the views again afterwards.
 - `Document::remove` takes a slide of an odp or pptx, and
   `Document::move_slide(slide, index)` moves one. A pptx slide goes with its
   notes slide and its entries in custom shows and sections, and a moved one

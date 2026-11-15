@@ -284,6 +284,15 @@ using odr::apple::to_string;
   });
 }
 
+- (BOOL)moveSheet:(ODRSheet *)sheet
+          toIndex:(uint32_t)index
+            error:(NSError **)error {
+  return guarded(error, [&] {
+    _handle->move_sheet(sheet.handle.as_sheet(), index);
+    return YES;
+  });
+}
+
 - (nullable NSArray<ODRSlide *> *)slideLayoutsWithError:(NSError **)error {
   return guarded(error, [&]() -> NSArray<ODRSlide *> * {
     const std::vector<odr::Slide> layouts = _handle->slide_layouts();
@@ -304,6 +313,15 @@ using odr::apple::to_string;
     return static_cast<ODRSlide *>([ODRElement
         elementWithHandle:_handle->insert_slide(index, layout)
                     owner:self]);
+  });
+}
+
+- (BOOL)moveSlide:(ODRSlide *)slide
+          toIndex:(uint32_t)index
+            error:(NSError **)error {
+  return guarded(error, [&] {
+    _handle->move_slide(slide.handle.as_slide(), index);
+    return YES;
   });
 }
 
