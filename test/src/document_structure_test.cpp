@@ -761,8 +761,8 @@ TEST_P(DocumentInsertSheet, an_envelope_moves_and_removes_sheets) {
   document.edit(R"({"version": 2, "ops": [
     {"op": "insertSheet", "index": 1, "name": "B"},
     {"op": "insertSheet", "index": 2, "name": "C"},
-    {"op": "moveSheet", "index": 2, "to": 0},
-    {"op": "removeSheet", "index": 1}
+    {"op": "moveSheet", "sheet": 2, "index": 0},
+    {"op": "removeSheet", "sheet": 1}
   ]})");
 
   EXPECT_EQ(sheet_names(reopen(document)),
@@ -773,7 +773,7 @@ TEST_P(DocumentInsertSheet, an_envelope_refuses_to_remove_the_last_sheet) {
   const Document document = create_document(GetParam());
 
   EXPECT_THROW(document.edit(R"({"version": 2, "ops": [
-    {"op": "removeSheet", "index": 0}
+    {"op": "removeSheet", "sheet": 0}
   ]})"),
                std::invalid_argument);
 }

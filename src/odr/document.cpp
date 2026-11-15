@@ -556,14 +556,14 @@ void Document::edit(const std::string_view operations,
 
     if (name == "removeSheet") {
       remove(sheet_at(root_element(),
-                      integer<std::uint32_t>(operation.at("index"))));
+                      integer<std::uint32_t>(operation.at("sheet"))));
       continue;
     }
 
     if (name == "moveSheet") {
       move_sheet(sheet_at(root_element(),
-                          integer<std::uint32_t>(operation.at("index"))),
-                 integer<std::uint32_t>(operation.at("to")));
+                          integer<std::uint32_t>(operation.at("sheet"))),
+                 integer<std::uint32_t>(operation.at("index")));
       continue;
     }
 

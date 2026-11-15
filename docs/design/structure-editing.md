@@ -105,8 +105,8 @@ Moving and resizing a frame are not covered.
 | `insertSheet` | `index`, `name` |
 | `insertSlide` | `index`, `layout`, `id`, `frames`, `paragraphs` |
 | `insertTextBox` | `page`, `x`, `y`, `width`, `height`, `id`, `paragraph` |
-| `removeSheet` | `index` |
-| `moveSheet` | `index`, `to` |
+| `removeSheet` | `sheet` |
+| `moveSheet` | `sheet`, `index` |
 | `removeSlide` | `page` |
 | `moveSlide` | `page`, `index` |
 
@@ -126,7 +126,7 @@ lengths of `insertTextBox` are strings as `Measure` spells them, such as
 Sheets keep their positional address, so an op after an `insertSheet`,
 `removeSheet` or `moveSheet` counts the sheets as that op left them. `page`
 names a slide by its id, a negative one for a slide inserted earlier in the
-envelope. `to` and `index` of a move count the places after it (section 8).
+envelope. `index` of a move counts the places after it (section 8).
 
 ## 6. The page
 
