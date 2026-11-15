@@ -27,6 +27,9 @@
 - [The formula evaluator without exceptions](formula-without-exceptions.md):
   stops as `std::expected` values, so the formula module builds with
   `-fno-exceptions` and loads in any WebView.
+- [Document types design](document-types.md): one public handle per document
+  type (`Spreadsheet`, `Presentation`, `Drawing`, `TextDocument`), holding
+  the methods only that type answers; the old ones on `Document` deprecated.
 - [Document creation design](document-creation.md): a new odt, ods, odp,
   docx, xlsx or pptx, generated in code and opened through the read path.
 - [Structure editing design](structure-editing.md): sheets and slides
