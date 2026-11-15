@@ -58,8 +58,8 @@ alone proves little.
 ## Open work
 
 - Validate new files in Word and Excel.
-- odg creation. Inserting a sheet, a slide or a text box is in
-  [structure editing](structure-editing.md).
+- odg creation. Inserting, removing and moving sheets and slides, and
+  inserting a text box, are in [structure editing](structure-editing.md).
 - A Letter-page option.
 - New-document UI in the droid and ios apps.
 
