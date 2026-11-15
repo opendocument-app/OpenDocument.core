@@ -364,13 +364,13 @@ export declare class Document {
    */
   insertSheet(index: number, name?: string): this;
   /**
-   * Removes the `index`-th sheet; a reference to it becomes `#REF!`.
+   * Removes the `sheet`-th sheet; a reference to it becomes `#REF!`.
    * @throws OdrError `invalid_argument` for the last sheet of a workbook.
    */
-  removeSheet(index: number): this;
-  /** Puts the `index`-th sheet at `to` among the sheets, counted after the
+  removeSheet(sheet: number): this;
+  /** Puts the `sheet`-th sheet at `index` among the sheets, counted after the
    * move. */
-  moveSheet(index: number, to: number): this;
+  moveSheet(sheet: number, index: number): this;
   /** The layouts `insertSlide` starts a slide from; empty where the engine
    * cannot insert a slide. */
   slideLayouts(): SlideLayout[];

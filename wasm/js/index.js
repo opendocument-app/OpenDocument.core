@@ -195,13 +195,13 @@ export class Document {
     return this;
   }
 
-  removeSheet(index) {
-    unwrap(this.#core.removeSheet(this.#handle, index));
+  removeSheet(sheet) {
+    unwrap(this.#core.removeSheet(this.#handle, sheet));
     return this;
   }
 
-  moveSheet(index, to) {
-    unwrap(this.#core.moveSheet(this.#handle, index, to));
+  moveSheet(sheet, index) {
+    unwrap(this.#core.moveSheet(this.#handle, sheet, index));
     return this;
   }
 

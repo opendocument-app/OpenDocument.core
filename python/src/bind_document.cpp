@@ -372,7 +372,7 @@ void odr_python::bind_document(py::module_ &m) {
       .def("remove", &odr::Document::remove, py::arg("element"),
            "Remove an element and its subtree. A sheet or a slide goes with "
            "what the format keeps for it; a reference to a removed sheet "
-           "becomes `#REF!`, and the last sheet stays.")
+           "becomes `#REF!`, and the last sheet of a workbook raises.")
       .def("insert_text_before", &odr::Document::insert_text_before,
            py::arg("anchor"), py::arg("text"), keep_self_alive,
            "A run before another, in the same parent, so it takes the same "

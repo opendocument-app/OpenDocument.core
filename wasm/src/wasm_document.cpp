@@ -295,23 +295,23 @@ emscripten::val insert_sheet(const Handle handle, const double index,
 
 /// Sheets have no ids here, so these replay the envelope ops that address
 /// one by its position.
-emscripten::val remove_sheet(const Handle handle, const double index) {
+emscripten::val remove_sheet(const Handle handle, const double sheet) {
   return guarded([&] {
     Session &s = session(handle);
     document_of(s).edit(R"({"version":2,"ops":[{"op":"removeSheet",)" +
-                        index_field("index", index) + "}]}");
+                        index_field("sheet", sheet) + "}]}");
     drop_views(s);
     return ok();
   });
 }
 
-emscripten::val move_sheet(const Handle handle, const double index,
-                           const double to) {
+emscripten::val move_sheet(const Handle handle, const double sheet,
+                           const double index) {
   return guarded([&] {
     Session &s = session(handle);
     document_of(s).edit(R"({"version":2,"ops":[{"op":"moveSheet",)" +
-                        index_field("index", index) + "," +
-                        index_field("to", to) + "}]}");
+                        index_field("sheet", sheet) + "," +
+                        index_field("index", index) + "}]}");
     drop_views(s);
     return ok();
   });
