@@ -3,8 +3,6 @@
 #include <odr/exceptions.hpp>
 
 #include <odr/internal/abstract/filesystem.hpp>
-#include <odr/internal/common/sheet_dependencies.hpp>
-#include <odr/internal/formula/formula_value.hpp>
 #include <odr/internal/zip/zip_util.hpp>
 
 namespace odr::internal {
@@ -80,37 +78,6 @@ const abstract::PresentationAdapter *Document::presentation_adapter() const {
 
 const abstract::DrawingAdapter *Document::drawing_adapter() const {
   return m_drawing_adapter;
-}
-
-const SheetDependencies &Document::sheet_dependencies() const {
-  if (!m_sheet_dependencies) {
-    m_sheet_dependencies =
-        std::make_unique<SheetDependencies>(SheetDependencies::of(*this));
-  }
-  return *m_sheet_dependencies;
-}
-
-void Document::drop_sheet_dependencies() const noexcept {
-  m_sheet_dependencies.reset();
-}
-
-void Document::note_written(const ElementIdentifier sheet,
-                            const TablePosition &position) const {
-  m_written.emplace_back(sheet, position);
-}
-
-void Document::note_moved() const noexcept { m_moved = true; }
-
-const std::vector<std::pair<ElementIdentifier, TablePosition>> &
-Document::written() const noexcept {
-  return m_written;
-}
-
-bool Document::moved() const noexcept { return m_moved; }
-
-void Document::forget_edits() const noexcept {
-  m_written.clear();
-  m_moved = false;
 }
 
 bool Document::is_decrypted() const noexcept {

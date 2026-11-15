@@ -217,6 +217,7 @@ set(ODR_SOURCE_FILES
         "src/odr/internal/common/random.cpp"
         "src/odr/internal/common/sheet_cell_source.cpp"
         "src/odr/internal/common/sheet_dependencies.cpp"
+        "src/odr/internal/common/sheet_edits.cpp"
         "src/odr/internal/common/sheet_recalculation.cpp"
         "src/odr/internal/common/style.cpp"
         "src/odr/internal/common/table_cursor.cpp"

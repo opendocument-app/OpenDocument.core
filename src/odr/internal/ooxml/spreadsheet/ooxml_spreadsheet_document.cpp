@@ -7,6 +7,7 @@
 #include <odr/internal/abstract/filesystem.hpp>
 #include <odr/internal/common/element_adapter.hpp>
 #include <odr/internal/common/file.hpp>
+#include <odr/internal/common/sheet_edits.hpp>
 #include <odr/internal/common/table_range.hpp>
 #include <odr/internal/formula/formula_ast.hpp>
 #include <odr/internal/formula/formula_parser.hpp>
@@ -439,9 +440,6 @@ ElementIdentifier Document::insert_sheet(const std::uint32_t index,
     m_element_registry.append_child(m_root_element, sheet);
   }
 
-  // a formula naming the sheet resolves now, and a sheet range may span it
-  drop_sheet_dependencies();
-  note_moved();
   return sheet;
 }
 
@@ -525,8 +523,6 @@ void Document::remove_sheet(const ElementIdentifier sheet,
 
   m_element_registry.unlink_child(sheet);
   m_element_registry.invalidate(sheet);
-  drop_sheet_dependencies();
-  note_moved();
 }
 
 void Document::move_sheet(const ElementIdentifier sheet,
@@ -567,9 +563,6 @@ void Document::move_sheet(const ElementIdentifier sheet,
   }
 
   renumber_sheets_(from, index);
-
-  drop_sheet_dependencies();
-  note_moved();
 }
 
 bool Document::is_editable() const noexcept { return true; }
@@ -696,11 +689,10 @@ class ElementAdapter final : public AdapterBase,
                              public abstract::SpreadsheetAdapter {
 public:
   ElementAdapter(Document &document, ElementRegistry &registry)
-      : AdapterBase(registry), m_document(&document) {}
+      : AdapterBase(registry), m_document(&document), m_edits(&document) {}
 
-  [[nodiscard]] const SheetDependencies &
-  spreadsheet_dependencies() const override {
-    return m_document->sheet_dependencies();
+  [[nodiscard]] SheetEdits &spreadsheet_edits() const override {
+    return m_edits;
   }
   [[nodiscard]] formula::Settings
   spreadsheet_formula_settings() const override {
@@ -718,7 +710,10 @@ public:
   [[nodiscard]] ElementIdentifier
   spreadsheet_insert_sheet(const std::uint32_t index,
                            const std::string &name) const override {
-    return m_document->insert_sheet(index, name);
+    const ElementIdentifier sheet = m_document->insert_sheet(index, name);
+    // a formula naming the sheet resolves now, and a sheet range may span it
+    m_edits.note_moved();
+    return sheet;
   }
 
   /// A reference to the sheet becomes `#REF!`: the rewrite of a delete of
@@ -775,6 +770,7 @@ public:
     }
     m_document->drop_empty_calc_chain();
     m_document->remove_sheet(element_id, index);
+    m_edits.note_moved();
     for (const ElementIdentifier id : readers.sheet_ids) {
       if (id != element_id) {
         index_shared_formulas(m_registry->sheet_element_at(id));
@@ -785,6 +781,7 @@ public:
   void spreadsheet_move_sheet(const ElementIdentifier sheet,
                               const std::uint32_t index) const override {
     m_document->move_sheet(sheet, index);
+    m_edits.note_moved();
   }
 
   [[nodiscard]] std::string
@@ -1005,9 +1002,9 @@ public:
           sheet_id_of(element_id), TablePosition(column, row));
       m_document->drop_empty_calc_chain();
     }
-    m_document->note_written(element_id, TablePosition(column, row));
+    m_edits.note_written(element_id, TablePosition(column, row));
     if (had_formula || value.has_formula()) {
-      m_document->drop_sheet_dependencies();
+      m_edits.note_formula_changed();
     }
   }
 
@@ -1560,8 +1557,7 @@ public:
     for (const ElementIdentifier id : sheet_ids) {
       index_shared_formulas(m_registry->sheet_element_at(id));
     }
-    m_document->drop_sheet_dependencies();
-    m_document->note_moved();
+    m_edits.note_moved();
 
     for (const TableHeader &header : headers) {
       sheet_set_cell(element_id, header.position.column, header.position.row,
@@ -2033,6 +2029,7 @@ public:
 
 private:
   Document *m_document{nullptr};
+  mutable SheetEdits m_edits;
 
   [[nodiscard]] pugi::xml_node
   get_node(const ElementIdentifier element_id) const {
