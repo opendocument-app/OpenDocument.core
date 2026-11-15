@@ -22,34 +22,20 @@ enum class Dimension : std::uint8_t {
 /// The units whose size is known, so a quantity in one converts.
 enum class KnownUnit : std::uint8_t {
   unknown,
-  /// ``: a bare number
-  none,
-  /// `%`
-  percent,
-  /// `m`
-  metre,
-  /// `cm`
-  centimetre,
-  /// `mm`
-  millimetre,
-  /// `q`
-  quarter_millimetre,
-  /// `in`
-  inch,
-  /// `pt`, 1/72 in
-  point,
-  /// `pc`, 1/6 in
-  pica,
-  /// `px`, 1/96 in
-  pixel,
-  /// `rad`
-  radian,
-  /// `deg`
-  degree,
-  /// `grad`
-  gradian,
-  /// `turn`
-  turn,
+  none,               ///< a bare number, named ``
+  percent,            ///< `%`
+  metre,              ///< `m`
+  centimetre,         ///< `cm`
+  millimetre,         ///< `mm`
+  quarter_millimetre, ///< `q`
+  inch,               ///< `in`
+  point,              ///< `pt`, 1/72 in
+  pica,               ///< `pc`, 1/6 in
+  pixel,              ///< `px`, 1/96 in
+  radian,             ///< `rad`
+  degree,             ///< `deg`
+  gradian,            ///< `grad`
+  turn,               ///< `turn`
 };
 
 /// Represents a runtime unit of measure.

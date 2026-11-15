@@ -71,7 +71,7 @@ using KnownUnitRow =
 
 constexpr double pi = std::numbers::pi;
 
-/// In `KnownUnit` order.
+/// In `KnownUnit` order, after `unknown`.
 constexpr std::array<KnownUnitRow, 14> known_units{{
     {"", KnownUnit::none, Dimension::dimensionless, 1, 1},
     {"%", KnownUnit::percent, Dimension::dimensionless, 1, 100},
@@ -88,6 +88,14 @@ constexpr std::array<KnownUnitRow, 14> known_units{{
     {"grad", KnownUnit::gradian, Dimension::angle, pi, 200},
     {"turn", KnownUnit::turn, Dimension::angle, 2 * pi, 1},
 }};
+static_assert([] {
+  for (std::size_t i = 0; i < known_units.size(); ++i) {
+    if (std::get<KnownUnit>(known_units[i]) != static_cast<KnownUnit>(i + 1)) {
+      return false;
+    }
+  }
+  return static_cast<std::size_t>(KnownUnit::turn) == known_units.size();
+}());
 
 } // namespace
 

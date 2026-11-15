@@ -607,11 +607,17 @@ namespace odr::internal {
 
 std::string odf::length_string(const Measure &length) {
   switch (length.unit().known()) {
-  case KnownUnit::metre:
-  case KnownUnit::quarter_millimetre:
-    return length.to(KnownUnit::centimetre).to_string();
-  default:
+  case KnownUnit::centimetre:
+  case KnownUnit::millimetre:
+  case KnownUnit::inch:
+  case KnownUnit::point:
+  case KnownUnit::pica:
+  case KnownUnit::pixel:
     return length.to_string();
+  default:
+    return length.unit().dimension() == Dimension::length
+               ? length.to(KnownUnit::centimetre).to_string()
+               : length.to_string();
   }
 }
 

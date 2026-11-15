@@ -117,11 +117,19 @@ bool is_css_length_unit(const std::string &name) {
       "em", "rem", "ex", "ch", "ic",   "cap",  "lh", "rlh",
       "vw", "vh",  "vi", "vb", "vmin", "vmax", "%",
   };
-  // css values 3, 5.2 has every absolute length we know but the metre
-  if (const DynamicUnit unit(name); unit.dimension() == Dimension::length) {
-    return unit.known() != KnownUnit::metre;
+  // css values 3, 5.2
+  switch (DynamicUnit(name).known()) {
+  case KnownUnit::centimetre:
+  case KnownUnit::millimetre:
+  case KnownUnit::quarter_millimetre:
+  case KnownUnit::inch:
+  case KnownUnit::point:
+  case KnownUnit::pica:
+  case KnownUnit::pixel:
+    return true;
+  default:
+    return relative.contains(name);
   }
-  return relative.contains(name);
 }
 
 /// Unit identifiers are case-insensitive in css, and a host writes the name.
