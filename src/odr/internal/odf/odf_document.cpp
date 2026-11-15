@@ -2408,7 +2408,28 @@ public:
       remove_sheet(element_id);
       return;
     }
+    if (element_type(element_id) == ElementType::slide) {
+      drop_from_shows(get_node(element_id));
+    }
     TreeEditor(*m_registry).remove(element_id);
+  }
+
+  /// ODF 1.3 part 3, 9.6.3: a custom show lists its pages by name.
+  static void drop_from_shows(const pugi::xml_node page) {
+    const std::string name = page.attribute("draw:name").value();
+    for (const pugi::xml_node show : page.parent()
+                                         .child("presentation:settings")
+                                         .children("presentation:show")) {
+      pugi::xml_attribute pages = show.attribute("presentation:pages");
+      std::string kept;
+      for (const std::string &listed :
+           util::string::split(pages.value(), ",")) {
+        if (listed != name) {
+          kept += (kept.empty() ? "" : ",") + listed;
+        }
+      }
+      pages.set_value(kept.c_str());
+    }
   }
 
   /// The `table:table` goes, and every reference to it becomes `#REF!`: the

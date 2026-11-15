@@ -95,6 +95,8 @@ using SharedStrings = std::vector<pugi::xml_node>;
 
 std::unordered_map<std::string, std::string>
 parse_relationships(const pugi::xml_document &relations);
+/// The relationships part of the part at @p path.
+AbsPath relationships_path(const AbsPath &path);
 std::unordered_map<std::string, std::string>
 parse_relationships(const abstract::ReadableFilesystem &filesystem,
                     const AbsPath &path);

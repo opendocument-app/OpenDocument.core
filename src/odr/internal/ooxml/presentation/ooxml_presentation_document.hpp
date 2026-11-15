@@ -41,6 +41,12 @@ public:
   /// A copy of the @p layout -th of @ref slide_layouts at @p index: a new part
   /// with its relationships and content type, and an entry in `p:sldIdLst`.
   ElementIdentifier insert_slide(std::uint32_t index, std::uint32_t layout);
+  /// Takes the slide @p slide_id out: its entry in `p:sldIdLst`, custom shows
+  /// and sections, its relationship, content type, part and notes slide.
+  void remove_slide(ElementIdentifier slide_id);
+  /// Puts the slide @p slide_id at @p index among the slides, counted after
+  /// the move, into the section of the slide it then follows.
+  void move_slide(ElementIdentifier slide_id, std::uint32_t index);
   /// A `p:sp` text box with one empty paragraph, last on the slide
   /// @p slide_id.
   ElementIdentifier insert_text_box(ElementIdentifier slide_id,
@@ -65,6 +71,8 @@ private:
   bool m_presentation_changed{false};
   /// the other parts an edit changed or made, which `save` writes
   std::map<AbsPath, pugi::xml_document> m_written_parts;
+  /// the parts of the package `save` leaves out
+  std::vector<AbsPath> m_dropped_parts;
   /// by the `r:id` the slide-id list names, which is how a slide is reached
   std::unordered_map<std::string, pugi::xml_document> m_slides_xml;
   /// the other way round, which is what `save` walks
@@ -86,6 +94,12 @@ private:
   /// The part at @p path from the package, parsed once and written by `save`;
   /// null where the package has none.
   pugi::xml_node written_part_(const AbsPath &path);
+  /// The `r:id` the slide-id list names the slide @p slide_id by.
+  [[nodiscard]] std::string
+  slide_relationship_id_(ElementIdentifier slide_id) const;
+  /// Leaves the part at @p path and its relationships part out of `save`,
+  /// with the content type of the part.
+  void drop_part_(const AbsPath &path);
 };
 
 } // namespace odr::internal::ooxml::presentation

@@ -372,6 +372,93 @@ TEST_P(DocumentInsertSlide, refuses_an_index_or_layout_past_the_end) {
   EXPECT_EQ(children_of(document.root_element()).size(), 1);
 }
 
+namespace {
+
+/// The text of each slide of @p document, in order.
+std::vector<std::string> slide_texts(const Document &document) {
+  std::vector<std::string> result;
+  for (const Element slide : document.root_element().children()) {
+    result.push_back(text_of(slide));
+  }
+  return result;
+}
+
+/// A presentation of four slides reading `0` to `3`.
+Document numbered_slides(const FileType type) {
+  const Document document = create_document(type);
+  for (std::uint32_t i = 1; i < 4; ++i) {
+    std::ignore = document.insert_slide(i, 1);
+  }
+  std::uint32_t number = 0;
+  for (const Element slide : document.root_element().children()) {
+    std::ignore = document.append_text(
+        first_paragraph(*slide.children().begin()), std::to_string(number++));
+  }
+  return document;
+}
+
+Slide slide_at(const Document &document, const std::uint32_t index) {
+  return children_of(document.root_element()).at(index).as_slide();
+}
+
+} // namespace
+
+TEST_P(DocumentInsertSlide, removes_a_slide_and_survives_a_save) {
+  const Document document = numbered_slides(GetParam());
+  const Slide removed = slide_at(document, 1);
+
+  document.remove(removed);
+
+  EXPECT_FALSE(document.element_by_id(removed.identifier()));
+  EXPECT_EQ(slide_texts(document), (std::vector<std::string>{"0", "2", "3"}));
+  EXPECT_EQ(slide_texts(reopen(document)),
+            (std::vector<std::string>{"0", "2", "3"}));
+}
+
+TEST_P(DocumentInsertSlide, removes_every_slide) {
+  const Document document = create_document(GetParam());
+
+  document.remove(slide_at(document, 0));
+
+  EXPECT_TRUE(children_of(document.root_element()).empty());
+  EXPECT_TRUE(children_of(reopen(document).root_element()).empty());
+}
+
+TEST_P(DocumentInsertSlide, moves_a_slide_both_ways_and_survives_a_save) {
+  const Document document = numbered_slides(GetParam());
+
+  document.move_slide(slide_at(document, 0), 3);
+  EXPECT_EQ(slide_texts(document),
+            (std::vector<std::string>{"1", "2", "3", "0"}));
+  document.move_slide(slide_at(document, 2), 0);
+  EXPECT_EQ(slide_texts(document),
+            (std::vector<std::string>{"3", "1", "2", "0"}));
+  document.move_slide(slide_at(document, 1), 1);
+
+  EXPECT_EQ(slide_texts(reopen(document)),
+            (std::vector<std::string>{"3", "1", "2", "0"}));
+}
+
+TEST_P(DocumentInsertSlide, a_slide_inserted_after_a_move_lands_in_place) {
+  const Document document = numbered_slides(GetParam());
+
+  document.move_slide(slide_at(document, 3), 0);
+  std::ignore = document.insert_slide(1, 5);
+
+  const Document saved = reopen(document);
+  EXPECT_EQ(slide_texts(saved),
+            (std::vector<std::string>{"3", "", "0", "1", "2"}));
+}
+
+TEST_P(DocumentInsertSlide, refuses_a_move_past_the_last_slide) {
+  const Document document = numbered_slides(GetParam());
+
+  EXPECT_THROW(document.move_slide(slide_at(document, 0), 4),
+               std::out_of_range);
+  EXPECT_THROW(document.move_slide(*document.slide_layouts().begin(), 0),
+               std::invalid_argument);
+}
+
 TEST(DocumentStructure, a_text_document_offers_no_layout) {
   const Document document = create_document(FileType::opendocument_text);
   EXPECT_TRUE(document.slide_layouts().empty());

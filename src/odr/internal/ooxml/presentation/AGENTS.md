@@ -76,8 +76,7 @@ highlight as `a:highlight`, each at its place in the
 `CT_TextCharacterProperties` sequence ([ECMA-376] 21.1.2.3.9).
 Each `a:r` owns exactly one `a:t` ([ECMA-376] A.4.1). Tabs stay in that text;
 insertion creates a sibling run with copied properties. Removing its only
-text removes the run. Appending accepts paragraphs and spans; slide removal
-refuses because it also needs package metadata updates.
+text removes the run. Appending accepts paragraphs and spans.
 
 The constructor builds a detached `p:sld` per layout
 (`write_placeholder_slide`) and one holding a text box, outside the package
@@ -87,6 +86,16 @@ relationships, the content types and `p:sldIdLst`. `save`
 writes the slides, every part in `m_written_parts`, and `presentation.xml`
 once an edit changed it, and byte-copies the rest. The `p:sld` dispatch walks
 `parse_slide_children`, so a new slide parses on its own.
+
+`Document::remove_slide` drops the `p:sldId`, the slide's `p:sldLst` entries
+in custom shows and its `p14:sldId` in sections, the presentation
+relationship, and the part, its relationships part and its notes slide with
+their content types (`m_dropped_parts`). The dom stays, because the registry
+holds nodes in it. `Document::move_slide` reorders `p:sldIdLst` and moves the
+slide's `p14:sldId` after the one of the slide it now follows, or to the front
+of the first section: PowerPoint repairs sections out of slide order.
+Other parts' relationships to a removed slide (slide-jump hyperlinks,
+`viewProps.xml` outline entries) are not dropped and dangle.
 
 `Document::insert_text_box` writes a `p:sp` text box (`txBox="1"`,
 `write_text_box`) into the slide's shape tree.

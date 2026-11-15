@@ -131,6 +131,7 @@ add_executable(odr_test
         "src/internal/oldms/xls_test.cpp"
 
         "src/internal/ooxml/ooxml_crypto_test.cpp"
+        "src/internal/ooxml/ooxml_presentation_slides_test.cpp"
         "src/internal/ooxml/ooxml_text_style_test.cpp"
         "src/internal/ooxml/ooxml_spreadsheet_charts_test.cpp"
         "src/internal/ooxml/ooxml_spreadsheet_columns_test.cpp"

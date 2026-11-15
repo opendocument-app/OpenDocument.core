@@ -516,11 +516,7 @@ void Document::remove_sheet(const ElementIdentifier sheet,
 
   // the dom stays, because the registry holds nodes in it
   std::erase(m_written_parts, sheet_path);
-  const AbsPath sheet_relations_path =
-      sheet_path.parent()
-          .join(RelPath("_rels"))
-          .join(RelPath(sheet_path.basename() + ".rels"));
-  for (const AbsPath &path : {sheet_path, sheet_relations_path}) {
+  for (const AbsPath &path : {sheet_path, relationships_path(sheet_path)}) {
     if (m_files->is_file(path)) {
       m_dropped_parts.push_back(path);
     }
