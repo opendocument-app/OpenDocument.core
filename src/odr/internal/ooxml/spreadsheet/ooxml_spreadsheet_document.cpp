@@ -544,8 +544,10 @@ void Document::move_sheet(const ElementIdentifier sheet,
        id = m_element_registry.element_at(id).next_sibling_id) {
     order.push_back(id);
   }
-  const auto entries =
-      sheets.children("sheet") | std::ranges::to<std::vector<pugi::xml_node>>();
+  std::vector<pugi::xml_node> entries;
+  for (const pugi::xml_node entry : sheets.children("sheet")) {
+    entries.push_back(entry);
+  }
   const auto found = std::ranges::find(order, sheet);
   if (found == order.end() || order.size() != entries.size()) {
     throw UnsupportedOperation();
