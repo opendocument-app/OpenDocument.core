@@ -34,6 +34,9 @@
   docx, xlsx or pptx, generated in code and opened through the read path.
 - [Structure editing design](structure-editing.md): sheets and slides
   inserted, removed and moved, slides from a layout, and text boxes.
+- [Conversion design](conversion.md): a document turned into another file
+  type of its document type, read through the model and written only through
+  the edit API.
 
 ## Diagrams
 
