@@ -45,11 +45,11 @@ below go on, and a column inserted at the cut edge is recorded.
 layout (`docs/design/sheet-scripts.md`): each bound with its own grid, a
 column wash naming its sheet, `setPage` choosing the sheet `odr.sheet`
 answers for, writes on both in one log in the order taken, one undo history
-across them, one pin on the page, and an edit past the content touching
-only its own sheet.
+across them, a row insert undone while the other sheet is shown, one pin on
+the page, and an edit past the content touching only its own sheet.
 
 `serve` serves `document.css`, `spreadsheet.css`, `editing.js`,
-`spreadsheet.js` and `sheet-editing.js` out of
+`spreadsheet.js`, `sheet-editing.js` and `viewport.js` out of
 `src/odr/internal/html/frontend/`, so the checks run the file the library
 embeds. `error-codes.js` is built from `src/odr/error_code.{hpp,cpp}` by
 `test/browser/serve.py`. Each page prints its own report with a count. A page

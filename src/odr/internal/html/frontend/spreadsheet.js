@@ -60,7 +60,6 @@
   odr.goToCell = function (column, row) {
     return active.goToCell(column, row);
   };
-
 })(function (table, activate) {
   "use strict";
 
@@ -169,7 +168,6 @@
   var emptyPin = null;
   var layers = null;
 
-  // Column 0 is the gutter, which labels no column.
   // this sheet's own, where a page holds several
   var scoped = table.hasAttribute("data-odr-sheet")
     ? '.odr-sheet[data-odr-sheet="' +
@@ -177,6 +175,7 @@
       '"]'
     : ".odr-sheet";
 
+  // Column 0 is the gutter, which labels no column.
   function columnRule(index, wash, scope) {
     if (index < 1) {
       return "";
@@ -1659,7 +1658,6 @@
     unmaterialize: unmaterialize,
     rematerialize: rematerialize,
   };
-
 
   table.addEventListener("mouseover", function (event) {
     var column = rulerColumn(event.target.closest("td,th"));

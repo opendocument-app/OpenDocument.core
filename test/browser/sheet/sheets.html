@@ -72,11 +72,8 @@
       check("each sheet is bound", odr.sheets.length === 2 && odr.sheets[0].table === sheets[0] && odr.sheets[1].table === sheets[1]);
       check("the sheet shown is the one answering", odr.sheet === odr.sheets[0]);
       check("each draws its own grid", sheets[0].querySelector(".odr-sheet-grid-below") !== null && sheets[1].querySelector(".odr-sheet-grid-below") !== null);
-      var washes = Array.prototype.map.call(document.querySelectorAll("style"), function (style) {
-        return style.textContent;
-      }).join("");
       odr.sheets[1].pin({ column: 1, row: 0 });
-      washes = Array.prototype.map.call(document.querySelectorAll("style"), function (style) {
+      var washes = Array.prototype.map.call(document.querySelectorAll("style"), function (style) {
         return style.textContent;
       }).join("");
       check("a column wash names its sheet", washes.indexOf('.odr-sheet[data-odr-sheet="1"]') !== -1 && washes.indexOf('.odr-sheet tr>') === -1, washes);
@@ -105,6 +102,23 @@
       check("undo takes the last write back, on the first sheet", odr.editing.undo() === true && odr.sheets[0].cellAt(1, 1).textContent === "b2");
       check("undo again reaches the second sheet", odr.editing.undo() === true && odr.sheets[1].cellAt(0, 0).textContent === "x1");
       check("redo puts the second sheet's write back", odr.editing.redo() === true && odr.sheets[1].cellAt(0, 0).textContent === "on two");
+
+      note("a structural step undone from another sheet");
+      odr.setPage(0);
+      odr.sheet.pin({ column: 0, row: 0 });
+      check("a row goes in on the first sheet", odr.editing.insertRows("above") === true && odr.sheets[0].extent().rows === 3);
+      odr.setPage(1);
+      check(
+        "its undo, the second sheet shown, takes it out of the first",
+        odr.editing.undo() === true && odr.sheets[0].extent().rows === 2 && odr.sheets[1].extent().rows === 2,
+        [odr.sheets[0].extent(), odr.sheets[1].extent()]
+      );
+      check(
+        "and its redo puts it back there",
+        odr.editing.redo() === true && odr.sheets[0].extent().rows === 3 && odr.sheets[1].extent().rows === 2,
+        [odr.sheets[0].extent(), odr.sheets[1].extent()]
+      );
+      odr.editing.undo();
 
       note("past the content of the second sheet");
       odr.setPage(1);

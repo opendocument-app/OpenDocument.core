@@ -1978,9 +1978,6 @@
     );
   }
 
-  /// Loads the evaluator the page carries, which an edit or `enable` does
-  /// too. Resolves to whether the page computes its formula cells.
-
   /// Merged into what is set; an unknown key throws.
   function setSheetOptions(value) {
     Object.keys(value || {}).forEach(function (key) {
@@ -1990,17 +1987,17 @@
       options[key] = value[key];
     });
     options.grid = sheetApi.setGrid(options.grid);
-  };
+  }
 
   function getSheetOptions() {
     var copy = {};
     Object.keys(options).forEach(function (key) {
       copy[key] = options[key];
     });
-    // `sheetApi.setGrid` turns it too
+    // `odr.sheet.setGrid` turns it too
     copy.grid = sheetApi.hasGrid();
     return copy;
-  };
+  }
 
   // A locked cell says so on the click, not on the double click. A shift
   // click spans a selection and opens nothing.
@@ -2025,7 +2022,7 @@
   function lockAt(column, row) {
     var cell = sheetApi.cellAt(column, row);
     return cell === null ? null : cell.getAttribute("data-odr-lock");
-  };
+  }
 
   /// Whether the cell at (@p column, @p row) refuses a write, which is also
   /// what tells the host.
@@ -2040,12 +2037,12 @@
       return true;
     }
     return false;
-  };
+  }
 
   /// Opens the editor over a cell, as a double click does.
   function editAt(column, row) {
     return edit(column, row, null);
-  };
+  }
 
   // ------------------------------------------------------------- formatting
 
@@ -2504,7 +2501,7 @@
       return false;
     }
     var taken =
-      index === null ? null : odr.sheet[(insert ? "insert" : "delete") + plural](index, count);
+      index === null ? null : sheetApi[(insert ? "insert" : "delete") + plural](index, count);
     var detail = { sheet: sheet };
     detail[axis] = index;
     if (taken === null) {
@@ -2515,10 +2512,10 @@
     op[axis] = index;
     op.count = count;
     var takeOut = function () {
-      odr.sheet["delete" + plural](index, count);
+      sheetApi["delete" + plural](index, count);
     };
     var putBack = function () {
-      odr.sheet["restore" + plural](index, taken);
+      sheetApi["restore" + plural](index, taken);
     };
     shared.history.push({
       sheet: sheet,

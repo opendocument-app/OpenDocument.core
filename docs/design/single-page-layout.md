@@ -145,11 +145,6 @@ host that renders once for every reader cannot know it.
 - **Fitting the width.** `fit_width_by_view` measures the current page, so
   turning to a page of another size refits it. A pdf can mix page sizes.
 
-## Left
-
-- ~~A workbook's whole-document view drives one sheet.~~ Every sheet of the
-  page has its scripts now; see [`sheet-scripts.md`](sheet-scripts.md).
-
 ## Open questions
 
 - A spread of two pages: whether it gets a layout of its own now, or waits
