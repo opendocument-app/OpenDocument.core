@@ -22,11 +22,18 @@ function unwrap(envelope) {
   throw new OdrError(type, message, detail);
 }
 
+// The embind surface behind a `Document`, for its subclasses.
+let coreOf;
+
 // Holds a handle into the wasm heap, so it must be closed: JS has no
 // destructors and the module cannot know when you are done.
 export class Document {
   #core;
   #handle;
+
+  static {
+    coreOf = (document) => document.#core;
+  }
 
   constructor(core, handle) {
     this.#core = core;
@@ -246,66 +253,45 @@ export class Document {
 export class TextDocument extends Document {}
 
 export class Spreadsheet extends Document {
-  #core;
-
-  constructor(core, handle) {
-    super(core, handle);
-    this.#core = core;
-  }
-
   // An empty sheet at `index`; an empty name takes the first free `SheetN`.
   insertSheet(index, name = '') {
-    unwrap(this.#core.insertSheet(this.handle, index, name));
+    unwrap(coreOf(this).insertSheet(this.handle, index, name));
     return this;
   }
 
   removeSheet(sheet) {
-    unwrap(this.#core.removeSheet(this.handle, sheet));
+    unwrap(coreOf(this).removeSheet(this.handle, sheet));
     return this;
   }
 
   moveSheet(sheet, index) {
-    unwrap(this.#core.moveSheet(this.handle, sheet, index));
+    unwrap(coreOf(this).moveSheet(this.handle, sheet, index));
     return this;
   }
 }
 
 export class Presentation extends Document {
-  #core;
-
-  constructor(core, handle) {
-    super(core, handle);
-    this.#core = core;
-  }
-
   moveSlide(slideId, index) {
-    unwrap(this.#core.moveSlide(this.handle, slideId, index));
+    unwrap(coreOf(this).moveSlide(this.handle, slideId, index));
     return this;
   }
 
   slideLayouts() {
-    return unwrap(this.#core.slideLayouts(this.handle));
+    return unwrap(coreOf(this).slideLayouts(this.handle));
   }
 
   insertSlide(index, layout) {
-    return unwrap(this.#core.insertSlide(this.handle, index, layout));
+    return unwrap(coreOf(this).insertSlide(this.handle, index, layout));
   }
 
   insertTextBox(pageId, { x, y, width, height }) {
-    return unwrap(this.#core.insertTextBox(this.handle, pageId, x, y, width, height));
+    return unwrap(coreOf(this).insertTextBox(this.handle, pageId, x, y, width, height));
   }
 }
 
 export class Drawing extends Document {
-  #core;
-
-  constructor(core, handle) {
-    super(core, handle);
-    this.#core = core;
-  }
-
   insertTextBox(pageId, { x, y, width, height }) {
-    return unwrap(this.#core.insertTextBox(this.handle, pageId, x, y, width, height));
+    return unwrap(coreOf(this).insertTextBox(this.handle, pageId, x, y, width, height));
   }
 }
 

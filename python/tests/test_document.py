@@ -591,8 +591,21 @@ def test_a_handle_is_only_for_its_document_type():
     assert not hasattr(document, "slide_layouts")
 
 
-def test_a_text_box_on_a_drawing_page(odg_path, tmp_path):
-    document = pyodr.open(str(odg_path)).as_document_file().document().as_drawing()
+FLAT_DRAWING = (
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    '<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"'
+    ' xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"'
+    ' office:version="1.3"'
+    ' office:mimetype="application/vnd.oasis.opendocument.graphics">'
+    '<office:body><office:drawing><draw:page draw:name="p"/>'
+    "</office:drawing></office:body></office:document>"
+)
+
+
+def test_a_text_box_on_a_drawing_page(tmp_path):
+    path = tmp_path / "empty.fodg"
+    path.write_text(FLAT_DRAWING)
+    document = pyodr.open(str(path)).as_document_file().document().as_drawing()
     page = children_of(document.root_element())[0]
 
     box = document.insert_text_box(
@@ -604,7 +617,7 @@ def test_a_text_box_on_a_drawing_page(odg_path, tmp_path):
     )
     document.append_text(first_paragraph(box), "note")
 
-    reloaded = reopen(document, tmp_path, "drawing.odg")
+    reloaded = reopen(document, tmp_path, "drawn.fodg")
     assert walk_text(reloaded.root_element()) == ["note"]
 
 
