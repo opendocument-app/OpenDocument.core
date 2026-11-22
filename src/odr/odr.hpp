@@ -105,7 +105,7 @@ list_file_types(const std::string &path, const Logger &logger = Logger::null());
                                const Logger &logger = Logger::null());
 
 /// A new document of @p type: one empty paragraph, one empty sheet, or one
-/// title slide.
+/// title slide, or one blank drawing page.
 /// @throws UnsupportedFileType if @ref FileTypeCapabilities::create is false.
 [[nodiscard]] Document create_document(FileType type);
 

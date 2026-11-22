@@ -332,7 +332,8 @@ constexpr std::array table{
          .translate_html = true,
          .color_scheme = true,
          .edit = true,
-         .save = true}},
+         .save = true,
+         .create = true}},
 
     Row{FileType::office_open_xml_document,
         "docx"sv,

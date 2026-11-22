@@ -41,6 +41,11 @@ The release run heads these entries with the version and opens a fresh
 
 ### Document creation
 
+- `create_document` also makes an odg: one blank A4 portrait drawing page,
+  margins of 1 cm, and Liberation Sans 18pt for text. Its `create` capability
+  is true in every binding; the existing drawing API can add text boxes,
+  format their text and save the new document.
+
 - `create_document` makes odp and pptx files. A new presentation has a 16:9
   page, one title slide, and six slide layouts: Title Slide, Title and
   Content, Section Header, Two Content, Title Only and Blank.
