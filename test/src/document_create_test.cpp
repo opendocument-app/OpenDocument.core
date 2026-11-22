@@ -95,7 +95,10 @@ TEST(DocumentCreate, renders_every_type_to_html) {
 
     std::ostringstream out;
     service.list_views().at(0).write_html(out);
-    EXPECT_NE(out.str().find("data-odr-id"), std::string::npos)
+    const char *address = document.document_type() == DocumentType::drawing
+                              ? "data-odr-page"
+                              : "data-odr-id";
+    EXPECT_NE(out.str().find(address), std::string::npos)
         << file_type_to_string(type);
   }
 }
@@ -333,4 +336,53 @@ TEST(DocumentCreate, pptx_placeholders_take_the_style_of_layout_and_master) {
   EXPECT_EQ(text_style.font_size->to_string(), "44pt");
   EXPECT_EQ(title.as_paragraph().style().text_align, TextAlign::center);
   EXPECT_EQ(frames[0].as_frame().style().vertical_align, VerticalAlign::bottom);
+}
+
+TEST(DocumentCreate, odg_holds_one_blank_a4_page) {
+  const Document document = create_document(FileType::opendocument_graphics);
+  const std::vector<Element> pages = children(document.root_element());
+  ASSERT_EQ(pages.size(), 1);
+  ASSERT_EQ(pages[0].type(), ElementType::page);
+  EXPECT_TRUE(children(pages[0]).empty());
+  const PageLayout layout = pages[0].as_page().page_layout();
+  ASSERT_TRUE(layout.width.has_value());
+  ASSERT_TRUE(layout.height.has_value());
+  EXPECT_EQ(centimetres(*layout.width), 21);
+  EXPECT_EQ(centimetres(*layout.height), 29.7);
+  ASSERT_TRUE(layout.margin.left.has_value());
+  EXPECT_EQ(centimetres(*layout.margin.left), 1);
+
+  const Document saved = reopen(document);
+  EXPECT_EQ(children(saved.root_element()).size(), 1);
+  EXPECT_TRUE(children(saved.root_element().first_child()).empty());
+}
+
+TEST(DocumentCreate, odg_takes_a_text_box_and_keeps_it_through_a_save) {
+  const Document document = create_document(FileType::opendocument_graphics);
+  const Element page = document.root_element().first_child();
+  const Frame box = document.as_drawing().insert_text_box(
+      page, Measure("2cm"), Measure("3cm"), Measure("8cm"), Measure("2cm"));
+  Element paragraph = box.first_child();
+  while (paragraph && paragraph.type() != ElementType::paragraph) {
+    paragraph = paragraph.first_child();
+  }
+  ASSERT_TRUE(paragraph);
+  const Text text = document.append_text(paragraph, "A new drawing");
+  TextStyle style;
+  style.font_weight = FontWeight::bold;
+  text.set_style(style);
+
+  const Document saved = reopen(document);
+  const Element saved_page = saved.root_element().first_child();
+  EXPECT_EQ(text_of(saved_page), "A new drawing");
+  const Frame saved_box = saved_page.first_child().as_frame();
+  ASSERT_TRUE(saved_box);
+  EXPECT_EQ(saved_box.x()->to_string(), "2cm");
+  EXPECT_EQ(saved_box.y()->to_string(), "3cm");
+  EXPECT_EQ(saved_box.width()->to_string(), "8cm");
+  EXPECT_EQ(first_text(saved_box).style().font_weight, FontWeight::bold);
+  EXPECT_EQ(first_text(saved_box).style().font_size->to_string(), "18pt");
+  std::ostringstream html;
+  html::translate(saved, {}).list_views().at(0).write_html(html);
+  EXPECT_NE(html.str().find("A new drawing"), std::string::npos);
 }

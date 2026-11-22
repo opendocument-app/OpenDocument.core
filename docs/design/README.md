@@ -39,7 +39,7 @@
 - [Document types design](document-types.md): one public handle per document
   type (`Spreadsheet`, `Presentation`, `Drawing`, `TextDocument`), holding
   the methods only that type answers; the old ones on `Document` deprecated.
-- [Document creation design](document-creation.md): a new odt, ods, odp,
+- [Document creation design](document-creation.md): a new odt, ods, odp, odg,
   docx, xlsx or pptx, generated in code and opened through the read path.
 - [Structure editing design](structure-editing.md): sheets and slides
   inserted, removed and moved, slides from a layout, and text boxes.

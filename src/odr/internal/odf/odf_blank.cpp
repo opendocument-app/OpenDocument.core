@@ -94,6 +94,21 @@ Blank spreadsheet() {
   };
 }
 
+Blank drawing() {
+  return {
+      .mimetype = "application/vnd.oasis.opendocument.graphics",
+      .font_face_decls = liberation_sans,
+      .styles =
+          R"(<style:default-style style:family="graphic"><style:text-properties style:font-name="Liberation Sans" fo:font-size="18pt"/></style:default-style>)",
+      .page_layout =
+          R"(<style:page-layout-properties fo:page-width="21cm" fo:page-height="29.7cm" style:print-orientation="portrait" fo:margin-top="1cm" fo:margin-bottom="1cm" fo:margin-left="1cm" fo:margin-right="1cm"/>)",
+      .master_page =
+          R"(<style:master-page style:name="Default" style:page-layout-name="pm1"/>)",
+      .body =
+          R"(<office:drawing><draw:page draw:name="page1" draw:master-page-name="Default"/></office:drawing>)",
+  };
+}
+
 /// A length in hundredths of a centimetre, as ODF spells it.
 std::string centimetres(const std::int32_t hundredths) {
   return fmt::format("{}cm", util::number::to_string_significant(
@@ -191,6 +206,8 @@ Blank find_blank(const FileType type) {
     return presentation();
   case FileType::opendocument_spreadsheet:
     return spreadsheet();
+  case FileType::opendocument_graphics:
+    return drawing();
   default:
     throw UnsupportedFileType(type);
   }
