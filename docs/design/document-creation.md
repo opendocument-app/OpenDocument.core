@@ -1,6 +1,6 @@
 # Document creation design
 
-`odr::create_document(FileType)` creates editable odt, ods, odp, docx, xlsx
+`odr::create_document(FileType)` creates editable odt, ods, odp, odg, docx, xlsx
 and pptx files. Query `FileTypeCapabilities::create` before offering a format.
 
 Bindings: `pyodr.create_document`, Java `Odr.createDocument`, Swift
@@ -20,6 +20,8 @@ one title slide whose placeholders each hold one empty paragraph, so the
 editor has a caret position. An odp slide frame therefore omits
 `presentation:placeholder="true"`, which LibreOffice reserves for an empty
 `draw:text-box`. The layouts are in [structure editing](structure-editing.md).
+Drawings start with one blank page and a master page; text boxes are added
+through `Drawing::insert_text_box`.
 The argument is a `FileType`, since `DocumentType` does not distinguish odt
 from docx.
 
@@ -36,6 +38,7 @@ differently from an opened one.
 |------|------|------|
 | odt | Liberation Serif 12pt | A4, margins 2 cm |
 | ods | Liberation Sans 10pt | A4, margins 2 cm |
+| odg | Liberation Sans 18pt | A4 portrait, margins 1 cm |
 | docx | Calibri 11pt, line spacing 1.08, 8pt after | A4, margins 1 inch |
 | xlsx | Calibri 11pt | A4, Excel margins |
 | odp | Liberation Sans; title 44pt, subtitle 32pt, outline 28pt | 28 cm × 15.75 cm |
@@ -58,8 +61,7 @@ alone proves little.
 ## Open work
 
 - Validate new files in Word and Excel.
-- odg creation. Inserting, removing and moving sheets and slides, and
-  inserting a text box, are in [structure editing](structure-editing.md).
+
 - A Letter-page option.
 - New-document UI in the droid and ios apps.
 

@@ -73,6 +73,33 @@ read_vertical(const pugi::xml_attribute attribute) {
   return {};
 }
 
+/// [ECMA-376] 18.18.3 ST_BorderStyle; CSS approximations are in AGENTS.md.
+std::string_view border_declaration(const std::string_view style) {
+  static constexpr std::array<std::pair<std::string_view, std::string_view>, 14>
+      declarations{{
+          {"none", "none"},
+          {"hair", "0.25pt solid"},
+          {"thin", "0.75pt solid"},
+          {"medium", "1.5pt solid"},
+          {"thick", "2.25pt solid"},
+          {"double", "2.25pt double"},
+          {"dotted", "0.75pt dotted"},
+          {"dashed", "0.75pt dashed"},
+          {"dashDot", "0.75pt dashed"},
+          {"dashDotDot", "0.75pt dashed"},
+          {"mediumDashed", "1.5pt dashed"},
+          {"mediumDashDot", "1.5pt dashed"},
+          {"mediumDashDotDot", "1.5pt dashed"},
+          {"slantDashDot", "1.5pt dashed"},
+      }};
+  for (const auto &[name, declaration] : declarations) {
+    if (style == name) {
+      return declaration;
+    }
+  }
+  throw std::runtime_error("unknown spreadsheet border style");
+}
+
 /// A `CT_BooleanProperty`: present is on, unless `val` says otherwise.
 bool read_toggle(const pugi::xml_node node) {
   return node && node.attribute("val").as_bool(true);
@@ -330,11 +357,14 @@ void StyleRegistry::resolve_border_(const std::uint32_t i,
     if (!node.attribute("style")) {
       return {};
     }
-    // TODO: thin only
-    std::string declaration = "0.75pt solid ";
+    std::string declaration(
+        border_declaration(node.attribute("style").value()));
+    if (declaration == "none") {
+      return declaration;
+    }
     if (const std::optional<Color> color = read_color_(node.child("color"));
         color.has_value()) {
-      declaration.append(html::color(*color));
+      declaration += " " + html::color(*color);
     }
     return declaration;
   };

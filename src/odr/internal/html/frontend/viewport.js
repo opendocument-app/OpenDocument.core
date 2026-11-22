@@ -429,23 +429,43 @@
   // A chunk that names its source has its content in a script of its own,
   // which puts it in through `odr.chunks.fill` (`lazy-loading.md` decision 2).
   // A script loads over HTTP and from a file alike.
+  var loads = new WeakMap();
+
   function load(chunk) {
+    var pending = loads.get(chunk);
+    if (pending !== undefined) {
+      return pending;
+    }
     var source = chunk.getAttribute("data-odr-chunk-src");
-    if (source === null || chunk.hasAttribute("data-odr-chunk-loading")) {
-      return;
+    if (source === null) {
+      return Promise.resolve();
     }
     chunk.setAttribute("data-odr-chunk-loading", "");
-    var script = document.createElement("script");
-    script.src = source;
-    // what it put in stays; its source need not
-    script.onload = function () {
-      script.remove();
-    };
-    script.onerror = function () {
-      chunk.removeAttribute("data-odr-chunk-loading");
-      script.remove();
-    };
-    document.head.appendChild(script);
+    pending = new Promise(function (resolve, reject) {
+      var script = document.createElement("script");
+      script.src = source;
+      function finished(error) {
+        loads.delete(chunk);
+        chunk.removeAttribute("data-odr-chunk-loading");
+        script.remove();
+        if (error) {
+          reject(new Error("Could not load chunk: " + source));
+        } else {
+          resolve();
+        }
+      }
+      script.onload = function () {
+        finished(chunk.hasAttribute("data-odr-chunk-src"));
+      };
+      script.onerror = function () {
+        finished(true);
+      };
+      document.head.appendChild(script);
+    });
+    loads.set(chunk, pending);
+    // Viewport loads have no caller waiting; loadAll still sees the rejection.
+    pending.catch(function () {});
+    return pending;
   }
 
   // The text of the chunks that have not loaded, by chunk key, which the
@@ -522,6 +542,25 @@
   }
 
   odr.chunks = {
+    // Loads every chunk without changing the selected page or viewport.
+    // Resolves once all scripts have filled their chunks; rejects on failure.
+    loadAll: function () {
+      var pending = Array.prototype.map.call(chunks, load);
+      function notify(detail) {
+        if (typeof odr.onChunksLoaded === "function") {
+          odr.onChunksLoaded(detail);
+        }
+      }
+      return Promise.all(pending).then(
+        function () {
+          notify({ success: true });
+        },
+        function (error) {
+          notify({ success: false, message: error.message });
+          throw error;
+        }
+      );
+    },
     // Lays out the chunk that holds @p element, so it can be measured and
     // scrolled to. Under `single`, its page becomes the one shown.
     show: function (element) {

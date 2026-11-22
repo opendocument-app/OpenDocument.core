@@ -47,11 +47,21 @@ The release run heads these entries with the version and opens a fresh
 
 ### Document creation
 
+- `create_document` also makes an odg: one blank A4 portrait drawing page,
+  margins of 1 cm, and Liberation Sans 18pt for text. Its `create` capability
+  is true in every binding; the existing drawing API can add text boxes,
+  format their text and save the new document.
+
 - `create_document` makes odp and pptx files. A new presentation has a 16:9
   page, one title slide, and six slide layouts: Title Slide, Title and
   Content, Section Header, Two Content, Title Only and Blank.
 
 ### Spreadsheets
+
+- XLSX cell borders show their hairline, thin, medium or thick weight and
+  solid, dotted, dashed or double pattern. An explicit `none` paints no
+  border. Dash-dot and slanted patterns use dashed CSS borders of the same
+  weight. Every border previously rendered as a thin solid line.
 
 - `Spreadsheet::insert_sheet(index, name)` adds an empty sheet to an ods or
   xlsx. An empty name takes the next free `SheetN`. A name another sheet has,
@@ -105,6 +115,12 @@ The release run heads these entries with the version and opens a fresh
   typefaces, and the presentation's default text style applies to every shape.
 
 ### Viewing
+
+- `odr.chunks.loadAll()` loads every lazy chunk before a host prints. Its
+  Promise rejects if a script fails or does not fill its chunk. Concurrent
+  calls share loads, and a failed chunk can be retried. It keeps the current
+  page and viewport. `odr.onChunksLoaded({success, message?})`, forwarded as
+  `chunksLoaded`, also reports completion to hosts that cannot await a Promise.
 
 - `HtmlConfig::page_layout` takes `HtmlPageLayout::single`: a view of a
   workbook, a presentation, a drawing or a pdf shows one sheet or page at a

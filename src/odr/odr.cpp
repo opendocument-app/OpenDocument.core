@@ -212,6 +212,7 @@ odr::Document odr::create_document(const FileType type) {
   switch (type) {
   case FileType::opendocument_text:
   case FileType::opendocument_presentation:
+  case FileType::opendocument_graphics:
   case FileType::opendocument_spreadsheet:
     package = internal::odf::blank_package(type);
     break;

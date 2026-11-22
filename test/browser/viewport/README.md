@@ -7,6 +7,7 @@ checks run by hand and not in `odr_test`.
 test/browser/viewport/serve      # serves on :8731
 open http://localhost:8731/tests.html
 open http://localhost:8731/chunks.html
+open http://localhost:8731/load-all.html
 open http://localhost:8731/search.html
 open http://localhost:8731/search-early.html
 open http://localhost:8731/search-many.html
@@ -66,3 +67,6 @@ report is text of the page too, so no check names a keyword.
 `search-early.html` fills a chunk before the index has counted it.
 `search-many.html` loads a chunk with 150,000 hits, beyond the browser's
 function argument limit, and checks selection and navigation.
+
+`load-all.html` checks completion before printing, concurrent and in-flight
+loads, failures and retries, and the host bridge without turning pages.
