@@ -94,10 +94,15 @@ their content types (`m_dropped_parts`). The dom stays, because the registry
 holds nodes in it. `Document::move_slide` reorders `p:sldIdLst` and moves the
 slide's `p14:sldId` after the one of the slide it now follows, or to the front
 of the first section: PowerPoint repairs sections out of slide order.
-Removal first checks the surviving parts' relationships. A slide-jump link,
-`viewProps.xml` outline entry or another incoming reference to the slide or
-its notes refuses removal with `UnsupportedOperation` before changing the
-document. External links and parts already removed do not block deletion.
+Removal collects the surviving parts' references before changing any nodes.
+Click and mouse-over hyperlinks (`a:hlinkClick`, `a:hlinkMouseOver`,
+[ECMA-376] 21.1.2.3.5–6) lose their action but keep their text or shape;
+`viewProps.xml` outline entries (`p:outlineViewPr/p:sldLst/p:sld`) are removed.
+Their relationships go too. Loaded slides are edited in their live DOM, so
+existing element handles and earlier edits survive. An unrecognised incoming
+reference to the slide or its notes still refuses removal with
+`UnsupportedOperation` before any of the collected changes are applied.
+External links and parts already removed do not block deletion.
 
 `Document::insert_text_box` writes a `p:sp` text box (`txBox="1"`,
 `write_text_box`) into the slide's shape tree.

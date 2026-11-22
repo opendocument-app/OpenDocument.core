@@ -81,11 +81,11 @@ The release run heads these entries with the version and opens a fresh
 
 ### Presentations
 
-- Removing a pptx slide referenced by another surviving part, including a
-  slide-jump link or an outline entry, throws `UnsupportedOperation` before
-  changing the document. It previously saved dangling references that could
-  make PowerPoint request repairs. References to the slide's notes are checked
-  too.
+- Removing a pptx slide also removes links to it and its outline-view entries,
+  preserving the linked text and shapes. It previously saved dangling
+  references that could make PowerPoint request repairs. Unrecognised incoming
+  references to the slide or its notes still throw `UnsupportedOperation`
+  before changing the document.
 - `Presentation::slide_layouts()` lists the layouts a slide can start from,
   each a `Slide` outside the document as
   `Presentation::insert_slide(index, layout)` adds it to an odp or pptx. A

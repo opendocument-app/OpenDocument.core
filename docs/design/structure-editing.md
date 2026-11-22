@@ -159,9 +159,9 @@ Slides:
 - Move and resize a text box.
 - Remove a shape, and insert a picture or a table. pptx editing covers runs,
   paragraphs and text style only (pptx `AGENTS.md`, open work 4).
-- pptx: removal refuses a slide or its notes referenced by a surviving part,
-  including slide-jump hyperlinks and the outline in `viewProps.xml`.
-  Removing those references together with the slide is not yet supported.
+- pptx: removal cleans incoming slide-jump hyperlinks and outline entries in
+  `viewProps.xml`, preserving the linked text and shapes. Unrecognised incoming
+  references to the slide or its notes still refuse removal before mutation.
 - odp with several masters: a slide inserted after one on another master
   shows the first master until the next render. The saved file is right.
 - A deck with hundreds of layouts carries hundreds of templates, about 2 KB
