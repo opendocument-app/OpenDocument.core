@@ -1,400 +1,296 @@
 # Collaborative editing proposal
 
-Status: proposed; no collaboration protocol or implementation exists yet.
-This records the intended direction and a staged implementation plan. Wire
-names, algorithms and compatibility policies below still need validation.
+Status: proposed; no protocol or implementation selected. Related:
+[editing](editing.md), [document editing](document-editing.md),
+[structure editing](structure-editing.md), [WASM](../../wasm/README.md).
 
-Related: [editing](editing.md), [document editing](document-editing.md),
-[structure editing](structure-editing.md), and the
-[WebAssembly bindings](../../wasm/README.md).
+## Scope and invariants
 
-## Scope and decisions
-
-Offer shared editing through a hosted service or a small self-hosted server.
-Browsers and native apps participate in the same session. Start with text
-documents: an ODT prototype, then DOCX before claiming general text-document
-support. Sheets and presentations are later work.
-
+- Hosted or small self-hosted service; browsers and native apps share sessions.
+  Start with ODT, then DOCX; sheets and presentations follow later.
 - Survive brief disconnections. Taking a file offline ends collaboration;
-  merging days of independent edits or an externally replaced file is out
-  of scope.
-- Persist a source document plus accepted edits, with periodic checkpoints.
-  Keep the original package and edit it through core. Do not introduce a
-  second, format-independent document representation or reconstruct the file
-  from rendered HTML.
-- The server owns the accepted revision, resolves conflicts, validates edits
-  with core, and can produce the final file without a connected client.
-- Retain the browser's DOM editing model. Add semantic transactions and
-  reconciliation around it. A diff describes document changes, not arbitrary
-  HTML mutations.
-- Formalize document edit semantics in core. Keep accounts, connections,
-  access control and storage orchestration in the hosting application.
-- Evaluate libraries against a small implementation of our own. No library,
-  server language or transport is selected by this proposal.
+  long-offline merging and externally replaced files are out of scope.
+- Persist the original package plus accepted operations and verified
+  checkpoints. Core edits that package and exports without a connected client.
+- The server owns accepted revisions, conflict resolution and validation.
+  Core defines document semantics; the service owns access and persistence.
+- Client representations must preserve source correspondence and emit supported
+  operations. They must not become a lossy whole-file export path. A disposable
+  browser editing model is allowed; a second authoritative document format is
+  not required.
+- Keep existing local editing working. Define a new transaction contract's
+  relationship to version 2 explicitly; never silently reinterpret old ops.
 
-## Existing foundation and gaps
+## Current gaps
 
-Today the browser edits locally and coalesces operations for C++ to replay
-on save. `Document::edit` accepts version 2 envelopes. The WASM package can
-open, render, edit and save, and native hosts use the same frontend through
-their WebViews. No network round trip is needed for local typing.
+The browser edits addressed DOM runs/paragraphs and coalesces operations for
+`Document::edit` on save. Native apps and WASM use the same frontend.
 
-That envelope is a useful starting point, but is not a collaboration
-protocol:
-
-| Current behavior | Collaboration requirement |
+| Today | Required |
 |---|---|
-| `setText` replaces a whole run | Express intent relative to a known revision; concurrent replacements must not silently overwrite one another |
-| IDs belong to a decode/edit/save session | Identify targets across clients, reconnects and checkpoints |
-| Negative creation IDs belong to one log | Distinguish creations from different transactions and participants |
-| Replay can fail after applying earlier operations | Accept or reject a whole transaction without partially changing accepted state |
-| The DOM has one local writer | Apply remote edits while preserving pending edits, selection and IME composition |
-| Undo stores local inverse data; committing resets it | Undo one's own accepted changes against the current revision |
-| Replay assumes the same source and semantics | Explicitly negotiate compatible core/editor behavior |
+| Whole-run `setText` | Revision-relative text changes with explicit conflict outcomes |
+| Decode-local IDs; log-local negative IDs | Session identities and creation mappings across clients/checkpoints |
+| Replay may partially apply before failing | Atomic validation and application |
+| JS and C++ separately implement editing semantics | Shared behavior and an authoritative return path |
+| WASM edit returns success, invalidates cached views | Canonical resulting state and affected rendering regions |
+| DOM undo captures old values/nodes; commit clears it | Rebased local undo and bounded retention |
+| Local DOM edits, with browser-owned composition | Remote edits, pending work, selection and IME reconciliation |
+| Same source/behavior assumed | Tested compatibility profiles across core/editor versions |
 
-Keep the existing local editing API working. Decide how the new transaction
-API relates to version 2 before changing that envelope; do not silently give
-existing operations new semantics.
+An accepted operation does not prove the browser displays core's result.
+For example, `frontend/document.js::splitParagraph` mirrors source-tree
+splitting in JS; `wasm/src/wasm_html.cpp::edit` returns no resulting state.
+Collaboration increases the cost of maintaining that agreement.
 
-## Responsibilities and deployment
+## Architecture alternatives
+
+All viable options retain source-plus-operations persistence. Client models
+and execution placement are separate choices; some options can be combined.
+
+| Approach | Benefit | Cost / assessment |
+|---|---|---|
+| DOM editing + operation acknowledgements | Least frontend change | Leaves display/core agreement unchecked; insufficient end state |
+| DOM editing + canonical core results | Detects and repairs drift while retaining the editor | Recommended first experiment; still needs pending-edit and IME reconciliation |
+| Bounded browser editing model + source operations | Explicit state for rebase, undo, recovery and testing | Credible longer-term option; adds projection schema and DOM adapter |
+| Local core processes every edit and directs DOM updates | Consolidates structural/formatting decisions in native/WASM core | Serious alternative to prototype early; needs incremental results, input/selection mapping and speculative-state management |
+| Server processes every edit before display | Centralizes semantics and reduces client-core requirements | Network latency affects typing; adding prediction brings reconciliation back |
+| Generic browser model used to reconstruct the file | Convenient standalone editor representation | Reject: loses source details absent from that model |
+
+### Every edit through core
 
 ```text
-Browser: DOM editor + core in WASM ----\
-                                      > collaboration service + core
-App: WebView editor + native core ----/             |
-                                        checkpoint + accepted log
+Browser input + logical selection
+    → local core edit command
+    → document transaction + view changes + selection mapping
+    → JS applies view changes to DOM
+    → server accepts/reconciles transaction → local core/client reconcile
 ```
 
-Core defines typed operations, preconditions, validation, application and
-the supported reconciliation rules. It continues to decode, render and
-save the actual document. Its live decoded document is a working instance
-of the existing model, not an additional persistent representation.
+To remove duplicated editing decisions, core must receive intent such as
+“insert text at this selection” or “split here,” then decide run splitting,
+formatting and structure. Passing the existing JS-decided operation sequence
+through core validates it but leaves those decisions duplicated.
 
-The frontend captures gestures as transactions, updates the DOM immediately,
-tracks unacknowledged work, and applies accepted remote operations. Selection
-and presence are transient session information, separate from file edits.
+A core component need not manipulate browser DOM objects. It can return
+keyed text/style/structure patches or rendered fragments; JS handles browser
+input, native selection and patch application. Local core uses WASM in a
+browser or native bindings in an app, with no per-edit network round trip.
+Measure worker/WebView latency and main-thread blocking before choosing the
+execution boundary.
 
-The service authenticates participants, checks access, serializes acceptance
-per document, persists transactions, and coordinates checkpoints and export.
-Only one authority may advance a document revision at a time. A single
-process is sufficient initially; multiple instances would need ownership
-and fencing before sharing that responsibility.
+This can eliminate independently authored document mutation rules, but cannot
+guarantee zero drift: DOM patching, browser composition, renderer dependencies,
+client/server versions and speculative edits remain boundaries to verify.
+Uncancellable composition must be observed and converted into core commands.
+Server reconciliation still needs rollback/rebase of pending local core state.
 
-Core's `HttpServer` currently serves HTML services. It need not become the
-collaboration backend. A small deployment can serve the web application,
-synchronization endpoint and local storage together. A hosted deployment
-can separate them while retaining the same session protocol.
+### Bounded browser projection
 
-Native apps can keep native core. Browsers use WASM. Reconciliation helpers
-could be shared through native bindings and WASM rather than implemented
-independently in JavaScript. The DOM adapter still lives in JavaScript.
-Separate runtime components do not require separate repositories: keep the
-edit contract and conformance fixtures with core, and decide service/package
-placement during the prototype.
+Represent supported text, formatting, stable source references and opaque
+boundaries, possibly only for loaded regions. Render it to the DOM and emit
+transactions against the original package; never reconstruct that package
+from the projection. Use one transaction path, not independent DOM and model
+writers.
 
-## Edit transactions and session envelope
+Preserve source distinctions even when runs look identical. Normalizing them
+can lose mappings to different hidden semantics. Unknown content stays in
+core; opaque references alone do not make splitting/deleting across fields,
+bookmarks or wrappers safe. Core must implement or refuse those edits.
 
-The core transaction describes document operations and their preconditions.
-The session envelope identifies the document, session epoch, base revision,
-transaction, and selected compatibility profile. The service attaches the
-authenticated author; client-supplied authorship is not authoritative.
+## Canonical results and projection agreement
 
-Retain operations for paragraph structure and explicit formatting values.
-Add text changes that express insertion and deletion relative to the base
-revision, with enough context to verify their targets. For example, inserting
-` Alice` after `Hello` is more useful for reconciliation than replacing the
-whole run with `Hello Alice`.
+Every accepted transaction needs a revision-tagged result derived from core:
+created/deleted IDs and mappings, actual text/style/structure changes, affected
+rendering regions, and position mappings for selections/pending edits where
+supported. Results are derived views, not another persistent document model.
 
-Specify the coordinate system before implementing these operations. JavaScript
-uses UTF-16 offsets and C++ strings use UTF-8 bytes. Define conversion and
-boundary rules, including emoji, combining characters and malformed input;
-do not let the native and browser implementations choose independently.
+The contract to test for a supported transaction `T` and core document `D`:
 
-One gesture is one atomic transaction, including the multiple operations
-needed to split a styled run and paragraph. Preserve boundaries and
-preconditions in the accepted log. The existing save-time coalescing must
-not erase information still needed for reconciliation or auditing.
+```text
+project(applyCore(D, T)) == applyClient(project(D), T)
+```
 
-Use session identities distinct from registry indices, with a mapping into
-the current core document. New targets need identities unique across
-transactions, including references between pending local transactions.
-Wire encodings must preserve full identity and revision precision in
-JavaScript. The exact identity scheme is an early design decision.
+Compare supported semantic state, identities and structure, not HTML bytes or
+pixels. Test save/reopen separately. Canonical results provide a production
+verification/repair path when this agreement fails.
 
-### Acceptance and reconnect
+Internal `translate_element` is a starting point, not a ready fragment API:
+rendering depends on inherited styles, lists, direction, resources and page
+context. Invalidate conservatively, widening from paragraph/container to
+list/page/full view when needed. Prototype semantic results before optimizing
+incremental HTML.
 
-1. The browser edits its DOM and queues a transaction against its accepted
-   revision. Initially allow one submitted transaction per client at a time;
-   subsequent typing remains local and queued.
-2. The server checks access, profile, epoch, transaction identity and base
-   revision. Reusing an identity with different contents is an error.
-3. It reconciles against intervening accepted transactions, then validates
-   and applies the result to isolated candidate state.
-4. It durably records the accepted transaction and its outcome before
-   acknowledging success. Publication of the new live state and recovery
-   from a crash must agree with that durable record.
-5. It broadcasts the accepted operations, revision and creation mappings.
-   The sender processes its acknowledgement without applying its own edit
-   twice. All clients advance through accepted revisions in order.
+A result for revision R cannot overwrite a DOM already showing R plus pending
+work. Reconcile at matching revisions, then rebase/reapply pending edits;
+preserve logical selection anchors and avoid echoing remote changes as local
+ones. Define safe updates around active IME composition: blindly replacing
+HTML loses work, while waiting indefinitely for `compositionend` can stall
+keyboards that keep composition open. Preserve unreconcilable edits for recovery.
 
-Retries return the recorded outcome rather than applying a transaction
-again. Retain deduplication information across reconnects and checkpoints
-for the supported retry window. A lost acknowledgement must not duplicate
-text. Rejected transactions do not advance the document revision.
+## Components
 
-Clients detect revision gaps and fetch missing accepted changes. Reconciliation
-must account for both submitted and unsent local edits; clearing the local
-queue or reloading HTML is not an acceptable implicit recovery mechanism.
-If a pending edit cannot be reconciled, retain it for explicit recovery.
-
-### Conflict behavior and undo
-
-The server provides a total order, but ordering whole-run replacements alone
-does not preserve concurrent intent. Specify and test rules for at least:
-
-- Disjoint edits and concurrent insertions at the same position.
-- Overlapping deletions and insertion within a concurrently deleted range.
-- Text edits against paragraph split, merge or removal.
-- Formatting against text insertion/deletion, including boundary behavior.
-- Undo of a local accepted change after remote changes to the same content.
-
-Start with a bounded set of supported transformations. Reject unsupported
-combinations with a structured conflict result and recoverable local work.
-Do not use silent last-writer-wins as the default for text. Define whether
-each allowed combination transforms, becomes a reported no-op, or conflicts.
-
-Undo is a new transaction relative to current state, not reversal of the
-server's revision history. It needs operation-specific inverse information
-and the same reconciliation rules. Checkpointing does not automatically
-clear the user's undo history as `editing.committed()` does today. Decide
-and expose a bounded undo retention policy.
-
-### DOM reconciliation
-
-Keep addressed runs and paragraphs as the browser's document model. Maintain
-only transaction, identity, selection and recovery metadata alongside them.
-Remote operations must use controlled DOM editing paths, without echoing
-them as new local transactions.
-
-Prototype how to rebase pending transactions and reconcile the DOM using
-the editor's existing inverse data, or an equivalent incremental patch.
-Preserve selection and define how remote changes interact with active IME
-composition. Server conflict resolution does not remove this client work.
-If it cannot be done reliably without replacing the editor model, revisit
-the design explicitly before extending the supported editing surface.
-
-## Validation, checkpoints and export
-
-Initially isolate validation by reconstructing a candidate from a checkpoint
-and accepted operations, then applying the new transaction. This is a
-correctness baseline, not a performance commitment. Public document handles
-share state: copying a handle does not make an isolated candidate. Later
-optimization must preserve all-or-nothing acceptance.
-
-Validation covers operation shape, preconditions, target liveness, supported
-format capabilities and document invariants. Successful replay is not proof
-of valid export or application interoperability. Exercise save and reopen,
-and validate ODT/DOCX fixtures in independent readers during development.
-
-A checkpoint contains the saved source package, accepted revision, session
-identity metadata and compatibility profile needed to recover. It is not
-just the file bytes. At a fixed accepted revision:
-
-1. Save a candidate package without modifying the published recovery base.
-2. Reopen it and check supported document state and identity remapping.
-3. Persist the package and metadata, then atomically publish their reference.
-4. Retain the previous recovery base and required log until replacement is
-   verified and retention rules permit cleanup.
-
-Coordinate edits arriving during checkpoint creation: either pause acceptance
-briefly or retain every transaction after the chosen revision. Failure keeps
-the previous checkpoint and log usable. If export repeatedly fails, retain
-acknowledged work and stop accepting further edits before storage or recovery
-limits are exceeded; never discard the log to recover space.
-
-Trigger checkpoint work by measured log bytes, operation count and replay
-cost. Choose limits from the prototype. Compaction must retain the history,
-target mappings and outcomes needed by briefly disconnected clients and undo.
-Outside the supported window, require a fresh session snapshot and explicit
-recovery of pending local work. Automatic merging of long-offline copies is
-out of scope.
-
-Server export materializes a named accepted revision without a browser.
-Report that revision so users can distinguish synchronized edits from the
-latest exported file. Preserve package parts outside supported edits through
-the existing format engine rather than rebuilding them from the DOM.
-
-For audit, retain submitted and accepted/reconciled transactions, authenticated
-author, base/result revisions, profile, and rejection/no-op reasons. Audit
-retention is a separate policy from the replay log's checkpoint compaction;
-an audit trail need not remain in the active reconciliation window.
-
-## Different core versions in one session
-
-Identical JSON does not imply identical behavior. Different core builds can
-decode the same bytes into different registries, resolve styles differently,
-support different operations, or save/reopen a different tree. Mobile apps,
-self-hosted servers and browser tabs cannot be assumed to upgrade together.
-
-Separate these compatibility dimensions:
-
-| Dimension | What it governs |
+| Component | Responsibility |
 |---|---|
-| Transport protocol | Join, submit, acknowledge, resume, errors and presence |
-| Edit schema and semantics | Operation fields, Unicode coordinates, preconditions, transformations and inverse behavior |
-| Core/format behavior | Decode, edit, save and identity mapping for the supported formats |
-| Frontend bridge behavior | DOM operation application, selection handling and host callbacks |
-| Checkpoint/log format | Recovery and migration of persisted sessions |
+| Core, native or WASM | Decode/edit/save, commands/transactions, validation, reconciliation rules and canonical results |
+| Frontend / host bridge | Input, DOM projection, selection, pending work and transient presence |
+| Collaboration service | Authentication, document access, ordered acceptance, durable log, resume, checkpoints and export |
 
-Define a session compatibility profile that selects supported combinations.
-Record actual core/editor build identifiers for diagnostics. Core's release
-version alone is insufficient, and claiming a schema version is not evidence
-that two implementations behave alike.
+One authority advances each document revision; multiple service instances
+would need ownership and fencing. Start with one process and a local database.
+Core's existing `HttpServer` serves HTML services and need not become this
+backend. Hosted and self-hosted deployments use the same protocol. Keep the
+contract/conformance fixtures with core; repository/package placement and
+service language/transport remain open. Native apps can retain native core;
+share helpers through bindings/WASM rather than duplicate algorithms in JS.
 
-### Join policy
+## Transaction protocol
 
-- The client advertises supported protocol/profile versions and edit
-  capabilities before editing is enabled. The server selects a tested
-  profile already supported by the session, or refuses collaborative editing
-  with a clear reason. Unknown operations never get silently dropped.
-- Pin that profile for the session epoch. A newly joined client must consume
-  every operation enabled for the session; intersecting only what that
-  client may submit is insufficient. Do not silently reduce the session's
-  capabilities when an older client arrives.
-- For the prototype, require an explicitly tested core/editor revision
-  combination, including equivalent native and WASM builds. Expand to mixed
-  releases only after conformance tests establish compatibility. Exact
-  artifact hashes will differ by platform; compatibility is an allowlisted
-  behavior contract, not equality of native and WASM binaries.
-- If a compatible read-only path exists, offer it on mismatch. Preserve any
-  pending local work before requiring refresh or upgrade. Do not promise
-  old clients can safely render every new session.
+- **Core payload:** typed operations, preconditions and atomic gesture boundary,
+  including multi-op splits. Retain paragraph operations and explicit style
+  values; add revision-relative text insertions/deletions with target checks.
+  Save-time coalescing must retain information needed for rebase and audit.
+- **Envelope:** document, epoch, base revision, unique transaction ID and selected
+  profile. The service supplies authenticated authorship.
+- **Coordinates:** specify UTF-16/UTF-8 conversion and boundaries for emoji,
+  combining characters and malformed input before implementation.
+- **Identity:** map session IDs to registry IDs; distinguish concurrent creations
+  and references from later pending transactions. Preserve full ID/revision
+  precision on the JS wire.
 
-### Identity and rendering across versions
+### Acceptance and recovery
 
-Never assume independently decoding the same source file yields matching
-registry IDs across releases. Establish session identities and an explicit
-mapping before a client can submit edits. A practical prototype option is
-server-rendered HTML carrying authoritative session identities, paired with
-the compatible frontend. Independent local/WASM rendering must demonstrate
-equivalent target mapping rather than relying on parse order.
+1. Apply local feedback and queue a transaction. Initially submit one per client
+   at a time; keep subsequent typing queued with its dependencies.
+2. Server checks access, profile, epoch, base revision and transaction identity.
+   Reusing an ID with different contents is an error.
+3. Reconcile against intervening accepted changes; validate shape, preconditions,
+   target liveness, format capabilities and invariants on isolated candidate state.
+4. Durably record acceptance/outcome before acknowledgement. Live-state publication
+   and crash recovery must agree with that record; rejection changes no revision.
+5. Broadcast accepted operations, revision and canonical results. Process revisions
+   in order, detect/fetch gaps, and acknowledge own edits without applying twice.
 
-This keeps browser WASM and native rendering available, but makes their
-compatibility a tested requirement. Whether apps may load the server's
-frontend or must use bundled assets remains a deployment decision. Serving
-new frontend code does not upgrade an app's native core or host bridge.
+Retries return recorded outcomes; retain deduplication across reconnects and
+checkpoints for the supported retry window. Never clear submitted or unsent
+work as implicit recovery. Outside the history window, obtain a fresh snapshot
+and offer explicit recovery of pending edits.
 
-### Upgrades and recovery
+Initially reconstruct isolated candidate state from checkpoint plus log.
+Copying a public handle shares state and is not isolation. Optimize only while
+preserving atomic acceptance; measure the cost before committing to this strategy.
 
-Do not change edit semantics underneath an active epoch. A server upgrade
-either continues running its supported profile or performs an explicit
-migration: finish accepted submissions, create and verify a checkpoint,
-validate it with the new core, establish identity mappings and start a new
-epoch. Connected clients renegotiate; reconnecting old clients cannot submit
-old-epoch edits as if nothing changed. Preserve their recoverable local work.
+### Conflicts and undo
 
-Replay persisted operations with their recorded semantics. Keep the required
-implementation available or migrate and verify state before retiring it.
-An incompatible server should refuse to open the session for editing rather
-than reinterpret old operations. A rollback must likewise understand the
-published checkpoint/log format or retain access to a compatible worker;
-an old checkpoint alone omits newer acknowledged work.
+Define transform, reported no-op or conflict for disjoint edits, same-position
+insertions, overlapping deletions, insertion into deleted ranges, text against
+split/merge/removal, formatting against text changes (including boundaries),
+and undo after remote edits. Ordering alone does not preserve intent. Start
+with bounded transformations; reject unsupported combinations with structured
+reasons and recoverable work, never silently overwrite concurrent text.
 
-Maintain fixtures across supported client/server combinations, including
-older clients with newer servers, newer clients with older servers, native
-versus WASM, and reconnect across upgrade. Compare addressed document state
-and saved/reopened behavior, not just JSON parsing or rendered screenshots.
+Undo submits a new transaction against current state using operation-specific
+inverse data and reconciliation. It does not reverse server history. Define
+bounded undo retention; checkpoints must not implicitly call today's
+`editing.committed()` and clear it.
 
-## Library evaluation
+## Checkpoints, export and audit
 
-Use our operation and document constraints to evaluate reusable components:
+A checkpoint is a source package, accepted revision, identity metadata and
+compatibility profile. At a fixed revision: save a candidate, reopen and verify
+supported state/mappings, persist package/metadata, then atomically publish the
+reference. Retain the previous recovery base/log until verification and retention
+rules permit cleanup. Pause acceptance briefly or retain every later transaction.
 
-| Candidate | What to investigate | Fit question |
-|---|---|---|
-| [Yjs](https://docs.yjs.dev/api/document-updates) | Update synchronization, deduplication, editor integration and selective undo | Would its shared types become a second document model or obscure server validation? |
-| [Automerge](https://automerge.org/docs/reference/concepts/) | Persistence and synchronization; [rich-text operations](https://automerge.org/docs/reference/documents/rich-text/) | Can useful components fit the source-plus-operations design without adopting another document representation? |
-| [ShareDB](https://share.github.io/sharedb/types/) | Server-oriented operational transformation and shared operation types | Can our semantics be expressed without maintaining another set of transformation rules? |
-| Core-owned transactions | Explicit transformations for a limited supported surface | Can we keep the rule set understandable, testable and bounded as editing grows? |
+Trigger checkpoints from measured log bytes/count and replay cost. Compaction
+must preserve history, mappings, retry outcomes and inverse data needed within
+disconnect/undo windows. On failure retain acknowledged work; repeated export
+failure must stop new acceptance before recovery/storage limits are exceeded,
+not discard the log.
 
-These are investigation candidates, not dependencies. Compare integration
-cost, correctness, failure recovery, auditing, upgrade behavior, native/WASM
-reuse, performance, licensing and maintenance. Use the same adversarial edit
-sequences for each. Convergence alone is insufficient: the result must
-preserve the chosen editing semantics and produce a valid document.
+Export a named accepted revision without clients; distinguish synced state from
+the latest exported file. Preserve unsupported package content through existing
+adapters. Successful replay alone proves neither export validity nor fidelity:
+exercise save/reopen and independent ODT/DOCX readers, including unknown content.
 
-## Implementation plan and completion criteria
+Audit submitted and accepted/reconciled transactions, authenticated authors,
+base/result revisions, profiles and rejection/no-op reasons. Audit retention is
+separate from active replay/reconciliation history.
 
-### 1. Specify transactions and compatibility
+## Mixed versions
 
-- Inventory version 2 operations and DOM undo behavior. Define atomicity,
-  preconditions, text coordinates, identities, revisions and error outcomes.
-- Define the initial compatibility profile and handshake, plus the relation
-  to existing local editing and save APIs.
-- Write shared fixtures for concurrent edit pairs, malformed/stale targets,
-  Unicode boundaries and incompatible clients. Evaluate libraries against
-  these fixtures before choosing an implementation.
+The same JSON can decode, edit or save differently across builds. Pin a tested
+session profile covering transport, edit schema/semantics (including Unicode,
+transforms and inverses), core/format behavior, frontend bridge/patch behavior,
+and checkpoint/log format. Record actual build IDs for diagnostics; release or
+schema version claims alone do not prove compatibility.
 
-Complete when the supported conflict outcomes and compatibility decisions
-are executable examples, with an explicit list of unsupported combinations.
+- Negotiate profiles/capabilities before enabling edits. Every participant must
+  consume all session operations/results, not merely submit a supported subset.
+  Do not drop unknown ops or silently downgrade a session for an older client.
+- Initially allow only tested core/editor combinations, including equivalent
+  native/WASM builds; their artifact hashes need not match. Expand supported
+  releases through conformance tests. On mismatch preserve pending work and
+  refuse editing; offer read-only only through a compatible rendering path.
+- Never infer cross-version identity from parse order. Verify explicit mappings
+  for independent native/WASM rendering. Server-rendered HTML with authoritative
+  IDs and a compatible frontend is an alternative. Server-supplied JS does not
+  upgrade an app's native core or bridge; bundled versus fetched assets is open.
+- Keep semantics fixed within an epoch. Upgrade by retaining its implementation
+  or stopping new submissions, settling accepted work, verifying a checkpoint
+  with the new core, remapping identities and starting a renegotiated epoch.
+  Old-epoch pending edits require explicit recovery, not silent reinterpretation.
+- Replay recorded semantics using a retained implementation or verified migration.
+  Refuse incompatible recovery. Rollback needs compatible checkpoint/log support
+  or a compatible worker; an older checkpoint omits newer acknowledged edits.
+- Test older/newer clients and servers both ways, native/WASM, and reconnect across
+  upgrades. Compare addressed state and saved/reopened results. Canonical feedback
+  can detect disagreement but does not make incompatible clients safe.
 
-### 2. Implement core transactions
+## Libraries to evaluate
 
-- Add validation and isolated application through existing document adapters.
-- Implement the initial reconciliation and inverse rules, and expose needed
-  helpers to native and WASM callers.
-- Test atomic rejection, deterministic accepted results and save/reopen
-  preservation for ODT. Extend the corpus to DOCX before broadening support.
+| Candidate | Investigate |
+|---|---|
+| [Yjs](https://docs.yjs.dev/api/document-updates) | Synchronization, deduplication, editor integration and selective undo; fit with server validation and source operations |
+| [Automerge](https://automerge.org/docs/reference/concepts/) / [rich text](https://automerge.org/docs/reference/documents/rich-text/) | Persistence/sync primitives without replacing source-backed authority |
+| [ShareDB](https://share.github.io/sharedb/types/) | Server-oriented transformation with shared operation types; avoid duplicate semantic rules |
+| [ProseMirror](https://prosemirror.net/docs/guide/) | Model, transactions, position mapping and DOM adapter for a bounded projection; retain source distinctions and opaque boundaries |
+| Core-owned implementation | Bounded rules and command/results API shared through native/WASM |
 
-Complete when no rejected transaction changes accepted state, and supported
-native/WASM combinations pass the same transaction corpus.
+Compare identical adversarial fixtures, integration/maintenance cost, correctness,
+failure recovery, audit, upgrades, native/WASM reuse, performance and licensing.
+Convergence must also preserve intended edits and valid files. No dependency is
+selected; a generic library model is not automatically a suitable exporter.
 
-### 3. Build a minimal authoritative service
+## Implementation gates
 
-- Add session negotiation, ordered acceptance, durable logs, deduplication,
-  resume, document access checks and revision-specific export.
-- Add checkpoint publication, identity remapping and recovery. Exercise
-  crashes before/after durable acceptance and during checkpoint replacement.
-- Keep server placement and transport replaceable; one local process and
-  a local database are sufficient for this milestone.
+1. **Agreement and alternatives, before a full service.** Drive browser gestures,
+   replay into core and compare canonical editable state. Cover split/merge through
+   styled spans, partial formatting, empty paragraphs, undo, IME, Unicode,
+   save/reopen and unknown content; add remote edits and pending work. Prototype
+   canonical DOM feedback, one bounded model-driven region, and local core
+   commands directing view patches. Measure latency, rebase/selection complexity
+   and recovery. Choose the client architecture from these results.
+2. **Contract and core.** Inventory version 2/undo; specify command/transaction/result
+   schemas, IDs, coordinates, profiles, errors and supported conflict outcomes.
+   Test malformed/stale targets and incompatible profiles. Implement isolated
+   validation, transformations, inverses and bindings. Shared
+   native/WASM fixtures must prove atomic rejection, deterministic results and
+   projection agreement for ODT; add DOCX before broadening format support.
+3. **Minimal service.** Implement access, negotiation, ordered durable acceptance,
+   deduplication, resume, checkpoint remapping and revision-specific export.
+   Inject crashes around acceptance/publication and checkpoint replacement.
+   Completion: every acknowledged edit survives restart and exports without clients.
+4. **Two clients.** Integrate the selected editor path, remote/pending reconciliation,
+   canonical repair, selection/IME, local collaborative undo and transient presence.
+   Test brief disconnects, lost acknowledgements, conflicts, checkpoint transitions
+   and incompatible clients. Completion: responsive clients agree with accepted
+   state and server export without losing pending work.
+5. **Apps and deployment.** Connect native WebView and browser, including deliberate
+   mismatches. Package self-hosting; document upgrades, recovery, export and retention.
+   Measure realistic documents to set replay/checkpoint/disconnect/undo limits.
+   Completion: supported combinations pass; unsupported ones fail explicitly.
 
-Complete when a server restart preserves every acknowledged edit and can
-export a valid document with no connected clients.
-
-### 4. Connect two DOM editors
-
-- Capture transactions, apply remote edits, reconcile pending local work,
-  and handle acknowledgements without duplicate application.
-- Preserve caret/selection and IME composition; add local collaborative undo
-  and transient remote presence.
-- Exercise brief disconnects, lost acknowledgements, rejected transactions,
-  checkpoint transitions and incompatible clients with recoverable work.
-
-Complete when two browsers converge on accepted state through these cases,
-remain usable while typing, and display the state the server exports.
-
-### 5. Validate app integration and deployment
-
-- Connect a native WebView host alongside a browser. Verify the core/editor/
-  bridge compatibility policy, including a deliberate version mismatch.
-- Package a simple self-hosted deployment and document upgrade, recovery,
-  export and retention behavior. Use the same protocol for hosted service.
-- Measure replay, checkpoint and reconciliation costs on realistic text
-  documents, and choose the supported disconnect and history limits.
-
-Complete when mixed supported clients pass the compatibility matrix and an
-unsupported combination fails explicitly without losing pending local work.
-
-## Decisions still to make
-
-- Exact text coordinate and session identity schemes, and mappings through
-  save/reopen and independent rendering.
-- Initial conflict rules, undo retention, disconnect window and recovery UI.
-- Candidate-state isolation strategy and acceptable validation latency.
-- Core API/binding shape, helper placement, and service language/transport.
-- Whether the prototype uses server-rendered HTML or verified local rendering.
-- Supported compatibility profiles, upgrade adapters and retention periods.
-- Library reuse after the bounded prototype comparison.
-
-These are implementation investigations within the agreed direction. They
-do not reopen long-offline merging, external file replacement, or a second
-persistent document model as initial requirements.
+Open choices: client model/execution boundary, command/result API, IDs/coordinates,
+fragment invalidation, IME/recovery UX, conflict/retention policies, isolation cost,
+rendering/mapping strategy, compatibility/migration support, service placement and
+transport, and library reuse. Decide these within the invariants above.
