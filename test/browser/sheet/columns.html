@@ -224,6 +224,20 @@
         staleNow() === at.column + ",1 " + (at.column + 1) + ",1",
         staleNow()
       );
+
+      note("column widths survive deletion and restoration");
+      var sheet = document.querySelector(".odr-sheet");
+      sheet.querySelectorAll("table").forEach(function (table) {
+        table.querySelectorAll("col")[1].style.width = "60.5px";
+      });
+      var visible = odr.sheet.deleteColumns(0, 1);
+      check("a fractional width stays fractional", parseFloat(visible.widths[0]) === 60.5, visible.widths);
+      odr.sheet.restoreColumns(0, visible);
+      sheet.style.display = "none";
+      var hidden = odr.sheet.deleteColumns(0, 1);
+      check("a hidden sheet retains its column width", parseFloat(hidden.widths[0]) === 60.5, hidden.widths);
+      odr.sheet.restoreColumns(0, hidden);
+      sheet.style.display = "";
     </script>
   </body>
 </html>

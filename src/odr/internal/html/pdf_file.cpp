@@ -59,6 +59,20 @@ double round2(const double v) { return std::round(v * 100.0) / 100.0; }
 
 constexpr double pt_to_in = 1.0 / 72.0;
 
+std::string page_height_style(const double height) {
+  const std::string inches =
+      util::number::to_string_significant(height * pt_to_in, 15) + "in";
+  const double pixels = height / 0.75;
+  // WebKit paginates in whole CSS pixels; see test/browser/viewport/README.md.
+  const double print_pixels = pixels >= 1 ? std::floor(pixels) : pixels;
+  return "height:" + inches + ";--odr-pdf-height:" + inches +
+         ";--odr-pdf-print-height:" +
+         util::number::to_string_significant(print_pixels, 15) +
+         "px;--odr-pdf-print-scale:" +
+         util::number::to_string_significant(
+             pixels > 0 ? print_pixels / pixels : 1, 15);
+}
+
 /// A transform as an SVG `matrix(...)`. Only the translation is rounded; the
 /// linear part keeps full precision so small scale/skew factors aren't
 /// quantized to zero.
@@ -2257,6 +2271,7 @@ public:
     // What the page box holds: the visual layer, the selection layer, and the
     // link overlays on top so they stay clickable.
     const auto write_page_content = [&](const DualPageOut &page) {
+      out.write_element_begin("div", HtmlElementOptions().set_class("pc"));
       // Visual layer: paint-order graphics and unselectable glyphs.
       out.write_element_begin("div",
                               HtmlElementOptions().set_class("vis").set_extra(
@@ -2273,6 +2288,7 @@ public:
       out.write_element_end("div"); // .sel
 
       write_page_links(out, page.links);
+      out.write_element_end("div"); // .pc
     };
 
     if (fragment) {
@@ -2397,9 +2413,9 @@ public:
               ? R"( data-odr-chunk-text=")" + index_script_path(group) + '"'
               : std::string();
       std::ostringstream size;
-      size << "width:" << box.width * pt_to_in
-           << "in;height:" << box.height * pt_to_in
-           << "in;page:" << print_page_name(box.width, box.height);
+      size << "width:" << box.width * pt_to_in << "in;"
+           << page_height_style(box.height)
+           << ";page:" << print_page_name(box.width, box.height);
       out.write_element_begin(
           "div",
           HtmlElementOptions()
@@ -2908,9 +2924,11 @@ public:
                      .set_class(std::move(classes))
                      .set_extra(R"(id="p)" + std::to_string(page_number++) +
                                 R"(")" + page.attributes));
+      out.write_element_begin("div", HtmlElementOptions().set_class("pc"));
       write_page_items(out, page.clip_defs, page.items, page.width, page.height,
                        write_line);
       write_page_links(out, page.links);
+      out.write_element_end("div"); // .pc
       out.write_element_end("div"); // .p
     }
     out.write_element_end("div"); // .d
@@ -3092,9 +3110,7 @@ public:
       std::ostringstream w;
       w << "width:" << width * pt_to_in << "in";
       add_class(classes, "x", std::move(w).str());
-      std::ostringstream h;
-      h << "height:" << height * pt_to_in << "in";
-      add_class(classes, "y", std::move(h).str());
+      add_class(classes, "y", page_height_style(height));
       add_class(classes, "q", "page:" + print_page_name(width, height));
     }
 
@@ -3237,11 +3253,17 @@ public:
                  "margin:0 max(16px,var(--odr-min-margin-right,0px)) 0 "
                  "max(16px,var(--odr-min-margin-left,0px));background:#fff;"
                  "overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.5)}";
+    out.out()
+        << ".pc{position:relative;width:100%;height:var(--odr-pdf-height)}";
     // One page to a sheet.
     out.out() << "@media print{body{background:none}"
                  ".d{display:block;padding:0;width:auto;min-width:0}"
                  ".p{margin:0;box-shadow:none;"
-                 "break-after:page}.p:last-child{break-after:auto}}"
+                 "height:var(--odr-pdf-print-height)!important;"
+                 "break-after:page}.p:last-child{break-after:auto}"
+                 ".p>svg.an{height:var(--odr-pdf-height)}"
+                 ".pc,.p>svg.an{transform:scale(var(--odr-pdf-print-scale));"
+                 "transform-origin:0 0}}"
                  "@page{margin:0}";
     std::set<std::string> print_pages;
     for (const PageOut &page : pages) {

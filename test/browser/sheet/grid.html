@@ -178,7 +178,8 @@
         setTimeout(function () {
           check("move the grid right a column", layer("right").offsetLeft === right + 64, { before: right, after: layer("right").offsetLeft });
           check("and its letters go on from E", shownLabels("ruler").join() === "E,F", shownLabels("ruler"));
-          odr.sheet.deleteColumns(1, 1);
+          var removed = odr.sheet.deleteColumns(1, 1);
+          check("the removed column keeps its rendered width", parseFloat(removed.widths[0]) === 64, removed.widths);
           setTimeout(function () {
             check("and back when it goes", layer("right").offsetLeft === right && shownLabels("ruler").join() === "D,E,F", { left: layer("right").offsetLeft, labels: shownLabels("ruler") });
           }, 100);

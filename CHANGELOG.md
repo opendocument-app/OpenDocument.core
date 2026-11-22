@@ -58,6 +58,9 @@ The release run heads these entries with the version and opens a fresh
 
 ### Spreadsheets
 
+- Removing an ods or xlsx sheet at the end of a 3D formula range moves that
+  endpoint to the next sheet inside the range. The formula previously kept
+  naming the deleted sheet.
 - XLSX cell borders show their hairline, thin, medium or thick weight and
   solid, dotted, dashed or double pattern. An explicit `none` paints no
   border. Dash-dot and slanted patterns use dashed CSS borders of the same
@@ -78,6 +81,11 @@ The release run heads these entries with the version and opens a fresh
 
 ### Presentations
 
+- Removing a pptx slide also removes links to it and its outline-view entries,
+  preserving the linked text and shapes. It previously saved dangling
+  references that could make PowerPoint request repairs. Unrecognised incoming
+  references to the slide or its notes are left unchanged and may dangle;
+  they do not prevent deletion.
 - `Presentation::slide_layouts()` lists the layouts a slide can start from,
   each a `Slide` outside the document as
   `Presentation::insert_slide(index, layout)` adds it to an odp or pptx. A
@@ -116,6 +124,10 @@ The release run heads these entries with the version and opens a fresh
 
 ### Viewing
 
+- PDF printing in WKWebView no longer inserts a blank sheet after each A4
+  page. Print boxes fit a whole CSS-pixel height, with their contents scaled
+  proportionally by less than one pixel rather than clipped. Screen geometry
+  and the declared paper sizes stay unchanged.
 - `odr.chunks.loadAll()` loads every lazy chunk before a host prints. Its
   Promise rejects if a script fails or does not fill its chunk. Concurrent
   calls share loads, and a failed chunk can be retried. It keeps the current
@@ -134,6 +146,10 @@ The release run heads these entries with the version and opens a fresh
 
 ### Spreadsheet view
 
+- Deleting a column in WebKit shrinks the sheet and its empty grid by the
+  rendered column width. WebKit reports a `<col>`'s computed width as zero,
+  which left the sheet too wide and lost the width needed by undo.
+  Fractional widths and widths on hidden sheets are preserved too.
 - A sheet's grid goes on past its content, up to the format's last row and
   column, as in Excel and LibreOffice: gridlines, column letters and row
   numbers, drawn by the page and grown as the reader scrolls. An empty cell

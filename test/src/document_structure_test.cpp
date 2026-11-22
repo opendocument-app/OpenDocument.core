@@ -199,6 +199,35 @@ TEST_P(DocumentInsertSheet, moves_a_sheet_both_ways_and_survives_a_save) {
             (std::vector<std::string>{"C", "B", "Sheet1"}));
 }
 
+TEST_P(DocumentInsertSheet, deleting_endpoints_contracts_a_3d_range) {
+  const Document document = create_document(GetParam());
+  const Sheet first = document.as_spreadsheet().insert_sheet(1, "First");
+  const Sheet middle = document.as_spreadsheet().insert_sheet(2, "Middle");
+  const Sheet last = document.as_spreadsheet().insert_sheet(3, "Last");
+  first.set_cell(0, 0, CellValue(1.0));
+  middle.set_cell(0, 0, CellValue(2.0));
+  last.set_cell(0, 0, CellValue(4.0));
+  sheet_at(document, 0)
+      .set_cell(0, 0,
+                CellValue().with_formula(
+                    formula_of(document, "of:=SUM([$First.A1:$Last.A1])",
+                               "SUM(First:Last!A1)")));
+
+  document.remove(first);
+  const Document saved = reopen(document);
+  EXPECT_EQ(sheet_at(saved, 0).cell(0, 0).value().formula(),
+            formula_of(document, "of:=SUM([$Middle.A1:$Last.A1])",
+                       "SUM('Middle:Last'!A1)"));
+
+  document.remove(last);
+  EXPECT_EQ(sheet_at(reopen(document), 0).cell(0, 0).value().formula(),
+            formula_of(document, "of:=SUM([$Middle.A1:$Middle.A1])",
+                       "SUM(Middle!A1)"));
+  document.remove(middle);
+  EXPECT_EQ(sheet_at(reopen(document), 0).cell(0, 0).value().type(),
+            ValueType::error);
+}
+
 TEST_P(DocumentInsertSheet, a_formula_reads_a_moved_sheet) {
   const Document document = create_document(GetParam());
   const Sheet data = document.as_spreadsheet().insert_sheet(1, "Data");

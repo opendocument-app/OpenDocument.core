@@ -186,6 +186,8 @@ struct SheetEdit final {
   std::uint32_t index{0}; ///< the first row or column inserted or removed
   std::uint32_t count{0};
   bool insert{true};
+  /// Sheet order before a whole-sheet removal; empty for row/column edits.
+  std::vector<std::string> sheet_order{};
 
   /// Maps the inclusive span [@p first, @p last] through the edit, clipping
   /// deleted edges. Null if fully deleted or moved off-grid.
@@ -194,9 +196,9 @@ struct SheetEdit final {
 };
 
 /// Moves references, including absolute coordinates; unstated sheets use @p
-/// sheet. Deleted references become `#REF!`. External, 3D and references
-/// without the edited axis stay unchanged. Returns whether any reference
-/// changed.
+/// sheet. Deleted references become `#REF!`. A whole-sheet removal contracts
+/// 3D endpoints; row/column edits leave 3D references unchanged. External
+/// references stay unchanged. Returns whether any reference changed.
 bool move_references(Node &node, const SheetEdit &edit,
                      const std::optional<std::string> &sheet);
 

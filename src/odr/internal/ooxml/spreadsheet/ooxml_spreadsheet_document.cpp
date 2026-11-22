@@ -726,12 +726,10 @@ public:
     }
     const ElementRegistry::ElementRelations &relations =
         *m_registry->element_relations(element_id);
-    const formula::SheetEdit rows{
-        .sheet = m_registry->sheet_element_at(element_id).name,
-        .count = std::numeric_limits<std::uint32_t>::max(),
-        .insert = false};
-    formula::SheetEdit columns = rows;
-    columns.axis = formula::Axis::column;
+    formula::SheetEdit rows{.sheet =
+                                m_registry->sheet_element_at(element_id).name,
+                            .count = std::numeric_limits<std::uint32_t>::max(),
+                            .insert = false};
 
     // decided before anything is written
     std::vector<pugi::xml_node> pivots;
@@ -751,6 +749,11 @@ public:
       throw UnsupportedOperation();
     }
     const Readers readers = readers_of(element_id);
+    for (const NamedWorksheet &worksheet : readers.worksheets) {
+      rows.sheet_order.push_back(worksheet.name);
+    }
+    formula::SheetEdit columns = rows;
+    columns.axis = formula::Axis::column;
     const auto index = static_cast<std::uint32_t>(
         std::ranges::find(readers.sheet_ids, element_id) -
         readers.sheet_ids.begin());

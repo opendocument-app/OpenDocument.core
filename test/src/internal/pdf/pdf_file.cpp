@@ -589,7 +589,8 @@ TEST(PdfFile, uniform_run_at_the_floor_keeps_its_own_font_size) {
                   PdfTextMode::dual_layer);
 
   EXPECT_TRUE(contains(html, "font-size:24pt"));
-  EXPECT_FALSE(contains(html, "transform:scale("));
+  // Only the print page scales; the text run keeps its font size.
+  EXPECT_EQ(count(html, "transform:scale("), 1);
 }
 
 // A JPEG cannot hold an alpha, and the browser decodes it, so its `/SMask`
@@ -644,6 +645,32 @@ TEST(PdfFile, each_page_prints_on_a_sheet_of_its_own_size) {
     EXPECT_EQ(count(html, "{page:odr-61200x79200}"), 1);
     EXPECT_EQ(count(html, "{page:odr-79200x61200}"), 1);
     EXPECT_TRUE(contains(html, "break-after:page"));
+  }
+}
+
+TEST(PdfFile, fractional_page_heights_fit_print_without_clipping_content) {
+  PdfFileBuilder builder;
+  builder.object("<< /Type /Catalog /Pages 2 0 R >>")
+      .object("<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 >>")
+      .object(
+          "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.2756 841.8898] >>")
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>")
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 21 21] >>");
+  const std::string bytes = builder.trailer("/Root 1 0 R").build_classic();
+  for (const PdfTextMode mode :
+       {PdfTextMode::dual_layer, PdfTextMode::single_layer}) {
+    const std::string html = render_html(bytes, mode);
+    EXPECT_EQ(count(html, R"(class="pc")"), 3);
+    EXPECT_TRUE(contains(html, "--odr-pdf-print-height:1122px"));
+    EXPECT_TRUE(contains(html, "--odr-pdf-print-scale:0.999536994034136"));
+    EXPECT_TRUE(contains(
+        html, "--odr-pdf-print-height:1056px;--odr-pdf-print-scale:1"));
+    EXPECT_TRUE(
+        contains(html, "--odr-pdf-print-height:28px;--odr-pdf-print-scale:1"));
+    EXPECT_TRUE(contains(html, "height:var(--odr-pdf-print-height)!important"));
+    EXPECT_TRUE(contains(html, ".p>svg.an{height:var(--odr-pdf-height)}"));
+    EXPECT_TRUE(contains(
+        html, ".pc,.p>svg.an{transform:scale(var(--odr-pdf-print-scale))"));
   }
 }
 

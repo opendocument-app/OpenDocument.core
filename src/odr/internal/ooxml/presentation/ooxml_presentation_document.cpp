@@ -589,7 +589,154 @@ pugi::xml_node section_entry(const pugi::xml_node sections,
   return {};
 }
 
+/// Removes recognised uses of a relationship; reports any use left behind.
+bool remove_slide_reference(const pugi::xml_node node,
+                            const std::string_view id, bool &used) {
+  for (const pugi::xml_attribute attribute : node.attributes()) {
+    const std::string_view name = attribute.name();
+    const auto colon = name.find(':');
+    if (attribute.value() != id || colon == std::string_view::npos) {
+      continue;
+    }
+    const std::string declaration =
+        "xmlns:" + std::string(name.substr(0, colon));
+    pugi::xml_node scope = node;
+    while (scope && !scope.attribute(declaration.c_str())) {
+      scope = scope.parent();
+    }
+    if (std::string_view(scope.attribute(declaration.c_str()).value()) !=
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships") {
+      continue;
+    }
+    const std::string_view tag = node.name();
+    const bool link = tag == "a:hlinkClick" || tag == "a:hlinkMouseOver";
+    const bool outline =
+        tag == "p:sld" &&
+        std::string_view(node.parent().name()) == "p:sldLst" &&
+        std::string_view(node.parent().parent().name()) == "p:outlineViewPr" &&
+        std::string_view(node.parent().parent().parent().name()) == "p:viewPr";
+    if (name.substr(colon + 1) == "id" && (link || outline)) {
+      node.parent().remove_child(node);
+      return true;
+    }
+    used = true;
+    return false;
+  }
+  bool changed = false;
+  for (pugi::xml_node child = node.first_child(); child;) {
+    const pugi::xml_node next = child.next_sibling();
+    changed = remove_slide_reference(child, id, used) || changed;
+    child = next;
+  }
+  return changed;
+}
+
 } // namespace
+
+void Document::remove_slide_references_(const AbsPath &slide,
+                                        const std::optional<AbsPath> &notes) {
+  const auto read = [&](const AbsPath &path, pugi::xml_document &xml) {
+    if (const auto it = m_written_parts.find(path);
+        it != m_written_parts.end()) {
+      return it->second.document_element();
+    }
+    if (m_files->is_file(path)) {
+      try {
+        xml = xml::parse(*m_files, path);
+        return xml.document_element();
+      } catch (const NoXmlFile &) {
+        return pugi::xml_node();
+      }
+    }
+    return pugi::xml_node();
+  };
+  const auto is_relationships = [](const AbsPath &path) {
+    return path.basename().ends_with(".rels") &&
+           path.parent().basename() == "_rels";
+  };
+  std::vector<AbsPath> paths;
+  for (const auto &[path, xml] : m_written_parts) {
+    if (is_relationships(path)) {
+      paths.push_back(path);
+    }
+  }
+  for (auto walker = m_files->file_walker(AbsPath("/")); !walker->end();
+       walker->next()) {
+    const AbsPath path = walker->path();
+    if (walker->is_file() && is_relationships(path) &&
+        !m_written_parts.contains(path) &&
+        std::ranges::find(m_dropped_parts, path) == m_dropped_parts.end()) {
+      paths.push_back(path);
+    }
+  }
+  for (const AbsPath &path : paths) {
+    const std::string filename = path.basename();
+    const AbsPath source = path.parent().parent().join(
+        RelPath(filename.substr(0, filename.size() - 5)));
+    if (source == slide || (notes.has_value() && source == *notes) ||
+        source == AbsPath("/ppt/presentation.xml") ||
+        !source.basename().ends_with(".xml")) {
+      continue;
+    }
+    pugi::xml_document relations_xml;
+    pugi::xml_node relations = read(path, relations_xml);
+    std::vector<pugi::xml_node> incoming;
+    for (const pugi::xml_node relation : relations.children("Relationship")) {
+      const std::string_view type = relation.attribute("Type").value();
+      if (std::string_view(relation.attribute("TargetMode").value()) ==
+              "External" ||
+          (type != "http://schemas.openxmlformats.org/officeDocument/2006/"
+                   "relationships/slide" &&
+           type != "http://schemas.openxmlformats.org/officeDocument/2006/"
+                   "relationships/hyperlink")) {
+        continue;
+      }
+      const AbsPath target =
+          resolve_part_path(source, relation.attribute("Target").value());
+      if (target == slide || (notes.has_value() && target == *notes)) {
+        incoming.push_back(relation);
+      }
+    }
+    if (incoming.empty()) {
+      continue;
+    }
+    pugi::xml_document part_xml;
+    const auto loaded = m_slide_ids_by_path.find(source);
+    const pugi::xml_node part =
+        loaded != m_slide_ids_by_path.end()
+            ? m_slides_xml.at(loaded->second).document_element()
+            : read(source, part_xml);
+    const std::string_view name = part.name();
+    if (name != "p:sld" && name != "p:sldLayout" && name != "p:sldMaster" &&
+        name != "p:viewPr" && name != "p:notes") {
+      continue;
+    }
+    bool part_changed = false;
+    bool relations_changed = false;
+    for (const pugi::xml_node relation : incoming) {
+      // A notes slide's back-reference is ownership, not a hyperlink.
+      if (name == "p:notes" &&
+          !std::string_view(relation.attribute("Type").value())
+               .ends_with("/hyperlink")) {
+        continue;
+      }
+      bool used = false;
+      part_changed = remove_slide_reference(
+                         part, relation.attribute("Id").value(), used) ||
+                     part_changed;
+      if (!used) {
+        relations.remove_child(relation);
+        relations_changed = true;
+      }
+    }
+    if (part_changed && part_xml.document_element()) {
+      m_written_parts.emplace(source, std::move(part_xml));
+    }
+    if (relations_changed && relations_xml.document_element()) {
+      m_written_parts.emplace(path, std::move(relations_xml));
+    }
+  }
+}
 
 void Document::remove_slide(const ElementIdentifier slide_id) {
   const AbsPath presentation_path("/ppt/presentation.xml");
@@ -609,6 +756,7 @@ void Document::remove_slide(const ElementIdentifier slide_id) {
   // the notes slide is the slide's alone, and refers back to it
   const std::optional<AbsPath> notes =
       parse_relationship_target(*m_files, slide_path, "notesSlide");
+  remove_slide_references_(slide_path, notes);
 
   const std::string number = entry.attribute("id").value();
   if (const pugi::xml_node sections = section_list(root)) {

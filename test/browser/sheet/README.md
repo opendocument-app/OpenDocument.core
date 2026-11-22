@@ -9,7 +9,10 @@ test/browser/sheet/serve         # serves on :8732
 open http://localhost:8732/tests.html
 open http://localhost:8732/grid.html
 open http://localhost:8732/grid-cut.html
+open http://localhost:8732/grid-keys.html
+open http://localhost:8732/sheets.html
 open http://localhost:8732/chunks.html
+open http://localhost:8732/nochunks.html
 open http://localhost:8732/positions.html
 open http://localhost:8732/sorting.html
 open http://localhost:8732/editing.html
@@ -24,6 +27,7 @@ open http://localhost:8732/rows.html
 open http://localhost:8732/columns.html
 open http://localhost:8732/formulas.html
 open http://localhost:8732/formula-chain.html
+open http://localhost:8732/formula-structure.html
 open http://localhost:8732/formula-input.html
 open http://localhost:8732/formula-scope.html
 open http://localhost:8732/formula-words.html

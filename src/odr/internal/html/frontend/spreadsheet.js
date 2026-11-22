@@ -1041,7 +1041,13 @@
     var slice = { widths: [], headers: [], cells: [] };
     var headCols = head.querySelectorAll("col");
     for (var at = column; at < end; ++at) {
-      slice.widths.push(getComputedStyle(headCols[at + 1]).width);
+      var width = getComputedStyle(headCols[at + 1]).width;
+      if (parseFloat(width) === 0) {
+        var style = getComputedStyle(headers[at]);
+        width = (parseFloat(style.width) + parseFloat(style.paddingLeft) +
+          parseFloat(style.paddingRight)) + "px";
+      }
+      slice.widths.push(width);
       slice.headers.push(headers[at]);
     }
     [head].concat(Array.prototype.slice.call(chunks)).forEach(function (part) {

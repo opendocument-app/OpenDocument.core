@@ -42,7 +42,8 @@ public:
   /// with its relationships and content type, and an entry in `p:sldIdLst`.
   ElementIdentifier insert_slide(std::uint32_t index, std::uint32_t layout);
   /// Takes the slide @p slide_id out: its entry in `p:sldIdLst`, custom shows
-  /// and sections, its relationship, content type, part and notes slide.
+  /// and sections, incoming links and outline entries, its relationship,
+  /// content type, part and notes slide.
   void remove_slide(ElementIdentifier slide_id);
   /// Puts the slide @p slide_id at @p index among the slides, counted after
   /// the move, into the section of the slide it then follows.
@@ -100,6 +101,8 @@ private:
   /// Leaves the part at @p path and its relationships part out of `save`,
   /// with the content type of the part.
   void drop_part_(const AbsPath &path);
+  void remove_slide_references_(const AbsPath &slide,
+                                const std::optional<AbsPath> &notes);
 };
 
 } // namespace odr::internal::ooxml::presentation

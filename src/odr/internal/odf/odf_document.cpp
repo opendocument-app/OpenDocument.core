@@ -2463,6 +2463,11 @@ public:
   /// no reference to the sheet standing.
   void remove_sheet(const ElementIdentifier element_id) const {
     const std::string name = sheet_name(element_id);
+    std::vector<std::string> sheet_order;
+    for (const pugi::xml_node table :
+         get_node(element_id).parent().children("table:table")) {
+      sheet_order.emplace_back(table.attribute("table:name").value());
+    }
     std::vector<SheetPosition> touched;
     for (const formula::Axis axis :
          {formula::Axis::row, formula::Axis::column}) {
@@ -2471,7 +2476,8 @@ public:
                           {.sheet = name,
                            .axis = axis,
                            .count = std::numeric_limits<std::uint32_t>::max(),
-                           .insert = false}),
+                           .insert = false,
+                           .sheet_order = sheet_order}),
           std::back_inserter(touched));
     }
     // the positions count the sheet, so the results go while it is there
