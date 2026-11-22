@@ -37,7 +37,7 @@ Reader and editor for word processing documents (`.docx`). It relies on
 ### Styles
 
 - [x] font
-  - [x] family (`w:rFonts`, literal names only; theme fonts such as `w:asciiTheme` are ignored)
+  - [x] family (`w:rFonts`, literal names and major/minor Latin theme fonts)
   - [x] size
   - [x] italic, bold
   - [x] underline, strike through

@@ -1,9 +1,20 @@
 #include <odr/internal/ooxml/text/ooxml_text_style.hpp>
 
+#include <odr/document.hpp>
+#include <odr/document_element.hpp>
+#include <odr/file.hpp>
+#include <odr/html.hpp>
+#include <odr/internal/common/file.hpp>
+#include <odr/internal/common/filesystem.hpp>
+#include <odr/internal/common/path.hpp>
+#include <odr/internal/ooxml/text/ooxml_text_document.hpp>
+#include <odr/odr.hpp>
 #include <odr/style.hpp>
 
 #include <cstddef>
+#include <memory>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <thread>
 
@@ -691,4 +702,148 @@ TEST(ooxml_text_style, direct_off_values_clear_inherited_formatting) {
   EXPECT_EQ(true, inherited.font_underline);
   EXPECT_EQ(true, inherited.font_line_through);
   EXPECT_EQ("1pt 1pt", inherited.font_shadow);
+}
+
+namespace {
+
+constexpr const char *latin_theme =
+    R"(<a:theme><a:themeElements><a:fontScheme>)"
+    R"(<a:majorFont><a:latin typeface="Heading Face"/></a:majorFont>)"
+    R"(<a:minorFont><a:latin typeface="Body Face"/></a:minorFont>)"
+    R"(</a:fontScheme></a:themeElements></a:theme>)";
+
+StyleRegistry themed_registry(const char *styles,
+                              pugi::xml_document &document) {
+  pugi::xml_document theme;
+  EXPECT_TRUE(theme.load_string(latin_theme));
+  // The registry owns the names, so the theme DOM can die here.
+  return StyleRegistry(node_of(styles, document), theme.document_element());
+}
+
+odr::Document themed_document(const std::string &relationship,
+                              const bool include_theme) {
+  using namespace odr::internal;
+  auto files = std::make_shared<VirtualFilesystem>();
+  const auto put = [&](const char *path, const std::string &content) {
+    files->copy(std::make_shared<MemoryFile>(content), AbsPath(path));
+  };
+  put("/word/document.xml",
+      R"(<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:rPr><w:rFonts w:ascii="Fallback" w:asciiTheme="minorHAnsi"/></w:rPr><w:t>hello</w:t></w:r></w:p></w:body></w:document>)");
+  put("/word/_rels/document.xml.rels",
+      "<Relationships>" + relationship + "</Relationships>");
+  if (include_theme) {
+    put("/custom/font-theme.xml", latin_theme);
+  }
+  return odr::Document(std::make_shared<odr::internal::ooxml::text::Document>(
+      files, EncryptionState::not_encrypted));
+}
+
+Text first_run(const odr::Document &document) {
+  Element element = document.root_element();
+  while (element && element.type() != ElementType::text) {
+    element = element.first_child();
+  }
+  return element.as_text();
+}
+
+} // namespace
+
+TEST(ooxml_text_style,
+     theme_fonts_reach_defaults_styles_and_direct_formatting) {
+  pugi::xml_document styles;
+  const StyleRegistry registry = themed_registry(
+      R"(<w:styles><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:asciiTheme="minorHAnsi"/></w:rPr></w:rPrDefault></w:docDefaults>)"
+      R"(<w:style w:styleId="heading"><w:rPr><w:rFonts w:ascii="Ignored" w:asciiTheme="majorHAnsi"/></w:rPr></w:style>)"
+      R"(<w:style w:styleId="child"><w:basedOn w:val="heading"/></w:style>)"
+      R"(<w:style w:styleId="literal"><w:basedOn w:val="heading"/><w:rPr><w:rFonts w:ascii="Courier New"/></w:rPr></w:style>)"
+      R"(</w:styles>)",
+      styles);
+  EXPECT_EQ(registry.default_style()->resolved().text_style.font_name,
+            "Body Face");
+  EXPECT_EQ(registry.style("heading")->resolved().text_style.font_name,
+            "Heading Face");
+  EXPECT_EQ(registry.style("child")->resolved().text_style.font_name,
+            "Heading Face");
+  EXPECT_EQ(registry.style("literal")->resolved().text_style.font_name,
+            "Courier New");
+  pugi::xml_document run;
+  EXPECT_EQ(
+      registry
+          .partial_text_style(node_of(
+              R"(<w:r><w:rPr><w:rStyle w:val="literal"/><w:rFonts w:asciiTheme="minorAscii"/></w:rPr></w:r>)",
+              run))
+          .text_style.font_name,
+      "Body Face");
+  EXPECT_EQ(
+      registry
+          .partial_paragraph_style(node_of(
+              R"(<w:p><w:pPr><w:pStyle w:val="heading"/><w:rPr><w:rFonts w:asciiTheme="minorHAnsi"/></w:rPr></w:pPr></w:p>)",
+              run))
+          .text_style.font_name,
+      "Body Face");
+}
+
+TEST(ooxml_text_style, latin_theme_slots_and_missing_faces_have_fallbacks) {
+  pugi::xml_document styles;
+  const StyleRegistry registry = themed_registry("<w:styles/>", styles);
+  pugi::xml_document run;
+  const auto name = [&](const char *attributes, const StyleRegistry &source) {
+    const std::string xml =
+        std::string("<w:r><w:rPr><w:rFonts ") + attributes + "/></w:rPr></w:r>";
+    return source.partial_text_style(node_of(xml.c_str(), run))
+        .text_style.font_name;
+  };
+  EXPECT_EQ(name(R"(w:asciiTheme="majorAscii")", registry), "Heading Face");
+  EXPECT_EQ(name(R"(w:hAnsiTheme="minorHAnsi" w:hAnsi="Ignored")", registry),
+            "Body Face");
+  EXPECT_EQ(name(R"(w:ascii="Literal" w:hAnsiTheme="minorHAnsi")", registry),
+            "Literal");
+  EXPECT_EQ(name(R"(w:hAnsi="HAnsi Face")", registry), "HAnsi Face");
+  EXPECT_FALSE(name(R"(w:asciiTheme="majorEastAsia")", registry).has_value());
+  const StyleRegistry no_theme(styles.document_element());
+  EXPECT_EQ(name(R"(w:asciiTheme="majorHAnsi" w:ascii="Fallback")", no_theme),
+            "Fallback");
+  EXPECT_FALSE(name(R"(w:asciiTheme="minorHAnsi")", no_theme).has_value());
+  pugi::xml_document empty_theme;
+  ASSERT_TRUE(empty_theme.load_string(
+      R"(<a:theme><a:themeElements><a:fontScheme><a:majorFont><a:latin typeface=""/></a:majorFont></a:fontScheme></a:themeElements></a:theme>)"));
+  const StyleRegistry empty(styles.document_element(),
+                            empty_theme.document_element());
+  EXPECT_EQ(name(R"(w:asciiTheme="majorHAnsi" w:ascii="Fallback")", empty),
+            "Fallback");
+}
+
+TEST(ooxml_text_style, theme_relationship_is_relative_and_survives_an_edit) {
+  const odr::Document document = themed_document(
+      R"(<Relationship Id="theme" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../custom/font-theme.xml"/>)",
+      true);
+  const Text text = first_run(document);
+  EXPECT_EQ(text.style().font_name, "Body Face");
+  text.set_content("edited");
+  const odr::Document saved =
+      open(document.save_to_memory(),
+           DecodeOptions::as(FileType::office_open_xml_document))
+          .as_document_file()
+          .document();
+  EXPECT_EQ(first_run(saved).content(), "edited");
+  EXPECT_EQ(first_run(saved).style().font_name, "Body Face");
+  std::ostringstream html;
+  html::translate(saved, {}).list_views().at(0).write_html(html);
+  EXPECT_NE(html.str().find("Body Face"), std::string::npos);
+}
+
+TEST(ooxml_text_style, missing_or_external_theme_keeps_the_literal_font) {
+  const std::string relation =
+      R"(<Relationship Id="theme" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../custom/font-theme.xml"/>)";
+  EXPECT_EQ(first_run(themed_document(relation, false)).style().font_name,
+            "Fallback");
+  EXPECT_EQ(first_run(themed_document("", true)).style().font_name, "Fallback");
+  EXPECT_EQ(
+      first_run(
+          themed_document(
+              R"(<Relationship Id="theme" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../custom/font-theme.xml" TargetMode="External"/>)",
+              true))
+          .style()
+          .font_name,
+      "Fallback");
 }

@@ -4,6 +4,7 @@
 
 #include <cstring>
 #include <ranges>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -11,12 +12,39 @@ namespace odr::internal::ooxml::text {
 
 namespace {
 
-void resolve_text_style_(const pugi::xml_node node, TextStyle &result) {
+/// [ECMA-376] 17.3.2.26 and 17.18.96. The theme wins within one rFonts.
+std::optional<std::string> font_name(const pugi::xml_node node,
+                                     const ThemeFonts &fonts) {
+  const auto resolve =
+      [&](const char *theme_name,
+          const char *literal_name) -> std::optional<std::string> {
+    const std::string_view theme = node.attribute(theme_name).value();
+    const std::string *face = nullptr;
+    if (theme == "majorAscii" || theme == "majorHAnsi") {
+      face = &fonts.major;
+    } else if (theme == "minorAscii" || theme == "minorHAnsi") {
+      face = &fonts.minor;
+    }
+    if (face != nullptr && !face->empty()) {
+      return *face;
+    }
+    const std::string literal = node.attribute(literal_name).value();
+    return literal.empty() ? std::nullopt : std::optional(literal);
+  };
+  if (const auto ascii = resolve("w:asciiTheme", "w:ascii");
+      ascii.has_value()) {
+    return ascii;
+  }
+  return resolve("w:hAnsiTheme", "w:hAnsi");
+}
+
+void resolve_text_style_(const pugi::xml_node node, TextStyle &result,
+                         const ThemeFonts &fonts) {
   const pugi::xml_node run_properties = node.child("w:rPr");
 
-  if (const pugi::xml_attribute font_name =
-          run_properties.child("w:rFonts").attribute("w:ascii")) {
-    result.font_name = font_name.value();
+  if (const auto name = font_name(run_properties.child("w:rFonts"), fonts);
+      name.has_value()) {
+    result.font_name = name;
   }
   if (const std::optional<Measure> font_size = read_half_point_attribute(
           run_properties.child("w:sz").attribute("w:val"));
@@ -334,21 +362,23 @@ bool has_paragraph_style(const pugi::xml_node node,
 
 } // namespace
 
-Style::Style(const pugi::xml_node node) : m_node{node} {
+Style::Style(const pugi::xml_node node, const ThemeFonts &fonts)
+    : m_node{node} {
   m_resolved.text_style = TextStyle();
   m_resolved.text_style.font_size = Measure(12, DynamicUnit("pt"));
 
-  resolve_default_style_();
+  resolve_default_style_(fonts);
 }
 
-Style::Style(std::string name, const pugi::xml_node node, const Style *parent)
+Style::Style(std::string name, const pugi::xml_node node, const Style *parent,
+             const ThemeFonts &fonts)
     : m_name{std::move(name)}, m_node{node}, m_parent{parent} {
   if (parent != nullptr) {
     m_resolved = parent->m_resolved;
     m_contextual_spacing = parent->m_contextual_spacing;
   }
 
-  resolve_style_();
+  resolve_style_(fonts);
 }
 
 std::string Style::name() const { return m_name; }
@@ -359,21 +389,22 @@ const ResolvedStyle &Style::resolved() const { return m_resolved; }
 
 bool Style::contextual_spacing() const { return m_contextual_spacing; }
 
-void Style::resolve_style_() {
+void Style::resolve_style_(const ThemeFonts &fonts) {
   if (const pugi::xml_node contextual_spacing =
           m_node.child("w:pPr").child("w:contextualSpacing")) {
     m_contextual_spacing = read_on_off_attribute(contextual_spacing);
   }
 
-  resolve_text_style_(m_node, m_resolved.text_style);
+  resolve_text_style_(m_node, m_resolved.text_style, fonts);
   resolve_paragraph_style_(m_node, m_resolved.paragraph_style);
   resolve_table_style_(m_node, m_resolved.table_style);
   resolve_table_row_style_(m_node, m_resolved.table_row_style);
   resolve_table_cell_style_(m_node, m_resolved.table_cell_style);
 }
 
-void Style::resolve_default_style_() {
-  resolve_text_style_(m_node.child("w:rPrDefault"), m_resolved.text_style);
+void Style::resolve_default_style_(const ThemeFonts &fonts) {
+  resolve_text_style_(m_node.child("w:rPrDefault"), m_resolved.text_style,
+                      fonts);
   resolve_paragraph_style_(m_node.child("w:pPrDefault"),
                            m_resolved.paragraph_style);
   resolve_table_style_(m_node.child("w:tblPrDefault"), m_resolved.table_style);
@@ -385,7 +416,18 @@ void Style::resolve_default_style_() {
 
 StyleRegistry::StyleRegistry() = default;
 
-StyleRegistry::StyleRegistry(const pugi::xml_node styles_root) {
+StyleRegistry::StyleRegistry(const pugi::xml_node styles_root,
+                             const pugi::xml_node theme_root) {
+  const pugi::xml_node scheme =
+      theme_root.child("a:themeElements").child("a:fontScheme");
+  m_fonts.major = scheme.child("a:majorFont")
+                      .child("a:latin")
+                      .attribute("typeface")
+                      .value();
+  m_fonts.minor = scheme.child("a:minorFont")
+                      .child("a:latin")
+                      .attribute("typeface")
+                      .value();
   generate_indices_(styles_root);
   generate_styles_(styles_root);
 }
@@ -410,7 +452,7 @@ StyleRegistry::partial_text_style(const pugi::xml_node node) const {
       result.text_style = style->resolved().text_style;
     }
   }
-  resolve_text_style_(node, result.text_style);
+  resolve_text_style_(node, result.text_style, m_fonts);
   return result;
 }
 
@@ -488,7 +530,8 @@ void StyleRegistry::generate_indices_(const pugi::xml_node styles_root) {
 }
 
 void StyleRegistry::generate_styles_(const pugi::xml_node styles_root) {
-  m_default_style = std::make_unique<Style>(styles_root.child("w:docDefaults"));
+  m_default_style =
+      std::make_unique<Style>(styles_root.child("w:docDefaults"), m_fonts);
 
   for (const auto &[name, node] : m_index) {
     generate_style_(name, node);
@@ -532,7 +575,7 @@ Style *StyleRegistry::generate_style_(const std::string &name,
 
   for (const auto &[chain_name, chain_node] : chain | std::views::reverse) {
     std::unique_ptr<Style> &style = m_styles[*chain_name];
-    style = std::make_unique<Style>(*chain_name, chain_node, parent);
+    style = std::make_unique<Style>(*chain_name, chain_node, parent, m_fonts);
     parent = style.get();
   }
 

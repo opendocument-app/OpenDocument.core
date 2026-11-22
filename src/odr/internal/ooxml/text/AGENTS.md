@@ -55,6 +55,17 @@ resolved style, so the cascade carries the table style's paragraph and text
 properties down into the cells. `w:tblStylePr` conditional formats are
 ignored.
 
+**Latin theme fonts resolve before styles are flattened.** The theme part
+comes from the document's `theme` relationship, not a fixed path. The registry
+owns its major/minor Latin face names. `asciiTheme` and `hAnsiTheme` select
+`majorAscii`/`majorHAnsi` or `minorAscii`/`minorHAnsi`. A resolvable theme
+reference wins over its literal counterpart within one `rFonts`; a later
+style layer can override either ([MS-OI29500] 2.1.88, note e). A missing theme
+or empty face falls back to the literal name, then inherited formatting.
+The model carries one face per run, so ASCII takes precedence and HAnsi is a
+fallback when that element states no usable ASCII font. A theme is copied
+unchanged when saving.
+
 **A table's borders are lowered onto its cells**, because css cannot draw an
 inside rule from the `<table>`. `table_cell_border` resolves each edge as the
 cell's own `w:tcBorders`, then the neighbour's opposite edge, then
@@ -109,8 +120,8 @@ rank in `CT_PPr` (`paragraph_property_order`). Justified is `both`
    Symbol-font bullets map to Unicode through a small table and otherwise fall
    back to the level's default shape.
 2. Save buffers `document.xml` and re-zips the whole package. No re-encryption.
-3. Theme fonts: `w:rFonts w:asciiTheme="minorHAnsi"` is ignored. Only literal
-   `w:ascii` names are read.
+3. Font selection still uses one face per run: East Asian and complex-script
+   theme faces, supplemental script fonts and `w:themeFontLang` are not read.
 4. Style stubs: `w:tcW` cell width is read and dropped, because it fights the
    column width. `w:default="1"` is ignored. Paragraph spacing reads
    `w:before`, `w:after` and `w:line` but not `w:beforeLines` or
