@@ -17,8 +17,8 @@
 - [Document editing design](document-editing.md): the editor of the document
   view. Runs, paragraphs and inline formatting.
 - [Collaborative editing proposal](collaborative-editing.md): source files
-  plus validated transactions, server conflict resolution, DOM editing,
-  checkpoints, mixed core versions and a staged implementation plan.
+  plus validated transactions, operation contracts, optional core feedback,
+  alternatives, checkpoints, mixed core versions and implementation gates.
 - [Spreadsheet editing design](spreadsheet-editing.md): cells edited and
   formatted by position, and formulas computed in the page.
 - [Plain-text editing design](txt-editing.md): the editor of the plain-text
