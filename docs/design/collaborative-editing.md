@@ -13,7 +13,9 @@ Status: proposed; no protocol or implementation selected. Related:
 - Persist the original package plus accepted operations and verified
   checkpoints. Core edits that package and exports without a connected client.
 - The server owns accepted revisions, conflict resolution and validation.
-  Core defines document semantics; the service owns access and persistence.
+  Keep the current ownership split: JS interprets interaction and chooses
+  concrete operations; core validates and applies them through source adapters.
+  The service owns access and persistence. Core need not inspect the DOM.
 - Client representations must preserve source correspondence and emit supported
   operations. They must not become a lossy whole-file export path. A disposable
   browser editing model is allowed; a second authoritative document format is
@@ -31,8 +33,8 @@ The browser edits addressed DOM runs/paragraphs and coalesces operations for
 | Whole-run `setText` | Revision-relative text changes with explicit conflict outcomes |
 | Decode-local IDs; log-local negative IDs | Session identities and creation mappings across clients/checkpoints |
 | Replay may partially apply before failing | Atomic validation and application |
-| JS and C++ separately implement editing semantics | Shared behavior and an authoritative return path |
-| WASM edit returns success, invalidates cached views | Canonical resulting state and affected rendering regions |
+| JS mutates DOM; C++ mutates source structure | Precise operation contracts and end-to-end agreement tests |
+| WASM edit returns success, invalidates cached views | Required identity/result mappings; canonical feedback where needed |
 | DOM undo captures old values/nodes; commit clears it | Rebased local undo and bounded retention |
 | Local DOM edits, with browser-owned composition | Remote edits, pending work, selection and IME reconciliation |
 | Same source/behavior assumed | Tested compatibility profiles across core/editor versions |
@@ -40,7 +42,29 @@ The browser edits addressed DOM runs/paragraphs and coalesces operations for
 An accepted operation does not prove the browser displays core's result.
 For example, `frontend/document.js::splitParagraph` mirrors source-tree
 splitting in JS; `wasm/src/wasm_html.cpp::edit` returns no resulting state.
-Collaboration increases the cost of maintaining that agreement.
+Collaboration increases the cost of maintaining that agreement. Different
+implementations over different trees are not inherently wasteful duplication;
+independent core validation remains necessary for stale or untrusted input.
+
+## Default: specify and prove the existing boundary
+
+Share operation meaning and fixtures first. A paragraph-split contract must
+define the cut, retained/moved children, wrapper handling, new paragraph
+properties (including inheritance, breaks and list context), created identities
+and logical caret outcome. Cover start/end cuts, empty paragraphs and protected
+boundaries; refuse unsupported cases atomically. JS maps logical positions to
+browser selections; core applies source changes without seeing DOM nodes.
+
+Run real browser gestures, collect operations, replay them into core, render
+again and compare editable structure/text/formatting. Separate browser-log and
+core-replay tests do not establish this agreement. Preserve both, adding the
+round trip and save/reopen checks.
+
+Share executable code only where both sides need the same algorithm, such as
+transaction transformation or position mapping. Whole-run replacement can
+accurately reproduce a local edit yet overwrite concurrent intent: retain
+richer text changes before coalescing for collaboration. This does not require
+a new client model or core on every keystroke.
 
 ## Architecture alternatives
 
@@ -49,10 +73,10 @@ and execution placement are separate choices; some options can be combined.
 
 | Approach | Benefit | Cost / assessment |
 |---|---|---|
-| DOM editing + operation acknowledgements | Least frontend change | Leaves display/core agreement unchecked; insufficient end state |
-| DOM editing + canonical core results | Detects and repairs drift while retaining the editor | Recommended first experiment; still needs pending-edit and IME reconciliation |
-| Bounded browser editing model + source operations | Explicit state for rebase, undo, recovery and testing | Credible longer-term option; adds projection schema and DOM adapter |
-| Local core processes every edit and directs DOM updates | Consolidates structural/formatting decisions in native/WASM core | Serious alternative to prototype early; needs incremental results, input/selection mapping and speculative-state management |
+| DOM editing + precise operations and conformance tests | Retains existing ownership and source-edit path | Default; add collaboration transactions and required result mappings |
+| DOM editing + canonical affected-state feedback | Detects and repairs runtime disagreement | Add where needed; still requires pending-edit and IME reconciliation |
+| Bounded browser editing model + source operations | Explicit state for rebase, undo, recovery and testing | Revisit if DOM state proves unmanageable; adds schema and adapter |
+| Local core processes every edit and directs DOM updates | Consolidates structural/formatting decisions in native/WASM core | Revisit demonstrated semantic duplication; needs source access or a bounded model, incremental results and speculative-state management |
 | Server processes every edit before display | Centralizes semantics and reduces client-core requirements | Network latency affects typing; adding prediction brings reconciliation back |
 | Generic browser model used to reconstruct the file | Convenient standalone editor representation | Reject: loses source details absent from that model |
 
@@ -75,8 +99,11 @@ A core component need not manipulate browser DOM objects. It can return
 keyed text/style/structure patches or rendered fragments; JS handles browser
 input, native selection and patch application. Local core uses WASM in a
 browser or native bindings in an app, with no per-edit network round trip.
-Measure worker/WebView latency and main-thread blocking before choosing the
-execution boundary.
+Full core also needs the original package: load it into browser WASM, use an
+app's local file, or execute remotely. A smaller shared C++ editing component
+could instead operate on a bounded projection, retaining source references;
+that avoids client file access but adds mapping and constraint requirements.
+Measure worker/WebView latency and main-thread blocking before choosing either.
 
 This can eliminate independently authored document mutation rules, but cannot
 guarantee zero drift: DOM patching, browser composition, renderer dependencies,
@@ -97,12 +124,13 @@ can lose mappings to different hidden semantics. Unknown content stays in
 core; opaque references alone do not make splitting/deleting across fields,
 bookmarks or wrappers safe. Core must implement or refuse those edits.
 
-## Canonical results and projection agreement
+## Agreement and optional canonical feedback
 
-Every accepted transaction needs a revision-tagged result derived from core:
-created/deleted IDs and mappings, actual text/style/structure changes, affected
-rendering regions, and position mappings for selections/pending edits where
-supported. Results are derived views, not another persistent document model.
+Every accepted transaction identifies its revision, accepted operations and
+required creation/identity mappings. Where needed, extend results with canonical
+text/style/structure, affected rendering regions and position mappings for
+selection/pending edits. Such results are derived views, not another persistent
+document model; full fragments per keystroke are not a prerequisite.
 
 The contract to test for a supported transaction `T` and core document `D`:
 
@@ -111,8 +139,8 @@ project(applyCore(D, T)) == applyClient(project(D), T)
 ```
 
 Compare supported semantic state, identities and structure, not HTML bytes or
-pixels. Test save/reopen separately. Canonical results provide a production
-verification/repair path when this agreement fails.
+pixels. Test save/reopen separately. Canonical feedback can provide runtime
+verification/repair; first establish the operation contract and test coverage.
 
 Internal `translate_element` is a starting point, not a ready fragment API:
 rendering depends on inherited styles, lists, direction, resources and page
@@ -131,8 +159,8 @@ keyboards that keep composition open. Preserve unreconcilable edits for recovery
 
 | Component | Responsibility |
 |---|---|
-| Core, native or WASM | Decode/edit/save, commands/transactions, validation, reconciliation rules and canonical results |
-| Frontend / host bridge | Input, DOM projection, selection, pending work and transient presence |
+| Core, native or WASM | Decode/edit/save, transaction validation/application, source constraints and result mappings |
+| Frontend / host bridge | Interpret input, enforce editor constraints, choose operations, update DOM/selection, track pending work and presence |
 | Collaboration service | Authentication, document access, ordered acceptance, durable log, resume, checkpoints and export |
 
 One authority advances each document revision; multiple service instances
@@ -141,7 +169,8 @@ Core's existing `HttpServer` serves HTML services and need not become this
 backend. Hosted and self-hosted deployments use the same protocol. Keep the
 contract/conformance fixtures with core; repository/package placement and
 service language/transport remain open. Native apps can retain native core;
-share helpers through bindings/WASM rather than duplicate algorithms in JS.
+share reconciliation helpers through bindings/WASM only where that removes
+duplicated algorithms. No new client model or WASM editing dependency is assumed.
 
 ## Transaction protocol
 
@@ -167,7 +196,7 @@ share helpers through bindings/WASM rather than duplicate algorithms in JS.
    target liveness, format capabilities and invariants on isolated candidate state.
 4. Durably record acceptance/outcome before acknowledgement. Live-state publication
    and crash recovery must agree with that record; rejection changes no revision.
-5. Broadcast accepted operations, revision and canonical results. Process revisions
+5. Broadcast accepted operations, revision and result mappings. Process revisions
    in order, detect/fetch gaps, and acknowledge own edits without applying twice.
 
 Retries return recorded outcomes; retain deduplication across reconnects and
@@ -263,25 +292,25 @@ selected; a generic library model is not automatically a suitable exporter.
 
 ## Implementation gates
 
-1. **Agreement and alternatives, before a full service.** Drive browser gestures,
-   replay into core and compare canonical editable state. Cover split/merge through
-   styled spans, partial formatting, empty paragraphs, undo, IME, Unicode,
-   save/reopen and unknown content; add remote edits and pending work. Prototype
-   canonical DOM feedback, one bounded model-driven region, and local core
-   commands directing view patches. Measure latency, rebase/selection complexity
-   and recovery. Choose the client architecture from these results.
-2. **Contract and core.** Inventory version 2/undo; specify command/transaction/result
+1. **Prove the existing boundary before a full service.** Specify paragraph splitting
+   first; drive real browser gestures, replay into core and compare fresh rendered
+   editable state. Cover styled spans, links, protected boundaries, start/end cuts,
+   empty paragraphs, partial formatting, undo, IME, Unicode, save/reopen and unknown
+   content; add remote edits and pending work. Completion: supported effects agree
+   and refusals are explicit. Add canonical feedback for identified recovery needs;
+   prototype alternative models/execution only if demonstrated limitations warrant it.
+2. **Contract and core.** Inventory version 2/undo; specify transaction/result
    schemas, IDs, coordinates, profiles, errors and supported conflict outcomes.
    Test malformed/stale targets and incompatible profiles. Implement isolated
-   validation, transformations, inverses and bindings. Shared
+   validation, transformations, inverses and needed bindings. Shared
    native/WASM fixtures must prove atomic rejection, deterministic results and
    projection agreement for ODT; add DOCX before broadening format support.
 3. **Minimal service.** Implement access, negotiation, ordered durable acceptance,
    deduplication, resume, checkpoint remapping and revision-specific export.
    Inject crashes around acceptance/publication and checkpoint replacement.
    Completion: every acknowledged edit survives restart and exports without clients.
-4. **Two clients.** Integrate the selected editor path, remote/pending reconciliation,
-   canonical repair, selection/IME, local collaborative undo and transient presence.
+4. **Two clients.** Extend the existing editor with remote/pending reconciliation,
+   required recovery, selection/IME, local collaborative undo and transient presence.
    Test brief disconnects, lost acknowledgements, conflicts, checkpoint transitions
    and incompatible clients. Completion: responsive clients agree with accepted
    state and server export without losing pending work.
@@ -290,7 +319,7 @@ selected; a generic library model is not automatically a suitable exporter.
    Measure realistic documents to set replay/checkpoint/disconnect/undo limits.
    Completion: supported combinations pass; unsupported ones fail explicitly.
 
-Open choices: client model/execution boundary, command/result API, IDs/coordinates,
-fragment invalidation, IME/recovery UX, conflict/retention policies, isolation cost,
-rendering/mapping strategy, compatibility/migration support, service placement and
-transport, and library reuse. Decide these within the invariants above.
+Open choices: transaction/results API, IDs/coordinates, shared reconciliation code,
+feedback/invalidation needs, IME/recovery UX, conflict/retention policies, isolation
+cost, rendering/mapping strategy, compatibility/migration support, service placement,
+transport and library reuse. Reconsider client model/execution only on evidence.
