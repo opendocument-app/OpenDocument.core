@@ -62,7 +62,7 @@ constexpr double pt_to_in = 1.0 / 72.0;
 std::string page_height_style(const double height) {
   const std::string inches =
       util::number::to_string_significant(height * pt_to_in, 15) + "in";
-  const double pixels = height * pt_to_in * 96;
+  const double pixels = height / 0.75;
   // WebKit paginates in whole CSS pixels; see test/browser/viewport/README.md.
   const double print_pixels = pixels >= 1 ? std::floor(pixels) : pixels;
   return "height:" + inches + ";--odr-pdf-height:" + inches +

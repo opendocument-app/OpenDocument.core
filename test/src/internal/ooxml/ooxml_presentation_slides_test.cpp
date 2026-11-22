@@ -18,13 +18,13 @@ using namespace odr::test::ooxml;
 namespace {
 
 struct IncomingReference {
-  std::string source;
-  std::string target;
+  std::string source{};
+  std::string target{};
   bool external{false};
-  std::string slide;
-  std::string view;
-  std::string extra_relationships;
-  std::string other_part;
+  std::string slide{};
+  std::string view{};
+  std::string extra_relationships{};
+  std::string other_part{};
 };
 
 /// Three slides, ids 256 to 258, the second with a notes slide. Two sections
@@ -175,7 +175,7 @@ TEST(OoxmlPresentationSlides, a_removed_slide_leaves_sections_and_shows) {
 }
 
 TEST(OoxmlPresentationSlides, unknown_references_remain_after_removing) {
-  for (const std::string &source :
+  for (const std::string source :
        {"ppt/slides/_rels/slide1.xml.rels", "ppt/_rels/viewProps.xml.rels"}) {
     SCOPED_TRACE(source);
     const std::string unknown =

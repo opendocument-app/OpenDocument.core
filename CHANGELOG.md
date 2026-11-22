@@ -149,6 +149,7 @@ The release run heads these entries with the version and opens a fresh
 - Deleting a column in WebKit shrinks the sheet and its empty grid by the
   rendered column width. WebKit reports a `<col>`'s computed width as zero,
   which left the sheet too wide and lost the width needed by undo.
+  Fractional widths and widths on hidden sheets are preserved too.
 - A sheet's grid goes on past its content, up to the format's last row and
   column, as in Excel and LibreOffice: gridlines, column letters and row
   numbers, drawn by the page and grown as the reader scrolls. An empty cell

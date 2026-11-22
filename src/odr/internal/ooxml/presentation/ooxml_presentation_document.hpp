@@ -102,8 +102,7 @@ private:
   /// with the content type of the part.
   void drop_part_(const AbsPath &path);
   void remove_slide_references_(const AbsPath &slide,
-                                const std::optional<AbsPath> &notes,
-                                const std::string &relationship_id);
+                                const std::optional<AbsPath> &notes);
 };
 
 } // namespace odr::internal::ooxml::presentation

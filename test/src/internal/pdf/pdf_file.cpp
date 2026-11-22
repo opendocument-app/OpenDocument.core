@@ -651,19 +651,22 @@ TEST(PdfFile, each_page_prints_on_a_sheet_of_its_own_size) {
 TEST(PdfFile, fractional_page_heights_fit_print_without_clipping_content) {
   PdfFileBuilder builder;
   builder.object("<< /Type /Catalog /Pages 2 0 R >>")
-      .object("<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>")
+      .object("<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 >>")
       .object(
           "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.2756 841.8898] >>")
-      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>");
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>")
+      .object("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 21 21] >>");
   const std::string bytes = builder.trailer("/Root 1 0 R").build_classic();
   for (const PdfTextMode mode :
        {PdfTextMode::dual_layer, PdfTextMode::single_layer}) {
     const std::string html = render_html(bytes, mode);
-    EXPECT_EQ(count(html, R"(class="pc")"), 2);
+    EXPECT_EQ(count(html, R"(class="pc")"), 3);
     EXPECT_TRUE(contains(html, "--odr-pdf-print-height:1122px"));
     EXPECT_TRUE(contains(html, "--odr-pdf-print-scale:0.999536994034136"));
     EXPECT_TRUE(contains(
         html, "--odr-pdf-print-height:1056px;--odr-pdf-print-scale:1"));
+    EXPECT_TRUE(
+        contains(html, "--odr-pdf-print-height:28px;--odr-pdf-print-scale:1"));
     EXPECT_TRUE(contains(html, "height:var(--odr-pdf-print-height)!important"));
     EXPECT_TRUE(contains(html, ".p>svg.an{height:var(--odr-pdf-height)}"));
     EXPECT_TRUE(contains(

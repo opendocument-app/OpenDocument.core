@@ -94,7 +94,7 @@ their content types (`m_dropped_parts`). The dom stays, because the registry
 holds nodes in it. `Document::move_slide` reorders `p:sldIdLst` and moves the
 slide's `p14:sldId` after the one of the slide it now follows, or to the front
 of the first section: PowerPoint repairs sections out of slide order.
-Removal collects the surviving parts' references before changing any nodes.
+Removal cleans up surviving parts one at a time.
 Click and mouse-over hyperlinks (`a:hlinkClick`, `a:hlinkMouseOver`,
 [ECMA-376] 21.1.2.3.5–6) lose their action but keep their text or shape;
 `viewProps.xml` outline entries (`p:outlineViewPr/p:sldLst/p:sld`) are removed.
