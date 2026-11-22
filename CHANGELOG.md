@@ -100,6 +100,12 @@ The release run heads these entries with the version and opens a fresh
 
 ### Viewing
 
+- `odr.chunks.loadAll()` loads every lazy chunk before a host prints. Its
+  Promise rejects if a script fails or does not fill its chunk. Concurrent
+  calls share loads, and a failed chunk can be retried. It keeps the current
+  page and viewport. `odr.onChunksLoaded({success, message?})`, forwarded as
+  `chunksLoaded`, also reports completion to hosts that cannot await a Promise.
+
 - `HtmlConfig::page_layout` takes `HtmlPageLayout::single`: a view of a
   workbook, a presentation, a drawing or a pdf shows one sheet or page at a
   time. Every sheet and page is an `odr-page` in either layout.
