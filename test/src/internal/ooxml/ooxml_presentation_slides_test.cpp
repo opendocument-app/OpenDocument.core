@@ -1,5 +1,6 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
+#include <odr/exceptions.hpp>
 #include <odr/filesystem.hpp>
 
 #include <internal/ooxml/ooxml_spreadsheet_test_util.hpp>
@@ -18,7 +19,9 @@ namespace {
 
 /// Three slides, ids 256 to 258, the second with a notes slide. Two sections
 /// hold the first and the last two, and a custom show the second.
-std::shared_ptr<internal::abstract::File> three_slides() {
+std::shared_ptr<internal::abstract::File>
+three_slides(const std::string &source = "", const std::string &target = "",
+             const bool external = false) {
   internal::zip::ZipArchive zip;
   insert(
       zip, "[Content_Types].xml",
@@ -70,6 +73,18 @@ std::shared_ptr<internal::abstract::File> three_slides() {
   insert(
       zip, "ppt/notesSlides/notesSlide1.xml",
       R"(<p:notes xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"/>)");
+  insert(
+      zip, "ppt/notesSlides/_rels/notesSlide1.xml.rels",
+      R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)"
+      R"(<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="../slides/slide2.xml"/>)"
+      R"(</Relationships>)");
+  if (!source.empty()) {
+    insert(
+        zip, source,
+        R"(<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target=")" +
+            target + (external ? R"(" TargetMode="External)" : "") +
+            R"("/></Relationships>)");
+  }
 
   std::stringstream out;
   zip.save(out);
@@ -120,6 +135,42 @@ TEST(OoxmlPresentationSlides, a_removed_slide_leaves_sections_and_shows) {
   EXPECT_FALSE(contains(presentation, R"(id="257")"));
   EXPECT_FALSE(contains(presentation, R"(r:id="rId2")"));
   EXPECT_TRUE(contains(presentation, R"(<p14:sldId id="258"/>)"));
+}
+
+TEST(OoxmlPresentationSlides, incoming_references_refuse_before_removing) {
+  for (const std::string &source :
+       {"ppt/slides/_rels/slide1.xml.rels", "ppt/_rels/viewProps.xml.rels"}) {
+    SCOPED_TRACE(source);
+    const Document document =
+        decode(three_slides(source, "/ppt/slides/slide2.xml"));
+    const std::string before = saved_part(document, "/ppt/presentation.xml");
+    const Slide slide = slide_at(document, 1);
+    EXPECT_THROW(document.remove(slide), UnsupportedOperation);
+    EXPECT_EQ(slide_at(document, 1), slide);
+    EXPECT_EQ(saved_part(document, "/ppt/presentation.xml"), before);
+    const Filesystem files = saved_document(document).as_filesystem();
+    EXPECT_TRUE(files.is_file("/ppt/slides/slide2.xml"));
+    EXPECT_TRUE(files.is_file("/ppt/notesSlides/notesSlide1.xml"));
+  }
+}
+
+TEST(OoxmlPresentationSlides, relative_references_to_notes_also_refuse) {
+  const Document document = decode(three_slides(
+      "ppt/slides/_rels/slide1.xml.rels", "../notesSlides/notesSlide1.xml"));
+  EXPECT_THROW(document.remove(slide_at(document, 1)), UnsupportedOperation);
+}
+
+TEST(OoxmlPresentationSlides, external_and_removed_sources_do_not_block) {
+  const Document external = decode(three_slides(
+      "ppt/slides/_rels/slide1.xml.rels", "/ppt/slides/slide2.xml", true));
+  EXPECT_NO_THROW(external.remove(slide_at(external, 1)));
+
+  const Document document =
+      decode(three_slides("ppt/slides/_rels/slide1.xml.rels", "slide2.xml"));
+  document.remove(slide_at(document, 0));
+  EXPECT_NO_THROW(document.remove(slide_at(document, 0)));
+  EXPECT_FALSE(saved_document(document).as_filesystem().is_file(
+      "/ppt/slides/slide2.xml"));
 }
 
 TEST(OoxmlPresentationSlides, a_moved_slide_joins_the_section_it_lands_in) {

@@ -70,3 +70,24 @@ function argument limit, and checks selection and navigation.
 
 `load-all.html` checks completion before printing, concurrent and in-flight
 loads, failures and retries, and the host bridge without turning pages.
+
+## PDF printing in WKWebView
+
+Issue #1280 needs iOS's `WKWebView.viewPrintFormatter()`, which the browser
+pages above do not exercise. Translate a PDF with three A4 pages, serve its
+HTML, and load `document.html` in a WKWebView. After navigation and
+`await odr.chunks.loadAll()` finish, attach `webView.viewPrintFormatter()` to
+a `UIPrintPageRenderer` at page zero. Override both `paperRect` and
+`printableRect` with `(0, 0, 595.2756, 841.8898)` points. Draw every page
+into a PDF context. Expect three sheets, each containing its original page,
+with no alternating blank sheets. Repeat with both `PdfTextMode` values and
+with lazy loading enabled.
+
+WebKit's [`PrintContext`](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/page/PrintContext.cpp)
+truncates the page height to whole CSS pixels. A4 is
+1122.52 pixels tall, so an exact-height content box overflows that print
+area and consumes an extra sheet. The PDF renderer rounds the print box
+down and scales its contents by the same ratio, including images, selection
+text and links. The reduction is less than one CSS pixel; screen dimensions
+and the requested paper size stay intact. Integer-height paper such as US
+Letter needs no scaling. Shrinking only the box would clip its bottom edge.

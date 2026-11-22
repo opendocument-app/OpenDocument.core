@@ -591,6 +591,52 @@ pugi::xml_node section_entry(const pugi::xml_node sections,
 
 } // namespace
 
+void Document::check_slide_removal_(const AbsPath &slide,
+                                    const std::optional<AbsPath> &notes,
+                                    const std::string &relationship_id) const {
+  const auto check = [&](const AbsPath &path, const pugi::xml_node root) {
+    const std::string filename = path.basename();
+    const AbsPath source = path.parent().parent().join(
+        RelPath(filename.substr(0, filename.size() - 5)));
+    if (source == slide || (notes.has_value() && source == *notes)) {
+      return;
+    }
+    for (const pugi::xml_node relation : root.children("Relationship")) {
+      if (std::string_view(relation.attribute("TargetMode").value()) ==
+              "External" ||
+          (source == AbsPath("/ppt/presentation.xml") &&
+           relation.attribute("Id").value() == relationship_id)) {
+        continue;
+      }
+      const AbsPath target =
+          resolve_part_path(source, relation.attribute("Target").value());
+      if (target == slide || (notes.has_value() && target == *notes)) {
+        throw UnsupportedOperation();
+      }
+    }
+  };
+  const auto is_relationships = [](const AbsPath &path) {
+    return path.basename().ends_with(".rels") &&
+           path.parent().basename() == "_rels";
+  };
+  for (const auto &[path, xml] : m_written_parts) {
+    if (is_relationships(path)) {
+      check(path, xml.document_element());
+    }
+  }
+  for (auto walker = m_files->file_walker(AbsPath("/")); !walker->end();
+       walker->next()) {
+    const AbsPath path = walker->path();
+    if (!walker->is_file() || !is_relationships(path) ||
+        m_written_parts.contains(path) ||
+        std::ranges::find(m_dropped_parts, path) != m_dropped_parts.end()) {
+      continue;
+    }
+    const pugi::xml_document xml = xml::parse(*m_files, path);
+    check(path, xml.document_element());
+  }
+}
+
 void Document::remove_slide(const ElementIdentifier slide_id) {
   const AbsPath presentation_path("/ppt/presentation.xml");
   const std::string id = slide_relationship_id_(slide_id);
@@ -609,6 +655,7 @@ void Document::remove_slide(const ElementIdentifier slide_id) {
   // the notes slide is the slide's alone, and refers back to it
   const std::optional<AbsPath> notes =
       parse_relationship_target(*m_files, slide_path, "notesSlide");
+  check_slide_removal_(slide_path, notes, id);
 
   const std::string number = entry.attribute("id").value();
   if (const pugi::xml_node sections = section_list(root)) {

@@ -216,6 +216,33 @@ TEST(FormulaWriter, a_row_edit_moves_each_address_of_a_list) {
   EXPECT_EQ(move_addresses("A2", remove, "s", Syntax::ooxml), "");
 }
 
+TEST(FormulaWriter, removing_a_sheet_contracts_3d_range_endpoints) {
+  const SheetEdit remove{.sheet = "B",
+                         .count = std::numeric_limits<std::uint32_t>::max(),
+                         .insert = false,
+                         .sheet_order = {"A", "B", "C", "D"}};
+  EXPECT_EQ(edited("SUM(B:D!$A$1)", remove), "SUM('C:D'!$A$1)");
+  EXPECT_EQ(edited("SUM(D:B!A1)", remove), "SUM('D:C'!A1)");
+  EXPECT_EQ(edited("SUM(A:B!A1)", remove), "SUM(A!A1)");
+  EXPECT_EQ(edited("SUM(B:A!A1)", remove), "SUM(A!A1)");
+  EXPECT_EQ(edited("SUM(A:D!A1)", remove), "unmoved SUM(A:D!A1)");
+  EXPECT_EQ(edited("SUM([1]B:D!A1)", remove), "unmoved SUM([1]B:D!A1)");
+  EXPECT_EQ(edited("SUM(b:D!A1)", remove), "SUM('C:D'!A1)");
+  EXPECT_EQ(edited("SUM(B!A1)", remove), "SUM(#REF!)");
+  EXPECT_EQ(edited("of:=SUM([$B.$A$1:$D.$A$1])", remove, Syntax::opendocument),
+            "SUM([$C.$A$1:$D.$A$1])");
+  EXPECT_EQ(edited("SUM('B:D'!A1:B2)", remove), "SUM('C:D'!A1:B2)");
+  EXPECT_EQ(edited("SUM('B':'D'!1:3)", remove), "SUM('C:D'!1:3)");
+  const SheetEdit quoted{.sheet = "O'Brien",
+                         .count = std::numeric_limits<std::uint32_t>::max(),
+                         .insert = false,
+                         .sheet_order = {"O'Brien", "Middle sheet", "Last"}};
+  EXPECT_EQ(edited("SUM('O''Brien:Last'!A1)", quoted),
+            "SUM('Middle sheet:Last'!A1)");
+  EXPECT_EQ(edited("SUM('O''Brien':'Last'!A1)", quoted),
+            "SUM('Middle sheet:Last'!A1)");
+}
+
 TEST(FormulaWriter, an_inserted_column_moves_what_is_at_or_past_it) {
   EXPECT_EQ(columns("A1+C1+$C$1", true, 1, 2), "A1+E1+$E$1");
   EXPECT_EQ(columns("SUM(A1:C1)", true, 1, 2), "SUM(A1:E1)");

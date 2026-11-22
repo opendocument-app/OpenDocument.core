@@ -2,6 +2,7 @@
 
 #include <odr/internal/util/string_util.hpp>
 
+#include <algorithm>
 #include <limits>
 #include <utility>
 #include <variant>
@@ -31,12 +32,75 @@ constexpr std::int64_t index_limit = std::numeric_limits<std::uint32_t>::max();
          shift_coordinate(cell.row, rows);
 }
 
+/// OOXML keeps a sheet span as its original spelling, including quotes.
+std::optional<std::pair<std::string, std::string>>
+sheet_span(const std::optional<std::string> &sheet) {
+  if (!sheet.has_value() || sheet->find(':') == std::string::npos) {
+    return std::nullopt;
+  }
+  std::string names;
+  bool quoted = false;
+  for (std::size_t i = 0; i < sheet->size(); ++i) {
+    const char c = (*sheet)[i];
+    if (c != '\'') {
+      names += c;
+    } else if (quoted && i + 1 < sheet->size() && (*sheet)[i + 1] == '\'') {
+      names += c;
+      ++i;
+    } else {
+      quoted = !quoted;
+    }
+  }
+  const auto colon = names.find(':');
+  return std::pair(names.substr(0, colon), names.substr(colon + 1));
+}
+
+std::string quote_sheet_span(const std::string &first,
+                             const std::string &last) {
+  std::string result = "'";
+  const auto append = [&](const std::string &name) {
+    for (const char c : name) {
+      result += c;
+      if (c == '\'') {
+        result += c;
+      }
+    }
+  };
+  append(first);
+  result += ':';
+  append(last);
+  return result + "'";
+}
+
 /// Moves the coordinates of two corners on the edited axis as one span, so a
 /// delete cutting a range shrinks it. A cell is a range of one corner.
 /// Whether anything moved, nothing where the reference is lost.
 std::optional<bool> move_range(CellReference &from, CellReference &to,
                                const SheetEdit &edit,
                                const std::optional<std::string> &sheet) {
+  if (!edit.insert && !edit.sheet_order.empty() && !from.document.has_value() &&
+      !to.document.has_value()) {
+    if (const auto span = sheet_span(from.sheet); span.has_value()) {
+      CellReference first{.sheet = span->first};
+      CellReference last{.sheet = span->second};
+      const auto moved = move_range(first, last, edit, sheet);
+      if (!moved.has_value() ||
+          (util::string::equals_ignore_case(span->first, edit.sheet) &&
+           util::string::equals_ignore_case(span->second, edit.sheet))) {
+        return std::nullopt;
+      }
+      if (*moved) {
+        const bool same_sheet = to.sheet == from.sheet;
+        from.sheet = util::string::equals_ignore_case(*first.sheet, *last.sheet)
+                         ? *first.sheet
+                         : quote_sheet_span(*first.sheet, *last.sheet);
+        if (&from != &to && same_sheet) {
+          to.sheet = from.sheet;
+        }
+      }
+      return moved;
+    }
+  }
   std::optional<Coordinate> CellReference::*const axis =
       edit.axis == Axis::row ? &CellReference::row : &CellReference::column;
   auto &from_axis = from.*axis;
@@ -46,6 +110,34 @@ std::optional<bool> move_range(CellReference &from, CellReference &to,
       from.sheet.has_value() ? from.sheet : sheet;
   const std::optional<std::string> &to_sheet =
       to.sheet.has_value() ? to.sheet : from_sheet;
+  if (!edit.insert && !edit.sheet_order.empty() && !from.document.has_value() &&
+      !to.document.has_value() && from_sheet.has_value() &&
+      to_sheet.has_value() &&
+      !util::string::equals_ignore_case(*from_sheet, *to_sheet)) {
+    const bool remove_from =
+        util::string::equals_ignore_case(*from_sheet, edit.sheet);
+    const bool remove_to =
+        util::string::equals_ignore_case(*to_sheet, edit.sheet);
+    if (!remove_from && !remove_to) {
+      return false;
+    }
+    const auto find_sheet = [&](const std::string &name) {
+      return std::ranges::find_if(edit.sheet_order, [&](const std::string &s) {
+        return util::string::equals_ignore_case(s, name);
+      });
+    };
+    const auto first = find_sheet(*from_sheet);
+    const auto last = find_sheet(*to_sheet);
+    if (first == edit.sheet_order.end() || last == edit.sheet_order.end()) {
+      return std::nullopt;
+    }
+    if (remove_from) {
+      from.sheet = *(first + (first < last ? 1 : -1));
+    } else {
+      to.sheet = *(last + (first < last ? -1 : 1));
+    }
+    return true;
+  }
   if (from.document.has_value() || to.document.has_value() ||
       !from_axis.has_value() || !to_axis.has_value() ||
       !from_sheet.has_value() || !to_sheet.has_value() ||

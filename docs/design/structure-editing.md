@@ -37,6 +37,8 @@ creation rules are in [document creation](document-creation.md).
 - A reference to a removed sheet becomes `#REF!`. The rewrite is a row
   delete of every row and then every column of that sheet, so everything a
   row delete rewrites follows.
+- A removed endpoint of a 3D range moves toward the other endpoint, using
+  the sheet order before deletion. An interior deletion keeps both endpoints.
 - After any sheet edit the dependency graph is dropped and every formula
   recomputes on the next `recalculate`.
 - xlsx: sheet-index state (`definedName/@localSheetId`, `activeTab`,
@@ -148,8 +150,6 @@ Sheets:
 - Duplicate and hide a sheet.
 - A page gesture for sheets: the view needs to show more than one sheet, or
   a host-side tab bar calls the ops.
-- 3D ranges: removing the sheet at either end of a range leaves the range
-  naming it. Excel moves that end inward.
 - xlsx: removing a sheet holding a table or a pivot table, or one a pivot
   cache reads, is refused with `UnsupportedOperation`. The parts only a
   removed sheet refers to, such as its drawing, stay unreferenced.
@@ -159,9 +159,9 @@ Slides:
 - Move and resize a text box.
 - Remove a shape, and insert a picture or a table. pptx editing covers runs,
   paragraphs and text style only (pptx `AGENTS.md`, open work 4).
-- pptx: other parts' relationships to a removed slide stay, such as
-  slide-jump hyperlinks and the outline in `viewProps.xml`. PowerPoint may
-  offer to repair them.
+- pptx: removal refuses a slide or its notes referenced by a surviving part,
+  including slide-jump hyperlinks and the outline in `viewProps.xml`.
+  Removing those references together with the slide is not yet supported.
 - odp with several masters: a slide inserted after one on another master
   shows the first master until the next render. The saved file is right.
 - A deck with hundreds of layouts carries hundreds of templates, about 2 KB

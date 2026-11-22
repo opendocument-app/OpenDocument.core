@@ -100,6 +100,9 @@ private:
   /// Leaves the part at @p path and its relationships part out of `save`,
   /// with the content type of the part.
   void drop_part_(const AbsPath &path);
+  void check_slide_removal_(const AbsPath &slide,
+                            const std::optional<AbsPath> &notes,
+                            const std::string &relationship_id) const;
 };
 
 } // namespace odr::internal::ooxml::presentation
