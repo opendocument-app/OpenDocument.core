@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>load all chunks before printing</title>
+    <style>
+      @media screen{[data-odr-page-current] .odr-page:not(.odr-page-current){display:none}}
+      .odr-page{height:200px}
+    </style>
+  </head>
+  <body data-odr-page-layout="single">
+    <div class="odr-page">first page</div>
+    <div class="odr-page" id="later"></div>
+    <div id="report"></div>
+    <script src="checks.js"></script>
+    <script>
+      var messages = [];
+      window.host = { postMessage: function (message) { messages.push(JSON.parse(message)); } };
+      window.odr = { hostMessageHandler: "host.postMessage" };
+      var executed = 0;
+    </script>
+    <script src="viewport.js"></script>
+    <script src="host-bridge.js"></script>
+    <script>
+      function source(id) {
+        return "data:text/javascript," + encodeURIComponent(
+          "executed++; odr.chunks.fill(" + id + ", '<p>loaded " + id + "</p>');"
+        );
+      }
+      function chunk(id, src) {
+        var element = document.createElement("div");
+        element.className = "odr-chunk";
+        element.setAttribute("data-odr-chunk", id);
+        element.setAttribute("data-odr-chunk-src", src || source(id));
+        document.getElementById("later").appendChild(element);
+        return element;
+      }
+      function last() { return messages[messages.length - 1]; }
+      async function refuses(name) {
+        var rejected = false;
+        try { await odr.chunks.loadAll(); } catch (error) { rejected = /Could not load chunk:/.test(error.message); }
+        check(name, rejected);
+        check("the host receives the failure", last().type === "chunksLoaded" && last().detail.success === false && !!last().detail.message, last());
+      }
+      (async function () {
+        await odr.chunks.loadAll();
+        check("a document without chunks completes", last().detail.success === true);
+        var one = chunk(1);
+        var two = chunk(2);
+        // Start one through the viewport API before loadAll joins it.
+        odr.chunks.show(one);
+        odr.setPage(0);
+        var page = odr.getPage();
+        var scroll = window.scrollY;
+        await Promise.all([odr.chunks.loadAll(), odr.chunks.loadAll()]);
+        check("both chunks filled", one.textContent === "loaded 1" && two.textContent === "loaded 2");
+        check("concurrent calls share running loads", executed === 2, executed);
+        check("loading preserves the selected page and scroll", odr.getPage() === page && window.scrollY === scroll);
+        check("the host receives success", last().type === "chunksLoaded" && last().detail.success === true, last());
+        check("loading markers are cleared", !document.querySelector("[data-odr-chunk-loading]"));
+        await odr.chunks.loadAll();
+        check("loaded chunks are not fetched again", executed === 2);
+
+        var missing = chunk(3, "missing-chunk.js");
+        await refuses("a missing script rejects");
+        check("a failed chunk is retryable", !missing.hasAttribute("data-odr-chunk-loading") && missing.hasAttribute("data-odr-chunk-src"));
+        missing.setAttribute("data-odr-chunk-src", source(3));
+        await odr.chunks.loadAll();
+        check("retry fills the failed chunk", missing.textContent === "loaded 3");
+
+        var empty = chunk(4, "data:text/javascript,void%200;");
+        await refuses("a script that does not fill its chunk rejects");
+        empty.setAttribute("data-odr-chunk-src", source(4));
+        await odr.chunks.loadAll();
+        check("a non-filling script can be retried", empty.textContent === "loaded 4");
+      })().catch(function (error) {
+        check("unexpected error", false, String(error));
+      }).finally(function () {
+        document.body.setAttribute("data-tests-done", "");
+      });
+    </script>
+  </body>
+</html>

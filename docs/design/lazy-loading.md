@@ -205,8 +205,14 @@ without them.
 
 ## Open questions
 
-- **Print at level 3.** A chunk that has not loaded prints as empty space
-  of its height. `beforeprint` cannot wait for a script to load.
+- **Print at level 3.** A host awaits `odr.chunks.loadAll()` before printing,
+  because `beforeprint` cannot wait. The Promise resolves with no value after
+  all chunk scripts have filled their chunks, including loads already running;
+  a failed script or one that does not fill its chunk rejects. A later call
+  retries failed chunks. The call does not turn pages or scroll. For Android,
+  `odr.onChunksLoaded({success, message?})` is forwarded as `chunksLoaded`;
+  every call reports once, with a message on failure. This loads content only:
+  fonts and images may still need the host's usual print-readiness wait.
 - **A pdf in the single layer at level 3.** The single layer votes over
   the runs it meets for the code point of each glyph, and re-encodes the
   font with the winners, so a page rendered alone has fonts of its own.
