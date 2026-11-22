@@ -1,10 +1,14 @@
 #include <odr/internal/ooxml/spreadsheet/ooxml_spreadsheet_style.hpp>
 
 #include <odr/internal/html/common.hpp>
+#include <odr/internal/html/document_style.hpp>
 
 #include <odr/style.hpp>
 
+#include <array>
+#include <stdexcept>
 #include <string>
+#include <utility>
 
 #include <gtest/gtest.h>
 
@@ -52,6 +56,21 @@ TextStyle font_of(const std::string &font) {
   return resolve("<font>" + font + "</font>", "",
                  R"(<xf fontId="0" applyFont="1"/>)")
       .text_style;
+}
+
+TableCellStyle borders_of(const std::string &borders, const bool apply = true) {
+  pugi::xml_document styles;
+  pugi::xml_document theme_document;
+  const std::string xml =
+      "<styleSheet><borders><border>" + borders +
+      "</border></borders><cellXfs><xf borderId=\"0\" applyBorder=\"" +
+      (apply ? "1" : "0") + "\"/></cellXfs></styleSheet>";
+  EXPECT_TRUE(styles.load_string(xml.c_str()));
+  EXPECT_TRUE(theme_document.load_string(theme));
+  return StyleRegistry(styles.document_element(),
+                       theme_document.document_element())
+      .cell_style(0)
+      .table_cell_style;
 }
 
 } // namespace
@@ -119,4 +138,56 @@ TEST(OoxmlSpreadsheetStyle, alignment_reads_every_side) {
   EXPECT_EQ(align("horizontal", "general").horizontal_align, std::nullopt);
   EXPECT_EQ(align("vertical", "top").vertical_align, VerticalAlign::top);
   EXPECT_EQ(align("vertical", "bottom").vertical_align, VerticalAlign::bottom);
+}
+
+TEST(OoxmlSpreadsheetStyle, border_weights_and_patterns_reach_the_html) {
+  const std::array<std::pair<const char *, const char *>, 13> cases{{
+      {"hair", "0.25pt solid"},
+      {"thin", "0.75pt solid"},
+      {"medium", "1.5pt solid"},
+      {"thick", "2.25pt solid"},
+      {"double", "2.25pt double"},
+      {"dotted", "0.75pt dotted"},
+      {"dashed", "0.75pt dashed"},
+      {"dashDot", "0.75pt dashed"},
+      {"dashDotDot", "0.75pt dashed"},
+      {"mediumDashed", "1.5pt dashed"},
+      {"mediumDashDot", "1.5pt dashed"},
+      {"mediumDashDotDot", "1.5pt dashed"},
+      {"slantDashDot", "1.5pt dashed"},
+  }};
+  for (const auto &[name, expected] : cases) {
+    SCOPED_TRACE(name);
+    const TableCellStyle style =
+        borders_of(std::string(R"(<left style=")") + name +
+                   R"("><color rgb="FF123456"/></left>)");
+    const std::string declaration = std::string(expected) + " #123456";
+    EXPECT_EQ(style.border.left, declaration);
+    EXPECT_NE(internal::html::translate_table_cell_style(style, false)
+                  .find("border-left:" + declaration),
+              std::string::npos);
+  }
+}
+
+TEST(OoxmlSpreadsheetStyle, border_sides_keep_their_own_colour_and_style) {
+  const TableCellStyle style = borders_of(
+      R"(<left style="double"><color theme="4"/></left>)"
+      R"(<right style="thick"><color indexed="2"/></right>)"
+      R"(<top style="dotted"/><bottom style="none"><color rgb="FF123456"/></bottom>)");
+  EXPECT_EQ(style.border.left, "2.25pt double #4472c4");
+  EXPECT_EQ(style.border.right, "2.25pt solid #ff0000");
+  EXPECT_EQ(style.border.top, "0.75pt dotted");
+  EXPECT_EQ(style.border.bottom, "none");
+  EXPECT_NE(internal::html::translate_table_cell_style(style, false)
+                .find("border-bottom:none"),
+            std::string::npos);
+}
+
+TEST(OoxmlSpreadsheetStyle, an_absent_or_disabled_border_is_not_painted) {
+  EXPECT_FALSE(borders_of(R"(<left><color rgb="FF123456"/></left>)")
+                   .border.left.has_value());
+  EXPECT_FALSE(
+      borders_of(R"(<left style="thick"/>)", false).border.left.has_value());
+  EXPECT_THROW(borders_of(R"(<left style="not-a-border"/>)"),
+               std::runtime_error);
 }

@@ -355,8 +355,7 @@ Sheet-level edits are in [structure editing](structure-editing.md#open-work).
 - Freeze panes.
 - xlsx: hyperlinks and comments are not modelled, so they can be neither
   read nor written; `text_set_content` throws.
-- xlsx styles: no `cellStyleXfs` inheritance, and every border renders as
-  `0.75pt solid` (xlsx `AGENTS.md`, open work 2).
+- xlsx styles: no `cellStyleXfs` inheritance (xlsx `AGENTS.md`, open work 2).
 
 These stay without an answer by choice (decision 29):
 
