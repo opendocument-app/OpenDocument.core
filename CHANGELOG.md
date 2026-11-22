@@ -18,6 +18,12 @@ The release run heads these entries with the version and opens a fresh
 
 ### Documents
 
+- DOCX text resolves major/minor Latin theme fonts from the document's theme
+  relationship, in defaults, named styles and direct formatting. Theme font
+  references override their literal counterparts in the same `w:rFonts`;
+  a missing theme falls back to the literal or inherited font. East Asian,
+  complex-script and language-specific theme font selection remain unmodelled.
+
 - `Document::as_spreadsheet()`, `as_presentation()`, `as_drawing()` and
   `as_text_document()` return a handle per document type, holding what only
   that type answers; each throws the new `WrongDocumentType`

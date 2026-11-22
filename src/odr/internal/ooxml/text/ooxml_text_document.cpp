@@ -94,7 +94,14 @@ Document::Document(std::shared_ptr<abstract::ReadableFilesystem> files,
   m_root_element = parse_tree(
       m_element_registry, m_document_xml.document_element().child("w:body"));
 
-  m_style_registry = StyleRegistry(m_styles_xml.document_element());
+  pugi::xml_document theme;
+  if (const auto path = parse_relationship_target(
+          *m_files, AbsPath("/word/document.xml"), "theme");
+      path.has_value() && m_files->is_file(*path)) {
+    theme = xml::parse(*m_files, *path);
+  }
+  m_style_registry =
+      StyleRegistry(m_styles_xml.document_element(), theme.document_element());
   m_numbering_registry = NumberingRegistry(m_numbering_xml.document_element(),
                                            m_styles_xml.document_element());
 

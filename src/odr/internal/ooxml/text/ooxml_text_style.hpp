@@ -14,10 +14,18 @@
 
 namespace odr::internal::ooxml::text {
 
+/// Latin faces of the document theme; script-specific font selection is
+/// separate.
+struct ThemeFonts final {
+  std::string major;
+  std::string minor;
+};
+
 class Style final {
 public:
-  explicit Style(pugi::xml_node node);
-  Style(std::string name, pugi::xml_node node, const Style *parent);
+  explicit Style(pugi::xml_node node, const ThemeFonts &fonts = {});
+  Style(std::string name, pugi::xml_node node, const Style *parent,
+        const ThemeFonts &fonts = {});
 
   [[nodiscard]] std::string name() const;
   [[nodiscard]] const Style *parent() const;
@@ -35,14 +43,15 @@ private:
   ResolvedStyle m_resolved;
   bool m_contextual_spacing{false};
 
-  void resolve_style_();
-  void resolve_default_style_();
+  void resolve_style_(const ThemeFonts &fonts);
+  void resolve_default_style_(const ThemeFonts &fonts);
 };
 
 class StyleRegistry final {
 public:
   StyleRegistry();
-  explicit StyleRegistry(pugi::xml_node styles_root);
+  explicit StyleRegistry(pugi::xml_node styles_root,
+                         pugi::xml_node theme_root = {});
 
   [[nodiscard]] Style *default_style() const;
   [[nodiscard]] Style *style(const std::string &name) const;
@@ -57,6 +66,7 @@ public:
   partial_table_cell_style(pugi::xml_node node) const;
 
 private:
+  ThemeFonts m_fonts;
   std::unordered_map<std::string, pugi::xml_node> m_index;
 
   std::unique_ptr<Style> m_default_style;
