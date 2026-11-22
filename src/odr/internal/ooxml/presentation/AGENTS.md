@@ -98,11 +98,12 @@ Removal collects the surviving parts' references before changing any nodes.
 Click and mouse-over hyperlinks (`a:hlinkClick`, `a:hlinkMouseOver`,
 [ECMA-376] 21.1.2.3.5–6) lose their action but keep their text or shape;
 `viewProps.xml` outline entries (`p:outlineViewPr/p:sldLst/p:sld`) are removed.
-Their relationships go too. Loaded slides are edited in their live DOM, so
-existing element handles and earlier edits survive. An unrecognised incoming
-reference to the slide or its notes still refuses removal with
-`UnsupportedOperation` before any of the collected changes are applied.
-External links and parts already removed do not block deletion.
+Their relationships go too unless an unrecognised element also uses them.
+Loaded slides are edited in their live DOM, so existing element handles and
+earlier edits survive. Deletion proceeds with unrecognised incoming references
+to the slide or its notes: those references stay unchanged and may dangle.
+Unsupported and unreadable parts stay untouched. External links and parts
+already removed do not block deletion.
 
 `Document::insert_text_box` writes a `p:sp` text box (`txBox="1"`,
 `write_text_box`) into the slide's shape tree.

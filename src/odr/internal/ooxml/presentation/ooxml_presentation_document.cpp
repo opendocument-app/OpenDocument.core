@@ -606,10 +606,16 @@ void Document::remove_slide_references_(const AbsPath &slide,
     if (!m_files->is_file(path)) {
       return pugi::xml_node();
     }
-    pugi::xml_document &part = pending_parts[path];
-    part = xml::parse(*m_files, path);
-    return part.document_element();
+    try {
+      pugi::xml_document &part = pending_parts[path];
+      part = xml::parse(*m_files, path);
+      return part.document_element();
+    } catch (const NoXmlFile &) {
+      pending_parts.erase(path);
+      return pugi::xml_node();
+    }
   };
+  std::vector<AbsPath> changed_parts;
   std::vector<pugi::xml_node> removals;
   const auto within = [](pugi::xml_node node, const pugi::xml_node ancestor) {
     for (; node; node = node.parent()) {
@@ -630,7 +636,7 @@ void Document::remove_slide_references_(const AbsPath &slide,
     });
     removals.push_back(node);
   };
-  const auto check = [&](const AbsPath &path, const pugi::xml_node root) {
+  const auto collect = [&](const AbsPath &path, const pugi::xml_node root) {
     const std::string filename = path.basename();
     const AbsPath source = path.parent().parent().join(
         RelPath(filename.substr(0, filename.size() - 5)));
@@ -657,7 +663,7 @@ void Document::remove_slide_references_(const AbsPath &slide,
            type != "http://schemas.openxmlformats.org/officeDocument/2006/"
                    "relationships/slide") ||
           !source.basename().ends_with(".xml")) {
-        throw UnsupportedOperation();
+        continue;
       }
       const auto slide_entry = m_slide_ids_by_path.find(source);
       const pugi::xml_node part =
@@ -668,9 +674,10 @@ void Document::remove_slide_references_(const AbsPath &slide,
       if (part_name != "p:sld" && part_name != "p:sldLayout" &&
           part_name != "p:sldMaster" && part_name != "p:viewPr" &&
           !(hyperlink && part_name == "p:notes")) {
-        throw UnsupportedOperation();
+        continue;
       }
       const std::string_view id = relation.attribute("Id").value();
+      bool keep_relation = false;
       const auto visit = [&](const auto &self,
                              const pugi::xml_node node) -> void {
         for (const pugi::xml_attribute attribute : node.attributes()) {
@@ -698,9 +705,11 @@ void Document::remove_slide_references_(const AbsPath &slide,
               std::string_view(node.parent().parent().name()) ==
                   "p:outlineViewPr";
           if (name.substr(colon + 1) != "id" || (!link && !outline)) {
-            throw UnsupportedOperation();
+            keep_relation = true;
+            return;
           }
           queue_removal(node);
+          changed_parts.push_back(source);
           return;
         }
         for (const pugi::xml_node child : node.children()) {
@@ -708,8 +717,11 @@ void Document::remove_slide_references_(const AbsPath &slide,
         }
       };
       visit(visit, part);
-      queue_removal(part_for_edit(path).find_child_by_attribute(
-          "Relationship", "Id", relation.attribute("Id").value()));
+      if (!keep_relation) {
+        queue_removal(part_for_edit(path).find_child_by_attribute(
+            "Relationship", "Id", relation.attribute("Id").value()));
+        changed_parts.push_back(path);
+      }
     }
   };
   const auto is_relationships = [](const AbsPath &path) {
@@ -735,16 +747,24 @@ void Document::remove_slide_references_(const AbsPath &slide,
   for (const AbsPath &path : paths) {
     if (const auto it = m_written_parts.find(path);
         it != m_written_parts.end()) {
-      check(path, it->second.document_element());
+      collect(path, it->second.document_element());
     } else {
-      const pugi::xml_document xml = xml::parse(*m_files, path);
-      check(path, xml.document_element());
+      try {
+        const pugi::xml_document xml = xml::parse(*m_files, path);
+        collect(path, xml.document_element());
+      } catch (const NoXmlFile &) {
+        continue;
+      }
     }
   }
   for (const pugi::xml_node node : removals) {
     node.parent().remove_child(node);
   }
-  m_written_parts.merge(pending_parts);
+  for (const AbsPath &path : changed_parts) {
+    if (auto part = pending_parts.extract(path); !part.empty()) {
+      m_written_parts.insert(std::move(part));
+    }
+  }
 }
 
 void Document::remove_slide(const ElementIdentifier slide_id) {

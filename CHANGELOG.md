@@ -84,8 +84,8 @@ The release run heads these entries with the version and opens a fresh
 - Removing a pptx slide also removes links to it and its outline-view entries,
   preserving the linked text and shapes. It previously saved dangling
   references that could make PowerPoint request repairs. Unrecognised incoming
-  references to the slide or its notes still throw `UnsupportedOperation`
-  before changing the document.
+  references to the slide or its notes are left unchanged and may dangle;
+  they do not prevent deletion.
 - `Presentation::slide_layouts()` lists the layouts a slide can start from,
   each a `Slide` outside the document as
   `Presentation::insert_slide(index, layout)` adds it to an odp or pptx. A

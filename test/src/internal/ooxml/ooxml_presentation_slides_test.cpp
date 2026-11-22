@@ -1,6 +1,5 @@
 #include <odr/document.hpp>
 #include <odr/document_element.hpp>
-#include <odr/exceptions.hpp>
 #include <odr/filesystem.hpp>
 
 #include <internal/ooxml/ooxml_spreadsheet_test_util.hpp>
@@ -25,6 +24,7 @@ struct IncomingReference {
   std::string slide;
   std::string view;
   std::string extra_relationships;
+  std::string other_part;
 };
 
 /// Three slides, ids 256 to 258, the second with a notes slide. Two sections
@@ -107,6 +107,10 @@ three_slides(const IncomingReference &reference = {}) {
             reference.view + R"(</p:sldLst></p:outlineViewPr></p:viewPr>)");
   }
 
+  if (!reference.other_part.empty()) {
+    insert(zip, "ppt/unknown.xml", reference.other_part);
+  }
+
   std::stringstream out;
   zip.save(out);
   return std::make_shared<internal::MemoryFile>(out.str());
@@ -170,7 +174,7 @@ TEST(OoxmlPresentationSlides, a_removed_slide_leaves_sections_and_shows) {
   EXPECT_TRUE(contains(presentation, R"(<p14:sldId id="258"/>)"));
 }
 
-TEST(OoxmlPresentationSlides, unknown_references_refuse_before_removing) {
+TEST(OoxmlPresentationSlides, unknown_references_remain_after_removing) {
   for (const std::string &source :
        {"ppt/slides/_rels/slide1.xml.rels", "ppt/_rels/viewProps.xml.rels"}) {
     SCOPED_TRACE(source);
@@ -182,28 +186,34 @@ TEST(OoxmlPresentationSlides, unknown_references_refuse_before_removing) {
                              .target = "/ppt/slides/slide2.xml",
                              .slide = unknown,
                              .view = unknown}));
-    const std::string before = saved_part(document, "/ppt/presentation.xml");
-    const std::string slide_before =
-        saved_part(document, "/ppt/slides/slide1.xml");
     const std::string relations_before = saved_part(document, "/" + source);
-    const Slide slide = slide_at(document, 1);
-    EXPECT_THROW(document.remove(slide), UnsupportedOperation);
-    EXPECT_EQ(slide_at(document, 1), slide);
-    EXPECT_EQ(saved_part(document, "/ppt/presentation.xml"), before);
-    EXPECT_EQ(saved_part(document, "/ppt/slides/slide1.xml"), slide_before);
+    document.remove(slide_at(document, 1));
+    const std::string part =
+        saved_part(document, source == "ppt/_rels/viewProps.xml.rels"
+                                 ? "/ppt/viewProps.xml"
+                                 : "/ppt/slides/slide1.xml");
+    EXPECT_TRUE(contains(part, R"(rel:id="rId1")"));
+    EXPECT_FALSE(contains(part, "hlinkClick"));
     EXPECT_EQ(saved_part(document, "/" + source), relations_before);
     const Filesystem files = saved_document(document).as_filesystem();
-    EXPECT_TRUE(files.is_file("/ppt/slides/slide2.xml"));
-    EXPECT_TRUE(files.is_file("/ppt/notesSlides/notesSlide1.xml"));
+    EXPECT_FALSE(files.is_file("/ppt/slides/slide2.xml"));
+    EXPECT_FALSE(files.is_file("/ppt/notesSlides/notesSlide1.xml"));
   }
 }
 
-TEST(OoxmlPresentationSlides, relative_references_to_notes_also_refuse) {
+TEST(OoxmlPresentationSlides, unknown_notes_references_do_not_block_removal) {
   const Document document =
       decode(three_slides({.source = "ppt/slides/_rels/slide1.xml.rels",
                            .target = "../notesSlides/notesSlide1.xml",
                            .slide = R"(<p:ext r:id="rId1"/>)"}));
-  EXPECT_THROW(document.remove(slide_at(document, 1)), UnsupportedOperation);
+  const std::string before = saved_part(document, "/ppt/slides/slide1.xml");
+  document.remove(slide_at(document, 1));
+  EXPECT_EQ(saved_part(document, "/ppt/slides/slide1.xml"), before);
+  EXPECT_TRUE(
+      contains(saved_part(document, "/ppt/slides/_rels/slide1.xml.rels"),
+               "../notesSlides/notesSlide1.xml"));
+  EXPECT_FALSE(saved_document(document).as_filesystem().is_file(
+      "/ppt/notesSlides/notesSlide1.xml"));
 }
 
 TEST(OoxmlPresentationSlides, external_and_removed_sources_do_not_block) {
@@ -296,22 +306,57 @@ TEST(OoxmlPresentationSlides, an_unused_slide_relationship_is_removed) {
       saved_part(document, "/ppt/slides/_rels/slide1.xml.rels"), "slide2.xml"));
 }
 
-TEST(OoxmlPresentationSlides,
-     unknown_relationship_types_refuse_before_cleanup) {
+TEST(OoxmlPresentationSlides, unknown_relationship_types_do_not_block_cleanup) {
   const Document document = decode(three_slides(
       {.source = "ppt/slides/_rels/slide1.xml.rels",
        .target = "slide2.xml",
        .slide = R"(<a:hlinkClick r:id="rId1"/>)",
        .extra_relationships =
            R"(<Relationship Id="custom" Type="urn:custom:slide" Target="slide2.xml"/>)"}));
-  const std::string slide = saved_part(document, "/ppt/slides/slide1.xml");
+  document.remove(slide_at(document, 1));
+  EXPECT_FALSE(
+      contains(saved_part(document, "/ppt/slides/slide1.xml"), "hlinkClick"));
   const std::string relations =
       saved_part(document, "/ppt/slides/_rels/slide1.xml.rels");
-  EXPECT_THROW(document.remove(slide_at(document, 1)), UnsupportedOperation);
-  EXPECT_EQ(saved_part(document, "/ppt/slides/slide1.xml"), slide);
-  EXPECT_EQ(saved_part(document, "/ppt/slides/_rels/slide1.xml.rels"),
-            relations);
-  EXPECT_TRUE(slide_at(document, 2));
+  EXPECT_FALSE(contains(relations, R"(Id="rId1")"));
+  EXPECT_TRUE(
+      contains(relations, R"(Type="urn:custom:slide" Target="slide2.xml")"));
+  EXPECT_FALSE(saved_document(document).as_filesystem().is_file(
+      "/ppt/slides/slide2.xml"));
+}
+
+TEST(OoxmlPresentationSlides,
+     unknown_or_unreadable_parts_do_not_block_removal) {
+  for (const std::string &content :
+       {std::string(), std::string("<broken"), std::string("<custom />")}) {
+    SCOPED_TRACE(content);
+    const Document document =
+        decode(three_slides({.source = "ppt/_rels/unknown.xml.rels",
+                             .target = "slides/slide2.xml",
+                             .other_part = content}));
+    const std::string relations =
+        saved_part(document, "/ppt/_rels/unknown.xml.rels");
+    document.remove(slide_at(document, 1));
+    EXPECT_EQ(saved_part(document, "/ppt/_rels/unknown.xml.rels"), relations);
+    if (!content.empty()) {
+      EXPECT_EQ(saved_part(document, "/ppt/unknown.xml"), content);
+    }
+    EXPECT_FALSE(saved_document(document).as_filesystem().is_file(
+        "/ppt/slides/slide2.xml"));
+  }
+}
+
+TEST(OoxmlPresentationSlides, unreadable_relationship_parts_are_left_alone) {
+  const Document document =
+      decode(three_slides({.source = "ppt/_rels/unknown.xml.rels",
+                           .target = "slides/slide2.xml",
+                           .extra_relationships = "<broken"}));
+  const std::string before =
+      saved_part(document, "/ppt/_rels/unknown.xml.rels");
+  document.remove(slide_at(document, 1));
+  EXPECT_EQ(saved_part(document, "/ppt/_rels/unknown.xml.rels"), before);
+  EXPECT_FALSE(saved_document(document).as_filesystem().is_file(
+      "/ppt/slides/slide2.xml"));
 }
 
 TEST(OoxmlPresentationSlides, a_moved_slide_joins_the_section_it_lands_in) {
