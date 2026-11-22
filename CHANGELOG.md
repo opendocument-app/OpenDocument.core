@@ -124,6 +124,8 @@ The release run heads these entries with the version and opens a fresh
 
 ### Viewing
 
+- PDF pages retain their previous screen height precision, avoiding subpixel
+  shifts in Firefox after the WKWebView printing fix.
 - PDF printing in WKWebView no longer inserts a blank sheet after each A4
   page. Print boxes fit a whole CSS-pixel height, with their contents scaled
   proportionally by less than one pixel rather than clipped. Screen geometry

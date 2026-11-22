@@ -65,8 +65,8 @@ std::string page_height_style(const double height) {
   const double pixels = height / 0.75;
   // WebKit paginates in whole CSS pixels; see test/browser/viewport/README.md.
   const double print_pixels = pixels >= 1 ? std::floor(pixels) : pixels;
-  return "height:" + inches + ";--odr-pdf-height:" + inches +
-         ";--odr-pdf-print-height:" +
+  return "height:" + util::number::to_string_significant(height * pt_to_in, 6) +
+         "in;--odr-pdf-height:" + inches + ";--odr-pdf-print-height:" +
          util::number::to_string_significant(print_pixels, 15) +
          "px;--odr-pdf-print-scale:" +
          util::number::to_string_significant(
@@ -3253,15 +3253,14 @@ public:
                  "margin:0 max(16px,var(--odr-min-margin-right,0px)) 0 "
                  "max(16px,var(--odr-min-margin-left,0px));background:#fff;"
                  "overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.5)}";
-    out.out()
-        << ".pc{position:relative;width:100%;height:var(--odr-pdf-height)}";
+    out.out() << ".pc{position:relative;width:100%;height:100%}";
     // One page to a sheet.
     out.out() << "@media print{body{background:none}"
                  ".d{display:block;padding:0;width:auto;min-width:0}"
                  ".p{margin:0;box-shadow:none;"
                  "height:var(--odr-pdf-print-height)!important;"
                  "break-after:page}.p:last-child{break-after:auto}"
-                 ".p>svg.an{height:var(--odr-pdf-height)}"
+                 ".pc,.p>svg.an{height:var(--odr-pdf-height)}"
                  ".pc,.p>svg.an{transform:scale(var(--odr-pdf-print-scale));"
                  "transform-origin:0 0}}"
                  "@page{margin:0}";

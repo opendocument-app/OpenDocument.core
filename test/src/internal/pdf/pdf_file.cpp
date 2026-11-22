@@ -661,6 +661,10 @@ TEST(PdfFile, fractional_page_heights_fit_print_without_clipping_content) {
        {PdfTextMode::dual_layer, PdfTextMode::single_layer}) {
     const std::string html = render_html(bytes, mode);
     EXPECT_EQ(count(html, R"(class="pc")"), 3);
+    EXPECT_TRUE(
+        contains(html, "height:11.6929in;--odr-pdf-height:11.6929138888889in"));
+    EXPECT_TRUE(
+        contains(html, ".pc{position:relative;width:100%;height:100%}"));
     EXPECT_TRUE(contains(html, "--odr-pdf-print-height:1122px"));
     EXPECT_TRUE(contains(html, "--odr-pdf-print-scale:0.999536994034136"));
     EXPECT_TRUE(contains(
@@ -668,7 +672,7 @@ TEST(PdfFile, fractional_page_heights_fit_print_without_clipping_content) {
     EXPECT_TRUE(
         contains(html, "--odr-pdf-print-height:28px;--odr-pdf-print-scale:1"));
     EXPECT_TRUE(contains(html, "height:var(--odr-pdf-print-height)!important"));
-    EXPECT_TRUE(contains(html, ".p>svg.an{height:var(--odr-pdf-height)}"));
+    EXPECT_TRUE(contains(html, ".pc,.p>svg.an{height:var(--odr-pdf-height)}"));
     EXPECT_TRUE(contains(
         html, ".pc,.p>svg.an{transform:scale(var(--odr-pdf-print-scale))"));
   }

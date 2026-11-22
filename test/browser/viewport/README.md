@@ -91,3 +91,8 @@ down and scales its contents by the same ratio, including images, selection
 text and links. The reduction is less than one CSS pixel; screen dimensions
 and the requested paper size stay intact. Integer-height paper such as US
 Letter needs no scaling. Shrinking only the box would clip its bottom edge.
+
+Screen page heights keep six significant digits, matching the page widths
+and the earlier renderer. More digits can change Firefox's subpixel rounding
+and rasterize the SVG differently. The content wrapper fills that screen box;
+only print uses the full-precision height before scaling.
