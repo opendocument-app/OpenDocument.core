@@ -44,7 +44,7 @@ that the workbook relationships name, normally `xl/styles.xml`, through the
   - [ ] superscript, subscript
 - [x] cell
   - [x] background / fill color, theme colors and tint
-  - [x] borders (`0.75pt solid` only)
+  - [x] borders (weights, dotted, dashed and double; dash-dot patterns approximate)
   - [x] alignment (horizontal, vertical, text rotation)
   - [ ] protection
 - [x] images

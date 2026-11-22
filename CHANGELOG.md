@@ -47,6 +47,11 @@ The release run heads these entries with the version and opens a fresh
 
 ### Spreadsheets
 
+- XLSX cell borders show their hairline, thin, medium or thick weight and
+  solid, dotted, dashed or double pattern. An explicit `none` paints no
+  border. Dash-dot and slanted patterns use dashed CSS borders of the same
+  weight. Every border previously rendered as a thin solid line.
+
 - `Spreadsheet::insert_sheet(index, name)` adds an empty sheet to an ods or
   xlsx. An empty name takes the next free `SheetN`. A name another sheet has,
   ignoring case, or one Excel or LibreOffice refuses throws

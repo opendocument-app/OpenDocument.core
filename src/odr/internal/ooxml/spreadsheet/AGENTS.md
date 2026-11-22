@@ -56,6 +56,13 @@ of the hardcoded legacy palette, or a `theme` slot of the workbook's
 `a:clrScheme`, counted `lt1`, `dk1`, `lt2`, `dk2` first, and `tint` moves it.
 `cellStyleXfs` is loaded but never consulted.
 
+**Borders use the nearest CSS pattern.** Hair, thin, medium and thick are
+0.25, 0.75, 1.5 and 2.25 pt; a double border is 2.25 pt overall, enough for
+two strokes and a gap. These are rendering widths, not sizes stated by OOXML.
+CSS cannot express dash-dot, dash-dot-dot or slanted dashes, so those use
+`dashed`, preserving the thin or medium weight. An explicit `none` clears a
+border; a missing style states none. Diagonal borders remain unmodelled.
+
 **Writing a cell replaces its children, and a written string goes inline.**
 `sheet_set_cell` is position-addressed. It rewrites the `c` and hands the
 registry a fresh text element. The elements that read the old children keep
@@ -122,8 +129,7 @@ the evaluator cannot compute.
    stale formulas, and saving after an edit invokes it. Unsupported and array
    formulas retain their cached results. Number formats supply displayed
    numbers, dates and times.
-2. No `cellStyleXfs` inheritance. Borders render as `0.75pt solid` whatever
-   the style. Cell `protection` is read and dropped.
+2. No `cellStyleXfs` inheritance. Cell `protection` is read and dropped.
 3. `sheet_set_cell` writes numbers, strings, booleans, dates and times. `text_set_content`
    throws `UnsupportedOperation`. A `<hyperlink>` is not modelled, so
    `link_href` is empty. Comments are not modelled.
