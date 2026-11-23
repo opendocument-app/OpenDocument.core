@@ -403,7 +403,10 @@ void html::translate_page_break(const Element & /*element*/,
   // Reached only where the page box cannot be split; `TextHtmlFragment` takes
   // the breaks among the root's children.
   state.out().write_element_begin(
-      "div", HtmlElementOptions().set_style("break-before:page"));
+      "div",
+      HtmlElementOptions()
+          .set_style("break-before:page")
+          .set_attributes(HtmlAttributesVector{{"data-odr-page-break", ""}}));
   state.out().write_element_end("div");
 }
 
@@ -419,6 +422,9 @@ void html::translate_paragraph(const Element &element,
           .set_inline(true)
           .set_attributes([&](const HtmlAttributeWriterCallback &clb) {
             write_edit_address(element, state, clb);
+            if (const MasterPage master = paragraph.master_page(); master) {
+              clb("data-odr-master-page", std::to_string(master.identifier()));
+            }
           })
           .set_style("display:block;" +
                          translate_paragraph_style(paragraph.style(),
