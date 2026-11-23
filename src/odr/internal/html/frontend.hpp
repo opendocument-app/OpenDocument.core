@@ -64,6 +64,8 @@ std::string_view dark_style_media(const HtmlConfig &config);
 /// Written by every document view, and **first**: the scripts below read
 /// `odr.takesKeys`.
 void write_editing_script(const WritingState &state);
+/// Source/view mapping for text renderers.
+void write_document_view_script(const WritingState &state);
 /// The text editor, attached to the mode. Written where the config edits.
 void write_document_script(const WritingState &state);
 /// Written in addition to the editing script.

@@ -71,11 +71,15 @@ not map onto the element tree, so reading the DOM back after the browser edits
 it does not work. The cost is that the browser's undo stack goes empty, so the
 editor carries undo and redo. One `beforeinput` is one undo step.
 
-### 6b. The page is the model
+### 6b. The source DOM is the model
+
+The [`paginated-editing.md`](paginated-editing.md) adapter separates the
+authoritative source DOM from displayed page fragments. Pagination leaves the
+source connected but hidden; commands operate on its original IDs, and selection
+maps between source runs and their displayed ranges. Editing keeps pages visible.
 
 The runs and paragraphs addressed by `data-odr-id` in the page are the model.
-There is no parallel structure, because nothing but this editor writes the
-page. A composition cannot be cancelled, so there the browser does write inside
+There is no second document model. Page fragments are projections of the source. A composition cannot be cancelled, so there the browser does write inside
 a run. The editor notes the run's text before the browser writes and reads it
 back after every `input`, and the difference is the operation. It reads after
 every change, not once at `compositionend`, because an Android keyboard holds a

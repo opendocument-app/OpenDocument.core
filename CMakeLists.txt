@@ -122,6 +122,7 @@ set(ODR_FRONTEND_ASSETS
         "search.css"
         "search-dark.css"
         "document.js"
+        "document-view.js"
         "editing.js"
         "search.js"
         "spreadsheet.js"

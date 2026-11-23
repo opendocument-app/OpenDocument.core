@@ -1,0 +1,79 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Source/view editing fixture</title>
+<style>
+  x-p {
+    display: block;
+    margin: 12px;
+  }
+  #projection x-p {
+    border: 1px solid #ddd;
+    padding: 8px;
+  }
+</style>
+<body data-odr-editable="true">
+  <div class="odr-pagination-original">
+    <div class="odr-text-flow">
+      <x-p data-odr-id="1"
+        ><x-s data-odr-id="2">abcdefgh🦊ijklmnopqrstuv</x-s></x-p
+      >
+      <x-p data-odr-id="3"><x-s data-odr-id="4">Second paragraph</x-s></x-p>
+    </div>
+  </div>
+  <div id="projection"></div>
+  <script src="error-codes.js"></script>
+  <script src="editing.js"></script>
+  <script src="document-view.js"></script>
+  <script>
+    const view = odr.documentView,
+      display = document.getElementById("projection");
+    function render() {
+      display.replaceChildren();
+      for (const paragraph of view.source.querySelectorAll("x-p")) {
+        const map = view.textMap(paragraph);
+        for (const [start, end] of map.length > 8
+          ? [
+              [0, 8],
+              [8, map.length],
+            ]
+          : [[0, map.length]]) {
+          const fragment = paragraph.cloneNode(false);
+          fragment.append(view.range(map, start, end).cloneContents());
+          display.append(view.bind(fragment, paragraph, start, end));
+        }
+      }
+    }
+    view.connect({
+      active: () => true,
+      update: render,
+      pause() {},
+      point(point) {
+        const candidates = Array.from(
+          display.querySelectorAll("[data-odr-source-id]"),
+        ).filter((node) => {
+          const mapping = view.mapping(node);
+          return (
+            mapping.source === point.element &&
+            point.offset >= mapping.start &&
+            point.offset <= mapping.end
+          );
+        });
+        const node =
+          point.affinity === "upstream" ? candidates[0] : candidates.at(-1);
+        return node
+          ? view.boundary(
+              view.textMap(node),
+              point.offset - view.mapping(node).start,
+            )
+          : null;
+      },
+    });
+    render();
+    view.source.hidden = true;
+    view.discardRecords();
+  </script>
+  <script src="document.js"></script>
+  <script>
+    odr.editing.enable();
+  </script>
+</body>

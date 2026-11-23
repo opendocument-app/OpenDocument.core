@@ -2359,7 +2359,9 @@ TEST(html, an_editable_text_document_addresses_its_runs_and_paragraphs) {
 
 // The address is the expensive half, and a read-only render pays none of it.
 TEST(html, a_read_only_text_document_addresses_no_run) {
-  const std::string page = render_odt(HtmlConfig());
+  HtmlConfig config;
+  config.embed_shipped_resources = false;
+  const std::string page = render_odt(config);
 
   EXPECT_EQ(page.find("data-odr-id"), std::string::npos);
 }
