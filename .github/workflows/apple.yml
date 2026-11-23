@@ -236,6 +236,7 @@ jobs:
   # works unconfigured, that a temp directory is writable in an app container.
   test:
     needs: xcframework
+    timeout-minutes: 45
     runs-on: macos-15
     strategy:
       fail-fast: false
@@ -262,37 +263,10 @@ jobs:
       # not stay valid. Take an iPhone of the newest iOS runtime that the
       # simulator SDK of the selected Xcode can run.
       - name: pick the destination
+        timeout-minutes: 10
         env:
           MATRIX_DESTINATION: ${{ matrix.destination }}
-        run: |
-          destination=$MATRIX_DESTINATION
-          if [ -z "$destination" ]; then
-            sdk=$(xcrun --sdk iphonesimulator --show-sdk-version)
-            id=$(xcrun simctl list devices available --json | SDK="$sdk" python3 -I -c '
-          import json, os, sys
-          sdk = tuple(int(x) for x in os.environ["SDK"].split("."))
-          best = None
-          for runtime, devices in json.load(sys.stdin)["devices"].items():
-              name = runtime.rpartition(".")[2]
-              if not name.startswith("iOS-"):
-                  continue
-              version = tuple(int(x) for x in name[4:].split("-"))
-              phones = [d["udid"] for d in devices if d["name"].startswith("iPhone")]
-              if phones and version <= sdk and (best is None or version > best[0]):
-                  best = (version, phones[0])
-          print(best[1] if best else "")
-          ')
-            if [ -z "$id" ]; then
-              xcrun simctl list devices available
-              echo "no iPhone simulator for the iOS $sdk simulator SDK" >&2
-              exit 1
-            fi
-            # xcodebuild can miss every simulator on a fresh runner
-            xcrun simctl bootstatus "$id" -b
-            destination="platform=iOS Simulator,id=$id"
-          fi
-          echo "destination: $destination"
-          echo "DESTINATION=$destination" >> "$GITHUB_ENV"
+        run: python3 scripts/apple_test_destination.py
 
       # `swift test` cannot target a simulator; `xcodebuild` on a package can.
       - name: test
