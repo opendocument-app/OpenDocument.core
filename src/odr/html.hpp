@@ -176,6 +176,13 @@ struct HtmlConfig {
   /// Render a text document as fixed-size pages rather than reflowing text.
   bool text_document_margin{false};
 
+  /// Paginate text near the viewport in JavaScript, splitting text paragraphs.
+  /// Search and printing temporarily restore the original flow.
+  bool text_document_pagination{false};
+  bool text_document_page_breaks{true};
+  bool text_document_page_borders{true};
+  bool text_document_page_animation{true};
+
   /// The colors the output renders against.
   HtmlColorScheme color_scheme{HtmlColorScheme::light};
 

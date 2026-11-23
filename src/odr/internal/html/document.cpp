@@ -47,7 +47,7 @@ bool has_page_layout(const Document &document) {
 /// reflowing to the viewport.
 bool is_paged_content(const Document &document, const HtmlConfig &config) {
   return (document.document_type() == DocumentType::text &&
-          config.text_document_margin) ||
+          (config.text_document_margin || config.text_document_pagination)) ||
          document.document_type() == DocumentType::presentation ||
          document.document_type() == DocumentType::drawing;
 }
@@ -315,7 +315,31 @@ void write_body_begin(const Document &document, const WritingState &state) {
             }
           }));
 
-  if (paged_content) {
+  if (document.document_type() == DocumentType::text) {
+    const HtmlConfig &config = state.config();
+    const WidthFit page_fit = width_fit(config, true);
+    out.write_element_begin(
+        "div",
+        HtmlElementOptions()
+            .set_class(config.text_document_margin ? "odr-pages" : "")
+            .set_attributes(HtmlAttributesVector{
+                {"data-odr-page-fit", page_fit == WidthFit::browser ? "auto"
+                                      : page_fit == WidthFit::view  ? "view"
+                                                                    : "none"},
+                {"data-odr-page-fit-width",
+                 page_fit == WidthFit::browser &&
+                         config.viewport_width.has_value()
+                     ? std::to_string(config.viewport_width.value())
+                     : ""},
+                {"data-odr-pagination",
+                 config.text_document_pagination ? "true" : "false"},
+                {"data-odr-page-breaks",
+                 config.text_document_page_breaks ? "true" : "false"},
+                {"data-odr-page-borders",
+                 config.text_document_page_borders ? "true" : "false"},
+                {"data-odr-page-animation",
+                 config.text_document_page_animation ? "true" : "false"}}));
+  } else if (paged_content) {
     out.write_element_begin("div", HtmlElementOptions().set_class("odr-pages"));
   }
 }
@@ -323,7 +347,8 @@ void write_body_begin(const Document &document, const WritingState &state) {
 void write_body_end(const Document &document, const WritingState &state) {
   HtmlWriter &out = state.out();
 
-  if (is_paged_content(document, state.config())) {
+  if (is_paged_content(document, state.config()) ||
+      document.document_type() == DocumentType::text) {
     out.write_element_end("div");
   }
 
@@ -331,6 +356,7 @@ void write_body_end(const Document &document, const WritingState &state) {
   write_editing_script(state);
   if (document.document_type() == DocumentType::text) {
     write_document_view_script(state);
+    write_pagination_script(state);
   }
   if (state.config().editable) {
     write_document_script(state);

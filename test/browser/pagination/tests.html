@@ -1,0 +1,779 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Pagination checks</title>
+<pre id="results">Running…</pre>
+<script>
+  (async function () {
+    var lines = [],
+      failures = 0;
+    function check(ok, message) {
+      lines.push((ok ? "PASS " : "FAIL ") + message);
+      if (!ok) ++failures;
+      document.getElementById("results").textContent = lines.join("\n");
+    }
+    function delay(ms) {
+      return new Promise(function (resolve) {
+        setTimeout(resolve, ms);
+      });
+    }
+    async function until(predicate) {
+      for (var i = 0; i < 200; ++i) {
+        if (predicate()) return;
+        await delay(20);
+      }
+      throw new Error("timed out");
+    }
+    var frame = document.createElement("iframe");
+    frame.style.cssText = "width:800px;height:600px;border:0";
+    document.body.appendChild(frame);
+    function template(key, next, width, height, head) {
+      return (
+        '<template data-odr-page-template="' +
+        key +
+        '" data-odr-next-layout="' +
+        next +
+        '" data-odr-master-page="' +
+        (key.startsWith("wide") ? "wide" : "normal") +
+        '">' +
+        '<div class="odr-page-outer odr-pagination-page odr-page" style="width:' +
+        width +
+        "px;height:" +
+        height +
+        'px">' +
+        '<div class="odr-pagination-inner" style="margin:20px">' +
+        '<div class="odr-pagination-header" style="height:30px">' +
+        head +
+        "</div>" +
+        '<div class="odr-pagination-body"></div>' +
+        '<div class="odr-pagination-footer" style="height:30px">Footer</div></div></div></template>'
+      );
+    }
+    frame.srcdoc =
+      '<!doctype html><base href="' +
+      location.href +
+      '">' +
+      '<link rel="stylesheet" href="document.css"><style>x-p{height:90px;margin:0}body{overflow-anchor:none}</style>' +
+      '<body data-odr-editable="true"><div data-odr-pagination="false">' +
+      '<div class="odr-pagination-original"><div class="odr-text-flow" id="source"></div></div>' +
+      template("root", "normal", 300, 400, "First header") +
+      template("normal", "normal", 300, 400, "Running header") +
+      template("wide-first", "wide", 500, 300, "Wide header") +
+      template("wide", "wide", 500, 300, "Wide header") +
+      '</div><script src="search.js"><\/script><script src="editing.js"><\/script><script src="document-view.js"><\/script><script src="pagination.js"><\/script><script src="viewport.js"><\/script>';
+    try {
+      await until(function () {
+        return frame.contentWindow.odr && frame.contentWindow.odr.pagination;
+      });
+      var w = frame.contentWindow,
+        d = w.document,
+        api = w.odr.pagination,
+        source = d.getElementById("source");
+      function rendered(node) {
+        return Array.from(
+          d.querySelectorAll(".odr-pagination-body > [data-odr-fragment]"),
+        ).find(function (n) {
+          return w.odr.documentView.mapping(n).source === node;
+        });
+      }
+      function select(run, start, end) {
+        w.odr.documentView.restore({
+          anchor: { element: run, offset: start },
+          focus: { element: run, offset: end },
+        });
+      }
+      var originals = [];
+      for (var n = 0; n < 2000; ++n) {
+        var p = d.createElement("x-p");
+        p.textContent = "Paragraph " + n;
+        p.setAttribute("data-odr-id", String(n + 1));
+        source.appendChild(p);
+        originals.push(p);
+      }
+      await new Promise(function (resolve) {
+        var editor = d.createElement("script");
+        editor.src = "document.js";
+        editor.onload = resolve;
+        d.body.appendChild(editor);
+      });
+      check(!api.getState().active, "default disabled");
+      api.setOptions({ enabled: true, animate: false });
+      await until(function () {
+        return api.getState().pageCount >= 4;
+      });
+      await delay(300);
+      var partial = api.getState();
+      check(
+        !partial.complete && partial.processedBlocks < 100,
+        "long document only formats near the viewport",
+      );
+      await delay(150);
+      check(
+        api.getState().processedBlocks === partial.processedBlocks,
+        "offscreen pagination stays idle",
+      );
+      check(
+        w.odr.getPageCount() === partial.pageCount,
+        "viewport sees newly generated pages",
+      );
+      var boxes = d.querySelectorAll(".odr-pagination-page");
+      check(
+        boxes[0].textContent.includes("First header") &&
+          boxes[1].textContent.includes("Running header"),
+        "first and continuing headers",
+      );
+      var first = boxes[0],
+        footer = first.querySelector(".odr-pagination-footer");
+      var content = first.querySelector(".odr-pagination-body");
+      check(
+        Math.abs(
+          footer.getBoundingClientRect().bottom -
+            (first.getBoundingClientRect().bottom - 20),
+        ) < 1,
+        "footer sits above the bottom margin",
+      );
+      check(
+        content.scrollHeight <= content.clientHeight + 1 &&
+          content.children.length === 3,
+        "body reserves margins, header and footer",
+      );
+      var selected = rendered(originals[0]).firstChild;
+      w.getSelection().setBaseAndExtent(selected, 1, selected, 6);
+      api.setOptions({ enabled: false });
+      check(
+        originals.every(function (node, i) {
+          return source.children[i] === node;
+        }),
+        "toggle restores original nodes and order",
+      );
+      check(
+        w.getSelection().toString() === "aragr",
+        "toggle preserves selection",
+      );
+      check(
+        d.querySelectorAll("[data-odr-id]").length === 2000,
+        "no duplicate editing identities",
+      );
+      source.replaceChildren.apply(source, originals.slice(0, 9));
+      originals[1].style.breakBefore = "page";
+      originals[3].setAttribute("data-odr-master-page", "wide");
+      api.setOptions({ enabled: true });
+      w.scrollTo(0, 10000);
+      await until(function () {
+        w.scrollTo(0, 10000);
+        w.dispatchEvent(new Event("scroll"));
+        return api.getState().complete;
+      });
+      check(
+        rendered(originals[0]).closest(".odr-pagination-page") !==
+          rendered(originals[1]).closest(".odr-pagination-page"),
+        "explicit page break",
+      );
+      check(
+        rendered(originals[3]).closest(".odr-pagination-page").offsetWidth ===
+          500,
+        "named layout changes page size",
+      );
+      check(
+        rendered(originals[5]).closest(".odr-pagination-page").offsetWidth ===
+          500,
+        "continuing page keeps its layout",
+      );
+      api.setOptions({ showPageBorders: false });
+      check(
+        w.getComputedStyle(
+          rendered(originals[0]).closest(".odr-pagination-page"),
+        ).boxShadow === "none",
+        "borders toggle independently",
+      );
+      api.setOptions({ enabled: false, explicitBreaks: false });
+      originals[3].removeAttribute("data-odr-master-page");
+      originals[5].style.height = "900px";
+      api.setOptions({ enabled: true });
+      await until(function () {
+        w.scrollTo(0, 10000);
+        w.dispatchEvent(new Event("scroll"));
+        return api.getState().complete;
+      });
+      check(
+        rendered(originals[0]).closest(".odr-pagination-page") ===
+          rendered(originals[1]).closest(".odr-pagination-page"),
+        "explicit breaks can be disabled",
+      );
+      check(api.getState().oversizedPages === 1, "oversized block is reported");
+      var large = rendered(originals[5]).closest(".odr-pagination-page");
+      check(
+        large.querySelector(".odr-pagination-footer").getBoundingClientRect()
+          .top >= rendered(originals[5]).getBoundingClientRect().bottom,
+        "oversized content never overlaps its footer",
+      );
+      check(
+        w.odr.editing.enable() && api.getState().active,
+        "editing keeps pages visible",
+      );
+      check(
+        originals[0].parentNode === source,
+        "editor receives original parents",
+      );
+      var added = d.createElement("x-p");
+      added.textContent = "Edited paragraph";
+      source.appendChild(added);
+      w.odr.editing.disable();
+      await until(function () {
+        return api.getState().totalBlocks === 10;
+      });
+      check(
+        api.getState().totalBlocks === 10,
+        "pagination includes edits on leaving edit mode",
+      );
+      w.dispatchEvent(new Event("beforeprint"));
+      check(
+        !api.getState().active && added.parentNode === source,
+        "print restores the complete source",
+      );
+      w.dispatchEvent(new Event("afterprint"));
+      await until(function () {
+        return api.getState().active;
+      });
+      check(true, "pagination resumes after printing");
+      api.setOptions({ enabled: false });
+      var paragraph = d.createElement("x-p");
+      paragraph.setAttribute("data-odr-id", "3001");
+      paragraph.style.cssText =
+        "height:auto;font:16px/20px sans-serif;margin:8px 0;text-indent:12px";
+      var bold = d.createElement("x-s");
+      bold.setAttribute("data-odr-id", "3002");
+      bold.style.fontWeight = "bold";
+      bold.textContent = "Styled introduction. ";
+      paragraph.appendChild(bold);
+      var run = d.createElement("x-s");
+      run.setAttribute("data-odr-id", "3003");
+      run.textContent =
+        "Words across pages with emoji 😀 and accents café. ".repeat(70);
+      paragraph.appendChild(run);
+      source.replaceChildren(paragraph);
+      var text = paragraph.textContent,
+        originalTextNode = paragraph.lastChild.firstChild;
+      w.getSelection().setBaseAndExtent(
+        originalTextNode,
+        2,
+        originalTextNode,
+        15,
+      );
+      api.setOptions({ enabled: true });
+      await until(function () {
+        w.scrollTo(0, 100000);
+        w.dispatchEvent(new Event("scroll"));
+        return api.getState().complete;
+      });
+      var parts = Array.from(
+        d.querySelectorAll(".odr-pagination-body > [data-odr-fragment]"),
+      );
+      check(
+        parts.length > 1 && api.getState().oversizedPages === 0,
+        "long paragraph splits across real page bodies",
+      );
+      check(
+        parts
+          .map(function (p) {
+            return p.textContent;
+          })
+          .join("") === text,
+        "fragments preserve every code unit exactly once",
+      );
+      check(
+        parts.every(function (p) {
+          return p.parentNode.scrollHeight <= p.parentNode.clientHeight + 1;
+        }),
+        "split paragraphs fit without clipping",
+      );
+      check(
+        paragraph.isConnected &&
+          w.odr.documentView.source.hidden &&
+          paragraph.lastChild.firstChild === originalTextNode,
+        "authoritative paragraph remains intact",
+      );
+      check(
+        parts.every(function (p) {
+          return !p.hasAttribute("data-odr-id");
+        }),
+        "fragments never duplicate an editing identity",
+      );
+      check(
+        w.getSelection().toString() === originalTextNode.data.slice(2, 15),
+        "source selection maps into its page fragment",
+      );
+      var firstText = parts[0].querySelector("x-s").firstChild;
+      var secondText = parts[1].firstChild;
+      while (secondText.nodeType !== 3) secondText = secondText.firstChild;
+      w.getSelection().setBaseAndExtent(firstText, 2, secondText, 5);
+      var copied = {};
+      var copy = new w.Event("copy", { cancelable: true });
+      Object.defineProperty(copy, "clipboardData", {
+        value: {
+          setData: function (type, value) {
+            copied[type] = value;
+          },
+        },
+      });
+      d.dispatchEvent(copy);
+      var expected = text.slice(2, parts[0].textContent.length + 5);
+      check(
+        copied["text/plain"] === expected,
+        "copy across a page split does not insert a paragraph break",
+      );
+      w.odr.editing.enable();
+      check(
+        paragraph.parentNode === source &&
+          paragraph.lastChild.firstChild === originalTextNode,
+        "editing preserves the original split paragraph and text nodes",
+      );
+      check(
+        w.odr.documentView
+          .inputRange(w.getSelection().getRangeAt(0))
+          .toString() === expected,
+        "cross-page selection maps back to the original paragraph",
+      );
+      check(
+        JSON.parse(w.odr.generateDiff()).ops.length === 0,
+        "pagination never creates editing operations",
+      );
+      select(run, 3, 3);
+      run.dispatchEvent(
+        new w.InputEvent("beforeinput", {
+          bubbles: true,
+          cancelable: true,
+          inputType: "insertText",
+          data: "Z",
+        }),
+      );
+      check(
+        paragraph.textContent !== text &&
+          JSON.parse(w.odr.generateDiff()).ops.length > 0,
+        "real editor records an edit against the original run",
+      );
+      check(
+        w.odr.editing.undo() && paragraph.textContent === text,
+        "undo after pagination restores the original paragraph text",
+      );
+      check(
+        w.odr.editing.redo() && paragraph.textContent !== text,
+        "redo survives the pagination transition",
+      );
+      w.odr.editing.undo();
+      w.odr.editing.disable();
+      await until(function () {
+        return api.getState().active;
+      });
+      check(
+        w.odr.editing.redo() && paragraph.textContent !== text,
+        "host redo restores the source even outside edit mode",
+      );
+      await until(function () {
+        w.scrollTo(0, 100000);
+        w.dispatchEvent(new Event("scroll"));
+        return api.getState().complete;
+      });
+      check(
+        Array.from(d.querySelectorAll(".odr-pagination-body"))
+          .map((p) => p.textContent)
+          .join("") === paragraph.textContent,
+        "host redo refreshes the paginated text",
+      );
+      check(
+        w.odr.editing.undo() && paragraph.textContent === text,
+        "host undo works outside edit mode",
+      );
+      await until(function () {
+        return api.getState().active;
+      });
+      w.odr.editing.enable();
+      var adapter = w.odr.documentView;
+      function input(type, data) {
+        var event = new w.InputEvent("beforeinput", {
+          bubbles: true,
+          cancelable: true,
+          inputType: type,
+          data: data || null,
+        });
+        d.body.dispatchEvent(event);
+        return event.defaultPrevented;
+      }
+      async function finish() {
+        await until(function () {
+          w.scrollTo(0, 100000);
+          w.dispatchEvent(new w.Event("scroll"));
+          return api.getState().complete;
+        });
+      }
+      await finish();
+      var retainedPage = d.querySelector(".odr-pagination-page");
+      select(run, run.textContent.length - 40, run.textContent.length - 40);
+      input("insertText", "LATE");
+      check(
+        retainedPage.isConnected,
+        "editing late in a split paragraph preserves earlier pages",
+      );
+      w.odr.editing.undo();
+      await finish();
+      var continuation = d.querySelectorAll(
+        '.odr-pagination-body x-s[data-odr-source-id="3003"]',
+      )[1];
+      var splitOffset = adapter.mapping(continuation).start;
+      var runBefore = run.textContent;
+      select(run, splitOffset, splitOffset);
+      input("insertText", "😀é");
+      check(
+        run.textContent ===
+          runBefore.slice(0, splitOffset) +
+            "😀é" +
+            runBefore.slice(splitOffset),
+        "typing at a continuation edits the complete logical run",
+      );
+      check(
+        adapter.capture().focus.element === run &&
+          adapter.capture().focus.offset === splitOffset + 4,
+        "caret retains UTF-16 position after reflow",
+      );
+      check(
+        api.getState().active &&
+          !w
+            .getSelection()
+            .anchorNode.parentElement.closest(".odr-pagination-original"),
+        "typing keeps selection in the visible pages",
+      );
+      var liveOps = JSON.parse(w.odr.generateDiff()).ops;
+      check(
+        liveOps.length === 1 &&
+          liveOps[0].op === "setText" &&
+          liveOps[0].id === 3003 &&
+          liveOps[0].text === run.textContent,
+        "fragment editing exports one complete setText with the original id",
+      );
+      w.odr.editing.undo();
+      check(
+        adapter.capture().focus.offset === splitOffset,
+        "undo restores the logical caret",
+      );
+      w.odr.editing.redo();
+      check(
+        adapter.capture().focus.offset === splitOffset + 4,
+        "redo restores the logical caret",
+      );
+      select(run, splitOffset + 2, splitOffset + 2);
+      input("deleteContentBackward");
+      check(
+        run.textContent ===
+          runBefore.slice(0, splitOffset) + "é" + runBefore.slice(splitOffset),
+        "boundary deletion removes a complete emoji",
+      );
+      w.odr.editing.undo();
+      w.odr.editing.undo();
+      await finish();
+      select(run, splitOffset + 8, splitOffset - 8);
+      var backward = adapter.capture();
+      input("insertText", "replacement");
+      check(
+        run.textContent ===
+          runBefore.slice(0, splitOffset - 8) +
+            "replacement" +
+            runBefore.slice(splitOffset + 8),
+        "backward cross-page selection replaces logical text once",
+      );
+      w.odr.editing.undo();
+      var restored = adapter.capture();
+      check(
+        restored.anchor.offset === backward.anchor.offset &&
+          restored.focus.offset === backward.focus.offset,
+        "undo retains backward selection direction",
+      );
+      select(run, splitOffset - 5, splitOffset + 5);
+      check(
+        w.odr.editing.format({ bold: true }),
+        "formatting accepts a cross-page range",
+      );
+      check(
+        paragraph.textContent === text &&
+          JSON.parse(w.odr.generateDiff()).ops.some(function (op) {
+            return op.op === "setTextStyle";
+          }),
+        "formatting splits source runs without changing paragraph text",
+      );
+      w.odr.editing.undo();
+      select(run, splitOffset, splitOffset);
+      input("insertParagraph");
+      check(
+        source.querySelectorAll("x-p").length === 2 &&
+          source.textContent === text,
+        "Enter creates one real paragraph at a visual continuation",
+      );
+      input("deleteContentBackward");
+      check(
+        source.querySelectorAll("x-p").length === 1 &&
+          source.textContent === text,
+        "Backspace merges logical paragraphs across pages",
+      );
+      w.odr.editing.undo();
+      w.odr.editing.undo();
+      select(run, splitOffset - 4, splitOffset + 4);
+      var transfer = new w.DataTransfer();
+      transfer.setData("text/plain", "one\ntwo");
+      d.body.dispatchEvent(
+        new w.InputEvent("beforeinput", {
+          bubbles: true,
+          cancelable: true,
+          inputType: "insertFromPaste",
+          dataTransfer: transfer,
+        }),
+      );
+      check(
+        source.querySelectorAll("x-p").length === 2 &&
+          source.textContent ===
+            bold.textContent +
+              runBefore.slice(0, splitOffset - 4) +
+              "onetwo" +
+              runBefore.slice(splitOffset + 4),
+        "multiline paste across a page boundary creates logical paragraphs",
+      );
+      w.odr.editing.undo();
+      await finish();
+      select(run, splitOffset - 4, splitOffset + 4);
+      var cut = new w.Event("cut", { cancelable: true });
+      Object.defineProperty(cut, "clipboardData", {
+        value: {
+          setData: function (type, value) {
+            copied[type] = value;
+          },
+        },
+      });
+      d.dispatchEvent(cut);
+      check(
+        copied["text/plain"] ===
+          runBefore.slice(splitOffset - 4, splitOffset + 4) &&
+          run.textContent ===
+            runBefore.slice(0, splitOffset - 4) +
+              runBefore.slice(splitOffset + 4),
+        "cut copies and removes only logical text across pages",
+      );
+      w.odr.editing.undo();
+      await finish();
+      select(run, splitOffset + 2, splitOffset + 2);
+      var composedNode = w.getSelection().anchorNode;
+      var composedRun =
+        composedNode.nodeType === 1 ? composedNode : composedNode.parentElement;
+      composedRun = composedRun.closest("x-s");
+      d.body.dispatchEvent(
+        new w.CompositionEvent("compositionstart", { bubbles: true }),
+      );
+      d.body.dispatchEvent(
+        new w.InputEvent("beforeinput", {
+          bubbles: true,
+          inputType: "insertCompositionText",
+          data: "漢",
+          isComposing: true,
+        }),
+      );
+      var logicalBeforeComposition = run.textContent;
+      var local =
+        adapter.capture().focus.offset - adapter.mapping(composedRun).start;
+      composedRun.textContent =
+        composedRun.textContent.slice(0, local) +
+        "漢" +
+        composedRun.textContent.slice(local);
+      w.getSelection().setBaseAndExtent(
+        composedRun.firstChild,
+        local + 1,
+        composedRun.firstChild,
+        local + 1,
+      );
+      d.body.dispatchEvent(
+        new w.InputEvent("input", {
+          bubbles: true,
+          inputType: "insertCompositionText",
+          data: "漢",
+          isComposing: true,
+        }),
+      );
+      await delay(30);
+      check(
+        composedRun.isConnected &&
+          adapter.isComposing() &&
+          run.textContent ===
+            logicalBeforeComposition.slice(0, splitOffset + 2) +
+              "漢" +
+              logicalBeforeComposition.slice(splitOffset + 2),
+        "composition keeps its fragment stable and mirrors the complete run",
+      );
+      d.body.dispatchEvent(
+        new w.CompositionEvent("compositionend", { bubbles: true, data: "漢" }),
+      );
+      check(
+        !adapter.isComposing() &&
+          adapter.capture().focus.offset === splitOffset + 3,
+        "composition end reflows and restores the logical caret",
+      );
+      w.odr.editing.undo();
+      check(
+        run.textContent === runBefore,
+        "composition undo restores the source",
+      );
+      w.odr.editing.disable();
+      check(
+        w.odr.search("Styled introduction") === 1 && !api.getState().active,
+        "search uses the unsplit authoritative text",
+      );
+      w.odr.resetSearch();
+      await until(function () {
+        return api.getState().active;
+      });
+      check(true, "pagination resumes after search");
+      api.setOptions({ enabled: false });
+      var firstParagraph = d.createElement("x-p"),
+        secondParagraph = d.createElement("x-p");
+      firstParagraph.textContent = "Opening";
+      secondParagraph.textContent = "Same master again";
+      firstParagraph.setAttribute("data-odr-master-page", "normal");
+      secondParagraph.setAttribute("data-odr-master-page", "normal");
+      var sheet = d.createElement("style");
+      sheet.textContent = ".unused{color:red}";
+      source.replaceChildren(sheet, firstParagraph, secondParagraph);
+      api.setOptions({ enabled: true });
+      await until(function () {
+        w.scrollTo(0, 100000);
+        w.dispatchEvent(new Event("scroll"));
+        return api.getState().complete;
+      });
+      check(
+        api.getState().pageCount === 2,
+        "style nodes never create phantom content pages",
+      );
+      check(
+        rendered(secondParagraph)
+          .closest(".odr-pagination-page")
+          .querySelector(".odr-pagination-header").textContent ===
+          "Running header",
+        "naming the current master does not repeat its first-page header",
+      );
+      api.setOptions({ enabled: false });
+      var bookmark = d.createElement("span");
+      bookmark.id = "kept-bookmark";
+      paragraph.insertBefore(bookmark, paragraph.firstChild);
+      source.replaceChildren(paragraph);
+      api.setOptions({ enabled: true });
+      await until(function () {
+        w.scrollTo(0, 100000);
+        w.dispatchEvent(new Event("scroll"));
+        return api.getState().complete;
+      });
+      check(
+        d.getElementById("kept-bookmark").closest(".odr-pagination-page") &&
+          bookmark.isConnected,
+        "bookmarks retain their live targets instead of disappearing into fragments",
+      );
+      api.setOptions({ enabled: false });
+      var zeroHeight = d.createElement("x-p");
+      zeroHeight.style.cssText = "height:900px;font-size:0;line-height:0";
+      zeroHeight.textContent = "Text with no measurable glyph height";
+      source.replaceChildren(zeroHeight);
+      api.setOptions({ enabled: true });
+      await until(function () {
+        w.scrollTo(0, 100000);
+        w.dispatchEvent(new Event("scroll"));
+        return api.getState().complete;
+      });
+      check(
+        api.getState().oversizedPages === 1,
+        "zero-height glyphs terminate splitting without a loop",
+      );
+      api.setOptions({ enabled: false });
+      var full = d.createElement("x-p"),
+        shrinking = d.createElement("x-p");
+      full.style.height = "270px";
+      full.textContent = "First block";
+      shrinking.style.height = "90px";
+      shrinking.textContent = "Shrinking block";
+      source.replaceChildren(full, shrinking);
+      api.setOptions({ enabled: true });
+      await finish();
+      check(
+        api.getState().pageCount === 2,
+        "a block starts on the next page when it cannot fit",
+      );
+      shrinking.style.height = "20px";
+      await delay(30);
+      await finish();
+      check(
+        api.getState().pageCount === 1,
+        "a shrinking block flows back into the preceding page",
+      );
+      api.setOptions({ explicitBreaks: true });
+      await finish();
+      var breakRule = d.createElement("style");
+      full.classList.add("refreshed-break");
+      breakRule.textContent = ".refreshed-break{break-after:page}";
+      d.head.appendChild(breakRule);
+      api.refresh();
+      await finish();
+      check(
+        api.getState().pageCount === 2,
+        "refresh picks up changed stylesheet break rules",
+      );
+      breakRule.remove();
+      api.refresh();
+      await finish();
+      check(
+        api.getState().pageCount === 1,
+        "refresh clears removed stylesheet break rules",
+      );
+      api.setOptions({ enabled: false });
+      var emptyParagraph = d.createElement("x-p");
+      emptyParagraph.setAttribute("data-odr-id", "9000");
+      emptyParagraph.innerHTML = "<br>";
+      source.replaceChildren(emptyParagraph);
+      api.setOptions({ enabled: true });
+      w.odr.editing.enable();
+      await finish();
+      select(emptyParagraph, 0, 0);
+      input("insertText", "New paragraph");
+      check(
+        emptyParagraph.textContent === "New paragraph" && api.getState().active,
+        "empty paragraphs accept text through the projection",
+      );
+      w.odr.editing.undo();
+      check(
+        emptyParagraph.textContent === "",
+        "undo restores an empty paragraph",
+      );
+      w.odr.editing.disable();
+      api.setOptions({ enabled: false, explicitBreaks: true });
+      adapter.source.innerHTML =
+        '<div class="odr-page-outer"><div class="odr-page-inner"><x-p data-odr-id="9100"><x-s data-odr-id="9101">Before manual break</x-s></x-p></div></div><div class="odr-page-outer"><div class="odr-page-inner"><x-p data-odr-id="9200"><x-s data-odr-id="9201">After manual break</x-s></x-p></div></div>';
+      api.setOptions({ enabled: true });
+      await finish();
+      w.odr.editing.enable();
+      var afterBreak = adapter.source.querySelector('[data-odr-id="9201"]');
+      select(afterBreak, 5, 5);
+      input("insertParagraph");
+      await finish();
+      check(
+        api.getState().pageCount === 2 &&
+          adapter.source.querySelectorAll("[data-odr-flow-break]").length === 1,
+        "Enter after a normalized manual break does not create another page break",
+      );
+      w.odr.editing.undo();
+      w.odr.editing.disable();
+      w.dispatchEvent(new w.Event("beforeprint"));
+      var preservedBreak = adapter.source.querySelector(
+        "[data-odr-flow-break]",
+      );
+      check(
+        preservedBreak &&
+          w.getComputedStyle(preservedBreak).breakBefore === "page",
+        "normalizing legacy page boxes preserves manual breaks for native printing",
+      );
+      w.dispatchEvent(new w.Event("afterprint"));
+    } catch (error) {
+      check(false, error.stack);
+    }
+    document.body.setAttribute("data-test-result", failures ? "fail" : "pass");
+  })();
+</script>

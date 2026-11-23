@@ -220,6 +220,26 @@ final class HtmlTests: XCTestCase {
       html.contains("data-odr-editing-scope=\"paragraph\""), "the scope did not reach the html")
   }
 
+  func testPaginationConfigReachesTheHtml() throws {
+    let config = HtmlConfig()
+    XCTAssertFalse(config.textDocumentPagination)
+    XCTAssertTrue(config.textDocumentPageBreaks)
+    XCTAssertTrue(config.textDocumentPageBorders)
+    XCTAssertTrue(config.textDocumentPageAnimation)
+    config.textDocumentPagination = true
+    config.textDocumentPageBreaks = false
+    config.textDocumentPageBorders = false
+    config.textDocumentPageAnimation = false
+    let file = try DecodedFile.decode(path: try Fixture.odt())
+    let service = try HtmlTranslator.translate(file: file, config: config)
+    var resources: NSArray?
+    let html = try XCTUnwrap(service.views.first).writeHtml(resources: &resources)
+    XCTAssertTrue(html.contains("data-odr-pagination=\"true\""))
+    XCTAssertTrue(html.contains("data-odr-page-breaks=\"false\""))
+    XCTAssertTrue(html.contains("data-odr-page-borders=\"false\""))
+    XCTAssertTrue(html.contains("data-odr-page-animation=\"false\""))
+  }
+
   /// Proves the layout crosses the binding; the C++ suite covers the rest.
   func testPageLayoutReachesTheHtml() throws {
     XCTAssertEqual(HtmlConfig().pageLayout, .continuous)

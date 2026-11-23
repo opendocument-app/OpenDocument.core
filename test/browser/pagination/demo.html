@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Paragraphs across pages · odr demo</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: #eef1f5;
+      color: #182335;
+      font:
+        15px/1.5 system-ui,
+        sans-serif;
+    }
+    header {
+      padding: 20px 28px 14px;
+      background: #fff;
+      border-bottom: 1px solid #dce2ea;
+    }
+    h1 {
+      font-size: 23px;
+      margin: 0 0 5px;
+    }
+    p {
+      margin: 0;
+      color: #526177;
+    }
+    .controls {
+      display: flex;
+      gap: 9px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 15px;
+    }
+    button {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #25344a;
+      padding: 9px 15px;
+      border-radius: 7px;
+      font: inherit;
+      cursor: pointer;
+    }
+    button.primary {
+      background: #245bc7;
+      color: white;
+      border-color: #245bc7;
+    }
+    button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+    button:hover:not(:disabled) {
+      filter: brightness(0.95);
+    }
+    #status {
+      margin-left: auto;
+      font-size: 13px;
+      color: #526177;
+    }
+    iframe {
+      border: 0;
+      width: 100%;
+      height: calc(100vh - 176px);
+      display: block;
+    }
+    #hint {
+      font-size: 13px;
+      margin-top: 10px;
+    }
+    #error {
+      color: #a32222;
+    }
+  </style>
+  <header>
+    <h1>One paragraph. Several pages.</h1>
+    <p>
+      A real document rendered by odr. Select text across a page boundary, then
+      edit it.
+    </p>
+    <div class="controls">
+      <button id="edit" class="primary" disabled>Edit document</button>
+      <button id="split" disabled>Show first split</button>
+      <button id="undo" disabled>Undo</button
+      ><button id="redo" disabled>Redo</button>
+      <button id="reset">Reset example</button>
+      <span id="status" aria-live="polite">Loading…</span>
+    </div>
+    <p id="hint">
+      Edit directly on the pages. Try typing at a split, selecting across pages,
+      or pressing Enter.
+    </p>
+    <p id="error" role="alert"></p>
+  </header>
+  <iframe
+    id="document"
+    title="Editable river notebook"
+    src="demo-document.html"
+  ></iframe>
+  <script>
+    const frame = document.getElementById("document");
+    const edit = document.getElementById("edit");
+    const split = document.getElementById("split");
+    const undo = document.getElementById("undo");
+    const redo = document.getElementById("redo");
+    let api;
+    let canUndo = false,
+      canRedo = false;
+    function update() {
+      if (!api) return;
+      const editing = api.editing.isEnabled();
+      const state = api.pagination.getState();
+      edit.textContent = editing ? "Stop editing" : "Edit document";
+      undo.disabled = !editing || !canUndo;
+      redo.disabled = !editing || !canRedo;
+      split.disabled = state.pageCount < 2;
+      document.getElementById("status").textContent =
+        state.pageCount +
+        (state.complete ? " pages" : " pages so far") +
+        (editing ? " · editing on the page" : " · paginated view");
+    }
+    frame.addEventListener("load", () => {
+      api = frame.contentWindow.odr;
+      if (!api || !api.pagination) {
+        document.getElementById("error").textContent =
+          "Generate demo-document.html with make-demo.py first.";
+        return;
+      }
+      edit.disabled = false;
+      api.onPaginationChange = update;
+      api.onEditModeChange = update;
+      canUndo = canRedo = false;
+      api.onEditChange = (state) => {
+        canUndo = state.canUndo;
+        canRedo = state.canRedo;
+        update();
+      };
+      api.onEditRefused = (event) => {
+        document.getElementById("error").textContent = event.message;
+      };
+      update();
+    });
+    // Keep the selection inside the document while a toolbar action runs.
+    [edit, undo, redo, split].forEach((button) =>
+      button.addEventListener("mousedown", (event) => event.preventDefault()),
+    );
+    edit.onclick = () => {
+      document.getElementById("error").textContent = "";
+      if (api.editing.isEnabled()) api.editing.disable();
+      else {
+        api.editing.enable();
+        frame.contentWindow.focus();
+      }
+      update();
+    };
+    undo.onclick = () => {
+      api.editing.undo();
+      update();
+    };
+    redo.onclick = () => {
+      api.editing.redo();
+      update();
+    };
+    split.onclick = () => {
+      api.setPage(0);
+      const page = frame.contentDocument.querySelector(".odr-pagination-page");
+      if (page)
+        frame.contentWindow.scrollBy({
+          top: page.getBoundingClientRect().bottom - frame.clientHeight * 0.5,
+          behavior: "smooth",
+        });
+    };
+    document.getElementById("reset").onclick = () =>
+      frame.contentWindow.location.reload();
+  </script>
+</html>

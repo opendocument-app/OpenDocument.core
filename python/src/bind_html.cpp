@@ -99,6 +99,14 @@ void odr_python::bind_html(py::module_ &m) {
                      &odr::HtmlConfig::host_message_handler)
       .def_readwrite("text_document_margin",
                      &odr::HtmlConfig::text_document_margin)
+      .def_readwrite("text_document_pagination",
+                     &odr::HtmlConfig::text_document_pagination)
+      .def_readwrite("text_document_page_breaks",
+                     &odr::HtmlConfig::text_document_page_breaks)
+      .def_readwrite("text_document_page_borders",
+                     &odr::HtmlConfig::text_document_page_borders)
+      .def_readwrite("text_document_page_animation",
+                     &odr::HtmlConfig::text_document_page_animation)
       .def_readwrite("color_scheme", &odr::HtmlConfig::color_scheme)
       .def_readwrite("spreadsheet_limit", &odr::HtmlConfig::spreadsheet_limit)
       .def_readwrite("spreadsheet_cell_limit",

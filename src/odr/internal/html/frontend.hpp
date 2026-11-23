@@ -68,6 +68,8 @@ void write_editing_script(const WritingState &state);
 void write_document_view_script(const WritingState &state);
 /// The text editor, attached to the mode. Written where the config edits.
 void write_document_script(const WritingState &state);
+/// Progressive text pagination and its runtime options.
+void write_pagination_script(const WritingState &state);
 /// Written in addition to the editing script.
 void write_spreadsheet_script(const WritingState &state);
 /// The sheet's editor, attached to the mode. Written where the config edits.

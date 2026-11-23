@@ -93,6 +93,9 @@ constexpr Asset search_dark_css_asset{HtmlResourceType::css, "text/css",
 constexpr Asset document_view_js_asset{HtmlResourceType::js, "text/javascript",
                                        "document-view.js",
                                        frontend_assets::document_view_js};
+constexpr Asset pagination_js_asset{HtmlResourceType::js, "text/javascript",
+                                    "pagination.js",
+                                    frontend_assets::pagination_js};
 constexpr Asset document_js_asset{HtmlResourceType::js, "text/javascript",
                                   "document.js", frontend_assets::document_js};
 /// The mode, the refusals and the log a save reads, generic over the formats.
@@ -374,6 +377,10 @@ void html::write_document_view_script(const WritingState &state) {
   write_script(document_view_js_asset, state);
 }
 
+void html::write_pagination_script(const WritingState &state) {
+  write_script(pagination_js_asset, state);
+}
+
 void html::write_document_script(const WritingState &state) {
   write_script(document_js_asset, state);
 }
@@ -440,6 +447,10 @@ HtmlResources html::locate_document_resources(const HtmlConfig &config,
   static constexpr std::array dark{document_dark_css_asset,
                                    search_dark_css_asset};
   HtmlResources resources = locate_all(assets, dark, config);
+  if (!spreadsheet) {
+    locate(document_view_js_asset, config, resources);
+    locate(pagination_js_asset, config, resources);
+  }
   if (config.editable) {
     locate(document_js_asset, config, resources);
   }

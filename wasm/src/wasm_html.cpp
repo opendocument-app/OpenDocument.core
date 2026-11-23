@@ -188,6 +188,10 @@ HtmlConfig wasm::to_html_config(const emscripten::val &value) {
   }
   read(value, "hostMessageHandler", config.host_message_handler);
   read(value, "textDocumentMargin", config.text_document_margin);
+  read(value, "textDocumentPagination", config.text_document_pagination);
+  read(value, "textDocumentPageBreaks", config.text_document_page_breaks);
+  read(value, "textDocumentPageBorders", config.text_document_page_borders);
+  read(value, "textDocumentPageAnimation", config.text_document_page_animation);
   read(value, "formatHtml", config.format_html);
   read(value, "lazyLayout", config.lazy_layout);
   read(value, "spreadsheetGrid", config.spreadsheet_grid);

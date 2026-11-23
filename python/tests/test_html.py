@@ -217,3 +217,20 @@ def test_html_view_outlives_service(odt_path):
 
     content, _ = view.write_html()
     assert "Hello from pyodr!" in content
+
+
+def test_pagination_config_reaches_the_html(odt_path):
+    config = pyodr.HtmlConfig()
+    assert not config.text_document_pagination
+    assert config.text_document_page_breaks
+    assert config.text_document_page_borders
+    assert config.text_document_page_animation
+    config.text_document_pagination = True
+    config.text_document_page_breaks = False
+    config.text_document_page_borders = False
+    config.text_document_page_animation = False
+    html = render(odt_path, config)
+    assert 'data-odr-pagination="true"' in html
+    assert 'data-odr-page-breaks="false"' in html
+    assert 'data-odr-page-borders="false"' in html
+    assert 'data-odr-page-animation="false"' in html

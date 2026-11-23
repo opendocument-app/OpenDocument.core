@@ -201,6 +201,11 @@ export interface HtmlConfig {
   /** The function, as a path from `window`, that takes every `odr.on*` callback as a JSON string. */
   hostMessageHandler?: string;
   textDocumentMargin?: boolean;
+  /** Progressive block pagination; runtime controls are odr.pagination. */
+  textDocumentPagination?: boolean;
+  textDocumentPageBreaks?: boolean;
+  textDocumentPageBorders?: boolean;
+  textDocumentPageAnimation?: boolean;
   formatHtml?: boolean;
   /** Lay out only the lines, rows, pages and slides near the viewport; on by default. */
   lazyLayout?: boolean;

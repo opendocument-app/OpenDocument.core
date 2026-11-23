@@ -43,6 +43,10 @@ public final class HtmlConfig {
   public String hostMessageHandler = "";
 
   public boolean textDocumentMargin = false;
+  public boolean textDocumentPagination = false;
+  public boolean textDocumentPageBreaks = true;
+  public boolean textDocumentPageBorders = true;
+  public boolean textDocumentPageAnimation = true;
 
   /** The colors a document renders against. */
   public HtmlColorScheme colorScheme = HtmlColorScheme.LIGHT;

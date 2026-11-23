@@ -140,6 +140,7 @@
   /// holds. @p id is null for a wrapper no operation names.
   function shellCopy(element, id) {
     var copy = element.cloneNode(false);
+    copy.removeAttribute("data-odr-flow-break");
     if (id === null) {
       copy.removeAttribute("data-odr-id");
     } else {

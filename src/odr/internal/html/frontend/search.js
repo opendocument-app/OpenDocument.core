@@ -470,6 +470,7 @@
 
   odr.resetSearch = function () {
     reset();
+    document.dispatchEvent(new CustomEvent("odr-search-state", { detail: { active: false } }));
     notify();
   };
 
@@ -480,6 +481,7 @@
   odr.search = function (text) {
     reset();
     keyword = fold(text === undefined || text === null ? "" : String(text)).text;
+    document.dispatchEvent(new CustomEvent("odr-search-state", { detail: { active: keyword !== "" } }));
     if (keyword === "") {
       notify();
       return 0;

@@ -2,7 +2,10 @@
 
 Status: built.
 
-Related: [`lazy-loading.md`](lazy-loading.md) holds the chunks a page is
+Related: [`pagination.md`](pagination.md) describes progressive text pages and
+their provisional count. Single-page text navigation remains unsupported.
+
+[`lazy-loading.md`](lazy-loading.md) holds the chunks a page is
 laid out in. [`structure-editing.md`](structure-editing.md) holds the slide
 gestures, which have to keep the current page in view.
 
