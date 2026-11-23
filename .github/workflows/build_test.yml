@@ -303,11 +303,7 @@ jobs:
         with:
           python-version: 3.14
       - name: install python dependencies
-        # Pin the transport-deadline fix until the next htmlcmp release.
-        run: >
-          pip install
-          "htmlcmp @ https://github.com/opendocument-app/compare-html/archive/88a71397ab46e1fee3a2e4eb0471f207433fe0cf.tar.gz"
-          opentype-sanitizer==9.2.0
+        run: pip install htmlcmp==2.4.3 opentype-sanitizer==9.2.0
 
       - name: download binaries
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
