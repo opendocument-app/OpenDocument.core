@@ -2629,3 +2629,72 @@ TEST(html, a_sheet_named_document_keeps_its_own_view) {
   EXPECT_NE(page.str().find("second</td>"), std::string::npos);
   EXPECT_EQ(page.str().find("first</td>"), std::string::npos);
 }
+
+TEST(html, pagination_exports_reachable_layouts_and_marginals_once) {
+  const std::string source = R"(<office:document
+    xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+    xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"
+    xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"
+    xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"
+    office:mimetype="application/vnd.oasis.opendocument.text" office:version="1.3">
+    <office:automatic-styles>
+      <style:style style:name="Wide" style:family="paragraph" style:master-page-name="Landscape"/>
+      <style:page-layout style:name="Portrait"><style:page-layout-properties
+        fo:page-width="21cm" fo:page-height="29.7cm" fo:margin-top="2cm"/></style:page-layout>
+      <style:page-layout style:name="Landscape"><style:page-layout-properties
+        fo:page-width="29.7cm" fo:page-height="21cm" fo:margin-bottom="1cm"/></style:page-layout>
+    </office:automatic-styles>
+    <office:master-styles>
+      <style:master-page style:name="Standard" style:page-layout-name="Portrait">
+        <style:header><text:p>Running marginal</text:p></style:header>
+        <style:header-first><text:p>First marginal</text:p></style:header-first>
+        <style:footer><text:p>Footer marginal</text:p></style:footer>
+      </style:master-page>
+      <style:master-page style:name="Landscape" style:page-layout-name="Landscape"/>
+    </office:master-styles>
+    <office:body><office:text><text:p>Portrait body</text:p>
+      <text:p text:style-name="Wide">Landscape body</text:p>
+    </office:text></office:body></office:document>)";
+  const Document document =
+      open(File::from_memory(source)).as_document_file().document();
+  const TextRoot root = document.root_element().as_text_root();
+  const MasterPage first = root.first_master_page();
+  const MasterPage wide = document.root_element()
+                              .first_child()
+                              .next_sibling()
+                              .as_paragraph()
+                              .master_page();
+  HtmlConfig config;
+  config.editable = true;
+  config.embed_shipped_resources = false;
+  std::ostringstream out;
+  html::translate(document, config).list_views().at(0).write_html(out);
+  const std::string page = out.str();
+  const auto occurrences = [&](const std::string &part) {
+    std::size_t n = 0;
+    for (std::size_t pos = page.find(part); pos != std::string::npos;
+         pos = page.find(part, pos + part.size())) {
+      ++n;
+    }
+    return n;
+  };
+  EXPECT_EQ(occurrences("Running marginal"), 1U);
+  EXPECT_EQ(occurrences("First marginal"), 1U);
+  EXPECT_EQ(occurrences("Footer marginal"), 1U);
+  EXPECT_NE(page.find("width:21cm;height:29.7cm"), std::string::npos);
+  EXPECT_NE(page.find("width:29.7cm;height:21cm"), std::string::npos);
+  EXPECT_NE(page.find("margin-top:2cm"), std::string::npos);
+  EXPECT_NE(page.find("margin-bottom:1cm"), std::string::npos);
+  EXPECT_NE(page.find("data-odr-next-layout=\"" +
+                      std::to_string(first.identifier()) + "\""),
+            std::string::npos);
+  EXPECT_NE(page.find("data-odr-page-template=\"" +
+                      std::to_string(wide.identifier()) + "-first\""),
+            std::string::npos);
+  const std::size_t begin = page.find("<template");
+  const std::size_t end = page.rfind("</template>");
+  ASSERT_NE(begin, std::string::npos);
+  ASSERT_NE(end, std::string::npos);
+  EXPECT_EQ(page.substr(begin, end - begin).find("data-odr-id"),
+            std::string::npos);
+}

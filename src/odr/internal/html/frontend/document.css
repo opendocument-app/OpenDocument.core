@@ -40,3 +40,5 @@ x-s{display:inline;white-space-collapse:preserve;tab-size:.5in}
 .odr-page-outer{margin:0;box-shadow:none;break-after:page}
 .odr-page-outer:last-child{break-after:auto}
 }
+/* The templates are inert; without JS the existing flow/page boxes remain. */
+.odr-pagination-original{display:contents}

@@ -30,6 +30,7 @@
 #include <span>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace odr::internal::html {
@@ -888,6 +889,126 @@ private:
   }
 };
 
+/// The browser chooses physical pages; core supplies the reachable master-page
+/// graph, including first-page marginals and changes of paper size.
+class PaginationTemplates final {
+public:
+  PaginationTemplates(HtmlWriter &out, const WritingState &state,
+                      const TextRoot &root)
+      : m_out{&out}, m_state{state}, m_root{root} {
+    m_state.set_editable_markup(false);
+    m_state.set_shared_images(nullptr);
+  }
+
+  void write() {
+    const MasterPage first = m_root.first_master_page();
+    write_template_("root", first, m_root.page_layout(), true);
+    add_(first);
+    for (const Element child : m_root.children()) {
+      if (child.type() == ElementType::paragraph) {
+        add_(child.as_paragraph().master_page());
+      }
+    }
+    for (std::size_t i = 0; i < m_masters.size(); ++i) {
+      const MasterPage master = m_masters[i];
+      add_(master.next_master_page());
+      PageLayout layout = master.page_layout();
+      const PageLayout base = m_root.page_layout();
+      if (!layout.width.has_value()) {
+        layout.width = base.width;
+      }
+      if (!layout.height.has_value()) {
+        layout.height = base.height;
+      }
+      const std::string key = std::to_string(master.identifier());
+      write_template_(key, master, layout, false);
+      write_template_(key + "-first", master, layout, true);
+    }
+    for (const Element marginal : m_marginals) {
+      m_out->write_element_begin(
+          "template", HtmlElementOptions().set_attributes(HtmlAttributesVector{
+                          {"data-odr-marginal-template",
+                           std::to_string(marginal.identifier())}}));
+      translate_children(marginal.children(), m_state);
+      m_out->write_element_end("template");
+    }
+  }
+
+private:
+  HtmlWriter *const m_out;
+  WritingState m_state;
+  TextRoot m_root;
+  std::vector<MasterPage> m_masters;
+  std::unordered_set<ElementIdentifier> m_seen;
+  std::vector<Element> m_marginals;
+
+  void add_(const MasterPage &master) {
+    if (master && m_seen.insert(master.identifier()).second) {
+      m_masters.push_back(master);
+    }
+  }
+
+  void marginal_(const Element &element, const char *clazz,
+                 const std::string &style) {
+    if (!element) {
+      return;
+    }
+    m_out->write_element_begin(
+        "div",
+        HtmlElementOptions().set_class(clazz).set_style(style).set_attributes(
+            HtmlAttributesVector{{"contenteditable", "false"}}));
+    m_out->write_element_begin(
+        "span",
+        HtmlElementOptions().set_attributes(HtmlAttributesVector{
+            {"data-odr-marginal", std::to_string(element.identifier())}}));
+    m_out->write_element_end("span");
+    if (std::ranges::find(m_marginals, element) == m_marginals.end()) {
+      m_marginals.push_back(element);
+    }
+    m_out->write_element_end("div");
+  }
+
+  void write_template_(const std::string &key, const MasterPage &master,
+                       const PageLayout &layout, const bool first) {
+    const MasterPage next = master.next_master_page();
+    const std::string next_key = next ? std::to_string(next.identifier()) +
+                                            (next != master ? "-first" : "")
+                                      : "root";
+    m_out->write_element_begin(
+        "template", HtmlElementOptions().set_attributes(HtmlAttributesVector{
+                        {"data-odr-page-template", key},
+                        {"data-odr-next-layout", next_key},
+                        {"data-odr-master-page",
+                         master ? std::to_string(master.identifier()) : ""}}));
+    m_out->write_element_begin(
+        "div", HtmlElementOptions()
+                   .set_class("odr-page-outer odr-pagination-page odr-page")
+                   .set_style(translate_outer_page_style(layout)));
+    m_out->write_element_begin(
+        "div", HtmlElementOptions()
+                   .set_class("odr-pagination-inner")
+                   .set_style(translate_inner_page_style(layout)));
+    Element header = master.header();
+    Element footer = master.footer();
+    if (first && header && master.first_header()) {
+      header = master.first_header();
+    }
+    if (first && footer && master.first_footer()) {
+      footer = master.first_footer();
+    }
+    marginal_(header, "odr-pagination-header",
+              translate_page_header_style(layout));
+    m_out->write_element_begin(
+        "div", HtmlElementOptions().set_class("odr-pagination-body"));
+    m_out->write_element_end("div");
+    marginal_(footer, "odr-pagination-footer",
+              translate_page_footer_style(layout));
+    m_out->write_element_end("div");
+    m_out->write_element_end("div");
+    m_out->write_element_end("template");
+  }
+};
+
 class TextHtmlFragment final : public HtmlFragmentBase {
 public:
   explicit TextHtmlFragment(std::string name, const std::size_t index,
@@ -906,6 +1027,8 @@ public:
     const Element root = m_document.root_element();
     const TextRoot element = root.as_text_root();
 
+    out.write_element_begin(
+        "div", HtmlElementOptions().set_class("odr-pagination-original"));
     if (state.config().text_document_margin) {
       PageBoxWriter(out, state, element).write();
     } else {
@@ -914,6 +1037,8 @@ public:
       translate_children(element.children(), state);
       out.write_element_end("div");
     }
+    out.write_element_end("div");
+    PaginationTemplates(out, state, element).write();
   }
 
 protected:

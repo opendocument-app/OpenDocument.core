@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Text HTML exposes inert page-layout and marginal templates, plus authored
+  master-page transitions and explicit-break markers, for browser pagination.
+  Existing visible page layout is unchanged.
+
 ### Documents
 
 - DOCX text resolves major/minor Latin theme fonts from the document's theme

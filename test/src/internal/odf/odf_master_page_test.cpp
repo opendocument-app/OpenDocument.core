@@ -40,7 +40,17 @@ std::string html_of(const std::string &source, const bool editable = false) {
       .list_views()
       .at(0)
       .write_html(html);
-  return html.str();
+  // These checks concern the visible fallback, not inert pagination templates
+  // or the selectors and strings in embedded styles/scripts.
+  std::string visible = html.str();
+  visible = visible.substr(visible.find("<body"));
+  visible.resize(visible.find("<script"));
+  for (std::size_t at = visible.find("<template"); at != std::string::npos;
+       at = visible.find("<template")) {
+    const std::size_t end = visible.find("</template>", at);
+    visible.erase(at, end + std::string_view("</template>").size() - at);
+  }
+  return visible;
 }
 
 /// A paragraph style naming the master page @p master_page.
