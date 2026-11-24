@@ -895,7 +895,7 @@ class PaginationTemplates final {
 public:
   PaginationTemplates(HtmlWriter &out, const WritingState &state,
                       const TextRoot &root)
-      : m_out(out), m_state(state), m_root(root) {
+      : m_out{&out}, m_state{state}, m_root{root} {
     m_state.set_editable_markup(false);
     m_state.set_shared_images(nullptr);
   }
@@ -925,17 +925,17 @@ public:
       write_template_(key + "-first", master, layout, true);
     }
     for (const Element marginal : m_marginals) {
-      m_out.write_element_begin(
+      m_out->write_element_begin(
           "template", HtmlElementOptions().set_attributes(HtmlAttributesVector{
                           {"data-odr-marginal-template",
                            std::to_string(marginal.identifier())}}));
       translate_children(marginal.children(), m_state);
-      m_out.write_element_end("template");
+      m_out->write_element_end("template");
     }
   }
 
 private:
-  HtmlWriter &m_out;
+  HtmlWriter *const m_out;
   WritingState m_state;
   TextRoot m_root;
   std::vector<MasterPage> m_masters;
@@ -953,19 +953,19 @@ private:
     if (!element) {
       return;
     }
-    m_out.write_element_begin(
+    m_out->write_element_begin(
         "div",
         HtmlElementOptions().set_class(clazz).set_style(style).set_attributes(
             HtmlAttributesVector{{"contenteditable", "false"}}));
-    m_out.write_element_begin(
+    m_out->write_element_begin(
         "span",
         HtmlElementOptions().set_attributes(HtmlAttributesVector{
             {"data-odr-marginal", std::to_string(element.identifier())}}));
-    m_out.write_element_end("span");
+    m_out->write_element_end("span");
     if (std::ranges::find(m_marginals, element) == m_marginals.end()) {
       m_marginals.push_back(element);
     }
-    m_out.write_element_end("div");
+    m_out->write_element_end("div");
   }
 
   void write_template_(const std::string &key, const MasterPage &master,
@@ -974,17 +974,17 @@ private:
     const std::string next_key = next ? std::to_string(next.identifier()) +
                                             (next != master ? "-first" : "")
                                       : "root";
-    m_out.write_element_begin(
+    m_out->write_element_begin(
         "template", HtmlElementOptions().set_attributes(HtmlAttributesVector{
                         {"data-odr-page-template", key},
                         {"data-odr-next-layout", next_key},
                         {"data-odr-master-page",
                          master ? std::to_string(master.identifier()) : ""}}));
-    m_out.write_element_begin(
+    m_out->write_element_begin(
         "div", HtmlElementOptions()
                    .set_class("odr-page-outer odr-pagination-page odr-page")
                    .set_style(translate_outer_page_style(layout)));
-    m_out.write_element_begin(
+    m_out->write_element_begin(
         "div", HtmlElementOptions()
                    .set_class("odr-pagination-inner")
                    .set_style(translate_inner_page_style(layout)));
@@ -998,14 +998,14 @@ private:
     }
     marginal_(header, "odr-pagination-header",
               translate_page_header_style(layout));
-    m_out.write_element_begin(
+    m_out->write_element_begin(
         "div", HtmlElementOptions().set_class("odr-pagination-body"));
-    m_out.write_element_end("div");
+    m_out->write_element_end("div");
     marginal_(footer, "odr-pagination-footer",
               translate_page_footer_style(layout));
-    m_out.write_element_end("div");
-    m_out.write_element_end("div");
-    m_out.write_element_end("template");
+    m_out->write_element_end("div");
+    m_out->write_element_end("div");
+    m_out->write_element_end("template");
   }
 };
 
