@@ -1839,6 +1839,17 @@
         return false;
       }
     }
+    if (view.compositionStart()) return true;
+    // A native caret may sit beside a run, at the paragraph's edge.
+    var place = caret || at.start;
+    if (place.run === null) return false;
+    var selection = view.capture();
+    var point = {
+      element: place.run,
+      offset: place.offset,
+      affinity: selection && selection.focus.affinity,
+    };
+    view.restore({ anchor: point, focus: point });
     return view.compositionStart();
   }
 

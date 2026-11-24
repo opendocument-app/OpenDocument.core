@@ -118,6 +118,51 @@ const { chromium, firefox } = require(
       console.log(
         "PASS native composition replaces a split selection as one undo gesture",
       );
+      for (const mode of [
+        "paragraph-start",
+        "paragraph-end",
+        "empty-run",
+        "empty-paragraph",
+      ]) {
+        await page.reload();
+        await page.evaluate((mode) => {
+          const paragraph = odr.documentView.source.querySelector("x-p");
+          if (mode === "empty-run")
+            paragraph.querySelector("x-s").textContent = "";
+          if (mode === "empty-paragraph") paragraph.innerHTML = "<br>";
+        }, mode);
+        await page.evaluate((mode) => {
+          const paragraph = document.querySelector("#projection x-p");
+          document.body.focus();
+          const offset =
+            mode === "paragraph-end" ? paragraph.childNodes.length : 0;
+          getSelection().setBaseAndExtent(paragraph, offset, paragraph, offset);
+        }, mode);
+        const before = mode.startsWith("empty") ? "" : initial;
+        const offset = mode === "paragraph-end" ? 8 : 0;
+        const after = before.slice(0, offset) + "漢" + before.slice(offset);
+        await client.send("Input.imeSetComposition", {
+          text: "漢",
+          selectionStart: 1,
+          selectionEnd: 1,
+        });
+        await client.send("Input.insertText", { text: "漢" });
+        assert.equal(await text(), after);
+        const ops = await page.evaluate(
+          () => JSON.parse(odr.generateDiff()).ops,
+        );
+        assert.equal(ops.length, 1);
+        assert.equal(ops[0].text, after);
+        assert.equal(
+          ops[0].op,
+          mode === "empty-paragraph" ? "insertText" : "setText",
+        );
+        await page.evaluate(() => odr.editing.undo());
+        assert.equal(await text(), before);
+        await page.evaluate(() => odr.editing.redo());
+        assert.equal(await text(), after);
+        console.log("PASS native composition at " + mode);
+      }
     }
     assert.deepEqual(errors, []);
   } finally {

@@ -37,8 +37,10 @@
               [8, map.length],
             ]
           : [[0, map.length]]) {
-          const fragment = paragraph.cloneNode(false);
-          fragment.append(view.range(map, start, end).cloneContents());
+          const whole = start === 0 && end === map.length;
+          const fragment = paragraph.cloneNode(whole);
+          if (!whole)
+            fragment.append(view.range(map, start, end).cloneContents());
           display.append(view.bind(fragment, paragraph, start, end));
         }
       }
