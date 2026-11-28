@@ -34,7 +34,7 @@ describe('render', () => {
     }
   });
 
-  it('passes pagination defaults to the rendered view', () => {
+  it('passes pagination options to the rendered view', () => {
     const doc = odr.open(minimalOdt(), {
       textDocumentPagination: true,
       textDocumentPageBreaks: false,

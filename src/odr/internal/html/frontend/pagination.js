@@ -797,7 +797,13 @@
     );
   });
   window.addEventListener("scroll", schedule, { passive: true });
-  window.addEventListener("resize", invalidate);
+  var width = window.innerWidth;
+  window.addEventListener("resize", function () {
+    // A soft keyboard changes only the height, which no page depends on.
+    if (window.innerWidth === width) return schedule();
+    width = window.innerWidth;
+    invalidate();
+  });
   root.addEventListener(
     "load",
     function (event) {

@@ -2,9 +2,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { chromium, firefox } = require(
-  process.env.PLAYWRIGHT_MODULE || "playwright",
-);
+const { run } = require("./browser.cjs");
 const assets = path.resolve(__dirname, "../../../src/odr/internal/html/frontend");
 const read = (name) => fs.readFileSync(path.join(assets, name), "utf8");
 function template(key, width) {
@@ -24,16 +22,8 @@ function fixture({ enabled = true, fit = "auto", width = "", pin = "" } = {}) {
     </div>${["document-view.js", "pagination.js", "viewport.js"]
       .map((name) => `<script>${read(name)}</script>`).join("")}`;
 }
-(async () => {
-  const engine = process.env.BROWSER === "firefox" ? firefox : chromium;
-  const browser = await engine.launch({
-    headless: true,
-    executablePath: process.env.BROWSER_EXECUTABLE || undefined,
-  });
-  try {
-    const page = await browser.newPage({ viewport: { width: 1000, height: 800 } });
-    const errors = [];
-    page.on("pageerror", (error) => errors.push(error.message));
+run(
+  async ({ page }) => {
     async function load(options) {
       await page.setContent('<iframe style="width:380px;height:700px;border:0"></iframe>');
       await page.locator("iframe").evaluate((frame, html) => {
@@ -104,12 +94,7 @@ function fixture({ enabled = true, fit = "auto", width = "", pin = "" } = {}) {
     assert.equal(await pinned.evaluate(() => odr.getZoom()), 1.1);
     await pinned.evaluate(() => odr.resetZoom());
     await fitted(pinned);
-    assert.deepEqual(errors, []);
     console.log("PASS pagination iframe fitting, runtime toggles, mixed widths and zoom policy");
-  } finally {
-    await browser.close();
-  }
-})().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+  },
+  { width: 1000 },
+);

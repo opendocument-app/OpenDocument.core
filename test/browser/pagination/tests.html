@@ -235,6 +235,21 @@
         return api.getState().active;
       });
       check(true, "pagination resumes after printing");
+      await until(function () {
+        return api.getState().pageCount > 0;
+      });
+      var kept = d.querySelector(".odr-pagination-page");
+      frame.style.height = "400px";
+      await delay(250);
+      frame.style.height = "600px";
+      await delay(250);
+      check(kept.isConnected, "a height-only resize keeps the pages");
+      frame.style.width = "700px";
+      await until(function () {
+        return !kept.isConnected && api.getState().active;
+      });
+      frame.style.width = "800px";
+      check(true, "a width resize lays the pages out again");
       api.setOptions({ enabled: false });
       var paragraph = d.createElement("x-p");
       paragraph.setAttribute("data-odr-id", "3001");

@@ -204,7 +204,7 @@ class HtmlTest {
   @Test
   void paginationConfigReachesTheHtml() throws IOException {
     HtmlConfig config = new HtmlConfig();
-    assertTrue(!config.textDocumentPagination);
+    assertFalse(config.textDocumentPagination);
     assertTrue(config.textDocumentPageBreaks);
     assertTrue(config.textDocumentPageBorders);
     assertTrue(config.textDocumentPageAnimation);
@@ -221,9 +221,9 @@ class HtmlTest {
         HtmlService service = Html.translate(file, config)) {
       HtmlConfig readBack = service.config();
       assertTrue(readBack.textDocumentPagination);
-      assertTrue(!readBack.textDocumentPageBreaks);
-      assertTrue(!readBack.textDocumentPageBorders);
-      assertTrue(!readBack.textDocumentPageAnimation);
+      assertFalse(readBack.textDocumentPageBreaks);
+      assertFalse(readBack.textDocumentPageBorders);
+      assertFalse(readBack.textDocumentPageAnimation);
     }
   }
 

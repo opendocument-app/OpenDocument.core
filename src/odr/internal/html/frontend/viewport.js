@@ -21,7 +21,8 @@
   var measures = stated === "view" || (stated === "auto" && framed);
   var fit = measures ? 1 : parseFloat(stated) || 1;
   var paginationRoot = document.querySelector("[data-odr-pagination]");
-  var pageFit = paginationRoot && paginationRoot.getAttribute("data-odr-page-fit");
+  var pageFit =
+    paginationRoot && paginationRoot.getAttribute("data-odr-page-fit");
   var fitWidth = 0;
 
   function paginationFit() {
@@ -773,7 +774,27 @@
     }, 100);
   }
 
-  if (pageList.length > 0 || document.querySelector("[data-odr-pagination]")) {
+  // An insert, a removal, a move or their undo: a removed current page
+  // hands over to the one now in its place, else the one before.
+  function refreshPages() {
+    var previous = applied();
+    paginationFit();
+    if (measures && pinned === null) fit = measureFit();
+    // Ordinary edits must not restart scroll restoration at an unchanged fit.
+    if (Math.abs(applied() - previous) > 0.000001) {
+      apply(anchor());
+    }
+    if (pageList.length === 0) {
+      currentPage = null;
+    } else if (currentPage === null || !currentPage.isConnected) {
+      mark(pageList[Math.min(currentIndex, pageList.length - 1)]);
+    } else {
+      currentIndex = pageIndex(currentPage);
+    }
+    pageChanged();
+  }
+
+  if (paginationRoot !== null || pageList.length > 0) {
     reported = {
       page: currentPage === null ? null : pageIndex(currentPage),
       count: pageList.length,
@@ -795,25 +816,6 @@
       }
     });
 
-    // An insert, a removal, a move or their undo: a removed current page
-    // hands over to the one now in its place, else the one before.
-    function refreshPages() {
-      var previous = applied();
-      paginationFit();
-      if (measures && pinned === null) fit = measureFit();
-      // Ordinary edits must not restart scroll restoration at an unchanged fit.
-      if (Math.abs(applied() - previous) > 0.000001) {
-        apply(anchor());
-      }
-      if (pageList.length === 0) {
-        currentPage = null;
-      } else if (currentPage === null || !currentPage.isConnected) {
-        mark(pageList[Math.min(currentIndex, pageList.length - 1)]);
-      } else {
-        currentIndex = pageIndex(currentPage);
-      }
-      pageChanged();
-    }
     document.addEventListener("odr-pagination-change", refreshPages);
     if (typeof MutationObserver === "function" && pageList.length > 0) {
       new MutationObserver(refreshPages).observe(pageList[0].parentNode, {
