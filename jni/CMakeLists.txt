@@ -178,6 +178,7 @@ add_jar(odr_java
         "java/app/opendocument/core/TextPathMode.java"
         "java/app/opendocument/core/TextRoot.java"
         "java/app/opendocument/core/TextStyle.java"
+        "java/app/opendocument/core/TableLayout.java"
         "java/app/opendocument/core/TextWrap.java"
         "java/app/opendocument/core/ValueType.java"
         "java/app/opendocument/core/VerticalAlign.java"

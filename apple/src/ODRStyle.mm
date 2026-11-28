@@ -40,6 +40,8 @@ ODR_SAME_ENUM(ODRVerticalAlignMiddle, odr::VerticalAlign::middle);
 ODR_SAME_ENUM(ODRVerticalAlignBottom, odr::VerticalAlign::bottom);
 ODR_SAME_ENUM(ODRPrintOrientationPortrait, odr::PrintOrientation::portrait);
 ODR_SAME_ENUM(ODRPrintOrientationLandscape, odr::PrintOrientation::landscape);
+ODR_SAME_ENUM(ODRTableLayoutAutomatic, odr::TableLayout::automatic);
+ODR_SAME_ENUM(ODRTableLayoutFixed, odr::TableLayout::fixed);
 ODR_SAME_ENUM(ODRTextWrapNone, odr::TextWrap::none);
 ODR_SAME_ENUM(ODRTextWrapBefore, odr::TextWrap::before);
 ODR_SAME_ENUM(ODRTextWrapAfter, odr::TextWrap::after);
@@ -319,6 +321,7 @@ odr::Color unbox_color(NSValue *const value) {
 + (instancetype)styleWithHandle:(const odr::TableStyle &)handle {
   ODRTableStyle *const result = [[ODRTableStyle alloc] init];
   result->_width = box(handle.width);
+  result->_layout = box_enum(handle.layout);
   result->_border = [ODRDirectionalString directionalWithHandle:handle.border];
   result->_borderInsideHorizontal = box_string(handle.border_inside_horizontal);
   result->_borderInsideVertical = box_string(handle.border_inside_vertical);

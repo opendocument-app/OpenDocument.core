@@ -508,6 +508,9 @@ std::string html::translate_table_style(const TableStyle &table_style) {
       width.has_value()) {
     result.append("width:").append(css_length(*width)).append(";");
   }
+  if (table_style.layout == TableLayout::fixed) {
+    result.append("table-layout:fixed;");
+  }
   return result;
 }
 

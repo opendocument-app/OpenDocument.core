@@ -529,13 +529,16 @@ void html::translate_list_item(const Element &element,
 
 void html::translate_table(const Element &element, const WritingState &state) {
   const Table table = element.as_table();
+  const TableStyle table_style = table.style();
+  // Word and LibreOffice clip what overflows a fixed column.
+  const bool clip_cells = table_style.layout == TableLayout::fixed;
 
   state.out().write_element_begin(
       "table",
       HtmlElementOptions()
           .set_attributes(HtmlAttributesVector{
               {"cellpadding", "0"}, {"border", "0"}, {"cellspacing", "0"}})
-          .set_style(translate_table_style(table.style())));
+          .set_style(translate_table_style(table_style)));
 
   for (Element column : table.columns()) {
     TableColumn table_column = column.as_table_column();
@@ -574,8 +577,14 @@ void html::translate_table(const Element &element, const WritingState &state) {
                   clb("rowspan", std::to_string(cell_span.rows));
                 }
               })
-              .set_style(translate_table_cell_style(
-                  table_cell.style(), writes_dark_style(state.config()))));
+              .set_style([&] {
+                std::string style = translate_table_cell_style(
+                    table_cell.style(), writes_dark_style(state.config()));
+                if (clip_cells) {
+                  style.append("overflow:hidden;");
+                }
+                return style;
+              }()));
 
       translate_children(cell.children(), state);
 

@@ -363,6 +363,56 @@ TEST(ooxml_text_style, table_borders_through_the_style_reference) {
   EXPECT_EQ("1pt solid #000000", style.border_inside_horizontal);
 }
 
+/// [ECMA-376] 17.4.53
+TEST(ooxml_text_style, table_layout) {
+  const auto layout = [](const char *xml) {
+    pugi::xml_document document;
+    return StyleRegistry()
+        .partial_table_style(node_of(xml, document))
+        .table_style.layout;
+  };
+
+  EXPECT_EQ(TableLayout::fixed,
+            layout(R"(<w:tbl><w:tblPr><w:tblLayout w:type="fixed"/>)"
+                   R"(</w:tblPr></w:tbl>)"));
+  EXPECT_EQ(TableLayout::automatic,
+            layout(R"(<w:tbl><w:tblPr><w:tblLayout w:type="autofit"/>)"
+                   R"(</w:tblPr></w:tbl>)"));
+  EXPECT_FALSE(layout(R"(<w:tbl><w:tblPr/></w:tbl>)").has_value());
+}
+
+/// A table wider than the fixed cell it sits in must not widen that column.
+TEST(ooxml_text_style, a_fixed_table_clips_its_cells_in_html) {
+  using namespace odr::internal;
+  auto files = std::make_shared<VirtualFilesystem>();
+  files->copy(
+      std::make_shared<MemoryFile>(
+          R"(<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>)"
+          R"(<w:tbl><w:tblPr><w:tblW w:w="1440" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr>)"
+          R"(<w:tblGrid><w:gridCol w:w="720"/><w:gridCol w:w="720"/></w:tblGrid><w:tr>)"
+          R"(<w:tc><w:tbl><w:tblPr><w:tblW w:w="9000" w:type="dxa"/></w:tblPr>)"
+          R"(<w:tblGrid><w:gridCol w:w="9000"/></w:tblGrid>)"
+          R"(<w:tr><w:tc><w:p/></w:tc></w:tr></w:tbl><w:p/></w:tc>)"
+          R"(<w:tc><w:p/></w:tc></w:tr></w:tbl></w:body></w:document>)"),
+      AbsPath("/word/document.xml"));
+  const odr::Document document(
+      std::make_shared<odr::internal::ooxml::text::Document>(
+          files, EncryptionState::not_encrypted));
+
+  std::ostringstream out;
+  html::translate(document, {}).list_views().at(0).write_html(out);
+  const std::string html = out.str();
+
+  const std::size_t outer =
+      html.find("<table style=\"width:1in;table-layout:fixed;\"");
+  ASSERT_NE(std::string::npos, outer);
+  const std::size_t inner = html.find("<table", outer + 1);
+  ASSERT_NE(std::string::npos, inner);
+  EXPECT_NE(std::string::npos,
+            html.substr(outer, inner - outer).find("overflow:hidden;"));
+  EXPECT_EQ(std::string::npos, html.find("table-layout:fixed", inner));
+}
+
 /// `nil` and `none` draw nothing, `auto` leaves the colour to the text.
 TEST(ooxml_text_style, a_cell_border_of_nil_is_not_silence) {
   pugi::xml_document document;

@@ -62,6 +62,11 @@ typedef NS_ENUM(NSInteger, ODRPrintOrientation) {
   ODRPrintOrientationLandscape,
 } NS_SWIFT_NAME(PrintOrientation);
 
+typedef NS_ENUM(NSInteger, ODRTableLayout) {
+  ODRTableLayoutAutomatic = 0,
+  ODRTableLayoutFixed,
+} NS_SWIFT_NAME(TableLayout);
+
 typedef NS_ENUM(NSInteger, ODRTextWrap) {
   ODRTextWrapNone = 0,
   ODRTextWrapBefore,
@@ -219,6 +224,8 @@ NS_SWIFT_NAME(ParagraphStyle)
 NS_SWIFT_NAME(TableStyle)
 @interface ODRTableStyle : NSObject
 @property(nonatomic, readonly, nullable) ODRMeasure *width;
+/// `ODRTableLayout`, boxed.
+@property(nonatomic, readonly, nullable) NSNumber *layout;
 @property(nonatomic, readonly) ODRDirectionalString *border;
 @property(nonatomic, readonly, nullable, copy) NSString *borderInsideHorizontal;
 @property(nonatomic, readonly, nullable, copy) NSString *borderInsideVertical;

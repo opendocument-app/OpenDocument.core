@@ -85,6 +85,12 @@ enum class PrintOrientation {
   landscape,
 };
 
+/// Collection of table layouts.
+enum class TableLayout {
+  automatic, ///< Columns grow to fit their content.
+  fixed,     ///< Columns keep their stated widths; wider content is clipped.
+};
+
 /// Collection of text wrapping options.
 enum class TextWrap {
   none,
@@ -194,6 +200,7 @@ struct ParagraphStyle final {
 /// Represents a style for tables.
 struct TableStyle final {
   std::optional<Measure> width;
+  std::optional<TableLayout> layout;
   /// The frame around the table, and the rules between its rows and columns.
   /// @note What the table states; the cells are what draws it, through
   /// @ref TableCellStyle::border.
