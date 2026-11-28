@@ -51,7 +51,7 @@ x-s{display:inline;white-space-collapse:preserve;tab-size:.5in}
 .odr-pagination-body{display:flow-root;flex:1;min-height:0}
 .odr-pagination-header,.odr-pagination-footer{display:flow-root;flex:none}
 .odr-pagination-pending{margin:auto}
-.odr-pagination-pending>x-p,.odr-pagination-pending>table{content-visibility:auto;contain-intrinsic-block-size:auto 3em}
+.odr-pagination-chunk{content-visibility:auto}
 .odr-pagination-active:not(.odr-pagination-borders) .odr-pagination-page{box-shadow:none}
 @media screen and (prefers-reduced-motion:no-preference){
 .odr-pagination-animate .odr-pagination-page{animation:odr-page-appear .16s ease-out}
