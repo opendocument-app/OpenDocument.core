@@ -1,12 +1,22 @@
-# Source/view editing checks
+# source/view editing checks
 
-Run `test/browser/document-view/serve`, then `node test/browser/document-view/check.cjs`.
-Set `PLAYWRIGHT_MODULE` to an installed Playwright module, `BROWSER_EXECUTABLE` to
-the browser path, and `BROWSER=firefox` to use Firefox instead of Chromium.
+These check the text editor through `document-view.js` with a projection
+connected, which the text checks never do.
 
-The fixture projects paragraphs into fragments at a fixed UTF-16 offset. It has
-no paginator: these checks isolate the editor/adapter contract from page layout.
-They exercise native input, directional selection, structural edits, formatting,
-undo/redo, and Chromium's native composition path, including paragraph edges and
-empty paragraphs. The original run is always authoritative; the test verifies
-full text and exported operations.
+```bash
+test/browser/document-view/serve    # serves on :8756
+PLAYWRIGHT_MODULE=/path/to/node_modules/playwright \
+  node test/browser/document-view/check.cjs
+```
+
+Unlike the other directories, this is a script and not a page: native typing
+and IME composition need trusted input, which only a browser driver can send
+(`Input.imeSetComposition` over CDP). `BROWSER=firefox` runs every check but
+composition in Firefox; `BROWSER_EXECUTABLE` picks a browser binary.
+
+`fixture.html` splits each paragraph into fragments at a fixed UTF-16 offset,
+so the checks pin the editor/adapter contract without a paginator. Each check
+compares the source run's full text, the projected text and the exported
+operations: typing, directional selection, Unicode deletion, paragraph split
+and merge, formatting, undo/redo, and composition at paragraph edges and in
+empty runs and paragraphs.
