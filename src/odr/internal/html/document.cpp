@@ -163,6 +163,19 @@ TextDirection document_direction(const Document &document) {
   return result.value_or(TextDirection::left_to_right);
 }
 
+/// Who fits a paginated text page to the width, as `viewport.js` reads it.
+const char *page_fit_name(const WidthFit fit) {
+  switch (fit) {
+  case WidthFit::browser:
+    return "auto";
+  case WidthFit::view:
+    return "view";
+  case WidthFit::none:
+    break;
+  }
+  return "none";
+}
+
 /// A spreadsheet answers the viewport question with its own mode.
 std::optional<HtmlViewportMode>
 viewport_mode_override(const Document &document, const HtmlConfig &config) {
@@ -323,9 +336,7 @@ void write_body_begin(const Document &document, const WritingState &state) {
         HtmlElementOptions()
             .set_class(config.text_document_margin ? "odr-pages" : "")
             .set_attributes(HtmlAttributesVector{
-                {"data-odr-page-fit", page_fit == WidthFit::browser ? "auto"
-                                      : page_fit == WidthFit::view  ? "view"
-                                                                    : "none"},
+                {"data-odr-page-fit", page_fit_name(page_fit)},
                 {"data-odr-page-fit-width",
                  page_fit == WidthFit::browser &&
                          config.viewport_width.has_value()

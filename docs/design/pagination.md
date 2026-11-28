@@ -79,8 +79,9 @@ reflow restores the saved scroll offset instead. The column temporarily retains
 its height until the visible pages are rebuilt, so an intermediate frame cannot
 clamp that offset. Unformatted remainders are not used as reading anchors.
 
-Font completion, image loading and resize invalidate pagination, coalesced into
-one restart. They currently restart from the source, rather than invalidating
+Font completion, image loading and a width change invalidate pagination,
+coalesced into one restart. A height-only resize, such as a soft keyboard
+opening, keeps the pages. They currently restart from the source, rather than invalidating
 only an affected suffix. Previously measured pages remain in the DOM; this is
 progressive layout, not a sliding DOM window.
 
