@@ -143,19 +143,58 @@
     if (end < item.map.length) clone.style.marginBottom = "0";
     return view.bind(clone, item.node, start, end);
   }
-  function tail(item, offset) {
-    if (item.tail) item.tail.remove();
+  // The unformatted blocks sit in chunks that skip layout while offscreen, so
+  // measuring a page does not lay out every block still after it. Chrome also
+  // walks every `content-visibility` element on each style update, which is
+  // why the chunks carry it rather than each block.
+  var chunkSize = 64;
+  function estimate(chunk) {
+    // 3em a block until the chunk is shown, then the size it was shown at
+    chunk.style.containIntrinsicBlockSize =
+      "auto " + 3 * chunk.childElementCount + "em";
+  }
+  function appendPending(node) {
+    var chunk = pending.lastElementChild;
+    if (!chunk || chunk.childElementCount >= chunkSize) {
+      chunk = document.createElement("div");
+      chunk.className = "odr-pagination-chunk";
+      pending.appendChild(chunk);
+    }
+    chunk.appendChild(node);
+    estimate(chunk);
+  }
+  function leavePending(node) {
+    var chunk = node.parentNode;
+    node.remove();
+    if (chunk && chunk.parentNode === pending) {
+      if (chunk.firstChild) estimate(chunk);
+      else chunk.remove();
+    }
+  }
+  /// The pending block after @p node, across chunks.
+  function nextPending(node) {
+    if (node.nextSibling) return node.nextSibling;
+    for (var c = node.parentNode.nextSibling; c; c = c.nextSibling) {
+      if (c.firstChild) return c.firstChild;
+    }
+    return null;
+  }
+  function dropTail(item) {
+    if (item.tail) leavePending(item.tail);
     item.tail = null;
+  }
+  /// With @p detached, the caller places the new tail.
+  function tail(item, offset, detached) {
+    dropTail(item);
     if (offset < item.map.length || (offset === 0 && item.map.length === 0)) {
       item.tail = fragment(item, offset, item.map.length);
-      pending.appendChild(item.tail);
+      if (!detached) appendPending(item.tail);
     }
   }
   function accept(item, clone, end) {
     item.views.push(clone);
     if (end === item.map.length) {
-      if (item.tail) item.tail.remove();
-      item.tail = null;
+      dropTail(item);
     } else if (item.tail) {
       range(textMap(item.tail), 0, end - item.offset).deleteContents();
       view.bind(item.tail, item.node, end, item.map.length);
@@ -234,21 +273,26 @@
       ? odr.getViewportRect(node)
       : node.getBoundingClientRect();
   }
-  function readingPosition() {
+  /// Restores the scroll position after layout. With @p anchored, it follows
+  /// the text at the top of the viewport; otherwise it keeps the offset.
+  function readingPosition(anchored) {
     var scrollLeft = window.scrollX,
       scrollTop = window.scrollY;
-    var x = window.innerWidth / 2,
-      y = Math.min(80, window.innerHeight / 4);
-    var caret = document.caretPositionFromPoint
-      ? document.caretPositionFromPoint(x, y)
-      : null;
-    var r =
-      !caret && document.caretRangeFromPoint
-        ? document.caretRangeFromPoint(x, y)
+    var point = null;
+    if (anchored) {
+      var x = window.innerWidth / 2,
+        y = Math.min(80, window.innerHeight / 4);
+      var caret = document.caretPositionFromPoint
+        ? document.caretPositionFromPoint(x, y)
         : null;
-    var node = caret ? caret.offsetNode : r && r.startContainer;
-    var offset = caret ? caret.offset : r && r.startOffset;
-    var point = node && view.sourcePoint(node, offset);
+      var r =
+        !caret && document.caretRangeFromPoint
+          ? document.caretRangeFromPoint(x, y)
+          : null;
+      var node = caret ? caret.offsetNode : r && r.startContainer;
+      var offset = caret ? caret.offset : r && r.startOffset;
+      point = node && view.sourcePoint(node, offset);
+    }
     function top() {
       var at = point && projectedPoint(point);
       if (!at || pending.contains(at[0])) return null;
@@ -469,11 +513,24 @@
     frame = 0;
     if (!active || view.isComposing() || !near()) return;
     var selection = view.capture();
-    restorePosition = restorePosition || readingPosition();
-    var deadline = performance.now() + 6,
-      steps = 0;
+    // Without an edit, a step only adds pages at the frontier: text above it
+    // stays put, and pending text below it has no anchor.
+    restorePosition = restorePosition || readingPosition(false);
+    var deadline = performance.now() + 6;
+    // A page keeps its height until it is oversized, so only a new or grown
+    // page can carry the frontier away; scroll anchoring moves pages only while
+    // the frontier is above the viewport, where it stays near either way.
+    var measured = null,
+      wasNear = true;
+    function stillNear() {
+      if (current !== measured || current.oversized) {
+        measured = current;
+        wasNear = near();
+      }
+      return wasNear;
+    }
     if (current === null) page(restartKey);
-    while (index < queue.length && near() && steps++ < 24) {
+    while (index < queue.length && stillNear()) {
       var item = queue[index],
         node = item.node,
         style = getComputedStyle(node);
@@ -517,8 +574,7 @@
           ++index;
         } else pendingBreak = false;
       } else if (marker) {
-        if (item.tail) item.tail.remove();
-        item.tail = null;
+        dropTail(item);
         pendingBreak = options.explicitBreaks;
         ++index;
       } else {
@@ -567,7 +623,7 @@
       return;
     }
     // Removing page boxes can immediately clamp the browser's scroll offset.
-    var restorePosition = readingPosition();
+    var restorePosition = readingPosition(true);
     // Keep the scroll range until budgeted reflow has rebuilt the visible pages.
     column.style.minHeight = column.offsetHeight + "px";
     pause();
@@ -668,7 +724,7 @@
       item.views = item.views.filter(function (n) {
         return n.isConnected;
       });
-      if (!nextSet.has(item) && item.tail) item.tail.remove();
+      if (!nextSet.has(item)) dropTail(item);
     });
     queue = next;
     current = null;
@@ -684,17 +740,44 @@
         item.text = item.node.textContent;
       }
       if (!item.tail || item.offset !== offset || changed.has(item))
-        tail(item, offset);
+        tail(item, offset, true);
       item.offset = offset;
     }
-    var following = null;
+    // New tails go in as one batch per run, before the tail that follows them.
+    var following = null,
+      batch = null;
+    function place() {
+      if (batch === null) return;
+      var first = batch.firstChild;
+      if (following) {
+        following.parentNode.insertBefore(batch, following);
+        estimate(following.parentNode);
+      } else {
+        while (batch.firstChild) appendPending(batch.firstChild);
+      }
+      following = first;
+      batch = null;
+    }
     for (var k = queue.length - 1; k >= index; --k) {
       var remaining = queue[k].tail;
       if (!remaining) continue;
-      if (remaining.nextSibling !== following)
-        pending.insertBefore(remaining, following);
+      if (!remaining.parentNode) {
+        batch = batch || document.createDocumentFragment();
+        batch.insertBefore(remaining, batch.firstChild);
+        continue;
+      }
+      place();
+      if (nextPending(remaining) !== following) {
+        var chunk = remaining.parentNode;
+        if (following) following.parentNode.insertBefore(remaining, following);
+        else appendPending(remaining);
+        if (following) estimate(following.parentNode);
+        if (!chunk.firstChild) chunk.remove();
+        else estimate(chunk);
+      }
       following = remaining;
     }
+    place();
     // Render the affected visible area now; distant pages remain frame-budgeted.
     step(restorePosition);
     view.restore(selection);

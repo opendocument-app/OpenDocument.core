@@ -59,12 +59,16 @@ suppress authored layout changes.
 
 ## Work near the viewport
 
-Each animation frame processes at most 24 blocks/fragments and targets six
-milliseconds of work. One browser layout operation can exceed that budget.
-Pagination stops when the current page ends more than two viewport heights
-below the visible viewport. Scrolling advances the frontier. Unvisited source
-blocks remain in an estimated flow using content visibility, so the scrollbar
-and final page count can change as the document is formatted.
+Each animation frame processes blocks/fragments for six milliseconds; one
+browser layout operation can exceed that budget. Pagination stops when the
+current page ends more than two viewport heights below the visible viewport.
+Scrolling advances the frontier. Unvisited source blocks remain in an estimated
+flow, so the scrollbar and final page count can change as the document is
+formatted. That flow is split into chunks of 64
+blocks with `content-visibility: auto`, estimated at 3em a block until shown:
+an offscreen chunk skips layout, so measuring a page does not lay out every
+block after it. The chunks carry the property rather than each block because
+Chrome visits every such element on each style update.
 
 Text paragraphs are measured with a growing prefix and lookahead, then split
 at a rendered line boundary using DOM ranges. A very long paragraph therefore
@@ -72,8 +76,9 @@ does not have to be laid out in full to create its first page. Paragraph
 continuations omit the first-line indent and the top margin. Headers and footers
 occupy space inside the margins; the body gets the remaining height. A short
 opacity/translation animation introduces new pages unless reduced motion is
-requested. A reading-position anchor compensates for movement during a batch.
-Edit reflow captures it before removing page boxes, since that removal can clamp
+requested. Between edits a batch only adds pages at the frontier, so the text
+above it does not move and the scroll offset is kept. Edit reflow captures a
+reading-position anchor before removing page boxes, since that removal can clamp
 the browser's scroll position. If the viewport starts in a margin or header,
 reflow restores the saved scroll offset instead. The column temporarily retains
 its height until the visible pages are rebuilt, so an intermediate frame cannot

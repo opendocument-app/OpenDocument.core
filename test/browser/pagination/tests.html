@@ -115,6 +115,35 @@
         w.odr.getPageCount() === partial.pageCount,
         "viewport sees newly generated pages",
       );
+      // One tail per unfinished block, in source order, across every chunk.
+      function pendingInOrder() {
+        var blocks = Array.from(source.children);
+        var at = Array.from(
+          d.querySelectorAll(".odr-pagination-pending [data-odr-fragment]"),
+        ).map(function (n) {
+          return blocks.indexOf(w.odr.documentView.mapping(n).source);
+        });
+        var state = api.getState();
+        return (
+          at.length === state.totalBlocks - state.processedBlocks &&
+          at.every(function (p, i) {
+            return p >= 0 && (i === 0 || p > at[i - 1]);
+          })
+        );
+      }
+      check(
+        d.querySelectorAll(".odr-pagination-chunk").length > 1 &&
+          pendingInOrder(),
+        "unformatted blocks wait in order across chunks",
+      );
+      var inserted = d.createElement("x-p");
+      inserted.textContent = "Inserted paragraph";
+      source.insertBefore(inserted, originals[1]);
+      await delay(150);
+      check(pendingInOrder(), "an insertion keeps the pending flow in order");
+      inserted.remove();
+      await delay(150);
+      check(pendingInOrder(), "a removal keeps the pending flow in order");
       var boxes = d.querySelectorAll(".odr-pagination-page");
       check(
         boxes[0].textContent.includes("First header") &&
