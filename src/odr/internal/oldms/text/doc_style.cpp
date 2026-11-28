@@ -492,26 +492,33 @@ text::read_style_sheet(std::istream &table_stream, const FcLcb stshf,
   for (std::uint16_t istd = 0; istd < cstd; ++istd) {
     // The unresolved styles from `istd` down its chain; longer than `cstd`
     // only through a cycle.
-    std::vector<std::uint16_t> chain;
-    for (std::uint16_t at = istd;
-         at < cstd && definitions[at].has_value() && !entries[at].has_value();
-         at = definitions[at]->istd_base) {
+    std::vector<std::pair<std::uint16_t, const Definition *>> chain;
+    for (std::uint16_t at = istd; at < cstd && !entries[at].has_value();) {
+      const std::optional<Definition> &definition = definitions[at];
+      if (!definition.has_value()) {
+        break;
+      }
       if (chain.size() == cstd) {
         throw std::runtime_error("doc: style sheet istdBase cycle");
       }
-      chain.push_back(at);
+      chain.emplace_back(at, &*definition);
+      at = definition->istd_base;
     }
     for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
-      const Definition &definition = *definitions[*it];
-      StyleSheet::Entry entry =
-          definition.istd_base < cstd &&
-                  entries[definition.istd_base].has_value()
-              ? *entries[definition.istd_base]
-              : base;
-      entry.paragraph = apply_paragraph_sprms(entry.paragraph, definition.papx);
+      const auto &[at, definition] = *it;
+      StyleSheet::Entry entry = base;
+      if (definition->istd_base < cstd) {
+        if (const std::optional<StyleSheet::Entry> &resolved =
+                entries[definition->istd_base];
+            resolved.has_value()) {
+          entry = *resolved;
+        }
+      }
+      entry.paragraph =
+          apply_paragraph_sprms(entry.paragraph, definition->papx);
       entry.text =
-          apply_character_sprms(entry.text, definition.chpx, font_names);
-      entries[*it] = std::move(entry);
+          apply_character_sprms(entry.text, definition->chpx, font_names);
+      entries[at] = std::move(entry);
     }
   }
 
