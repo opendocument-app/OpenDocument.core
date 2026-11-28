@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-"""Render the interactive example with the configured build's Python binding."""
+"""Render the interactive example with the `pyodr` on `PYTHONPATH`."""
 from pathlib import Path
-import sys
 from xml.sax.saxutils import escape
 
-HERE = Path(__file__).resolve().parent
-ROOT = HERE.parents[2]
-sys.path.insert(0, str(ROOT / "cmake-build-relwithdebinfo" / "python"))
 import pyodr
+
+HERE = Path(__file__).resolve().parent
 
 passages = [
     "The long paragraph begins here. At sunrise we followed the river out of town. The path ran beside old warehouses, then narrowed into a trail between the water and the trees. Every few minutes the light changed: first silver on the surface, then gold along the reeds. We stopped on a wooden bridge to listen to the sound beneath it.",
@@ -34,6 +32,8 @@ source = f"""<office:document
 </office:document>"""
 config = pyodr.HtmlConfig()
 config.editable = True
+# `serve` answers for the scripts from the source tree, so no rebuild is needed.
+config.embed_shipped_resources = False
 config.text_document_pagination = True
 config.viewport_mode = pyodr.HtmlViewportMode.actual_size
 service = pyodr.html.translate(

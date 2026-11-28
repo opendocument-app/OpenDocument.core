@@ -1,15 +1,17 @@
 # Pagination checks
 
-For the interactive example, generate its document using the configured build's
-Python interpreter (the same ABI as `pyodr_core`):
+For the interactive example, generate its document with a built `pyodr` on
+`PYTHONPATH` and the interpreter it was built for:
 
 ```bash
-/path/to/python test/browser/pagination/make-demo.py
+PYTHONPATH=cmake-build-relwithdebinfo/python python test/browser/pagination/make-demo.py
 test/browser/pagination/serve
 ```
 
 Open <http://127.0.0.1:8735/demo.html>. The document is rendered by core with
-editing enabled. Its generated HTML is ignored by git. Select **Show first
+editing enabled and links the frontend scripts rather than embedding them, so
+`serve` answers with the source files and a script change needs no new render.
+Its generated HTML is ignored by git. Select **Show first
 split**, **Edit document**, then type on either side of the split. Undo and Redo
 operate on real editor history. Reset reloads the original example.
 
@@ -35,7 +37,8 @@ a local browser; `BROWSER=firefox` switches engines (the default is Chromium).
 
 ```bash
 node test/browser/pagination/check-editing.cjs /tmp/paginated-edit.json
-/path/to/python test/browser/pagination/replay-editing.py /tmp/paginated-edit.json
+PYTHONPATH=cmake-build-relwithdebinfo/python python \
+  test/browser/pagination/replay-editing.py /tmp/paginated-edit.json
 ```
 
 The first command checks real typing, cursor movement, Backspace, Enter and

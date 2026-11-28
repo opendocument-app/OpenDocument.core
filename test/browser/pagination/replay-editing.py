@@ -4,9 +4,9 @@ import json
 from pathlib import Path
 import sys
 
-HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parents[2] / "cmake-build-relwithdebinfo" / "python"))
 import pyodr
+
+HERE = Path(__file__).resolve().parent
 
 
 def walk(element):

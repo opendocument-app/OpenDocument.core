@@ -468,9 +468,16 @@
     resolveDone(null);
   }
 
+  // pagination shows the source flow while marks are in it
+  function searchState(active) {
+    document.dispatchEvent(
+      new CustomEvent("odr-search-state", { detail: { active: active } })
+    );
+  }
+
   odr.resetSearch = function () {
     reset();
-    document.dispatchEvent(new CustomEvent("odr-search-state", { detail: { active: false } }));
+    searchState(false);
     notify();
   };
 
@@ -481,7 +488,7 @@
   odr.search = function (text) {
     reset();
     keyword = fold(text === undefined || text === null ? "" : String(text)).text;
-    document.dispatchEvent(new CustomEvent("odr-search-state", { detail: { active: keyword !== "" } }));
+    searchState(keyword !== "");
     if (keyword === "") {
       notify();
       return 0;

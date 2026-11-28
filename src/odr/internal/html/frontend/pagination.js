@@ -169,55 +169,55 @@
   function fits() {
     return current.body.scrollHeight <= current.body.clientHeight + 1;
   }
+  /// The first offset in @p map whose glyph ends below @p limit.
+  function firstAfter(map, limit) {
+    var low = 0,
+      high = map.length;
+    while (low < high) {
+      var middle = (low + high) >> 1;
+      var rect = range(map, 0, middle + 1).getBoundingClientRect();
+      if (rect.bottom <= limit + 0.1) low = middle + 1;
+      else high = middle;
+    }
+    return low;
+  }
   function paragraph(item) {
     if (!item.map.length) return false;
     var start = item.offset,
       end = Math.min(item.map.length, start + 512),
-      view;
+      shown;
     while (true) {
-      view = fragment(item, start, end);
-      current.body.appendChild(view);
+      shown = fragment(item, start, end);
+      current.body.appendChild(shown);
       if (!fits() || end === item.map.length) break;
-      view.remove();
+      shown.remove();
       end = Math.min(item.map.length, start + (end - start) * 2);
     }
     if (!fits()) {
-      var map = textMap(view),
-        bottom = current.body.getBoundingClientRect().bottom;
-      function firstAfter(limit) {
-        var low = 0,
-          high = map.length;
-        while (low < high) {
-          var middle = (low + high) >> 1;
-          var rect = range(map, 0, middle + 1).getBoundingClientRect();
-          if (rect.bottom <= limit + 0.1) low = middle + 1;
-          else high = middle;
-        }
-        return low;
-      }
-      var cut = firstAfter(bottom);
+      var map = textMap(shown);
+      var cut = firstAfter(map, current.body.getBoundingClientRect().bottom);
       if (cut < map.length) {
         // Different fonts can have different glyph bottoms on the same line.
         var overflowing = range(map, cut, cut + 1).getBoundingClientRect();
-        cut = firstAfter(overflowing.top);
+        cut = firstAfter(map, overflowing.top);
       }
       // A glyph can fit while its line box does not. Retain only whole lines.
       while (cut > 0) {
         var last = range(map, cut - 1, cut).getBoundingClientRect();
         var candidate = fragment(item, start, start + cut);
-        view.replaceWith(candidate);
+        shown.replaceWith(candidate);
         if (fits()) {
-          view = candidate;
+          shown = candidate;
           end = start + cut;
           break;
         }
-        candidate.replaceWith(view);
-        var earlier = firstAfter(last.top);
+        candidate.replaceWith(shown);
+        var earlier = firstAfter(map, last.top);
         // Zero-height glyphs may offer no earlier line boundary.
         cut = earlier < cut ? earlier : 0;
       }
       if (cut === 0 || end === start) {
-        view.remove();
+        shown.remove();
         if (current.count > 0) {
           item.needsPage = true;
           return true;
@@ -226,7 +226,7 @@
         return false;
       }
     }
-    accept(item, view, end);
+    accept(item, shown, end);
     return true;
   }
   function viewportRect(node) {
@@ -285,10 +285,10 @@
     var positions = item.views.concat(item.tail ? [item.tail] : []),
       fallback = null;
     for (var i = 0; i < positions.length; ++i) {
-      var fragment = positions[i];
-      if (!fragment.isConnected) continue;
-      var candidates = [fragment].concat(
-        Array.from(fragment.querySelectorAll("[data-odr-source-id]")),
+      var shown = positions[i];
+      if (!shown.isConnected) continue;
+      var candidates = [shown].concat(
+        Array.from(shown.querySelectorAll("[data-odr-source-id]")),
       );
       for (var j = 0; j < candidates.length; ++j) {
         var record = view.mapping(candidates[j]);
@@ -319,6 +319,7 @@
     clearTimeout(timer);
   }
   function stop() {
+    if (!active) return;
     if (view.finishComposition) view.finishComposition();
     pause();
     var selection = view.capture();
@@ -758,8 +759,8 @@
     if (!active || !s || s.isCollapsed || !event.clipboardData) return;
     var selected = view.inputRange(s.getRangeAt(0));
     if (!selected) return;
-    var fragment = selected.cloneContents();
-    var plainFragment = fragment.cloneNode(true);
+    var contents = selected.cloneContents();
+    var plainFragment = contents.cloneNode(true);
     plainFragment.querySelectorAll("br").forEach(function (br) {
       br.replaceWith("\n");
     });
@@ -772,7 +773,7 @@
           .join("\n")
       : plainFragment.textContent;
     var holder = document.createElement("div");
-    holder.appendChild(fragment);
+    holder.appendChild(contents);
     holder
       .querySelectorAll("[data-odr-id], [data-odr-source-bookmark]")
       .forEach(function (n) {

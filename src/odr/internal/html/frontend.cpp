@@ -440,14 +440,15 @@ void html::write_host_bridge_script(const WritingState &state) {
 }
 
 HtmlResources html::locate_document_resources(const HtmlConfig &config,
-                                              const bool spreadsheet) {
+                                              const DocumentType type) {
+  const bool spreadsheet = type == DocumentType::spreadsheet;
   static constexpr std::array assets{document_css_asset, search_css_asset,
                                      search_js_asset, editing_js_asset,
                                      viewport_js_asset};
   static constexpr std::array dark{document_dark_css_asset,
                                    search_dark_css_asset};
   HtmlResources resources = locate_all(assets, dark, config);
-  if (!spreadsheet) {
+  if (type == DocumentType::text) {
     locate(document_view_js_asset, config, resources);
     locate(pagination_js_asset, config, resources);
   }

@@ -26,8 +26,9 @@ odr.pagination.refresh();
 `getState()` returns `enabled`, `active`, `complete`, `pageCount`,
 `processedBlocks`, `totalBlocks` and `oversizedPages`. Enabled is the requested
 mode; active is false during search and print. Editing keeps pagination active.
-Counts cover the pages formatted so far, and are final only when complete is true. `getPages()` lists
-those pages' layout keys, actual dimensions in CSS pixels and oversized flags.
+Counts cover the pages formatted so far, and are final only when complete is
+true. `getPages()` lists those pages' layout keys, actual dimensions in CSS
+pixels and oversized flags.
 `refresh()` restarts layout after a host changes content or styles directly.
 
 `odr.onPaginationChange(state)` and the `odr-pagination-change` DOM event report
@@ -39,8 +40,9 @@ Disabling reveals the source DOM. `text_document_margin` selects the initial
 fallback: flowing text, or boxes at manual breaks. On first activation, legacy
 page-box bodies are normalized into one source flow so paragraph navigation
 can cross manual page boundaries. Later disabling/printing uses that flow,
-retaining authored breaks. The margin option does not control automatic pagination.
-Templates and the script are supplied even when pagination starts disabled, so a host can enable it without rendering again.
+retaining authored breaks. The margin option does not control automatic
+pagination. Templates and the script are supplied even when pagination starts
+disabled, so a host can enable it without rendering again.
 
 Automatic fitting in an iframe is recalculated as pages appear or change width,
 including runtime activation. Explicit zoom pins and actual-size settings remain
