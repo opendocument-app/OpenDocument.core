@@ -59,12 +59,12 @@ suppress authored layout changes.
 
 ## Work near the viewport
 
-Each animation frame processes blocks/fragments for six milliseconds. One
-browser layout operation can exceed that budget.
-Pagination stops when the current page ends more than two viewport heights
-below the visible viewport. Scrolling advances the frontier. Unvisited source
-blocks remain in an estimated flow, so the scrollbar and final page count can
-change as the document is formatted. That flow is split into chunks of 64
+Each animation frame processes blocks/fragments for six milliseconds; one
+browser layout operation can exceed that budget. Pagination stops when the
+current page ends more than two viewport heights below the visible viewport.
+Scrolling advances the frontier. Unvisited source blocks remain in an estimated
+flow, so the scrollbar and final page count can change as the document is
+formatted. That flow is split into chunks of 64
 blocks with `content-visibility: auto`, estimated at 3em a block until shown:
 an offscreen chunk skips layout, so measuring a page does not lay out every
 block after it. The chunks carry the property rather than each block because
