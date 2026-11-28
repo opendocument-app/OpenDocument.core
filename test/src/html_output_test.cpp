@@ -178,6 +178,9 @@ TEST_P(HtmlOutputTests, html_meta) {
   // here left the reference output showing a rendering path most readers never
   // see — including the page box and the backdrop it brings with it.
   config.text_document_margin = true;
+  // Lay the text out in pages in the browser, as a reader sees it. The page
+  // boxes above stay as what shows before the script runs.
+  config.text_document_pagination = true;
   config.spreadsheet_limit = TableDimensions(4000, 500);
   config.page_range_end = 100;
   config.format_html = true;
@@ -263,7 +266,11 @@ std::vector<std::pair<std::string, ConfigVariant>> list_variant_cases() {
                              }};
   const ConfigVariant reflow{"reflow", [](HtmlConfig &config) {
                                config.text_document_margin = false;
+                               config.text_document_pagination = false;
                              }};
+  const ConfigVariant page_box{"page-box", [](HtmlConfig &config) {
+                                 config.text_document_pagination = false;
+                               }};
   const ConfigVariant read_only{
       "read-only", [](HtmlConfig &config) { config.editable = false; }};
 
@@ -291,6 +298,11 @@ std::vector<std::pair<std::string, ConfigVariant>> list_variant_cases() {
       // stopped showing when the margins were turned on here.
       {"odr-public/odt/about.odt", reflow},
       {"odr-public/docx/physics.docx", reflow},
+
+      // The page boxes core writes, without the browser paginating them: what
+      // a text document looks like with the pagination script off.
+      {"odr-public/odt/mixed-layout.odt", page_box},
+      {"odr-public/docx/style-various-1.docx", page_box},
 
       // The output a reader gets rather than an editor. A sheet is pinned
       // too, where the two agree: its editing is an overlay.

@@ -96,7 +96,13 @@
         d.body.appendChild(editor);
       });
       check(!api.getState().active, "default disabled");
+      var paginated = d.querySelector("[data-odr-pagination]");
+      check(!paginated.hasAttribute("aria-busy"), "disabled is never busy");
       api.setOptions({ enabled: true, animate: false });
+      check(
+        paginated.getAttribute("aria-busy") === "true",
+        "queued layout marks the root aria-busy",
+      );
       await until(function () {
         return api.getState().pageCount >= 4;
       });
@@ -110,6 +116,10 @@
       check(
         api.getState().processedBlocks === partial.processedBlocks,
         "offscreen pagination stays idle",
+      );
+      check(
+        !paginated.hasAttribute("aria-busy"),
+        "idle beyond the viewport clears aria-busy",
       );
       check(
         w.odr.getPageCount() === partial.pageCount,
@@ -274,6 +284,10 @@
       await delay(250);
       check(kept.isConnected, "a height-only resize keeps the pages");
       frame.style.width = "700px";
+      await until(function () {
+        return paginated.getAttribute("aria-busy") === "true";
+      });
+      check(true, "a pending restart marks the root aria-busy");
       await until(function () {
         return !kept.isConnected && api.getState().active;
       });
