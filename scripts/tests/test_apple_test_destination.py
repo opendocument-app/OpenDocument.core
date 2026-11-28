@@ -129,6 +129,32 @@ class AppleTestDestination(unittest.TestCase):
                 MODULE.destination()
         self.assertEqual(run.call_count, 2)
 
+    def test_slow_simulator_listing_is_retried(self):
+        with patch.object(
+            MODULE,
+            "xcrun",
+            side_effect=[
+                "26.0",
+                subprocess.TimeoutExpired("simctl", 120),
+                devices("26-0"),
+                "new-device",
+                None,
+            ],
+        ) as run:
+            self.assertEqual(
+                MODULE.destination(), "platform=iOS Simulator,id=new-device"
+            )
+        self.assertEqual(run.call_args_list[1].kwargs["timeout"], 120)
+
+    def test_simulator_listing_gives_up_after_two_timeouts(self):
+        timeout = subprocess.TimeoutExpired("simctl", 120)
+        with patch.object(
+            MODULE, "xcrun", side_effect=["26.0", timeout, timeout]
+        ) as run:
+            with self.assertRaisesRegex(RuntimeError, "timed out twice"):
+                MODULE.destination()
+        self.assertEqual(run.call_count, 3)
+
     def test_every_simctl_command_has_a_timeout(self):
         with patch.object(MODULE.subprocess, "run") as run:
             MODULE.xcrun("simctl", "list")

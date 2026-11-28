@@ -22,11 +22,26 @@ def version(value):
     return parts + (0,) * (3 - len(parts))
 
 
+def available_devices():
+    # The first simctl call on a fresh runner starts CoreSimulatorService.
+    for attempt in range(1, 3):
+        try:
+            return json.loads(
+                xcrun("simctl", "list", "devices", "available", "--json", timeout=120)
+            )
+        except subprocess.TimeoutExpired as error:
+            print(
+                f"Listing simulators timed out, attempt {attempt}/2: {error}",
+                flush=True,
+            )
+    raise RuntimeError("listing iOS simulators timed out twice")
+
+
 def destination(explicit=""):
     if explicit:
         return explicit
     sdk = xcrun("--sdk", "iphonesimulator", "--show-sdk-version").strip()
-    devices = json.loads(xcrun("simctl", "list", "devices", "available", "--json"))
+    devices = available_devices()
     candidates = []
     for runtime, phones in devices["devices"].items():
         name = runtime.rpartition(".")[2]
