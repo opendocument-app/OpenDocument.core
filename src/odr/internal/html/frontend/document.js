@@ -1,6 +1,6 @@
 // The text editor, attached to `odr.editing`. It owns the edit: it cancels
-// what the browser was about to do and splices the source document, so the markup
-// stays what the renderer wrote. See `docs/design/document-editing.md`.
+// what the browser was about to do and splices the source itself, so the
+// markup stays what the renderer wrote. See `docs/design/document-editing.md`.
 (function () {
   "use strict";
 
@@ -11,7 +11,7 @@
   // empty paragraph and no run.
   if (
     document.querySelector(
-      "x-p[data-odr-id], x-s[data-odr-id], template.odr-text-box-template",
+      "x-p[data-odr-id], x-s[data-odr-id], template.odr-text-box-template"
     ) === null
   ) {
     return;
@@ -67,9 +67,7 @@
   }
 
   function idOf(element) {
-    return element === null
-      ? null
-      : Number(element.getAttribute("data-odr-id"));
+    return element === null ? null : Number(element.getAttribute("data-odr-id"));
   }
 
   /// The run @p node sits in, or null where it sits outside every run. A
@@ -109,7 +107,7 @@
   /// counts as the paragraph's.
   function runsOf(paragraph) {
     return Array.prototype.slice.call(
-      paragraph.querySelectorAll("x-s[data-odr-id]"),
+      paragraph.querySelectorAll("x-s[data-odr-id]")
     );
   }
 
@@ -321,7 +319,7 @@
       apply: function () {
         anchor.parentNode.insertBefore(
           run,
-          where === "after" ? anchor.nextSibling : anchor,
+          where === "after" ? anchor.nextSibling : anchor
         );
       },
       revert: function () {
@@ -591,7 +589,7 @@
   /// `#rrggbb` for a computed `rgb(…)`, null for a transparent one.
   function hexOf(computed) {
     var match = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/.exec(
-      computed,
+      computed
     );
     if (match === null || (match[4] !== undefined && Number(match[4]) === 0)) {
       return null;
@@ -612,8 +610,7 @@
     var px = parseFloat(computed.fontSize);
     return {
       bold: weight === "bold" || weight === "bolder" || Number(weight) >= 600,
-      italic:
-        computed.fontStyle === "italic" || computed.fontStyle === "oblique",
+      italic: computed.fontStyle === "italic" || computed.fontStyle === "oblique",
       underline: lines.indexOf("underline") !== -1,
       strikethrough: lines.indexOf("line-through") !== -1,
       highlight: hexOf(computed.backgroundColor),
@@ -1028,7 +1025,7 @@
         },
         end: caret,
       },
-      mark,
+      mark
     );
     if (marked === null) {
       return caret;
@@ -1232,7 +1229,7 @@
     }
     return boundary(
       { run: last, paragraph: from },
-      { run: first, paragraph: to },
+      { run: first, paragraph: to }
     );
   }
 
@@ -1325,9 +1322,7 @@
   /// is what a browser lacking `getTargetRanges` leaves us.
   function rangeOf(event) {
     var ranges =
-      typeof event.getTargetRanges === "function"
-        ? event.getTargetRanges()
-        : [];
+      typeof event.getTargetRanges === "function" ? event.getTargetRanges() : [];
     var range = ranges.length === 1 ? ranges[0] : undefined;
     if (range === undefined) {
       var selection = window.getSelection();
@@ -1419,10 +1414,7 @@
 
     if (start.run === end.run) {
       perform(
-        setRunText(
-          start.run,
-          head + text + end.run.textContent.slice(end.offset),
-        ),
+        setRunText(start.run, head + text + end.run.textContent.slice(end.offset))
       );
       return caret;
     }
@@ -1484,7 +1476,7 @@
       paragraph.querySelectorAll("[data-odr-id]"),
       function (element) {
         return element.tagName === "X-S" || removableWhole(element);
-      },
+      }
     );
   }
 
@@ -1763,11 +1755,7 @@
     }
     return {
       start: place,
-      end: {
-        run: after.run,
-        offset: step(after.run, 0, 1),
-        paragraph: after.paragraph,
-      },
+      end: { run: after.run, offset: step(after.run, 0, 1), paragraph: after.paragraph },
     };
   }
 
@@ -1910,10 +1898,7 @@
         continue;
       }
       if (!entry.run.isConnected) {
-        odr.onError(
-          odr.errorCodes.unnameableEdit,
-          "an edit landed where no operation can name it",
-        );
+        odr.onError(odr.errorCodes.unnameableEdit, "an edit landed where no operation can name it");
         continue;
       }
       changes.push({ run: entry.run, before: entry.before, after: after });
@@ -1939,7 +1924,7 @@
         changes.forEach(function (change) {
           change.run.textContent = change.before;
         });
-      },
+      }
     });
   }
 
@@ -2107,8 +2092,9 @@
       return;
     }
 
-    var covering =
-      extending[type] === undefined ? at : extendForDelete(at, extending[type]);
+    var covering = extending[type] === undefined
+        ? at
+        : extendForDelete(at, extending[type]);
     if (covering === null) {
       // nothing to take: the key does nothing rather than being refused
       event.preventDefault();
@@ -2171,13 +2157,13 @@
 
   function pages() {
     return Array.prototype.slice.call(
-      document.querySelectorAll(".odr-pages > [data-odr-page]"),
+      document.querySelectorAll(".odr-pages > [data-odr-page]")
     );
   }
 
   function slideTemplates() {
     return Array.prototype.slice.call(
-      document.querySelectorAll("template.odr-slide-template"),
+      document.querySelectorAll("template.odr-slide-template")
     );
   }
 
@@ -2286,8 +2272,7 @@
     // a page background's rule may come with it
     var nodes = Array.prototype.slice.call(page.fragment.childNodes);
     var parent = all[0].parentNode;
-    var before =
-      index < all.length ? all[index] : all[all.length - 1].nextSibling;
+    var before = index < all.length ? all[index] : all[all.length - 1].nextSibling;
     perform({
       ops: [
         {
@@ -2326,8 +2311,7 @@
     if (slideTemplates().length === 0) {
       return null;
     }
-    var slide =
-      request.page === undefined ? selectedPage() : pages()[request.page];
+    var slide = request.page === undefined ? selectedPage() : pages()[request.page];
     return slide === undefined ? null : slide;
   }
 
@@ -2348,12 +2332,7 @@
     var next = slide.nextSibling;
     var neighbour = slide.nextElementSibling || slide.previousElementSibling;
     perform({
-      ops: [
-        {
-          op: "removeSlide",
-          page: Number(slide.getAttribute("data-odr-page")),
-        },
-      ],
+      ops: [{ op: "removeSlide", page: Number(slide.getAttribute("data-odr-page")) }],
       apply: function () {
         parent.removeChild(slide);
       },
@@ -2401,10 +2380,7 @@
     var others = all.filter(function (page) {
       return page !== slide;
     });
-    var before =
-      index < others.length
-        ? others[index]
-        : others[others.length - 1].nextSibling;
+    var before = index < others.length ? others[index] : others[others.length - 1].nextSibling;
     perform({
       ops: [
         {
@@ -2546,10 +2522,7 @@
           return false;
         }
         var given = undone[undone.length - 1].gesture;
-        while (
-          undone.length > 0 &&
-          undone[undone.length - 1].gesture === given
-        ) {
+        while (undone.length > 0 && undone[undone.length - 1].gesture === given) {
           var step = undone.pop();
           step.apply();
           done.push(step);

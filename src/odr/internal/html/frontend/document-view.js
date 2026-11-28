@@ -11,19 +11,10 @@
     queued = [];
   var mappings = new WeakMap(),
     elements = new Map();
-  source.querySelectorAll("[data-odr-id]").forEach(function (node) {
-    elements.set(node.getAttribute("data-odr-id"), node);
-  });
   var observer = new MutationObserver(function (records) {
     if (!active()) return;
     queued.push.apply(queued, records);
     if (!depth && !composing) flush([]);
-  });
-  observer.observe(source, {
-    subtree: true,
-    childList: true,
-    characterData: true,
-    attributes: true,
   });
 
   function active() {
@@ -86,6 +77,27 @@
     }
     return element;
   }
+  /// Where the first mapped fragment in @p child starts, or the last one ends.
+  function edge(child, end) {
+    if (child.nodeType !== 1) return null;
+    var mapped = mappings.has(child) ? child : null;
+    if (!mapped) {
+      var candidates = Array.from(
+        child.querySelectorAll("[data-odr-fragment], [data-odr-source-id]"),
+      );
+      if (end) candidates.reverse();
+      mapped = candidates.find(function (n) {
+        return mappings.has(n);
+      });
+    }
+    return mapped
+      ? sourcePoint(
+          mapped,
+          end ? mapped.childNodes.length : 0,
+          end ? "upstream" : "downstream",
+        )
+      : null;
+  }
   function sourcePoint(node, offset, affinity) {
     if (!node) return null;
     var element = node.nodeType === 1 ? node : node.parentElement;
@@ -109,29 +121,6 @@
     if (!view) {
       if (!active()) return { node: node, offset: offset };
       if (node.nodeType !== 1) return null;
-      function edge(child, end) {
-        if (child.nodeType !== 1) return null;
-        if (mappings.has(child))
-          return sourcePoint(
-            child,
-            end ? child.childNodes.length : 0,
-            end ? "upstream" : "downstream",
-          );
-        var candidates = Array.from(
-          child.querySelectorAll("[data-odr-fragment], [data-odr-source-id]"),
-        );
-        if (end) candidates.reverse();
-        var mapped = candidates.find(function (n) {
-          return mappings.has(n);
-        });
-        return mapped
-          ? sourcePoint(
-              mapped,
-              end ? mapped.childNodes.length : 0,
-              end ? "upstream" : "downstream",
-            )
-          : null;
-      }
       // Native selections can end between page-body children, outside a run.
       for (var i = offset; i < node.childNodes.length; ++i) {
         var following = edge(node.childNodes[i], false);
@@ -274,6 +263,15 @@
     restore: restore,
     connect: function (renderer) {
       projection = renderer;
+      source.querySelectorAll("[data-odr-id]").forEach(function (node) {
+        elements.set(node.getAttribute("data-odr-id"), node);
+      });
+      observer.observe(source, {
+        subtree: true,
+        childList: true,
+        characterData: true,
+        attributes: true,
+      });
     },
     begin: function () {
       ++depth;
