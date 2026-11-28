@@ -276,7 +276,7 @@ struct PnFkpPapx {
 };
 static_assert(sizeof(PnFkpPapx) == 4, "PnFkpPapx should be 4 bytes");
 
-/// A section descriptor ([MS-DOC] 2.9.260); fcSepx locates the section's
+/// A section descriptor ([MS-DOC] 2.9.243); fcSepx locates the section's
 /// Sepx in the WordDocument stream, 0xFFFFFFFF meaning none.
 struct Sed {
   std::int16_t fn;

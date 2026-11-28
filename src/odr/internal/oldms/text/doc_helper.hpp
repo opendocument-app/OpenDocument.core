@@ -155,7 +155,7 @@ FormattingRuns read_character_runs(std::istream &document_stream,
                                    std::vector<std::string> &grpprls);
 
 /// As `read_character_runs`, for the PlcBtePapx and its PapxFkp pages
-/// ([MS-DOC] 2.9.209). Each distinct GrpPrlAndIstd ([MS-DOC] 2.9.114), istd
+/// ([MS-DOC] 2.9.174). Each distinct GrpPrlAndIstd ([MS-DOC] 2.9.114), istd
 /// first, goes into `papxs`; index 0 is a paragraph without one.
 FormattingRuns read_paragraph_runs(std::istream &document_stream,
                                    std::istream &table_stream,

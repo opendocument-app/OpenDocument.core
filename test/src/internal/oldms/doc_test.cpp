@@ -143,7 +143,7 @@ std::string make_sttbf_ffn(const std::vector<std::string> &names) {
   return sttb;
 }
 
-/// An STD ([MS-DOC] 2.9.260) with a 10-byte StdfBase, the name, and the
+/// An STD ([MS-DOC] 2.9.258) with a 10-byte StdfBase, the name, and the
 /// given UPXs, each sized and padded to even.
 std::string make_std(const std::uint16_t sti, const std::uint8_t stk,
                      const std::uint16_t istd_base, const std::string &name,
@@ -592,7 +592,7 @@ TEST(OldMs, doc_paragraph_formatting) {
   constexpr std::uint32_t text_fc = 1536;
   constexpr std::uint32_t sepx_fc = 1600;
 
-  // PapxFkp ([MS-DOC] 2.9.209) at pn 2: "Head\r" is Heading with 10pt after,
+  // PapxFkp ([MS-DOC] 2.9.174) at pn 2: "Head\r" is Heading with 10pt after,
   // its PapxInFkp sized in words; "Body text\r" is Normal, right aligned,
   // sized 2 * cb - 1.
   std::string fkp(512, '\0');

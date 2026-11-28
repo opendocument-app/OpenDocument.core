@@ -14,7 +14,7 @@ fields show only their result text.
 **Specs.** `[MS-DOC]` (FIB, Clx and piece table, text decoding, CHPX) plus the
 `[MS-CFB]` container. The read path follows *Retrieving Text* (§2.4.1 steps
 1 to 6), *Direct Paragraph Formatting* (§2.4.6.1), *Direct Character
-Formatting* (§2.4.6.2) and *Applying Properties* of the style sheet
+Formatting* (§2.4.6.2) and *Determining Properties of a Style*
 (§2.4.6.5).
 
 ## Module layout
@@ -197,10 +197,10 @@ WordDocument stream
 ├─ ChpxFkp @ aPnBteChpx[i].pn * 512  (512-byte page)  §2.9.33
 │  ├─ rgfc[crun+1] boundaries (stream offsets), rgb[crun] → Chpx @ rgb[j]*2, crun (last byte)
 │  └─ Chpx = cb + grpprl(Prl[])  §2.9.32   Prl = Sprm(2 B) + operand; char SPRMs sgc==2; + Pcd.Prm §2.9.214–216 (not read)
-├─ PapxFkp @ aPnBtePapx[i].pn * 512  (512-byte page)  §2.9.209
+├─ PapxFkp @ aPnBtePapx[i].pn * 512  (512-byte page)  §2.9.174
 │  ├─ rgfc[cpara+1], rgbx[cpara] (BxPap, 13 B: bOffset), cpara (last byte)
-│  └─ PapxInFkp @ bOffset*2: cb, or 0 then cb'  §2.9.210  → GrpPrlAndIstd = istd + grpprl
-└─ Sepx @ Sed.fcSepx: i16 cb + grpprl   §2.9.253
+│  └─ PapxInFkp @ bOffset*2: cb, or 0 then cb'  §2.9.175  → GrpPrlAndIstd = istd + grpprl
+└─ Sepx @ Sed.fcSepx: i16 cb + grpprl   §2.9.245
 ```
 
 # Open work

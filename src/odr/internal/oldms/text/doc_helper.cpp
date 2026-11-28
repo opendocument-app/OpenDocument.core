@@ -184,8 +184,8 @@ text::FormattingRuns
 text::read_paragraph_runs(std::istream &document_stream,
                           std::istream &table_stream, const FcLcb plcf_bte_papx,
                           std::vector<std::string> &papxs) {
-  // A PapxFkp ([MS-DOC] 2.9.209) holds 1 to 0x1D paragraphs, a 13-byte BxPap
-  // each whose first byte locates the PapxInFkp ([MS-DOC] 2.9.210): a cb of 0
+  // A PapxFkp ([MS-DOC] 2.9.174) holds 1 to 0x1D paragraphs, a 13-byte BxPap
+  // each whose first byte locates the PapxInFkp ([MS-DOC] 2.9.175): a cb of 0
   // is followed by the size in words, otherwise the size is 2 * cb - 1.
   return read_fkp_runs<PlcBtePapxMap>(
       document_stream, table_stream, plcf_bte_papx, 13, 0x1D, papxs,

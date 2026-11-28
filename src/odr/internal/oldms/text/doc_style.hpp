@@ -92,7 +92,7 @@ std::vector<std::string> read_font_names(std::istream &table_stream,
 StyleSheet read_style_sheet(std::istream &table_stream, FcLcb stshf,
                             std::span<const std::string> font_names);
 
-/// The page layout of the first section: its Sepx ([MS-DOC] 2.9.253), located
+/// The page layout of the first section: its Sepx ([MS-DOC] 2.9.245), located
 /// through the PlcfSed at `plcf_sed` in the table stream, applied to
 /// `default_page_layout`.
 PageLayout read_page_layout(std::istream &document_stream,

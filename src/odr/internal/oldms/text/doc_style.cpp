@@ -63,8 +63,8 @@ std::int16_t operand_i16(const std::string_view operand) {
       util::byte::from_little_endian<std::uint16_t>(operand));
 }
 
-/// Calls `visit(opcode, operand)` for each Prl of a grpprl ([MS-DOC] 2.2.5,
-/// 2.2.7). A variable-length operand is given without its size prefix.
+/// Calls `visit(opcode, operand)` for each Prl of a grpprl ([MS-DOC] 2.2.5.1,
+/// 2.2.5.2). A variable-length operand is given without its size prefix.
 template <typename Visit>
 void for_each_prl(const std::string_view grpprl, const Visit &visit) {
   const auto byte_at = [&grpprl](const std::size_t at) {
@@ -96,7 +96,7 @@ void for_each_prl(const std::string_view grpprl, const Visit &visit) {
       operand_size = byte_at(at);
       ++at;
       if (opcode == sprmPChgTabs && operand_size == 0xFF) {
-        // PChgTabsOperand ([MS-DOC] 2.9.183): tabs deleted at four bytes
+        // PChgTabsOperand ([MS-DOC] 2.9.182): tabs deleted at four bytes
         // each, then tabs added at three.
         const std::size_t deleted = byte_at(at);
         const std::size_t added = byte_at(at + 1 + deleted * 4);
@@ -293,7 +293,7 @@ ParagraphStyle text::apply_paragraph_sprms(ParagraphStyle style,
           twips(util::byte::from_little_endian<std::uint16_t>(operand));
       break;
     case sprmPDyaLine: {
-      // LSPD ([MS-DOC] 2.9.150): in 240ths of a line when fMultLinespace is
+      // LSPD ([MS-DOC] 2.9.146): in 240ths of a line when fMultLinespace is
       // set, otherwise in twips, at least that (positive) or exactly that
       // (negative); 0 is single spacing.
       const std::int16_t dya_line = operand_i16(operand);
@@ -428,8 +428,8 @@ text::read_style_sheet(std::istream &table_stream, const FcLcb stshf,
     return result;
   };
 
-  // LPStshi ([MS-DOC] 2.9.135): the Stshif's cstd and cbSTDBaseInFile, and
-  // after three more fields the default font, ftcAsci.
+  // LPStshi ([MS-DOC] 2.9.136): the Stshif's cstd and cbSTDBaseInFile, and
+  // after four more fields the default font, ftcAsci.
   const auto cb_stshi = cursor.read<std::uint16_t>();
   util::byte_string::Reader stshi(take(cursor, cb_stshi));
   const auto cstd = stshi.read<std::uint16_t>();
@@ -444,7 +444,7 @@ text::read_style_sheet(std::istream &table_stream, const FcLcb stshf,
     }
   }
 
-  // Each LPStd ([MS-DOC] 2.9.136) is a u16 size and an STD of that size. The
+  // Each LPStd ([MS-DOC] 2.9.135) is a u16 size and an STD of that size. The
   // STD opens with the StdfBase: sti, then stk and istdBase, then cupx. The
   // name follows the Stdf, then the paragraph style's UpxPapx (istd and
   // grpprl) and UpxChpx, each u16-sized and padded to even.
@@ -489,28 +489,30 @@ text::read_style_sheet(std::istream &table_stream, const FcLcb stshf,
 
   // Each style lies on top of its istdBase, 0x0FFF meaning none.
   std::vector<std::optional<StyleSheet::Entry>> entries(cstd);
-  std::vector<bool> resolving(cstd);
-  const auto resolve = [&](this const auto &self, const std::uint16_t istd) {
-    if (entries[istd].has_value() || !definitions[istd].has_value()) {
-      return;
-    }
-    if (resolving[istd]) {
-      throw std::runtime_error("doc: style sheet istdBase cycle");
-    }
-    resolving[istd] = true;
-    const Definition &definition = *definitions[istd];
-    StyleSheet::Entry entry = base;
-    if (definition.istd_base < cstd &&
-        definitions[definition.istd_base].has_value()) {
-      self(definition.istd_base);
-      entry = *entries[definition.istd_base];
-    }
-    entry.paragraph = apply_paragraph_sprms(entry.paragraph, definition.papx);
-    entry.text = apply_character_sprms(entry.text, definition.chpx, font_names);
-    entries[istd] = std::move(entry);
-  };
   for (std::uint16_t istd = 0; istd < cstd; ++istd) {
-    resolve(istd);
+    // The unresolved styles from `istd` down its chain; longer than `cstd`
+    // only through a cycle.
+    std::vector<std::uint16_t> chain;
+    for (std::uint16_t at = istd;
+         at < cstd && definitions[at].has_value() && !entries[at].has_value();
+         at = definitions[at]->istd_base) {
+      if (chain.size() == cstd) {
+        throw std::runtime_error("doc: style sheet istdBase cycle");
+      }
+      chain.push_back(at);
+    }
+    for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
+      const Definition &definition = *definitions[*it];
+      StyleSheet::Entry entry =
+          definition.istd_base < cstd &&
+                  entries[definition.istd_base].has_value()
+              ? *entries[definition.istd_base]
+              : base;
+      entry.paragraph = apply_paragraph_sprms(entry.paragraph, definition.papx);
+      entry.text =
+          apply_character_sprms(entry.text, definition.chpx, font_names);
+      entries[*it] = std::move(entry);
+    }
   }
 
   return {std::move(base), std::move(entries)};
@@ -531,7 +533,7 @@ PageLayout text::read_page_layout(std::istream &document_stream,
     return layout;
   }
 
-  // Sepx ([MS-DOC] 2.9.253): a signed size, then the grpprl.
+  // Sepx ([MS-DOC] 2.9.245): a signed size, then the grpprl.
   document_stream.seekg(plc.aData(0).fcSepx);
   const auto cb = util::byte_stream::read<std::int16_t>(document_stream);
   if (cb < 0) {
