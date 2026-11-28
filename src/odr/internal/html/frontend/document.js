@@ -1,6 +1,6 @@
 // The text editor, attached to `odr.editing`. It owns the edit: it cancels
-// what the browser was about to do and splices the page itself, so the markup
-// stays what the renderer wrote. See `docs/design/document-editing.md`.
+// what the browser was about to do and splices the source itself, so the
+// markup stays what the renderer wrote. See `docs/design/document-editing.md`.
 (function () {
   "use strict";
 
@@ -18,6 +18,43 @@
   }
 
   var root = document.body;
+
+  function viewAdapter() {
+    return odr.documentView && odr.documentView.active()
+      ? odr.documentView
+      : null;
+  }
+
+  function withView(action) {
+    var view = viewAdapter();
+    if (!view) return action();
+    var before = view.capture(),
+      first = done.length;
+    view.begin();
+    try {
+      return action();
+    } finally {
+      var after = view.capture();
+      for (var i = first; i < done.length; ++i) {
+        if (!done[i].selectionBefore) {
+          done[i].selectionBefore = before;
+          done[i].selectionAfter = after;
+        }
+      }
+      view.end();
+    }
+  }
+
+  function selectSource(range) {
+    var view = viewAdapter();
+    if (view) {
+      view.select(range);
+      return;
+    }
+    var selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
 
   // ---------------------------------------------------------------- address
 
@@ -668,7 +705,11 @@
 
   /// Every run of the view in document order.
   function allRuns() {
-    return Array.prototype.slice.call(root.querySelectorAll("x-s[data-odr-id]"));
+    return Array.prototype.slice.call(
+      (viewAdapter() ? odr.documentView.source : root).querySelectorAll(
+        "x-s[data-odr-id]",
+      ),
+    );
   }
 
   function runsBetween(from, to) {
@@ -1037,9 +1078,7 @@
     var range = document.createRange();
     range.setStart(node, Math.max(0, Math.min(offset, node.data.length)));
     range.collapse(true);
-    var selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(range);
+    selectSource(range);
   }
 
   /// Selects from the start of @p marked's first run to the end of its last.
@@ -1048,9 +1087,7 @@
     range.setStart(textNodeOf(marked.start.run), 0);
     var end = textNodeOf(marked.end.run);
     range.setEnd(end, end.data.length);
-    var selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(range);
+    selectSource(range);
   }
 
   /// The offset into @p run's text that (@p container, @p offset) names. The
@@ -1292,6 +1329,11 @@
         return null;
       }
       range = selection.getRangeAt(0);
+    }
+    var view = viewAdapter();
+    if (view) {
+      range = view.inputRange(range);
+      if (!range) return null;
     }
     var joined = boundaryOf(range);
     if (joined !== null) {
@@ -1570,9 +1612,7 @@
     var range = document.createRange();
     range.setStart(caret.paragraph, 0);
     range.collapse(true);
-    var selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(range);
+    selectSource(range);
   }
 
   // ------------------------------------------------------------------- gate
@@ -1758,6 +1798,68 @@
 
   // the runs the browser may write into, each with the text it held before
   var unrecorded = [];
+  var compositionGesture = null;
+
+  function beginComposition() {
+    var view = viewAdapter();
+    if (!view || view.isComposing()) return true;
+    var at = rangeOf({});
+    if (!at || outOfScope(at)) {
+      refuse(null, at ? "outOfScope" : "range", at);
+      return false;
+    }
+    if (!isCollapsed(at) || at.start.run === null) {
+      var caret;
+      withView(function () {
+        gesture += 1;
+        compositionGesture = gesture;
+        caret = replaceRange(at, "");
+        if (caret && caret.run === null) {
+          var inserted = perform(appendRun(caret.paragraph, ""));
+          caret.run = inserted.run;
+        }
+        if (caret) restore(caret);
+      });
+      if (!caret) {
+        compositionGesture = null;
+        refuse(null, "range", at);
+        return false;
+      }
+    }
+    if (view.compositionStart()) return true;
+    // A native caret may sit beside a run, at the paragraph's edge.
+    var place = caret || at.start;
+    if (place.run === null) return false;
+    var selection = view.capture();
+    var point = {
+      element: place.run,
+      offset: place.offset,
+      affinity: selection && selection.focus.affinity,
+    };
+    view.restore({ anchor: point, focus: point });
+    return view.compositionStart();
+  }
+
+  function abortComposition(event) {
+    if (event.cancelable) event.preventDefault();
+    event.stopImmediatePropagation();
+    root.blur();
+  }
+
+  function finishComposition() {
+    var view = viewAdapter();
+    if (!view || !view.isComposing()) return;
+    root.blur();
+    // Some keyboards omit compositionend when the editable host loses focus.
+    if (view.isComposing()) {
+      view.compositionSync();
+      recordWritten();
+      view.compositionEnd();
+      compositionGesture = null;
+    }
+  }
+
+  if (odr.documentView) odr.documentView.finishComposition = finishComposition;
 
   function watch(run) {
     if (run === null) {
@@ -1768,18 +1870,25 @@
         return;
       }
     }
-    unrecorded.push({ run: run, before: run.textContent });
+    var view = viewAdapter();
+    unrecorded.push({
+      run: run,
+      before: run.textContent,
+      selection: view ? view.capture() : null,
+    });
   }
 
   function watchSelection() {
-    var selection = window.getSelection();
-    if (selection !== null && selection.rangeCount > 0) {
-      watch(runOf(selection.getRangeAt(0).startContainer));
+    var at = rangeOf({});
+    if (at) {
+      watch(at.start.run);
+      watch(at.end.run);
     }
   }
 
   /// One step for what the browser wrote into the watched runs.
   function recordWritten() {
+    var before = unrecorded.length ? unrecorded[0].selection : null;
     var changes = [];
     for (var i = 0; i < unrecorded.length; ++i) {
       var entry = unrecorded[i];
@@ -1797,8 +1906,11 @@
     if (changes.length === 0) {
       return;
     }
-    gesture += 1;
+    if (compositionGesture === null) gesture += 1;
+    else gesture = compositionGesture;
     record({
+      selectionBefore: before,
+      selectionAfter: viewAdapter() ? odr.documentView.capture() : null,
       ops: changes.map(function (change) {
         return { op: "setText", id: idOf(change.run), text: change.after };
       }),
@@ -1811,30 +1923,54 @@
         changes.forEach(function (change) {
           change.run.textContent = change.before;
         });
-      },
+      }
     });
   }
 
-  root.addEventListener("compositionstart", function () {
+  root.addEventListener("compositionstart", function (event) {
     if (odr.editing.isEnabled()) {
+      if (!beginComposition()) {
+        abortComposition(event);
+        return;
+      }
       watchSelection();
     }
   });
 
-  root.addEventListener("input", function () {
+  root.addEventListener("input", function (event) {
     if (odr.editing.isEnabled()) {
-      recordWritten();
+      var view = viewAdapter();
+      if (view) view.compositionSync();
+      withView(recordWritten);
+      if (view && !event.isComposing) {
+        view.compositionEnd();
+        compositionGesture = null;
+      }
     }
   });
 
   // for a browser that writes a composition without an `input` for it
   root.addEventListener("compositionend", function () {
     if (odr.editing.isEnabled()) {
-      recordWritten();
+      var view = viewAdapter();
+      if (view) view.compositionSync();
+      withView(recordWritten);
+      if (view) view.compositionEnd();
+      compositionGesture = null;
     }
   });
 
   root.addEventListener("beforeinput", function (event) {
+    if (!event.cancelable || /Composition/.test(event.inputType)) {
+      beforeInput(event);
+      return;
+    }
+    withView(function () {
+      beforeInput(event);
+    });
+  });
+
+  function beforeInput(event) {
     // what the browser wrote before this is a gesture of its own
     recordWritten();
     gesture += 1;
@@ -1859,6 +1995,11 @@
     // the browser writes these itself, and the `input` after it is recorded;
     // WebKit may let a composition be cancelled, but it is not an edit we own
     if (!event.cancelable || /Composition/.test(type)) {
+      if (!beginComposition()) {
+        abortComposition(event);
+        return;
+      }
+      at = rangeOf({});
       if (at === null) {
         watchSelection();
       } else {
@@ -1980,7 +2121,7 @@
     }
     event.preventDefault();
     restore(caret);
-  });
+  }
 
   /// A paste is its lines: the first replaces the selection, each one after
   /// it opens a paragraph.
@@ -2061,7 +2202,7 @@
       fragment.querySelectorAll("[data-odr-id]"),
       function (element) {
         element.removeAttribute("data-odr-id");
-      }
+      },
     );
     Object.keys(fresh).forEach(function (id) {
       fresh[id].setAttribute("data-odr-id", id);
@@ -2324,6 +2465,7 @@
       root.setAttribute("contenteditable", "true");
     },
     disable: function () {
+      finishComposition();
       dropPending();
       root.removeAttribute("contenteditable");
     },
@@ -2333,12 +2475,18 @@
     removeSlide: removeSlide,
     moveSlide: moveSlide,
     format: function (style) {
-      recordWritten();
-      return format(style, rangeOf({}));
+      finishComposition();
+      return withView(function () {
+        recordWritten();
+        return format(style, rangeOf({}));
+      });
     },
     toggle: function (property) {
-      recordWritten();
-      return toggle(property, rangeOf({}));
+      finishComposition();
+      return withView(function () {
+        recordWritten();
+        return toggle(property, rangeOf({}));
+      });
     },
     canUndo: function () {
       return done.length > 0;
@@ -2347,34 +2495,45 @@
       return undone.length > 0;
     },
     undo: function () {
-      recordWritten();
-      if (done.length === 0) {
-        return false;
-      }
-      var taken = done[done.length - 1].gesture;
-      while (done.length > 0 && done[done.length - 1].gesture === taken) {
-        var step = done.pop();
-        step.revert();
-        undone.push(step);
-      }
-      odr.editing.changed();
-      return true;
+      finishComposition();
+      return withView(function () {
+        recordWritten();
+        if (done.length === 0) {
+          return false;
+        }
+        var taken = done[done.length - 1].gesture;
+        while (done.length > 0 && done[done.length - 1].gesture === taken) {
+          var step = done.pop();
+          step.revert();
+          undone.push(step);
+        }
+        var view = viewAdapter();
+        if (view) view.restore(step.selectionBefore);
+        odr.editing.changed();
+        return true;
+      });
     },
     redo: function () {
-      recordWritten();
-      if (undone.length === 0) {
-        return false;
-      }
-      var given = undone[undone.length - 1].gesture;
-      while (undone.length > 0 && undone[undone.length - 1].gesture === given) {
-        var step = undone.pop();
-        step.apply();
-        done.push(step);
-      }
-      odr.editing.changed();
-      return true;
+      finishComposition();
+      return withView(function () {
+        recordWritten();
+        if (undone.length === 0) {
+          return false;
+        }
+        var given = undone[undone.length - 1].gesture;
+        while (undone.length > 0 && undone[undone.length - 1].gesture === given) {
+          var step = undone.pop();
+          step.apply();
+          done.push(step);
+        }
+        var view = viewAdapter();
+        if (view) view.restore(step.selectionAfter);
+        odr.editing.changed();
+        return true;
+      });
     },
     committed: function () {
+      finishComposition();
       dropPending();
       done.length = 0;
       undone.length = 0;

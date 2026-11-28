@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- A source/view adapter lets the text editor target original runs through
+  projected fragments, preserving selection, undo and composition without
+  changing the version 2 editing protocol.
+
 - Text HTML exposes inert page-layout and marginal templates, plus authored
   master-page transitions and explicit-break markers, for browser pagination.
   Existing visible page layout is unchanged.

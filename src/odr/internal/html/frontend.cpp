@@ -90,6 +90,9 @@ constexpr Asset search_css_asset{HtmlResourceType::css, "text/css",
 constexpr Asset search_dark_css_asset{HtmlResourceType::css, "text/css",
                                       "search-dark.css",
                                       frontend_assets::search_dark_css};
+constexpr Asset document_view_js_asset{HtmlResourceType::js, "text/javascript",
+                                       "document-view.js",
+                                       frontend_assets::document_view_js};
 constexpr Asset document_js_asset{HtmlResourceType::js, "text/javascript",
                                   "document.js", frontend_assets::document_js};
 /// The mode, the refusals and the log a save reads, generic over the formats.
@@ -365,6 +368,10 @@ void html::write_page_layout_attribute(const HtmlConfig &config,
 void html::write_editing_script(const WritingState &state) {
   write_error_codes(state);
   write_script(editing_js_asset, state);
+}
+
+void html::write_document_view_script(const WritingState &state) {
+  write_script(document_view_js_asset, state);
 }
 
 void html::write_document_script(const WritingState &state) {

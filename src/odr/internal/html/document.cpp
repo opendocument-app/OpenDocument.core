@@ -329,6 +329,9 @@ void write_body_end(const Document &document, const WritingState &state) {
 
   write_search_script(state);
   write_editing_script(state);
+  if (document.document_type() == DocumentType::text) {
+    write_document_view_script(state);
+  }
   if (state.config().editable) {
     write_document_script(state);
   }

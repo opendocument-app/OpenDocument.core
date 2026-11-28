@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+"""Serve the source/view fixture alongside the embedded assets."""
+import pathlib
+import sys
+
+HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+from serve import serve
+
+serve(8756, HERE, ("fixture.html",))
