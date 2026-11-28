@@ -16,6 +16,12 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Legacy Word (`.doc`) documents render on their page: the first section's
+  size and margins, the paragraph styles of the style sheet with their fonts,
+  sizes and spacing, and direct paragraph formatting (alignment, indents,
+  spacing, line height, page break before). Text that used to fall back to
+  10pt now takes the size its style gives it.
+
 - While pagination has layout work queued, its root carries
   `aria-busy="true"`, so assistive technology and screenshots can wait for the
   pages to settle. The reference output now renders text documents paginated.

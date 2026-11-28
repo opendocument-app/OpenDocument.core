@@ -22,6 +22,9 @@ void skip_Prc(std::istream &in);
 
 std::string read_string(std::istream &in, std::size_t length_cp,
                         bool is_compressed);
+/// One UTF-16 unit per CP, whichever way the piece stores them.
+std::u16string read_string_utf16(std::istream &in, std::size_t length_cp,
+                                 bool is_compressed);
 std::string read_string_compressed(std::istream &in, std::size_t length_cp);
 std::u16string read_string_uncompressed(std::istream &in,
                                         std::size_t length_cp);

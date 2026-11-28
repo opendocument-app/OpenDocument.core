@@ -31,9 +31,15 @@ public:
   void set_element_style_index(ElementIdentifier id, std::uint32_t index);
   [[nodiscard]] std::uint32_t element_style_index(ElementIdentifier id) const;
 
+  /// Paragraph style of a paragraph element, as an index into the document's
+  /// `StyleRegistry` (0 is the default style).
+  void set_paragraph_style_index(ElementIdentifier id, std::uint32_t index);
+  [[nodiscard]] std::uint32_t paragraph_style_index(ElementIdentifier id) const;
+
 private:
   SideTable<Text> m_texts;
   SideTable<std::uint32_t> m_style_indices;
+  SideTable<std::uint32_t> m_paragraph_style_indices;
 };
 
 } // namespace odr::internal::oldms::text

@@ -120,41 +120,46 @@ private:
 
 CharacterIndex read_character_index(std::istream &in);
 
-/// The document's character-formatting runs, keyed by WordDocument-stream
-/// offset (fc), each referencing a style index. Index 0 is the default style;
-/// offsets outside any run resolve to it.
-class CharacterRuns final {
+/// Formatting runs keyed by WordDocument-stream offset (fc), each referencing
+/// a property index. Offsets outside any run resolve to index 0.
+class FormattingRuns final {
 public:
   /// Appends a run; runs must be ascending and non-overlapping. Adjacent runs
-  /// with the same style index are merged.
+  /// with the same index are merged.
   void append_run(std::uint32_t begin_fc, std::uint32_t end_fc,
-                  std::uint32_t style_index);
+                  std::uint32_t index);
 
-  /// The style index of the run containing `fc` (0 if none).
+  /// The index of the run containing `fc` (0 if none).
   [[nodiscard]] std::uint32_t index_at(std::uint32_t fc) const;
   /// End offset of the run containing `fc`, or the next run's begin, so text
-  /// can be walked in style-uniform chunks; UINT32_MAX past the last run.
+  /// can be walked in uniform chunks; UINT32_MAX past the last run.
   [[nodiscard]] std::uint32_t chunk_end(std::uint32_t fc) const;
 
 private:
   struct Run {
     std::uint32_t begin_fc;
     std::uint32_t end_fc;
-    std::uint32_t style_index;
+    std::uint32_t index;
   };
 
   std::vector<Run> m_runs;
 };
 
-/// Reads the PlcBteChpx at `fc` in the table stream and every referenced
-/// ChpxFkp page ([MS-DOC] 2.9.33) from the WordDocument stream, resolving
-/// each run's Chpx on top of `styles[0]` (the default style) and appending
-/// each distinct resolved style to `styles` (fonts via `font_names`). Equal
-/// Chpx bytes share one style.
-CharacterRuns read_character_runs(std::istream &document_stream,
-                                  std::istream &table_stream,
-                                  FcLcb plcf_bte_chpx,
-                                  std::vector<TextStyle> &styles,
-                                  std::span<const std::string> font_names);
+/// Reads the PlcBteChpx at `plcf_bte_chpx` in the table stream and every
+/// referenced ChpxFkp page ([MS-DOC] 2.9.33) from the WordDocument stream.
+/// Each run indexes `grpprls`, which gains each distinct Chpx grpprl; index 0
+/// is the empty one, which `grpprls` must already hold.
+FormattingRuns read_character_runs(std::istream &document_stream,
+                                   std::istream &table_stream,
+                                   FcLcb plcf_bte_chpx,
+                                   std::vector<std::string> &grpprls);
+
+/// As `read_character_runs`, for the PlcBtePapx and its PapxFkp pages
+/// ([MS-DOC] 2.9.174). Each distinct GrpPrlAndIstd ([MS-DOC] 2.9.114), istd
+/// first, goes into `papxs`; index 0 is a paragraph without one.
+FormattingRuns read_paragraph_runs(std::istream &document_stream,
+                                   std::istream &table_stream,
+                                   FcLcb plcf_bte_papx,
+                                   std::vector<std::string> &papxs);
 
 } // namespace odr::internal::oldms::text

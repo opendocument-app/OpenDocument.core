@@ -27,4 +27,16 @@ ElementRegistry::element_style_index(const ElementIdentifier id) const {
   return index != nullptr ? *index : 0;
 }
 
+void ElementRegistry::set_paragraph_style_index(const ElementIdentifier id,
+                                                const std::uint32_t index) {
+  check_element_id(id);
+  m_paragraph_style_indices.emplace(id, index);
+}
+
+std::uint32_t
+ElementRegistry::paragraph_style_index(const ElementIdentifier id) const {
+  const std::uint32_t *index = m_paragraph_style_indices.find(id);
+  return index != nullptr ? *index : 0;
+}
+
 } // namespace odr::internal::oldms::text

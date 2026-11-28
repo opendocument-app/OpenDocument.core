@@ -125,6 +125,22 @@ std::string text::read_string(std::istream &in, const std::size_t length_cp,
       read_string_uncompressed(in, length_cp));
 }
 
+std::u16string text::read_string_utf16(std::istream &in,
+                                       const std::size_t length_cp,
+                                       const bool is_compressed) {
+  if (!is_compressed) {
+    return read_string_uncompressed(in, length_cp);
+  }
+  const std::string bytes = util::byte_stream::read_u8s(in, length_cp);
+  std::u16string result;
+  result.reserve(bytes.size());
+  for (const char c : bytes) {
+    // An unmapped byte denotes code point U+00XX ([MS-DOC] 2.4.1 step 6).
+    result.push_back(uncompress_char(c).value_or(static_cast<std::uint8_t>(c)));
+  }
+  return result;
+}
+
 std::string text::read_string_compressed(std::istream &in,
                                          const std::size_t length_cp) {
   static constexpr auto eof = std::istream::traits_type::eof();

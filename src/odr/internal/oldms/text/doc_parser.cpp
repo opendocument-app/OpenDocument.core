@@ -10,15 +10,21 @@
 #include <odr/internal/oldms/text/doc_structs.hpp>
 #include <odr/internal/oldms/text/doc_style.hpp>
 #include <odr/internal/util/byte_stream_util.hpp>
+#include <odr/internal/util/byte_util.hpp>
 #include <odr/internal/util/stream_util.hpp>
+#include <odr/internal/util/string_util.hpp>
 
 #include <algorithm>
 #include <cstdint>
 #include <istream>
 #include <limits>
+#include <map>
+#include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace odr::internal::oldms {
@@ -98,21 +104,38 @@ private:
   std::int32_t m_instruction_depth{0};
 };
 
-/// A maximal piece of body text with uniform character formatting.
+template <typename Read, typename Fallback>
+auto or_default(const Read &read, const Fallback &fallback) {
+  try {
+    return read();
+  } catch (const std::runtime_error &) {
+    return fallback();
+  }
+}
+
+/// A maximal piece of body text with uniform direct character formatting.
 struct StyledRun {
   std::string text;
-  std::uint32_t style_index{0};
+  std::uint32_t chpx_index{0};
+};
+
+struct DecodedBody {
+  std::vector<StyledRun> runs;
+  /// The fc of each paragraph or section mark, in order: the paragraph's
+  /// properties are those of its mark ([MS-DOC] 2.4.6.1).
+  std::vector<std::uint32_t> paragraph_end_fcs;
 };
 
 /// Decodes the main-body pieces (the first `ccp_text` CPs), split further at
 /// every character-formatting boundary.
-std::vector<StyledRun> decode_styled_runs(
-    std::istream &document_stream, const text::CharacterIndex &character_index,
-    const text::CharacterRuns &character_runs, const std::size_t ccp_text) {
+DecodedBody decode_body(std::istream &document_stream,
+                        const text::CharacterIndex &character_index,
+                        const text::FormattingRuns &character_runs,
+                        const std::size_t ccp_text) {
   if (character_index.last_cp() < ccp_text) {
     throw std::runtime_error("doc: piece table does not cover the body");
   }
-  std::vector<StyledRun> runs;
+  DecodedBody result;
   std::size_t consumed_cp = 0;
 
   for (const auto &entry : character_index) {
@@ -126,10 +149,10 @@ std::vector<StyledRun> decode_styled_runs(
     while (cp < take) {
       const auto fc =
           static_cast<std::uint32_t>(entry.data_offset + cp * bytes_per_cp);
-      const std::uint32_t style_index = character_runs.index_at(fc);
+      const std::uint32_t chpx_index = character_runs.index_at(fc);
 
-      // CPs of this piece still in the same style run; a boundary that falls
-      // inside a 2-byte CP is pushed past it.
+      // CPs of this piece still in the same run; a boundary that falls inside
+      // a 2-byte CP is pushed past it.
       const std::uint32_t chunk_end_fc = character_runs.chunk_end(fc);
       std::size_t chunk_cp = take - cp;
       if (chunk_end_fc != std::numeric_limits<std::uint32_t>::max()) {
@@ -140,12 +163,19 @@ std::vector<StyledRun> decode_styled_runs(
       }
 
       document_stream.seekg(fc);
-      std::string chunk_text =
-          text::read_string(document_stream, chunk_cp, entry.is_compressed);
-      if (!runs.empty() && runs.back().style_index == style_index) {
-        runs.back().text += chunk_text;
+      const std::u16string units = text::read_string_utf16(
+          document_stream, chunk_cp, entry.is_compressed);
+      for (std::size_t i = 0; i < units.size(); ++i) {
+        if (units[i] == paragraph_mark || units[i] == page_break_mark) {
+          result.paragraph_end_fcs.push_back(
+              fc + static_cast<std::uint32_t>(i * bytes_per_cp));
+        }
+      }
+      std::string chunk_text = util::string::u16string_to_string(units);
+      if (!result.runs.empty() && result.runs.back().chpx_index == chpx_index) {
+        result.runs.back().text += chunk_text;
       } else {
-        runs.emplace_back(std::move(chunk_text), style_index);
+        result.runs.emplace_back(std::move(chunk_text), chpx_index);
       }
       cp += chunk_cp;
     }
@@ -153,8 +183,88 @@ std::vector<StyledRun> decode_styled_runs(
     consumed_cp += take;
   }
 
-  return runs;
+  return result;
 }
+
+/// Resolves paragraph and character formatting into the styles of the
+/// document's `StyleRegistry`, one per distinct combination: a paragraph's
+/// PAPX on its style ([MS-DOC] 2.4.6.1), and a run's CHPX on the style of
+/// the paragraph it is in ([MS-DOC] 2.4.6.2).
+class StyleResolver {
+public:
+  struct Paragraph {
+    std::uint16_t istd{0};
+    std::uint32_t style_index{0};
+  };
+
+  StyleResolver(const text::StyleSheet &style_sheet,
+                std::span<const std::string> papxs,
+                std::span<const std::string> chpxs,
+                std::span<const std::string> font_names)
+      : m_style_sheet(&style_sheet), m_papxs(papxs), m_chpxs(chpxs),
+        m_font_names(font_names), m_paragraphs(papxs.size()) {
+    const text::StyleSheet::Entry &normal = style_sheet.paragraph_style(0);
+    m_text_styles.push_back(normal.text);
+    m_text_style_indices.emplace(std::pair<std::uint16_t, std::uint32_t>{}, 0);
+    m_paragraph_styles.push_back(normal.paragraph);
+    m_paragraphs[0] = Paragraph{};
+  }
+
+  /// The paragraph a PAPX index describes.
+  Paragraph paragraph(const std::uint32_t papx_index) {
+    std::optional<Paragraph> &result = m_paragraphs.at(papx_index);
+    if (!result.has_value()) {
+      // GrpPrlAndIstd ([MS-DOC] 2.9.114): the istd, then the grpprl.
+      const std::string_view papx = m_papxs[papx_index];
+      const auto istd = util::byte::from_little_endian<std::uint16_t>(papx);
+      m_paragraph_styles.push_back(text::apply_paragraph_sprms(
+          m_style_sheet->paragraph_style(istd).paragraph, papx.substr(2)));
+      result = Paragraph{.istd = istd,
+                         .style_index = last_index(m_paragraph_styles)};
+    }
+    return *result;
+  }
+
+  /// The character style of a run in a paragraph of style `istd`.
+  std::uint32_t text_style_index(const std::uint16_t istd,
+                                 const std::uint32_t chpx_index) {
+    const auto [it, inserted] =
+        m_text_style_indices.try_emplace({istd, chpx_index}, 0);
+    if (inserted) {
+      m_text_styles.push_back(
+          text::apply_character_sprms(m_style_sheet->paragraph_style(istd).text,
+                                      m_chpxs[chpx_index], m_font_names));
+      it->second = last_index(m_text_styles);
+    }
+    return it->second;
+  }
+
+  [[nodiscard]] std::vector<TextStyle> take_text_styles() {
+    return std::move(m_text_styles);
+  }
+  [[nodiscard]] std::vector<ParagraphStyle> take_paragraph_styles() {
+    return std::move(m_paragraph_styles);
+  }
+
+private:
+  const text::StyleSheet *m_style_sheet{nullptr};
+  std::span<const std::string> m_papxs;
+  std::span<const std::string> m_chpxs;
+  std::span<const std::string> m_font_names;
+  std::vector<std::optional<Paragraph>> m_paragraphs;
+  std::map<std::pair<std::uint16_t, std::uint32_t>, std::uint32_t>
+      m_text_style_indices;
+  std::vector<TextStyle> m_text_styles;
+  std::vector<ParagraphStyle> m_paragraph_styles;
+
+  template <typename T>
+  static std::uint32_t last_index(const std::vector<T> &styles) {
+    if (!std::in_range<std::uint32_t>(styles.size() - 1)) {
+      throw std::length_error("doc: too many styles");
+    }
+    return static_cast<std::uint32_t>(styles.size() - 1);
+  }
+};
 
 } // namespace
 
@@ -182,12 +292,35 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
   const std::vector<std::string> font_names =
       read_font_names(*table_stream, fib.fibRgFcLcb.sttbfFfn);
 
-  // Direct character formatting only ([MS-DOC] 2.4.6.2).
-  std::vector<TextStyle> styles{default_character_style()}; // index 0
-  const CharacterRuns character_runs =
-      read_character_runs(*document_stream, *table_stream,
-                          fib.fibRgFcLcb.plcfBteChpx, styles, font_names);
-  style_registry = StyleRegistry(std::move(styles));
+  std::vector<std::string> chpxs{""};
+  const FormattingRuns character_runs = read_character_runs(
+      *document_stream, *table_stream, fib.fibRgFcLcb.plcfBteChpx, chpxs);
+
+  // The style sheet, the paragraph properties and the sections only refine
+  // the layout: where one is malformed its defaults stand in, and the text
+  // still reads.
+  const StyleSheet style_sheet = or_default(
+      [&] {
+        return read_style_sheet(*table_stream, fib.fibRgFcLcb.stshf,
+                                font_names);
+      },
+      [&] { return read_style_sheet(*table_stream, {}, font_names); });
+  std::vector<std::string> papxs{""};
+  const FormattingRuns paragraph_runs = or_default(
+      [&] {
+        return read_paragraph_runs(*document_stream, *table_stream,
+                                   fib.fibRgFcLcb.plcfBtePapx, papxs);
+      },
+      [&] {
+        papxs.resize(1);
+        return FormattingRuns();
+      });
+  const PageLayout page_layout = or_default(
+      [&] {
+        return read_page_layout(*document_stream, *table_stream,
+                                fib.fibRgFcLcb.plcfSed);
+      },
+      default_page_layout);
 
   table_stream->seekg(fib.fibRgFcLcb.clx.fc);
   const std::string clx_bytes =
@@ -196,23 +329,42 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
   const CharacterIndex character_index = read_character_index(clx_stream);
 
   const auto ccp_text = static_cast<std::size_t>(fib.ccpText());
-  const std::vector<StyledRun> runs = decode_styled_runs(
-      *document_stream, character_index, character_runs, ccp_text);
+  const DecodedBody body =
+      decode_body(*document_stream, character_index, character_runs, ccp_text);
+
+  StyleResolver styles(style_sheet, papxs, chpxs, font_names);
 
   // Paragraphs open lazily, so the trailing paragraph mark adds no empty one.
   TextCleaner cleaner;
   ElementIdentifier paragraph_id = null_element_id;
+  std::uint16_t paragraph_istd = 0;
+  std::size_t paragraph_number = 0;
 
-  const auto ensure_paragraph = [&](const std::uint32_t style_index) {
-    if (paragraph_id == null_element_id) {
-      auto [id, paragraph] = registry.create_element(ElementType::paragraph);
-      registry.append_child(root_id, id);
-      registry.set_element_style_index(id, style_index);
-      paragraph_id = id;
+  const auto ensure_paragraph = [&](const std::uint32_t chpx_index) {
+    if (paragraph_id != null_element_id) {
+      return;
     }
+    const std::uint32_t papx_index =
+        paragraph_number < body.paragraph_end_fcs.size()
+            ? paragraph_runs.index_at(body.paragraph_end_fcs[paragraph_number])
+            : 0;
+    const StyleResolver::Paragraph paragraph = styles.paragraph(papx_index);
+    paragraph_istd = paragraph.istd;
+
+    auto [id, element] = registry.create_element(ElementType::paragraph);
+    registry.append_child(root_id, id);
+    registry.set_paragraph_style_index(id, paragraph.style_index);
+    registry.set_element_style_index(
+        id, styles.text_style_index(paragraph_istd, chpx_index));
+    paragraph_id = id;
+  };
+  const auto end_paragraph = [&](const std::uint32_t chpx_index) {
+    ensure_paragraph(chpx_index);
+    paragraph_id = null_element_id;
+    ++paragraph_number;
   };
 
-  for (const StyledRun &run : runs) {
+  for (const StyledRun &run : body.runs) {
     std::size_t at = 0;
     while (at <= run.text.size()) {
       const std::size_t control = run.text.find_first_of("\r\x0B\x0C", at);
@@ -222,9 +374,10 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
       if (std::string cleaned = cleaner.clean(
               std::string_view(run.text).substr(at, segment_end - at));
           !cleaned.empty()) {
-        ensure_paragraph(run.style_index);
+        ensure_paragraph(run.chpx_index);
         auto [span_id, span] = registry.create_element(ElementType::span);
-        registry.set_element_style_index(span_id, run.style_index);
+        registry.set_element_style_index(
+            span_id, styles.text_style_index(paragraph_istd, run.chpx_index));
         registry.append_child(paragraph_id, span_id);
 
         auto [text_id, text_element, text_entry] =
@@ -238,18 +391,16 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
       }
       switch (run.text[control]) {
       case paragraph_mark:
-        ensure_paragraph(run.style_index);
-        paragraph_id = null_element_id;
+        end_paragraph(run.chpx_index);
         break;
       case page_break_mark: {
-        ensure_paragraph(run.style_index);
-        paragraph_id = null_element_id;
+        end_paragraph(run.chpx_index);
         auto [page_break_id, page_break] =
             registry.create_element(ElementType::page_break);
         registry.append_child(root_id, page_break_id);
       } break;
       case line_break_mark: {
-        ensure_paragraph(run.style_index);
+        ensure_paragraph(run.chpx_index);
         auto [line_id, line] = registry.create_element(ElementType::line_break);
         registry.append_child(paragraph_id, line_id);
       } break;
@@ -260,6 +411,8 @@ ElementIdentifier text::parse_tree(ElementRegistry &registry,
     }
   }
 
+  style_registry = StyleRegistry(styles.take_text_styles(),
+                                 styles.take_paragraph_styles(), page_layout);
   return root_id;
 }
 

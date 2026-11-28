@@ -46,7 +46,7 @@ public:
   [[nodiscard]] PageLayout text_root_page_layout(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
     (void)element_id;
-    return {};
+    return m_style_registry->page_layout();
   }
   [[nodiscard]] ElementIdentifier text_root_first_master_page(
       [[maybe_unused]] const ElementIdentifier element_id) const override {
@@ -61,12 +61,10 @@ public:
     return {};
   }
 
-  /// TODO paragraph properties ([MS-DOC] `PAPX`) are not read: alignment,
-  /// indent and spacing all render as the default.
   [[nodiscard]] ParagraphStyle
   paragraph_style(const ElementIdentifier element_id) const override {
-    (void)element_id;
-    return {};
+    return m_style_registry->paragraph_style(
+        m_registry->paragraph_style_index(element_id));
   }
   [[nodiscard]] TextStyle
   paragraph_text_style(const ElementIdentifier element_id) const override {
