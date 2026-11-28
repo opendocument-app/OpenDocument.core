@@ -23,8 +23,8 @@ The release run heads these entries with the version and opens a fresh
 ### Documents
 
 - DOCX tables with a fixed layout (`w:tblLayout w:type="fixed"`) keep their
-  column widths in HTML and clip what overflows a cell, so a wide table nested
-  in a narrow cell no longer stretches its column. New `TableLayout` and
+  column widths in HTML, so a wide table nested in a narrow cell is clipped
+  to it instead of stretching its column. New `TableLayout` and
   `TableStyle::layout`, mirrored in python, java and swift.
 
 - DOCX text resolves major/minor Latin theme fonts from the document's theme

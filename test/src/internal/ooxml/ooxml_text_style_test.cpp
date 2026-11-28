@@ -382,7 +382,7 @@ TEST(ooxml_text_style, table_layout) {
 }
 
 /// A table wider than the fixed cell it sits in must not widen that column.
-TEST(ooxml_text_style, a_fixed_table_clips_its_cells_in_html) {
+TEST(ooxml_text_style, a_fixed_table_clips_a_nested_table_in_html) {
   using namespace odr::internal;
   auto files = std::make_shared<VirtualFilesystem>();
   files->copy(
@@ -408,8 +408,15 @@ TEST(ooxml_text_style, a_fixed_table_clips_its_cells_in_html) {
   ASSERT_NE(std::string::npos, outer);
   const std::size_t inner = html.find("<table", outer + 1);
   ASSERT_NE(std::string::npos, inner);
-  EXPECT_NE(std::string::npos,
-            html.substr(outer, inner - outer).find("overflow:hidden;"));
+  // a wrapper clips the nested table; no cell is clipped
+  const std::string wrapper = R"(<div style="overflow:hidden;">)";
+  const std::size_t clip = html.find(wrapper, outer);
+  ASSERT_NE(std::string::npos, clip);
+  EXPECT_LT(clip, inner);
+  const std::size_t end = html.rfind("</table>");
+  ASSERT_NE(std::string::npos, end);
+  const std::string tables = html.substr(outer, end - outer);
+  EXPECT_EQ(tables.find("overflow:hidden"), tables.rfind("overflow:hidden"));
   EXPECT_EQ(std::string::npos, html.find("table-layout:fixed", inner));
 }
 

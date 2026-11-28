@@ -529,16 +529,24 @@ void html::translate_list_item(const Element &element,
 
 void html::translate_table(const Element &element, const WritingState &state) {
   const Table table = element.as_table();
-  const TableStyle table_style = table.style();
-  // Word and LibreOffice clip what overflows a fixed column.
-  const bool clip_cells = table_style.layout == TableLayout::fixed;
+
+  // A table nested in a fixed column must not widen it, and its `col` widths
+  // keep it from shrinking, so clip it to the cell.
+  const Element cell = element.parent();
+  const bool clip =
+      cell.type() == ElementType::table_cell &&
+      cell.parent().parent().as_table().style().layout == TableLayout::fixed;
+  if (clip) {
+    state.out().write_element_begin(
+        "div", HtmlElementOptions().set_style("overflow:hidden;"));
+  }
 
   state.out().write_element_begin(
       "table",
       HtmlElementOptions()
           .set_attributes(HtmlAttributesVector{
               {"cellpadding", "0"}, {"border", "0"}, {"cellspacing", "0"}})
-          .set_style(translate_table_style(table_style)));
+          .set_style(translate_table_style(table.style())));
 
   for (Element column : table.columns()) {
     TableColumn table_column = column.as_table_column();
@@ -577,14 +585,8 @@ void html::translate_table(const Element &element, const WritingState &state) {
                   clb("rowspan", std::to_string(cell_span.rows));
                 }
               })
-              .set_style([&] {
-                std::string style = translate_table_cell_style(
-                    table_cell.style(), writes_dark_style(state.config()));
-                if (clip_cells) {
-                  style.append("overflow:hidden;");
-                }
-                return style;
-              }()));
+              .set_style(translate_table_cell_style(
+                  table_cell.style(), writes_dark_style(state.config()))));
 
       translate_children(cell.children(), state);
 
@@ -595,6 +597,10 @@ void html::translate_table(const Element &element, const WritingState &state) {
   }
 
   state.out().write_element_end("table");
+
+  if (clip) {
+    state.out().write_element_end("div");
+  }
 }
 
 namespace html {
