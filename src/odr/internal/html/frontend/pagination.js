@@ -516,10 +516,10 @@
     // Without an edit, a step only adds pages at the frontier: text above it
     // stays put, and pending text below it has no anchor.
     restorePosition = restorePosition || readingPosition(false);
-    var deadline = performance.now() + 6,
-      steps = 0;
-    // Nothing scrolls during a step, and a page keeps its height until it is
-    // oversized, so only a new or grown page can move the frontier.
+    var deadline = performance.now() + 6;
+    // A page keeps its height until it is oversized, so only a new or grown
+    // page can carry the frontier away; scroll anchoring moves pages only while
+    // the frontier is above the viewport, where it stays near either way.
     var measured = null,
       wasNear = true;
     function stillNear() {
@@ -530,7 +530,7 @@
       return wasNear;
     }
     if (current === null) page(restartKey);
-    while (index < queue.length && stillNear() && steps++ < 24) {
+    while (index < queue.length && stillNear()) {
       var item = queue[index],
         node = item.node,
         style = getComputedStyle(node);

@@ -59,8 +59,8 @@ suppress authored layout changes.
 
 ## Work near the viewport
 
-Each animation frame processes at most 24 blocks/fragments and targets six
-milliseconds of work. One browser layout operation can exceed that budget.
+Each animation frame processes blocks/fragments for six milliseconds. One
+browser layout operation can exceed that budget.
 Pagination stops when the current page ends more than two viewport heights
 below the visible viewport. Scrolling advances the frontier. Unvisited source
 blocks remain in an estimated flow, so the scrollbar and final page count can
