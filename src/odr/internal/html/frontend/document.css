@@ -42,3 +42,18 @@ x-s{display:inline;white-space-collapse:preserve;tab-size:.5in}
 }
 /* The templates are inert; without JS the existing flow/page boxes remain. */
 .odr-pagination-original{display:contents}
+.odr-pagination-original [data-odr-flow-break]{break-before:page}
+.odr-pagination-column{display:none}
+.odr-pagination-active>.odr-pagination-column{display:flex}
+.odr-pagination-original[hidden]{display:none!important}
+.odr-pagination-page{width:210mm;height:297mm;flex:none;box-sizing:border-box}
+.odr-pagination-inner{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0}
+.odr-pagination-body{display:flow-root;flex:1;min-height:0}
+.odr-pagination-header,.odr-pagination-footer{display:flow-root;flex:none}
+.odr-pagination-pending{margin:auto}
+.odr-pagination-pending>x-p,.odr-pagination-pending>table{content-visibility:auto;contain-intrinsic-block-size:auto 3em}
+.odr-pagination-active:not(.odr-pagination-borders) .odr-pagination-page{box-shadow:none}
+@media screen and (prefers-reduced-motion:no-preference){
+.odr-pagination-animate .odr-pagination-page{animation:odr-page-appear .16s ease-out}
+@keyframes odr-page-appear{from{opacity:.5;translate:0 4px}to{opacity:1;translate:0 0}}
+}

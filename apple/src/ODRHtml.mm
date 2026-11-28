@@ -103,6 +103,10 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
                           : nil;
   _hostMessageHandler = to_nsstring(config.host_message_handler);
   _textDocumentMargin = config.text_document_margin ? YES : NO;
+  _textDocumentPagination = config.text_document_pagination ? YES : NO;
+  _textDocumentPageBreaks = config.text_document_page_breaks ? YES : NO;
+  _textDocumentPageBorders = config.text_document_page_borders ? YES : NO;
+  _textDocumentPageAnimation = config.text_document_page_animation ? YES : NO;
   _colorScheme = static_cast<ODRHtmlColorScheme>(config.color_scheme);
   if (config.spreadsheet_limit.has_value()) {
     const ODRTableDimensions limit = ODRTableDimensionsMake(
@@ -187,6 +191,10 @@ std::vector<std::string> to_strings(NSArray<NSString *> *strings) {
   }
   config.host_message_handler = to_string(_hostMessageHandler);
   config.text_document_margin = _textDocumentMargin == YES;
+  config.text_document_pagination = _textDocumentPagination == YES;
+  config.text_document_page_breaks = _textDocumentPageBreaks == YES;
+  config.text_document_page_borders = _textDocumentPageBorders == YES;
+  config.text_document_page_animation = _textDocumentPageAnimation == YES;
   config.color_scheme = static_cast<odr::HtmlColorScheme>(_colorScheme);
   if (_spreadsheetLimit != nil) {
     ODRTableDimensions limit{};

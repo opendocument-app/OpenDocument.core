@@ -753,6 +753,10 @@ jobject html_config_to_java(JNIEnv *env, const odr::HtmlConfig &config) {
              box_boolean(env, config.sheet_edit_on_click));
   set_string("hostMessageHandler", config.host_message_handler);
   set_boolean("textDocumentMargin", config.text_document_margin);
+  set_boolean("textDocumentPagination", config.text_document_pagination);
+  set_boolean("textDocumentPageBreaks", config.text_document_page_breaks);
+  set_boolean("textDocumentPageBorders", config.text_document_page_borders);
+  set_boolean("textDocumentPageAnimation", config.text_document_page_animation);
   set_object("colorScheme", "Lapp/opendocument/core/HtmlColorScheme;",
              enum_from_code(env, "app/opendocument/core/HtmlColorScheme",
                             static_cast<jint>(config.color_scheme)));
@@ -897,6 +901,11 @@ odr::HtmlConfig html_config_from_java(JNIEnv *env, jobject config) {
   }
   result.host_message_handler = get_string("hostMessageHandler");
   result.text_document_margin = get_boolean("textDocumentMargin");
+  result.text_document_pagination = get_boolean("textDocumentPagination");
+  result.text_document_page_breaks = get_boolean("textDocumentPageBreaks");
+  result.text_document_page_borders = get_boolean("textDocumentPageBorders");
+  result.text_document_page_animation =
+      get_boolean("textDocumentPageAnimation");
   {
     const jint code = enum_ordinal(
         env,

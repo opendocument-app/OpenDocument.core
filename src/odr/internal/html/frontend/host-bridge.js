@@ -39,6 +39,7 @@
   odr.onAnnotationChange = forward("annotationChange");
   odr.onSearchChange = forward("searchChange");
   odr.onPageChange = forward("pageChange");
+  odr.onPaginationChange = forward("paginationChange");
   odr.onChunksLoaded = forward("chunksLoaded");
   odr.onError = function (code, message) {
     send({ type: "error", detail: { code: code, message: message } });

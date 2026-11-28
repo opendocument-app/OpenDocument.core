@@ -1,5 +1,6 @@
 #pragma once
 
+#include <odr/file.hpp>
 #include <odr/html.hpp>
 
 #include <odr/internal/html/html_writer.hpp>
@@ -68,6 +69,8 @@ void write_editing_script(const WritingState &state);
 void write_document_view_script(const WritingState &state);
 /// The text editor, attached to the mode. Written where the config edits.
 void write_document_script(const WritingState &state);
+/// Progressive text pagination and its runtime options.
+void write_pagination_script(const WritingState &state);
 /// Written in addition to the editing script.
 void write_spreadsheet_script(const WritingState &state);
 /// The sheet's editor, attached to the mode. Written where the config edits.
@@ -103,7 +106,7 @@ void write_host_bridge_script(const WritingState &state);
 /// a service has to answer for these paths as well as for its views. Every
 /// entry is located `nullopt` when the config embeds them.
 HtmlResources locate_document_resources(const HtmlConfig &config,
-                                        bool spreadsheet);
+                                        DocumentType type);
 HtmlResources locate_filesystem_resources(const HtmlConfig &config);
 HtmlResources locate_text_resources(const HtmlConfig &config);
 HtmlResources locate_xml_resources(const HtmlConfig &config);

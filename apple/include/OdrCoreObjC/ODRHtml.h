@@ -119,6 +119,10 @@ NS_SWIFT_NAME(HtmlConfig)
 /// as a JSON string. Empty sends nothing.
 @property(nonatomic, copy) NSString *hostMessageHandler;
 @property(nonatomic) BOOL textDocumentMargin;
+@property(nonatomic) BOOL textDocumentPagination;
+@property(nonatomic) BOOL textDocumentPageBreaks;
+@property(nonatomic) BOOL textDocumentPageBorders;
+@property(nonatomic) BOOL textDocumentPageAnimation;
 
 @property(nonatomic) ODRHtmlColorScheme colorScheme;
 

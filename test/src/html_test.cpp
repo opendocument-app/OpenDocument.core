@@ -2632,6 +2632,48 @@ TEST(html, a_sheet_named_document_keeps_its_own_view) {
   EXPECT_EQ(page.str().find("first</td>"), std::string::npos);
 }
 
+TEST(html, text_pagination_options_and_templates_are_available_when_disabled) {
+  HtmlConfig config;
+  config.embed_shipped_resources = false;
+  const std::string initial = render_odt(config);
+  EXPECT_NE(initial.find("data-odr-pagination=\"false\""), std::string::npos);
+  EXPECT_NE(initial.find("data-odr-page-fit=\"auto\""), std::string::npos);
+  EXPECT_NE(initial.find("data-odr-page-template=\"root\""), std::string::npos);
+  EXPECT_NE(initial.find("pagination.js"), std::string::npos);
+
+  config.text_document_pagination = true;
+  config.text_document_page_breaks = false;
+  config.text_document_page_borders = false;
+  config.text_document_page_animation = false;
+  const std::string paged = render_odt(config);
+  EXPECT_NE(paged.find("data-odr-pagination=\"true\""), std::string::npos);
+  EXPECT_NE(paged.find("data-odr-page-breaks=\"false\""), std::string::npos);
+  EXPECT_NE(paged.find("data-odr-page-borders=\"false\""), std::string::npos);
+  EXPECT_NE(paged.find("data-odr-page-animation=\"false\""), std::string::npos);
+}
+
+TEST(html, text_pagination_preserves_viewport_policy_when_disabled) {
+  HtmlConfig config;
+  config.embed_shipped_resources = false;
+  config.viewport_width = 320;
+  EXPECT_NE(render_odt(config).find("data-odr-page-fit-width=\"320\""),
+            std::string::npos);
+  config.viewport_mode = HtmlViewportMode::fit_width_by_view;
+  const std::string by_view = render_odt(config);
+  EXPECT_NE(by_view.find("data-odr-page-fit=\"view\""), std::string::npos);
+  EXPECT_NE(by_view.find("data-odr-page-fit-width=\"\""), std::string::npos);
+  for (const auto mode :
+       {HtmlViewportMode::actual_size, HtmlViewportMode::none}) {
+    config.viewport_mode = mode;
+    EXPECT_NE(render_odt(config).find("data-odr-page-fit=\"none\""),
+              std::string::npos);
+  }
+  config.viewport_mode = HtmlViewportMode::fit_width;
+  config.viewport_content = "width=640";
+  EXPECT_NE(render_odt(config).find("data-odr-page-fit=\"none\""),
+            std::string::npos);
+}
+
 TEST(html, pagination_exports_reachable_layouts_and_marginals_once) {
   const std::string source = R"(<office:document
     xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"

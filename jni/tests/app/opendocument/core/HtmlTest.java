@@ -201,6 +201,32 @@ class HtmlTest {
     assertTrue(renderOdt(raw).contains("<meta name=\"viewport\" content=\"width=420\"/>"));
   }
 
+  @Test
+  void paginationConfigReachesTheHtml() throws IOException {
+    HtmlConfig config = new HtmlConfig();
+    assertFalse(config.textDocumentPagination);
+    assertTrue(config.textDocumentPageBreaks);
+    assertTrue(config.textDocumentPageBorders);
+    assertTrue(config.textDocumentPageAnimation);
+    config.textDocumentPagination = true;
+    config.textDocumentPageBreaks = false;
+    config.textDocumentPageBorders = false;
+    config.textDocumentPageAnimation = false;
+    String html = renderOdt(config);
+    assertTrue(html.contains("data-odr-pagination=\"true\""));
+    assertTrue(html.contains("data-odr-page-breaks=\"false\""));
+    assertTrue(html.contains("data-odr-page-borders=\"false\""));
+    assertTrue(html.contains("data-odr-page-animation=\"false\""));
+    try (DecodedFile file = Odr.open(TestFiles.odtFile(tempDir).toString());
+        HtmlService service = Html.translate(file, config)) {
+      HtmlConfig readBack = service.config();
+      assertTrue(readBack.textDocumentPagination);
+      assertFalse(readBack.textDocumentPageBreaks);
+      assertFalse(readBack.textDocumentPageBorders);
+      assertFalse(readBack.textDocumentPageAnimation);
+    }
+  }
+
   /** The C++ suite covers what the scheme paints; this only proves it crosses JNI. */
   @Test
   void colorSchemeReachesTheHtml() throws IOException {

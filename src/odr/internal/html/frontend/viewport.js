@@ -20,6 +20,25 @@
   var stated = declared("--odr-fit");
   var measures = stated === "view" || (stated === "auto" && framed);
   var fit = measures ? 1 : parseFloat(stated) || 1;
+  var paginationRoot = document.querySelector("[data-odr-pagination]");
+  var pageFit =
+    paginationRoot && paginationRoot.getAttribute("data-odr-page-fit");
+  var fitWidth = 0;
+
+  function paginationFit() {
+    if (!pageFit) return;
+    var paged =
+      paginationRoot.classList.contains("odr-pagination-active") ||
+      paginationRoot.querySelector(".odr-pagination-original .odr-page-outer");
+    fitWidth =
+      paged && pageFit === "auto"
+        ? Number(paginationRoot.getAttribute("data-odr-page-fit-width")) || 0
+        : 0;
+    measures =
+      !!paged &&
+      (pageFit === "view" || (pageFit === "auto" && (framed || fitWidth > 0)));
+    if (!measures) fit = 1;
+  }
 
   // `null` while the view follows the fit.
   var pinned = parseFloat(declared("--odr-zoom"));
@@ -124,7 +143,7 @@
   }
 
   function measureFit() {
-    var available = root.clientWidth;
+    var available = fitWidth || root.clientWidth;
     if (!available) {
       return fit;
     }
@@ -390,6 +409,7 @@
   // Before the first measurement, so every one of them reads the same state.
   adjustsText = textAdjustHolds();
   width = root.clientWidth;
+  paginationFit();
   if (measures && pinned === null) {
     fit = measureFit();
   }
@@ -754,13 +774,36 @@
     }, 100);
   }
 
-  if (pageList.length > 0) {
-    reported = { page: pageIndex(currentPage), count: pageList.length };
+  // An insert, a removal, a move or their undo: a removed current page
+  // hands over to the one now in its place, else the one before.
+  function refreshPages() {
+    var previous = applied();
+    paginationFit();
+    if (measures && pinned === null) fit = measureFit();
+    // Ordinary edits must not restart scroll restoration at an unchanged fit.
+    if (Math.abs(applied() - previous) > 0.000001) {
+      apply(anchor());
+    }
+    if (pageList.length === 0) {
+      currentPage = null;
+    } else if (currentPage === null || !currentPage.isConnected) {
+      mark(pageList[Math.min(currentIndex, pageList.length - 1)]);
+    } else {
+      currentIndex = pageIndex(currentPage);
+    }
+    pageChanged();
+  }
+
+  if (paginationRoot !== null || pageList.length > 0) {
+    reported = {
+      page: currentPage === null ? null : pageIndex(currentPage),
+      count: pageList.length,
+    };
     document.dispatchEvent(
       new CustomEvent("odr-page-change", { detail: reported })
     );
     // under `single`, loads the neighbours of the page it opens at
-    if (single || opening !== null) {
+    if (currentPage !== null && (single || opening !== null)) {
       turnTo(currentPage, !single);
     }
     if (!single) {
@@ -773,19 +816,11 @@
       }
     });
 
-    // An insert, a removal, a move or their undo: a removed current page
-    // hands over to the one now in its place, else the one before.
-    if (typeof MutationObserver === "function") {
-      new MutationObserver(function () {
-        if (pageList.length === 0) {
-          currentPage = null;
-        } else if (currentPage === null || !currentPage.isConnected) {
-          mark(pageList[Math.min(currentIndex, pageList.length - 1)]);
-        } else {
-          currentIndex = pageIndex(currentPage);
-        }
-        pageChanged();
-      }).observe(pageList[0].parentNode, { childList: true });
+    document.addEventListener("odr-pagination-change", refreshPages);
+    if (typeof MutationObserver === "function" && pageList.length > 0) {
+      new MutationObserver(refreshPages).observe(pageList[0].parentNode, {
+        childList: true,
+      });
     }
 
     var keys = (body.getAttribute("data-odr-keyboard") || "").split(" ");

@@ -268,6 +268,7 @@ std::string three_paragraphs(const std::string &style_name,
 std::string render(const std::string &source) {
   HtmlConfig config((std::filesystem::current_path() / "flat_break").string());
   config.text_document_margin = true;
+  config.embed_shipped_resources = false;
 
   std::ostringstream out;
   html::translate(open(File::from_memory(source)), config)
@@ -366,6 +367,7 @@ TEST(FlatOpenDocumentFile, a_soft_page_break_is_not_content) {
 TEST(FlatOpenDocumentFile, a_reflowed_document_states_the_break_in_css_only) {
   HtmlConfig config((std::filesystem::current_path() / "flat_reflow").string());
   config.text_document_margin = false;
+  config.embed_shipped_resources = false;
 
   std::ostringstream out;
   html::translate(open(File::from_memory(

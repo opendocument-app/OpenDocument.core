@@ -16,6 +16,15 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- Opt-in browser pagination formats text progressively near the viewport,
+  splits paragraphs at line boundaries, and honors manual breaks, mixed page
+  sizes and first/continuing headers and footers. Live edits retain the caret
+  and scroll position while reflowing the affected pages. Search and printing
+  temporarily use source flow; oversized indivisible blocks expand visibly.
+  `text_document_pagination` defaults off; page breaks, borders and animation
+  default on. All settings are available in the bindings and through
+  `odr.pagination.setOptions`; progress and page metadata have runtime APIs.
+
 - A source/view adapter lets the text editor target original runs through
   projected fragments, preserving selection, undo and composition without
   changing the version 2 editing protocol.

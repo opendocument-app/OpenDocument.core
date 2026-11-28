@@ -34,6 +34,24 @@ describe('render', () => {
     }
   });
 
+  it('passes pagination options to the rendered view', () => {
+    const doc = odr.open(minimalOdt(), {
+      textDocumentPagination: true,
+      textDocumentPageBreaks: false,
+      textDocumentPageBorders: false,
+      textDocumentPageAnimation: false,
+    });
+    try {
+      const { html } = doc.render(0);
+      assert.match(html, /data-odr-pagination="true"/);
+      assert.match(html, /data-odr-page-breaks="false"/);
+      assert.match(html, /data-odr-page-borders="false"/);
+      assert.match(html, /data-odr-page-animation="false"/);
+    } finally {
+      doc.close();
+    }
+  });
+
   it('renders a view to self-contained html', () => {
     const doc = odr.open(fixture('mixed-layout.odt'));
     try {

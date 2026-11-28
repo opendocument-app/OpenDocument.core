@@ -95,6 +95,8 @@ tools/pdf/cmap-resources/
 tools/pdf/glyphlist.txt
 ## Adobe Core-14 AFM metrics (fetched by tools/pdf/generate_afm_data.py)
 tools/pdf/afm/
+## Pagination demo (rendered by test/browser/pagination/make-demo.py)
+test/browser/pagination/demo-document.*
 
 *.zip
 *.svg
