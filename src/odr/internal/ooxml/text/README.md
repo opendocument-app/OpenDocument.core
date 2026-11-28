@@ -53,6 +53,7 @@ Reader and editor for word processing documents (`.docx`). It relies on
   - [ ] `w:lineRule="atLeast"` as a minimum (applied as a fixed line height)
 - [x] tables
   - [x] table width
+  - [x] fixed table layout (`w:tblLayout`)
   - [x] cell vertical alignment
   - [x] borders on the cell (`w:tcBorders`) and on the table (`w:tblBorders`, lowered onto the cells)
   - [ ] Word's conflict resolution where two cells meet (the leading cell wins, not the heavier border)

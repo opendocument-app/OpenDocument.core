@@ -178,6 +178,15 @@ void resolve_table_style_(const pugi::xml_node node, TableStyle &result) {
     result.width = width;
   }
 
+  // [ECMA-376] 17.4.53
+  const char *layout =
+      table_properties.child("w:tblLayout").attribute("w:type").value();
+  if (std::strcmp("fixed", layout) == 0) {
+    result.layout = TableLayout::fixed;
+  } else if (std::strcmp("autofit", layout) == 0) {
+    result.layout = TableLayout::automatic;
+  }
+
   // [ECMA-376] 17.4.39
   const pugi::xml_node borders = table_properties.child("w:tblBorders");
   result.border.override(read_borders_node(borders));

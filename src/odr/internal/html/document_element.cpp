@@ -530,6 +530,17 @@ void html::translate_list_item(const Element &element,
 void html::translate_table(const Element &element, const WritingState &state) {
   const Table table = element.as_table();
 
+  // A table nested in a fixed column must not widen it, and its `col` widths
+  // keep it from shrinking, so clip it to the cell.
+  const Element cell = element.parent();
+  const bool clip =
+      cell.type() == ElementType::table_cell &&
+      cell.parent().parent().as_table().style().layout == TableLayout::fixed;
+  if (clip) {
+    state.out().write_element_begin(
+        "div", HtmlElementOptions().set_style("overflow:hidden;"));
+  }
+
   state.out().write_element_begin(
       "table",
       HtmlElementOptions()
@@ -586,6 +597,10 @@ void html::translate_table(const Element &element, const WritingState &state) {
   }
 
   state.out().write_element_end("table");
+
+  if (clip) {
+    state.out().write_element_end("div");
+  }
 }
 
 namespace html {

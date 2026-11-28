@@ -70,6 +70,10 @@ void odr_python::bind_style(py::module_ &m) {
       .value("portrait", odr::PrintOrientation::portrait)
       .value("landscape", odr::PrintOrientation::landscape);
 
+  py::enum_<odr::TableLayout>(m, "TableLayout")
+      .value("automatic", odr::TableLayout::automatic)
+      .value("fixed", odr::TableLayout::fixed);
+
   py::enum_<odr::TextWrap>(m, "TextWrap")
       .value("none", odr::TextWrap::none)
       .value("before", odr::TextWrap::before)
@@ -177,6 +181,7 @@ void odr_python::bind_style(py::module_ &m) {
   py::class_<odr::TableStyle>(m, "TableStyle")
       .def(py::init<>())
       .def_readwrite("width", &odr::TableStyle::width)
+      .def_readwrite("layout", &odr::TableStyle::layout)
       .def_readwrite("border", &odr::TableStyle::border)
       .def_readwrite("border_inside_horizontal",
                      &odr::TableStyle::border_inside_horizontal)

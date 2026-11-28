@@ -320,6 +320,11 @@ TEST(EnumOrdinals, print_orientation) {
   EXPECT_EQ(ordinal(PrintOrientation::landscape), 1);
 }
 
+TEST(EnumOrdinals, table_layout) {
+  EXPECT_EQ(ordinal(TableLayout::automatic), 0);
+  EXPECT_EQ(ordinal(TableLayout::fixed), 1);
+}
+
 TEST(EnumOrdinals, text_wrap) {
   EXPECT_EQ(ordinal(TextWrap::none), 0);
   EXPECT_EQ(ordinal(TextWrap::before), 1);
