@@ -357,10 +357,29 @@
     }
     return fallback;
   }
+  // WAI-ARIA's "still being updated": set while layout work is queued, so a
+  // reader or a screenshot can wait for the pages to settle.
+  function busy() {
+    if (frame || timer || restartPending) {
+      root.setAttribute("aria-busy", "true");
+    } else {
+      root.removeAttribute("aria-busy");
+    }
+  }
+  function restartLater(delay) {
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      timer = 0;
+      start();
+    }, delay);
+    busy();
+  }
   function pause() {
     cancelAnimationFrame(frame);
     frame = 0;
     clearTimeout(timer);
+    timer = 0;
+    busy();
   }
   function stop() {
     if (!active) return;
@@ -398,6 +417,7 @@
   function start() {
     if (view.isComposing()) {
       restartPending = true;
+      busy();
       return;
     }
     restartPending = false;
@@ -507,7 +527,9 @@
       return;
     frame = requestAnimationFrame(function () {
       step();
+      busy();
     });
+    busy();
   }
   function step(restorePosition) {
     frame = 0;
@@ -782,11 +804,10 @@
     step(restorePosition);
     view.restore(selection);
     schedule();
+    busy();
   }
   function invalidate() {
-    if (!active) return;
-    clearTimeout(timer);
-    timer = setTimeout(start, 100);
+    if (active) restartLater(100);
   }
   view.connect({
     active: function () {
@@ -835,7 +856,7 @@
     if (searching) {
       stop();
       report();
-    } else timer = setTimeout(start, 0);
+    } else restartLater(0);
   });
   function copy(event) {
     var s = window.getSelection();

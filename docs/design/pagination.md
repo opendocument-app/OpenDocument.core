@@ -36,6 +36,11 @@ progress. The host bridge forwards `paginationChange`. The viewport's existing
 page count/navigation API sees pages as they become available. It cannot jump
 to an unformatted page; text documents still use continuous page layout.
 
+While a frame, a restart or a deferred restart is queued, the pagination root
+carries `aria-busy="true"`. It is cleared once layout is idle, which includes
+stopping short of the end of a long document far below the viewport. The
+reference tests' screenshots (`compare-html` 2.5.0 and later) wait for it.
+
 Disabling reveals the source DOM. `text_document_margin` selects the initial
 fallback: flowing text, or boxes at manual breaks. On first activation, legacy
 page-box bodies are normalized into one source flow so paragraph navigation

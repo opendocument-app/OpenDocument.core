@@ -16,6 +16,10 @@ The release run heads these entries with the version and opens a fresh
 
 ## Unreleased
 
+- While pagination has layout work queued, its root carries
+  `aria-busy="true"`, so assistive technology and screenshots can wait for the
+  pages to settle. The reference output now renders text documents paginated.
+
 - Opt-in browser pagination formats text progressively near the viewport,
   splits paragraphs at line boundaries, and honors manual breaks, mixed page
   sizes and first/continuing headers and footers. Live edits retain the caret
