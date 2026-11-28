@@ -180,6 +180,41 @@ enum CharacterSprms : std::uint16_t {
   sprmCCv = 0x6870,        //< COLORREF
 };
 
+/// The paragraph SPRMs mapped to ParagraphStyle ([MS-DOC] 2.6.2), in twips
+/// unless noted.
+enum ParagraphSprms : std::uint16_t {
+  sprmPJc80 = 0x2403,             //< u8 justification, physical
+  sprmPFPageBreakBefore = 0x2407, //< Bool8
+  sprmPDxaRight80 = 0x840E,       //< XAS
+  sprmPDxaLeft80 = 0x840F,        //< XAS
+  sprmPDxaLeft180 = 0x8411,       //< XAS, first line relative to the left
+  sprmPDyaLine = 0x6412,          //< LSPD
+  sprmPDyaBefore = 0xA413,        //< u16
+  sprmPDyaAfter = 0xA414,         //< u16
+  sprmPDxaRight = 0x845D,         //< XAS, logical
+  sprmPDxaLeft = 0x845E,          //< XAS, logical
+  sprmPDxaLeft1 = 0x8460,         //< XAS, logical
+  sprmPJc = 0x2461,               //< u8 justification, logical
+};
+
+/// The section SPRMs mapped to PageLayout ([MS-DOC] 2.6.4), in twips.
+enum SectionSprms : std::uint16_t {
+  sprmSBOrientation = 0x301D, //< u8: 1 portrait, 2 landscape
+  sprmSXaPage = 0xB01F,       //< u16
+  sprmSYaPage = 0xB020,       //< u16
+  sprmSDxaLeft = 0xB021,      //< u16
+  sprmSDxaRight = 0xB022,     //< u16
+  sprmSDyaTop = 0x9023,       //< YAS; negative fixes the margin
+  sprmSDyaBottom = 0x9024,    //< YAS; negative fixes the margin
+};
+
+/// Variable-length SPRMs whose size is not in their first operand byte
+/// ([MS-DOC] 2.2.5.1).
+enum IrregularSprms : std::uint16_t {
+  sprmPChgTabs = 0xC615,  //< size 255 means PChgTabsOperand
+  sprmTDefTable = 0xD608, //< u16 size, plus one
+};
+
 struct Sprm {
   std::uint16_t ispmd : 9;
   std::uint16_t fSpec : 1;
@@ -232,6 +267,24 @@ struct PnFkpChpx {
   std::uint32_t unused : 10;
 };
 static_assert(sizeof(PnFkpChpx) == 4, "PnFkpChpx should be 4 bytes");
+
+/// Location of a PapxFkp in the WordDocument stream, at pn * 512
+/// ([MS-DOC] 2.9.207).
+struct PnFkpPapx {
+  std::uint32_t pn : 22;
+  std::uint32_t unused : 10;
+};
+static_assert(sizeof(PnFkpPapx) == 4, "PnFkpPapx should be 4 bytes");
+
+/// A section descriptor ([MS-DOC] 2.9.260); fcSepx locates the section's
+/// Sepx in the WordDocument stream, 0xFFFFFFFF meaning none.
+struct Sed {
+  std::int16_t fn;
+  std::uint32_t fcSepx;
+  std::uint16_t fnMpr;
+  std::uint32_t fcMpr;
+};
+static_assert(sizeof(Sed) == 12, "Sed should be 12 bytes");
 
 /// Fixed head of an FFN ([MS-DOC] 2.9.82); the null-terminated UTF-16 font
 /// name (xszFfn) follows.
@@ -313,5 +366,11 @@ using PlcPcdMap = PlcMap<Pcd>;
 /// PlcBteChpx ([MS-DOC] 2.8.5): keyed by WordDocument-stream offsets (fc, not
 /// CP); its data elements locate the ChpxFkp pages.
 using PlcBteChpxMap = PlcMap<PnFkpChpx>;
+
+/// PlcBtePapx ([MS-DOC] 2.8.6): as PlcBteChpx, for the PapxFkp pages.
+using PlcBtePapxMap = PlcMap<PnFkpPapx>;
+
+/// PlcfSed ([MS-DOC] 2.8.26): the section descriptors, keyed by CP.
+using PlcfSedMap = PlcMap<Sed>;
 
 } // namespace odr::internal::oldms::text

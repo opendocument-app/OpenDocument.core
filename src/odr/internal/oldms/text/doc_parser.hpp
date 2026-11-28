@@ -13,7 +13,8 @@ class ElementRegistry;
 class StyleRegistry;
 
 /// Parses the `/WordDocument` stream into root → paragraph → span → text
-/// elements; fills `style_registry` with the resolved character styles.
+/// elements; fills `style_registry` with the resolved paragraph and character
+/// styles and the page layout.
 /// \return the root element id.
 ElementIdentifier parse_tree(ElementRegistry &registry,
                              StyleRegistry &style_registry,

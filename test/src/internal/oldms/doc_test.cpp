@@ -19,6 +19,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace odr;
@@ -71,11 +72,14 @@ std::string doc_prl(const std::uint16_t opcode, const std::string &operand) {
 }
 
 /// A minimal FIB ([MS-DOC] 2.5.1): nFib97, table stream /1Table, with the
-/// three FcLcbs the parser reads (clx, plcfBteChpx, sttbfFfn).
-std::string make_fib(const std::uint32_t ccp_text,
-                     const internal::oldms::text::FcLcb clx,
-                     const internal::oldms::text::FcLcb plcf_bte_chpx,
-                     const internal::oldms::text::FcLcb sttbf_ffn) {
+/// FcLcbs for clx, plcfBteChpx and sttbfFfn, and any `others` by their index
+/// in FibRgFcLcb97.
+std::string
+make_fib(const std::uint32_t ccp_text, const internal::oldms::text::FcLcb clx,
+         const internal::oldms::text::FcLcb plcf_bte_chpx,
+         const internal::oldms::text::FcLcb sttbf_ffn,
+         const std::vector<std::pair<std::size_t, internal::oldms::text::FcLcb>>
+             &others = {}) {
   std::string fib;
   // FibBase (32 bytes)
   append_u16(fib, 0xA5EC);      // wIdent
@@ -112,6 +116,9 @@ std::string make_fib(const std::uint32_t ccp_text,
   put_fclcb(12, plcf_bte_chpx);
   put_fclcb(15, sttbf_ffn);
   put_fclcb(33, clx);
+  for (const auto &[index, value] : others) {
+    put_fclcb(index, value);
+  }
   fib += rg;
   // cswNew
   append_u16(fib, 0);
@@ -134,6 +141,57 @@ std::string make_sttbf_ffn(const std::vector<std::string> &names) {
     sttb += ffn;
   }
   return sttb;
+}
+
+/// An STD ([MS-DOC] 2.9.260) with a 10-byte StdfBase, the name, and the
+/// given UPXs, each sized and padded to even.
+std::string make_std(const std::uint16_t sti, const std::uint8_t stk,
+                     const std::uint16_t istd_base, const std::string &name,
+                     const std::vector<std::string> &upxs) {
+  std::string std;
+  append_u16(std, sti);
+  append_u16(std, static_cast<std::uint16_t>(stk | istd_base << 4));
+  append_u16(std, static_cast<std::uint16_t>(upxs.size()));
+  append_u16(std, 0); // bchUpe
+  append_u16(std, 0); // grfstd
+  append_u16(std, static_cast<std::uint16_t>(name.size()));
+  for (const char c : name) {
+    append_u16(std, static_cast<std::uint8_t>(c));
+  }
+  append_u16(std, 0);
+  for (const std::string &upx : upxs) {
+    append_u16(std, static_cast<std::uint16_t>(upx.size()));
+    std += upx;
+    if (upx.size() % 2 != 0) {
+      std.push_back('\0');
+    }
+  }
+  return std;
+}
+
+/// An STSH ([MS-DOC] 2.9.271) of `stds`, indexed by istd, with the default
+/// font `ftc_ascii`; an empty STD is an unused istd.
+std::string make_stsh(const std::vector<std::string> &stds,
+                      const std::uint16_t ftc_ascii) {
+  std::string stsh;
+  append_u16(stsh, 18);                                      // cbStshi
+  append_u16(stsh, static_cast<std::uint16_t>(stds.size())); // cstd
+  append_u16(stsh, 10);                                      // cbSTDBaseInFile
+  stsh += std::string(8, '\0');
+  append_u16(stsh, ftc_ascii);
+  stsh += std::string(4, '\0');
+  for (const std::string &std : stds) {
+    append_u16(stsh, static_cast<std::uint16_t>(std.size()));
+    stsh += std;
+  }
+  return stsh;
+}
+
+/// An istd and a grpprl, as a UpxPapx or GrpPrlAndIstd ([MS-DOC] 2.9.114).
+std::string istd_and(const std::uint16_t istd, const std::string &grpprl) {
+  std::string result;
+  append_u16(result, istd);
+  return result + grpprl;
 }
 
 } // namespace
@@ -222,6 +280,172 @@ TEST(OldMs, doc_apply_character_sprms) {
   EXPECT_THROW(apply_character_sprms(
                    base, doc_prl(0x4A43, std::string("\x01\x00", 2)), fonts),
                std::runtime_error);
+}
+
+// A ToggleOperand ([MS-DOC] 2.9.327) of 0x80 or 0x81 resolves against the
+// style it applies to.
+TEST(OldMs, doc_toggle_operands_follow_the_style) {
+  using internal::oldms::text::apply_character_sprms;
+
+  TextStyle bold;
+  bold.font_weight = FontWeight::bold;
+  EXPECT_EQ(
+      apply_character_sprms(bold, doc_prl(0x0835, "\x80"), {}).font_weight,
+      FontWeight::bold);
+  EXPECT_EQ(
+      apply_character_sprms(bold, doc_prl(0x0835, "\x81"), {}).font_weight,
+      FontWeight::normal);
+  EXPECT_EQ(
+      apply_character_sprms(bold, doc_prl(0x0835, std::string(1, '\0')), {})
+          .font_weight,
+      FontWeight::normal);
+}
+
+// Paragraph SPRMs ([MS-DOC] 2.6.2) map onto ParagraphStyle in inches.
+TEST(OldMs, doc_apply_paragraph_sprms) {
+  using internal::oldms::text::apply_paragraph_sprms;
+  const auto twips = [](const double value) {
+    return Measure(value / 1440.0, DynamicUnit("in"));
+  };
+
+  {
+    std::string grpprl;
+    grpprl += doc_prl(0x2461, "\x03");                             // justify
+    grpprl += doc_prl(0x845E, std::string("\xA0\x05", 2));         // left 1440
+    grpprl += doc_prl(0x845D, std::string("\x48\xFF", 2));         // right -184
+    grpprl += doc_prl(0x8460, std::string("\x10\xFE", 2));         // first -496
+    grpprl += doc_prl(0xA413, std::string("\x78\x00", 2));         // before 120
+    grpprl += doc_prl(0xA414, std::string("\xC8\x00", 2));         // after 200
+    grpprl += doc_prl(0x6412, std::string("\x14\x01\x01\x00", 4)); // 1.15
+    grpprl += doc_prl(0x2407, "\x01"); // page break before
+    const ParagraphStyle style = apply_paragraph_sprms({}, grpprl);
+    EXPECT_EQ(style.text_align, TextAlign::justify);
+    EXPECT_EQ(style.margin.left, twips(1440));
+    EXPECT_EQ(style.margin.right, twips(-184));
+    EXPECT_EQ(style.text_indent, twips(-496));
+    EXPECT_EQ(style.margin.top, twips(120));
+    EXPECT_EQ(style.margin.bottom, twips(200));
+    EXPECT_EQ(style.line_height, Measure(276 / 2.4, DynamicUnit("%")));
+    EXPECT_EQ(style.break_before, BreakType::page);
+  }
+
+  {
+    // The Word 97 variants, an exact line height, and the irregularly sized
+    // sprmTDefTable and sprmPChgTabs skipped without disturbing later Prls.
+    std::string grpprl;
+    grpprl += doc_prl(0x2403, "\x01");                     // center
+    grpprl += doc_prl(0x840F, std::string("\x40\x02", 2)); // left 576
+    grpprl += doc_prl(0xD608, std::string("\x03\x00\xAA\xBB", 4));
+    grpprl += doc_prl(0xC615, std::string("\xFF\x01\x01\x02\x03\x04"
+                                          "\x01\x05\x06\x07",
+                                          10));
+    grpprl += doc_prl(0x6412, std::string("\x10\xFF\x00\x00", 4));
+    grpprl += doc_prl(0x2407, std::string(1, '\0'));
+    const ParagraphStyle style = apply_paragraph_sprms({}, grpprl);
+    EXPECT_EQ(style.text_align, TextAlign::center);
+    EXPECT_EQ(style.margin.left, twips(576));
+    EXPECT_EQ(style.line_height, twips(240));
+    EXPECT_EQ(style.break_before, BreakType::none);
+  }
+
+  {
+    // An at-least height of 0 is single spacing, clearing the style's.
+    ParagraphStyle spaced;
+    spaced.line_height = Measure("150%");
+    EXPECT_FALSE(
+        apply_paragraph_sprms(spaced, doc_prl(0x6412, std::string(4, '\0')))
+            .line_height.has_value());
+  }
+
+  EXPECT_THROW(apply_paragraph_sprms({}, doc_prl(0xA413, "\x01")),
+               std::runtime_error);
+  EXPECT_THROW(
+      apply_paragraph_sprms({}, doc_prl(0xD608, std::string("\x00\x00", 2))),
+      std::runtime_error);
+}
+
+// Section SPRMs ([MS-DOC] 2.6.4) map onto PageLayout over the defaults.
+TEST(OldMs, doc_apply_section_sprms) {
+  using internal::oldms::text::apply_section_sprms;
+  using internal::oldms::text::default_page_layout;
+  const auto twips = [](const double value) {
+    return Measure(value / 1440.0, DynamicUnit("in"));
+  };
+
+  const PageLayout defaults = default_page_layout();
+  EXPECT_EQ(defaults.width, twips(12240));
+  EXPECT_EQ(defaults.height, twips(15840));
+  EXPECT_EQ(defaults.margin.left, twips(1800));
+  EXPECT_EQ(defaults.margin.top, twips(1440));
+
+  std::string grpprl;
+  grpprl += doc_prl(0xB01F, std::string("\x82\x2E", 2)); // 11906
+  grpprl += doc_prl(0xB020, std::string("\xC6\x41", 2)); // 16838
+  grpprl += doc_prl(0xB021, std::string("\xA0\x05", 2)); // left 1440
+  grpprl += doc_prl(0x9023, std::string("\xC8\xFB", 2)); // top -1080
+  grpprl += doc_prl(0x301D, "\x02");                     // landscape
+  const PageLayout layout = apply_section_sprms(defaults, grpprl);
+  EXPECT_EQ(layout.width, twips(11906));
+  EXPECT_EQ(layout.height, twips(16838));
+  EXPECT_EQ(layout.margin.left, twips(1440));
+  EXPECT_EQ(layout.margin.right, twips(1800));
+  EXPECT_EQ(layout.margin.top, twips(1080));
+  EXPECT_EQ(layout.margin.bottom, twips(1440));
+  EXPECT_EQ(layout.print_orientation, PrintOrientation::landscape);
+}
+
+// Paragraph styles resolve through their istdBase chain; other kinds of style
+// and unused istds fall back to Normal.
+TEST(OldMs, doc_read_style_sheet) {
+  namespace word = internal::oldms::text;
+  const std::vector<std::string> fonts = {"Arial", "Times New Roman"};
+
+  const std::string stsh = make_stsh(
+      {make_std(0, 1, 0x0FFF, "Normal",
+                {istd_and(0, doc_prl(0xA413, std::string("\x78\x00", 2))),
+                 doc_prl(0x4A43, std::string("\x18\x00", 2))}),
+       make_std(
+           1, 1, 0, "Heading",
+           {istd_and(1, doc_prl(0x2403, "\x01")), doc_prl(0x0835, "\x81")}),
+       make_std(65, 2, 0x0FFF, "Strong", {doc_prl(0x0835, "\x01")}), ""},
+      1);
+  std::istringstream in("xx" + stsh);
+  const word::StyleSheet sheet = word::read_style_sheet(
+      in, {2, static_cast<std::uint32_t>(stsh.size())}, fonts);
+
+  const word::StyleSheet::Entry &normal = sheet.paragraph_style(0);
+  EXPECT_EQ(normal.text.font_size, Measure("12pt"));
+  EXPECT_EQ(normal.text.font_name, "Times New Roman");
+  EXPECT_FALSE(normal.text.font_weight.has_value());
+  EXPECT_EQ(normal.paragraph.margin.top,
+            Measure(120 / 1440.0, DynamicUnit("in")));
+
+  const word::StyleSheet::Entry &heading = sheet.paragraph_style(1);
+  EXPECT_EQ(heading.paragraph.text_align, TextAlign::center);
+  EXPECT_EQ(heading.paragraph.margin.top, normal.paragraph.margin.top);
+  EXPECT_EQ(heading.text.font_weight, FontWeight::bold);
+  EXPECT_EQ(heading.text.font_size, Measure("12pt"));
+
+  for (const std::uint16_t istd : {2, 3, 99}) {
+    EXPECT_EQ(sheet.paragraph_style(istd).text.font_size, Measure("12pt"));
+    EXPECT_FALSE(sheet.paragraph_style(istd).text.font_weight.has_value());
+  }
+
+  // Without a style sheet: the bare defaults.
+  std::istringstream empty;
+  EXPECT_EQ(word::read_style_sheet(empty, {}, fonts)
+                .paragraph_style(0)
+                .text.font_size,
+            Measure("10pt"));
+
+  // A style based on itself is malformed.
+  const std::string cyclic =
+      make_stsh({make_std(0, 1, 0, "Normal", {istd_and(0, ""), ""})}, 0);
+  std::istringstream cyclic_in(cyclic);
+  EXPECT_THROW(
+      word::read_style_sheet(
+          cyclic_in, {0, static_cast<std::uint32_t>(cyclic.size())}, fonts),
+      std::runtime_error);
 }
 
 TEST(OldMs, doc_read_font_names) {
@@ -359,6 +583,149 @@ TEST(OldMs, doc_character_formatting) {
     EXPECT_THROW(internal::oldms::text::Document{invalid_files},
                  std::runtime_error);
   }
+}
+
+// A paragraph takes its PAPX from its mark and lies on its style; its runs lie
+// on the same style; the first section gives the page.
+TEST(OldMs, doc_paragraph_formatting) {
+  const std::string body = "Head\rBody text\r";
+  constexpr std::uint32_t text_fc = 1536;
+  constexpr std::uint32_t sepx_fc = 1600;
+
+  // PapxFkp ([MS-DOC] 2.9.209) at pn 2: "Head\r" is Heading with 10pt after,
+  // its PapxInFkp sized in words; "Body text\r" is Normal, right aligned,
+  // sized 2 * cb - 1.
+  std::string fkp(512, '\0');
+  {
+    std::string head;
+    append_u32(head, text_fc);
+    append_u32(head, text_fc + 5);
+    append_u32(head, text_fc + 15);
+    fkp.replace(0, head.size(), head);
+    fkp[head.size()] = static_cast<char>(200);
+    fkp[head.size() + 13] = static_cast<char>(220);
+
+    const std::string heading =
+        istd_and(1, doc_prl(0xA414, std::string("\xC8\x00", 2)));
+    fkp[400] = '\0';
+    fkp[401] = static_cast<char>(heading.size() / 2);
+    fkp.replace(402, heading.size(), heading);
+
+    const std::string normal = istd_and(0, doc_prl(0x2461, "\x02"));
+    fkp[440] = static_cast<char>((normal.size() + 1) / 2);
+    fkp.replace(441, normal.size(), normal);
+    fkp[511] = 2; // cpara
+  }
+
+  std::string sepx;
+  {
+    std::string grpprl;
+    grpprl += doc_prl(0xB01F, std::string("\x82\x2E", 2)); // A4 width
+    grpprl += doc_prl(0x9023, std::string("\xC8\xFB", 2)); // top -1080
+    append_u16(sepx, static_cast<std::uint16_t>(grpprl.size()));
+    sepx += grpprl;
+  }
+
+  // Table stream: Clx at 0, SttbfFfn at 64, PlcBtePapx at 192, STSH at 256,
+  // PlcfSed at 512.
+  std::string plc_pcd;
+  append_u32(plc_pcd, 0);
+  append_u32(plc_pcd, static_cast<std::uint32_t>(body.size()));
+  append_u16(plc_pcd, 0);
+  append_u32(plc_pcd, (1u << 30) | (text_fc * 2u));
+  append_u16(plc_pcd, 0);
+  std::string clx;
+  clx.push_back('\x02');
+  append_u32(clx, static_cast<std::uint32_t>(plc_pcd.size()));
+  clx += plc_pcd;
+
+  const std::string sttbf_ffn = make_sttbf_ffn({"Arial", "Times New Roman"});
+
+  std::string plc_bte_papx;
+  append_u32(plc_bte_papx, text_fc);
+  append_u32(plc_bte_papx, text_fc + 15);
+  append_u32(plc_bte_papx, 2);
+
+  const std::string stsh = make_stsh(
+      {make_std(0, 1, 0x0FFF, "Normal",
+                {istd_and(0, doc_prl(0xA413, std::string("\x78\x00", 2))),
+                 doc_prl(0x4A43, std::string("\x18\x00", 2))}),
+       make_std(
+           1, 1, 0, "Heading",
+           {istd_and(1, doc_prl(0x2403, "\x01")), doc_prl(0x0835, "\x81")})},
+      1);
+
+  std::string plcf_sed;
+  append_u32(plcf_sed, 0);
+  append_u32(plcf_sed, static_cast<std::uint32_t>(body.size()));
+  append_u16(plcf_sed, 0); // fn
+  append_u32(plcf_sed, sepx_fc);
+  append_u16(plcf_sed, 0); // fnMpr
+  append_u32(plcf_sed, 0); // fcMpr
+
+  std::string table(640, '\0');
+  table.replace(0, clx.size(), clx);
+  table.replace(64, sttbf_ffn.size(), sttbf_ffn);
+  table.replace(192, plc_bte_papx.size(), plc_bte_papx);
+  table.replace(256, stsh.size(), stsh);
+  table.replace(512, plcf_sed.size(), plcf_sed);
+
+  std::string word_document =
+      make_fib(static_cast<std::uint32_t>(body.size()),
+               {0, static_cast<std::uint32_t>(clx.size())}, {},
+               {64, static_cast<std::uint32_t>(sttbf_ffn.size())},
+               {{1, {256, static_cast<std::uint32_t>(stsh.size())}},
+                {6, {512, static_cast<std::uint32_t>(plcf_sed.size())}},
+                {13, {192, static_cast<std::uint32_t>(plc_bte_papx.size())}}});
+  word_document.resize(1024, '\0');
+  word_document += fkp;
+  word_document += body;
+  word_document.resize(sepx_fc, '\0');
+  word_document += sepx;
+
+  auto files = std::make_shared<internal::VirtualFilesystem>();
+  files->copy(std::make_shared<internal::MemoryFile>(word_document),
+              internal::AbsPath("/WordDocument"));
+  files->copy(std::make_shared<internal::MemoryFile>(table),
+              internal::AbsPath("/1Table"));
+  const Document document(
+      std::make_shared<internal::oldms::text::Document>(files));
+  const auto twips = [](const double value) {
+    return Measure(value / 1440.0, DynamicUnit("in"));
+  };
+
+  const PageLayout layout =
+      document.root_element().as_text_root().page_layout();
+  EXPECT_EQ(layout.width, twips(11906));
+  EXPECT_EQ(layout.height, twips(15840));
+  EXPECT_EQ(layout.margin.top, twips(1080));
+  EXPECT_EQ(layout.margin.left, twips(1800));
+
+  std::vector<Element> paragraphs;
+  for (const Element child : document.root_element().children()) {
+    paragraphs.push_back(child);
+  }
+  ASSERT_EQ(paragraphs.size(), 2);
+
+  const ParagraphStyle heading = paragraphs[0].as_paragraph().style();
+  EXPECT_EQ(heading.text_align, TextAlign::center);
+  EXPECT_EQ(heading.margin.top, twips(120));
+  EXPECT_EQ(heading.margin.bottom, twips(200));
+  const TextStyle heading_text =
+      (*paragraphs[0].children().begin()).as_span().style();
+  EXPECT_EQ(heading_text.font_weight, FontWeight::bold);
+  EXPECT_EQ(heading_text.font_size, Measure("12pt"));
+  EXPECT_EQ(heading_text.font_name, "Times New Roman");
+
+  const ParagraphStyle normal = paragraphs[1].as_paragraph().style();
+  EXPECT_EQ(normal.text_align, TextAlign::right);
+  EXPECT_EQ(normal.margin.top, twips(120));
+  EXPECT_FALSE(normal.margin.bottom.has_value());
+  const TextStyle normal_text =
+      (*paragraphs[1].children().begin()).as_span().style();
+  EXPECT_FALSE(normal_text.font_weight.has_value());
+  EXPECT_EQ(normal_text.font_size, Measure("12pt"));
+  EXPECT_EQ(collect_text(paragraphs[1]), "Body text");
 }
 
 TEST(OldMs, doc_fib_versions_respect_counted_arrays) {
